@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 
-export default function Navbar({ onOpenWaitlist }) {
+export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
@@ -125,9 +125,9 @@ export default function Navbar({ onOpenWaitlist }) {
                 {darkMode ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              <button
-                onClick={onOpenWaitlist}
-                className="text-[14px] font-medium text-white rounded-lg transition-colors duration-200 px-4 py-2"
+              <a
+                href="https://dashboard.sardis.sh/signup"
+                className="text-[14px] font-medium text-white rounded-lg transition-colors duration-200 px-4 py-2 inline-block"
                 style={{
                   fontFamily: "'Inter', sans-serif",
                   backgroundColor: 'var(--landing-accent)',
@@ -135,8 +135,8 @@ export default function Navbar({ onOpenWaitlist }) {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent-hover)'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--landing-accent)'}
               >
-                Get Early Access
-              </button>
+                Get Started Free
+              </a>
             </div>
 
             {/* Mobile hamburger */}
@@ -233,22 +233,20 @@ export default function Navbar({ onOpenWaitlist }) {
                 </motion.a>
               ))}
 
-              <motion.button
+              <motion.a
+                href="https://dashboard.sardis.sh/signup"
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.05 + navLinks.length * 0.06, duration: 0.2 }}
-                onClick={() => {
-                  setMobileOpen(false);
-                  onOpenWaitlist?.();
-                }}
-                className="mt-4 text-[16px] font-medium text-white rounded-lg transition-colors duration-200 px-6 py-3 w-full text-center"
+                onClick={() => setMobileOpen(false)}
+                className="mt-4 text-[16px] font-medium text-white rounded-lg transition-colors duration-200 px-6 py-3 w-full text-center inline-block"
                 style={{
                   fontFamily: "'Inter', sans-serif",
                   backgroundColor: 'var(--landing-accent)',
                 }}
               >
-                Get Early Access
-              </motion.button>
+                Get Started Free
+              </motion.a>
             </div>
           </motion.div>
         )}

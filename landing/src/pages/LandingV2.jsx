@@ -1,4 +1,3 @@
-import { useState } from 'react';
 // eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -30,7 +29,6 @@ import Protocols from '@/components/landing/Protocols';
 import Integrations from '@/components/landing/Integrations';
 import CTASection from '@/components/landing/CTASection';
 import Footer from '@/components/landing/Footer';
-import WaitlistModal from '@/components/WaitlistModal';
 import SEO from '@/components/SEO';
 
 // Scroll-triggered animation wrapper
@@ -49,8 +47,6 @@ function AnimatedSection({ children, className = '' }) {
 }
 
 export default function LandingV2() {
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
-
   return (
     <div className="min-h-screen [font-synthesis:none]" style={{ backgroundColor: 'var(--landing-bg)' }}>
       <SEO
@@ -58,12 +54,12 @@ export default function LandingV2() {
         description="AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Base with multi-chain funding."
       />
 
-      <Navbar onOpenWaitlist={() => setWaitlistOpen(true)} />
+      <Navbar />
 
       {/* Spacer for fixed navbar */}
       <div className="h-[72px]" />
 
-      <Hero onOpenWaitlist={() => setWaitlistOpen(true)} />
+      <Hero />
 
       <AnimatedSection>
         <SocialProof />
@@ -152,15 +148,10 @@ export default function LandingV2() {
       </section>
 
       <AnimatedSection>
-        <CTASection onOpenWaitlist={() => setWaitlistOpen(true)} />
+        <CTASection />
       </AnimatedSection>
 
       <Footer />
-
-      <WaitlistModal
-        isOpen={waitlistOpen}
-        onClose={() => setWaitlistOpen(false)}
-      />
     </div>
   );
 }

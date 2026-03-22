@@ -297,7 +297,7 @@ function WalletMockup() {
 
 /* ── Hero Component ─────────────────────────────────────────────── */
 
-export default function Hero({ onOpenWaitlist }) {
+export default function Hero() {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
