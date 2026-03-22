@@ -67,6 +67,21 @@
   --landing-marquee-text: #3A3A4A;
 }
 
+/* ── Monokrom Dashboard Theme ─────────────────────── */
+/* Used by dashboard pages — near-black bg, subtle borders, green accent only */
+
+.dashboard-mono {
+  --mono-bg: #0a0a0f;
+  --mono-surface: #141419;
+  --mono-surface-elevated: #1c1c24;
+  --mono-border: #1f1f28;
+  --mono-border-hover: #2a2a36;
+  --mono-text: #e4e4e7;
+  --mono-text-muted: #71717a;
+  --mono-text-ghost: #52525b;
+  --mono-accent: #22c55e;
+}
+
 /* ── Base styles ──────────────────────────────────── */
 
 body {

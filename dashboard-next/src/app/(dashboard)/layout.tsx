@@ -1,45 +1,30 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
   Wallet,
-  CreditCard,
-  Sparkles,
   LogOut,
-  ShieldCheck,
-  FlaskConical,
-  Activity,
   CheckSquare,
   BarChart3,
   Shield,
-  Target,
-  Anchor,
-  Award,
-  AlertTriangle,
-  Headset,
   Power,
   FileSearch,
-  Store,
   Beaker,
-  Radar,
   Receipt,
   Key,
   Webhook,
   Settings,
   ChevronDown,
   ChevronRight,
-  FlaskConical as ExperimentalIcon,
   Rocket,
   LayoutGrid,
   GitBranch,
-  LayoutTemplate,
-  BookUser,
-  Eye,
-  ArrowRightLeft
+  ArrowRightLeft,
+  User,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
@@ -51,49 +36,45 @@ interface LayoutProps {
   children: ReactNode
 }
 
-// Always visible -- core product pages
-const coreNavigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, tour: 'overview' },
+// --- Sidebar navigation structure ---
+
+interface NavItem {
+  name: string
+  href: string
+  icon: typeof LayoutDashboard
+  tour?: string
+}
+
+interface NavSection {
+  label: string
+  items: NavItem[]
+}
+
+// Core section -- always visible, no collapsing
+const coreNavigation: NavItem[] = [
+  { name: 'Overview', href: '/', icon: LayoutDashboard, tour: 'overview' },
   { name: 'Agents', href: '/agents', icon: Users, tour: 'agents' },
-  { name: 'Spending Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
-  { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft, tour: 'transactions' },
-  { name: 'Cards', href: '/cards', icon: CreditCard },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
 ]
 
 // Collapsible grouped sections
-const navSections = [
+const navSections: NavSection[] = [
   {
-    label: 'Control Plane',
+    label: 'Policies',
     items: [
-      { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
-      { name: 'Control Plane Demo', href: '/demo', icon: Sparkles },
-      { name: 'Approvals', href: '/approvals', icon: CheckSquare },
-      { name: 'Approval Routing', href: '/approval-config', icon: Settings },
+      { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
+      { name: 'Simulation', href: '/simulation', icon: Beaker },
+      { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Security',
+    items: [
       { name: 'Kill Switch', href: '/kill-switch', icon: Power },
-      { name: 'Fallback Rules', href: '/fallback-rules', icon: GitBranch },
-    ],
-  },
-  {
-    label: 'Monitoring',
-    items: [
-      { name: 'Live Events', href: '/events', icon: Activity },
-      { name: 'Policy Analytics', href: '/policy-analytics', icon: BarChart3 },
-      { name: 'Anomaly Detection', href: '/anomaly', icon: Radar },
-      { name: 'Live Dry Run', href: '/simulation', icon: Beaker },
+      { name: 'Approvals', href: '/approvals', icon: CheckSquare },
+      { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
       { name: 'Evidence', href: '/evidence', icon: FileSearch },
-      { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
-      { name: 'Agent Observability', href: '/agent-observability', icon: Eye },
-    ],
-  },
-  {
-    label: 'Payments',
-    items: [
-      { name: 'Merchants', href: '/merchants', icon: Store },
-      { name: 'Counterparties', href: '/counterparties', icon: BookUser },
-      { name: 'MPP Sessions', href: '/mpp-sessions', icon: Activity },
-      { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
     ],
   },
   {
@@ -101,23 +82,25 @@ const navSections = [
     items: [
       { name: 'API Keys', href: '/api-keys', icon: Key, tour: 'api-keys' },
       { name: 'Webhooks', href: '/webhooks', icon: Webhook },
-      { name: 'Billing', href: '/billing', icon: Receipt },
-      { name: 'Enterprise Support', href: '/enterprise-support', icon: Headset },
-      { name: 'Env Templates', href: '/environment-templates', icon: FlaskConical },
       { name: 'Go Live', href: '/go-live', icon: Rocket, tour: 'go-live' },
-      { name: 'Templates', href: '/templates', icon: LayoutTemplate },
       { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Billing', href: '/billing', icon: Receipt },
     ],
   },
 ]
 
-const experimentalNavigation = [
-  { name: 'Agent Identity', href: '/agent-identity', icon: Award },
-  { name: 'Guardrails', href: '/guardrails', icon: Shield },
-  { name: 'Confidence Router', href: '/confidence-router', icon: Target },
-  { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
-  { name: 'Goal Drift', href: '/goal-drift', icon: AlertTriangle },
-]
+// Helper: decode JWT payload from a raw token string
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = parts[1]
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
 
 export default function DashboardLayout({ children }: LayoutProps) {
   const pathname = usePathname()
@@ -125,9 +108,23 @@ export default function DashboardLayout({ children }: LayoutProps) {
   const { data: health, isError } = useHealth()
   const { data: session } = useSession()
 
-  const isOnExperimentalPage = experimentalNavigation.some(
-    (item) => item.href === pathname
-  )
+  // Resolve user email: try better-auth session first, fall back to JWT in localStorage
+  const userEmail = useMemo(() => {
+    // 1. From better-auth session object
+    if (session?.user?.email) return session.user.email as string
+
+    // 2. Decode JWT stored in localStorage
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem('sardis_session')
+      if (!raw) return null
+      const payload = decodeJwtPayload(raw)
+      if (payload && typeof payload.email === 'string') return payload.email
+    } catch {
+      // ignore decode errors
+    }
+    return null
+  }, [session])
 
   // Auto-expand sections that contain the active page
   const getInitialOpenSections = () => {
@@ -139,7 +136,6 @@ export default function DashboardLayout({ children }: LayoutProps) {
   }
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(getInitialOpenSections)
-  const [experimentalOpen, setExperimentalOpen] = useState(isOnExperimentalPage)
 
   // Tour trigger
   useEffect(() => {
@@ -153,7 +149,13 @@ export default function DashboardLayout({ children }: LayoutProps) {
   }
 
   const handleLogout = async () => {
+    // Clear better-auth session via SDK
     await signOut()
+    // Clear localStorage session / JWT
+    localStorage.removeItem('sardis_session')
+    // Clear the session cookie
+    document.cookie = 'better-auth.session_token=; path=/; max-age=0'
+    // Redirect to login
     router.push('/login')
   }
 
@@ -176,6 +178,11 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {/* Section header: Core */}
+          <div className="px-4 pt-1 pb-2">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Core</span>
+          </div>
+
           {/* Core -- always visible */}
           {coreNavigation.map((item) => {
             const isActive = pathname === item.href
@@ -183,7 +190,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                {...(('tour' in item && item.tour) ? { 'data-tour': item.tour } : {})}
+                {...(item.tour ? { 'data-tour': item.tour } : {})}
                 className={clsx(
                   'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200',
                   isActive
@@ -219,7 +226,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
                       <Link
                         key={item.name}
                         href={item.href}
-                        {...(('tour' in item && item.tour) ? { 'data-tour': item.tour } : {})}
+                        {...(item.tour ? { 'data-tour': item.tour } : {})}
                         className={clsx(
                           'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-200',
                           isActive
@@ -236,47 +243,22 @@ export default function DashboardLayout({ children }: LayoutProps) {
               )}
             </div>
           ))}
+        </nav>
 
-          {/* Experimental section */}
-          <div className="pt-3 mt-3 border-t border-dark-100/60">
-            <button
-              onClick={() => setExperimentalOpen((prev) => !prev)}
-              className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
-            >
-              <ExperimentalIcon className="w-3.5 h-3.5" />
-              <span className="flex-1 text-left">Experimental</span>
-              {experimentalOpen ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-            </button>
+        {/* Sidebar footer: user email + sign out + status */}
+        <div className="border-t border-dark-100">
+          {/* User info */}
+          {userEmail && (
+            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="text-xs text-gray-400 truncate" title={userEmail}>
+                {userEmail}
+              </span>
+            </div>
+          )}
 
-            {experimentalOpen && (
-              <div className="mt-1 space-y-1">
-                {experimentalNavigation.map((item) => {
-                  const isActive = pathname === item.href
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={clsx(
-                        'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-200',
-                        isActive
-                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
-                          : 'text-gray-500 hover:text-gray-300 hover:bg-dark-200'
-                      )}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.name}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="pt-4 mt-4 border-t border-dark-100">
+          {/* Sign out */}
+          <div className="px-4 pb-2">
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-500 hover:text-white hover:bg-dark-200 transition-all duration-200"
@@ -285,24 +267,24 @@ export default function DashboardLayout({ children }: LayoutProps) {
               Sign Out
             </button>
           </div>
-        </nav>
 
-        {/* Status */}
-        <div className="p-4 border-t border-dark-100">
-          <div className="flex items-center gap-2 text-sm">
-            <div className={clsx(
-              'status-dot',
-              isError ? 'error' : 'success'
-            )} />
-            <span className="text-gray-400">
-              {isError ? 'API Offline' : 'API Connected'}
-            </span>
+          {/* API status */}
+          <div className="p-4 border-t border-dark-100">
+            <div className="flex items-center gap-2 text-sm">
+              <div className={clsx(
+                'status-dot',
+                isError ? 'error' : 'success'
+              )} />
+              <span className="text-gray-400">
+                {isError ? 'API Offline' : 'API Connected'}
+              </span>
+            </div>
+            {health && (
+              <p className="text-xs text-gray-500 mt-1 font-mono">
+                v{health.version}
+              </p>
+            )}
           </div>
-          {health && (
-            <p className="text-xs text-gray-500 mt-1 font-mono">
-              v{health.version}
-            </p>
-          )}
         </div>
       </aside>
 
