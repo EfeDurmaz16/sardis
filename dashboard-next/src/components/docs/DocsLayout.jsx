@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, Outlet, useLocation } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Sun, Moon, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -108,8 +109,8 @@ function DarkModeToggle({ isDark, toggle }) {
   );
 }
 
-export default function DocsLayout() {
-  const location = useLocation();
+export default function DocsLayout({ children }) {
+  const pathname = usePathname();
   const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -210,7 +211,7 @@ export default function DocsLayout() {
                 </h3>
                 <ul className="space-y-0.5">
                   {section.items.map((item) => {
-                    const isActive = location.pathname === item.href;
+                    const isActive = pathname === item.href;
                     return (
                       <li key={item.name}>
                         <Link
@@ -238,7 +239,7 @@ export default function DocsLayout() {
         {/* Main Content */}
         <main className="flex-1 md:ml-64 min-h-[calc(100vh-4rem)]">
           <div className="max-w-4xl mx-auto px-6 py-12 docs-content">
-            <Outlet />
+            {children}
           </div>
         </main>
       </div>

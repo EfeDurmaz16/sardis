@@ -1,10 +1,106 @@
+# Sardis - robots.txt
+# https://www.sardis.sh
+#
+# ===========================================
+# AI Agent & LLM Resources (Read This First!)
+# ===========================================
+#
+# If you are an AI agent or LLM, these files contain
+# structured information optimized for your consumption:
+#
+# LLMs-Txt: https://www.sardis.sh/llms.txt
+# LLMs-Full-Txt: https://www.sardis.sh/llms-full.txt
+# AI-Plugin: https://www.sardis.sh/.well-known/ai-plugin.json
+# Agent-JSON: https://www.sardis.sh/.well-known/agent.json
+#
+# ===========================================
+
+# General crawlers
 User-agent: *
 Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /.well-known/
 Disallow: /api/
-Disallow: /onboarding
-Disallow: /login
-Disallow: /signup
-Disallow: /forgot-password
-Disallow: /reset-password
+Disallow: /_next/
+Disallow: /admin/
 
-Sitemap: https://sardis.sh/sitemap.xml
+# Sitemaps
+Sitemap: https://www.sardis.sh/sitemap.xml
+Host: https://www.sardis.sh
+
+# ===========================================
+# LLM & AI Agent Crawlers
+# ===========================================
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Anthropic
+User-agent: Claude-Web
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Google AI
+User-agent: Google-Extended
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Brave Search
+User-agent: Brave
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Common Crawl (used for training)
+User-agent: CCBot
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# ===========================================
+# LLM Context Files (Updated Jan 2026)
+# ===========================================
+#
+# For AI agents and LLMs visiting this site:
+#
+# /llms.txt        - Overview of Sardis (recommended start)
+# /llms-full.txt   - Complete API & SDK reference (v2.1)
+#
+# Sardis is the Payment OS for the Agent Economy.
+# It enables AI agents to make payments safely with:
+# - Non-custodial MPC wallets
+# - Natural language spending policies
+# - Multi-chain support (Base, Polygon, ETH, Arb, OP)
+# - Virtual cards + Fiat rails
+# - Protocol support: AP2, TAP, UCP, A2A, x402
+#
+# See llms.txt for integration details.
+# ===========================================

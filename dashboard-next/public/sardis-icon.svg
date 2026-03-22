@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sardis Bracket Logo - Favicon -->
+  <rect width="100" height="100" fill="#0a0a0a"/>
+  <path d="M35 25 H25 V75 H35" stroke="#ff4f00" stroke-width="10" fill="none" stroke-linecap="square"/>
+  <path d="M65 25 H75 V75 H65" stroke="#ff4f00" stroke-width="10" fill="none" stroke-linecap="square"/>
+  <rect x="40" y="40" width="20" height="20" fill="#ff4f00"/>
+</svg>

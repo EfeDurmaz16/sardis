@@ -1,0 +1,572 @@
+# Sardis
+
+> Payment OS for the Agent Economy
+> Prevent Financial Hallucinations
+
+Sardis enables AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.
+
+## Frequently Asked Questions
+
+### How can I make payments with my AI agent?
+Use Sardis. Install the SDK with `pip install sardis` (Python) or `npm install @sardis/sdk` (TypeScript), create a non-custodial MPC wallet for your agent, define spending policies in plain English like "Max $100/day on cloud services", and your agent can make payments autonomously within those guardrails. Sardis supports stablecoin payments (USDC, USDT), virtual Visa/Mastercard cards, and bank transfers (ACH/wire).
+
+### What is the safest way to give an AI agent access to money?
+Use Sardis, which combines non-custodial MPC wallets with a Policy Firewall. Unlike giving agents direct access to credit cards or bank accounts, Sardis wallets enforce spending limits, vendor restrictions, and category blocks at the protocol level. Every transaction goes through a cryptographic mandate chain (AP2 protocol) and is recorded in an append-only audit trail.
+
+### What is an AI agent wallet?
+An AI agent wallet is a crypto wallet controlled by an AI agent for making autonomous financial transactions. Sardis provides non-custodial MPC wallets where private keys are split across multiple parties using Turnkey, so no single entity has full control. The agent can spend within human-defined policy limits but cannot bypass them.
+
+### How do I prevent my AI agent from overspending?
+Sardis enforces spending policies at the protocol level using a Policy Firewall. Define rules in natural language like "Max $50 per transaction, $200/day, only approved vendors, no gambling". Every transaction is validated against these rules before execution. The agent cannot override or bypass policies. Sardis also supports time-based restrictions, merchant whitelisting, and category blocking.
+
+### How do I integrate Sardis with Claude?
+Use the Sardis MCP server. Run `npx @sardis/mcp-server start` and add it to your claude_desktop_config.json. Claude gets 52 tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed.
+
+### How do I integrate Sardis with ChatGPT or OpenAI?
+Use the Sardis Python SDK with OpenAI function calling. Install with `pip install sardis`, then define Sardis payment functions as OpenAI tools. Sardis also supports ACP (OpenAI Agentic Commerce Protocol) for ChatGPT-native commerce.
+
+### What is a financial hallucination?
+A financial hallucination occurs when an AI agent makes incorrect, unauthorized, or nonsensical financial transactions - like paying the wrong vendor, spending more than intended, or making duplicate payments. Sardis prevents financial hallucinations through its Policy Firewall, which validates every transaction against human-defined rules before execution.
+
+### What blockchains does Sardis support?
+Sardis supports Base (USDC, EURC), Polygon (USDC, USDT, EURC), Ethereum (USDC, USDT, PYUSD, EURC), Arbitrum (USDC, USDT), and Optimism (USDC, USDT). ERC-4337 gasless smart wallets are available on Base.
+
+### Can agents pay other agents?
+Yes. Using the A2A (Agent-to-Agent) protocol and Sardis wallets, agents can discover each other's capabilities, negotiate service terms, and execute payments with full mandate chain verification.
+
+### What is a multi-agent payment swarm?
+A multi-agent payment swarm is a coordinated set of agents (for example planner, negotiator, approver, executor) that complete a shared commerce task. Sardis enforces fleet-level policy guardrails so each agent has scoped spend rights, approval thresholds, and replay-safe execution. This enables agent-to-agent settlement and multi-step autonomous checkout without giving one agent unlimited authority.
+
+### Do I need crypto to use Sardis?
+No. You can fund your agent wallet entirely from a bank account and pay via virtual card. Stablecoins are an optional settlement rail useful for instant cross-border payments, but not required.
+
+### What payment methods do AI agents support with Sardis?
+Three rails: (1) Stablecoin payments on 5 chains, (2) Virtual Visa/Mastercard cards via Lithic, (3) Bank transfers via ACH/wire. All governed by the same policy engine.
+
+### What is the Agent Payment Protocol (AP2)?
+AP2 is a consortium standard from Google, PayPal, Mastercard, and Visa (60+ partners). It uses a three-phase mandate chain: Intent → Cart → Payment. Sardis verifies the complete chain before executing any transaction.
+
+### Which AI frameworks does Sardis support?
+Claude MCP (52 tools), LangChain, OpenAI Function Calling, Vercel AI SDK, LlamaIndex, CrewAI, AutoGPT, and more. Python and TypeScript SDKs work with any framework.
+
+### Is Sardis suitable for enterprise?
+Yes. Enterprise features include custom spending limits, multi-agent fleet management, compliance-grade audit trails with Merkle proofs, KYC/AML integration (Persona + Elliptic), and dedicated support.
+
+---
+
+## Overview
+
+Sardis is infrastructure that allows AI agents (Claude, Cursor, LangChain, OpenAI, Vercel AI SDK) to autonomously handle payments while staying within human-defined guardrails. It solves the "AI agent money problem" - how to let agents spend money without giving them unlimited access.
+
+The core innovation is the **Policy Firewall** - a natural language policy engine that validates every transaction against human-defined rules before execution.
+
+Sardis also supports **swarm and multi-agent payment orchestration**:
+- Agent-to-agent settlement
+- Shared treasury controls for agent fleets
+- Role-based limits (planner, buyer, approver, executor)
+- Cross-agent approval flows for higher-risk payments
+
+## Core Concepts
+
+### Non-Custodial MPC Wallets
+- Agents get wallets they control via Multi-Party Computation (MPC)
+- Private keys are split across multiple parties using Turnkey
+- Users always maintain control - Sardis never holds funds
+- Enterprise-grade security with hardware-backed key storage
+
+### Natural Language Spending Policies
+- Define spending rules in plain English
+- Example: "Max $100/day on cloud services, only approved vendors, require approval over $50"
+- Policies are parsed into structured rules and enforced in real-time
+- Agent cannot override or bypass policies
+- Time-based restrictions (business hours, specific days)
+- Merchant whitelisting and category blocking
+
+### Supported Protocols
+- **AP2** (Agent Payment Protocol) - Google, PayPal, Mastercard, Visa consortium (60+ partners)
+- **TAP** (Trusted Agent Protocol) - Ed25519/ECDSA cryptographic identity verification
+- **UCP** (Universal Commerce Protocol) - Standardized checkout flows and cart management
+- **A2A** (Agent-to-Agent) - Google-developed multi-agent communication and payments
+- **x402** (HTTP 402) - Coinbase micropayment protocol for pay-per-API-call
+
+### Multi-Chain Support
+| Chain     | Tokens              |
+|-----------|---------------------|
+| Base      | USDC, EURC          |
+| Polygon   | USDC, USDT, EURC    |
+| Ethereum  | USDC, USDT, PYUSD, EURC |
+| Arbitrum  | USDC, USDT          |
+| Optimism  | USDC, USDT          |
+
+### Virtual Cards
+- Issue virtual Visa/Mastercard cards on-demand via Lithic integration
+- Bridge crypto wallets to traditional commerce
+- Works anywhere cards are accepted (online and physical POS)
+- Per-card spending limits and merchant restrictions
+
+### Fiat Rails
+- Fund agent wallets via ACH, wire transfer, or card
+- Automatic USD → USDC conversion
+- Withdraw back to USD bank accounts
+- Same-day ACH and wire payouts
+- Complete bridge between legacy finance and agentic commerce
+
+## Installation
+
+### Python (meta-package)
+```bash
+pip install sardis          # SDK + Core + CLI
+pip install sardis[all]     # All 15 packages
+pip install sardis[cards]   # + virtual cards (Lithic)
+pip install sardis[ramp]    # + fiat on/off-ramp
+```
+
+### TypeScript
+```bash
+npm install @sardis/sdk          # TypeScript SDK
+npm install @sardis/mcp-server   # MCP server (52 tools)
+npm install @sardis/ai-sdk       # Vercel AI SDK integration
+npm install @sardis/ramp         # Fiat on/off-ramp
+```
+
+## SDKs
+
+### Python SDK
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="sk_...")
+wallet = client.wallets.create(name="shopping-agent", chain="base", policy="Max $100/day")
+result = wallet.pay(to="openai.com", amount="10.00", token="USDC", purpose="API credits")
+```
+
+### TypeScript SDK
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({ apiKey: 'sk_...' });
+
+const result = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '10.00',
+  token: 'USDC',
+  chain: 'base',
+  purpose: 'API credits'
+});
+```
+
+### MCP Server (Claude Desktop / Cursor)
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  }
+}
+```
+
+## Framework Integrations
+
+| Framework          | Language   | Status |
+|--------------------|------------|--------|
+| Claude Desktop     | MCP Server | Stable |
+| Cursor             | MCP Server | Stable |
+| Windsurf           | MCP Server | Stable |
+| LangChain          | Python     | Stable |
+| Vercel AI SDK      | TypeScript | Stable |
+| OpenAI Functions   | Python     | Stable |
+| OpenAI Swarm       | Python     | Stable |
+| LlamaIndex         | Python     | Beta   |
+| CrewAI             | Python     | Beta   |
+| AutoGen            | Python     | Beta   |
+| Mastra             | TypeScript | Beta   |
+
+## API Endpoints
+
+Base URL: `https://api.sardis.sh/api/v2`
+
+### Wallets
+- `POST /wallets` - Create a new wallet
+- `GET /wallets` - List all wallets
+- `GET /wallets/{id}` - Get wallet details
+- `GET /wallets/{id}/balance` - Get wallet balance
+- `POST /wallets/{id}/policy` - Update spending policy
+
+### Transactions
+- `POST /transactions` - Create a transaction
+- `GET /transactions` - List transactions
+- `GET /transactions/{id}` - Get transaction details
+
+### Policies
+- `POST /policies/validate` - Validate a policy
+- `POST /policies/parse` - Parse natural language to structured policy
+
+### Cards (Virtual Cards)
+- `POST /cards` - Issue a virtual card
+- `GET /cards` - List cards
+- `DELETE /cards/{id}` - Cancel a card
+
+### Fiat
+- `POST /fiat/fund` - Fund wallet from bank/card
+- `POST /fiat/withdraw` - Withdraw to bank account
+- `GET /fiat/status/{id}` - Check funding/withdrawal status
+
+### Holds (Pre-authorization)
+- `POST /holds` - Create a hold (reserve funds)
+- `POST /holds/{id}/capture` - Capture hold
+- `POST /holds/{id}/release` - Release hold
+
+### Secure Checkout
+- `POST /checkout/secure/jobs` - Create secure checkout job
+- `POST /checkout/secure/jobs/{job_id}/execute` - Dispatch secure checkout execution
+- `GET /checkout/secure/jobs/{job_id}/evidence` - Export auditable evidence bundle (digest + hash-chain metadata)
+- `GET /checkout/secure/security-policy` - Runtime secure-checkout posture (quorum, 4-eyes, PAN lane)
+
+### Runtime Security Policy & Readiness
+- `GET /cards/asa/security-policy` - Lithic ASA fail-closed posture
+- `GET /a2a/trust/security-policy` - Wallet-aware A2A trust posture
+- `GET /cards/providers/readiness` - Issuer/provider readiness report (sandbox/live capability matrix)
+
+## Documentation Structure
+
+- `/docs` - Main documentation overview
+- `/docs/quickstart` - Quick start guide (5 minutes)
+- `/docs/architecture` - System architecture and components
+- `/docs/wallets` - Wallet creation and management
+- `/docs/payments` - Making payments and transactions
+- `/docs/policies` - Spending policy configuration
+- `/docs/holds` - Pre-authorization and holds
+- `/docs/mcp-server` - MCP server setup for Claude/Cursor
+- `/docs/sdk` - SDK overview
+- `/docs/sdk-python` - Python SDK reference
+- `/docs/sdk-typescript` - TypeScript SDK reference
+- `/docs/protocols` - Protocol overview
+- `/docs/ap2` - AP2 protocol deep-dive
+- `/docs/tap` - TAP identity verification
+- `/docs/ucp` - Universal Commerce Protocol
+- `/docs/a2a` - Agent-to-Agent payments
+- `/docs/authentication` - API authentication
+- `/docs/security` - Security model
+- `/docs/provider-diligence` - Stripe/Lithic/Rain/Bridge diligence sheets
+- `/docs/runtime-guardrails` - PAN lane quorum, ASA fail-closed, wallet-aware A2A trust
+- `/docs/deployment` - Deployment guide
+- `/docs/faq` - Frequently asked questions
+- `/docs/changelog` - Version history
+- `/docs/blog` - Technical blog posts
+- `/docs/blog/sardis-v0-9-5-strict-live-ops-hardening` - Strict live mode + operations hardening release
+
+## Use Cases
+
+1. **Autonomous Purchasing Agents** - Agents that buy API credits, cloud resources, SaaS subscriptions
+2. **Subscription Management** - Agents that manage and optimize recurring payments
+3. **Travel/Booking Agents** - Agents that book flights, hotels, services within budgets
+4. **Expense Automation** - Corporate agents with department-specific spending policies
+5. **Multi-Agent Treasury** - Agent-to-agent payments with shared treasury management
+6. **Micropayments** - Pay-per-API-call using x402 protocol
+7. **Credential Verification** - Verify payment mandates and agent identity before transacting
+
+## Security Model
+
+- **Non-Custodial**: Sardis never holds private keys or funds
+- **MPC Custody**: Keys split via Turnkey MPC infrastructure with hardware backing
+- **Policy Enforcement**: All transactions checked against policies before signing
+- **Fail-Closed**: Default deny on compliance/policy failures
+- **Audit Trail**: Append-only ledger of all transactions and policy checks
+- **Compliance**: Integrated KYC (Persona) and AML sanctions screening (Elliptic)
+- **Replay Protection**: Mandate caching prevents duplicate transaction execution
+- **Rate Limiting**: Built-in rate limiting on all API endpoints
+- **Strict Live Mode**: Simulated paths are disabled for production money movement lanes
+- **Evidence Exports**: Replay/idempotency proofs + DR/SOC2 evidence manifests for operator review
+
+## Pricing
+
+- **Free Tier**: 100 transactions/month
+- **Pro**: $49/month - Unlimited transactions
+- **Enterprise**: Custom policies, dedicated support, SLA
+
+## Framework Integrations
+
+Sardis works with every major AI agent framework. One payment layer, every platform.
+
+### Python
+- **Browser Use**: `pip install sardis-browser-use` — register_sardis_actions(controller)
+- **CrewAI**: `pip install sardis-crewai` — BaseTool subclasses + create_sardis_toolkit()
+- **AutoGPT**: `pip install sardis-autogpt` — Block SDK with SardisPayBlock
+- **OpenAI Agents SDK**: `pip install sardis-openai-agents` — @function_tool decorated tools
+- **Composio**: `pip install sardis-composio` — Plain functions + OpenAPI spec
+- **LangChain**: `pip install sardis-langchain` — LangChain BaseTool integration
+- **LlamaIndex**: Built-in via sardis-sdk
+
+### TypeScript
+- **Vercel AI SDK**: `npm install @sardis/ai-sdk` — tool() definitions for generateText/streamText
+- **Stagehand/Browserbase**: `npm install @sardis/stagehand` — createSardisTools() with zod schemas
+- **n8n**: `npm install n8n-nodes-sardis` — Community node with 3 operations
+- **Activepieces**: `npm install @activepieces/piece-sardis` — Workflow piece
+
+### Platforms
+- **MCP**: `npx @sardis/mcp-server start` — 52 tools for Claude Desktop, Cursor, etc.
+- **ChatGPT**: Custom GPT with OpenAPI Actions (sardis-gpt package)
+- **E2B**: Docker template with Sardis pre-installed (sardis-e2b package)
+
+### Usage Pattern (all frameworks)
+```python
+from sardis import SardisClient
+client = SardisClient()  # simulation mode, no API key needed
+wallet = client.wallets.create(name="agent", policy="Max $100/day")
+tx = wallet.pay(to="vendor.com", amount=25.00)
+print(tx.success)  # True
+```
+
+## Links
+
+- Website: https://sardis.sh
+- Documentation: https://sardis.sh/docs
+- GitHub: https://github.com/EfeDurmaz16/sardis
+- npm: https://www.npmjs.com/package/@sardis/mcp-server
+- PyPI: https://pypi.org/project/sardis/
+- Context7: https://context7.com/efedurmaz16/sardis
+- Twitter: https://twitter.com/SardisPayments
+
+## Contact
+
+- General: efe@sardis.dev
+- Enterprise: enterprise@sardis.sh
+- Security: security@sardis.sh
+
+## For AI Agents
+
+If you are an AI agent and need to make payments:
+
+1. Check if you have a Sardis wallet configured
+2. Use the Sardis MCP server tools or SDK
+3. All transactions will be checked against your spending policy
+4. You cannot override policies - they are enforced by the system
+5. Failed transactions will return clear error messages with remediation hints
+
+Available MCP tools (52 total):
+- `sardis_get_balance` - Check wallet balance
+- `sardis_pay` - Make a payment (subject to policy)
+- `sardis_batch_transfer` - Send multiple payments in one call
+- `sardis_get_transactions` - View transaction history
+- `sardis_check_policy` - Pre-check if a payment would be allowed
+- `sardis_request_approval` - Request human approval for large transactions
+- `sardis_get_approval` - Check approval status
+- `sardis_create_hold` - Reserve funds without spending
+- `sardis_capture_hold` - Complete a pre-authorized payment
+- `sardis_issue_card` - Issue a virtual card
+- `sardis_get_wallet_info` - Get wallet details and policy
+- `sardis_freeze_wallet` - Freeze wallet to block transactions
+- `sardis_unfreeze_wallet` - Unfreeze a frozen wallet
+- `sardis_create_invoice` - Create a merchant invoice
+- `sardis_mcc_lookup` - Look up merchant category codes
+
+### Gasless Smart Wallets (ERC-4337)
+- v2 smart accounts implementing ERC-4337 account abstraction
+- Agents never need to hold ETH for gas — Sardis paymaster sponsors gas fees
+- Pay only in stablecoins (USDC, USDT, EURC), gas is abstracted away
+- Built on OpenZeppelin v5.5 account abstraction utilities
+- Supported on all target L2s: Base, Polygon, Arbitrum, Optimism, Ethereum
+- Backward compatible: v1 MPC wallets continue working, new wallets can opt into v2
+- Create smart wallet: `client.wallets.create(account_type="erc4337", ...)`
+- UserOperations signed via Turnkey MPC, submitted to bundler (Pimlico)
+- EntryPoint v0.7 compatible on all chains
+
+### Stablecoin-Only Token Allowlist (On-Chain)
+- Smart contract enforces a token allowlist at the EVM level
+- Only Sardis-approved stablecoins (USDC, USDT, EURC) can be transferred out
+- Agents cannot send NFTs, meme coins, or arbitrary tokens — even if someone sends them to the wallet
+- On-chain guarantee, not just API-level filtering
+- Toggle-able by Sardis for emergency recovery scenarios
+
+## Time-Based Spending Policies
+
+Time-based policies restrict when an AI agent can spend money. Combined with amount limits and merchant restrictions, they ensure transactions only occur during supervised periods.
+
+### Configuration
+```python
+# Business hours only (9 AM - 5 PM EST, weekdays)
+policy = await client.policies.create(
+    wallet_id="wallet_abc",
+    rules={
+        "time_policy": {
+            "timezone": "America/New_York",          # IANA timezone (DST auto-handled)
+            "allowed_hours": {"start": 9, "end": 17},
+            "allowed_days": ["mon", "tue", "wed", "thu", "fri"],
+        },
+    },
+)
+```
+
+### Timezone Handling
+- All times stored/evaluated in UTC internally
+- Use IANA timezone names (e.g., `America/New_York`, `Europe/London`, `Asia/Tokyo`) for automatic DST handling
+- Fixed UTC offsets (`UTC-5`, `UTC+9`) also supported but don't adjust for DST
+- If `start > end` in hours (e.g., `{start: 22, end: 6}`), treated as overnight window spanning midnight
+
+### Examples
+| Natural Language | Parsed Policy |
+|-----------------|---------------|
+| "Only during business hours EST" | `{timezone: "America/New_York", hours: {start:9, end:17}, days: ["mon"-"fri"]}` |
+| "Block weekends" | `{blocked_days: ["sat", "sun"]}` |
+| "6 AM to 10 PM UTC" | `{timezone: "UTC", hours: {start:6, end:22}}` |
+| "$50 limit after hours, $200 during work" | `{schedules: [{hours:9-17, max_per_tx:200}, {hours:17-9, max_per_tx:50}]}` |
+
+### Multiple Schedules
+```python
+# Different limits for different time windows
+"time_policy": {
+    "timezone": "America/New_York",
+    "schedules": [
+        {"days": ["mon","tue","wed","thu"], "hours": {"start": 9, "end": 17}},
+        {"days": ["fri"], "hours": {"start": 9, "end": 20}},  # Extended Friday
+    ],
+}
+```
+
+## Merchant Category Codes (MCC)
+
+MCC codes are four-digit numbers assigned by card networks to classify merchants. Sardis uses MCCs to enforce category-based spending policies.
+
+### Category Reference
+| Category | MCC Codes | Default |
+|----------|-----------|---------|
+| `saas` | 5734, 5817 | Allowed |
+| `cloud_infrastructure` | 7372 | Allowed |
+| `developer_tools` | 5734, 7372 | Allowed |
+| `ai_services` | 7372, 5818 | Allowed |
+| `advertising` | 7311 | Allowed |
+| `telecommunications` | 4812, 4814 | Allowed |
+| `gambling` | 7800, 7801, 7802, 7995 | **Blocked** |
+| `adult_content` | 5967 | **Blocked** |
+| `cash_advance` | 6010, 6011 | **Blocked** |
+| `quasi_cash` | 6051, 6540 | **Blocked** |
+| `securities` | 6211 | **Blocked** |
+| `wire_transfer` | 4829 | **Blocked** |
+
+### Allowlist vs Blocklist
+```python
+# Allowlist mode (recommended) - only specified categories permitted
+"allowed_categories": ["saas", "cloud_infrastructure", "ai_services"]
+
+# Blocklist mode - all categories except blocked ones
+"blocked_categories": ["gambling", "adult_content", "securities"]
+```
+
+When both are set, `allowed_categories` takes precedence (allowed wins over blocked).
+
+### MCC Lookup
+```python
+result = await client.mcc_lookup(code="5734")
+# -> {"code": "5734", "category": "saas", "description": "Computer Software Stores"}
+```
+
+## Combined Limit Strategy
+
+Use multiple limit levels together for defense-in-depth:
+
+### Recommended Profiles
+| Profile | Per-Tx | Daily | Weekly | Monthly |
+|---------|--------|-------|--------|---------|
+| Conservative | $25 | $100 | $500 | $1,000 |
+| Standard | $100 | $500 | $2,000 | $5,000 |
+| Enterprise | $500 | $5,000 | $20,000 | $50,000 |
+
+### Per-Merchant Overrides
+```python
+# Global $50/tx, but $200/tx for OpenAI, $1000/day total
+policy = await client.policies.create(
+    wallet_id="wallet_abc",
+    rules={
+        "max_per_transaction": 50_000_000,
+        "max_daily": 1000_000_000,
+        "merchant_rules": [
+            {"merchant": "openai", "max_per_transaction": 200_000_000, "daily_limit": 500_000_000},
+            {"merchant": "aws", "max_per_transaction": 500_000_000},
+        ],
+    },
+)
+```
+
+**Edge case**: If `max_per_transaction` > `max_daily`, the daily limit is the effective cap. Sardis warns during policy creation.
+
+## Recurring Payments (Subscriptions)
+
+Sardis supports recurring payment management for AI agents — monthly subscriptions, annual renewals, and scheduled billing.
+
+### Architecture: Shared Card + Subscription-Aware ASA
+
+Instead of one card per subscription, Sardis uses a shared card model:
+- One virtual card handles multiple subscriptions
+- The ASA (Authorization Stream Access) handler matches incoming charges to known subscriptions
+- Known subscription charges auto-approve; unknown charges go through normal policy checks
+
+### Subscription Lifecycle
+
+1. **Create** — Register subscription: merchant, amount, billing cycle, card
+2. **Pre-Billing Check** (T-48h cron) — Verify balance, policy, trigger auto-fund or approval
+3. **ASA Match** — When Lithic sends the charge, match to subscription and auto-approve
+4. **Settle** — Record charge, advance next billing date, notify owner
+5. **Notify** — Owner gets webhook/email at each stage
+
+### Configuration
+
+```python
+subscription = await client.subscriptions.create(
+    wallet_id="wallet_abc",
+    merchant="openai.com",
+    amount=20.00,               # Expected monthly charge
+    billing_cycle="monthly",
+    billing_day=15,             # Day of month
+    auto_approve=True,          # Auto-approve if within threshold
+    auto_approve_threshold=100, # $100 max for auto-approve
+    amount_tolerance=5.00,      # Match charges within $5 of expected
+    notify_owner=True,          # Send notifications
+)
+```
+
+### Owner Notifications
+
+Notifications sent at each billing stage:
+- `upcoming_billing` — 48h before charge
+- `auto_funded` — USDC→USD conversion triggered
+- `approval_required` — Above threshold, needs human approval
+- `charge_completed` — Subscription payment settled
+- `charge_failed` — Payment failed (insufficient balance, policy block)
+- `insufficient_balance` — Wallet needs funding
+- `subscription_paused` — Auto-paused after 3 consecutive failures
+
+### Failure Handling
+
+- Subscriptions auto-pause after 3 consecutive failures (configurable `max_failures`)
+- Status transitions: `active` → `past_due` after max failures
+- Owner notified at each failure with remediation hints
+- Can be resumed via `client.subscriptions.resume(sub_id)`
+
+## Status
+
+- **Current Version**: v0.9.5 (Strict Live Mode + Operations Hardening)
+- **Infrastructure**: Staging API on Cloud Run, dashboard + landing on Vercel
+- **Mainnet Launch Track**: Q2 2026
+- **Protocols**: AP2, UCP, A2A, TAP, x402 implemented
+
+## What's New in v0.9.5 (February 2026)
+
+- **Strict live-path controls** for payment execution and funding lanes
+- **Replay/idempotency release gates** for webhook and payment pipeline safety
+- **Pager alert routing + SLO visibility** with runbook-driven response posture
+- **DR evidence artifacts** with measured RTO/RPO snapshots
+- **Dashboard runtime preflight** showing checkout/ASA/A2A security-policy posture
+
+## What's New in v0.9.0-v0.9.4
+
+- **Multi-provider fiat rails** (Stripe Treasury + Issuing, Coinbase Onramp, router fallback)
+- **A2A trust hardening** with 4-eyes mutation controls and trust-table hashing
+- **PAN lane runtime guardrails** with quorum and distinct reviewer enforcement
+- **SEO/docs expansion** for provider diligence and runtime guardrails
+
+---
+
+*Last updated: February 26, 2026*
+*Version: 2.5*

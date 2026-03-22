@@ -1,0 +1,2025 @@
+# Sardis - Complete Reference for LLMs
+
+> Payment OS for the Agent Economy
+> Prevent Financial Hallucinations with Non-custodial MPC wallets and natural language spending policies
+
+---
+
+## Table of Contents
+
+1. Overview
+2. Core Concepts
+3. Python SDK
+4. TypeScript SDK
+5. MCP Server
+6. REST API
+7. Protocols (AP2, TAP, UCP, A2A, x402)
+8. Fiat Rails
+9. Virtual Cards
+10. Compliance
+11. Error Handling
+12. Best Practices
+13. Multi-Agent Spending Governance
+14. Policy Engine Architecture
+15. Framework Integrations
+
+---
+
+## 1. Overview
+
+### What is Sardis?
+
+Sardis is the **Policy Firewall for Agent Payments** - payment infrastructure that enables AI agents to make real financial transactions while staying within human-defined guardrails. It solves the fundamental problem of agent autonomy vs. control, preventing "financial hallucinations" where agents overspend or transact inappropriately.
+
+### The Problem
+
+AI agents need to spend money to be useful (API credits, subscriptions, services), but:
+- Giving agents full access is dangerous (they may overspend)
+- Manual approval for everything defeats automation
+- API keys with crude limits lack nuance
+- Agents get blocked by 2FA, CAPTCHAs, and human-centric security
+
+### The Solution
+
+Sardis provides:
+- **Non-custodial wallets**: Agents control wallets via MPC, users maintain ownership
+- **Natural language policies**: Define rules in plain English ("Max $100/day on cloud services")
+- **Real-time enforcement**: Every transaction checked against policies before signing
+- **Complete audit trail**: Full visibility into agent spending
+- **Multi-rail payments**: Crypto (stablecoins) + fiat (virtual cards, bank transfers)
+
+### Swarm of Agents and Multi-Agent Payments
+
+Sardis is built for both single-agent and multi-agent execution.
+
+- Coordinate role-specialized agents (planner, negotiator, approver, executor)
+- Enforce shared treasury policy across an agent fleet
+- Support agent-to-agent settlement with mandate verification
+- Require cross-agent approvals for higher-risk transactions
+- Prevent duplicate or replayed transactions during concurrent swarm execution
+
+### Recent Hardening Updates (Q1 2026)
+
+- Immutable hard-limit layer for NL policy parsing with fuzz/property tests.
+- Agent-level sliding-window payment rate limiting on execution endpoints.
+- Strategy-driven funding controls (`fiat_first|stablecoin_first|hybrid`) for issuer top-ups.
+- Provider diligence sheets published for Stripe, Lithic, Rain, and Bridge.
+- Strict live-mode disable controls on production money movement paths.
+- Idempotency/replay conformance release gates for webhook + payment pipelines.
+- SLO dashboard + PagerDuty alert routing + DR evidence manifests.
+- Secure checkout evidence export bundle:
+  - `GET /api/v2/checkout/secure/jobs/{job_id}/evidence`
+  - Includes `digest_sha256`, hash-chain tail, scope window, and verifier hints.
+- Runtime security-policy posture endpoints:
+  - `GET /api/v2/checkout/secure/security-policy`
+  - `GET /api/v2/cards/asa/security-policy`
+  - `GET /api/v2/a2a/trust/security-policy`
+  - `GET /api/v2/cards/providers/readiness`
+
+### Key Differentiators
+
+| Feature | Sardis | Traditional |
+|---------|--------|-------------|
+| Custody | Non-custodial (MPC) | Custodial |
+| Policies | Natural language | Code/JSON only |
+| Protocols | AP2, TAP, UCP, A2A, x402 | Proprietary |
+| Chains | 5 (Base, Polygon, ETH, Arb, OP) | Usually 1-2 |
+| Cards | Virtual cards (Lithic) | Rarely |
+| Fiat Rails | ACH, Wire, Card funding | Crypto only |
+| Compliance | KYC + AML built-in | Add-on |
+
+---
+
+## 2. Core Concepts
+
+### Wallets
+
+Sardis wallets are non-custodial smart contract wallets powered by Turnkey MPC:
+
+```python
+wallet = client.wallets.create(
+    name="my-agent-wallet",
+    chain="base",  # base, polygon, ethereum, arbitrum, optimism
+    policy={
+        "max_daily": "100.00",
+        "max_per_tx": "25.00",
+        "allowed_merchants": ["openai.com"],
+        "require_approval_above": "50.00"
+    }
+)
+
+# Wallet properties
+wallet.id          # Unique identifier
+wallet.address     # On-chain address (0x...)
+wallet.chain       # Chain identifier
+wallet.balance     # Current balance
+wallet.policy      # Active policy
+```
+
+### Policies
+
+Policies define what an agent can and cannot do:
+
+#### Natural Language Format
+```python
+policy = "Max $100/day on cloud services, only approved vendors, require approval over $50"
+```
+
+#### Structured Format
+```python
+policy = {
+    "max_daily": "100.00",           # Maximum per day
+    "max_per_tx": "50.00",           # Maximum per transaction
+    "max_monthly": "2000.00",        # Maximum per month
+    "allowed_merchants": [            # Whitelist
+        "openai.com",
+        "anthropic.com",
+        "aws.amazon.com"
+    ],
+    "blocked_categories": [           # Blacklist by category
+        "gambling",
+        "adult",
+        "crypto_exchange"
+    ],
+    "require_approval_above": "50.00", # Human approval threshold
+    "allowed_hours": {                 # Time restrictions
+        "start": "09:00",
+        "end": "18:00",
+        "timezone": "America/New_York"
+    },
+    "allowed_days": ["mon", "tue", "wed", "thu", "fri"]
+}
+```
+
+#### Policy Validation
+```python
+# Check if a transaction would be allowed
+result = wallet.check_policy(
+    amount="75.00",
+    merchant="openai.com"
+)
+
+if result.allowed:
+    wallet.pay(...)
+else:
+    print(f"Blocked: {result.reason}")
+    # "Blocked: Amount exceeds require_approval_above threshold"
+```
+
+### Transactions
+
+```python
+# Simple payment
+tx = wallet.pay(
+    to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+    amount="25.00",
+    token="USDC"
+)
+
+# Payment with metadata
+tx = wallet.pay(
+    to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+    amount="25.00",
+    token="USDC",
+    memo="Monthly API credits",
+    metadata={
+        "invoice_id": "INV-001",
+        "agent_reasoning": "Purchasing credits for next month"
+    }
+)
+
+# Transaction result
+tx.id           # Transaction ID
+tx.tx_hash      # On-chain transaction hash
+tx.status       # pending, confirmed, failed
+tx.amount       # Amount in token
+tx.token        # Token symbol
+tx.to           # Recipient address
+tx.created_at   # Timestamp
+tx.policy_check # Policy validation result
+```
+
+### Holds (Pre-authorization)
+
+```python
+# Create a hold (reserve funds without spending)
+hold = wallet.create_hold(
+    amount="100.00",
+    token="USDC",
+    merchant="travel-service.com",
+    expires_in=3600  # 1 hour
+)
+
+# Capture the hold (complete the transaction)
+tx = hold.capture(amount="85.00")  # Capture partial amount
+
+# Release the hold (cancel)
+hold.release()
+```
+
+---
+
+## 3. Python SDK
+
+### Installation
+
+```bash
+pip install sardis          # Meta-package: SDK + Core + CLI
+pip install sardis[all]     # All 15 packages
+pip install sardis[cards]   # + virtual cards (Lithic)
+pip install sardis[ramp]    # + fiat on/off-ramp
+pip install sardis[chain]   # + multi-chain execution
+pip install sardis[compliance]  # + KYC/AML/SAR
+```
+
+Individual packages also available: `sardis-sdk`, `sardis-core`, `sardis-chain`, `sardis-compliance`, `sardis-ledger`, `sardis-wallet`, `sardis-cards`, `sardis-api`, `sardis-protocol`, `sardis-a2a`, `sardis-ucp`, `sardis-ramp`, `sardis-cli`, `sardis-checkout`.
+
+### Initialization
+
+```python
+from sardis import SardisClient
+
+# With API key
+client = SardisClient(api_key="sk_live_...")
+
+# With environment variable (SARDIS_API_KEY)
+client = SardisClient()
+
+# Explicit API host (optional)
+client = SardisClient(api_key="sk_test_...", base_url="https://api.sardis.sh")
+```
+
+### Wallet Operations
+
+```python
+# Create wallet
+wallet = client.wallets.create(
+    name="agent-wallet",
+    chain="base",
+    policy="Max $100/day"
+)
+
+# Get wallet by ID
+wallet = client.wallets.get("wallet_123")
+
+# Get balance
+balance = client.wallets.get_balance("wallet_123")
+
+# List wallets
+wallets = client.wallets.list()
+```
+
+### Transaction Operations
+
+```python
+# Make payment
+tx = wallet.pay(
+    to="openai.com",
+    amount="50.00",
+    token="USDC",
+    purpose="API credits"
+)
+```
+
+### Async Support
+
+```python
+import asyncio
+from sardis_sdk import AsyncSardisClient
+
+async def main():
+    client = AsyncSardisClient(api_key="sk_...")
+    result = await client.payments.execute_mandate({
+        "psp_domain": "api.openai.com",
+        "amount": "25.00",
+        "token": "USDC",
+        "chain": "base"
+    })
+
+asyncio.run(main())
+```
+
+### LangChain Integration
+
+```python
+from langchain_community.tools.sardis import (
+    SardisPaymentTool,
+    SardisBalanceTool,
+    SardisTransactionsTool
+)
+from langchain.agents import create_react_agent
+
+tools = [
+    SardisPaymentTool(
+        api_key="sk_...",
+        wallet_id="wallet_123"
+    ),
+    SardisBalanceTool(api_key="sk_..."),
+    SardisTransactionsTool(api_key="sk_...")
+]
+
+agent = create_react_agent(
+    llm=ChatOpenAI(model="gpt-4o"),
+    tools=tools,
+    prompt=prompt
+)
+```
+
+---
+
+## 4. TypeScript SDK
+
+### Installation
+
+```bash
+npm install @sardis/sdk          # TypeScript SDK
+npm install @sardis/mcp-server   # MCP server (52 tools)
+npm install @sardis/ai-sdk       # Vercel AI SDK integration
+npm install @sardis/ramp         # Fiat on/off-ramp
+```
+
+### Initialization
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({
+  apiKey: 'sk_live_...',
+  // sandbox: true  // for testing
+});
+```
+
+### Wallet Operations
+
+```typescript
+const tx = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '25.00',
+  token: 'USDC',
+  chain: 'base',
+  purpose: 'API credits'
+});
+```
+
+### Vercel AI SDK Integration
+
+```typescript
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { sardisTools } from '@sardis/vercel-ai';
+
+const result = await generateText({
+  model: openai('gpt-4o'),
+  tools: sardisTools({
+    apiKey: process.env.SARDIS_API_KEY!,
+    walletId: 'wallet_123'
+  }),
+  prompt: 'Buy $20 worth of API credits from OpenAI'
+});
+```
+
+### Type Definitions
+
+```typescript
+interface Wallet {
+  id: string;
+  name: string;
+  address: string;
+  chain: Chain;
+  policy: Policy;
+  createdAt: Date;
+}
+
+interface Policy {
+  maxDaily?: string;
+  maxPerTx?: string;
+  maxMonthly?: string;
+  allowedMerchants?: string[];
+  blockedCategories?: string[];
+  requireApprovalAbove?: string;
+}
+
+interface Transaction {
+  id: string;
+  txHash: string;
+  status: 'pending' | 'confirmed' | 'failed';
+  amount: string;
+  token: Token;
+  to: string;
+  memo?: string;
+  createdAt: Date;
+}
+
+type Chain = 'base' | 'polygon' | 'ethereum' | 'arbitrum' | 'optimism';
+type Token = 'USDC' | 'USDT' | 'EURC' | 'PYUSD';
+```
+
+---
+
+## 5. MCP Server
+
+### Installation
+
+```bash
+npx @sardis/mcp-server start
+```
+
+### Claude Desktop Configuration
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_..."
+      }
+    }
+  }
+}
+```
+
+### Cursor Configuration
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_..."
+      }
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `sardis_get_balance` | Get wallet balance |
+| `sardis_pay` | Make a payment (policy enforced) |
+| `sardis_get_transactions` | List recent transactions |
+| `sardis_check_policy` | Check if payment would be allowed |
+| `sardis_request_approval` | Request human approval |
+| `sardis_get_wallet_info` | Get wallet details |
+
+### Tool Schemas
+
+```typescript
+// sardis_pay
+{
+  to: string;       // Recipient address or merchant
+  amount: string;   // Amount to pay
+  token?: string;   // Token (default: USDC)
+  memo?: string;    // Transaction memo
+}
+
+// sardis_check_policy
+{
+  amount: string;   // Amount to check
+  merchant?: string; // Merchant to check
+}
+
+// sardis_request_approval
+{
+  amount: string;   // Amount needing approval
+  reason: string;   // Why approval is needed
+}
+
+// sardis_create_hold
+{
+  amount: string;   // Amount to reserve
+  token?: string;   // Token (default: USDC)
+  merchant?: string; // Merchant identifier
+  expires_in?: number; // Seconds until expiry
+}
+
+// sardis_capture_hold
+{
+  hold_id: string;  // Hold to capture
+  amount?: string;  // Amount (can be less than hold)
+}
+
+// sardis_issue_card
+{
+  spending_limit: string;    // Card limit
+  merchant_category?: string; // Optional category restriction
+  expires_in_days?: number;  // Card validity
+}
+```
+
+### Full Tool List (52 tools)
+
+| Category | Tools |
+|----------|-------|
+| Wallet | `get_balance`, `get_wallet_info`, `list_wallets`, `freeze_wallet`, `unfreeze_wallet` |
+| Payments | `pay`, `check_policy`, `request_approval`, `batch_transfer` |
+| Transactions | `get_transactions`, `get_transaction` |
+| Holds | `create_hold`, `capture_hold`, `release_hold`, `list_holds` |
+| Cards | `issue_card`, `list_cards`, `cancel_card`, `get_card_transactions` |
+| Policies | `get_policy`, `update_policy`, `validate_policy` |
+| Compliance | `screen_address`, `get_kyc_status`, `initiate_kyc`, `mcc_lookup` |
+| Fiat | `fund_wallet`, `withdraw_to_bank`, `get_funding_status` |
+| Approvals | `create_approval`, `get_approval`, `list_approvals`, `approve`, `deny`, `cancel_approval` |
+| Invoices | `create_invoice`, `get_invoice`, `list_invoices`, `update_invoice` |
+| Sandbox | `sandbox_demo` - Guided walkthrough of all capabilities |
+
+---
+
+## 6. REST API
+
+### Base URL
+
+```
+Production: https://api.sardis.sh/api/v2
+Sandbox:    https://api.sardis.sh/api/v2
+```
+
+### Authentication
+
+```bash
+curl https://api.sardis.sh/api/v2/wallets \
+  -H "X-API-Key: sk_live_..."
+```
+
+### Endpoints
+
+#### Wallets
+
+```bash
+# Create wallet
+POST /wallets
+{
+  "name": "my-wallet",
+  "chain": "base",
+  "policy": {
+    "max_daily": "100.00"
+  }
+}
+
+# List wallets
+GET /wallets
+
+# Get wallet
+GET /wallets/{wallet_id}
+
+# Get balance
+GET /wallets/{wallet_id}/balance
+
+# Update policy
+PATCH /wallets/{wallet_id}/policy
+{
+  "policy": {
+    "max_daily": "200.00"
+  }
+}
+```
+
+#### Transactions
+
+```bash
+# Create transaction
+POST /transactions
+{
+  "wallet_id": "wallet_123",
+  "to": "0x...",
+  "amount": "25.00",
+  "token": "USDC",
+  "memo": "API credits"
+}
+
+# List transactions
+GET /transactions?wallet_id=wallet_123&limit=50
+
+# Get transaction
+GET /transactions/{tx_id}
+```
+
+#### Policies
+
+```bash
+# Parse natural language policy
+POST /policies/parse
+{
+  "text": "Max $100/day on cloud services, require approval over $50"
+}
+
+# Validate policy
+POST /policies/validate
+{
+  "policy": {
+    "max_daily": "100.00",
+    "require_approval_above": "50.00"
+  }
+}
+```
+
+#### Cards
+
+```bash
+# Issue virtual card
+POST /cards
+{
+  "wallet_id": "wallet_123",
+  "spending_limit": "500.00",
+  "merchant_category": "software"
+}
+
+# List cards
+GET /cards?wallet_id=wallet_123
+
+# Cancel card
+DELETE /cards/{card_id}
+```
+
+### Response Format
+
+```json
+{
+  "data": { ... },
+  "meta": {
+    "request_id": "req_123",
+    "timestamp": "2026-01-24T12:00:00Z"
+  }
+}
+```
+
+### Error Format
+
+```json
+{
+  "error": {
+    "code": "POLICY_VIOLATION",
+    "message": "Transaction amount exceeds daily limit",
+    "details": {
+      "limit": "100.00",
+      "requested": "150.00",
+      "remaining": "25.00"
+    }
+  }
+}
+```
+
+---
+
+## 7. Protocols
+
+### AP2 (Agent Payment Protocol)
+
+Industry standard from Google, PayPal, Mastercard, Visa (60+ partners).
+
+```python
+from sardis.protocols import AP2
+
+# Create AP2 mandate
+mandate = AP2.create_mandate(
+    intent={
+        "action": "purchase",
+        "amount": "50.00",
+        "merchant": "openai.com"
+    },
+    cart={
+        "items": [{"name": "API Credits", "amount": "50.00"}]
+    }
+)
+
+# Execute with mandate
+tx = wallet.pay_with_mandate(mandate)
+```
+
+### TAP (Trusted Agent Protocol)
+
+Cryptographic identity verification for agents.
+
+```python
+from sardis.protocols import TAP
+
+# Verify agent identity
+identity = TAP.create_identity(
+    agent_id="agent_123",
+    public_key="ed25519:...",
+    attestations=["anthropic", "verified_developer"]
+)
+
+# Attach to transaction
+tx = wallet.pay(
+    to="0x...",
+    amount="25.00",
+    identity=identity
+)
+```
+
+### A2A (Agent-to-Agent)
+
+Multi-agent payment protocol developed by Google.
+
+```python
+# Agent A sends to Agent B
+tx = wallet_a.pay_agent(
+    to_agent="agent_b_wallet_id",
+    amount="10.00",
+    protocol="a2a",
+    message={
+        "task": "research_complete",
+        "deliverable": "report.pdf"
+    }
+)
+
+# Discover agent capabilities via .well-known
+from sardis.protocols import A2A
+
+agent_info = await A2A.discover("https://agent.example.com")
+print(agent_info.capabilities)  # ["payments", "research", "booking"]
+```
+
+### UCP (Universal Commerce Protocol)
+
+Standardized checkout flows for agents.
+
+```python
+from sardis.protocols import UCP
+
+# Create a cart
+cart = UCP.create_cart(
+    merchant="store.example.com",
+    items=[
+        {"sku": "API-CREDITS-100", "quantity": 1, "price": "10.00"},
+        {"sku": "SUPPORT-ADDON", "quantity": 1, "price": "5.00"}
+    ]
+)
+
+# Apply discount
+cart = UCP.apply_discount(cart, code="AGENT10")
+
+# Checkout
+checkout = UCP.checkout(cart, wallet=wallet)
+print(checkout.status)  # "completed"
+print(checkout.receipt)  # Full receipt with line items
+```
+
+### x402 (HTTP 402 Micropayments)
+
+Coinbase-developed protocol for pay-per-API-call.
+
+```python
+from sardis.protocols import X402
+
+# Make a paid API request
+response = await X402.request(
+    url="https://api.example.com/expensive-endpoint",
+    wallet=wallet,
+    max_amount="0.01"  # Maximum willing to pay
+)
+
+# The x402 client automatically:
+# 1. Receives 402 Payment Required response
+# 2. Parses payment requirements from headers
+# 3. Makes payment via Sardis wallet
+# 4. Retries request with payment proof
+
+print(response.data)       # API response
+print(response.amount_paid)  # "0.005" (actual cost)
+```
+
+```typescript
+// TypeScript
+import { X402Client } from '@sardis/x402';
+
+const x402 = new X402Client({ wallet });
+
+const response = await x402.fetch('https://api.example.com/data', {
+  maxPayment: '0.01'
+});
+```
+
+---
+
+## 8. Fiat Rails
+
+### Overview
+
+Sardis bridges traditional banking with agentic commerce, allowing wallets to be funded from and withdrawn to bank accounts.
+
+### Funding Wallets
+
+```python
+from sardis import SardisFiatRamp
+
+ramp = SardisFiatRamp(
+    sardis_key="sk_...",
+    bridge_key="bridge_..."
+)
+
+# Fund wallet via ACH
+funding = await ramp.fund_wallet(
+    wallet_id="wallet_123",
+    amount_usd=1000,
+    method="bank"  # "bank", "card", or "crypto"
+)
+
+print(funding.ach_instructions)  # Bank transfer details
+# {
+#   "account_number": "...",
+#   "routing_number": "...",
+#   "bank_name": "...",
+#   "reference": "SARDIS-wallet_123"
+# }
+
+# Fund via card (higher fees, instant)
+card_funding = await ramp.fund_wallet(
+    wallet_id="wallet_123",
+    amount_usd=100,
+    method="card",
+    card_token="tok_..."
+)
+```
+
+### Withdrawals
+
+```python
+# Withdraw to bank (policy-checked)
+withdrawal = await ramp.withdraw_to_bank(
+    wallet_id="wallet_123",
+    amount_usd=500,
+    bank_account={
+        "account_number": "...",
+        "routing_number": "...",
+        "account_type": "checking"
+    }
+)
+
+print(withdrawal.status)  # "pending", "processing", "completed"
+print(withdrawal.estimated_arrival)  # Same-day ACH or T+2 wire
+```
+
+### Merchant Payouts
+
+```python
+# Pay merchant directly in USD
+payment = await ramp.pay_merchant_fiat(
+    wallet_id="wallet_123",
+    amount_usd=99.99,
+    merchant={
+        "name": "ACME Corp",
+        "bank_account": {...}
+    }
+)
+```
+
+### Fee Structure
+
+| Method | Fee | Speed |
+|--------|-----|-------|
+| ACH Funding | 0.5% | 2-3 business days |
+| Wire Funding | 0.25% | Same day |
+| Card Funding | 2.9% + $0.30 | Instant |
+| ACH Withdrawal | 0.25% | Same day |
+| Wire Withdrawal | $25 flat | Same day |
+
+---
+
+## 9. Virtual Cards
+
+### Issuance
+
+```python
+card = wallet.cards.create(
+    spending_limit="500.00",
+    merchant_category="software",
+    expires_in_days=30
+)
+
+# Card details
+card.number      # 4242...1234
+card.cvv         # 123
+card.expiry      # 12/26
+card.billing     # Billing address
+```
+
+### Management
+
+```python
+# List cards
+cards = wallet.cards.list()
+
+# Update limit
+card.update(spending_limit="1000.00")
+
+# Cancel card
+card.cancel()
+
+# Get transactions
+txs = card.transactions()
+```
+
+---
+
+## 10. Compliance
+
+### KYC (Know Your Customer)
+
+```python
+# Require KYC for wallet
+wallet = client.wallets.create(
+    name="kyc-wallet",
+    chain="base",
+    require_kyc=True
+)
+
+# Check KYC status
+kyc_status = wallet.kyc_status()
+# "verified", "pending", "required"
+
+# Initiate KYC
+kyc_link = wallet.initiate_kyc()
+# Returns Persona verification link
+```
+
+### AML (Anti-Money Laundering)
+
+```python
+# Screen address
+result = client.compliance.screen_address("0x...")
+# {"risk": "low", "flags": []}
+
+# Screen transaction
+result = client.compliance.screen_transaction(tx)
+# {"risk": "medium", "flags": ["high_value"]}
+```
+
+---
+
+## 11. Error Handling
+
+### Error Codes
+
+| Code | HTTP | Description |
+|------|------|-------------|
+| POLICY_VIOLATION | 400 | Transaction violates policy |
+| INSUFFICIENT_BALANCE | 400 | Not enough funds |
+| INVALID_MERCHANT | 400 | Merchant not allowed |
+| APPROVAL_REQUIRED | 400 | Needs human approval |
+| INVALID_ADDRESS | 400 | Invalid recipient address |
+| WALLET_NOT_FOUND | 404 | Wallet does not exist |
+| TX_NOT_FOUND | 404 | Transaction does not exist |
+| UNAUTHORIZED | 401 | Invalid API key |
+| RATE_LIMITED | 429 | Too many requests |
+| INTERNAL_ERROR | 500 | Server error |
+
+### Handling Errors
+
+```python
+from sardis.exceptions import (
+    PolicyViolation,
+    InsufficientBalance,
+    ApprovalRequired
+)
+
+try:
+    tx = wallet.pay(to="0x...", amount="1000.00")
+except PolicyViolation as e:
+    print(f"Policy blocked: {e.reason}")
+    print(f"Limit: {e.limit}, Requested: {e.requested}")
+except InsufficientBalance as e:
+    print(f"Need {e.required}, have {e.available}")
+except ApprovalRequired as e:
+    # Request human approval
+    approval = wallet.request_approval(
+        amount="1000.00",
+        reason="Large purchase for infrastructure"
+    )
+```
+
+---
+
+## 12. Best Practices
+
+### Wallet Management
+
+1. **One wallet per agent** - Easier to track and manage
+2. **Descriptive names** - `shopping-agent-prod` not `wallet1`
+3. **Start restrictive** - Begin with tight limits, loosen as needed
+4. **Regular audits** - Review transaction logs weekly
+
+### Policy Design
+
+1. **Layer policies** - Daily + per-tx + monthly limits
+2. **Whitelist over blacklist** - Safer to allow specific merchants
+3. **Human approval for large transactions** - Set threshold at 10-20% of daily limit
+4. **Time restrictions for non-critical agents** - Business hours only
+
+### Security
+
+1. **Never expose API keys** - Use environment variables
+2. **Use sandbox for testing** - `sk_test_...` keys
+3. **Monitor for anomalies** - Set up alerts for unusual patterns
+4. **Rotate keys regularly** - Every 90 days recommended
+
+### Integration
+
+1. **Handle all error cases** - Don't assume transactions succeed
+2. **Implement retries with backoff** - For network errors
+3. **Log everything** - Keep your own audit trail
+4. **Test policy changes in sandbox first** - Before production
+
+---
+
+## 13. Multi-Agent Spending Governance
+
+### Overview
+
+Sardis is built for multi-agent deployments where each agent has its own wallet, spending policy, and trust level. The policy engine enforces per-agent limits, merchant restrictions, time-window budgets, and approval thresholds — all evaluated before every transaction through the `PaymentOrchestrator` pipeline. Agents are grouped by `owner_id` (organization), enabling org-wide visibility and coordinated governance across agent fleets.
+
+### Per-Agent Policy Engine (Core)
+
+Every agent wallet has an independent `SpendingPolicy` with layered enforcement:
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="sk_live_...")
+
+# Create agents with individual spending policies
+infra_agent = client.create_wallet(
+    name="infra-agent",
+    chain="base",
+    policy={
+        "trust_level": "medium",           # LOW | MEDIUM | HIGH | UNLIMITED
+        "max_per_tx": "200.00",            # Per-transaction cap
+        "max_daily": "500.00",             # Rolling 24h limit
+        "max_weekly": "2000.00",           # Rolling 7d limit
+        "max_monthly": "8000.00",          # Rolling 30d limit
+        "max_total": "50000.00",           # Lifetime cap
+        "allowed_scopes": ["compute", "digital"],  # Spending categories
+        "blocked_merchant_categories": ["gambling", "adult"],
+        "allowed_merchants": ["aws.amazon.com", "cloud.google.com"],
+        "approval_threshold": "150.00",    # Human approval above this
+        "max_drift_score": 0.3             # Goal drift tolerance
+    }
+)
+
+api_agent = client.create_wallet(
+    name="api-credits-agent",
+    chain="base",
+    policy={
+        "trust_level": "low",
+        "max_per_tx": "100.00",
+        "max_daily": "300.00",
+        "max_weekly": "1500.00",
+        "max_monthly": "5000.00",
+        "allowed_merchants": ["openai.com", "anthropic.com", "cohere.com"],
+        "approval_threshold": "75.00"
+    }
+)
+
+research_agent = client.create_wallet(
+    name="research-agent",
+    chain="base",
+    policy={
+        "trust_level": "low",
+        "max_per_tx": "50.00",
+        "max_daily": "200.00",
+        "max_monthly": "3000.00",
+        "allowed_scopes": ["data", "services"],
+        "allowed_merchants": ["arxiv.org", "semantic-scholar.org"]
+    }
+)
+```
+
+### Trust Level Tiers
+
+Default limits scale with trust level, providing progressive autonomy:
+
+```python
+# Built-in trust tiers (customizable per wallet)
+# LOW:       $50/tx,   $100/day,   $500/week,   $1,000/month,   $5,000 total
+# MEDIUM:    $500/tx,  $1,000/day, $5,000/week, $10,000/month,  $50,000 total
+# HIGH:      $5,000/tx,$10,000/day,$50,000/week,$100,000/month, $500,000 total
+# UNLIMITED: No enforced limits (enterprise, requires explicit opt-in)
+
+# Upgrade trust level based on agent track record
+wallet.update_policy(trust_level="medium")
+```
+
+### Policy Evaluation Pipeline
+
+Every transaction flows through a strict sequential pipeline before execution:
+
+```
+Transaction Request
+       ↓
+┌──────────────────────────────┐
+│ 1. Policy Validation         │  SpendingPolicy.evaluate()
+│    - Amount limits           │  Per-tx, daily, weekly, monthly, total
+│    - Scope check             │  Is this spending category allowed?
+│    - MCC code screening      │  Merchant Category Code blocking
+│    - Merchant rules          │  Allow/deny list matching
+│    - Drift score check       │  Is agent staying on-task?
+│    - Velocity check          │  Rapid-fire prevention (DB-backed)
+│    - Approval threshold      │  Flag for human review if needed
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 2. Compliance Check          │  KYC/AML/sanctions screening
+│    - Persona KYC             │  Identity verification
+│    - Elliptic AML            │  Sanctions & risk scoring
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 3. On-Chain Execution        │  MPC-signed transaction
+│    - Balance verification    │  Non-custodial balance check
+│    - Chain routing           │  Optimal chain selection
+│    - MPC co-signing          │  Turnkey-backed signing
+└──────────┬───────────────────┘
+           ↓
+┌──────────────────────────────┐
+│ 4. State Update + Ledger     │  Atomic spend recording
+│    - Spending tracker update │  Decrement remaining limits
+│    - Append-only audit log   │  Immutable transaction record
+│    - Reconciliation queue    │  Recovery on partial failures
+└──────────────────────────────┘
+       ↓
+   ALLOW / DENY
+```
+
+Any phase failure is **fail-closed** — the transaction is denied and the reason is recorded in the audit log.
+
+### Merchant Category Code (MCC) Blocking
+
+```python
+# Block entire merchant categories by MCC code
+wallet.update_policy(
+    blocked_merchant_categories=["gambling", "adult", "crypto_exchange"]
+)
+
+# Or allow only specific MCC ranges
+wallet.update_policy(
+    merchant_rules={
+        "mode": "allowlist",
+        "mcc_codes": ["5734", "7372"],  # Software, computer programming
+    }
+)
+
+# High-risk MCC codes are blocked by default (gambling, pawn shops, etc.)
+# Override with explicit allowlist if needed for legitimate use cases
+```
+
+### Human-in-the-Loop Approvals
+
+```python
+# Set approval threshold — transactions above this need human sign-off
+wallet.update_policy(approval_threshold="100.00")
+
+# Agent attempts large purchase
+tx = wallet.pay(to="0x...", amount="250.00", token="USDC")
+# Returns: {"status": "requires_approval", "approval_id": "apr_abc123"}
+
+# Human approves via dashboard or API
+client.approvals.approve("apr_abc123")
+
+# Transaction executes after approval
+# If no approval within timeout → transaction is denied (fail-closed)
+```
+
+### Goal Drift Detection
+
+```python
+# Configure drift detection to keep agents on-task
+wallet.update_policy(max_drift_score=0.3)  # 0.0 = on-task, 1.0 = fully off-task
+
+# The drift score is computed by comparing the current transaction
+# against the agent's declared purpose and recent spending patterns.
+# If drift_score > max_drift_score → transaction denied with "goal_drift_exceeded"
+
+# Example: An agent tasked with "buy cloud compute" tries to purchase
+# a music subscription → drift_score = 0.85 → DENIED
+```
+
+### Organization-Level Agent Fleet Visibility
+
+Agents are grouped by `owner_id`, providing org-wide spending visibility:
+
+```python
+# List all agents in an organization
+agents = client.agents.list(owner_id="org_engineering")
+# Returns all agents with their current spending state
+
+# Query individual agent spending
+for agent in agents:
+    wallet = client.wallets.get(agent.wallet_id)
+    remaining = wallet.remaining_total()
+    print(f"{agent.name}: ${remaining} remaining of ${agent.spending_limits.total}")
+
+# Output:
+# infra-agent: $47,500.00 remaining of $50,000.00
+# api-credits-agent: $4,800.00 remaining of $5,000.00
+# research-agent: $2,975.00 remaining of $3,000.00
+```
+
+### Agent-to-Agent Payments
+
+The `AGENT_TO_AGENT` spending scope enables controlled inter-agent transfers:
+
+```python
+# Enable agent-to-agent payments in policy
+wallet_a.update_policy(
+    allowed_scopes=["compute", "agent_to_agent"]  # Must explicitly opt in
+)
+
+# Agent A pays Agent B (both under same org)
+tx = wallet_a.pay(
+    to=wallet_b.address,
+    amount="50.00",
+    token="USDC",
+    scope="agent_to_agent",
+    metadata={"reason": "Payment for completed research task", "task_id": "task_789"}
+)
+
+# Agent A's outbound policy is evaluated:
+# - Per-tx limit, daily limit, merchant rules all apply
+# - Scope must include "agent_to_agent"
+# - Goal drift is checked (is paying another agent on-task?)
+```
+
+### Multi-Agent Governance: Coordinated Budgets
+
+The per-agent policy primitives compose into group-level governance. Agent groups enforce shared budgets across multiple agents using the existing `owner_id` grouping and `SpendingPolicy` evaluation:
+
+```python
+# Agent groups with shared budget pools
+# Extends the existing owner_id grouping with aggregate budget enforcement
+
+group = client.agent_groups.create(
+    name="engineering-agents",
+    owner_id="org_engineering",
+    budget={
+        "total_daily": "1000.00",     # Shared daily cap across all agents
+        "total_monthly": "20000.00"
+    }
+)
+
+# Individual agent limits are enforced FIRST, then group budget is checked
+# The pipeline phases:
+# Step 1: SpendingPolicy.evaluate() → per-agent check
+# Step 2: GroupPolicy.evaluate()    → aggregate budget check
+# Step 3: Compliance check          → KYC/AML
+# Step 4: Chain execution           → on-chain
+
+# Query group-level spending (aggregates per-agent data)
+group_spending = client.agent_groups.get_spending(group.id)
+# {
+#   "daily_total": "425.00",
+#   "daily_remaining": "575.00",
+#   "agents": {
+#     "infra-agent": {"daily_spent": "300.00"},
+#     "api-credits-agent": {"daily_spent": "100.00"},
+#     "research-agent": {"daily_spent": "25.00"}
+#   }
+# }
+```
+
+### Hierarchical Policy Inheritance
+
+Policies cascade from organization → group → wallet, with the most restrictive rule winning:
+
+```python
+# Organization-level policy (applies to ALL agents under this org)
+org_policy = client.policies.set_org_policy({
+    "max_per_tx": "500.00",          # No single tx > $500 for any agent
+    "blocked_categories": ["gambling", "adult"],  # Global blocks
+    "require_compliance": True,       # All agents must pass KYC/AML
+    "allowed_tokens": ["USDC", "USDT", "EURC"]  # Stablecoins only
+})
+
+# Group-level policy (inherits org, adds restrictions)
+group_policy = client.policies.set_group_policy(group.id, {
+    "max_daily": "1000.00",          # Group daily cap
+    "require_approval_above": "200.00"
+})
+
+# Wallet-level policy (most specific, inherits all above)
+# This layer ALREADY EXISTS in SpendingPolicy
+wallet_policy = {
+    "max_daily": "300.00",           # Tighter than group
+    "max_per_tx": "100.00",          # Tighter than org
+    "allowed_merchants": ["openai.com"]  # Very specific
+}
+
+# Effective policy resolution (most restrictive wins):
+# - max_per_tx: min(org=500, wallet=100) → $100
+# - max_daily: min(group=1000, wallet=300) → $300
+# - blocked_categories: union(org blocks) → ["gambling", "adult"]
+# - DENY always wins over ALLOW (fail-closed principle)
+```
+
+### Treasury Management (Roadmap)
+
+```python
+# Shared treasury with automated fund distribution
+treasury = client.treasury.create(
+    name="engineering-treasury",
+    funding_wallet="wallet_treasury_main",
+    auto_refill={
+        "enabled": True,
+        "target_balance": "500.00",  # Keep each agent wallet at $500
+        "refill_amount": "250.00",
+        "check_interval": 3600,      # Check hourly
+        "conditions": {
+            "min_treasury_balance": "5000.00"  # Don't refill if treasury low
+        }
+    }
+)
+
+# Attach agents to treasury for automated funding
+treasury.add_agents(["infra-agent", "api-credits-agent", "research-agent"])
+```
+
+### Architecture: Why Multi-Agent Governance is a Natural Extension
+
+The existing architecture makes group governance a composable addition, not a rewrite:
+
+```
+Existing Primitives          →  Group Governance Extension
+─────────────────────────────────────────────────────────────
+Agent.owner_id               →  Natural org grouping key
+SpendingPolicy per wallet    →  Individual limits (unchanged)
+PaymentOrchestrator pipeline →  Add GroupPolicy phase between
+                                 policy and compliance checks
+SpendingScope.AGENT_TO_AGENT →  Inter-agent transfer rules
+approval_threshold           →  Cascading multi-level approvals
+TimeWindowLimit (daily/wk/mo)→  Aggregate across group members
+MerchantRule allow/deny      →  Inherit + merge from org/group
+TrustLevel tiers             →  Group-level trust inheritance
+```
+
+The `PaymentOrchestrator` uses Protocol-based interfaces (`WalletPolicyEngine`, `CompliancePort`, `ChainExecutorPort`, `LedgerPort`), making it straightforward to inject a `GroupPolicyEngine` as an additional evaluation phase without modifying the existing pipeline.
+
+---
+
+## 14. Policy Engine Architecture
+
+### Overview
+
+The Sardis Policy Engine is a multi-layer evaluation pipeline that transforms natural language spending rules into deterministic, enforceable constraints. It supports context-dependent rules, external data sources, webhook-based evaluation, and real-time market data integration.
+
+### Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Transaction Request                    │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 1: NL Parser (LLM-powered)                       │
+│  "Max $100/day on cloud" → structured policy rules       │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 2: Static Rule Engine                            │
+│  Amount limits, merchant lists, time windows, categories │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 3: Dynamic Context Engine                        │
+│  Spending velocity, historical patterns, goal drift      │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 4: External Evaluators (Webhooks & APIs)         │
+│  Custom logic, market data, org-specific rules           │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 5: Compliance Gate                               │
+│  KYC/AML screening, sanctions, SAR generation            │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│  Layer 6: On-Chain Enforcement                          │
+│  Smart contract token allowlist, co-signer validation    │
+└─────────────────────┬───────────────────────────────────┘
+                      ▼
+                  ALLOW / DENY
+```
+
+### Layer 1: Natural Language Policy Parser
+
+```python
+# Parse natural language to structured rules
+from sardis.policies import PolicyParser
+
+parser = PolicyParser()
+
+# Simple parsing
+structured = parser.parse(
+    "Max $100 per day on cloud services, "
+    "only approved vendors like AWS and Google Cloud, "
+    "require manager approval for anything over $50, "
+    "block all transactions on weekends"
+)
+
+# Result:
+# {
+#   "max_daily": "100.00",
+#   "allowed_categories": ["cloud_services"],
+#   "allowed_merchants": ["aws.amazon.com", "cloud.google.com"],
+#   "require_approval_above": "50.00",
+#   "blocked_days": ["sat", "sun"],
+#   "parsed_confidence": 0.95,
+#   "original_text": "Max $100 per day on cloud services..."
+# }
+
+# Preview policy effects before applying
+preview = parser.preview(structured, wallet_id="wallet_123")
+# {
+#   "would_block_recent": 3,       # 3 recent txs would have been blocked
+#   "blocked_examples": [...],
+#   "estimated_daily_capacity": "100.00",
+#   "coverage_gaps": ["No per-tx limit set"]
+# }
+
+# Apply with validation
+wallet.update_policy(structured)
+```
+
+### Layer 2: Static Rule Evaluation
+
+```python
+# Built-in rule types evaluated in order
+rules = {
+    # Amount limits (checked against spending tracker)
+    "amount_limits": {
+        "max_per_tx": "50.00",
+        "max_daily": "200.00",
+        "max_weekly": "1000.00",
+        "max_monthly": "3000.00"
+    },
+
+    # Merchant restrictions
+    "merchant_rules": {
+        "mode": "allowlist",  # or "blocklist"
+        "merchants": ["openai.com", "anthropic.com"],
+        "mcc_codes": ["5734", "7372"],  # Software, computer programming
+        "mcc_blocked": ["7995", "5933"]  # Gambling, pawn shops
+    },
+
+    # Time-based rules
+    "time_rules": {
+        "allowed_hours": {"start": "09:00", "end": "18:00"},
+        "timezone": "America/New_York",
+        "allowed_days": ["mon", "tue", "wed", "thu", "fri"],
+        "blackout_dates": ["2026-12-25", "2026-01-01"]
+    },
+
+    # Token restrictions
+    "token_rules": {
+        "allowed_tokens": ["USDC", "EURC"],
+        "max_per_token": {
+            "USDC": "5000.00",
+            "EURC": "2000.00"
+        }
+    },
+
+    # Chain restrictions
+    "chain_rules": {
+        "allowed_chains": ["base", "polygon"],
+        "preferred_chain": "base"  # Route here when possible
+    }
+}
+```
+
+### Layer 3: Dynamic Context Engine
+
+The context engine evaluates spending patterns, velocity, and goal drift in real-time:
+
+```python
+# Configure dynamic context rules
+context_rules = {
+    # Velocity detection - flag unusual spending speed
+    "velocity": {
+        "max_transactions_per_hour": 10,
+        "max_transactions_per_minute": 3,
+        "cooldown_after_large_tx": 300,  # 5 min cooldown after big tx
+        "action": "flag_and_require_approval"  # or "block"
+    },
+
+    # Goal drift detection - alert when spending deviates from purpose
+    "goal_drift": {
+        "expected_categories": ["cloud_services", "api_credits"],
+        "drift_threshold": 0.3,  # 30% deviation triggers alert
+        "lookback_window": "7d",
+        "action": "alert_and_continue"  # or "block"
+    },
+
+    # Anomaly detection - statistical outlier detection
+    "anomaly": {
+        "enabled": True,
+        "baseline_window": "30d",
+        "z_score_threshold": 2.5,  # Flag transactions 2.5σ from mean
+        "factors": ["amount", "merchant", "time_of_day", "frequency"]
+    },
+
+    # Budget pacing - spread budget evenly across time period
+    "pacing": {
+        "enabled": True,
+        "period": "monthly",
+        "budget": "3000.00",
+        "warn_at": 0.8,   # Warn at 80% spent
+        "block_at": 0.95,  # Block at 95% spent
+        "allow_burst": True  # Allow up to 2x daily average
+    }
+}
+
+wallet.update_policy(context_rules=context_rules)
+
+# Query context engine state
+context = wallet.get_spending_context()
+# {
+#   "velocity": {"tx_last_hour": 4, "status": "normal"},
+#   "goal_drift": {"drift_score": 0.12, "status": "on_track"},
+#   "anomaly": {"recent_flags": 0, "status": "clean"},
+#   "pacing": {
+#     "budget_used": 0.45,
+#     "days_elapsed": 14,
+#     "days_remaining": 14,
+#     "daily_budget_remaining": "96.43",
+#     "status": "on_pace"
+#   }
+# }
+```
+
+### Layer 4: External Evaluators (Webhooks & Custom APIs)
+
+Extend the policy engine with custom evaluation logic:
+
+```python
+# Register a webhook-based policy evaluator
+evaluator = client.policies.register_evaluator(
+    name="custom-purchase-approval",
+    type="webhook",
+    url="https://your-api.com/sardis/evaluate",
+    timeout=5000,  # 5 second timeout
+    fallback="deny",  # deny if webhook fails (fail-closed)
+    headers={"Authorization": "Bearer your-token"},
+    triggers={
+        "amount_above": "25.00",    # Only call for txs > $25
+        "merchants": ["*"],          # All merchants
+        "categories": ["software"]   # Only software purchases
+    }
+)
+
+# Your webhook receives:
+# POST https://your-api.com/sardis/evaluate
+# {
+#   "transaction": {
+#     "wallet_id": "wallet_123",
+#     "amount": "75.00",
+#     "token": "USDC",
+#     "merchant": "newvendor.com",
+#     "agent_id": "agent_456"
+#   },
+#   "context": {
+#     "daily_spent": "125.00",
+#     "daily_remaining": "75.00",
+#     "recent_transactions": [...]
+#   }
+# }
+#
+# Your webhook responds:
+# {
+#   "decision": "allow",  // or "deny" or "require_approval"
+#   "reason": "Vendor approved in internal procurement system",
+#   "metadata": {"procurement_id": "PO-2026-001"}
+# }
+
+# Register a market-data evaluator for price-sensitive purchases
+market_evaluator = client.policies.register_evaluator(
+    name="price-check",
+    type="webhook",
+    url="https://your-api.com/sardis/price-check",
+    timeout=3000,
+    fallback="allow",  # Allow if price check fails
+    triggers={
+        "categories": ["cloud_services", "api_credits"],
+        "amount_above": "50.00"
+    }
+)
+
+# Example: Your price-check webhook could:
+# 1. Query current market rates for the service
+# 2. Compare against historical pricing
+# 3. Flag if the agent is overpaying
+# 4. Suggest waiting for off-peak pricing
+```
+
+### Real-Time Data Integration for Policy Decisions
+
+```python
+# Configure external data sources for context-dependent rules
+data_sources = client.policies.configure_data_sources({
+    # Exchange rate source for cross-currency policies
+    "exchange_rates": {
+        "provider": "coingecko",
+        "refresh_interval": 60,  # Refresh every 60 seconds
+        "cache_ttl": 300,
+        "usage": "Convert all amounts to USD for limit comparison"
+    },
+
+    # Internal budget system integration
+    "budget_api": {
+        "type": "rest",
+        "url": "https://internal.company.com/api/budgets",
+        "auth": {"type": "bearer", "token_env": "BUDGET_API_TOKEN"},
+        "refresh_interval": 3600,
+        "usage": "Check remaining department budget before approving"
+    },
+
+    # Vendor approval database
+    "vendor_db": {
+        "type": "rest",
+        "url": "https://internal.company.com/api/vendors",
+        "auth": {"type": "api_key", "header": "X-API-Key", "key_env": "VENDOR_API_KEY"},
+        "refresh_interval": 86400,  # Daily refresh
+        "usage": "Verify merchant is in approved vendor list"
+    }
+})
+
+# Use data sources in policy rules
+policy_with_external_data = {
+    "max_daily": "100.00",
+    "custom_rules": [
+        {
+            "name": "budget_check",
+            "data_source": "budget_api",
+            "condition": "data.remaining_budget > transaction.amount",
+            "on_fail": "deny",
+            "message": "Department budget exhausted"
+        },
+        {
+            "name": "vendor_check",
+            "data_source": "vendor_db",
+            "condition": "transaction.merchant in data.approved_vendors",
+            "on_fail": "require_approval",
+            "message": "Vendor not in approved list"
+        }
+    ]
+}
+```
+
+### Policy Evaluation Pipeline (Internal)
+
+How Sardis evaluates each transaction internally:
+
+```python
+# The evaluation pipeline runs in order, short-circuiting on DENY:
+
+evaluation_result = {
+    "decision": "allow",
+    "pipeline": [
+        {"layer": "rate_limit", "result": "pass", "latency_ms": 1},
+        {"layer": "static_rules", "result": "pass", "latency_ms": 2,
+         "details": {
+             "amount_check": "pass (25.00 < 100.00 daily limit)",
+             "merchant_check": "pass (openai.com in allowlist)",
+             "time_check": "pass (14:30 within 09:00-18:00)"
+         }},
+        {"layer": "spending_tracker", "result": "pass", "latency_ms": 5,
+         "details": {"daily_spent": "45.00", "remaining": "55.00"}},
+        {"layer": "context_engine", "result": "pass", "latency_ms": 8,
+         "details": {
+             "velocity": "normal (2 tx/hr)",
+             "goal_drift": "0.05 (on track)",
+             "anomaly_score": "0.3 (normal)"
+         }},
+        {"layer": "external_evaluator", "result": "pass", "latency_ms": 120,
+         "details": {"evaluator": "custom-purchase-approval", "response": "allow"}},
+        {"layer": "compliance", "result": "pass", "latency_ms": 45,
+         "details": {"aml_screen": "clear", "sanctions": "clear"}},
+        {"layer": "on_chain", "result": "pass", "latency_ms": 0,
+         "details": {"token_allowed": True, "co_signer": "ready"}}
+    ],
+    "total_latency_ms": 181
+}
+
+# Access evaluation details via API
+details = wallet.check_policy(
+    amount="25.00",
+    merchant="openai.com",
+    verbose=True  # Return full pipeline results
+)
+```
+
+### Performance and Reliability
+
+```python
+# Policy evaluation performance characteristics:
+# - Static rules: < 5ms (in-memory evaluation)
+# - Spending tracker: < 10ms (Redis-backed)
+# - Context engine: < 15ms (pre-computed metrics)
+# - External evaluators: configurable timeout (default 5s)
+# - Compliance screening: < 100ms (cached, async refresh)
+# - Total typical latency: < 200ms
+
+# Circuit breaker for external evaluators
+evaluator_config = {
+    "circuit_breaker": {
+        "failure_threshold": 5,     # Open circuit after 5 failures
+        "recovery_timeout": 60,     # Try again after 60 seconds
+        "half_open_requests": 2     # Allow 2 test requests
+    },
+    "retry": {
+        "max_retries": 2,
+        "backoff": "exponential",
+        "base_delay_ms": 100,
+        "max_delay_ms": 2000
+    },
+    "fallback": "deny"  # What to do when circuit is open
+}
+
+# Rate limiting on policy evaluation
+rate_limits = {
+    "per_wallet": {
+        "evaluations_per_second": 10,
+        "evaluations_per_minute": 100,
+        "burst_size": 20
+    },
+    "per_organization": {
+        "evaluations_per_second": 100,
+        "evaluations_per_minute": 1000
+    }
+}
+```
+
+### Extending the Policy Engine
+
+```python
+# Register a custom policy function (serverless)
+custom_fn = client.policies.register_function(
+    name="seasonal-budget-adjuster",
+    runtime="python3.12",
+    code="""
+def evaluate(transaction, context, data_sources):
+    import datetime
+    month = datetime.datetime.now().month
+
+    # Q4 gets higher budget for annual renewals
+    if month in [10, 11, 12]:
+        adjusted_limit = float(context['max_daily']) * 1.5
+    else:
+        adjusted_limit = float(context['max_daily'])
+
+    if float(transaction['amount']) > adjusted_limit:
+        return {
+            'decision': 'deny',
+            'reason': f'Exceeds seasonal limit of ${adjusted_limit:.2f}'
+        }
+
+    return {'decision': 'allow'}
+    """,
+    triggers={"amount_above": "0.01"}  # Run on every transaction
+)
+
+# Attach to wallet
+wallet.update_policy(custom_functions=[custom_fn.id])
+```
+
+---
+
+## Quick Reference Card
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="sk_...")
+
+# Create wallet
+wallet = client.wallets.create(name="agent-wallet", chain="base", policy="Max $100/day")
+
+# Check balance
+balance = wallet.balance()  # {"USDC": "150.00", "EURC": "50.00"}
+
+# Make payment (policy enforced)
+tx = wallet.pay(to="0x...", amount="25.00", token="USDC")
+
+# Pre-check if payment would be allowed
+result = wallet.check_policy(amount="50.00", merchant="openai.com")
+if result.allowed:
+    wallet.pay(...)
+
+# Request human approval for large transactions
+approval = wallet.request_approval(amount="200.00", reason="Annual subscription")
+
+# Create hold (pre-authorization)
+hold = wallet.create_hold(amount="100.00", token="USDC", expires_in=3600)
+tx = hold.capture(amount="85.00")  # Capture partial amount
+
+# Issue virtual card
+card = wallet.cards.create(spending_limit="500.00", merchant_category="software")
+
+# Fund from bank
+from sardis import SardisFiatRamp
+ramp = SardisFiatRamp(sardis_key="sk_...", bridge_key="bridge_...")
+funding = await ramp.fund_wallet(wallet_id="wallet_123", amount_usd=1000, method="bank")
+```
+
+## MCP Server Quick Start
+
+```bash
+# Install and start
+npx @sardis/mcp-server start
+
+# Or add to Claude Desktop config
+# ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": { "SARDIS_API_KEY": "sk_..." }
+    }
+  }
+}
+```
+
+## Stablecoin-Only Token Allowlist (On-Chain)
+
+The smart contract enforces a token allowlist at the EVM level:
+
+```solidity
+// Only Sardis (platform) can whitelist tokens
+function allowToken(address token) external onlySardis;
+function removeToken(address token) external onlySardis;
+
+// Enforced in pay(), payWithCoSign(), createHold()
+// Reverts with "Token not allowed (stablecoins only)" for non-whitelisted tokens
+```
+
+**Key guarantees:**
+- Only approved stablecoins (USDC, USDT, EURC, PYUSD) can be transferred out
+- If someone sends NFTs, DOGE, or meme coins to the wallet — they're stuck, the agent can't use them
+- This is an **on-chain guarantee**, not just API filtering
+- Sardis can toggle enforcement off for emergency token recovery
+
+## Status
+
+- **Current Version**: v0.9.5 (Strict Live Mode + Operations Hardening)
+- **MCP Server**: v0.2.7 on npm (1,000+ installs, 52 tools)
+- **Infrastructure**: Live on Base Sepolia testnet, staging API on Cloud Run
+- **Mainnet Launch**: Q2 2026
+- **Protocols Implemented**: AP2, UCP, A2A, TAP, x402
+
+## What's New in v0.9.5 (February 2026)
+
+### Strict Live Mode + Operations Hardening
+- Simulated path hard-disable posture for production money movement.
+- Replay/idempotency evidence gates for webhook and payment pipelines.
+- Pager alert routing plus runbook-bound SLO operations monitoring.
+- DR incident drill evidence with measured RTO/RPO artifacts.
+- Runtime preflight posture visibility via checkout/ASA/A2A security-policy endpoints.
+
+## What's New in v0.8.5 (February 2026)
+
+### Production-Grade Retry & Async Wrapping
+All external provider calls now use configurable retry with exponential backoff, circuit breakers, and rate limiting.
+
+### Sandbox Demo Tool
+```bash
+# In MCP server, call sardis_sandbox_demo for a guided tour
+# Categories: quickstart, payments, cards, policy, holds, fiat, all
+```
+
+### SAR Persistence
+Suspicious Activity Reports now persisted to PostgreSQL with FinCEN 5-year retention compliance.
+
+## What's New in v0.8.4 (February 2026)
+
+### Lithic Sandbox Cards
+```python
+# Issue a real sandbox card via Lithic
+card = wallet.cards.create(spending_limit="500.00")
+
+# Simulate a purchase — returns real Lithic authorization ID
+tx = card.simulate_purchase(amount="25.00", merchant="Demo Coffee Shop")
+print(tx.provider_tx_id)  # Real Lithic transaction token
+```
+
+### Stablecoin-Only Smart Contract
+On-chain token allowlist prevents non-stablecoin transfers. See "Stablecoin-Only Token Allowlist" section above.
+
+### Goal Drift Detection
+Detect when agent spending patterns deviate from intended goals — alerts before financial hallucinations happen.
+
+### Dashboard Cards Page
+Custom Sardis-branded card UI with issue, freeze, simulate purchase, and transaction history with Lithic TX IDs.
+
+### Previous (v0.8.0)
+
+### Human Approval Workflows
+```python
+# Create an approval request
+approval = wallet.request_approval(
+    amount="500.00",
+    reason="Large infrastructure purchase",
+    expires_in=3600  # 1 hour
+)
+
+# Check approval status
+if approval.status == "approved":
+    tx = wallet.pay(to="0x...", amount="500.00")
+```
+
+### Wallet Freeze
+```python
+# Freeze wallet (blocks all transactions)
+wallet.freeze(reason="Suspicious activity detected")
+
+# Unfreeze wallet
+wallet.unfreeze()
+```
+
+### Batch Transfers
+```python
+# Send multiple payments in one transaction
+results = wallet.batch_transfer([
+    {"to": "0x123...", "amount": "10.00", "token": "USDC"},
+    {"to": "0x456...", "amount": "25.00", "token": "USDC"},
+    {"to": "0x789...", "amount": "15.00", "token": "USDC"},
+])
+```
+
+### Velocity Limits (Off-Ramp)
+```python
+policy = {
+    "off_ramp_limits": {
+        "daily": "1000.00",
+        "weekly": "5000.00",
+        "monthly": "15000.00"
+    }
+}
+```
+
+### New Features Summary
+- **Background Job Scheduler** - APScheduler for approval expiration, hold cleanup, spending limit reset
+- **Alembic Migrations** - Database schema versioning with 6 migrations
+- **EIP-2771 Meta-Transactions** - Gasless transactions support
+- **Invoices API** - Full CRUD for merchant invoice management
+- **Fireblocks Integration** - Institutional-grade MPC signing option
+- **Prometheus Metrics** - Production monitoring at `/metrics`
+- **Sentry Integration** - Error tracking and alerting
+- **MCC Lookup** - Merchant Category Code lookup service
+- **SAR Generation** - Suspicious Activity Report generation
+
+## 15. Framework Integrations
+
+Sardis works with every major AI agent framework. One payment layer, every platform.
+
+### Python
+- **Browser Use**: `pip install sardis-browser-use` — register_sardis_actions(controller)
+- **CrewAI**: `pip install sardis-crewai` — BaseTool subclasses + create_sardis_toolkit()
+- **AutoGPT**: `pip install sardis-autogpt` — Block SDK with SardisPayBlock
+- **OpenAI Agents SDK**: `pip install sardis-openai-agents` — @function_tool decorated tools
+- **Composio**: `pip install sardis-composio` — Plain functions + OpenAPI spec
+- **LangChain**: `pip install sardis-langchain` — LangChain BaseTool integration
+- **LlamaIndex**: Built-in via sardis-sdk
+
+### TypeScript
+- **Vercel AI SDK**: `npm install @sardis/ai-sdk` — tool() definitions for generateText/streamText
+- **Stagehand/Browserbase**: `npm install @sardis/stagehand` — createSardisTools() with zod schemas
+- **n8n**: `npm install n8n-nodes-sardis` — Community node with 3 operations
+- **Activepieces**: `npm install @activepieces/piece-sardis` — Workflow piece
+
+### Platforms
+- **MCP**: `npx @sardis/mcp-server start` — 52 tools for Claude Desktop, Cursor, etc.
+- **ChatGPT**: Custom GPT with OpenAPI Actions (sardis-gpt package)
+- **E2B**: Docker template with Sardis pre-installed (sardis-e2b package)
+
+### Usage Pattern (all frameworks)
+```python
+from sardis import SardisClient
+client = SardisClient()  # simulation mode, no API key needed
+wallet = client.wallets.create(name="agent", policy="Max $100/day")
+tx = wallet.pay(to="vendor.com", amount=25.00)
+print(tx.success)  # True
+```
+
+## Links
+
+- Website: https://sardis.sh
+- Documentation: https://sardis.sh/docs
+- GitHub: https://github.com/EfeDurmaz16/sardis
+- PyPI: https://pypi.org/project/sardis/
+- npm: https://www.npmjs.com/package/@sardis/mcp-server
+- Context7: https://context7.com/efedurmaz16/sardis
+
+---
+
+*Last updated: February 26, 2026*
+*Version: 2.4*

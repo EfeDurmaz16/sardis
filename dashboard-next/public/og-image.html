@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .card {
+    width: 1200px;
+    height: 630px;
+    background: #0a0a0a;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 90px;
+    overflow: hidden;
+  }
+
+  /* Subtle grid background */
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,79,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,79,0,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Corner accents */
+  .corner-tl, .corner-br {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-color: #ff4f00;
+    border-style: solid;
+  }
+  .corner-tl {
+    top: 30px; left: 30px;
+    border-width: 3px 0 0 3px;
+  }
+  .corner-br {
+    bottom: 30px; right: 30px;
+    border-width: 0 3px 3px 0;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo-svg {
+    width: 56px;
+    height: 56px;
+  }
+
+  .logo-text {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+  }
+
+  .title {
+    font-size: 64px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+    letter-spacing: -2px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .title span {
+    color: #ff4f00;
+  }
+
+  .subtitle {
+    font-size: 22px;
+    color: #a0a0a0;
+    line-height: 1.5;
+    max-width: 700px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .bottom-bar {
+    position: absolute;
+    bottom: 40px;
+    left: 90px;
+    right: 90px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1;
+  }
+
+  .tags {
+    display: flex;
+    gap: 12px;
+  }
+
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ff4f00;
+    border: 1px solid rgba(255,79,0,0.3);
+    padding: 6px 14px;
+    letter-spacing: 0.5px;
+  }
+
+  .url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: #666;
+    letter-spacing: 0.5px;
+  }
+
+  /* Decorative glow */
+  .glow {
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(255,79,0,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="corner-tl"></div>
+    <div class="corner-br"></div>
+    <div class="glow"></div>
+
+    <div class="logo-row">
+      <svg class="logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M35 25 H25 V75 H35" stroke="#ff4f00" stroke-width="10" fill="none" stroke-linecap="square"/>
+        <path d="M65 25 H75 V75 H65" stroke="#ff4f00" stroke-width="10" fill="none" stroke-linecap="square"/>
+        <rect x="40" y="40" width="20" height="20" fill="#ff4f00"/>
+      </svg>
+      <span class="logo-text">Sardis</span>
+    </div>
+
+    <h1 class="title">The Payment OS for the<br><span>Agent Economy</span></h1>
+
+    <p class="subtitle">Non-custodial MPC wallets with natural language spending policies for AI agents.</p>
+
+    <div class="bottom-bar">
+      <div class="tags">
+        <span class="tag">NON-CUSTODIAL</span>
+        <span class="tag">MULTI-CHAIN</span>
+        <span class="tag">AP2 + TAP + x402</span>
+      </div>
+      <span class="url">sardis.sh</span>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sardis - Competitive Moat & Market Position</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ink: #0a0a0a;
+    --paper: #fafaf8;
+    --accent: #1a5cff;
+    --accent-light: #e8efff;
+    --muted: #6b7280;
+    --border: #e5e5e3;
+    --green: #059669;
+    --green-bg: #ecfdf5;
+    --amber: #d97706;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: A4; margin: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    font-size: 11px;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    max-height: 297mm;
+    margin: 0 auto;
+    padding: 14mm 16mm 12mm;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  .page::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), #6366f1, var(--accent));
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-area h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .logo-area .tagline {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .header-meta {
+    text-align: right;
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  .header-meta .conf {
+    display: inline-block;
+    background: var(--ink);
+    color: white;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .section-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+
+  h3 { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  p { margin-bottom: 6px; }
+
+  .hero-quote {
+    background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+    border-left: 3px solid var(--accent);
+    padding: 8px 14px;
+    margin-bottom: 10px;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .hero-quote p {
+    font-family: 'DM Serif Display', serif;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .stat-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 8px;
+    text-align: center;
+  }
+
+  .stat-card .number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .stat-card .label {
+    font-size: 8px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .moat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .moat-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 8px 7px 10px;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .moat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+    border-radius: 3px 0 0 3px;
+  }
+
+  .moat-card .moat-icon { flex-shrink: 0; width: 26px; height: 26px; }
+  .moat-card .moat-icon img { width: 26px; height: 26px; }
+  .moat-card .moat-content { flex: 1; min-width: 0; }
+  .moat-card h3 { font-size: 10.5px; font-weight: 700; margin-bottom: 1px; }
+  .moat-card p { font-size: 9px; color: var(--muted); margin: 0; line-height: 1.35; }
+
+  .moat-card .exclusive {
+    display: inline-block;
+    background: var(--green-bg);
+    color: var(--green);
+    font-size: 7px;
+    font-weight: 700;
+    padding: 0px 4px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 8.5px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .comparison-table thead th {
+    background: var(--ink);
+    color: white;
+    padding: 4px 3px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 8px;
+    letter-spacing: 0.2px;
+  }
+
+  .comparison-table thead th:first-child { text-align: left; width: 130px; padding-left: 6px; }
+  .comparison-table thead th.sardis-col { background: var(--accent); font-weight: 700; }
+
+  .comparison-table tbody td {
+    padding: 3px 3px;
+    text-align: center;
+    border-bottom: 1px solid #f0f0ee;
+    vertical-align: middle;
+    font-size: 8.5px;
+  }
+
+  .comparison-table tbody td:first-child {
+    text-align: left;
+    font-weight: 500;
+    background: #fafaf8;
+    font-size: 8.5px;
+    padding-left: 6px;
+  }
+
+  .comparison-table tbody tr:last-child td { border-bottom: none; }
+  .comparison-table tbody tr:hover { background: #f8f9ff; }
+  td.sardis-col { background: var(--accent-light) !important; font-weight: 600; }
+
+  .check { color: var(--green); font-weight: 700; font-size: 10px; }
+  .cross { color: #ccc; font-size: 10px; }
+  .partial { color: var(--amber); font-size: 8.5px; font-weight: 600; }
+
+  .market-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .market-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  .market-card h3 { font-size: 11px; margin-bottom: 4px; }
+
+  .market-card .big-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .market-card .big-label { font-size: 9px; color: var(--muted); }
+  .market-card .source { font-size: 8px; color: #aaa; margin-top: 2px; }
+
+  .funding-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 9px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  .funding-table thead th {
+    background: #f5f5f3;
+    padding: 4px 6px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+  }
+
+  .funding-table tbody td { padding: 4px 6px; border-bottom: 1px solid #f0f0ee; }
+  .funding-table tbody tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; padding: 0px 5px; border-radius: 2px; font-size: 8px; font-weight: 600; }
+  .badge-seed { background: #dbeafe; color: #1d4ed8; }
+  .badge-a { background: #fae8ff; color: #9333ea; }
+  .badge-b { background: #dcfce7; color: #16a34a; }
+  .badge-acq { background: #fef3c7; color: #b45309; }
+  .badge-yc { background: #fff1e6; color: #ea580c; }
+
+  .bottom-line {
+    background: var(--ink);
+    color: white;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-top: 8px;
+  }
+
+  .bottom-line h3 {
+    color: white;
+    font-family: 'DM Serif Display', serif;
+    font-size: 13px;
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+
+  .bottom-line p { font-size: 9.5px; color: #d1d5db; margin: 0; line-height: 1.4; }
+  .bottom-line .highlight { color: #93c5fd; font-weight: 600; }
+
+  .footer {
+    position: absolute;
+    bottom: 8mm;
+    left: 16mm;
+    right: 16mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    color: #bbb;
+    border-top: 1px solid #eee;
+    padding-top: 4px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+
+  .protocol-list { list-style: none; padding: 0; }
+
+  .protocol-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0ee;
+    font-size: 9.5px;
+  }
+
+  .protocol-list li:last-child { border-bottom: none; }
+
+  .protocol-list .proto-badge {
+    display: inline-block;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 0px 5px;
+    border-radius: 2px;
+    font-size: 8px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+
+  .sdk-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .sdk-chip {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 6px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 500;
+  }
+
+  .sdk-chip .sdk-icon {
+    display: block;
+    margin: 0 auto 2px;
+    height: 14px;
+  }
+
+  .sdk-chip .sdk-icon img {
+    height: 14px;
+    width: auto;
+  }
+
+  .flow-diagram {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px;
+  }
+
+  .flow-step { text-align: center; flex: 1; }
+
+  .flow-step .step-box {
+    background: var(--accent-light);
+    border: 1px solid #c7d7ff;
+    border-radius: 5px;
+    padding: 5px 4px;
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+
+  .flow-step .step-label { font-size: 7.5px; color: var(--muted); }
+  .flow-arrow { color: #ccc; font-size: 12px; flex-shrink: 0; }
+
+  @media print {
+    body { background: white; }
+    .page { margin: 0; padding: 12mm 14mm 10mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="header">
+    <div class="logo-area">
+      <h1>Sardis</h1>
+      <div class="tagline">The Payment OS for the Agent Economy</div>
+    </div>
+    <div class="header-meta">
+      <div class="conf">Confidential</div><br>
+      Competitive Positioning &middot; February 2026
+    </div>
+  </div>
+
+  <div class="hero-quote">
+    <p>AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="number">9</div>
+      <div class="label">AI Framework SDKs</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">5</div>
+      <div class="label">Blockchain Networks</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">4</div>
+      <div class="label">Payment Protocols</div>
+    </div>
+    <div class="stat-card">
+      <div class="number">0</div>
+      <div class="label">Private Keys Stored</div>
+    </div>
+  </div>
+
+  <div class="section-label">Why Sardis Wins</div>
+  <h2>Six Moats No Competitor Can Replicate</h2>
+
+  <div class="moat-grid">
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/search-insights-9.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Smart Transaction Scoring</h3>
+        <p>Every payment gets a 0&ndash;1.0 trust score. Low-risk payments go through instantly; unusual ones get escalated to a human for review.</p>
+        <span class="exclusive">Sardis Only</span>
+      </div>
+    </div>
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/policy-5.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Agents Can't Go Rogue With Money</h3>
+        <p>Write rules in plain English ("max $500/day, SaaS only") and they're automatically enforced before any money moves.</p>
+        <span class="exclusive">Sardis Only</span>
+      </div>
+    </div>
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/credit-card-gear-10.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Crypto + Fiat in One Place</h3>
+        <p>Stablecoins on 5 chains plus instant virtual Visa/Mastercard. One platform for digital and traditional payments.</p>
+      </div>
+    </div>
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/handshake-3.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Agents Can Trade Safely Together</h3>
+        <p>When agents hire each other, funds are held in on-chain escrow until delivery. Teams share budgets with clear limits.</p>
+        <span class="exclusive">Sardis Only</span>
+      </div>
+    </div>
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/shield-lock-6.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Compliance Built In, Not Bolted On</h3>
+        <p>KYC, AML, and "Know Your Agent" trust scoring. Every transaction logged in a tamper-proof audit trail.</p>
+      </div>
+    </div>
+    <div class="moat-card">
+      <div class="moat-icon"><img src="/icons/auto-renew-0.svg" alt=""></div>
+      <div class="moat-content">
+        <h3>Emergency Brakes</h3>
+        <p>Freeze any agent's spending in milliseconds. Circuit breakers detect anomalies. Kill switches at every level.</p>
+        <span class="exclusive">Sardis Only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Head-to-Head Comparison</div>
+  <h2>Sardis vs. The Market</h2>
+
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Capability</th>
+        <th class="sardis-col">Sardis</th>
+        <th>Skyfire</th>
+        <th>Locus</th>
+        <th>Payman</th>
+        <th>Paid</th>
+        <th>Natural</th>
+        <th>Stripe</th>
+        <th>Coinbase</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Spending Rules in Plain English</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> + On-chain</td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">Basic</span></td>
+        <td><span class="partial">Basic</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">Limits</span></td>
+        <td><span class="partial">Basic</span></td>
+      </tr>
+      <tr>
+        <td>Smart Risk Scoring Per Transaction</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> 4-tier</td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Catches Agents Going Off-Track</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Your Keys Stay With You (MPC)</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">TBD</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="check">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Works on 5+ Blockchains</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> 5</td>
+        <td><span class="partial">2-3</span></td>
+        <td><span class="partial">1</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">TBD</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="check">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Virtual Cards for Real-World Pay</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>KYC / Anti-Money Laundering</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> Full</td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="check">&#10003;</span></td>
+        <td><span class="partial">Partial</span></td>
+      </tr>
+      <tr>
+        <td>Agent-to-Agent Escrow</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> On-chain</td>
+        <td><span class="partial">Basic</span></td>
+        <td><span class="partial">Basic</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Team Wallets for Agent Groups</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Human Approval Workflows</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">Manual</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Tamper-Proof Audit Trail</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">Basic</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+      </tr>
+      <tr>
+        <td>Emergency Kill Switches</td>
+        <td class="sardis-col"><span class="check">&#10003;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="cross">&#10005;</span></td>
+        <td><span class="partial">Basic</span></td>
+      </tr>
+      <tr>
+        <td>AI Framework SDKs</td>
+        <td class="sardis-col"><span class="check">&#10003;</span> 9</td>
+        <td><span class="partial">1-2</span></td>
+        <td><span class="partial">1-2</span></td>
+        <td><span class="partial">1-2</span></td>
+        <td><span class="partial">2-3</span></td>
+        <td><span class="partial">TBD</span></td>
+        <td><span class="check">&#10003;</span> 4</td>
+        <td><span class="check">&#10003;</span> 5</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="bottom-line">
+    <h3>The Key Insight</h3>
+    <p>Every competitor solves <span class="highlight">one piece</span> of the puzzle. Skyfire does routing. Locus does basic payments on Base. Payman does compliance. <span class="highlight">Sardis is the only platform that puts the entire stack together</span> &mdash; spending rules, compliance, crypto, cards, escrow, safety guardrails, and audit &mdash; all in one place, without ever holding your private keys.</p>
+  </div>
+
+  <div class="footer">
+    <span>sardis.sh &nbsp;|&nbsp; Confidential &mdash; Do Not Distribute</span>
+    <span>Page 1 of 2</span>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="header">
+    <div class="logo-area">
+      <h1>Sardis</h1>
+      <div class="tagline">Market Context & Competitor Funding</div>
+    </div>
+    <div class="header-meta">
+      <div class="conf">Confidential</div><br>
+      February 2026
+    </div>
+  </div>
+
+  <div class="section-label">How It Works</div>
+  <h2>Every Transaction Passes Through 5 Safety Layers</h2>
+
+  <div class="flow-diagram">
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-box"><i class="ti ti-user-check" style="font-size:11px;margin-right:2px;"></i> Identity</div>
+        <div class="step-label">Is this agent<br>who it claims?</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="step-box"><i class="ti ti-file-text" style="font-size:11px;margin-right:2px;"></i> Policy</div>
+        <div class="step-label">Does this payment<br>match the rules?</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="step-box"><i class="ti ti-route" style="font-size:11px;margin-right:2px;"></i> Risk Score</div>
+        <div class="step-label">How risky is<br>this transaction?</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="step-box"><i class="ti ti-shield-check" style="font-size:11px;margin-right:2px;"></i> Compliance</div>
+        <div class="step-label">Legal & sanctions<br>screening</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="step-box"><i class="ti ti-send" style="font-size:11px;margin-right:2px;"></i> Execute</div>
+        <div class="step-label">Send payment<br>+ log forever</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="section-label">Protocol Compliance</div>
+      <h2 style="font-size:14px;">Industry Standard Ready</h2>
+      <ul class="protocol-list">
+        <li><span class="proto-badge">AP2</span> Google's Agent Payment Protocol &mdash; the emerging standard</li>
+        <li><span class="proto-badge">TAP</span> Trusted Agent Protocol &mdash; cryptographic identity</li>
+        <li><span class="proto-badge">x402</span> Coinbase's payment protocol &mdash; native web payments</li>
+        <li><span class="proto-badge">UCP</span> Universal Commerce Protocol &mdash; agentic e-commerce</li>
+      </ul>
+    </div>
+    <div>
+      <div class="section-label">Developer Reach</div>
+      <h2 style="font-size:14px;">9 Framework Integrations</h2>
+      <div class="sdk-grid">
+        <div class="sdk-chip"><span class="sdk-icon"><i class="ti ti-brand-python" style="font-size:14px;color:var(--accent);"></i></span>Python SDK</div>
+        <div class="sdk-chip"><span class="sdk-icon"><i class="ti ti-brand-typescript" style="font-size:14px;color:var(--accent);"></i></span>TypeScript SDK</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/mcp.svg" alt=""></span>MCP Server</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/langchain.svg" alt=""></span>LangChain</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/crewai.svg" alt=""></span>CrewAI</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/openai-2.svg" alt=""></span>OpenAI</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/gemini.svg" alt=""></span>Google ADK</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/vercel.svg" alt=""></span>Vercel AI</div>
+        <div class="sdk-chip"><span class="sdk-icon"><img src="/icons/openclaw.svg" alt=""></span>OpenClaw</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Competitive Funding Landscape</div>
+  <h2>Who Raised What</h2>
+
+  <table class="funding-table">
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Focus</th>
+        <th>Total Raised</th>
+        <th>Stage</th>
+        <th>Notable Investors</th>
+        <th>Known Valuation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Skyfire</strong></td>
+        <td>Agent payment network</td>
+        <td>$9.5M</td>
+        <td><span class="badge badge-seed">Seed</span></td>
+        <td>a16z CSX, Coinbase, Circle, Ripple</td>
+        <td>Undisclosed</td>
+      </tr>
+      <tr>
+        <td><strong>Locus</strong></td>
+        <td>Agent payments (Base only)</td>
+        <td>YC F25</td>
+        <td><span class="badge badge-yc">YC F25</span></td>
+        <td>Y Combinator</td>
+        <td>Pre-Seed</td>
+      </tr>
+      <tr>
+        <td><strong>Payman</strong></td>
+        <td>AI-to-human payments</td>
+        <td>$13.8M</td>
+        <td><span class="badge badge-seed">Seed+</span></td>
+        <td>Visa, Coinbase Ventures</td>
+        <td>Undisclosed</td>
+      </tr>
+      <tr>
+        <td><strong>Paid</strong></td>
+        <td>Results-based billing</td>
+        <td>$33.3M</td>
+        <td><span class="badge badge-seed">Seed</span></td>
+        <td>Lightspeed (lead)</td>
+        <td>$100M+</td>
+      </tr>
+      <tr>
+        <td><strong>Natural</strong></td>
+        <td>Agentic payment rails</td>
+        <td>$9.8M</td>
+        <td><span class="badge badge-seed">Seed</span></td>
+        <td>Abstract, Human Capital</td>
+        <td>Undisclosed</td>
+      </tr>
+      <tr>
+        <td><strong>Crossmint</strong></td>
+        <td>Enterprise wallet infra</td>
+        <td>$23.6M</td>
+        <td><span class="badge badge-a">Series A</span></td>
+        <td>Ribbit Capital, Franklin Templeton</td>
+        <td>Undisclosed</td>
+      </tr>
+      <tr>
+        <td><strong>Turnkey</strong></td>
+        <td>MPC custody (our provider)</td>
+        <td>$52.5M</td>
+        <td><span class="badge badge-b">Series B</span></td>
+        <td>Bain Capital, Sequoia</td>
+        <td>Undisclosed</td>
+      </tr>
+      <tr>
+        <td><strong>Privy</strong></td>
+        <td>Embedded wallets</td>
+        <td>$41.3M</td>
+        <td><span class="badge badge-acq">Acquired</span></td>
+        <td>Sequoia, Paradigm, Ribbit</td>
+        <td>$230M &rarr; Stripe</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="market-row">
+    <div class="market-card">
+      <h3><i class="ti ti-chart-pie" style="color:var(--accent);margin-right:3px;"></i> Agentic Commerce TAM (2030)</h3>
+      <div class="big-number">$3-5T</div>
+      <div class="big-label">Global agentic commerce market</div>
+      <div class="source">McKinsey Global Payments Report 2025</div>
+    </div>
+    <div class="market-card">
+      <h3><i class="ti ti-trending-up" style="color:var(--accent);margin-right:3px;"></i> AI Agent Market CAGR</h3>
+      <div class="big-number">45%</div>
+      <div class="big-label">Annual growth rate through 2030</div>
+      <div class="source">Boston Consulting Group, 2025</div>
+    </div>
+  </div>
+
+  <div class="bottom-line">
+    <h3>Sardis is Not a Payment Gateway &mdash; It's an Agent Financial Operating System</h3>
+    <p>Competitors build point solutions. Sardis builds the <span class="highlight">complete trust layer</span> between AI agents and real money. Spending rules, compliance, risk scoring, safety guardrails, escrow, multi-chain payments, and a tamper-proof audit trail &mdash; all without holding private keys, all in a single SDK call. <span class="highlight">When regulators arrive, Sardis customers will already be compliant.</span></p>
+  </div>
+
+  <div class="footer">
+    <span>sardis.sh &nbsp;|&nbsp; contact@sardis.sh &nbsp;|&nbsp; Confidential &mdash; Do Not Distribute</span>
+    <span>Page 2 of 2</span>
+  </div>
+</div>
+
+</body>
+</html>
