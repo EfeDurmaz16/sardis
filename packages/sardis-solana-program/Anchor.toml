@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-sardis_agent_wallet = "HUWhjAJUk6mf8ikxd2PDSdYGzLbdbA6ZPX7p4XZRVLpP"
+sardis_agent_wallet = "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN"
 
 [programs.localnet]
 sardis_agent_wallet = "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN"
@@ -14,7 +14,7 @@ sardis_agent_wallet = "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

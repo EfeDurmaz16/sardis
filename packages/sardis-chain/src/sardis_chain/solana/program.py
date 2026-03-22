@@ -3,6 +3,13 @@
 Builds Anchor instructions (8-byte discriminator + borsh-serialized args),
 derives wallet/merchant/token PDAs, and maps Anchor error codes to Python
 reason strings matching the spending_policy.py engine.
+
+Two layers of instruction helpers:
+  - ``build_*_data()`` — return raw ``bytes`` (discriminator + borsh args).
+    The caller is responsible for building the full ``Instruction``.
+  - ``build_*_ix()`` — return a complete ``solders.instruction.Instruction``
+    with the correct account metas.  These are the primary entry points used
+    by the SolanaExecutor.
 """
 from __future__ import annotations
 
@@ -10,6 +17,11 @@ import hashlib
 import logging
 import struct
 from dataclasses import dataclass
+
+from solders.instruction import AccountMeta, Instruction
+from solders.pubkey import Pubkey
+
+from .client import TOKEN_PROGRAM_ID, SYSTEM_PROGRAM_ID, SYSVAR_RENT_PUBKEY
 
 logger = logging.getLogger(__name__)
 
@@ -108,19 +120,8 @@ def _find_program_address(seeds: list[bytes], program_id: str) -> tuple[str, int
     Uses the same algorithm as Pubkey.findProgramAddress:
     for bump in 255..0:
         candidate = SHA256(seeds + [bump] + program_id + "ProgramDerivedAddress")
-        if candidate is NOT on ed25519 curve → return (candidate, bump)
+        if candidate is NOT on ed25519 curve -> return (candidate, bump)
     """
-    # This requires solders or solana-py for actual PDA derivation.
-    # We import lazily to avoid hard dependency at module level.
-    try:
-        from solders.pubkey import Pubkey  # type: ignore[import-untyped]
-    except ImportError:
-        # Fallback: use solana-py
-        from solana.publickey import PublicKey  # type: ignore[import-untyped]
-
-        pda, bump = PublicKey.find_program_address(seeds, PublicKey(program_id))
-        return str(pda), bump
-
     pid = Pubkey.from_string(program_id)
     pda, bump = Pubkey.find_program_address(seeds, pid)
     return str(pda), bump
@@ -137,23 +138,13 @@ def derive_wallet_pdas(
       merchant_registry: [b"merchants", wallet_pda]
       token_allowlist:   [b"tokens", wallet_pda]
     """
-    try:
-        from solders.pubkey import Pubkey  # type: ignore[import-untyped]
-        owner_bytes = bytes(Pubkey.from_string(owner))
-    except ImportError:
-        from solana.publickey import PublicKey  # type: ignore[import-untyped]
-        owner_bytes = bytes(PublicKey(owner))
+    owner_bytes = bytes(Pubkey.from_string(owner))
 
     wallet_addr, wallet_bump = _find_program_address(
         [WALLET_SEED, owner_bytes], program_id
     )
 
-    try:
-        from solders.pubkey import Pubkey  # type: ignore[import-untyped]
-        wallet_bytes = bytes(Pubkey.from_string(wallet_addr))
-    except ImportError:
-        from solana.publickey import PublicKey  # type: ignore[import-untyped]
-        wallet_bytes = bytes(PublicKey(wallet_addr))
+    wallet_bytes = bytes(Pubkey.from_string(wallet_addr))
 
     merchant_addr, merchant_bump = _find_program_address(
         [MERCHANT_SEED, wallet_bytes], program_id
@@ -195,22 +186,12 @@ def _encode_option_pubkey(value: str | None) -> bytes:
     """Borsh-encode Option<Pubkey>."""
     if value is None:
         return b"\x00"
-    try:
-        from solders.pubkey import Pubkey  # type: ignore[import-untyped]
-        return b"\x01" + bytes(Pubkey.from_string(value))
-    except ImportError:
-        from solana.publickey import PublicKey  # type: ignore[import-untyped]
-        return b"\x01" + bytes(PublicKey(value))
+    return b"\x01" + bytes(Pubkey.from_string(value))
 
 
 def _encode_pubkey(value: str) -> bytes:
     """Borsh-encode a Pubkey (32 bytes)."""
-    try:
-        from solders.pubkey import Pubkey  # type: ignore[import-untyped]
-        return bytes(Pubkey.from_string(value))
-    except ImportError:
-        from solana.publickey import PublicKey  # type: ignore[import-untyped]
-        return bytes(PublicKey(value))
+    return bytes(Pubkey.from_string(value))
 
 
 def build_execute_transfer_data(amount: int) -> bytes:
@@ -342,6 +323,344 @@ def build_update_authority_data(new_authority: str) -> bytes:
 def build_close_wallet_data() -> bytes:
     """Build instruction data for close_wallet."""
     return DISC_CLOSE_WALLET
+
+
+# ── Full Instruction Builders (data + account metas) ──────────────────────
+# These return ``solders.instruction.Instruction`` objects ready to include in
+# a Solana transaction.  They mirror the Anchor account structs defined in the
+# Rust program (see ``programs/sardis_agent_wallet/src/instructions/*.rs``).
+
+def _pubkey(value: str | Pubkey) -> Pubkey:
+    """Coerce a string or Pubkey to Pubkey."""
+    if isinstance(value, Pubkey):
+        return value
+    return Pubkey.from_string(value)
+
+
+def build_initialize_wallet_ix(
+    *,
+    owner: str | Pubkey,
+    system_program: str | Pubkey = SYSTEM_PROGRAM_ID,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+    args: InitializeWalletArgs,
+) -> Instruction:
+    """Build a complete ``initialize_wallet`` instruction.
+
+    Accounts (from Anchor ``InitializeWallet`` context):
+      0. owner         — signer, writable (payer for PDA rent)
+      1. wallet        — writable (PDA: ``[b"sardis_wallet", owner]``)
+      2. system_program
+    """
+    pid = _pubkey(program_id)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _bump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=owner_pk, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=_pubkey(system_program), is_signer=False, is_writable=False),
+        ],
+        data=build_initialize_wallet_data(args),
+    )
+
+
+def build_execute_transfer_ix(
+    *,
+    owner: str | Pubkey,
+    source_token_account: str | Pubkey,
+    destination_token_account: str | Pubkey,
+    mint: str | Pubkey,
+    amount: int,
+    token_program: str | Pubkey = TOKEN_PROGRAM_ID,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``execute_transfer`` instruction.
+
+    This is the critical payment instruction.  The Anchor program performs
+    all policy checks (pause, token allowlist, merchant rules, per-tx /
+    daily / weekly / monthly / total limits) and then CPI-calls SPL
+    TransferChecked.
+
+    Accounts (from Anchor ``ExecuteTransfer`` context):
+      0. owner              — signer (agent MPC key)
+      1. wallet             — writable PDA (``[b"sardis_wallet", owner]``)
+      2. merchant_registry  — PDA (``[b"merchants", wallet]``)
+      3. token_allowlist    — PDA (``[b"tokens", wallet]``)
+      4. source             — writable (source token account, owned by wallet PDA)
+      5. destination        — writable (recipient token account)
+      6. mint               — token mint (for TransferChecked decimals check)
+      7. token_program      — SPL Token program
+    """
+    pid = _pubkey(program_id)
+    owner_pk = _pubkey(owner)
+
+    # Derive PDAs
+    wallet_pk, _wbump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+    merchant_pk, _mbump = Pubkey.find_program_address(
+        [MERCHANT_SEED, bytes(wallet_pk)], pid
+    )
+    token_pk, _tbump = Pubkey.find_program_address(
+        [TOKEN_SEED, bytes(wallet_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=owner_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=merchant_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=token_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=_pubkey(source_token_account), is_signer=False, is_writable=True),
+            AccountMeta(pubkey=_pubkey(destination_token_account), is_signer=False, is_writable=True),
+            AccountMeta(pubkey=_pubkey(mint), is_signer=False, is_writable=False),
+            AccountMeta(pubkey=_pubkey(token_program), is_signer=False, is_writable=False),
+        ],
+        data=build_execute_transfer_data(amount),
+    )
+
+
+def build_update_policy_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    args: UpdatePolicyArgs,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``update_policy`` instruction.
+
+    Accounts (from Anchor ``UpdatePolicy`` context):
+      0. authority — signer (wallet authority, initially = owner)
+      1. wallet   — writable PDA (``[b"sardis_wallet", owner]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _bump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_update_policy_data(args),
+    )
+
+
+def build_freeze_wallet_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``freeze_wallet`` instruction.
+
+    Accounts (from Anchor ``FreezeWallet`` context):
+      0. authority — signer
+      1. wallet   — writable PDA (``[b"sardis_wallet", owner]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _bump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_freeze_wallet_data(),
+    )
+
+
+def build_unfreeze_wallet_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``unfreeze_wallet`` instruction.
+
+    Accounts (from Anchor ``FreezeWallet`` context):
+      0. authority — signer
+      1. wallet   — writable PDA (``[b"sardis_wallet", owner]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _bump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_unfreeze_wallet_data(),
+    )
+
+
+def build_add_merchant_rule_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    address: str,
+    rule_type: int,
+    max_per_tx: int,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``add_merchant_rule`` instruction.
+
+    Accounts (from Anchor ``ManageMerchant`` context):
+      0. authority          — signer
+      1. wallet             — PDA (``[b"sardis_wallet", owner]``)
+      2. merchant_registry  — writable PDA (``[b"merchants", wallet]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _wbump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+    merchant_pk, _mbump = Pubkey.find_program_address(
+        [MERCHANT_SEED, bytes(wallet_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=merchant_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_add_merchant_rule_data(address, rule_type, max_per_tx),
+    )
+
+
+def build_remove_merchant_rule_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    address: str,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``remove_merchant_rule`` instruction.
+
+    Accounts (from Anchor ``ManageMerchant`` context):
+      0. authority          — signer
+      1. wallet             — PDA (``[b"sardis_wallet", owner]``)
+      2. merchant_registry  — writable PDA (``[b"merchants", wallet]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _wbump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+    merchant_pk, _mbump = Pubkey.find_program_address(
+        [MERCHANT_SEED, bytes(wallet_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=merchant_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_remove_merchant_rule_data(address),
+    )
+
+
+def build_add_token_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    mint: str,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``add_token`` instruction.
+
+    Accounts (from Anchor ``ManageToken`` context):
+      0. authority        — signer
+      1. wallet           — PDA (``[b"sardis_wallet", owner]``)
+      2. token_allowlist  — writable PDA (``[b"tokens", wallet]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _wbump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+    token_pk, _tbump = Pubkey.find_program_address(
+        [TOKEN_SEED, bytes(wallet_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=token_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_add_token_data(mint),
+    )
+
+
+def build_remove_token_ix(
+    *,
+    authority: str | Pubkey,
+    owner: str | Pubkey,
+    mint: str,
+    program_id: str | Pubkey = SARDIS_WALLET_PROGRAM_ID,
+) -> Instruction:
+    """Build a complete ``remove_token`` instruction.
+
+    Accounts (from Anchor ``ManageToken`` context):
+      0. authority        — signer
+      1. wallet           — PDA (``[b"sardis_wallet", owner]``)
+      2. token_allowlist  — writable PDA (``[b"tokens", wallet]``)
+    """
+    pid = _pubkey(program_id)
+    authority_pk = _pubkey(authority)
+    owner_pk = _pubkey(owner)
+
+    wallet_pk, _wbump = Pubkey.find_program_address(
+        [WALLET_SEED, bytes(owner_pk)], pid
+    )
+    token_pk, _tbump = Pubkey.find_program_address(
+        [TOKEN_SEED, bytes(wallet_pk)], pid
+    )
+
+    return Instruction(
+        program_id=pid,
+        accounts=[
+            AccountMeta(pubkey=authority_pk, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=wallet_pk, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=token_pk, is_signer=False, is_writable=True),
+        ],
+        data=build_remove_token_data(mint),
+    )
 
 
 # ── Error Parsing ──────────────────────────────────────────────────────────

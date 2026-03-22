@@ -29,10 +29,12 @@ from .gasless import KoraGaslessClient
 from .program import (
     SARDIS_WALLET_PROGRAM_ID,
     build_execute_transfer_data,
+    build_execute_transfer_ix,
     derive_wallet_pdas,
     parse_program_error,
 )
 from .transfer import (
+    PreparedSolanaTransaction,
     SolanaTransferParams,
     build_spl_transfer,
 )
@@ -299,50 +301,105 @@ class SolanaExecutor:
         The Anchor program enforces on-chain spending policy (per-tx limits,
         time windows, merchant rules, token allowlist) atomically within
         the same transaction as the SPL transfer.
+
+        Builds a complete ``Instruction`` via ``build_execute_transfer_ix``
+        (with all account metas derived from PDAs), compiles it into a
+        ``MessageV0``, and sends it to Turnkey MPC for ed25519 signing.
         """
+        import base64
+
+        from solders.hash import Hash
+        from solders.message import MessageV0
+        from solders.pubkey import Pubkey
+
+        from .client import TOKEN_PROGRAM_ID, derive_ata
+        from .transfer import get_or_create_ata, _build_create_ata_instruction
+
         start = datetime.now(UTC)
+        pid = self._program_id or SARDIS_WALLET_PROGRAM_ID
 
         # Derive wallet PDA (the PDA is the token authority, not the sender directly)
-        pdas = derive_wallet_pdas(sender, self._program_id or SARDIS_WALLET_PROGRAM_ID)
-        ix_data = build_execute_transfer_data(amount)
+        pdas = derive_wallet_pdas(sender, pid)
 
         logger.info(
-            "Executing program transfer: sender=%s, recipient=%s, mint=%s, amount=%d, wallet_pda=%s",
+            "Executing program transfer: sender=%s, recipient=%s, mint=%s, "
+            "amount=%d, wallet_pda=%s",
             sender, recipient, mint, amount, pdas.wallet,
         )
 
-        # Build the transaction with Anchor instruction accounts.
-        # The actual instruction building and signing is handled by the
-        # Turnkey MPC signer which constructs the full transaction.
+        if not self._turnkey:
+            return SolanaPaymentResult(
+                success=False, signature=None, sender=sender,
+                recipient=recipient, mint=mint, amount=amount,
+                confirmation_status="failed",
+                error="No Turnkey MPC signer configured",
+            )
+
         try:
-            if not self._turnkey:
+            sender_pk = Pubkey.from_string(sender)
+            recipient_pk = Pubkey.from_string(recipient)
+            mint_pk = Pubkey.from_string(mint)
+            wallet_pk = Pubkey.from_string(pdas.wallet)
+
+            # Resolve source ATA (owned by wallet PDA, not sender directly)
+            source_ata_str, source_needs_create = await get_or_create_ata(
+                self._client, pdas.wallet, mint
+            )
+            if source_needs_create:
                 return SolanaPaymentResult(
                     success=False, signature=None, sender=sender,
                     recipient=recipient, mint=mint, amount=amount,
                     confirmation_status="failed",
-                    error="No Turnkey MPC signer configured",
+                    error=f"Wallet PDA {pdas.wallet} has no token account for mint {mint}",
                 )
 
+            # Resolve destination ATA
+            dest_ata_str, dest_needs_create = await get_or_create_ata(
+                self._client, recipient, mint
+            )
+
+            instructions = []
+
+            # Create recipient ATA if needed (sender pays rent)
+            if dest_needs_create:
+                instructions.append(
+                    _build_create_ata_instruction(sender_pk, recipient_pk, mint_pk)
+                )
+
+            # Build the Anchor execute_transfer instruction with full account metas
+            ix = build_execute_transfer_ix(
+                owner=sender,
+                source_token_account=source_ata_str,
+                destination_token_account=dest_ata_str,
+                mint=mint,
+                amount=amount,
+                token_program=TOKEN_PROGRAM_ID,
+                program_id=pid,
+            )
+            instructions.append(ix)
+
+            # Get recent blockhash and compile message
+            blockhash = await self._client.get_latest_blockhash()
+            message = MessageV0.try_compile(
+                payer=sender_pk,
+                instructions=instructions,
+                address_lookup_table_accounts=[],
+                recent_blockhash=Hash.from_string(blockhash),
+            )
+            message_base64 = base64.b64encode(bytes(message)).decode("ascii")
+
+            # Sign via Turnkey MPC (ed25519)
             sign_result = await self._turnkey.sign_solana_transaction(
                 wallet_id=wallet_id,
-                instruction_data={
-                    "program_id": self._program_id,
-                    "instruction": "execute_transfer",
-                    "data": ix_data.hex(),
-                    "wallet_pda": pdas.wallet,
-                    "merchant_registry": pdas.merchant_registry,
-                    "token_allowlist": pdas.token_allowlist,
-                    "mint": mint,
-                    "recipient": recipient,
-                    "amount": amount,
-                },
+                unsigned_transaction=message_base64,
                 sign_with=sender,
             )
             signed_tx_base64 = sign_result.get("signedTransaction", "")
             if not signed_tx_base64:
                 raise ValueError("Turnkey returned empty signed transaction")
+
         except Exception as e:
-            logger.error("Program transfer signing failed: %s", e)
+            logger.error("Program transfer build/sign failed: %s", e)
             reason = parse_program_error(str(e))
             return SolanaPaymentResult(
                 success=False, signature=None, sender=sender,
