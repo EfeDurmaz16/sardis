@@ -21,77 +21,15 @@ import {
   Activity,
   Shield,
   Store,
+  BarChart3,
 } from 'lucide-react';
 import { SpendingChart } from '@/components/charts/SpendingChart';
 import { AgentSpendingBar } from '@/components/charts/AgentSpendingBar';
 import { CategoryPie } from '@/components/charts/CategoryPie';
+import { getAuthHeaders } from '@/api/client';
 
 // API base URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-// Demo data for when API is unavailable
-const DEMO_SUMMARY = {
-  total_spend: 24680,
-  avg_daily_spend: 822,
-  active_agents: 12,
-  total_transactions: 347,
-  successful_transactions: 328,
-  blocked_transactions: 19,
-  block_rate: 5.5,
-  top_merchant: 'OpenAI API',
-  largest_transaction: 2500,
-};
-
-const DEMO_SPENDING_OVER_TIME = [
-  { date: '2026-02-01', amount: 780, count: 12 },
-  { date: '2026-02-03', amount: 920, count: 15 },
-  { date: '2026-02-05', amount: 650, count: 9 },
-  { date: '2026-02-07', amount: 1100, count: 18 },
-  { date: '2026-02-09', amount: 840, count: 13 },
-  { date: '2026-02-11', amount: 1350, count: 22 },
-  { date: '2026-02-13', amount: 960, count: 14 },
-  { date: '2026-02-15', amount: 1200, count: 19 },
-  { date: '2026-02-17', amount: 780, count: 11 },
-  { date: '2026-02-19', amount: 1450, count: 24 },
-];
-
-const DEMO_AGENT_SPENDING = [
-  { agent_id: 'agent_001', agent_name: 'Shopping Agent', total: 4200, transaction_count: 56, average: 75 },
-  { agent_id: 'agent_002', agent_name: 'Travel Booker', total: 6800, transaction_count: 23, average: 296 },
-  { agent_id: 'agent_003', agent_name: 'SaaS Manager', total: 3100, transaction_count: 89, average: 35 },
-  { agent_id: 'agent_004', agent_name: 'Cloud Ops', total: 5200, transaction_count: 42, average: 124 },
-  { agent_id: 'agent_005', agent_name: 'Marketing AI', total: 2800, transaction_count: 67, average: 42 },
-];
-
-const DEMO_CATEGORY_SPENDING = [
-  { name: 'SaaS & Software', amount: 8200, count: 124, percentage: 33 },
-  { name: 'Cloud Infrastructure', amount: 6400, count: 45, percentage: 26 },
-  { name: 'Travel', amount: 4800, count: 18, percentage: 19 },
-  { name: 'Marketing', amount: 3200, count: 89, percentage: 13 },
-  { name: 'Other', amount: 2080, count: 71, percentage: 9 },
-];
-
-const DEMO_BUDGET_UTILIZATION = [
-  { agent_id: 'agent_002', agent_name: 'Travel Booker', spent: 6800, budget: 8000, utilization: 85, remaining: 1200 },
-  { agent_id: 'agent_004', agent_name: 'Cloud Ops', spent: 5200, budget: 7000, utilization: 74, remaining: 1800 },
-  { agent_id: 'agent_001', agent_name: 'Shopping Agent', spent: 4200, budget: 10000, utilization: 42, remaining: 5800 },
-  { agent_id: 'agent_003', agent_name: 'SaaS Manager', spent: 3100, budget: 5000, utilization: 62, remaining: 1900 },
-  { agent_id: 'agent_005', agent_name: 'Marketing AI', spent: 2800, budget: 5000, utilization: 56, remaining: 2200 },
-];
-
-const DEMO_TOP_MERCHANTS = [
-  { merchant: 'OpenAI API', amount: 4200, count: 89, percentage: 17 },
-  { merchant: 'AWS', amount: 3800, count: 34, percentage: 15 },
-  { merchant: 'Google Cloud', amount: 2600, count: 28, percentage: 11 },
-  { merchant: 'Vercel', amount: 1800, count: 45, percentage: 7 },
-  { merchant: 'Stripe', amount: 1400, count: 23, percentage: 6 },
-];
-
-const DEMO_POLICY_BLOCKS = [
-  { timestamp: new Date().toISOString(), agent_id: 'agent_002', agent_name: 'Travel Booker', amount: 3500, merchant: 'Luxury Hotels Inc', reason: 'Exceeds per-transaction limit ($2000)' },
-  { timestamp: new Date(Date.now() - 3600000).toISOString(), agent_id: 'agent_005', agent_name: 'Marketing AI', amount: 800, merchant: 'Casino Online', reason: 'Blocked merchant category: gambling' },
-  { timestamp: new Date(Date.now() - 7200000).toISOString(), agent_id: 'agent_001', agent_name: 'Shopping Agent', amount: 150, merchant: 'Unknown Store', reason: 'Merchant not in allowlist' },
-];
 
 // Types matching backend response models
 interface TimeSeriesDataPoint {
@@ -156,6 +94,7 @@ export default function Analytics() {
   const [period, setPeriod] = useState<string>('30d');
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   // Analytics data state
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -169,11 +108,14 @@ export default function Analytics() {
   // Fetch analytics data
   const fetchAnalytics = async () => {
     setLoading(true);
+    setHasError(false);
     try {
       const params = new URLSearchParams({ period });
       if (selectedAgent) {
         params.append('agent_id', selectedAgent);
       }
+
+      const headers = getAuthHeaders();
 
       // Fetch all endpoints in parallel
       const [
@@ -185,72 +127,86 @@ export default function Analytics() {
         blocksRes,
         merchantsRes,
       ] = await Promise.all([
-        fetch(`${API_BASE}/api/v2/analytics/summary?${params}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/spending-over-time?${params}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/spending-by-agent?${params}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/spending-by-category?${params}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/budget-utilization?period=${period}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/policy-blocks?${params}`).catch(() => null),
-        fetch(`${API_BASE}/api/v2/analytics/top-merchants?${params}`).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/summary?${params}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/spending-over-time?${params}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/spending-by-agent?${params}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/spending-by-category?${params}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/budget-utilization?period=${period}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/policy-blocks?${params}`, { headers }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/analytics/top-merchants?${params}`, { headers }).catch(() => null),
       ]);
 
+      let hasAnyData = false;
+
       if (summaryRes && summaryRes.ok) {
-        setSummary(await summaryRes.json());
+        const data = await summaryRes.json();
+        setSummary(data);
+        hasAnyData = true;
       } else {
-        setSummary(DEMO_SUMMARY);
+        setSummary(null);
       }
 
       if (spendingRes && spendingRes.ok) {
         const data = await spendingRes.json();
         setSpendingOverTime(data.data || []);
+        if ((data.data || []).length > 0) hasAnyData = true;
       } else {
-        setSpendingOverTime(DEMO_SPENDING_OVER_TIME);
+        setSpendingOverTime([]);
       }
 
       if (agentsRes && agentsRes.ok) {
         const data = await agentsRes.json();
         setAgentSpending(data.agents || []);
+        if ((data.agents || []).length > 0) hasAnyData = true;
       } else {
-        setAgentSpending(DEMO_AGENT_SPENDING);
+        setAgentSpending([]);
       }
 
       if (categoriesRes && categoriesRes.ok) {
         const data = await categoriesRes.json();
         setCategorySpending(data.categories || []);
+        if ((data.categories || []).length > 0) hasAnyData = true;
       } else {
-        setCategorySpending(DEMO_CATEGORY_SPENDING);
+        setCategorySpending([]);
       }
 
       if (budgetRes && budgetRes.ok) {
         const data = await budgetRes.json();
         setBudgetUtilization(data.items || []);
+        if ((data.items || []).length > 0) hasAnyData = true;
       } else {
-        setBudgetUtilization(DEMO_BUDGET_UTILIZATION);
+        setBudgetUtilization([]);
       }
 
       if (blocksRes && blocksRes.ok) {
         const data = await blocksRes.json();
         setPolicyBlocks(data.blocks || []);
+        if ((data.blocks || []).length > 0) hasAnyData = true;
       } else {
-        setPolicyBlocks(DEMO_POLICY_BLOCKS);
+        setPolicyBlocks([]);
       }
 
       if (merchantsRes && merchantsRes.ok) {
         const data = await merchantsRes.json();
         setTopMerchants(data.merchants || []);
+        if ((data.merchants || []).length > 0) hasAnyData = true;
       } else {
-        setTopMerchants(DEMO_TOP_MERCHANTS);
+        setTopMerchants([]);
+      }
+
+      if (!hasAnyData) {
+        setHasError(true);
       }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
-      // Fall back to demo data
-      setSummary(DEMO_SUMMARY);
-      setSpendingOverTime(DEMO_SPENDING_OVER_TIME);
-      setAgentSpending(DEMO_AGENT_SPENDING);
-      setCategorySpending(DEMO_CATEGORY_SPENDING);
-      setBudgetUtilization(DEMO_BUDGET_UTILIZATION);
-      setPolicyBlocks(DEMO_POLICY_BLOCKS);
-      setTopMerchants(DEMO_TOP_MERCHANTS);
+      setSummary(null);
+      setSpendingOverTime([]);
+      setAgentSpending([]);
+      setCategorySpending([]);
+      setBudgetUtilization([]);
+      setPolicyBlocks([]);
+      setTopMerchants([]);
+      setHasError(true);
     } finally {
       setLoading(false);
     }
@@ -268,7 +224,9 @@ export default function Analytics() {
         params.append('agent_id', selectedAgent);
       }
 
-      const response = await fetch(`${API_BASE}/api/v2/analytics/export?${params}`);
+      const response = await fetch(`${API_BASE}/api/v2/analytics/export?${params}`, {
+        headers: getAuthHeaders(),
+      });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -292,6 +250,8 @@ export default function Analytics() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const noData = !loading && hasError;
 
   return (
     <div className="space-y-6">
@@ -347,8 +307,29 @@ export default function Analytics() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sardis-500 mx-auto mb-4"></div>
+            <p className="text-gray-400 text-sm">Loading analytics...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {noData && (
+        <div className="card p-12 text-center">
+          <BarChart3 className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No data yet</h3>
+          <p className="text-gray-400">
+            Create an agent and make a payment to see analytics here.
+          </p>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      {summary && (
+      {!loading && summary && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="card p-4">
             <div className="flex items-center justify-between mb-2">
@@ -397,51 +378,47 @@ export default function Analytics() {
       )}
 
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Spending Over Time */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Spending Over Time</h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
-            <SpendingChart data={spendingOverTime} period={period} />
-          )}
-        </div>
+      {!loading && !noData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Spending Over Time */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Spending Over Time</h3>
+            {spendingOverTime.length > 0 ? (
+              <SpendingChart data={spendingOverTime} period={period} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+                No spending data for this period
+              </div>
+            )}
+          </div>
 
-        {/* Spend by Agent */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Spend by Agent</h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
-            <AgentSpendingBar data={agentSpending} onAgentClick={setSelectedAgent} />
-          )}
-        </div>
+          {/* Spend by Agent */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Spend by Agent</h3>
+            {agentSpending.length > 0 ? (
+              <AgentSpendingBar data={agentSpending} onAgentClick={setSelectedAgent} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+                No agent spending data for this period
+              </div>
+            )}
+          </div>
 
-        {/* Spend by Category */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Spend by Category</h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
-            <CategoryPie data={categorySpending} />
-          )}
-        </div>
+          {/* Spend by Category */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Spend by Category</h3>
+            {categorySpending.length > 0 ? (
+              <CategoryPie data={categorySpending} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500 text-sm">
+                No category data for this period
+              </div>
+            )}
+          </div>
 
-        {/* Budget Utilization */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Budget Utilization</h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
+          {/* Budget Utilization */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Budget Utilization</h3>
             <div className="space-y-3">
               {budgetUtilization.slice(0, 5).map((item) => (
                 <div key={item.agent_id}>
@@ -476,20 +453,14 @@ export default function Analytics() {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Top Merchants */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Store className="w-5 h-5 text-sardis-400" />
-            Top Merchants
-          </h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
+          {/* Top Merchants */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Store className="w-5 h-5 text-sardis-400" />
+              Top Merchants
+            </h3>
             <div className="space-y-2">
               {topMerchants.slice(0, 10).map((merchant, index) => (
                 <div
@@ -514,20 +485,14 @@ export default function Analytics() {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Policy Blocks */}
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            Recent Policy Blocks
-          </h3>
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sardis-500"></div>
-            </div>
-          ) : (
+          {/* Policy Blocks */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Recent Policy Blocks
+            </h3>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {policyBlocks.slice(0, 10).map((block, index) => (
                 <div
@@ -552,9 +517,9 @@ export default function Analytics() {
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

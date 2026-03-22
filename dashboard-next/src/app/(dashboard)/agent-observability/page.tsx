@@ -6,7 +6,7 @@
  * trust scores, and budget utilization for individual agents.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Activity,
   TrendingUp,
@@ -19,69 +19,7 @@ import {
   XCircle,
   Eye,
 } from 'lucide-react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-
-// ── Demo data ───────────────────────────────────────────────────────────
-
-const DEMO_AGENTS = [
-  { agent_id: 'agent_001', name: 'Shopping Agent', status: 'active' },
-  { agent_id: 'agent_002', name: 'Travel Booker', status: 'active' },
-  { agent_id: 'agent_003', name: 'SaaS Manager', status: 'active' },
-  { agent_id: 'agent_004', name: 'Cloud Ops', status: 'frozen' },
-  { agent_id: 'agent_005', name: 'Marketing AI', status: 'active' },
-];
-
-const DEMO_TRANSACTIONS = [
-  { id: 'tx_1', amount: 45.0, recipient: 'OpenAI API', status: 'completed', created_at: '2026-03-15T10:30:00Z', type: 'api_call' },
-  { id: 'tx_2', amount: 127.5, recipient: 'AWS', status: 'blocked', created_at: '2026-03-15T09:15:00Z', type: 'cloud' },
-  { id: 'tx_3', amount: 19.0, recipient: 'Vercel', status: 'completed', created_at: '2026-03-14T16:45:00Z', type: 'saas' },
-  { id: 'tx_4', amount: 350.0, recipient: 'Google Ads', status: 'pending_approval', created_at: '2026-03-14T14:20:00Z', type: 'marketing' },
-  { id: 'tx_5', amount: 8.5, recipient: 'Anthropic API', status: 'completed', created_at: '2026-03-14T11:00:00Z', type: 'api_call' },
-  { id: 'tx_6', amount: 75.0, recipient: 'Stripe', status: 'completed', created_at: '2026-03-13T18:30:00Z', type: 'saas' },
-  { id: 'tx_7', amount: 200.0, recipient: 'Heroku', status: 'completed', created_at: '2026-03-13T09:00:00Z', type: 'cloud' },
-  { id: 'tx_8', amount: 500.0, recipient: 'Booking.com', status: 'blocked', created_at: '2026-03-12T15:30:00Z', type: 'travel' },
-];
-
-const DEMO_POLICY_CHECKS = [
-  { id: 'pc_1', rule: 'Max $100/transaction', result: 'passed', amount: 45.0, timestamp: '2026-03-15T10:30:00Z' },
-  { id: 'pc_2', rule: 'Max $100/transaction', result: 'failed', amount: 127.5, reason: 'Amount $127.50 exceeds limit of $100.00', timestamp: '2026-03-15T09:15:00Z' },
-  { id: 'pc_3', rule: 'Allowed vendors only', result: 'passed', amount: 19.0, timestamp: '2026-03-14T16:45:00Z' },
-  { id: 'pc_4', rule: 'Require approval above $200', result: 'escalated', amount: 350.0, reason: 'Amount above $200 threshold', timestamp: '2026-03-14T14:20:00Z' },
-  { id: 'pc_5', rule: 'Daily limit $500', result: 'passed', amount: 8.5, timestamp: '2026-03-14T11:00:00Z' },
-  { id: 'pc_6', rule: 'Block travel bookings', result: 'failed', amount: 500.0, reason: 'Category "travel" is blocked', timestamp: '2026-03-12T15:30:00Z' },
-];
-
-const DEMO_DAILY_SPEND = [
-  { date: '2026-03-09', amount: 120 },
-  { date: '2026-03-10', amount: 280 },
-  { date: '2026-03-11', amount: 95 },
-  { date: '2026-03-12', amount: 445 },
-  { date: '2026-03-13', amount: 275 },
-  { date: '2026-03-14', amount: 377 },
-  { date: '2026-03-15', amount: 172 },
-];
-
-const DEMO_TRUST = {
-  tier: 'TRUSTED',
-  score: 82,
-  factors: {
-    transaction_history: 90,
-    volume_consistency: 75,
-    account_age: 85,
-    kyc_verified: true,
-    reliability: 78,
-  },
-  daily_limit: 2500,
-};
-
-const DEMO_BUDGET = {
-  spent: 1764,
-  budget: 5000,
-  utilization: 35.3,
-  remaining: 3236,
-  period: 'March 2026',
-};
+import { useAgents, useTransactions, useAgentTransactions, usePolicyDecisions } from '@/hooks/useApi';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -104,6 +42,8 @@ function StatusBadge({ status }: { status: string }) {
     passed: { bg: 'rgba(34,197,94,0.15)', text: '#22C55E', label: 'Passed' },
     failed: { bg: 'rgba(239,68,68,0.15)', text: '#EF4444', label: 'Denied' },
     escalated: { bg: 'rgba(245,158,11,0.15)', text: '#F59E0B', label: 'Escalated' },
+    allow: { bg: 'rgba(34,197,94,0.15)', text: '#22C55E', label: 'Passed' },
+    deny: { bg: 'rgba(239,68,68,0.15)', text: '#EF4444', label: 'Denied' },
   };
   const s = styles[status] || { bg: 'rgba(100,100,100,0.15)', text: '#888', label: status };
   return (
@@ -138,6 +78,13 @@ function TrustTierBadge({ tier }: { tier: string }) {
 // ── Simple Bar Chart ────────────────────────────────────────────────────
 
 function SpendChart({ data }: { data: { date: string; amount: number }[] }) {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-32 text-gray-500 text-sm">
+        No spending data
+      </div>
+    );
+  }
   const max = Math.max(...data.map(d => d.amount), 1);
   return (
     <div className="flex items-end gap-1.5 h-32">
@@ -187,54 +134,70 @@ function ScoreRing({ score, label }: { score: number; label: string }) {
 // ── Main Page ───────────────────────────────────────────────────────────
 
 export default function AgentObservability() {
-  const [agents, setAgents] = useState(DEMO_AGENTS);
-  const [selectedAgent, setSelectedAgent] = useState(DEMO_AGENTS[0].agent_id);
-  const [transactions, setTransactions] = useState(DEMO_TRANSACTIONS);
-  const [policyChecks] = useState(DEMO_POLICY_CHECKS);
-  const [dailySpend] = useState(DEMO_DAILY_SPEND);
-  const [trust] = useState(DEMO_TRUST);
-  const [budget] = useState(DEMO_BUDGET);
+  const { data: agents = [], isLoading: agentsLoading } = useAgents();
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
 
-  // Attempt to fetch real agents from API
-  useEffect(() => {
-    if (!API_BASE) return;
-    const token = sessionStorage.getItem('sardis_token');
-    if (!token) return;
+  // Auto-select the first agent once loaded
+  const effectiveAgent = selectedAgent || (agents.length > 0 ? agents[0].agent_id : '');
 
-    fetch(`${API_BASE}/api/v2/agents`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.agents?.length) {
-          setAgents(data.agents);
-          setSelectedAgent(data.agents[0].agent_id);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  // Fetch transactions for selected agent
+  const { data: agentTransactions = [], isLoading: txLoading } = useAgentTransactions(effectiveAgent);
 
-  // Attempt to fetch real transactions for selected agent
-  useEffect(() => {
-    if (!API_BASE || !selectedAgent) return;
-    const token = sessionStorage.getItem('sardis_token');
-    if (!token) return;
+  // Fetch policy decisions for selected agent
+  const { data: policyDecisions, isLoading: policiesLoading } = usePolicyDecisions(effectiveAgent, { limit: 20 });
 
-    fetch(`${API_BASE}/api/v2/transactions?agent_id=${selectedAgent}&limit=20`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.transactions?.length) {
-          setTransactions(data.transactions);
-        }
-      })
-      .catch(() => {});
-  }, [selectedAgent]);
+  // Derive policy checks from API data
+  const policyChecks = useMemo(() => {
+    if (!policyDecisions || !Array.isArray(policyDecisions)) return [];
+    return (policyDecisions as Record<string, unknown>[]).map((d, i) => ({
+      id: (d.id as string) || `pc_${i}`,
+      rule: (d.rule as string) || (d.policy_rule as string) || 'Policy Check',
+      result: (d.result as string) || (d.decision as string) || 'passed',
+      amount: Number(d.amount || 0),
+      reason: (d.reason as string) || undefined,
+      timestamp: (d.timestamp as string) || (d.created_at as string) || new Date().toISOString(),
+    }));
+  }, [policyDecisions]);
+
+  // Build daily spending data from transactions
+  const dailySpend = useMemo(() => {
+    const txs = agentTransactions as Array<Record<string, unknown>>;
+    if (!txs.length) return [];
+
+    const byDate: Record<string, number> = {};
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      byDate[d.toISOString().slice(0, 10)] = 0;
+    }
+
+    txs.forEach((tx) => {
+      const date = (tx.created_at as string || '').slice(0, 10);
+      if (date in byDate) {
+        byDate[date] += Number(tx.amount || 0);
+      }
+    });
+
+    return Object.entries(byDate).map(([date, amount]) => ({ date, amount }));
+  }, [agentTransactions]);
 
   const totalSpent = dailySpend.reduce((s, d) => s + d.amount, 0);
-  const passedChecks = policyChecks.filter((p) => p.result === 'passed').length;
-  const failedChecks = policyChecks.filter((p) => p.result === 'failed').length;
+  const passedChecks = policyChecks.filter((p) => p.result === 'passed' || p.result === 'allow').length;
+  const failedChecks = policyChecks.filter((p) => p.result === 'failed' || p.result === 'deny').length;
+
+  const isLoading = agentsLoading;
+  const noData = !agentsLoading && agents.length === 0;
+
+  // Derive transactions as a typed array
+  const transactions = (agentTransactions as Array<Record<string, unknown>>).map((tx, i) => ({
+    id: (tx.id as string) || (tx.tx_id as string) || `tx_${i}`,
+    amount: Number(tx.amount || 0),
+    recipient: (tx.recipient as string) || (tx.merchant_name as string) || (tx.destination as string) || 'Unknown',
+    status: (tx.status as string) || 'completed',
+    created_at: (tx.created_at as string) || new Date().toISOString(),
+    type: (tx.type as string) || 'payment',
+  }));
 
   return (
     <div className="space-y-6">
@@ -248,188 +211,242 @@ export default function AgentObservability() {
         </div>
 
         {/* Agent Selector */}
-        <select
-          value={selectedAgent}
-          onChange={(e) => setSelectedAgent(e.target.value)}
-          className="rounded-lg px-4 py-2 text-sm"
-          style={{
-            background: '#0A0B0D',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#E0E0E0',
-          }}
-        >
-          {agents.map((a) => (
-            <option key={a.agent_id} value={a.agent_id}>
-              {a.name || a.agent_id} {a.status === 'frozen' ? '(frozen)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Spent (7d)', value: `$${totalSpent.toLocaleString()}`, icon: DollarSign, color: '#818CF8' },
-          { label: 'Transactions', value: transactions.length.toString(), icon: Activity, color: '#60A5FA' },
-          { label: 'Policy Passed', value: passedChecks.toString(), icon: CheckCircle, color: '#22C55E' },
-          { label: 'Policy Denied', value: failedChecks.toString(), icon: XCircle, color: '#EF4444' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-xl p-4"
-            style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+        {agents.length > 0 && (
+          <select
+            value={effectiveAgent}
+            onChange={(e) => setSelectedAgent(e.target.value)}
+            className="rounded-lg px-4 py-2 text-sm"
+            style={{
+              background: '#0A0B0D',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: '#E0E0E0',
+            }}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <stat.icon size={16} color={stat.color} />
-              <span className="text-xs" style={{ color: '#808080' }}>{stat.label}</span>
-            </div>
-            <span className="text-xl font-bold text-white">{stat.value}</span>
-          </div>
-        ))}
+            {agents.map((a) => (
+              <option key={a.agent_id} value={a.agent_id}>
+                {a.name || a.agent_id} {a.status === 'frozen' ? '(frozen)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Spending Chart (2 cols) */}
-        <div
-          className="lg:col-span-2 rounded-xl p-5"
-          style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-white flex items-center gap-2">
-              <TrendingUp size={16} color="#818CF8" /> Daily Spending (Last 7 Days)
-            </h3>
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sardis-500 mx-auto mb-4"></div>
+            <p className="text-gray-400 text-sm">Loading agents...</p>
           </div>
-          <SpendChart data={dailySpend} />
         </div>
+      )}
 
-        {/* Trust Score & Budget (1 col) */}
-        <div className="space-y-4">
-          {/* Trust Score */}
-          <div
-            className="rounded-xl p-5"
-            style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
-              <ShieldCheck size={16} color="#22C55E" /> Trust Score
-            </h3>
-            <div className="flex items-center gap-4">
-              <ScoreRing score={trust.score} label="Overall" />
-              <div className="flex-1 space-y-2">
-                <TrustTierBadge tier={trust.tier} />
-                <p className="text-xs" style={{ color: '#808080' }}>
-                  Daily limit: <span className="text-white">${trust.daily_limit.toLocaleString()}</span>
-                </p>
-                {trust.factors.kyc_verified && (
-                  <p className="text-xs flex items-center gap-1" style={{ color: '#22C55E' }}>
-                    <CheckCircle size={12} /> KYC Verified
-                  </p>
+      {/* Empty state */}
+      {noData && (
+        <div className="card p-12 text-center">
+          <Eye className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No agents yet</h3>
+          <p className="text-gray-400">
+            Create an agent to start monitoring its financial behavior.
+          </p>
+        </div>
+      )}
+
+      {!isLoading && !noData && (
+        <>
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Spent (7d)', value: `$${totalSpent.toLocaleString()}`, icon: DollarSign, color: '#818CF8' },
+              { label: 'Transactions', value: transactions.length.toString(), icon: Activity, color: '#60A5FA' },
+              { label: 'Policy Passed', value: passedChecks.toString(), icon: CheckCircle, color: '#22C55E' },
+              { label: 'Policy Denied', value: failedChecks.toString(), icon: XCircle, color: '#EF4444' },
+            ].map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-xl p-4"
+                style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <stat.icon size={16} color={stat.color} />
+                  <span className="text-xs" style={{ color: '#808080' }}>{stat.label}</span>
+                </div>
+                <span className="text-xl font-bold text-white">{stat.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Main Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Spending Chart (2 cols) */}
+            <div
+              className="lg:col-span-2 rounded-xl p-5"
+              style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                  <TrendingUp size={16} color="#818CF8" /> Daily Spending (Last 7 Days)
+                </h3>
+              </div>
+              <SpendChart data={dailySpend} />
+            </div>
+
+            {/* Trust Score & Budget (1 col) */}
+            <div className="space-y-4">
+              {/* Trust Score */}
+              <div
+                className="rounded-xl p-5"
+                style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
+                  <ShieldCheck size={16} color="#22C55E" /> Trust Score
+                </h3>
+                {transactions.length > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <ScoreRing
+                      score={Math.min(Math.round((passedChecks / Math.max(passedChecks + failedChecks, 1)) * 100), 100)}
+                      label="Overall"
+                    />
+                    <div className="flex-1 space-y-2">
+                      <TrustTierBadge tier={failedChecks === 0 && passedChecks > 5 ? 'TRUSTED' : passedChecks > 0 ? 'BASIC' : 'NEW'} />
+                      <p className="text-xs" style={{ color: '#808080' }}>
+                        {passedChecks} checks passed, {failedChecks} denied
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-gray-500">No trust data yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Budget Utilization */}
+              <div
+                className="rounded-xl p-5"
+                style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+              >
+                <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
+                  <DollarSign size={16} color="#F59E0B" /> Spending Summary
+                </h3>
+                {transactions.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span style={{ color: '#808080' }}>{transactions.length} transactions</span>
+                      <span style={{ color: '#808080' }}>${totalSpent.toLocaleString()} total</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                      <div
+                        className="h-full rounded-full transition-all bg-sardis-500"
+                        style={{ width: `${Math.min(100, (transactions.filter(t => t.status === 'completed').length / Math.max(transactions.length, 1)) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs" style={{ color: '#808080' }}>
+                      {transactions.filter(t => t.status === 'completed').length} completed
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-gray-500">No transactions yet</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Budget Utilization */}
-          <div
-            className="rounded-xl p-5"
-            style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
-              <DollarSign size={16} color="#F59E0B" /> Budget ({budget.period})
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span style={{ color: '#808080' }}>${budget.spent.toLocaleString()} spent</span>
-                <span style={{ color: '#808080' }}>${budget.budget.toLocaleString()} budget</span>
-              </div>
-              <div className="w-full h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: `${Math.min(budget.utilization, 100)}%`,
-                    background: budget.utilization > 80 ? '#EF4444' : budget.utilization > 60 ? '#F59E0B' : '#22C55E',
-                  }}
-                />
-              </div>
-              <p className="text-xs" style={{ color: '#808080' }}>
-                {budget.utilization.toFixed(1)}% used &middot; ${budget.remaining.toLocaleString()} remaining
-              </p>
+          {/* Bottom Grid: Transactions + Policy Checks */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Transactions */}
+            <div
+              className="rounded-xl p-5"
+              style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
+                <Activity size={16} color="#60A5FA" /> Recent Transactions
+              </h3>
+              {txLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sardis-500"></div>
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No transactions for this agent
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {transactions.slice(0, 6).map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between py-2 px-3 rounded-lg"
+                      style={{ background: 'rgba(255,255,255,0.02)' }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-white truncate">{tx.recipient}</span>
+                          <StatusBadge status={tx.status} />
+                        </div>
+                        <span className="text-xs" style={{ color: '#505460' }}>{formatTime(tx.created_at)}</span>
+                      </div>
+                      <span className="text-sm font-medium text-white ml-3">
+                        ${tx.amount.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Policy Enforcement Log */}
+            <div
+              className="rounded-xl p-5"
+              style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
+            >
+              <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
+                <Shield size={16} color="#F59E0B" /> Policy Enforcement Log
+              </h3>
+              {policiesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sardis-500"></div>
+                </div>
+              ) : policyChecks.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No policy checks recorded
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {policyChecks.map((pc) => (
+                    <div
+                      key={pc.id}
+                      className="py-2 px-3 rounded-lg"
+                      style={{ background: 'rgba(255,255,255,0.02)' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {(pc.result === 'passed' || pc.result === 'allow') ? (
+                            <CheckCircle size={14} color="#22C55E" />
+                          ) : pc.result === 'escalated' ? (
+                            <AlertTriangle size={14} color="#F59E0B" />
+                          ) : (
+                            <ShieldAlert size={14} color="#EF4444" />
+                          )}
+                          <span className="text-sm text-white">{pc.rule}</span>
+                        </div>
+                        <StatusBadge status={pc.result} />
+                      </div>
+                      {pc.reason && (
+                        <p className="text-xs mt-1 ml-5" style={{ color: '#808080' }}>{pc.reason}</p>
+                      )}
+                      <p className="text-xs mt-0.5 ml-5" style={{ color: '#505460' }}>
+                        ${pc.amount.toFixed(2)} &middot; {formatTime(pc.timestamp)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Bottom Grid: Transactions + Policy Checks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Transactions */}
-        <div
-          className="rounded-xl p-5"
-          style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
-            <Activity size={16} color="#60A5FA" /> Recent Transactions
-          </h3>
-          <div className="space-y-2">
-            {transactions.slice(0, 6).map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between py-2 px-3 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white truncate">{tx.recipient}</span>
-                    <StatusBadge status={tx.status} />
-                  </div>
-                  <span className="text-xs" style={{ color: '#505460' }}>{formatTime(tx.created_at)}</span>
-                </div>
-                <span className="text-sm font-medium text-white ml-3">
-                  ${tx.amount.toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Policy Enforcement Log */}
-        <div
-          className="rounded-xl p-5"
-          style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
-        >
-          <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
-            <Shield size={16} color="#F59E0B" /> Policy Enforcement Log
-          </h3>
-          <div className="space-y-2">
-            {policyChecks.map((pc) => (
-              <div
-                key={pc.id}
-                className="py-2 px-3 rounded-lg"
-                style={{ background: 'rgba(255,255,255,0.02)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {pc.result === 'passed' ? (
-                      <CheckCircle size={14} color="#22C55E" />
-                    ) : pc.result === 'escalated' ? (
-                      <AlertTriangle size={14} color="#F59E0B" />
-                    ) : (
-                      <ShieldAlert size={14} color="#EF4444" />
-                    )}
-                    <span className="text-sm text-white">{pc.rule}</span>
-                  </div>
-                  <StatusBadge status={pc.result} />
-                </div>
-                {pc.reason && (
-                  <p className="text-xs mt-1 ml-5" style={{ color: '#808080' }}>{pc.reason}</p>
-                )}
-                <p className="text-xs mt-0.5 ml-5" style={{ color: '#505460' }}>
-                  ${pc.amount.toFixed(2)} &middot; {formatTime(pc.timestamp)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
