@@ -1,16 +1,21 @@
 # Sardis Deployment Manifest
 
 > Single source of truth for all contract deployments across chains.
-> Last updated: 2026-03-08
+> Last updated: 2026-03-21
 
 ## Deployment Overview
 
-Sardis deploys **2 custom contracts** per chain. All other infrastructure is pre-deployed.
+Sardis deploys custom contracts per chain. All other infrastructure is pre-deployed.
 
 | Contract | Type | Lifecycle | Chains Deployed |
 |----------|------|-----------|-----------------|
-| SardisLedgerAnchor | Custom (Sardis) | `pending_deploy` | None yet |
-| RefundProtocol | Custom (Circle fork) | `pending_deploy` | None yet |
+| SardisLedgerAnchor | Custom (Sardis) | `canonical_live` | Tempo |
+| RefundProtocol | Custom (Circle fork) | `canonical_live` | Tempo |
+| IdentityRegistry | Custom (ERC-8183) | `canonical_live` | Tempo |
+| JobRegistry | Custom (ERC-8183) | `canonical_live` | Tempo |
+| JobManager | Custom (ERC-8183) | `canonical_live` | Tempo |
+| ReputationRegistry | Custom (ERC-8183) | `canonical_live` | Tempo |
+| ValidationRegistry | Custom (ERC-8183) | `canonical_live` | Tempo |
 | Zodiac Roles Module | Pre-deployed (Gnosis Guild) | `canonical_live` | All EVM chains |
 | Circle Paymaster | Pre-deployed (Circle) | `canonical_live` | All EVM chains |
 | Safe Proxy Factory | Pre-deployed (Safe) | `canonical_live` | All EVM chains |
@@ -83,6 +88,23 @@ These addresses are identical across all supported EVM chains. Sardis does not d
 | RefundProtocol | -- | `pending_deploy` | Custom |
 
 **Status:** Pending. Deploy after Base mainnet is stable.
+
+### Tempo (Chain ID: 4217) -- FIRST MAINNET DEPLOYMENT
+
+| Contract | Address | Lifecycle | Source |
+|----------|---------|-----------|--------|
+| SardisLedgerAnchor | `0x9a5D2a6c81414FD1E6a2c9b55306c6D0b954b98B` | `canonical_live` | Custom |
+| RefundProtocol | `0x801ea29ca523ea16475e3def938002d6be985e9d` | `canonical_live` | Custom |
+| IdentityRegistry | `0xc5a3eb812bef4b883a2e890865de9d51818ac90a` | `canonical_live` | Custom (ERC-8183) |
+| JobRegistry | `0x19eeeb6b349cfd4025cc75fa99bb36f6b8bec62d` | `canonical_live` | Custom (ERC-8183) |
+| JobManager | `0x758114d2229d3da2a8629b96b0394a3e8319fbb0` | `canonical_live` | Custom (ERC-8183) |
+| ReputationRegistry | `0x127ac64f6ddf7292e8dee43e39f4e66af859e704` | `canonical_live` | Custom (ERC-8183) |
+| ValidationRegistry | `0xc95e58f9e1df9c3df4593632846eb2a02cf73d6b` | `canonical_live` | Custom (ERC-8183) |
+
+**Deployer:** `0x99085505f506576c5C5342cAFEf14d6be43e0E9C`
+**Timestamp:** 2026-03-20
+
+**Note:** Tempo uses TIP-20 fee model (gas in stablecoins). No Safe/EAS/Zodiac infrastructure. This is Sardis's first mainnet deployment with all 7 contracts live.
 
 ---
 

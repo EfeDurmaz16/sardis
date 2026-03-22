@@ -49,6 +49,9 @@ arbitrum_sepolia = "${ARBITRUM_SEPOLIA_RPC_URL}"
 optimism_sepolia = "${OPTIMISM_SEPOLIA_RPC_URL}"
 # Arc (Circle L1)
 arc_testnet = "${ARC_TESTNET_RPC_URL}"
+# Tempo (MPP)
+tempo = "${SARDIS_TEMPO_RPC_URL}"
+tempo_testnet = "${SARDIS_TEMPO_TESTNET_RPC_URL}"
 # Local development
 localhost = "http://127.0.0.1:8545"
 
@@ -67,3 +70,6 @@ arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}", url = "https://api-sepolia.arb
 optimism_sepolia = { key = "${OPTIMISM_API_KEY}", url = "https://api-sepolia-optimistic.etherscan.io/api" }
 # Arc (Blockscout-compatible)
 arc_testnet = { key = "none", url = "https://testnet.arcscan.app/api", chain = 5042002 }
+# Tempo (Sourcify-compatible)
+tempo = { key = "none", url = "https://contracts.tempo.xyz", chain = 4217 }
+tempo_testnet = { key = "none", url = "https://contracts.tempo.xyz", chain = 42431 }
