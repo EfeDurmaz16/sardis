@@ -12,6 +12,11 @@ except ImportError:
     IDenfyKYCProvider = None  # type: ignore[assignment,misc]
 
 try:
+    from .didit import DiditKYCProvider
+except ImportError:
+    DiditKYCProvider = None  # type: ignore[assignment,misc]
+
+try:
     from .scorechain import ScorechainProvider
 except ImportError:
     ScorechainProvider = None  # type: ignore[assignment,misc]
@@ -26,6 +31,7 @@ from .watchman import WatchmanProvider
 __all__ = [
     "IdenfyKYCProvider",
     "IDenfyKYCProvider",
+    "DiditKYCProvider",
     "ScorechainProvider",
     "OFACAddressProvider",
     "ChainalysisOracleProvider",
