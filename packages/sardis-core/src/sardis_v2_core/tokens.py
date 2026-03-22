@@ -10,6 +10,7 @@ class TokenType(str, Enum):
     """Supported stablecoin tickers."""
 
     USDC = "USDC"
+    USDC_E = "USDC.e"  # Bridged USDC on Tempo
     USDT = "USDT"
     PYUSD = "PYUSD"
     EURC = "EURC"
@@ -28,6 +29,7 @@ class TokenMetadata:
     contract_addresses: dict[str, str] = field(default_factory=dict)
     min_transfer_amount: Decimal = field(default_factory=lambda: Decimal("0.01"))
     is_active: bool = True
+    is_tip20: bool = False  # TIP-20 tokens on Tempo use transferWithMemo ABI
 
     def normalize_amount(self, raw_amount: int) -> Decimal:
         divisor = Decimal(10**self.decimals)
@@ -61,6 +63,16 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "tempo_testnet": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato
             "tempo": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
             "morph": "0xCfb1186F4e93D60E60a8bDd997427D1F33bc372B",
+        },
+    ),
+    TokenType.USDC_E: TokenMetadata(
+        symbol="USDC.e",
+        name="Bridged USDC (Tempo)",
+        decimals=6,
+        issuer="Circle (bridged)",
+        is_tip20=True,
+        contract_addresses={
+            "tempo": "0x20C000000000000000000000b9537d11c60E8b50",
         },
     ),
     TokenType.USDT: TokenMetadata(

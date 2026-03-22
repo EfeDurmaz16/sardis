@@ -285,6 +285,7 @@ STABLECOIN_ADDRESSES = {
     },
     "tempo": {
         "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
+        "USDC.e": "0x20C000000000000000000000b9537d11c60E8b50",  # Bridged USDC.e on Tempo
     },
     # Morph (EVM L2 — Circle native USDC + CCTP)
     "morph": {
@@ -420,14 +421,26 @@ SARDIS_CONTRACTS = {
         "wallet_program": "5shhNxoGDhGe7XotwG5usrZ21K5mZdj3q2oGZC7cYpvN",
         "escrow_program": "",
     },
-    # Tempo — EVM-compatible but uses TIP-20 fee model (no Safe/EAS infra yet)
+    # Tempo — EVM-compatible but uses TIP-20 fee model (no Safe/EAS infra)
+    # All 7 contracts deployed on Presto mainnet 2026-03-20
     "tempo_testnet": {
         "policy_module": "",  # TBD — may use Tempo Access Keys instead
-        "ledger_anchor": "",
+        "ledger_anchor": "0x9a5D2a6c81414FD1E6a2c9b55306c6D0b954b98B",  # same contract on testnet
+        "identity_registry": "",
+        "job_registry": "",
+        "job_manager": "",
+        "reputation_registry": "",
+        "validation_registry": "",
     },
     "tempo": {
         "policy_module": "",
-        "ledger_anchor": "",
+        "ledger_anchor": "0x9a5D2a6c81414FD1E6a2c9b55306c6D0b954b98B",
+        "refund_protocol": "0x801ea29ca523ea16475e3def938002d6be985e9d",
+        "identity_registry": "0xc5a3eb812bef4b883a2e890865de9d51818ac90a",
+        "job_registry": "0x19eeeb6b349cfd4025cc75fa99bb36f6b8bec62d",
+        "job_manager": "0x758114d2229d3da2a8629b96b0394a3e8319fbb0",
+        "reputation_registry": "0x127ac64f6ddf7292e8dee43e39f4e66af859e704",
+        "validation_registry": "0xc95e58f9e1df9c3df4593632846eb2a02cf73d6b",
     },
     # Morph — EVM L2, standard Safe/Zodiac infra
     "morph": {
@@ -646,6 +659,13 @@ class GasPriceProtectionConfig:
         "polygon": {
             "max_gas_price_gwei": Decimal("1000"),  # MATIC can spike
             "max_transaction_cost_usd": Decimal("20"),
+        },
+        # Tempo — gas is denominated in stablecoin (attodollars, 10^-18 USD)
+        # No native gas token; fees deducted from TIP-20 transfer amount.
+        # Contract creation costs 5-10x Ethereum (1000 gas/byte vs 200).
+        "tempo": {
+            "max_gas_price_gwei": Decimal("10"),  # Low — stablecoin gas is cheap
+            "max_transaction_cost_usd": Decimal("5"),  # Tempo fees are sub-cent
         },
         # Testnets - more lenient
         "base_sepolia": {
@@ -2305,7 +2325,11 @@ class ChainExecutor:
             return receipt
 
         try:
-            if account_type == "erc4337_v2":
+            # Route to chain-specific executor
+            chain_config = CHAIN_CONFIGS.get(chain, {})
+            if chain_config.get("is_tempo"):
+                receipt = await self._execute_tempo_payment(mandate, chain, audit_anchor)
+            elif account_type == "erc4337_v2":
                 receipt = await self._execute_erc4337_payment(mandate, chain, audit_anchor)
             else:
                 # Live mode - execute real transaction with gas protection
@@ -2394,6 +2418,163 @@ class ChainExecutor:
 
         # Should not reach here, but just in case
         raise RuntimeError("Unexpected error in gas protection retry loop")
+
+    async def _execute_tempo_payment(
+        self,
+        mandate: PaymentMandate,
+        chain: str,
+        audit_anchor: str,
+    ) -> ChainReceipt:
+        """
+        Execute a payment on Tempo (TIP-20 fee model).
+
+        Tempo is EVM-compatible but has NO native gas token.
+        Fees are deducted from the transferred TIP-20 stablecoin.
+        Standard ERC-20 `transfer` works for basic transfers.
+        TIP-20 `transferWithMemo` adds a bytes32 memo (e.g. payment ID).
+
+        For advanced features (batching, sponsorship), use type 0x76 txs.
+        This implementation uses standard EVM path with TIP-20 memo support.
+        """
+        rpc = self._get_rpc_client(chain)
+        await rpc.connect()
+
+        if not self._mpc_signer:
+            raise RuntimeError("No signer configured for Tempo payment.")
+
+        # Resolve token — prefer USDC.e (bridged) if available, fall back to pathUSD
+        token = mandate.token or "USDC"
+        token_addresses = STABLECOIN_ADDRESSES.get(chain, {})
+        token_address = token_addresses.get(token, "")
+        if not token_address:
+            # Fall back to pathUSD (USDC) on Tempo
+            token_address = token_addresses.get("USDC", "")
+        if not token_address:
+            raise ValueError(f"Token {token} not supported on {chain}")
+
+        amount_minor = int(mandate.amount_minor)
+        wallet_id = getattr(mandate, "wallet_id", None)
+        if not wallet_id:
+            raise RuntimeError("PaymentMandate.wallet_id is required for Tempo payment.")
+
+        sender_address = await self._mpc_signer.get_address(wallet_id, chain)
+
+        # Always use TIP-20 transferWithMemo on Tempo for audit trail
+        # Encode using the ABI already defined at module level (TIP20_TRANSFER_WITH_MEMO_ABI)
+        memo = getattr(mandate, "memo", None)
+        payment_id_bytes = mandate.mandate_id.encode("utf-8")[:32].ljust(32, b"\x00")
+        memo_bytes = memo.encode("utf-8")[:32].ljust(32, b"\x00") if memo else payment_id_bytes
+
+        try:
+            from web3 import Web3
+            w3 = Web3()
+            contract = w3.eth.contract(abi=TIP20_TRANSFER_WITH_MEMO_ABI)
+            transfer_data = contract.encode_abi("transferWithMemo", [
+                mandate.destination, amount_minor, memo_bytes,
+            ])
+            transfer_data = bytes.fromhex(transfer_data[2:])  # strip 0x prefix
+        except ImportError:
+            # Fallback: use standard ERC-20 transfer if web3 unavailable
+            logger.warning("web3 not available for TIP-20 encoding, falling back to ERC-20 transfer")
+            transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
+
+        # Build transaction — Tempo uses standard EVM tx format for basic transfers
+        # No native gas estimation needed — fees come from the TIP-20 token
+        tx_params = {
+            "from": sender_address,
+            "to": token_address,
+            "data": "0x" + transfer_data.hex(),
+            "value": "0x0",
+        }
+
+        # Transaction simulation
+        try:
+            simulation_output, gas_estimation = await self._simulation_service.prepare_transaction(
+                rpc_client=rpc,
+                tx_params=tx_params,
+                chain=chain,
+                validate=True,
+            )
+            logger.info(f"Tempo tx simulation passed for mandate {mandate.mandate_id}")
+        except SimulationError as e:
+            logger.error(
+                f"Tempo tx simulation failed for mandate {mandate.mandate_id}: "
+                f"{e.simulation_output.revert_reason if e.simulation_output else str(e)}"
+            )
+            raise RuntimeError(
+                f"Tempo transaction would fail: {e.simulation_output.revert_reason if e.simulation_output else str(e)}"
+            )
+
+        # Gas estimation — on Tempo, gas is denominated in attodollars (10^-18 USD)
+        gas_estimate = GasEstimate(
+            gas_limit=gas_estimation.gas_limit,
+            gas_price_gwei=gas_estimation.base_fee_gwei,
+            max_fee_gwei=gas_estimation.max_fee_gwei,
+            max_priority_fee_gwei=gas_estimation.priority_fee_gwei,
+            estimated_cost_wei=gas_estimation.estimated_cost_wei,
+            estimated_cost_usd=gas_estimation.estimated_cost_usd,
+        )
+
+        # Gas price protection (Tempo-specific limits)
+        is_acceptable, warning = await self._gas_protection.check_gas_price(gas_estimate, chain)
+        if warning:
+            logger.warning(f"Tempo gas warning for {mandate.mandate_id}: {warning}")
+        gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+
+        # Nonce management
+        nonce = await self._nonce_manager.reserve_nonce(sender_address, rpc)
+
+        broadcast_success = False
+        try:
+            tx_request = TransactionRequest(
+                chain=chain,
+                to_address=token_address,
+                value=0,
+                data=transfer_data,
+                gas_limit=gas_estimate.gas_limit,
+                max_fee_per_gas=int(gas_estimate.max_fee_gwei * 10**9),
+                max_priority_fee_per_gas=int(gas_estimate.max_priority_fee_gwei * 10**9),
+                nonce=nonce,
+            )
+
+            # Sign via MPC
+            signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+
+            # Broadcast
+            logger.info(f"Broadcasting Tempo tx for mandate {mandate.mandate_id}")
+            tx_hash = await rpc.send_raw_transaction(signed_tx)
+            broadcast_success = True
+            logger.info(f"Tempo tx submitted: {tx_hash}")
+
+            # Register pending transaction
+            data_hash = hashlib.sha256(transfer_data).hexdigest()
+            self._nonce_manager.register_pending_transaction(
+                tx_hash=tx_hash,
+                address=sender_address,
+                nonce=nonce,
+                chain=chain,
+                gas_price=int(gas_estimate.max_fee_gwei * 10**9),
+                priority_fee=int(gas_estimate.max_priority_fee_gwei * 10**9),
+                data_hash=data_hash,
+            )
+
+            # Wait for confirmation
+            receipt_validation = await self._wait_for_confirmation_with_verification(
+                rpc, tx_hash, chain, sender_address
+            )
+
+            return ChainReceipt(
+                tx_hash=tx_hash,
+                chain=chain,
+                block_number=receipt_validation.block_number or 0,
+                audit_anchor=audit_anchor,
+                execution_path="tempo_tip20",
+            )
+
+        except Exception as e:
+            if not broadcast_success:
+                await self._nonce_manager.release_nonce(sender_address, nonce)
+            raise
 
     async def _check_compliance_preflight(self, mandate: PaymentMandate) -> None:
         """
