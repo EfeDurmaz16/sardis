@@ -1,4 +1,4 @@
-import { Link } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock, Share2 } from 'lucide-react';
 
 export default function SpendingRulesExplainer() {

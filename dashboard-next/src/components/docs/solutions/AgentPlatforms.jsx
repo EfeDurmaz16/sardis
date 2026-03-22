@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'next/navigation';
+import Link from 'next/link';
 // eslint-disable-next-line no-unused-vars -- motion is used as JSX namespace (motion.div)
 import { motion } from 'framer-motion';
 import WaitlistModal from '@/components/WaitlistModal';

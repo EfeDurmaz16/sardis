@@ -1,4 +1,4 @@
-import { Link } from 'next/navigation';
+import Link from 'next/link';
 import {
   Agreement02Icon,
   ShoppingBag01Icon,

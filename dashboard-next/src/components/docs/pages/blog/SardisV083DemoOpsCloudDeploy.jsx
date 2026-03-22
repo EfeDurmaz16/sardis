@@ -1,4 +1,4 @@
-import { Link } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock } from 'lucide-react';
 
 export default function SardisV083DemoOpsCloudDeploy() {

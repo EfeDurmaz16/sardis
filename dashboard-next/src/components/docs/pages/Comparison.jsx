@@ -1,4 +1,4 @@
-import { Link } from 'next/navigation';
+import Link from 'next/link';
 
 /* ── Feature matrix: Sardis vs named competitors ── */
 const competitors = [
