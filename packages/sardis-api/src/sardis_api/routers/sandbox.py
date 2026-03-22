@@ -464,7 +464,7 @@ async def sandbox_payment(req: SandboxPaymentRequest, request: Request):
         store.wallets[wallet.wallet_id] = wallet
 
     # Create policy for agent
-    policy = create_default_policy(agent.trust_level)
+    policy = create_default_policy(agent.agent_id, agent.trust_level)
 
     # Simulate policy evaluation
     policy_result = "approved"
@@ -563,7 +563,7 @@ async def sandbox_policy_check(req: PolicyCheckRequest, request: Request):
         )
 
     # Create policy
-    policy = create_default_policy(agent.trust_level)
+    policy = create_default_policy(agent.agent_id, agent.trust_level)
 
     # Evaluate
     would_allow = True
@@ -585,9 +585,12 @@ async def sandbox_policy_check(req: PolicyCheckRequest, request: Request):
         "approval_threshold": str(policy.approval_threshold) if policy.approval_threshold else "none",
     }
 
-    if policy.time_windows:
-        for tw in policy.time_windows:
-            limits[f"{tw.period}_limit"] = str(tw.max_amount)
+    if hasattr(policy, 'daily_limit') and policy.daily_limit:
+        limits["daily_limit"] = str(policy.daily_limit.limit_amount)
+    if hasattr(policy, 'weekly_limit') and policy.weekly_limit:
+        limits["weekly_limit"] = str(policy.weekly_limit.limit_amount)
+    if hasattr(policy, 'monthly_limit') and policy.monthly_limit:
+        limits["monthly_limit"] = str(policy.monthly_limit.limit_amount)
 
     policy_summary = f"Trust Level: {agent.trust_level.value} | KYA Level: {agent.kya_level}"
 
@@ -638,7 +641,7 @@ async def sandbox_create_wallet(req: CreateDemoWalletRequest, request: Request):
     store.wallets[wallet_id] = wallet
 
     # Build policy summary
-    policy = create_default_policy(req.trust_level)
+    policy = create_default_policy(agent_id, req.trust_level)
     policy_summary = f"Per-tx: ${policy.limit_per_tx or 'unlimited'}, Total: ${policy.limit_total or 'unlimited'}"
 
     logger.info(f"Created sandbox wallet: {wallet_id} for agent {agent_id}")

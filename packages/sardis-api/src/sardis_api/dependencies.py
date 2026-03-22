@@ -275,6 +275,16 @@ class DependencyContainer:
         dsn = self.database_url if self.use_postgres else "memory://"
         return APIKeyManager(dsn=dsn)
 
+    @cached_property
+    def mpp_client(self) -> Any | None:
+        """Get MPP client for Machine Payments Protocol (optional)."""
+        try:
+            from sardis_mpp.client import SardisMPPClient
+            return SardisMPPClient(methods=[], policy_checker=None)
+        except ImportError:
+            logger.info("sardis-mpp package not installed, MPP client unavailable")
+            return None
+
     # =========================================================================
     # Optional External Services
     # =========================================================================
