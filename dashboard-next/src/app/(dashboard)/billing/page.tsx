@@ -308,6 +308,7 @@ export default function BillingPage() {
   async function handleUpgrade(plan: string) {
     setUpgrading(plan);
     try {
+      // Try Sardis billing first, fall back to Polar checkout
       const res = await fetch(`${API_BASE}/api/v2/billing/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -316,9 +317,21 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json();
         window.open(data.checkout_url, '_blank');
+      } else {
+        // Billing not configured — open Polar checkout as fallback
+        const polarUrls: Record<string, string> = {
+          starter: 'https://polar.sh/sardislabs/subscribe?tier=starter',
+          growth: 'https://polar.sh/sardislabs/subscribe?tier=growth',
+        };
+        const url = polarUrls[plan.toLowerCase()];
+        if (url) {
+          window.open(url, '_blank');
+        } else {
+          alert('Billing is being set up. Please try again later or contact support@sardis.sh');
+        }
       }
     } catch {
-      // silent — user sees button re-enable
+      alert('Network error. Please try again.');
     } finally {
       setUpgrading(null);
     }
@@ -334,9 +347,12 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json();
         window.open(data.portal_url, '_blank');
+      } else {
+        // Fall back to Polar portal
+        window.open('https://polar.sh/sardislabs', '_blank');
       }
     } catch {
-      // silent
+      window.open('https://polar.sh/sardislabs', '_blank');
     } finally {
       setPortalLoading(false);
     }

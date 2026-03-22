@@ -6,7 +6,7 @@ import { useSession } from '@/lib/auth-client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-interface ApiKey { id: string; key_prefix: string; name: string; scopes: string[]; rate_limit: number | null; is_active: boolean; created_at: string; last_used_at: string | null; expires_at: string | null }
+interface ApiKey { id: string; key_prefix: string; name: string; scopes: string[]; rate_limit: number | null; is_active?: boolean; created_at: string; last_used_at: string | null; expires_at: string | null }
 interface ApiKeyListResponse { keys: ApiKey[] }
 interface CreateKeyResponse { key_id: string; api_key: string; key_prefix: string; name: string; scopes: string[] }
 type ScopeOption = 'read' | 'write' | 'admin'
@@ -20,7 +20,7 @@ const SCOPE_OPTIONS: { value: ScopeOption; label: string; description: string }[
 const EXPIRATION_OPTIONS: { value: ExpirationOption; label: string }[] = [{ value: '30', label: '30 days' }, { value: '90', label: '90 days' }, { value: '365', label: '1 year' }, { value: 'never', label: 'Never' }]
 
 function formatDate(iso: string | null): string { if (!iso) return '\u2014'; return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }
-function keyStatus(key: ApiKey): 'active' | 'revoked' | 'expired' { if (!key.is_active) return 'revoked'; if (key.expires_at && new Date(key.expires_at) < new Date()) return 'expired'; return 'active' }
+function keyStatus(key: ApiKey): 'active' | 'revoked' | 'expired' { if (key.is_active === false) return 'revoked'; if (key.expires_at && new Date(key.expires_at) < new Date()) return 'expired'; return 'active' }
 
 function StatusBadge({ status }: { status: 'active' | 'revoked' | 'expired' }) { const styles: Record<string, string> = { active: 'bg-green-500/20 text-green-300 border border-green-500/30', revoked: 'bg-red-500/20 text-red-300 border border-red-500/30', expired: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' }; return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${styles[status]}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span> }
 function ScopeBadge({ scope }: { scope: string }) { const styles: Record<string, string> = { read: 'bg-blue-500/20 text-blue-300 border border-blue-500/30', write: 'bg-purple-500/20 text-purple-300 border border-purple-500/30', admin: 'bg-red-500/20 text-red-300 border border-red-500/30' }; return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${styles[scope] ?? 'bg-gray-500/20 text-gray-300 border border-gray-500/30'}`}>{scope}</span> }
@@ -33,7 +33,7 @@ function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated
     e.preventDefault(); if (!name.trim()) { setError('Name is required.'); return }; if (scopes.length === 0) { setError('Select at least one scope.'); return }
     setSubmitting(true); setError(null);
     try { const body: Record<string, unknown> = { name: name.trim(), scopes }; if (expiration !== 'never') body.expires_in_days = parseInt(expiration, 10);
-      const res = await fetch(`${API_BASE}/api/v2/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+      const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError((data as { detail?: string }).detail ?? `Request failed (${res.status})`); return }
       const data: CreateKeyResponse = await res.json(); setCreatedKey(data.api_key); onCreated()
     } catch { setError('Network error. Please try again.') } finally { setSubmitting(false) }
@@ -58,12 +58,12 @@ export default function APIKeysPage() {
 
   const fetchKeys = useCallback(async () => {
     setLoading(true); setFetchError(null);
-    try { const res = await fetch(`${API_BASE}/api/v2/api-keys`, { credentials: 'include' }); if (!res.ok) { setFetchError(`Failed to load API keys (${res.status})`); return }; const data: ApiKeyListResponse = await res.json(); setKeys(data.keys ?? []) } catch { setFetchError('Network error. Could not load API keys.') } finally { setLoading(false) }
+    try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { credentials: 'include' }); if (!res.ok) { setFetchError(`Failed to load API keys (${res.status})`); return }; const data: ApiKeyListResponse = await res.json(); setKeys(data.keys ?? []) } catch { setFetchError('Network error. Could not load API keys.') } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchKeys() }, [fetchKeys])
 
-  async function handleRevoke() { if (!revokeTarget) return; setRevoking(true); try { const res = await fetch(`${API_BASE}/api/v2/api-keys/${revokeTarget.id}`, { method: 'DELETE', credentials: 'include' }); if (res.ok) { setRevokeTarget(null); await fetchKeys() } } catch {} finally { setRevoking(false) } }
+  async function handleRevoke() { if (!revokeTarget) return; setRevoking(true); try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys/${revokeTarget.id}`, { method: 'DELETE', credentials: 'include' }); if (res.ok) { setRevokeTarget(null); await fetchKeys() } } catch {} finally { setRevoking(false) } }
 
   return (
     <div className="space-y-8">
