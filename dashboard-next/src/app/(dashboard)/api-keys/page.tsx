@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Key, Plus, Trash2, Copy, Check, AlertTriangle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { useSession } from '@/lib/auth-client';
+import { getAuthHeaders } from '@/api/client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -33,7 +34,7 @@ function CreateKeyModal({ onClose, onCreated }: { onClose: () => void; onCreated
     e.preventDefault(); if (!name.trim()) { setError('Name is required.'); return }; if (scopes.length === 0) { setError('Select at least one scope.'); return }
     setSubmitting(true); setError(null);
     try { const body: Record<string, unknown> = { name: name.trim(), scopes }; if (expiration !== 'never') body.expires_in_days = parseInt(expiration, 10);
-      const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(body) });
+      const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }, body: JSON.stringify(body) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); setError((data as { detail?: string }).detail ?? `Request failed (${res.status})`); return }
       const data: CreateKeyResponse = await res.json(); setCreatedKey(data.api_key); onCreated()
     } catch { setError('Network error. Please try again.') } finally { setSubmitting(false) }
@@ -58,12 +59,12 @@ export default function APIKeysPage() {
 
   const fetchKeys = useCallback(async () => {
     setLoading(true); setFetchError(null);
-    try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { credentials: 'include' }); if (!res.ok) { setFetchError(`Failed to load API keys (${res.status})`); return }; const data: ApiKeyListResponse = await res.json(); setKeys(data.keys ?? []) } catch { setFetchError('Network error. Could not load API keys.') } finally { setLoading(false) }
+    try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { headers: getAuthHeaders() }); if (!res.ok) { setFetchError(`Failed to load API keys (${res.status})`); return }; const data: ApiKeyListResponse = await res.json(); setKeys(data.keys ?? []) } catch { setFetchError('Network error. Could not load API keys.') } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { fetchKeys() }, [fetchKeys])
 
-  async function handleRevoke() { if (!revokeTarget) return; setRevoking(true); try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys/${revokeTarget.id}`, { method: 'DELETE', credentials: 'include' }); if (res.ok) { setRevokeTarget(null); await fetchKeys() } } catch {} finally { setRevoking(false) } }
+  async function handleRevoke() { if (!revokeTarget) return; setRevoking(true); try { const res = await fetch(`${API_BASE}/api/v2/auth/api-keys/${revokeTarget.id}`, { method: 'DELETE', headers: getAuthHeaders() }); if (res.ok) { setRevokeTarget(null); await fetchKeys() } } catch {} finally { setRevoking(false) } }
 
   return (
     <div className="space-y-8">

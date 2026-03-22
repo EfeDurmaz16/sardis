@@ -5,27 +5,42 @@ import type { Agent, Merchant, Transaction, Wallet, WebhookSubscription } from '
 // RiskScore is used in client but may not be in types
 type RiskScore = { score: number; level: string; factors: string[] }
 
-// Token cache — fetches JWT from better-auth session endpoint
+// Token management — reads from sessionStorage (set by login/signup pages)
 let _cachedToken: string | null = null;
-let _tokenExpiry = 0;
 
 function getCurrentToken(): string | null {
-  // Synchronous getter for cached token (used in request headers)
-  if (_cachedToken && Date.now() < _tokenExpiry) return _cachedToken;
-  return null;
+  if (_cachedToken) return _cachedToken;
+  if (typeof window !== "undefined") {
+    _cachedToken = sessionStorage.getItem("sardis_session");
+  }
+  return _cachedToken;
 }
 
 export async function refreshToken(): Promise<string | null> {
+  // Primary: read from sessionStorage (set by login/signup)
+  if (typeof window !== "undefined") {
+    const stored = sessionStorage.getItem("sardis_session");
+    if (stored) {
+      _cachedToken = stored;
+      return stored;
+    }
+  }
+  // Fallback: try better-auth token endpoint
   try {
     const res = await fetch("/api/auth/token", { credentials: "include" });
     if (!res.ok) return null;
     const data = await res.json();
     _cachedToken = data.token || null;
-    _tokenExpiry = Date.now() + 50 * 60 * 1000; // 50 min cache
     return _cachedToken;
   } catch {
     return null;
   }
+}
+
+// Export for pages that make direct fetch calls
+export function getAuthHeaders(): Record<string, string> {
+  const token = getCurrentToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // API base URL - can be overridden by environment variable
