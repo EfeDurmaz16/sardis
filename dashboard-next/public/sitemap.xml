@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://sardis.sh/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://sardis.sh/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/enterprise</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/demo</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/solutions/agent-platforms</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/solutions/procurement</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/solutions/payouts</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/docs</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://sardis.sh/docs/quickstart</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://sardis.sh/docs/wallets</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/payments</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/policies</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/spending-mandates</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/ap2</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/docs/mcp-server</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/sdk-python</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/sdk-typescript</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://sardis.sh/docs/integrations</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/docs/security</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/docs/architecture</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/blog</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sardis.sh/docs/blog/introducing-sardis</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/blog/sardis-ai-agent-payments</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/blog/policy-engine-deep-dive</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/blog/mcp-integration</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sardis.sh/docs/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://sardis.sh/docs/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>
