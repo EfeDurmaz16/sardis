@@ -28,7 +28,7 @@ Sardis is the **cross-rail authorization and execution layer** for agent payment
 - **Agent identity:** Which agent is authorized (with cryptographic binding)
 - **Merchant scope:** Who the agent can pay (allowlist, blocklist, MCC codes)
 - **Amount controls:** Per-transaction, daily, weekly, monthly, and total limits
-- **Rail permissions:** Card, USDC, bank transfer — the mandate is portable across rails
+- **Rail permissions:** Card, USDC, bank transfer, MPP (Tempo/Stripe) — the mandate is portable across rails
 - **Time bounds:** When the mandate activates, when it expires
 - **Approval mode:** Auto-approve, threshold-based human review, or always-human
 - **Revocation:** Instant invalidation with reason tracking and audit trail
@@ -48,6 +48,7 @@ The market is splitting into two camps, and both are incomplete:
 - Solves settlement programmability, but not acceptance, compliance, or dispute handling
 - Doesn't work for merchants that only accept cards
 - Doesn't solve the enterprise requirement: "show me the audit trail and spending controls"
+- **Note:** Orthogonal (YC W26) has pivoted to an API marketplace — no longer a payments competitor. Only **Locus (F25)** remains as YC portfolio overlap in agent payments.
 
 **Sardis takes the third path:** We don't care which rail the money moves on. We own the **authorization layer** — the mandate that says "this agent can spend up to $500 at approved merchants, on any rail, with human approval above $200, and I can revoke it instantly."
 
@@ -57,21 +58,25 @@ That's the layer that ages well regardless of which rails win.
 
 The timing convergence is unprecedented:
 
-1. **Protocol standardization is happening now.** AP2 launched September 2025 with 60+ partners. Agent Pay and TAP launched in 2025. The window to become the default authorization layer is 12-18 months.
+1. **Protocol standardization is happening now.** AP2 launched September 2025 with 60+ partners. Agent Pay and TAP launched in 2025. **MPP (Machine Payments Protocol) launched March 18, 2026** — co-authored by Stripe and Tempo as the open standard for machine-to-machine payments. The window to become the default authorization layer is 12-18 months.
 
-2. **Enterprise demand is real.** Companies deploying AI agents (Salesforce Agentforce, SAP Joule, ServiceNow) need spending controls before their CFOs will greenlight production deployment.
+2. **MPP validates our thesis directly.** MPP sessions are structured payment permission objects — session type, amount bounds, expiry, merchant scope. These map 1:1 to Sardis spending mandates. Sardis has **MPP early access** (one of the first integrations), meaning every MPP session on Tempo or Stripe rails flows through our mandate enforcement. The protocol was designed for exactly the authorization layer we already built.
 
-3. **The developer ecosystem is ready.** LangChain, CrewAI, OpenAI Agents SDK, Vercel AI SDK — all shipping agent capabilities. None of them solve payments. We integrate with all of them.
+3. **Tempo mainnet is live and well-capitalized.** Tempo raised a **$500M Series A at a $5B valuation** (Matt Huang, CEO). The chain delivers 100K+ TPS with sub-second finality — purpose-built for machine payments. Sardis is deployed on Tempo mainnet with pathUSD support.
 
-4. **Market size is validated.** McKinsey: $3-5T in agentic commerce by 2030. Gartner: $15T in B2B agent-mediated spending by 2028. Even capturing 0.1% of payment infrastructure = multi-billion dollar market.
+4. **Enterprise demand is real.** Companies deploying AI agents (Salesforce Agentforce, SAP Joule, ServiceNow) need spending controls before their CFOs will greenlight production deployment.
+
+5. **The developer ecosystem is ready.** LangChain, CrewAI, OpenAI Agents SDK, Vercel AI SDK — all shipping agent capabilities. None of them solve payments. We integrate with all of them.
+
+6. **Market size is validated.** McKinsey: $3-5T in agentic commerce by 2030. Gartner: $15T in B2B agent-mediated spending by 2028. Even capturing 0.1% of payment infrastructure = multi-billion dollar market.
 
 ## The Bridge to Payment Tokens
 
 The spending mandate is not just today's product. It's the **architectural bridge** to the payment token future:
 
-- **Phase 1 (now):** Mandates enforced off-chain by the Sardis API
-- **Phase 2 (6-12 months):** Mandates encoded as ERC-20 transfer hooks — the token itself enforces spending rules
-- **Phase 3 (12-18 months):** Native payment tokens with embedded mandate semantics, portable across chains
+- **Phase 1 (now):** Mandates enforced off-chain by the Sardis API. MPP sessions on Tempo mainnet bound to mandates.
+- **Phase 2 (6-12 months):** Mandates encoded as ERC-20 transfer hooks — the token itself enforces spending rules. TempoStreamChannel contracts for recurring MPP flows.
+- **Phase 3 (12-18 months):** Native payment tokens with embedded mandate semantics, portable across chains including Tempo (100K+ TPS)
 
 Every feature we ship today is composable with the on-chain future without a rewrite. The mandate is the invariant; the enforcement layer is the variable.
 

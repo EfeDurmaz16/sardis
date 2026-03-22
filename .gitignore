@@ -215,3 +215,7 @@ tmp/
 
 # Internal team docs
 gv-team.md
+.gstack/
+
+# Git worktrees
+.worktrees/
