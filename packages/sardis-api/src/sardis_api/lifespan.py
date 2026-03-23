@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from sardis_v2_core.jobs.approval_expiry import expire_approvals
 from sardis_v2_core.jobs.hold_expiry import expire_holds
+from sardis_v2_core.jobs.payment_expiry import expire_payments
 from sardis_v2_core.jobs.spending_reset import reset_spending_limits
 
 from .middleware import API_VERSION
@@ -144,6 +145,9 @@ async def lifespan(app: FastAPI):
             )
             scheduler.add_interval_job(
                 expire_approvals, job_id="approval_expiry_check", seconds=60,
+            )
+            scheduler.add_interval_job(
+                expire_payments, job_id="payment_expiry_check", seconds=60,
             )
 
             async def _recurring_billing_job() -> None:
