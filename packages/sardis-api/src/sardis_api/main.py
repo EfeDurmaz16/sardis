@@ -161,6 +161,7 @@ from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
+from .routers import usage as usage_router
 from .routers import x402 as x402_router
 
 # Protocol v1.0 routers
@@ -2058,6 +2059,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
     app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
     app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
+    app.include_router(usage_router.router, prefix="/api/v2", tags=["usage"])
     app.include_router(escrow_disputes_router.router, prefix="/api/v2", tags=["escrow", "disputes"])
 
     # A2A discovery: /.well-known/agent-card.json
