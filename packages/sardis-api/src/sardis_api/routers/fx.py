@@ -92,12 +92,24 @@ async def create_fx_quote(
 ) -> FXQuoteResponse:
     from sardis_v2_core.database import Database
 
-    # Determine provider based on chain
-    provider = "tempo_dex" if req.chain == "tempo" else "uniswap_v3"
-
-    # Get rate (simplified — in production, query the DEX orderbook)
-    rate = _get_indicative_rate(req.from_currency, req.to_currency)
-    to_amount = (req.from_amount * rate).quantize(Decimal("0.000001"))
+    # Route through LiquidityRouter for real adapter-driven quotes
+    try:
+        from sardis_chain.liquidity_router import LiquidityRouter
+        router_instance = LiquidityRouter()
+        route = await router_instance.find_best_route(
+            from_token=req.from_currency,
+            to_token=req.to_currency,
+            amount=req.from_amount,
+            from_chain=req.chain,
+        )
+        provider = route.provider
+        rate = route.estimated_rate
+        to_amount = route.estimated_output
+    except Exception:
+        # Fallback to indicative rates if adapter unavailable
+        provider = "tempo_dex" if req.chain == "tempo" else "uniswap_v3"
+        rate = _get_indicative_rate(req.from_currency, req.to_currency)
+        to_amount = (req.from_amount * rate).quantize(Decimal("0.000001"))
 
     quote_id = f"fxq_{uuid4().hex[:12]}"
     expires_at = datetime.now(UTC) + timedelta(seconds=30)
@@ -222,8 +234,37 @@ async def create_bridge_transfer(
     if req.from_chain == req.to_chain:
         raise HTTPException(status_code=422, detail="Source and destination chains must differ")
 
+    # Try real bridge adapters with deterministic fallback: Relay → Across
     transfer_id = f"brt_{uuid4().hex[:12]}"
-    fee = _estimate_bridge_fee(req.bridge_provider, req.amount)
+    actual_provider = req.bridge_provider
+    fee = Decimal("0")
+    estimated_seconds = 60
+
+    for provider_name in ["relay", "across"]:
+        try:
+            if provider_name == "relay":
+                from sardis_chain.bridges.relay import RelayBridgeAdapter
+                adapter = RelayBridgeAdapter()
+                quote = await adapter.quote(req.from_chain, req.to_chain, req.token, req.amount)
+                fee = quote.total_fee if hasattr(quote, "total_fee") else _estimate_bridge_fee(provider_name, req.amount)
+                estimated_seconds = quote.estimated_fill_time_seconds if hasattr(quote, "estimated_fill_time_seconds") else 30
+                actual_provider = "relay"
+                break
+            elif provider_name == "across":
+                from sardis_chain.bridges.across import AcrossBridgeAdapter
+                adapter = AcrossBridgeAdapter()
+                quote = await adapter.quote(req.from_chain, req.to_chain, req.token, req.amount)
+                fee = quote.total_fee
+                estimated_seconds = quote.estimated_fill_time_seconds
+                actual_provider = "across"
+                break
+        except Exception as e:
+            logger.warning("Bridge adapter %s failed: %s", provider_name, e)
+            continue
+    else:
+        # Both adapters failed — use estimated values
+        fee = _estimate_bridge_fee(req.bridge_provider, req.amount)
+        estimated_seconds = _estimate_bridge_time(req.bridge_provider)
 
     await Database.execute(
         """INSERT INTO bridge_transfers
@@ -231,8 +272,7 @@ async def create_bridge_transfer(
             bridge_provider, bridge_fee, status, estimated_seconds)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)""",
         transfer_id, req.from_chain, req.to_chain, req.token,
-        req.amount, req.bridge_provider, fee, "pending",
-        _estimate_bridge_time(req.bridge_provider),
+        req.amount, actual_provider, fee, "pending", estimated_seconds,
     )
 
     return BridgeTransferResponse(
@@ -241,10 +281,10 @@ async def create_bridge_transfer(
         to_chain=req.to_chain,
         token=req.token,
         amount=str(req.amount),
-        bridge_provider=req.bridge_provider,
+        bridge_provider=actual_provider,
         bridge_fee=str(fee),
         status="pending",
-        estimated_seconds=_estimate_bridge_time(req.bridge_provider),
+        estimated_seconds=estimated_seconds,
         created_at=datetime.now(UTC).isoformat(),
     )
 
