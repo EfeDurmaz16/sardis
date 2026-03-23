@@ -4,16 +4,13 @@ Scans for payment objects requiring automatic state transitions and applies
 them via the PaymentStateMachine.  Three categories are handled:
 
   1. **LOCKED + mandate expired** -> EXPIRED
-     The funds were locked but the mandate's expiration timestamp has passed.
-     The payment can no longer be settled.
+     JOINs payment_objects with spending_mandates to check sm.expires_at.
 
   2. **ESCROWED + timelock expired** -> AUTO_RELEASING -> RELEASED
-     The escrow timelock has elapsed without a dispute or delivery confirmation.
-     Funds are automatically released to the merchant in a two-step transition.
+     JOINs payment_objects with escrow_holds to check eh.timelock_expires_at.
 
   3. **ARBITRATING + review deadline passed** -> (log warning only)
-     Arbitration is a human process; we never auto-resolve.  But we flag
-     overdue cases so ops can follow up.
+     JOINs payment_objects with disputes to check d.review_deadline.
 
 All queries use ``SELECT ... FOR UPDATE SKIP LOCKED`` to avoid conflicts
 with other workers or API handlers touching the same rows concurrently.
@@ -27,7 +24,6 @@ from sardis_v2_core.state_machine import PaymentState, PaymentStateMachine
 
 logger = logging.getLogger("sardis.jobs.payment_expiry")
 
-# ─── Actor identifier for audit trail ────────────────────────────────
 _ACTOR = "payment_expiry_job"
 
 
@@ -58,6 +54,7 @@ async def expire_payments() -> None:
 
 # ═══════════════════════════════════════════════════════════════════════
 # Sweep 1: LOCKED where mandate expired → EXPIRED
+# JOIN payment_objects ON spending_mandates via mandate_id
 # ═══════════════════════════════════════════════════════════════════════
 
 async def _expire_locked_payments() -> int:
@@ -73,18 +70,19 @@ async def _expire_locked_payments() -> int:
         async with db.pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, payment_object_id, status, mandate_expires_at
-                FROM payment_objects
-                WHERE status = 'locked'
-                  AND mandate_expires_at IS NOT NULL
-                  AND mandate_expires_at <= NOW()
-                FOR UPDATE SKIP LOCKED
+                SELECT po.object_id, po.status, sm.expires_at AS mandate_expires_at
+                FROM payment_objects po
+                JOIN spending_mandates sm ON sm.id = po.mandate_id
+                WHERE po.status = 'locked'
+                  AND sm.expires_at IS NOT NULL
+                  AND sm.expires_at <= NOW()
+                FOR UPDATE OF po SKIP LOCKED
                 """
             )
 
             count = 0
             for row in rows:
-                po_id = row["payment_object_id"]
+                po_id = row["object_id"]
                 try:
                     machine = PaymentStateMachine(
                         payment_object_id=po_id,
@@ -101,10 +99,10 @@ async def _expire_locked_payments() -> int:
                         """
                         UPDATE payment_objects
                         SET status = $1, updated_at = NOW()
-                        WHERE id = $2
+                        WHERE object_id = $2
                         """,
                         PaymentState.EXPIRED.value,
-                        row["id"],
+                        po_id,
                     )
 
                     await _persist_transition(conn, record)
@@ -129,6 +127,7 @@ async def _expire_locked_payments() -> int:
 
 # ═══════════════════════════════════════════════════════════════════════
 # Sweep 2: ESCROWED where timelock expired → AUTO_RELEASING → RELEASED
+# JOIN payment_objects ON escrow_holds via payment_object_id
 # ═══════════════════════════════════════════════════════════════════════
 
 async def _release_escrowed_payments() -> int:
@@ -144,18 +143,20 @@ async def _release_escrowed_payments() -> int:
         async with db.pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, payment_object_id, status, timelock_expires_at
-                FROM payment_objects
-                WHERE status = 'escrowed'
-                  AND timelock_expires_at IS NOT NULL
-                  AND timelock_expires_at < NOW()
-                FOR UPDATE SKIP LOCKED
+                SELECT po.object_id, po.status, eh.timelock_expires_at
+                FROM payment_objects po
+                JOIN escrow_holds eh ON eh.payment_object_id = po.object_id
+                WHERE po.status = 'escrowed'
+                  AND eh.timelock_expires_at IS NOT NULL
+                  AND eh.timelock_expires_at < NOW()
+                  AND eh.auto_release = true
+                FOR UPDATE OF po SKIP LOCKED
                 """
             )
 
             count = 0
             for row in rows:
-                po_id = row["payment_object_id"]
+                po_id = row["object_id"]
                 try:
                     machine = PaymentStateMachine(
                         payment_object_id=po_id,
@@ -171,13 +172,9 @@ async def _release_escrowed_payments() -> int:
                     )
 
                     await conn.execute(
-                        """
-                        UPDATE payment_objects
-                        SET status = $1, updated_at = NOW()
-                        WHERE id = $2
-                        """,
+                        "UPDATE payment_objects SET status = $1, updated_at = NOW() WHERE object_id = $2",
                         PaymentState.AUTO_RELEASING.value,
-                        row["id"],
+                        po_id,
                     )
                     await _persist_transition(conn, record_1)
 
@@ -189,29 +186,32 @@ async def _release_escrowed_payments() -> int:
                     )
 
                     await conn.execute(
-                        """
-                        UPDATE payment_objects
-                        SET status = $1, updated_at = NOW()
-                        WHERE id = $2
-                        """,
+                        "UPDATE payment_objects SET status = $1, updated_at = NOW() WHERE object_id = $2",
                         PaymentState.RELEASED.value,
-                        row["id"],
+                        po_id,
                     )
                     await _persist_transition(conn, record_2)
 
+                    # Also update the escrow hold status
+                    await conn.execute(
+                        """UPDATE escrow_holds
+                           SET status = 'auto_released', released_at = NOW(),
+                               released_to = merchant_id, released_amount = amount,
+                               updated_at = NOW()
+                           WHERE payment_object_id = $1 AND status IN ('held', 'confirming')""",
+                        po_id,
+                    )
+
                     count += 1
                     logger.info(
-                        "Payment %s auto-released: ESCROWED -> RELEASED "
-                        "(timelock expired at %s)",
+                        "Payment %s auto-released: ESCROWED -> RELEASED (timelock expired at %s)",
                         po_id,
                         row["timelock_expires_at"],
                     )
                 except Exception as e:
                     logger.error(
                         "Failed to auto-release escrowed payment %s: %s",
-                        po_id,
-                        e,
-                        exc_info=True,
+                        po_id, e, exc_info=True,
                     )
 
             return count
@@ -223,6 +223,7 @@ async def _release_escrowed_payments() -> int:
 
 # ═══════════════════════════════════════════════════════════════════════
 # Sweep 3: ARBITRATING where review_deadline passed → log warning
+# JOIN payment_objects ON disputes via payment_object_id
 # ═══════════════════════════════════════════════════════════════════════
 
 async def _warn_overdue_arbitrations() -> int:
@@ -242,21 +243,24 @@ async def _warn_overdue_arbitrations() -> int:
         async with db.pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT id, payment_object_id, review_deadline
-                FROM payment_objects
-                WHERE status = 'arbitrating'
-                  AND review_deadline IS NOT NULL
-                  AND review_deadline < NOW()
-                FOR UPDATE SKIP LOCKED
+                SELECT po.object_id, d.dispute_id, d.review_deadline
+                FROM payment_objects po
+                JOIN disputes d ON d.payment_object_id = po.object_id
+                WHERE po.status = 'arbitrating'
+                  AND d.review_deadline IS NOT NULL
+                  AND d.review_deadline < NOW()
+                  AND d.status = 'under_review'
+                FOR UPDATE OF po SKIP LOCKED
                 """
             )
 
             count = 0
             for row in rows:
                 logger.warning(
-                    "OVERDUE ARBITRATION: payment %s review deadline was %s "
+                    "OVERDUE ARBITRATION: payment %s (dispute %s) review deadline was %s "
                     "(%.1f hours ago) — requires manual resolution",
-                    row["payment_object_id"],
+                    row["object_id"],
+                    row["dispute_id"],
                     row["review_deadline"],
                     (datetime.now(UTC) - row["review_deadline"].replace(tzinfo=UTC)).total_seconds() / 3600,
                 )
