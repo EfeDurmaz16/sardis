@@ -283,8 +283,35 @@ class PaymentObjectMinter:
                 mandate_id=mandate_id,
             ) from exc
 
+        # ── Step 5b: Generate ZKP if privacy tier requires it ──────
+        zkp_proof_hex: str | None = None
+        if privacy_tier in (PrivacyTier.HYBRID, PrivacyTier.FULL_ZK):
+            try:
+                from sardis_zkp import ZKProver
+                prover = ZKProver(production=False)
+                proof = await prover.prove_mandate_compliance(
+                    amount=amount,
+                    per_tx_limit=mandate.amount_per_tx or Decimal("999999"),
+                    daily_limit=mandate.amount_daily or Decimal("999999"),
+                    daily_spent=mandate.spent_total,
+                    merchant_id=merchant_id,
+                )
+                zkp_proof_hex = proof.proof_hex
+                logger.info(
+                    "Generated %s ZKP proof %s for payment object %s",
+                    privacy_tier.value, proof.proof_id, object_id,
+                )
+            except ImportError:
+                logger.warning("sardis_zkp not installed — skipping proof generation")
+            except Exception as exc:
+                logger.warning("ZKP proof generation failed: %s", exc)
+
         # ── Step 6: Build and return PaymentObject ───────────────────
         expires_at = now + timedelta(seconds=expires_in_seconds)
+
+        obj_metadata = metadata or {}
+        if zkp_proof_hex:
+            obj_metadata["zkp_proof"] = zkp_proof_hex
 
         po = PaymentObject(
             object_id=object_id,
@@ -300,7 +327,7 @@ class PaymentObjectMinter:
             status=PaymentObjectStatus.MINTED,
             privacy_tier=privacy_tier,
             created_at=now,
-            metadata=metadata or {},
+            metadata=obj_metadata,
         )
 
         logger.info(
