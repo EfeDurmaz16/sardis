@@ -67,6 +67,79 @@ SUBSCRIPTION_VALID_TRANSITIONS: dict[tuple[str, str], str] = {
 # Days between dunning retries
 DUNNING_SCHEDULE = [1, 3, 5, 7]  # Retry at 1, 3, 5, 7 days
 
+SUBSCRIPTION_TERMINAL_STATES = frozenset({
+    SubscriptionStatus.CANCELLED,
+    SubscriptionStatus.EXPIRED,
+})
+
+
+@dataclass
+class SubscriptionTransitionRecord:
+    """Audit record for a subscription lifecycle change."""
+    subscription_id: str
+    from_status: SubscriptionStatus
+    to_status: SubscriptionStatus
+    transition_name: str
+    actor: str
+    reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    id: str = field(default_factory=lambda: f"sstr_{uuid4().hex[:12]}")
+
+
+@dataclass
+class SubscriptionStateMachine:
+    """Manages the lifecycle of a subscription through 8 states."""
+
+    subscription_id: str
+    current_status: SubscriptionStatus = SubscriptionStatus.PENDING
+    transition_log: list[SubscriptionTransitionRecord] = field(default_factory=list)
+
+    def can_transition(self, to_status: SubscriptionStatus) -> bool:
+        return (self.current_status, to_status) in SUBSCRIPTION_VALID_TRANSITIONS
+
+    def transition(
+        self,
+        to_status: SubscriptionStatus,
+        actor: str,
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> SubscriptionTransitionRecord:
+        key = (self.current_status, to_status)
+        if key not in SUBSCRIPTION_VALID_TRANSITIONS:
+            raise ValueError(
+                f"Invalid transition: {self.current_status.value} → {to_status.value}"
+            )
+        transition_name = SUBSCRIPTION_VALID_TRANSITIONS[key]
+        record = SubscriptionTransitionRecord(
+            subscription_id=self.subscription_id,
+            from_status=self.current_status,
+            to_status=to_status,
+            transition_name=transition_name,
+            actor=actor,
+            reason=reason,
+            metadata=metadata or {},
+        )
+        self.current_status = to_status
+        self.transition_log.append(record)
+        logger.info(
+            "Subscription %s: %s → %s (%s)",
+            self.subscription_id, record.from_status.value,
+            record.to_status.value, transition_name,
+        )
+        return record
+
+    def is_terminal(self) -> bool:
+        return self.current_status in SUBSCRIPTION_TERMINAL_STATES
+
+    def available_transitions(self) -> list[tuple[SubscriptionStatus, str]]:
+        return [
+            (to, name)
+            for (frm, to), name in SUBSCRIPTION_VALID_TRANSITIONS.items()
+            if frm == self.current_status
+        ]
+
+
 CYCLE_DAYS = {
     BillingCycle.DAILY: 1,
     BillingCycle.WEEKLY: 7,
