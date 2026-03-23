@@ -185,8 +185,8 @@ CHAIN_CONFIGS = {
     # Standard web3.py works for basic transfers.
     # Type 0x76 transactions enable explicit fee token, batching, sponsorship.
     "tempo_testnet": {
-        "chain_id": 42429,  # Andantino testnet
-        "rpc_url": _rpc("SARDIS_TEMPO_TESTNET_RPC_URL", "https://rpc.testnet.tempo.xyz"),
+        "chain_id": 42431,  # Moderato testnet (from pympp _defaults.py)
+        "rpc_url": _rpc("SARDIS_TEMPO_TESTNET_RPC_URL", "https://rpc.moderato.tempo.xyz"),
         "explorer": "https://explore.tempo.xyz",
         "native_token": "NONE",  # No native gas token — fees in TIP-20
         "block_time": 1,
