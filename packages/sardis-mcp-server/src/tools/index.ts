@@ -2,7 +2,7 @@
  * Sardis MCP Server - Tool Registry
  *
  * Aggregates all tool definitions and handlers from domain-specific modules.
- * Total: 50+ tools across 12 modules.
+ * Total: 60+ tools across 22 modules.
  */
 
 import type { ToolDefinition, ToolHandler } from './types.js';
@@ -27,6 +27,9 @@ import { trustToolDefinitions, trustToolHandlers } from './trust.js';
 import { jobToolDefinitions, jobToolHandlers } from './jobs.js';
 import { mandateToolDefinitions, mandateToolHandlers } from './mandates.js';
 import { mppToolDefinitions, mppToolHandlers } from './mpp.js';
+import { paymentObjectToolDefinitions, paymentObjectToolHandlers } from './payment-objects.js';
+import { fundingToolDefinitions, fundingToolHandlers } from './funding.js';
+import { escrowToolDefinitions, escrowToolHandlers } from './escrow.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -68,6 +71,9 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...jobToolDefinitions,
   ...mandateToolDefinitions,
   ...mppToolDefinitions,
+  ...paymentObjectToolDefinitions,
+  ...fundingToolDefinitions,
+  ...escrowToolDefinitions,
 ];
 
 /**
@@ -93,6 +99,9 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...jobToolHandlers,
   ...mandateToolHandlers,
   ...mppToolHandlers,
+  ...paymentObjectToolHandlers,
+  ...fundingToolHandlers,
+  ...escrowToolHandlers,
 };
 
 /**
@@ -239,6 +248,26 @@ export const toolCategories = {
     'sardis_mpp_get_session',
     'sardis_mpp_issue_card',
     'sardis_mpp_evaluate_policy',
+  ],
+  paymentObject: [
+    'sardis_mint_payment_object',
+    'sardis_present_payment_object',
+    'sardis_verify_payment_object',
+    'sardis_get_payment_object',
+    'sardis_list_payment_objects',
+  ],
+  funding: [
+    'sardis_create_funding_commitment',
+    'sardis_list_funding_cells',
+    'sardis_split_cell',
+    'sardis_merge_cells',
+  ],
+  escrow: [
+    'sardis_create_escrow',
+    'sardis_confirm_delivery',
+    'sardis_file_dispute',
+    'sardis_submit_evidence',
+    'sardis_resolve_dispute',
   ],
 } as const;
 

@@ -8,7 +8,7 @@ Quick start::
     from sardis import SardisClient
     from sardis_agent_sdk import SardisToolkit
 
-    sardis = SardisClient(api_key="sk_test_demo")
+    sardis = SardisClient(api_key="your-api-key")
     wallet = sardis.wallets.create(name="agent-wallet", chain="base")
     toolkit = SardisToolkit(client=sardis, wallet_id=wallet.id)
 
@@ -28,8 +28,12 @@ from .tools import (
     READ_ONLY_TOOLS,
     SARDIS_CHECK_BALANCE_TOOL,
     SARDIS_CHECK_POLICY_TOOL,
+    SARDIS_CREATE_ESCROW_TOOL,
     SARDIS_CREATE_HOLD_TOOL,
+    SARDIS_CREATE_SUBSCRIPTION_TOOL,
+    SARDIS_GET_FX_QUOTE_TOOL,
     SARDIS_LIST_TRANSACTIONS_TOOL,
+    SARDIS_MINT_PAYMENT_TOOL,
     SARDIS_PAY_TOOL,
     SARDIS_SET_POLICY_TOOL,
     TOOL_NAMES,
@@ -52,4 +56,8 @@ __all__ = [
     "SARDIS_SET_POLICY_TOOL",
     "SARDIS_LIST_TRANSACTIONS_TOOL",
     "SARDIS_CREATE_HOLD_TOOL",
+    "SARDIS_MINT_PAYMENT_TOOL",
+    "SARDIS_GET_FX_QUOTE_TOOL",
+    "SARDIS_CREATE_SUBSCRIPTION_TOOL",
+    "SARDIS_CREATE_ESCROW_TOOL",
 ]

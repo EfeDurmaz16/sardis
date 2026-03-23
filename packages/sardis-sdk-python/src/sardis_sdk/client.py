@@ -69,16 +69,21 @@ if TYPE_CHECKING:
     from .resources.agents import AgentsResource, AsyncAgentsResource
     from .resources.approvals import ApprovalsResource, AsyncApprovalsResource
     from .resources.cards import AsyncCardsResource, CardsResource
+    from .resources.escrow import AsyncEscrowResource, EscrowResource
     from .resources.evidence import AsyncEvidenceResource, EvidenceResource
     from .resources.exceptions import AsyncExceptionsResource, ExceptionsResource
+    from .resources.funding import AsyncFundingResource, FundingResource
+    from .resources.fx import AsyncFXResource, FXResource
     from .resources.groups import AsyncGroupsResource, GroupsResource
     from .resources.holds import AsyncHoldsResource, HoldsResource
     from .resources.kill_switch import AsyncKillSwitchResource, KillSwitchResource
     from .resources.ledger import AsyncLedgerResource, LedgerResource
     from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
+    from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
     from .resources.payments import AsyncPaymentsResource, PaymentsResource
     from .resources.policies import AsyncPoliciesResource, PoliciesResource
     from .resources.simulation import AsyncSimulationResource, SimulationResource
+    from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource, SubscriptionsV2Resource
     from .resources.transactions import AsyncTransactionsResource, TransactionsResource
     from .resources.treasury import AsyncTreasuryResource, TreasuryResource
     from .resources.wallets import AsyncWalletsResource, WalletsResource
@@ -620,6 +625,11 @@ class AsyncSardisClient(BaseClient):
         self._evidence: AsyncEvidenceResource | None = None
         self._simulation: AsyncSimulationResource | None = None
         self._exceptions: AsyncExceptionsResource | None = None
+        self._payment_objects: AsyncPaymentObjectsResource | None = None
+        self._funding: AsyncFundingResource | None = None
+        self._fx: AsyncFXResource | None = None
+        self._subscriptions_v2: AsyncSubscriptionsV2Resource | None = None
+        self._escrow: AsyncEscrowResource | None = None
 
     @property
     def groups(self) -> AsyncGroupsResource:
@@ -756,6 +766,46 @@ class AsyncSardisClient(BaseClient):
             from .resources.exceptions import AsyncExceptionsResource
             self._exceptions = AsyncExceptionsResource(self)
         return self._exceptions
+
+    @property
+    def payment_objects(self) -> AsyncPaymentObjectsResource:
+        """Access the payment objects resource."""
+        if self._payment_objects is None:
+            from .resources.payment_objects import AsyncPaymentObjectsResource
+            self._payment_objects = AsyncPaymentObjectsResource(self)
+        return self._payment_objects
+
+    @property
+    def funding(self) -> AsyncFundingResource:
+        """Access the funding resource."""
+        if self._funding is None:
+            from .resources.funding import AsyncFundingResource
+            self._funding = AsyncFundingResource(self)
+        return self._funding
+
+    @property
+    def fx(self) -> AsyncFXResource:
+        """Access the FX resource."""
+        if self._fx is None:
+            from .resources.fx import AsyncFXResource
+            self._fx = AsyncFXResource(self)
+        return self._fx
+
+    @property
+    def subscriptions_v2(self) -> AsyncSubscriptionsV2Resource:
+        """Access the subscriptions v2 resource."""
+        if self._subscriptions_v2 is None:
+            from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource
+            self._subscriptions_v2 = AsyncSubscriptionsV2Resource(self)
+        return self._subscriptions_v2
+
+    @property
+    def escrow(self) -> AsyncEscrowResource:
+        """Access the escrow resource."""
+        if self._escrow is None:
+            from .resources.escrow import AsyncEscrowResource
+            self._escrow = AsyncEscrowResource(self)
+        return self._escrow
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client with connection pooling."""
@@ -1064,6 +1114,11 @@ class SardisClient(BaseClient):
         self._evidence: EvidenceResource | None = None
         self._simulation: SimulationResource | None = None
         self._exceptions: ExceptionsResource | None = None
+        self._payment_objects: PaymentObjectsResource | None = None
+        self._funding: FundingResource | None = None
+        self._fx: FXResource | None = None
+        self._subscriptions_v2: SubscriptionsV2Resource | None = None
+        self._escrow: EscrowResource | None = None
 
     @property
     def groups(self) -> GroupsResource:
@@ -1200,6 +1255,46 @@ class SardisClient(BaseClient):
             from .resources.exceptions import ExceptionsResource
             self._exceptions = ExceptionsResource(self)
         return self._exceptions
+
+    @property
+    def payment_objects(self) -> PaymentObjectsResource:
+        """Access the payment objects resource."""
+        if self._payment_objects is None:
+            from .resources.payment_objects import PaymentObjectsResource
+            self._payment_objects = PaymentObjectsResource(self)
+        return self._payment_objects
+
+    @property
+    def funding(self) -> FundingResource:
+        """Access the funding resource."""
+        if self._funding is None:
+            from .resources.funding import FundingResource
+            self._funding = FundingResource(self)
+        return self._funding
+
+    @property
+    def fx(self) -> FXResource:
+        """Access the FX resource."""
+        if self._fx is None:
+            from .resources.fx import FXResource
+            self._fx = FXResource(self)
+        return self._fx
+
+    @property
+    def subscriptions_v2(self) -> SubscriptionsV2Resource:
+        """Access the subscriptions v2 resource."""
+        if self._subscriptions_v2 is None:
+            from .resources.subscriptions_v2 import SubscriptionsV2Resource
+            self._subscriptions_v2 = SubscriptionsV2Resource(self)
+        return self._subscriptions_v2
+
+    @property
+    def escrow(self) -> EscrowResource:
+        """Access the escrow resource."""
+        if self._escrow is None:
+            from .resources.escrow import EscrowResource
+            self._escrow = EscrowResource(self)
+        return self._escrow
 
     def _get_client(self) -> httpx.Client:
         """Get or create the HTTP client with connection pooling."""

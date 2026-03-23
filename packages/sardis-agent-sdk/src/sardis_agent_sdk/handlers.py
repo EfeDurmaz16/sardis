@@ -40,6 +40,10 @@ class SardisToolHandler:
             "sardis_set_policy": self._handle_set_policy,
             "sardis_list_transactions": self._handle_list_transactions,
             "sardis_create_hold": self._handle_create_hold,
+            "sardis_mint_payment": self._handle_mint_payment,
+            "sardis_get_fx_quote": self._handle_get_fx_quote,
+            "sardis_create_subscription": self._handle_create_subscription,
+            "sardis_create_escrow": self._handle_create_escrow,
         }
         # Holds tracked in-memory (simulation); production would use the API.
         self._holds: dict[str, dict[str, Any]] = {}
@@ -322,6 +326,125 @@ class SardisToolHandler:
             "purpose": purpose,
             "expires_in_seconds": expires_in,
             "created_at": now.isoformat(),
+        }
+
+    def _handle_mint_payment(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        """Mint a payment object from a spending mandate."""
+        mandate_id = input_data["mandate_id"]
+        amount = self._parse_amount(input_data["amount"])
+        token = input_data.get("token", "USDC")
+        recipient = input_data.get("recipient")
+        purpose = input_data.get("purpose")
+        expires_in = input_data.get("expires_in_seconds", 3600)
+
+        result = self.client.payment_objects.mint(
+            wallet_id=self.wallet_id,
+            mandate_id=mandate_id,
+            amount=amount,
+            token=token,
+            recipient=recipient,
+            purpose=purpose,
+            expires_in_seconds=expires_in,
+        )
+
+        return {
+            "payment_object_id": result.payment_object_id,
+            "mandate_id": mandate_id,
+            "amount": str(amount),
+            "token": token,
+            "recipient": recipient,
+            "status": result.status,
+            "expires_at": result.expires_at,
+            "message": f"Payment object minted: {amount} {token}",
+        }
+
+    def _handle_get_fx_quote(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        """Get an FX quote for stablecoin swap."""
+        from_token = input_data["from_token"]
+        to_token = input_data["to_token"]
+        amount = self._parse_amount(input_data["amount"])
+        chain = input_data.get("chain")
+
+        quote = self.client.fx.get_quote(
+            wallet_id=self.wallet_id,
+            from_token=from_token,
+            to_token=to_token,
+            amount=amount,
+            chain=chain,
+        )
+
+        return {
+            "quote_id": quote.quote_id,
+            "from_token": from_token,
+            "to_token": to_token,
+            "input_amount": str(amount),
+            "output_amount": str(quote.output_amount),
+            "exchange_rate": str(quote.exchange_rate),
+            "fee": str(quote.fee),
+            "expires_at": quote.expires_at,
+        }
+
+    def _handle_create_subscription(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        """Create a recurring payment subscription."""
+        mandate_id = input_data["mandate_id"]
+        recipient = input_data["recipient"]
+        amount = self._parse_amount(input_data["amount"])
+        token = input_data.get("token", "USDC")
+        interval = input_data.get("interval", "monthly")
+        purpose = input_data.get("purpose")
+        max_payments = input_data.get("max_payments")
+
+        result = self.client.subscriptions.create(
+            wallet_id=self.wallet_id,
+            mandate_id=mandate_id,
+            recipient=recipient,
+            amount=amount,
+            token=token,
+            interval=interval,
+            purpose=purpose,
+            max_payments=max_payments,
+        )
+
+        return {
+            "subscription_id": result.subscription_id,
+            "mandate_id": mandate_id,
+            "recipient": recipient,
+            "amount": str(amount),
+            "token": token,
+            "interval": interval,
+            "status": result.status,
+            "next_payment_at": result.next_payment_at,
+            "message": f"Subscription created: {amount} {token} {interval} to {recipient}",
+        }
+
+    def _handle_create_escrow(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        """Create an escrow hold for a transaction."""
+        recipient = input_data["recipient"]
+        amount = self._parse_amount(input_data["amount"])
+        token = input_data.get("token", "USDC")
+        description = input_data.get("description")
+        deadline_hours = input_data.get("deadline_hours", 168)
+        arbiter = input_data.get("arbiter")
+
+        result = self.client.escrows.create(
+            wallet_id=self.wallet_id,
+            recipient=recipient,
+            amount=amount,
+            token=token,
+            description=description,
+            deadline_hours=deadline_hours,
+            arbiter=arbiter,
+        )
+
+        return {
+            "escrow_id": result.escrow_id,
+            "recipient": recipient,
+            "amount": str(amount),
+            "token": token,
+            "status": result.status,
+            "deadline": result.deadline,
+            "arbiter": arbiter,
+            "message": f"Escrow created: {amount} {token} held for {recipient}",
         }
 
     # ------------------------------------------------------------------

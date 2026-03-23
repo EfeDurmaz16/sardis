@@ -41,6 +41,11 @@ import { ApprovalsResource } from './resources/approvals.js';
 import { KillSwitchResource } from './resources/kill-switch.js';
 import { EvidenceResource } from './resources/evidence.js';
 import { SimulationResource } from './resources/simulation.js';
+import { PaymentObjectsResource } from './resources/payment-objects.js';
+import { FundingResource } from './resources/funding.js';
+import { FXResource } from './resources/fx.js';
+import { SubscriptionsV2Resource } from './resources/subscriptions-v2.js';
+import { EscrowResource } from './resources/escrow.js';
 import type {
   SardisClientOptions,
   RequestOptions,
@@ -280,6 +285,36 @@ export class SardisClient {
   public readonly simulation: SimulationResource;
 
   /**
+   * Payment object operations - mint, present, and verify tokenized payment objects.
+   * @see {@link PaymentObjectsResource}
+   */
+  public readonly paymentObjects: PaymentObjectsResource;
+
+  /**
+   * Funding operations - commitments and cell-based liquidity management.
+   * @see {@link FundingResource}
+   */
+  public readonly funding: FundingResource;
+
+  /**
+   * FX operations - stablecoin conversions and cross-chain bridging.
+   * @see {@link FXResource}
+   */
+  public readonly fx: FXResource;
+
+  /**
+   * Subscription V2 operations - recurring on-chain billing with usage support.
+   * @see {@link SubscriptionsV2Resource}
+   */
+  public readonly subscriptions: SubscriptionsV2Resource;
+
+  /**
+   * Escrow operations - protected transactions with dispute resolution.
+   * @see {@link EscrowResource}
+   */
+  public readonly escrow: EscrowResource;
+
+  /**
    * Creates a new SardisClient instance.
    *
    * @param options - Client configuration options
@@ -347,6 +382,11 @@ export class SardisClient {
     this.killSwitch = new KillSwitchResource(this);
     this.evidence = new EvidenceResource(this);
     this.simulation = new SimulationResource(this);
+    this.paymentObjects = new PaymentObjectsResource(this);
+    this.funding = new FundingResource(this);
+    this.fx = new FXResource(this);
+    this.subscriptions = new SubscriptionsV2Resource(this);
+    this.escrow = new EscrowResource(this);
   }
 
   /**

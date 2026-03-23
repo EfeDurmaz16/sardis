@@ -330,3 +330,151 @@ def sardis_list_transactions(
         "count": len(txns),
         "transactions": txns,
     }
+
+
+# ---------------------------------------------------------------------------
+# Protocol v1.0 tools
+# ---------------------------------------------------------------------------
+
+
+def sardis_mint_payment_object(
+    mandate_id: str,
+    merchant_id: str,
+    amount: str,
+    currency: str = "USDC",
+    memo: str = "",
+) -> dict:
+    """Mint a signed, one-time payment object from a spending mandate.
+
+    Use this tool when the agent needs to create a payment token that
+    can be presented to a merchant for verification and settlement.
+    Payment objects are the core settlement primitive in Sardis.
+
+    Args:
+        mandate_id: Spending mandate to mint from (e.g. "mandate_abc123").
+        merchant_id: Merchant this payment is for.
+        amount: Exact payment amount (e.g. "25.00").
+        currency: Token currency (default: USDC).
+        memo: Optional payment memo.
+
+    Returns:
+        dict with keys:
+            object_id (str): Unique payment object ID.
+            mandate_id (str): Source mandate.
+            merchant_id (str): Target merchant.
+            amount (str): Payment amount.
+            status (str): Object status (minted).
+            session_hash (str): Replay protection hash.
+            expires_at (str): Expiration timestamp.
+    """
+    client = _get_client()
+    result = client._request("POST", "/api/v2/payment-objects/mint", json={
+        "mandate_id": mandate_id,
+        "merchant_id": merchant_id,
+        "amount": amount,
+        "currency": currency,
+        "memo": memo or None,
+    })
+    return result
+
+
+def sardis_get_fx_quote(
+    from_currency: str,
+    to_currency: str,
+    amount: str,
+    chain: str = "tempo",
+) -> dict:
+    """Get an FX quote for a stablecoin swap.
+
+    Use this tool when the agent needs to convert between stablecoins
+    (e.g., USDC to EURC). Returns a quote with the exchange rate.
+
+    Args:
+        from_currency: Source currency (e.g. "USDC").
+        to_currency: Target currency (e.g. "EURC").
+        amount: Amount to convert.
+        chain: Chain for the swap (default: tempo).
+
+    Returns:
+        dict with keys:
+            quote_id (str): Quote identifier (use to execute).
+            rate (str): Exchange rate.
+            from_amount (str): Input amount.
+            to_amount (str): Output amount.
+            expires_at (str): Quote expiry.
+    """
+    client = _get_client()
+    return client._request("POST", "/api/v2/fx/quote", json={
+        "from_currency": from_currency,
+        "to_currency": to_currency,
+        "from_amount": amount,
+        "chain": chain,
+    })
+
+
+def sardis_create_subscription(
+    mandate_id: str,
+    merchant_id: str,
+    amount: str,
+    billing_cycle: str = "monthly",
+    currency: str = "USDC",
+) -> dict:
+    """Create a recurring subscription payment.
+
+    Use this tool when the agent needs to set up automatic recurring
+    payments to a merchant (e.g., monthly API subscriptions).
+
+    Args:
+        mandate_id: Spending mandate backing the subscription.
+        merchant_id: Merchant to pay.
+        amount: Charge amount per cycle.
+        billing_cycle: How often to charge (daily/weekly/monthly/annual).
+        currency: Payment currency (default: USDC).
+
+    Returns:
+        dict with keys:
+            subscription_id (str): Unique subscription ID.
+            status (str): Subscription status.
+            next_charge_at (str): Next charge date.
+            billing_cycle (str): Billing frequency.
+    """
+    client = _get_client()
+    return client._request("POST", "/api/v2/subscriptions", json={
+        "mandate_id": mandate_id,
+        "merchant_id": merchant_id,
+        "charge_amount": amount,
+        "billing_cycle": billing_cycle,
+        "currency": currency,
+    })
+
+
+def sardis_create_escrow(
+    payment_object_id: str,
+    merchant_id: str,
+    amount: str,
+    timelock_hours: int = 72,
+) -> dict:
+    """Create an escrow hold for a payment.
+
+    Use this tool when the agent needs to hold funds in escrow until
+    delivery is confirmed. Supports automatic release after timelock.
+
+    Args:
+        payment_object_id: Payment object to escrow.
+        merchant_id: Merchant receiving the payment.
+        amount: Escrow amount.
+        timelock_hours: Auto-release after this many hours (default: 72).
+
+    Returns:
+        dict with keys:
+            hold_id (str): Escrow hold ID.
+            status (str): Hold status.
+            timelock_expires_at (str): Auto-release time.
+    """
+    client = _get_client()
+    return client._request("POST", "/api/v2/escrow", json={
+        "payment_object_id": payment_object_id,
+        "merchant_id": merchant_id,
+        "amount": amount,
+        "timelock_hours": timelock_hours,
+    })

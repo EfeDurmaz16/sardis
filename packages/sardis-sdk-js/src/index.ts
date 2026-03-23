@@ -223,6 +223,67 @@ export type {
   KeyAlgorithm,
 } from './types.js';
 
+// Types - Payment Objects
+export type {
+  PaymentObject,
+  PaymentObjectStatus,
+  MintPaymentObjectInput,
+  PresentPaymentObjectInput,
+  VerifyPaymentObjectInput,
+  ListPaymentObjectsParams,
+} from './types.js';
+
+// Types - Funding
+export type {
+  FundingCommitment,
+  FundingCommitmentStatus,
+  FundingCell,
+  FundingCellStatus,
+  CreateFundingCommitmentInput,
+  ListFundingCommitmentsParams,
+  ListFundingCellsParams,
+  SplitCellResponse,
+  MergeCellsResponse,
+} from './types.js';
+
+// Types - FX
+export type {
+  FXQuote,
+  FXQuoteStatus,
+  FXQuoteInput,
+  FXExecuteResponse,
+  FXRate,
+  FXBridgeInput,
+  FXBridgeResponse,
+} from './types.js';
+
+// Types - Subscriptions V2
+export type {
+  Subscription,
+  SubscriptionStatus,
+  BillingInterval,
+  CreateSubscriptionInput,
+  ListSubscriptionsParams,
+  AmendSubscriptionInput,
+  ReportUsageInput,
+  ReportUsageResponse,
+} from './types.js';
+
+// Types - Escrow
+export type {
+  EscrowHold,
+  EscrowHoldStatus,
+  EscrowDispute,
+  EscrowDisputeStatus,
+  EscrowEvidence,
+  EscrowResolution,
+  CreateEscrowHoldInput,
+  ConfirmDeliveryInput,
+  FileDisputeInput,
+  SubmitEvidenceInput,
+  ResolveDisputeInput,
+} from './types.js';
+
 // Types - Bulk operations
 export type {
   BulkOperation,

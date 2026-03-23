@@ -21,3 +21,8 @@ export { ApprovalsResource } from './approvals.js';
 export { KillSwitchResource } from './kill-switch.js';
 export { EvidenceResource } from './evidence.js';
 export { SimulationResource } from './simulation.js';
+export { PaymentObjectsResource } from './payment-objects.js';
+export { FundingResource } from './funding.js';
+export { FXResource } from './fx.js';
+export { SubscriptionsV2Resource } from './subscriptions-v2.js';
+export { EscrowResource } from './escrow.js';

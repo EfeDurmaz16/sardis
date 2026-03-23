@@ -67,7 +67,7 @@ export type MPCProvider = 'turnkey' | 'fireblocks' | 'local';
  * @example
  * ```typescript
  * const options: SardisClientOptions = {
- *   apiKey: 'sk_live_xxx',
+ *   apiKey: 'your-api-key-here',
  *   timeout: 30000,
  *   maxRetries: 3,
  *   retryDelay: 1000,
@@ -1351,6 +1351,670 @@ export interface ListAgentsOptions {
   offset?: number;
   /** Filter by active status */
   is_active?: boolean;
+}
+
+// ==================== Payment Object Types ====================
+
+/**
+ * Status of a payment object.
+ */
+export type PaymentObjectStatus = 'minted' | 'presented' | 'verified' | 'redeemed' | 'expired' | 'revoked';
+
+/**
+ * A tokenized payment object (e.g., a digital check, voucher, or payment token).
+ */
+export interface PaymentObject {
+  /** Unique payment object identifier */
+  id: string;
+  /** Issuer agent or wallet ID */
+  issuer_id: string;
+  /** Token symbol (e.g., USDC) */
+  token: Token;
+  /** Face value amount */
+  amount: string;
+  /** Chain where the object was minted */
+  chain: Chain;
+  /** Current status */
+  status: PaymentObjectStatus;
+  /** On-chain token ID or hash */
+  object_hash: string;
+  /** Recipient address or agent ID (if presented) */
+  recipient?: string;
+  /** Verification proof (if verified) */
+  verification_proof?: string;
+  /** Arbitrary metadata */
+  metadata: Record<string, unknown>;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 expiration timestamp */
+  expires_at?: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * Input for minting a payment object.
+ */
+export interface MintPaymentObjectInput {
+  /** Issuer wallet ID */
+  wallet_id: string;
+  /** Token symbol */
+  token?: Token;
+  /** Amount (in token's decimal format) */
+  amount: string;
+  /** Chain to mint on */
+  chain?: Chain;
+  /** Expiration duration in hours */
+  expires_in_hours?: number;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Input for presenting a payment object to a recipient.
+ */
+export interface PresentPaymentObjectInput {
+  /** Recipient address or agent ID */
+  recipient: string;
+  /** Optional memo or message */
+  memo?: string;
+}
+
+/**
+ * Input for verifying a payment object.
+ */
+export interface VerifyPaymentObjectInput {
+  /** Verifier agent or wallet ID */
+  verifier_id: string;
+  /** Optional verification context */
+  context?: Record<string, unknown>;
+}
+
+/**
+ * Parameters for listing payment objects.
+ */
+export interface ListPaymentObjectsParams {
+  /** Filter by issuer ID */
+  issuer_id?: string;
+  /** Filter by recipient */
+  recipient?: string;
+  /** Filter by status */
+  status?: PaymentObjectStatus;
+  /** Maximum number of results */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+}
+
+// ==================== Funding Types ====================
+
+/**
+ * Status of a funding commitment.
+ */
+export type FundingCommitmentStatus = 'active' | 'depleted' | 'expired' | 'cancelled';
+
+/**
+ * Status of a funding cell.
+ */
+export type FundingCellStatus = 'available' | 'locked' | 'spent' | 'merged';
+
+/**
+ * A funding commitment representing reserved liquidity.
+ */
+export interface FundingCommitment {
+  /** Unique commitment identifier */
+  id: string;
+  /** Wallet ID providing the funding */
+  wallet_id: string;
+  /** Total committed amount */
+  total_amount: string;
+  /** Remaining available amount */
+  available_amount: string;
+  /** Token symbol */
+  token: Token;
+  /** Chain where funds are committed */
+  chain: Chain;
+  /** Current status */
+  status: FundingCommitmentStatus;
+  /** Number of cells created from this commitment */
+  cell_count: number;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 expiration timestamp */
+  expires_at?: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * A funding cell representing a discrete unit of liquidity.
+ */
+export interface FundingCell {
+  /** Unique cell identifier */
+  id: string;
+  /** Parent commitment ID */
+  commitment_id: string;
+  /** Cell amount */
+  amount: string;
+  /** Token symbol */
+  token: Token;
+  /** Current status */
+  status: FundingCellStatus;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * Input for creating a funding commitment.
+ */
+export interface CreateFundingCommitmentInput {
+  /** Wallet ID providing the funding */
+  wallet_id: string;
+  /** Total amount to commit */
+  amount: string;
+  /** Token symbol */
+  token?: Token;
+  /** Chain for the commitment */
+  chain?: Chain;
+  /** Expiration duration in hours */
+  expires_in_hours?: number;
+}
+
+/**
+ * Parameters for listing funding commitments.
+ */
+export interface ListFundingCommitmentsParams {
+  /** Filter by wallet ID */
+  wallet_id?: string;
+  /** Filter by status */
+  status?: FundingCommitmentStatus;
+  /** Maximum number of results */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+}
+
+/**
+ * Parameters for listing funding cells.
+ */
+export interface ListFundingCellsParams {
+  /** Filter by commitment ID */
+  commitment_id?: string;
+  /** Filter by status */
+  status?: FundingCellStatus;
+  /** Maximum number of results */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+}
+
+/**
+ * Response from splitting a funding cell.
+ */
+export interface SplitCellResponse {
+  /** Original cell (now spent) */
+  original_cell: FundingCell;
+  /** Newly created cells */
+  new_cells: FundingCell[];
+}
+
+/**
+ * Response from merging funding cells.
+ */
+export interface MergeCellsResponse {
+  /** Merged cells (now merged status) */
+  merged_cells: FundingCell[];
+  /** Newly created cell containing combined amount */
+  new_cell: FundingCell;
+}
+
+// ==================== FX Types ====================
+
+/**
+ * Status of an FX quote.
+ */
+export type FXQuoteStatus = 'active' | 'executed' | 'expired' | 'cancelled';
+
+/**
+ * An FX (foreign exchange) quote.
+ */
+export interface FXQuote {
+  /** Unique quote identifier */
+  id: string;
+  /** Source token */
+  from_token: Token;
+  /** Destination token */
+  to_token: Token;
+  /** Source amount */
+  from_amount: string;
+  /** Destination amount (quoted) */
+  to_amount: string;
+  /** Exchange rate */
+  rate: string;
+  /** Fee amount */
+  fee: string;
+  /** Fee token */
+  fee_token: Token;
+  /** Current status */
+  status: FXQuoteStatus;
+  /** ISO 8601 timestamp when quote expires */
+  expires_at: string;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+}
+
+/**
+ * Input for requesting an FX quote.
+ */
+export interface FXQuoteInput {
+  /** Source token */
+  from_token: Token;
+  /** Destination token */
+  to_token: Token;
+  /** Amount to convert (in source token) */
+  amount: string;
+  /** Source chain */
+  from_chain?: Chain;
+  /** Destination chain */
+  to_chain?: Chain;
+  /** Wallet ID for the conversion */
+  wallet_id?: string;
+}
+
+/**
+ * Response from executing an FX quote.
+ */
+export interface FXExecuteResponse {
+  /** Quote ID that was executed */
+  quote_id: string;
+  /** Transaction hash */
+  tx_hash: string;
+  /** Actual amount received */
+  received_amount: string;
+  /** Execution status */
+  status: string;
+  /** ISO 8601 timestamp of execution */
+  executed_at: string;
+}
+
+/**
+ * Exchange rate between two tokens.
+ */
+export interface FXRate {
+  /** Source token */
+  from_token: Token;
+  /** Destination token */
+  to_token: Token;
+  /** Current exchange rate */
+  rate: string;
+  /** ISO 8601 timestamp of rate */
+  as_of: string;
+}
+
+/**
+ * Input for a cross-chain bridge operation.
+ */
+export interface FXBridgeInput {
+  /** Source chain */
+  from_chain: Chain;
+  /** Destination chain */
+  to_chain: Chain;
+  /** Token to bridge */
+  token: Token;
+  /** Amount to bridge */
+  amount: string;
+  /** Source wallet ID */
+  wallet_id: string;
+  /** Destination address (defaults to same wallet) */
+  destination_address?: string;
+}
+
+/**
+ * Response from a bridge operation.
+ */
+export interface FXBridgeResponse {
+  /** Bridge operation ID */
+  bridge_id: string;
+  /** Source chain transaction hash */
+  source_tx_hash: string;
+  /** Destination chain transaction hash (populated after finality) */
+  destination_tx_hash?: string;
+  /** Bridge status */
+  status: string;
+  /** Estimated completion time in seconds */
+  estimated_completion_seconds?: number;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+}
+
+// ==================== Subscription V2 Types ====================
+
+/**
+ * Status of a subscription.
+ */
+export type SubscriptionStatus = 'active' | 'paused' | 'cancelled' | 'past_due' | 'trialing';
+
+/**
+ * Billing interval for a subscription.
+ */
+export type BillingInterval = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+/**
+ * A recurring subscription.
+ */
+export interface Subscription {
+  /** Unique subscription identifier */
+  id: string;
+  /** Subscriber wallet or agent ID */
+  subscriber_id: string;
+  /** Merchant or provider ID */
+  provider_id: string;
+  /** Plan name or identifier */
+  plan: string;
+  /** Billing amount per interval */
+  amount: string;
+  /** Payment token */
+  token: Token;
+  /** Billing chain */
+  chain: Chain;
+  /** Billing interval */
+  interval: BillingInterval;
+  /** Current status */
+  status: SubscriptionStatus;
+  /** Number of billing cycles completed */
+  billing_cycles: number;
+  /** Total amount billed to date */
+  total_billed: string;
+  /** Usage-based billing enabled */
+  usage_based: boolean;
+  /** Current period usage amount (if usage-based) */
+  current_usage?: string;
+  /** Usage limit per period (if usage-based) */
+  usage_limit?: string;
+  /** ISO 8601 timestamp of next billing */
+  next_billing_at?: string;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 timestamp of cancellation */
+  cancelled_at?: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * Input for creating a subscription.
+ */
+export interface CreateSubscriptionInput {
+  /** Subscriber wallet or agent ID */
+  subscriber_id: string;
+  /** Merchant or provider ID */
+  provider_id: string;
+  /** Plan name or identifier */
+  plan: string;
+  /** Billing amount per interval */
+  amount: string;
+  /** Payment token */
+  token?: Token;
+  /** Billing chain */
+  chain?: Chain;
+  /** Billing interval */
+  interval: BillingInterval;
+  /** Enable usage-based billing */
+  usage_based?: boolean;
+  /** Usage limit per period */
+  usage_limit?: string;
+  /** Trial period in days */
+  trial_days?: number;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Parameters for listing subscriptions.
+ */
+export interface ListSubscriptionsParams {
+  /** Filter by subscriber ID */
+  subscriber_id?: string;
+  /** Filter by provider ID */
+  provider_id?: string;
+  /** Filter by status */
+  status?: SubscriptionStatus;
+  /** Maximum number of results */
+  limit?: number;
+  /** Pagination offset */
+  offset?: number;
+}
+
+/**
+ * Input for amending a subscription.
+ */
+export interface AmendSubscriptionInput {
+  /** New billing amount */
+  amount?: string;
+  /** New billing interval */
+  interval?: BillingInterval;
+  /** New plan name */
+  plan?: string;
+  /** New usage limit */
+  usage_limit?: string;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Input for reporting usage on a subscription.
+ */
+export interface ReportUsageInput {
+  /** Usage amount to add */
+  amount: string;
+  /** Usage description */
+  description?: string;
+  /** Idempotency key to prevent double-counting */
+  idempotency_key?: string;
+  /** ISO 8601 timestamp of the usage event */
+  timestamp?: string;
+}
+
+/**
+ * Response from reporting usage.
+ */
+export interface ReportUsageResponse {
+  /** Subscription ID */
+  subscription_id: string;
+  /** Updated current usage */
+  current_usage: string;
+  /** Usage limit */
+  usage_limit?: string;
+  /** Whether usage exceeds limit */
+  over_limit: boolean;
+}
+
+// ==================== Escrow Types ====================
+
+/**
+ * Status of an escrow hold.
+ */
+export type EscrowHoldStatus = 'held' | 'released' | 'disputed' | 'refunded' | 'expired';
+
+/**
+ * Status of an escrow dispute.
+ */
+export type EscrowDisputeStatus = 'open' | 'evidence_review' | 'resolved_buyer' | 'resolved_seller' | 'resolved_split';
+
+/**
+ * An escrow hold protecting a transaction.
+ */
+export interface EscrowHold {
+  /** Unique escrow hold identifier */
+  id: string;
+  /** Buyer wallet or agent ID */
+  buyer_id: string;
+  /** Seller wallet or agent ID */
+  seller_id: string;
+  /** Held amount */
+  amount: string;
+  /** Payment token */
+  token: Token;
+  /** Chain where funds are held */
+  chain: Chain;
+  /** Current status */
+  status: EscrowHoldStatus;
+  /** Transaction hash for the escrow deposit */
+  deposit_tx_hash?: string;
+  /** Release transaction hash */
+  release_tx_hash?: string;
+  /** Dispute ID (if disputed) */
+  dispute_id?: string;
+  /** Delivery confirmation details */
+  delivery_confirmation?: Record<string, unknown>;
+  /** Arbitrary metadata */
+  metadata: Record<string, unknown>;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 expiration timestamp */
+  expires_at: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * An escrow dispute.
+ */
+export interface EscrowDispute {
+  /** Unique dispute identifier */
+  id: string;
+  /** Related escrow hold ID */
+  hold_id: string;
+  /** Party that filed the dispute */
+  filed_by: string;
+  /** Dispute reason */
+  reason: string;
+  /** Current status */
+  status: EscrowDisputeStatus;
+  /** Evidence submitted by buyer */
+  buyer_evidence?: EscrowEvidence[];
+  /** Evidence submitted by seller */
+  seller_evidence?: EscrowEvidence[];
+  /** Resolution details */
+  resolution?: EscrowResolution;
+  /** ISO 8601 timestamp of creation */
+  created_at: string;
+  /** ISO 8601 timestamp of last update */
+  updated_at: string;
+}
+
+/**
+ * Evidence submitted for an escrow dispute.
+ */
+export interface EscrowEvidence {
+  /** Evidence ID */
+  id: string;
+  /** Submitter ID */
+  submitted_by: string;
+  /** Evidence type (e.g., 'receipt', 'screenshot', 'log') */
+  evidence_type: string;
+  /** Evidence description */
+  description: string;
+  /** Evidence data or URL */
+  data: string;
+  /** ISO 8601 timestamp of submission */
+  submitted_at: string;
+}
+
+/**
+ * Resolution of an escrow dispute.
+ */
+export interface EscrowResolution {
+  /** Resolution outcome */
+  outcome: EscrowDisputeStatus;
+  /** Amount released to buyer */
+  buyer_amount?: string;
+  /** Amount released to seller */
+  seller_amount?: string;
+  /** Resolution notes */
+  notes?: string;
+  /** Resolver ID */
+  resolved_by: string;
+  /** ISO 8601 timestamp of resolution */
+  resolved_at: string;
+}
+
+/**
+ * Input for creating an escrow hold.
+ */
+export interface CreateEscrowHoldInput {
+  /** Buyer wallet or agent ID */
+  buyer_id: string;
+  /** Seller wallet or agent ID */
+  seller_id: string;
+  /** Amount to hold in escrow */
+  amount: string;
+  /** Payment token */
+  token?: Token;
+  /** Chain for the escrow */
+  chain?: Chain;
+  /** Escrow duration in hours */
+  expires_in_hours?: number;
+  /** Arbitrary metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Input for confirming delivery on an escrow hold.
+ */
+export interface ConfirmDeliveryInput {
+  /** Confirmation details */
+  confirmation?: Record<string, unknown>;
+  /** Optional memo */
+  memo?: string;
+}
+
+/**
+ * Input for filing an escrow dispute.
+ */
+export interface FileDisputeInput {
+  /** Party filing the dispute */
+  filed_by: string;
+  /** Reason for the dispute */
+  reason: string;
+  /** Initial evidence */
+  evidence?: {
+    evidence_type: string;
+    description: string;
+    data: string;
+  };
+}
+
+/**
+ * Input for submitting evidence on an escrow dispute.
+ */
+export interface SubmitEvidenceInput {
+  /** Submitter ID */
+  submitted_by: string;
+  /** Evidence type */
+  evidence_type: string;
+  /** Evidence description */
+  description: string;
+  /** Evidence data or URL */
+  data: string;
+}
+
+/**
+ * Input for resolving an escrow dispute.
+ */
+export interface ResolveDisputeInput {
+  /** Resolution outcome */
+  outcome: 'resolved_buyer' | 'resolved_seller' | 'resolved_split';
+  /** Amount to release to buyer (for split) */
+  buyer_amount?: string;
+  /** Amount to release to seller (for split) */
+  seller_amount?: string;
+  /** Resolver ID */
+  resolved_by: string;
+  /** Resolution notes */
+  notes?: string;
 }
 
 // ==================== Bulk Operation Types ====================

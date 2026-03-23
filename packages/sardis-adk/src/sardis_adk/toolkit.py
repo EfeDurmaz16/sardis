@@ -72,4 +72,9 @@ class SardisToolkit:
             FunctionTool(_tools.sardis_check_policy),
             FunctionTool(_tools.sardis_set_policy),
             FunctionTool(_tools.sardis_list_transactions),
+            # Protocol v1.0 tools
+            FunctionTool(_tools.sardis_mint_payment_object),
+            FunctionTool(_tools.sardis_get_fx_quote),
+            FunctionTool(_tools.sardis_create_subscription),
+            FunctionTool(_tools.sardis_create_escrow),
         ]

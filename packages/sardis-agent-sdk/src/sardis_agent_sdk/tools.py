@@ -250,6 +250,213 @@ SARDIS_CREATE_HOLD_TOOL: dict[str, Any] = {
 }
 
 # ---------------------------------------------------------------------------
+# sardis_mint_payment (Sardis Protocol v1.0)
+# ---------------------------------------------------------------------------
+
+SARDIS_MINT_PAYMENT_TOOL: dict[str, Any] = {
+    "name": "sardis_mint_payment",
+    "description": (
+        "Mint a payment object from a spending mandate. The payment object is "
+        "a portable, verifiable payment instrument that encapsulates amount, "
+        "token, chain, and policy constraints. It can be presented to merchants "
+        "for payment without exposing wallet credentials."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mandate_id": {
+                "type": "string",
+                "description": (
+                    "Spending mandate ID to mint the payment object from."
+                ),
+            },
+            "amount": {
+                "type": "string",
+                "description": (
+                    "Payment amount as a decimal string. Examples: '25.00', '100'."
+                ),
+            },
+            "token": {
+                "type": "string",
+                "description": "Stablecoin token for the payment object.",
+                "enum": ["USDC", "USDT", "PYUSD", "EURC"],
+                "default": "USDC",
+            },
+            "recipient": {
+                "type": "string",
+                "description": (
+                    "Intended recipient address or merchant domain. "
+                    "Examples: '0x1234...', 'openai.com'."
+                ),
+            },
+            "purpose": {
+                "type": "string",
+                "description": "Human-readable purpose for the audit trail.",
+            },
+            "expires_in_seconds": {
+                "type": "integer",
+                "description": "Object expiration in seconds. Default: 3600 (1 hour).",
+                "default": 3600,
+            },
+        },
+        "required": ["mandate_id", "amount"],
+    },
+}
+
+# ---------------------------------------------------------------------------
+# sardis_get_fx_quote (Sardis Protocol v1.0)
+# ---------------------------------------------------------------------------
+
+SARDIS_GET_FX_QUOTE_TOOL: dict[str, Any] = {
+    "name": "sardis_get_fx_quote",
+    "description": (
+        "Get an FX quote for swapping between stablecoins (e.g., USDC to EURC). "
+        "Returns the exchange rate, output amount, fees, and a quote ID that "
+        "can be executed within a time window. Does NOT execute the swap."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "from_token": {
+                "type": "string",
+                "description": "Source stablecoin token.",
+                "enum": ["USDC", "USDT", "PYUSD", "EURC"],
+            },
+            "to_token": {
+                "type": "string",
+                "description": "Target stablecoin token.",
+                "enum": ["USDC", "USDT", "PYUSD", "EURC"],
+            },
+            "amount": {
+                "type": "string",
+                "description": "Amount of source token to swap as a decimal string.",
+            },
+            "chain": {
+                "type": "string",
+                "description": (
+                    "Blockchain network for the swap. Defaults to configured chain."
+                ),
+            },
+        },
+        "required": ["from_token", "to_token", "amount"],
+    },
+}
+
+# ---------------------------------------------------------------------------
+# sardis_create_subscription (Sardis Protocol v1.0)
+# ---------------------------------------------------------------------------
+
+SARDIS_CREATE_SUBSCRIPTION_TOOL: dict[str, Any] = {
+    "name": "sardis_create_subscription",
+    "description": (
+        "Create a recurring payment subscription. Automatically mints payment "
+        "objects at the specified interval and presents them for settlement. "
+        "Requires an active spending mandate with sufficient budget. The "
+        "subscription can be paused or cancelled at any time."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "mandate_id": {
+                "type": "string",
+                "description": "Spending mandate ID to fund the subscription.",
+            },
+            "recipient": {
+                "type": "string",
+                "description": (
+                    "Recipient address or merchant domain for recurring payments."
+                ),
+            },
+            "amount": {
+                "type": "string",
+                "description": "Payment amount per interval as a decimal string.",
+            },
+            "token": {
+                "type": "string",
+                "description": "Stablecoin token for payments.",
+                "enum": ["USDC", "USDT", "PYUSD", "EURC"],
+                "default": "USDC",
+            },
+            "interval": {
+                "type": "string",
+                "description": "Payment interval.",
+                "enum": ["daily", "weekly", "biweekly", "monthly"],
+                "default": "monthly",
+            },
+            "purpose": {
+                "type": "string",
+                "description": (
+                    "Human-readable purpose (e.g., 'OpenAI API subscription')."
+                ),
+            },
+            "max_payments": {
+                "type": "integer",
+                "description": (
+                    "Maximum number of payments before auto-cancellation. "
+                    "Omit for indefinite."
+                ),
+            },
+        },
+        "required": ["mandate_id", "recipient", "amount"],
+    },
+}
+
+# ---------------------------------------------------------------------------
+# sardis_create_escrow (Sardis Protocol v1.0)
+# ---------------------------------------------------------------------------
+
+SARDIS_CREATE_ESCROW_TOOL: dict[str, Any] = {
+    "name": "sardis_create_escrow",
+    "description": (
+        "Create an escrow hold that locks funds until delivery is confirmed. "
+        "The sender's funds are held in a smart contract escrow and released "
+        "to the recipient only when the sender confirms delivery, or resolved "
+        "through dispute arbitration. An optional arbiter can be designated "
+        "for dispute resolution."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "recipient": {
+                "type": "string",
+                "description": "Recipient address or merchant domain.",
+            },
+            "amount": {
+                "type": "string",
+                "description": "Escrow amount as a decimal string.",
+            },
+            "token": {
+                "type": "string",
+                "description": "Stablecoin token for the escrow.",
+                "enum": ["USDC", "USDT", "PYUSD", "EURC"],
+                "default": "USDC",
+            },
+            "description": {
+                "type": "string",
+                "description": (
+                    "Description of the goods or services being escrowed."
+                ),
+            },
+            "deadline_hours": {
+                "type": "integer",
+                "description": (
+                    "Hours until escrow expires if not confirmed. "
+                    "Default: 168 (7 days)."
+                ),
+                "default": 168,
+            },
+            "arbiter": {
+                "type": "string",
+                "description": (
+                    "Optional arbiter agent ID or address for dispute resolution."
+                ),
+            },
+        },
+        "required": ["recipient", "amount"],
+    },
+}
+
+# ---------------------------------------------------------------------------
 # Convenience aggregates
 # ---------------------------------------------------------------------------
 
@@ -260,12 +467,17 @@ ALL_TOOLS: list[dict[str, Any]] = [
     SARDIS_SET_POLICY_TOOL,
     SARDIS_LIST_TRANSACTIONS_TOOL,
     SARDIS_CREATE_HOLD_TOOL,
+    SARDIS_MINT_PAYMENT_TOOL,
+    SARDIS_GET_FX_QUOTE_TOOL,
+    SARDIS_CREATE_SUBSCRIPTION_TOOL,
+    SARDIS_CREATE_ESCROW_TOOL,
 ]
 
 READ_ONLY_TOOLS: list[dict[str, Any]] = [
     SARDIS_CHECK_BALANCE_TOOL,
     SARDIS_CHECK_POLICY_TOOL,
     SARDIS_LIST_TRANSACTIONS_TOOL,
+    SARDIS_GET_FX_QUOTE_TOOL,
 ]
 
 TOOL_NAMES: set[str] = {tool["name"] for tool in ALL_TOOLS}

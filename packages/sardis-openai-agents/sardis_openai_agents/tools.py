@@ -70,6 +70,58 @@ try:
             return f"WOULD BE BLOCKED: ${amount} exceeds balance ${balance.balance}"
         return f"WOULD BE ALLOWED: ${amount} to {merchant}"
 
+    @function_tool
+    def sardis_mint_payment(mandate_id: str, amount: float, token: str = "USDC", recipient: str = "", purpose: str = "") -> str:
+        """Mint a payment object from a spending mandate. Returns a portable, verifiable payment instrument."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
+        result = client.payment_objects.mint(
+            wallet_id, mandate_id=mandate_id, amount=amount, token=token,
+            recipient=recipient or None, purpose=purpose or None,
+        )
+        return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+
+    @function_tool
+    def sardis_get_fx_quote(from_token: str, to_token: str, amount: float) -> str:
+        """Get an FX quote for swapping between stablecoins. Does NOT execute the swap."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
+        return (
+            f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
+            f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
+        )
+
+    @function_tool
+    def sardis_create_subscription(mandate_id: str, recipient: str, amount: float, interval: str = "monthly", token: str = "USDC", purpose: str = "") -> str:
+        """Create a recurring payment subscription funded by a spending mandate."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
+        result = client.subscriptions.create(
+            wallet_id, mandate_id=mandate_id, recipient=recipient, amount=amount,
+            token=token, interval=interval, purpose=purpose or None,
+        )
+        return (
+            f"SUBSCRIPTION CREATED: {result.subscription_id} — ${amount} {token} {interval} to {recipient} "
+            f"(next: {result.next_payment_at})"
+        )
+
+    @function_tool
+    def sardis_create_escrow(recipient: str, amount: float, token: str = "USDC", description: str = "", deadline_hours: int = 168, arbiter: str = "") -> str:
+        """Create an escrow hold that locks funds until delivery is confirmed or a dispute is resolved."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
+        result = client.escrows.create(
+            wallet_id, recipient=recipient, amount=amount, token=token,
+            description=description or None, deadline_hours=deadline_hours,
+            arbiter=arbiter or None,
+        )
+        return f"ESCROW CREATED: {result.escrow_id} — ${amount} {token} held for {recipient} (deadline: {result.deadline})"
+
 except ImportError:
     # openai-agents not installed - provide plain function versions
     def sardis_pay(amount: float, merchant: str, purpose: str = "Payment") -> str:
@@ -102,7 +154,63 @@ except ImportError:
             return f"WOULD BE BLOCKED: ${amount} exceeds balance ${balance.balance}"
         return f"WOULD BE ALLOWED: ${amount} to {merchant}"
 
+    def sardis_mint_payment(mandate_id: str, amount: float, token: str = "USDC", recipient: str = "", purpose: str = "") -> str:
+        """Mint a payment object from a spending mandate."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        result = client.payment_objects.mint(
+            wallet_id, mandate_id=mandate_id, amount=amount, token=token,
+            recipient=recipient or None, purpose=purpose or None,
+        )
+        return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+
+    def sardis_get_fx_quote(from_token: str, to_token: str, amount: float) -> str:
+        """Get an FX quote for swapping between stablecoins."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
+        return (
+            f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
+            f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
+        )
+
+    def sardis_create_subscription(mandate_id: str, recipient: str, amount: float, interval: str = "monthly", token: str = "USDC", purpose: str = "") -> str:
+        """Create a recurring payment subscription funded by a spending mandate."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        result = client.subscriptions.create(
+            wallet_id, mandate_id=mandate_id, recipient=recipient, amount=amount,
+            token=token, interval=interval, purpose=purpose or None,
+        )
+        return (
+            f"SUBSCRIPTION CREATED: {result.subscription_id} — ${amount} {token} {interval} to {recipient} "
+            f"(next: {result.next_payment_at})"
+        )
+
+    def sardis_create_escrow(recipient: str, amount: float, token: str = "USDC", description: str = "", deadline_hours: int = 168, arbiter: str = "") -> str:
+        """Create an escrow hold that locks funds until delivery is confirmed."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        result = client.escrows.create(
+            wallet_id, recipient=recipient, amount=amount, token=token,
+            description=description or None, deadline_hours=deadline_hours,
+            arbiter=arbiter or None,
+        )
+        return f"ESCROW CREATED: {result.escrow_id} — ${amount} {token} held for {recipient} (deadline: {result.deadline})"
+
 
 def get_sardis_tools() -> list:
     """Get all Sardis tools for an OpenAI Agent."""
-    return [sardis_pay, sardis_check_balance, sardis_check_policy]
+    return [
+        sardis_pay,
+        sardis_check_balance,
+        sardis_check_policy,
+        sardis_mint_payment,
+        sardis_get_fx_quote,
+        sardis_create_subscription,
+        sardis_create_escrow,
+    ]

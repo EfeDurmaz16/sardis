@@ -193,6 +193,13 @@ from .pagination import (
     create_page_from_response,
 )
 
+# Protocol v1.0 Resources
+from .resources.escrow import AsyncEscrowResource, EscrowResource
+from .resources.funding import AsyncFundingResource, FundingResource
+from .resources.fx import AsyncFXResource, FXResource
+from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
+from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource, SubscriptionsV2Resource
+
 __all__ = [
     "APIError",
     # Agent models
@@ -201,8 +208,14 @@ __all__ = [
     "AgentUpdate",
     "ApplyPolicyFromNLResponse",
     "AsyncBulkExecutor",
+    # Protocol v1.0 Resources (async)
+    "AsyncEscrowResource",
+    "AsyncFXResource",
+    "AsyncFundingResource",
     "AsyncPaginator",
+    "AsyncPaymentObjectsResource",
     "AsyncSardisClient",
+    "AsyncSubscriptionsV2Resource",
     # Authentication errors
     "AuthenticationError",
     "BadGatewayError",
@@ -233,6 +246,8 @@ __all__ = [
     # Error utilities
     "ErrorCode",
     "ErrorSeverity",
+    # Protocol v1.0 Resources (sync)
+    "EscrowResource",
     "ExecuteAP2Request",
     "ExecuteAP2Response",
     "ExecuteMandateRequest",
@@ -240,8 +255,10 @@ __all__ = [
     "ExecutePaymentResponse",
     "ExperimentalChain",
     "ExternalBankAccount",
+    "FXResource",
     # Treasury models
     "FinancialAccount",
+    "FundingResource",
     "GasEstimationError",
     "GatewayTimeoutError",
     # Hold models
@@ -274,6 +291,7 @@ __all__ = [
     "Payment",
     # Payment errors
     "PaymentError",
+    "PaymentObjectsResource",
     "PaymentStatus",
     "PolicyCheckResponse",
     "PolicyExample",
@@ -302,6 +320,7 @@ __all__ = [
     "ServiceStatus",
     "ServiceUnavailableError",
     "SimulateCardPurchaseResponse",
+    "SubscriptionsV2Resource",
     "SyncAccountHolderRequest",
     "SyncBulkExecutor",
     "SyncPaginator",

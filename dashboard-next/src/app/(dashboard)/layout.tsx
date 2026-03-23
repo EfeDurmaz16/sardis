@@ -30,6 +30,7 @@ import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
 import { useSession, signOut } from '@/lib/auth-client'
 import { shouldShowTour, startDashboardTour } from '@/lib/tour'
+import KYCBanner from '@/components/KYCBanner'
 import NotificationCenter from '@/components/NotificationCenter'
 
 interface LayoutProps {
@@ -295,6 +296,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
           <NotificationCenter />
         </header>
         <div className="p-8 flex-1">
+          <KYCBanner />
           {children}
         </div>
       </main>
