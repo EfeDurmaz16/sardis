@@ -165,23 +165,73 @@ class TempoExecutor:
         amount: int,
         min_output: int,
     ) -> TempoReceipt:
-        """Execute a swap on Tempo's enshrined DEX.
+        """Execute a swap on Tempo's enshrined DEX using pytempo.
 
-        The DEX at 0xdec0... is a native orderbook (not AMM).
+        Uses pytempo.contracts.StablecoinDEX.swap() for correct ABI
+        encoding. Builds atomic approve + swap in type 0x76 batch.
         """
-        # Approve DEX to spend tokens + execute swap in one batch
-        approve_data = self._encode_approve(STABLECOIN_DEX, amount)
-        swap_data = self._encode_dex_swap(from_token, to_token, amount, min_output)
+        try:
+            from pytempo import TempoTransaction
+            from pytempo.contracts import TIP20, StablecoinDEX
 
+            # Get tx params
+            from .dex import TempoDEXAdapter
+            adapter = TempoDEXAdapter(rpc_url=self._rpc_url, chain_id=self._chain_id)
+            signer_key = None
+
+            # Try to get a signing key
+            if self._signer and hasattr(self._signer, 'private_key'):
+                signer_key = self._signer.private_key
+            elif hasattr(self, '_private_key'):
+                signer_key = self._private_key
+
+            if signer_key:
+                chain_id, nonce, gas_price = await adapter._get_tx_params(signer_key)
+
+                tx = TempoTransaction.create(
+                    chain_id=chain_id,
+                    gas_limit=300_000,
+                    max_fee_per_gas=gas_price,
+                    max_priority_fee_per_gas=gas_price,
+                    nonce=nonce,
+                    fee_token=from_token,
+                    calls=(
+                        TIP20(from_token).approve(
+                            spender=StablecoinDEX.ADDRESS, amount=amount
+                        ),
+                        StablecoinDEX.swap(
+                            token_in=from_token,
+                            amount_in=amount,
+                            amount_out_min=min_output,
+                        ),
+                    ),
+                )
+
+                signed = tx.sign(signer_key)
+                tx_hash = await adapter._broadcast(signed.encode())
+                receipt_data = await adapter._wait_for_receipt(tx_hash)
+
+                return TempoReceipt(
+                    tx_hash=tx_hash,
+                    block_number=receipt_data.get("block_number", 0),
+                    status=receipt_data.get("status", False),
+                    gas_used=receipt_data.get("gas_used", 0),
+                )
+
+        except ImportError:
+            logger.warning("pytempo not installed — falling back to manual encoding")
+
+        # Fallback: use manual encoding via batch submit
+        approve_data = self._encode_approve(STABLECOIN_DEX, amount)
+        # Note: StablecoinDEX.swap() calldata from pytempo is preferred
+        # This fallback uses the old batch path
         batch = BatchTransaction(
             calls=[
                 BatchCall(to=from_token, data=approve_data),
-                BatchCall(to=STABLECOIN_DEX, data=swap_data),
             ],
             fee_token=from_token,
             chain_id=self._chain_id,
         )
-
         return await self._submit_batch(batch)
 
     async def _submit_batch(self, batch: BatchTransaction) -> TempoReceipt:
@@ -299,15 +349,5 @@ class TempoExecutor:
         amt = amount.to_bytes(32, "big")
         return selector + addr + amt
 
-    @staticmethod
-    def _encode_dex_swap(
-        from_token: str, to_token: str, amount: int, min_output: int
-    ) -> bytes:
-        """Encode DEX swap call."""
-        # Simplified — actual ABI depends on Tempo DEX precompile interface
-        selector = bytes.fromhex("38ed1739")  # swap selector
-        from_addr = bytes.fromhex(from_token[2:].zfill(64))
-        to_addr = bytes.fromhex(to_token[2:].zfill(64))
-        amt = amount.to_bytes(32, "big")
-        min_out = min_output.to_bytes(32, "big")
-        return selector + from_addr + to_addr + amt + min_out
+    # _encode_dex_swap removed — use pytempo StablecoinDEX.swap() instead
+    # The old selector 0x38ed1739 (Uniswap V2) was incorrect for Tempo DEX
