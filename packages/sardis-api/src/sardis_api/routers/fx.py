@@ -168,19 +168,81 @@ async def execute_fx_quote(
             )
             raise HTTPException(status_code=410, detail="Quote has expired")
 
-        # Execute the swap (in production, submit on-chain tx)
+        # Mark as executing
         await conn.execute(
-            """UPDATE fx_quotes SET status = 'executing', updated_at = now()
-               WHERE quote_id = $1""",
+            "UPDATE fx_quotes SET status = 'executing', updated_at = now() WHERE quote_id = $1",
             req.quote_id,
         )
 
-        # Mark completed (simplified — would wait for on-chain confirmation)
-        await conn.execute(
-            """UPDATE fx_quotes SET status = 'completed', updated_at = now()
-               WHERE quote_id = $1""",
+    # Execute real swap via adapter
+    tx_hash = None
+    swap_status = "failed"
+    try:
+        provider = row["provider"]
+        if provider == "tempo_dex":
+            from sardis_chain.tempo.dex import TempoDEXAdapter, DEXQuote
+            import os
+            dex = TempoDEXAdapter(
+                rpc_url=os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
+                private_key=os.getenv("SARDIS_TEMPO_SIGNER_KEY"),
+            )
+            quote = DEXQuote(
+                quote_id=row["quote_id"],
+                from_token=row.get("from_currency", ""),
+                to_token=row.get("to_currency", ""),
+                from_amount=row["from_amount"],
+                to_amount=row["to_amount"],
+                rate=row["rate"],
+                slippage_bps=row.get("slippage_bps", 50),
+            )
+            result = await dex.execute_swap(quote)
+            tx_hash = result.get("tx_hash")
+            swap_status = result.get("status", "failed")
+
+        elif provider in ("uniswap_v3", "uniswap_v4"):
+            # Will be wired in F4 (Uniswap V3 adapter)
+            raise NotImplementedError(f"Adapter {provider} execution not yet wired")
+
+        else:
+            # Try CDPSwap if available
+            try:
+                from sardis_chain.cdp_swap import CDPSwapClient
+                import os
+                cdp_key = os.getenv("CDP_API_KEY")
+                if cdp_key:
+                    cdp = CDPSwapClient(api_key=cdp_key)
+                    result = await cdp.execute_swap(
+                        from_token=row["from_currency"],
+                        to_token=row["to_currency"],
+                        amount=str(row["from_amount"]),
+                        chain=row.get("chain", "base"),
+                    )
+                    tx_hash = result.get("tx_hash")
+                    swap_status = result.get("status", "completed")
+                else:
+                    raise NotImplementedError("No adapter available for this provider")
+            except (ImportError, NotImplementedError):
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"No execution adapter available for provider '{provider}'. "
+                           f"Set SARDIS_TEMPO_SIGNER_KEY for Tempo or CDP_API_KEY for Base.",
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Swap execution failed for %s: %s", req.quote_id, e)
+        await Database.execute(
+            "UPDATE fx_quotes SET status = 'failed', updated_at = now() WHERE quote_id = $1",
             req.quote_id,
         )
+        raise HTTPException(status_code=502, detail=f"Swap execution failed: {e}")
+
+    # Persist real execution result
+    await Database.execute(
+        "UPDATE fx_quotes SET status = $1, tx_hash = $2, updated_at = now() WHERE quote_id = $3",
+        swap_status, tx_hash, req.quote_id,
+    )
 
     updated = await Database.fetchrow(
         "SELECT * FROM fx_quotes WHERE quote_id = $1", req.quote_id
