@@ -94,7 +94,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return await self._post("subscriptions", payload, timeout=timeout)
+        return await self._post("mandate-subscriptions", payload, timeout=timeout)
 
     async def get(
         self,
@@ -110,7 +110,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
         Returns:
             The subscription object
         """
-        return await self._get(f"subscriptions/{subscription_id}", timeout=timeout)
+        return await self._get(f"mandate-subscriptions/{subscription_id}", timeout=timeout)
 
     async def list(
         self,
@@ -136,7 +136,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
         if mandate_id is not None:
             params["mandate_id"] = mandate_id
 
-        data = await self._get("subscriptions", params=params, timeout=timeout)
+        data = await self._get("mandate-subscriptions", params=params, timeout=timeout)
 
         if isinstance(data, list):
             return data
@@ -157,7 +157,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
             The cancelled subscription
         """
         return await self._post(
-            f"subscriptions/{subscription_id}/cancel", timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/cancel", timeout=timeout
         )
 
     async def amend(
@@ -189,7 +189,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
             payload["metadata"] = metadata
 
         return await self._patch(
-            f"subscriptions/{subscription_id}", payload, timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/amend", payload, timeout=timeout
         )
 
     async def report_usage(
@@ -225,7 +225,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
             payload["metadata"] = metadata
 
         return await self._post(
-            f"subscriptions/{subscription_id}/usage", payload, timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/usage", payload, timeout=timeout
         )
 
 
@@ -303,7 +303,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return self._post("subscriptions", payload, timeout=timeout)
+        return self._post("mandate-subscriptions", payload, timeout=timeout)
 
     def get(
         self,
@@ -319,7 +319,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
         Returns:
             The subscription object
         """
-        return self._get(f"subscriptions/{subscription_id}", timeout=timeout)
+        return self._get(f"mandate-subscriptions/{subscription_id}", timeout=timeout)
 
     def list(
         self,
@@ -345,7 +345,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
         if mandate_id is not None:
             params["mandate_id"] = mandate_id
 
-        data = self._get("subscriptions", params=params, timeout=timeout)
+        data = self._get("mandate-subscriptions", params=params, timeout=timeout)
 
         if isinstance(data, list):
             return data
@@ -366,7 +366,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
             The cancelled subscription
         """
         return self._post(
-            f"subscriptions/{subscription_id}/cancel", timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/cancel", timeout=timeout
         )
 
     def amend(
@@ -398,7 +398,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
             payload["metadata"] = metadata
 
         return self._patch(
-            f"subscriptions/{subscription_id}", payload, timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/amend", payload, timeout=timeout
         )
 
     def report_usage(
@@ -434,7 +434,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
             payload["metadata"] = metadata
 
         return self._post(
-            f"subscriptions/{subscription_id}/usage", payload, timeout=timeout
+            f"mandate-subscriptions/{subscription_id}/usage", payload, timeout=timeout
         )
 
 
