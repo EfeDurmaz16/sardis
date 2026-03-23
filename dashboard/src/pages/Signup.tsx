@@ -117,6 +117,7 @@ export default function Signup() {
                                     onClick={handleCopyKey}
                                     className="shrink-0 p-3 bg-dark-300 border border-dark-100 rounded-lg text-gray-400 hover:text-white transition-colors"
                                     title="Copy API key"
+                                    aria-label="Copy to clipboard"
                                 >
                                     {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                 </button>

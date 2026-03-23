@@ -80,7 +80,7 @@ function StepWelcome({ onNext, onSkip, apiKey }: { onNext: () => void; onSkip: (
               <code className="flex-1 px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-sardis-400 text-xs font-mono">
                 pip install sardis
               </code>
-              <button onClick={() => handleCopy('pip install sardis')} className="shrink-0 p-2 bg-dark-300 border border-dark-100 rounded-lg text-gray-500 hover:text-white transition-colors">
+              <button onClick={() => handleCopy('pip install sardis')} className="shrink-0 p-2 bg-dark-300 border border-dark-100 rounded-lg text-gray-500 hover:text-white transition-colors" aria-label="Copy to clipboard">
                 {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>

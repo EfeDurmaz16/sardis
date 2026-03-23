@@ -53,7 +53,7 @@ function CopyButton({ text, size = 14 }: { text: string; size?: number }) {
     setTimeout(() => setCopied(false), 1500)
   }
   return (
-    <button onClick={handleCopy} className="p-1 text-gray-500 hover:text-white transition-colors" title="Copy">
+    <button onClick={handleCopy} className="p-1 text-gray-500 hover:text-white transition-colors" title="Copy" aria-label="Copy to clipboard">
       {copied ? <Check size={size} className="text-green-400" /> : <Copy size={size} />}
     </button>
   )
@@ -342,6 +342,7 @@ export default function TransactionsPage() {
                           rel="noopener noreferrer"
                           className="p-2 text-sardis-400 hover:text-white transition-colors inline-flex"
                           title="View on explorer"
+                          aria-label="View on explorer"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>

@@ -362,11 +362,11 @@ export default function MandatesPage() {
                     {m.status === 'active' && (
                       <>
                         <button onClick={() => handleAction(m.id, 'suspend')} disabled={actionLoading === m.id}
-                          className="p-1.5 text-yellow-500 hover:bg-yellow-500/10 rounded transition-colors" title="Suspend">
+                          className="p-1.5 text-yellow-500 hover:bg-yellow-500/10 rounded transition-colors" title="Suspend" aria-label="Suspend mandate">
                           <Pause size={14} />
                         </button>
                         <button onClick={() => handleAction(m.id, 'revoke', 'Revoked from dashboard')} disabled={actionLoading === m.id}
-                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke">
+                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke" aria-label="Revoke mandate">
                           <Ban size={14} />
                         </button>
                       </>
@@ -374,18 +374,18 @@ export default function MandatesPage() {
                     {m.status === 'suspended' && (
                       <>
                         <button onClick={() => handleAction(m.id, 'resume')} disabled={actionLoading === m.id}
-                          className="p-1.5 text-green-500 hover:bg-green-500/10 rounded transition-colors" title="Resume">
+                          className="p-1.5 text-green-500 hover:bg-green-500/10 rounded transition-colors" title="Resume" aria-label="Resume mandate">
                           <Play size={14} />
                         </button>
                         <button onClick={() => handleAction(m.id, 'revoke', 'Revoked from dashboard')} disabled={actionLoading === m.id}
-                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke">
+                          className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke" aria-label="Revoke mandate">
                           <Ban size={14} />
                         </button>
                       </>
                     )}
                     {m.status === 'draft' && (
                       <button onClick={() => handleAction(m.id, 'activate')} disabled={actionLoading === m.id}
-                        className="p-1.5 text-green-500 hover:bg-green-500/10 rounded transition-colors" title="Activate">
+                        className="p-1.5 text-green-500 hover:bg-green-500/10 rounded transition-colors" title="Activate" aria-label="Activate mandate">
                         <Play size={14} />
                       </button>
                     )}

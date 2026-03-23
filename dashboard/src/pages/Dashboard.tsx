@@ -133,7 +133,7 @@ function QuickStartCard({ transactionCount }: { transactionCount: number }) {
 
   return (
     <div className="rounded-xl p-5 relative" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(79,70,229,0.04) 100%)', border: '1px solid rgba(99,102,241,0.2)' }}>
-      <button onClick={handleDismiss} className="absolute top-3 right-3 text-gray-500 hover:text-white transition-colors">
+      <button onClick={handleDismiss} className="absolute top-3 right-3 text-gray-500 hover:text-white transition-colors" aria-label="Dismiss">
         <X size={16} />
       </button>
       <div className="flex items-center gap-2 mb-3">
