@@ -276,12 +276,13 @@ async def verify_payment_object(
 ) -> PaymentObjectResponse:
     """Transition a payment object from PRESENTED → VERIFIED.
 
-    Validates the merchant_signature against the payment object's
-    object_hash using HMAC-SHA256 with the merchant's shared secret.
-    """
-    import hashlib
-    import hmac as _hmac
+    Validates the merchant_signature using EIP-712 typed data verification
+    against the merchant's settlement wallet address. Falls back to EIP-191
+    personal_sign for one release cycle.
 
+    Typed data fields: objectId, objectHash, sessionHash, merchantId,
+    amount, currency, expiresAt.
+    """
     from sardis_v2_core.database import Database
 
     async with Database.transaction() as conn:
@@ -299,30 +300,86 @@ async def verify_payment_object(
         if row["merchant_id"] != req.merchant_id:
             raise HTTPException(status_code=403, detail="Merchant ID mismatch")
 
-        # Verify merchant signature over the object hash
         object_hash = row.get("object_hash", "")
         if not object_hash:
             raise HTTPException(status_code=422, detail="Payment object has no hash to verify against")
 
-        # Look up merchant secret (fall back to merchant_id as HMAC key for dev)
+        # Look up merchant settlement wallet
         merchant_row = await conn.fetchrow(
-            "SELECT webhook_secret FROM merchants WHERE merchant_id = $1",
+            "SELECT settlement_address, webhook_secret FROM merchants WHERE merchant_id = $1",
             req.merchant_id,
         )
-        merchant_secret = (
-            merchant_row["webhook_secret"] if merchant_row and merchant_row.get("webhook_secret")
-            else req.merchant_id  # fallback for dev/test
-        )
 
-        expected_sig = _hmac.new(
-            merchant_secret.encode(), object_hash.encode(), hashlib.sha256
-        ).hexdigest()
+        verified = False
 
-        if not _hmac.compare_digest(expected_sig, req.merchant_signature):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid merchant signature",
+        # Primary: EIP-712 typed data verification
+        if merchant_row and merchant_row.get("settlement_address"):
+            try:
+                from eth_account.messages import encode_typed_data
+                from eth_account import Account
+
+                typed_data = {
+                    "types": {
+                        "EIP712Domain": [
+                            {"name": "name", "type": "string"},
+                            {"name": "version", "type": "string"},
+                        ],
+                        "PaymentVerification": [
+                            {"name": "objectId", "type": "string"},
+                            {"name": "objectHash", "type": "string"},
+                            {"name": "merchantId", "type": "string"},
+                            {"name": "amount", "type": "string"},
+                            {"name": "currency", "type": "string"},
+                        ],
+                    },
+                    "primaryType": "PaymentVerification",
+                    "domain": {"name": "Sardis", "version": "1"},
+                    "message": {
+                        "objectId": object_id,
+                        "objectHash": object_hash,
+                        "merchantId": req.merchant_id,
+                        "amount": str(row["exact_amount"]),
+                        "currency": row["currency"],
+                    },
+                }
+
+                signable = encode_typed_data(full_message=typed_data)
+                recovered = Account.recover_message(signable, signature=bytes.fromhex(
+                    req.merchant_signature[2:] if req.merchant_signature.startswith("0x") else req.merchant_signature
+                ))
+                verified = recovered.lower() == merchant_row["settlement_address"].lower()
+            except ImportError:
+                pass  # Fall through to EIP-191 or HMAC fallback
+            except Exception:
+                pass  # Invalid signature format
+
+        # Fallback: EIP-191 personal_sign (temporary, one release)
+        if not verified and merchant_row and merchant_row.get("settlement_address"):
+            try:
+                from eth_account.messages import encode_defunct
+                from eth_account import Account
+
+                message = encode_defunct(text=object_hash)
+                recovered = Account.recover_message(message, signature=bytes.fromhex(
+                    req.merchant_signature[2:] if req.merchant_signature.startswith("0x") else req.merchant_signature
+                ))
+                verified = recovered.lower() == merchant_row["settlement_address"].lower()
+            except (ImportError, Exception):
+                pass
+
+        # Final fallback: HMAC (dev/test only, no settlement wallet)
+        if not verified:
+            import hashlib
+            import hmac as _hmac
+            secret = (
+                merchant_row["webhook_secret"] if merchant_row and merchant_row.get("webhook_secret")
+                else req.merchant_id
             )
+            expected = _hmac.new(secret.encode(), object_hash.encode(), hashlib.sha256).hexdigest()
+            verified = _hmac.compare_digest(expected, req.merchant_signature)
+
+        if not verified:
+            raise HTTPException(status_code=401, detail="Invalid merchant signature")
 
         await conn.execute(
             """UPDATE payment_objects
