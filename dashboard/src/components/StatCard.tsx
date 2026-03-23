@@ -19,7 +19,7 @@ export default function StatCard({
   subtitle
 }: StatCardProps) {
   return (
-    <div className="card card-hover p-6">
+    <div className="card card-hover p-6 border border-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-zinc-600 transition-colors">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-400">{title}</p>
