@@ -29,6 +29,37 @@ logger = logging.getLogger("sardis.wallet.tempo_keychain")
 
 KEYCHAIN_PRECOMPILE = "0xAAAAAAAA00000000000000000000000000000000"
 
+# Keychain signature format (from pympp keychain.py)
+KEYCHAIN_SIGNATURE_TYPE = 0x03
+KEYCHAIN_SIGNATURE_LENGTH = 86  # 1 (type) + 20 (root addr) + 65 (inner sig)
+
+
+def build_keychain_signature(
+    msg_hash: bytes,
+    access_key,
+    root_account_address: str,
+) -> bytes:
+    """Build a Keychain-type signature for Access Key transactions.
+
+    Format: 0x03 || root_address (20 bytes) || inner_signature (65 bytes)
+
+    Args:
+        msg_hash: 32-byte message hash to sign.
+        access_key: TempoAccount (or any object with sign_hash method).
+        root_account_address: Hex address of the root account (e.g., "0xabc...").
+
+    Returns:
+        86-byte Keychain signature.
+    """
+    inner_sig = access_key.sign_hash(msg_hash)
+    root_addr_bytes = bytes.fromhex(root_account_address[2:])
+
+    sig = bytes([KEYCHAIN_SIGNATURE_TYPE]) + root_addr_bytes + inner_sig
+    assert len(sig) == KEYCHAIN_SIGNATURE_LENGTH, (
+        f"Keychain signature length {len(sig)} != {KEYCHAIN_SIGNATURE_LENGTH}"
+    )
+    return sig
+
 
 @dataclass
 class AccessKeyConfig:
