@@ -165,6 +165,7 @@ from .routers import usage as usage_router
 from .routers import x402 as x402_router
 
 # Protocol v1.0 routers
+from .routers import batch_payments as batch_payments_router
 from .routers import escrow_disputes as escrow_disputes_router
 from .routers import funding as funding_router
 from .routers import fx as fx_router
@@ -2061,6 +2062,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
     app.include_router(usage_router.router, prefix="/api/v2", tags=["usage"])
     app.include_router(escrow_disputes_router.router, prefix="/api/v2", tags=["escrow", "disputes"])
+    app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
