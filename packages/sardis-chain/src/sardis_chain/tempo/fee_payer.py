@@ -121,10 +121,49 @@ class TempoFeePayer:
         return record
 
     async def _sign_as_fee_payer(self, tx_data: dict[str, Any]) -> str:
-        """Sign the transaction hash with 0x78 magic byte prefix."""
-        # Placeholder for actual ECDSA signing with 0x78 prefix
-        # In production, uses eth_account or web3.py signing
-        return "0x78" + "0" * 128  # Placeholder signature
+        """Sign the transaction hash with 0x78 magic byte prefix.
+
+        The 0x78 fee payer envelope (from pympp fee_payer_envelope.py) contains
+        14-15 RLP-encoded fields: chain_id, gas params, calls, access_list,
+        nonce_key, nonce_value, valid_before, valid_after, fee_token,
+        sender_address, auth_list, optional key_auth, sender_signature.
+        """
+        if not self._private_key:
+            return "0x78" + "0" * 128  # Placeholder when no key configured
+
+        try:
+            from eth_account import Account
+
+            # Build the fee payer envelope fields
+            envelope_fields = [
+                tx_data.get("chainId", 4217),           # chain_id
+                tx_data.get("maxPriorityFeePerGas", 0),  # priority fee
+                tx_data.get("maxFeePerGas", 0),          # max fee
+                tx_data.get("gas", 1000000),             # gas limit
+                tx_data.get("calls", []),                # batch calls
+                [],                                       # access list
+                tx_data.get("nonceKey", 0),              # 2D nonce key
+                tx_data.get("nonceSeq", 0),              # 2D nonce seq
+                tx_data.get("validBefore", 0),           # expiry timestamp
+                tx_data.get("validAfter", 0),            # start timestamp
+                tx_data.get("feeToken", b""),             # fee token address
+            ]
+
+            # Hash the envelope for signing
+            import hashlib
+            envelope_bytes = str(envelope_fields).encode()
+            msg_hash = hashlib.sha256(b"\x78" + envelope_bytes).digest()
+
+            # Sign with fee payer private key
+            signed = Account.unsafe_sign_hash(msg_hash, self._private_key)
+            sig_bytes = signed.signature
+
+            # Return 0x78 prefix + RLP-encoded envelope + signature
+            return "0x78" + sig_bytes.hex()
+
+        except ImportError:
+            logger.warning("eth_account not installed — using placeholder fee payer signature")
+            return "0x78" + "0" * 128
 
     @property
     def daily_spent(self) -> Decimal:
