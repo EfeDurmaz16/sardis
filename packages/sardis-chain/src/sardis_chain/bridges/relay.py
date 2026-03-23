@@ -74,6 +74,7 @@ class BridgeTransfer:
     token: str
     amount: int
     status: str
+    deposit_tx_hash: str | None = None
     source_tx_hash: str | None = None
     destination_tx_hash: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -240,48 +241,93 @@ class RelayBridgeAdapter:
                 self._quotes[fallback_id] = fallback
                 return fallback
 
-    async def initiate_transfer(self, quote_id: str) -> BridgeTransfer:
-        """Start the bridge transfer for a previously obtained quote.
+    async def initiate_transfer(
+        self,
+        quote_id: str,
+        signer=None,
+    ) -> BridgeTransfer:
+        """Start the bridge transfer by signing and broadcasting deposit txs.
 
-        In production this submits the approve + deposit transactions
-        via the Sardis MPC wallet (Turnkey).  Here we call the Relay
-        execute endpoint and return the transfer tracking object.
+        Relay quote returns tx_steps containing unsigned transactions.
+        We sign each tx via FXSigner (Turnkey MPC or local EOA) and
+        broadcast to the source chain RPC.
 
         Args:
             quote_id: The ``quote_id`` from a :meth:`quote` call.
+            signer: Optional FXSigner instance for signing. If None,
+                    creates one from env vars.
 
         Returns:
-            A :class:`BridgeTransfer` with initial ``pending`` status.
+            A :class:`BridgeTransfer` with deposit tx hash.
         """
-        import uuid
-
         cached_quote = self._quotes.get(quote_id)
         if not cached_quote:
             raise ValueError(f"Quote {quote_id} not found — call quote() first")
 
-        transfer_id = quote_id  # Relay uses the requestId as the transfer ID
+        transfer_id = quote_id
+        deposit_tx_hash = None
+        status = "pending"
 
-        # In production: sign and broadcast tx_steps via MPC wallet.
-        # For now, if we have tx_steps we call the execute endpoint.
-        if cached_quote.tx_steps:
+        # Get signer if not provided
+        if signer is None:
+            try:
+                from sardis_chain.fx_signer import create_fx_signer
+                signer = await create_fx_signer()
+            except ImportError:
+                logger.warning("fx_signer not available")
+
+        # Sign and broadcast each tx step
+        if cached_quote.tx_steps and signer and signer.is_available:
+            chain_id = cached_quote.from_chain
+            rpc_url = self._get_rpc_for_chain(chain_id)
+
+            for step in cached_quote.tx_steps:
+                tx_data = step.get("tx", {})
+                if not tx_data:
+                    continue
+
+                try:
+                    # Build tx dict from Relay step data
+                    tx_dict = {
+                        "to": tx_data.get("to", ""),
+                        "data": tx_data.get("data", "0x"),
+                        "value": int(tx_data.get("value", "0"), 16) if isinstance(tx_data.get("value"), str) else tx_data.get("value", 0),
+                        "gas": int(tx_data.get("gas", "0"), 16) if isinstance(tx_data.get("gas"), str) else tx_data.get("gas", 300_000),
+                        "chainId": chain_id,
+                    }
+
+                    # Sign and broadcast via unified signer
+                    tx_hash = await signer.sign_and_broadcast_evm(
+                        tx_dict=tx_dict,
+                        rpc_url=rpc_url,
+                        chain=CHAIN_NAMES.get(chain_id, str(chain_id)),
+                    )
+
+                    if not deposit_tx_hash:
+                        deposit_tx_hash = tx_hash
+                    status = "deposited"
+
+                    logger.info(
+                        "Relay step '%s' broadcast: %s",
+                        step.get("kind", "unknown"), tx_hash,
+                    )
+                except Exception as e:
+                    logger.error("Failed to sign/broadcast Relay step: %s", e)
+                    status = "signing_failed"
+                    break
+        elif cached_quote.tx_steps:
+            # No signer — call execute endpoint as fallback (won't actually bridge)
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 try:
                     resp = await client.post(
                         f"{RELAY_API_BASE}/execute/bridge/v2",
-                        json={
-                            "requestId": quote_id,
-                            "steps": cached_quote.tx_steps,
-                        },
+                        json={"requestId": quote_id, "steps": cached_quote.tx_steps},
                         headers=self._headers(),
                     )
                     resp.raise_for_status()
-                    exec_data = resp.json()
-                    transfer_id = exec_data.get("requestId", quote_id)
+                    transfer_id = resp.json().get("requestId", quote_id)
                 except httpx.HTTPError as exc:
-                    logger.warning(
-                        "Relay execute failed: %s — transfer created as pending_signature",
-                        exc,
-                    )
+                    logger.warning("Relay execute fallback failed: %s", exc)
 
         transfer = BridgeTransfer(
             transfer_id=transfer_id,
@@ -290,18 +336,30 @@ class RelayBridgeAdapter:
             to_chain=cached_quote.to_chain,
             token=cached_quote.token,
             amount=cached_quote.input_amount,
-            status="pending",
+            status=status,
+            deposit_tx_hash=deposit_tx_hash,
         )
         self._transfers[transfer_id] = transfer
 
         logger.info(
-            "Relay transfer initiated: %s %s->%s amount=%d",
+            "Relay transfer %s: %s->%s amount=%d status=%s tx=%s",
             transfer_id,
-            CHAIN_NAMES.get(cached_quote.from_chain, str(cached_quote.from_chain)),
-            CHAIN_NAMES.get(cached_quote.to_chain, str(cached_quote.to_chain)),
-            cached_quote.input_amount,
+            CHAIN_NAMES.get(cached_quote.from_chain, "?"),
+            CHAIN_NAMES.get(cached_quote.to_chain, "?"),
+            cached_quote.input_amount, status, deposit_tx_hash,
         )
         return transfer
+
+    @staticmethod
+    def _get_rpc_for_chain(chain_id: int) -> str:
+        """Get RPC URL for a chain from env vars."""
+        rpc_map = {
+            4217: os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
+            42431: os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.moderato.tempo.xyz"),
+            8453: os.getenv("SARDIS_BASE_RPC_URL", ""),
+            1: os.getenv("SARDIS_ETH_RPC_URL", ""),
+        }
+        return rpc_map.get(chain_id, "")
 
     async def check_status(self, transfer_id: str) -> str:
         """Poll the Relay intent status for a transfer.
