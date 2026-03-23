@@ -176,6 +176,7 @@ from .routers import payment_objects as payment_objects_router
 from .routers import spt as spt_router
 from .routers import acp as acp_router
 from .routers import streaming_payments as streaming_payments_router
+from .routers import virtual_cards as virtual_cards_router
 
 # Conditional import for approvals router (may not exist yet)
 try:
@@ -2073,6 +2074,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(spt_router.router, prefix="/api/v2", tags=["spt"])
     app.include_router(acp_router.router, prefix="/api/v2", tags=["acp"])
     app.include_router(onramp_router.router, prefix="/api/v2", tags=["onramp"])
+    app.include_router(virtual_cards_router.router, prefix="/api/v2", tags=["virtual-cards"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
