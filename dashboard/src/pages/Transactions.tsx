@@ -3,6 +3,7 @@ import {
   ArrowDownLeft,
   ArrowSquareOut,
   ArrowUpRight,
+  ArrowsLeftRight,
   CaretDown,
   CaretRight,
   Check,
@@ -478,8 +479,17 @@ export default function TransactionsPage() {
         </table>
 
         {filteredTransactions.length === 0 && (
-          <div className="p-12 text-center">
-            <p className="text-gray-400">No transactions found</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+              <ArrowsLeftRight size={24} className="text-zinc-500" />
+            </div>
+            <h3 className="text-lg font-medium text-zinc-200 mb-2">No transactions yet</h3>
+            <p className="text-sm text-zinc-500 max-w-sm mb-4">
+              Create an agent and execute your first payment to see transactions here.
+            </p>
+            <a href="/agents" className="text-sm font-medium text-zinc-300 hover:text-white border border-zinc-700 px-4 py-2 rounded-lg transition-colors">
+              Create your first agent
+            </a>
           </div>
         )}
       </div>}

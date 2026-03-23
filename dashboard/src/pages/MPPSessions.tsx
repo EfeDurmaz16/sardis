@@ -204,12 +204,17 @@ export default function MPPSessionsPage() {
 
       {/* Empty */}
       {!isLoading && !error && sessions.length === 0 && (
-        <div className="card p-12 text-center">
-          <Lightning className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-400 mb-2">No MPP sessions found</p>
-          <p className="text-sm text-gray-500">
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+            <Lightning size={24} className="text-zinc-500" />
+          </div>
+          <h3 className="text-lg font-medium text-zinc-200 mb-2">No MPP sessions yet</h3>
+          <p className="text-sm text-zinc-500 max-w-sm mb-4">
             MPP sessions will appear here when agents initiate Machine Payments Protocol flows.
           </p>
+          <a href="https://sardis.sh/docs" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-300 hover:text-white border border-zinc-700 px-4 py-2 rounded-lg transition-colors">
+            Start your first MPP session
+          </a>
         </div>
       )}
 

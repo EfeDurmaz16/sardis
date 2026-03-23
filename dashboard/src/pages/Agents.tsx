@@ -3,6 +3,7 @@ import {
   ArrowRight,
   MagnifyingGlass,
   Plus,
+  Robot,
   User,
   Wallet,
 } from '@phosphor-icons/react'
@@ -117,19 +118,25 @@ export default function AgentsPage() {
           ))}
         </div>
       ) : filteredAgents.length === 0 ? (
-        <div className="card p-12 text-center">
-          <User className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No agents found</h3>
-          <p className="text-gray-400 mb-4">
-            {search ? 'Try a different search term' : 'Create your first AI agent to get started'}
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4">
+            <Robot size={24} className="text-zinc-500" />
+          </div>
+          <h3 className="text-lg font-medium text-zinc-200 mb-2">
+            {search ? 'No agents found' : 'No agents yet'}
+          </h3>
+          <p className="text-sm text-zinc-500 max-w-sm mb-4">
+            {search
+              ? 'Try a different search term'
+              : 'Create your first AI agent to start making payments with spending policies.'}
           </p>
           {!search && (
             <button
               onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"
+              className="text-sm font-medium text-zinc-300 hover:text-white border border-zinc-700 px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Create Agent
+              Create your first agent
             </button>
           )}
         </div>
