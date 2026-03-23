@@ -49,6 +49,7 @@ from .approval_context import (
     verify_approval_context,
 )
 from .cache import CacheBackend, CacheService, InMemoryCache, RedisCache, create_cache_service
+from .cell_claim import CellClaimAlgorithm, InsufficientCellsError
 from .circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -123,6 +124,13 @@ from .drift_policy_integrator import (
     DriftActionResult,
     DriftPolicyConfig,
     DriftPolicyIntegrator,
+)
+from .funding_cell import CellStatus, FundingCell, VALID_CELL_TRANSITIONS
+from .funding_commitment import (
+    CellStrategy,
+    CommitmentStatus,
+    FundingCommitment,
+    VALID_COMMITMENT_TRANSITIONS,
 )
 from .event_bus import (
     EventBus,
@@ -262,6 +270,52 @@ from .spending_policy import (
     kya_level_for_trust,
     trust_level_for_kya,
 )
+from .minter import (
+    CellClaimPort,
+    MintError,
+    PaymentObjectMinter,
+    SigningPort,
+    SpendingMandateLookupPort,
+)
+from .payment_object import (
+    VALID_TRANSITIONS as PAYMENT_OBJECT_TRANSITIONS,
+    PaymentObject,
+    PaymentObjectStatus,
+    PrivacyTier,
+)
+from .dispute import (
+    Dispute,
+    DisputeEvidence,
+    DisputeProtocol,
+    DisputeReason,
+    DisputeResolution,
+    DisputeStatus,
+)
+from .escrow import (
+    EscrowHold,
+    EscrowManager,
+    EscrowStatus,
+)
+from .fx_quote import (
+    BridgeTransfer,
+    FXProvider,
+    FXQuote,
+    QuoteStatus,
+)
+from .mandate_tree import (
+    DelegationResult,
+    MandateTreeNode,
+    MandateTreeValidator,
+    build_mandate_tree,
+)
+from .subscription import (
+    BillingCycle,
+    ChargeIntent,
+    DunningRule,
+    SubscriptionMandate,
+    SubscriptionStatus,
+    UsageMeter,
+)
 from .spending_policy_json import spending_policy_from_json, spending_policy_to_json
 from .spending_policy_store import SpendingPolicyStore
 from .spending_tracker import (
@@ -299,6 +353,24 @@ from .webhooks import (
     WebhookSubscription,
     create_hold_event,
     create_payment_event,
+)
+
+# Payment state machine
+from .state_machine import (
+    TERMINAL_STATES,
+    VALID_TRANSITIONS as PAYMENT_STATE_TRANSITIONS,
+    PaymentState,
+    PaymentStateMachine,
+    StateTransitionRecord,
+)
+from .state_handlers import (
+    StateHandler,
+    StateHandlerRegistry,
+    register_default_handlers,
+)
+from .settlement_lock import (
+    SettlementLock,
+    SettlementLockError,
 )
 
 __all__ = [
@@ -566,6 +638,69 @@ __all__ = [
     # Funding ports/adapters
     "CircleCPNFundingAdapter",
     "FundingRailAdapter",
+    # Payment State Machine
+    "PaymentState",
+    "PaymentStateMachine",
+    "StateTransitionRecord",
+    "PAYMENT_STATE_TRANSITIONS",
+    "TERMINAL_STATES",
+    "StateHandler",
+    "StateHandlerRegistry",
+    "register_default_handlers",
+    # Settlement Lock
+    "SettlementLock",
+    "SettlementLockError",
+    # Payment Object
+    "PaymentObject",
+    "PaymentObjectStatus",
+    "PrivacyTier",
+    "PAYMENT_OBJECT_TRANSITIONS",
+    # Payment Object Minter
+    "PaymentObjectMinter",
+    "MintError",
+    "SpendingMandateLookupPort",
+    "CellClaimPort",
+    "SigningPort",
+    # Funding Cells
+    "FundingCell",
+    "CellStatus",
+    "VALID_CELL_TRANSITIONS",
+    # Funding Commitments
+    "FundingCommitment",
+    "CellStrategy",
+    "CommitmentStatus",
+    "VALID_COMMITMENT_TRANSITIONS",
+    # Cell Claim Algorithm
+    "CellClaimAlgorithm",
+    "InsufficientCellsError",
+    # Escrow
+    "EscrowHold",
+    "EscrowManager",
+    "EscrowStatus",
+    # Disputes
+    "Dispute",
+    "DisputeEvidence",
+    "DisputeProtocol",
+    "DisputeReason",
+    "DisputeResolution",
+    "DisputeStatus",
+    # FX
+    "FXQuote",
+    "FXProvider",
+    "QuoteStatus",
+    "BridgeTransfer",
+    # Mandate Trees
+    "MandateTreeValidator",
+    "MandateTreeNode",
+    "DelegationResult",
+    "build_mandate_tree",
+    # Subscriptions
+    "SubscriptionMandate",
+    "SubscriptionStatus",
+    "BillingCycle",
+    "ChargeIntent",
+    "DunningRule",
+    "UsageMeter",
 ]
 
 # Stripe Treasury integration

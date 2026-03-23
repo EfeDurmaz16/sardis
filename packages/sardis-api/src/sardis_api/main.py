@@ -163,6 +163,13 @@ from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
 
+# Protocol v1.0 routers
+from .routers import escrow_disputes as escrow_disputes_router
+from .routers import funding as funding_router
+from .routers import fx as fx_router
+from .routers import mandate_delegation as mandate_delegation_router
+from .routers import payment_objects as payment_objects_router
+
 # Conditional import for approvals router (may not exist yet)
 try:
     from .routers import approvals as approvals_router
@@ -2045,6 +2052,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(checkout_controls_router.router, prefix="/api/v2/checkout-controls", tags=["checkout-controls"])
     app.include_router(counterparties_router.router, prefix="/api/v2/counterparties", tags=["counterparties"])
     app.include_router(dashboard_metrics_router.router, prefix="/api/v2/dashboard", tags=["dashboard"])
+
+    # Protocol v1.0 routers
+    app.include_router(payment_objects_router.router, prefix="/api/v2", tags=["payment-objects"])
+    app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
+    app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
+    app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
+    app.include_router(escrow_disputes_router.router, prefix="/api/v2", tags=["escrow", "disputes"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
