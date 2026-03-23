@@ -93,8 +93,15 @@ from typing import Any, Protocol
 
 from sardis_v2_core.dedup_store import DedupStorePort, InMemoryDedupStore
 from sardis_v2_core.mandates import MandateChain, PaymentMandate
+from sardis_v2_core.state_machine import PaymentState, PaymentStateMachine
+from sardis_v2_core.state_handlers import StateHandlerRegistry, register_default_handlers
 
 logger = logging.getLogger(__name__)
+
+# Module-level handler registry: initialized once, shared by all orchestrator
+# instances so that custom handlers registered at app startup apply globally.
+_handler_registry = StateHandlerRegistry()
+register_default_handlers(_handler_registry)
 
 
 # ============ Execution Phases ============
@@ -544,6 +551,10 @@ class PaymentOrchestrator:
 
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
 
+        # ── State Machine: create in ISSUED state ────────────────────────
+        sm = PaymentStateMachine(payment_object_id=mandate_id)
+        # Machine starts in ISSUED (the default initial state).
+
         # ── Phase 0: KYA Verification (fail-fast) ───────────────────────
         # Before anything else, verify the agent's identity and trust level.
         # KYA checks: agent is active, not suspended/revoked, meets minimum
@@ -847,15 +858,58 @@ class PaymentOrchestrator:
                 self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False, error=str(e))
                 raise ComplianceViolationError(f"Compliance check error: {e}", mandate_id=mandate_id)
 
+        # ── State Machine: all pre-checks passed → LOCKED ────────────────
+        # The payment has survived KYA, mandate, policy, and compliance
+        # validation.  Lock funds and prepare for on-chain settlement.
+        record = sm.transition(
+            PaymentState.PRESENTED, actor="orchestrator",
+            reason="Pre-execution checks passed",
+        )
+        await _handler_registry.fire_on_enter(PaymentState.PRESENTED, sm, record)
+        record = sm.transition(
+            PaymentState.VERIFIED, actor="orchestrator",
+            reason="Policy and compliance verified",
+        )
+        await _handler_registry.fire_on_enter(PaymentState.VERIFIED, sm, record)
+        record = sm.transition(
+            PaymentState.LOCKED, actor="orchestrator",
+            reason="Funds locked for settlement",
+        )
+        await _handler_registry.fire_on_enter(PaymentState.LOCKED, sm, record)
+
         # Phase 3: Chain Execution
         receipt = None
         try:
+            # ── State Machine: LOCKED → SETTLING ─────────────────────────
+            record = sm.transition(
+                PaymentState.SETTLING, actor="orchestrator",
+                reason="Chain execution started",
+                metadata={"chain": payment.chain},
+            )
+            await _handler_registry.fire_on_enter(PaymentState.SETTLING, sm, record)
+
             receipt = await self._chain_executor.dispatch_payment(payment)
             self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, True,
                        {"tx_hash": receipt.tx_hash, "chain": receipt.chain,
                         "block_number": receipt.block_number})
+
+            # ── State Machine: SETTLING → SETTLED ────────────────────────
+            record = sm.transition(
+                PaymentState.SETTLED, actor="orchestrator",
+                reason="On-chain settlement confirmed",
+                metadata={"tx_hash": receipt.tx_hash, "chain": receipt.chain},
+            )
+            await _handler_registry.fire_on_enter(PaymentState.SETTLED, sm, record)
         except Exception as e:
             self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False, error=str(e))
+            # ── State Machine: SETTLING → FAILED ─────────────────────────
+            if sm.can_transition(PaymentState.FAILED):
+                fail_rec = sm.transition(
+                    PaymentState.FAILED, actor="orchestrator",
+                    reason=f"Chain execution failed: {e}",
+                    metadata={"error": str(e)},
+                )
+                await _handler_registry.fire_on_enter(PaymentState.FAILED, sm, fail_rec)
             raise ChainExecutionError(
                 f"Chain execution failed: {e}",
                 mandate_id=mandate_id,
@@ -976,6 +1030,14 @@ class PaymentOrchestrator:
             )
             await self._dedup_store.check_and_set(mandate_id, result)
             return result
+
+        # ── State Machine: SETTLED → FULFILLED ────────────────────────────
+        record = sm.transition(
+            PaymentState.FULFILLED, actor="orchestrator",
+            reason="Ledger append complete, payment fulfilled",
+            metadata={"ledger_tx_id": ledger_tx.tx_id if ledger_tx else "unknown"},
+        )
+        await _handler_registry.fire_on_enter(PaymentState.FULFILLED, sm, record)
 
         # Success!
         self._audit(mandate_id, ExecutionPhase.COMPLETED, True)
