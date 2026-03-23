@@ -1903,6 +1903,10 @@ class ChainExecutor:
             )
             self._init_erc4337_clients()
 
+        # Tempo native fee payer (replaces ERC-4337 on Tempo chain)
+        self._tempo_fee_payer = None
+        self._init_tempo_fee_payer()
+
         # Initialize MPC signer based on settings
         if not self._simulated:
             self._init_mpc_signer()
@@ -1948,6 +1952,33 @@ class ChainExecutor:
         elif paymaster_provider == "custom" and paymaster_url:
             self._paymaster = PaymasterClient(PaymasterConfig(url=paymaster_url))
             logger.info("Custom Paymaster enabled (Pimlico sponsor model)")
+
+    def _init_tempo_fee_payer(self) -> None:
+        """Initialize Tempo native fee sponsorship (replaces ERC-4337 on Tempo).
+
+        On Tempo, gas sponsorship is protocol-native via 0x78 magic byte
+        signature. No ERC-4337 or paymaster contracts needed.
+        """
+        try:
+            from sardis_chain.tempo.fee_payer import TempoFeePayer
+            tempo_fee_key = os.getenv("SARDIS_TEMPO_FEE_PAYER_KEY")
+            if tempo_fee_key:
+                self._tempo_fee_payer = TempoFeePayer(private_key=tempo_fee_key)
+                logger.info("Tempo native fee payer enabled (0x78 sponsorship)")
+            else:
+                logger.debug("No SARDIS_TEMPO_FEE_PAYER_KEY — Tempo fee sponsorship disabled")
+        except ImportError:
+            logger.debug("sardis_chain.tempo.fee_payer not available")
+
+    def _get_fee_sponsor(self, chain: str):
+        """Get the appropriate fee sponsor for a chain.
+
+        On Tempo: use native TempoFeePayer (0x78 magic byte)
+        On Base/ETH: use Circle Paymaster or Pimlico (ERC-4337)
+        """
+        if chain in ("tempo", "tempo_testnet") and self._tempo_fee_payer:
+            return self._tempo_fee_payer
+        return self._paymaster
 
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""
