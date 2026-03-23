@@ -1,5 +1,6 @@
 import { createAuthClient } from "better-auth/react";
 import { jwtClient } from "better-auth/client/plugins";
+// TODO: Add passkeyClient(), magicLinkClient() after installing deps
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_APP_URL || "https://app.sardis.sh",

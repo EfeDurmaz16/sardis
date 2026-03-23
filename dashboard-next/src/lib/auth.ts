@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins";
+// TODO: Add passkey + magicLink plugins after installing @simplewebauthn/server
 import { Pool } from "pg";
 
 /**
@@ -48,6 +49,8 @@ export const auth = betterAuth({
         jwks: { modelName: "ba_jwks" },
       },
     }),
+    // Passkey + magic link plugins ready to enable after:
+    // npm install @simplewebauthn/server @simplewebauthn/browser
   ],
   // Map model names to ba_-prefixed tables (migration 077)
   user: {
