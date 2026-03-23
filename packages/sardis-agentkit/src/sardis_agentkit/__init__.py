@@ -1,14 +1,22 @@
 """Sardis AgentKit — Coinbase AgentKit action provider for Sardis payments.
 
-Enables Coinbase ecosystem agents to use Sardis for policy-enforced payments.
+Usage:
+    from sardis_agentkit import sardis_action_provider
+    from coinbase_agentkit import AgentKit, AgentKitConfig
 
-Usage with AgentKit:
-    from sardis_agentkit import SardisActionProvider
+    agentkit = AgentKit(AgentKitConfig(
+        action_providers=[sardis_action_provider(api_key="sk_test_...")]
+    ))
 
-    provider = SardisActionProvider(api_key="sk_test_...")
-    agent = Agent(action_providers=[provider])
+    # With LangChain:
+    from coinbase_agentkit_langchain import get_langchain_tools
+    tools = get_langchain_tools(agentkit)
+
+    # With OpenAI Agents SDK:
+    from coinbase_agentkit_openai_agents_sdk import get_openai_agents_sdk_tools
+    tools = get_openai_agents_sdk_tools(agentkit)
 """
-from sardis_agentkit.provider import SardisActionProvider
+from sardis_agentkit.provider import SardisActionProvider, sardis_action_provider
 
-__all__ = ["SardisActionProvider"]
+__all__ = ["SardisActionProvider", "sardis_action_provider"]
 __version__ = "0.1.0"

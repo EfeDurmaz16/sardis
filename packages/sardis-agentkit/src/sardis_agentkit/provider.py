@@ -1,137 +1,190 @@
 """Sardis action provider for Coinbase AgentKit.
 
-Wraps the Sardis Python SDK as AgentKit-compatible action providers,
-enabling any AgentKit-powered agent to make policy-enforced payments.
+Enables any AgentKit-powered agent to make policy-enforced payments via Sardis.
 
 Actions:
-    - sardis_create_agent: Create a new AI agent with wallet
-    - sardis_set_policy: Set spending policy for an agent
-    - sardis_check_payment: Run policy check before payment
-    - sardis_get_balance: Check wallet balance
-    - sardis_list_transactions: List recent transactions
+    - sardis_create_agent: Create AI agent with MPC wallet
+    - sardis_set_policy: Set natural language spending policy
+    - sardis_send_payment: Execute policy-enforced payment
+    - sardis_check_balance: Check wallet balance
+
+Usage:
+    from sardis_agentkit import sardis_action_provider
+    from coinbase_agentkit import AgentKit, AgentKitConfig
+
+    agentkit = AgentKit(AgentKitConfig(
+        action_providers=[sardis_action_provider(api_key="sk_test_...")]
+    ))
 """
 from __future__ import annotations
 
 import os
 from typing import Any
 
+import httpx
 
-class SardisActionProvider:
-    """AgentKit action provider for Sardis payments.
+try:
+    from coinbase_agentkit import ActionProvider, WalletProvider, create_action
+    from coinbase_agentkit.network import Network
 
-    Args:
-        api_key: Sardis API key (sk_test_... or sk_live_...)
-        api_url: Sardis API base URL
+    _HAS_AGENTKIT = True
+except ImportError:
+    _HAS_AGENTKIT = False
+
+    # Stubs for when agentkit is not installed
+    class ActionProvider:  # type: ignore[no-redef]
+        def __init__(self, name: str, sub_providers: list) -> None:
+            pass
+
+    class WalletProvider:  # type: ignore[no-redef]
+        pass
+
+    class Network:  # type: ignore[no-redef]
+        pass
+
+    def create_action(**kwargs: Any):  # type: ignore[no-redef]
+        def decorator(func: Any) -> Any:
+            return func
+        return decorator
+
+from .schemas import CheckBalanceSchema, CreateAgentSchema, SendPaymentSchema, SetPolicySchema
+
+
+class SardisActionProvider(ActionProvider):
+    """AgentKit action provider for Sardis policy-enforced payments.
+
+    All actions are network-agnostic — Sardis handles chain routing internally
+    based on the agent's API key (sk_test_ → testnet, sk_live_ → mainnet).
     """
 
     def __init__(
         self,
         api_key: str | None = None,
         api_url: str = "https://api.sardis.sh",
-    ):
+    ) -> None:
         self._api_key = api_key or os.getenv("SARDIS_API_KEY", "")
         self._api_url = api_url.rstrip("/")
-        self._client = None
+        self._client: httpx.Client | None = None
+        super().__init__("sardis", [])
 
-    async def _get_client(self):
+    def _get_client(self) -> httpx.Client:
         if self._client is None:
-            import httpx
-            self._client = httpx.AsyncClient(
+            self._client = httpx.Client(
                 base_url=self._api_url,
-                headers={
-                    "X-API-Key": self._api_key,
-                    "Content-Type": "application/json",
-                },
+                headers={"X-API-Key": self._api_key, "Content-Type": "application/json"},
                 timeout=30,
             )
         return self._client
 
-    def get_actions(self) -> list[dict[str, Any]]:
-        """Return AgentKit-compatible action definitions."""
-        return [
-            {
-                "name": "sardis_create_agent",
-                "description": "Create a new AI agent with a non-custodial wallet on Sardis. Returns agent_id and wallet_id.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "Agent name"},
-                        "description": {"type": "string", "description": "What this agent does"},
-                    },
-                    "required": ["name"],
+    @create_action(
+        name="create_agent",
+        description=(
+            "Create a new AI agent with a non-custodial MPC wallet on Sardis. "
+            "Returns agent_id and wallet_id. Use before setting policies or sending payments."
+        ),
+        schema=CreateAgentSchema,
+    )
+    def create_agent(self, args: dict[str, Any]) -> str:
+        try:
+            v = CreateAgentSchema(**args)
+            resp = self._get_client().post(
+                "/api/v2/agents",
+                json={"name": v.name, "description": v.description},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return (
+                f"Created agent '{v.name}' — "
+                f"agent_id={data.get('agent_id')}, wallet_id={data.get('wallet_id')}"
+            )
+        except Exception as e:
+            return f"Error creating agent: {e}"
+
+    @create_action(
+        name="set_policy",
+        description=(
+            "Set a spending policy for a Sardis agent using natural language. "
+            "Examples: 'Max $500/day', 'Only AWS and GitHub', 'No single transaction over $200'. "
+            "Sardis enforces the policy automatically on every payment."
+        ),
+        schema=SetPolicySchema,
+    )
+    def set_policy(self, args: dict[str, Any]) -> str:
+        try:
+            v = SetPolicySchema(**args)
+            resp = self._get_client().post(
+                "/api/v2/policies",
+                json={"agent_id": v.agent_id, "policy_text": v.policy_text},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return f"Policy set for agent {v.agent_id}: {v.policy_text} (policy_id={data.get('policy_id')})"
+        except Exception as e:
+            return f"Error setting policy: {e}"
+
+    @create_action(
+        name="send_payment",
+        description=(
+            "Execute a policy-enforced payment from a Sardis agent wallet. "
+            "The payment is checked against the agent's spending policy before execution. "
+            "If the policy rejects it, the payment will not go through and you'll see why."
+        ),
+        schema=SendPaymentSchema,
+    )
+    def send_payment(self, args: dict[str, Any]) -> str:
+        try:
+            v = SendPaymentSchema(**args)
+            resp = self._get_client().post(
+                "/api/v2/payments",
+                json={
+                    "agent_id": v.agent_id,
+                    "amount": v.amount,
+                    "currency": v.currency,
+                    "recipient": v.recipient,
+                    "memo": v.memo,
                 },
-                "handler": self.create_agent,
-            },
-            {
-                "name": "sardis_set_policy",
-                "description": "Set a spending policy for an agent in natural language. Sardis enforces it automatically.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_id": {"type": "string"},
-                        "policy_text": {"type": "string", "description": "Natural language spending rules, e.g. 'Max $100/day, only SaaS tools'"},
-                    },
-                    "required": ["agent_id", "policy_text"],
-                },
-                "handler": self.set_policy,
-            },
-            {
-                "name": "sardis_check_payment",
-                "description": "Check if a payment would be allowed by the agent's spending policy before executing.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "agent_id": {"type": "string"},
-                        "amount": {"type": "number"},
-                        "currency": {"type": "string", "default": "USDC"},
-                        "merchant": {"type": "string"},
-                        "memo": {"type": "string"},
-                    },
-                    "required": ["agent_id", "amount", "merchant"],
-                },
-                "handler": self.check_payment,
-            },
-            {
-                "name": "sardis_get_balance",
-                "description": "Get the wallet balance for an agent.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "wallet_id": {"type": "string"},
-                    },
-                    "required": ["wallet_id"],
-                },
-                "handler": self.get_balance,
-            },
-        ]
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return (
+                f"Payment of {v.amount} {v.currency} to {v.recipient} — "
+                f"tx_hash={data.get('tx_hash', 'pending')}"
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                detail = e.response.json().get("detail", "Policy violation")
+                return f"Payment BLOCKED by policy: {detail}"
+            return f"Payment failed ({e.response.status_code}): {e.response.text[:200]}"
+        except Exception as e:
+            return f"Error sending payment: {e}"
 
-    async def create_agent(self, name: str, description: str = "") -> dict[str, Any]:
-        client = await self._get_client()
-        resp = await client.post("/api/v2/agents", json={"name": name, "description": description})
-        resp.raise_for_status()
-        return resp.json()
+    @create_action(
+        name="check_balance",
+        description="Check the wallet balance for a Sardis agent across all supported tokens.",
+        schema=CheckBalanceSchema,
+    )
+    def check_balance(self, args: dict[str, Any]) -> str:
+        try:
+            v = CheckBalanceSchema(**args)
+            resp = self._get_client().get(f"/api/v2/wallets/{v.wallet_id}/balance")
+            resp.raise_for_status()
+            data = resp.json()
+            balances = data.get("balances", {})
+            if not balances:
+                return f"Wallet {v.wallet_id} has no token balances."
+            lines = [f"  {token}: {amt}" for token, amt in balances.items()]
+            return f"Wallet {v.wallet_id} balances:\n" + "\n".join(lines)
+        except Exception as e:
+            return f"Error checking balance: {e}"
 
-    async def set_policy(self, agent_id: str, policy_text: str) -> dict[str, Any]:
-        client = await self._get_client()
-        resp = await client.post("/api/v2/policies", json={"agent_id": agent_id, "policy_text": policy_text})
-        resp.raise_for_status()
-        return resp.json()
+    def supports_network(self, network: "Network") -> bool:
+        """Sardis is network-agnostic — policy layer sits above chain execution."""
+        return True
 
-    async def check_payment(self, agent_id: str, amount: float, merchant: str, currency: str = "USDC", memo: str = "") -> dict[str, Any]:
-        client = await self._get_client()
-        resp = await client.post("/api/v2/sandbox/policy-check", json={
-            "agent_id": agent_id, "amount": amount, "currency": currency, "merchant": merchant, "memo": memo,
-        })
-        resp.raise_for_status()
-        return resp.json()
 
-    async def get_balance(self, wallet_id: str) -> dict[str, Any]:
-        client = await self._get_client()
-        resp = await client.get(f"/api/v2/wallets/{wallet_id}/balance")
-        resp.raise_for_status()
-        return resp.json()
-
-    async def close(self) -> None:
-        if self._client:
-            await self._client.aclose()
-            self._client = None
+def sardis_action_provider(
+    api_key: str | None = None,
+    api_url: str = "https://api.sardis.sh",
+) -> SardisActionProvider:
+    """Factory function to create a Sardis action provider."""
+    return SardisActionProvider(api_key=api_key, api_url=api_url)
