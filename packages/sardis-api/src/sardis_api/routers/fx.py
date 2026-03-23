@@ -360,13 +360,30 @@ async def create_bridge_transfer(
         fee = _estimate_bridge_fee(req.bridge_provider, req.amount)
         estimated_seconds = _estimate_bridge_time(req.bridge_provider)
 
+    # Initiate the actual bridge transfer after quoting
+    bridge_status = "pending"
+    source_tx_hash = None
+    try:
+        if actual_provider == "relay" and 'adapter' in dir():
+            transfer_result = await adapter.initiate_transfer(quote)
+            source_tx_hash = getattr(transfer_result, "deposit_tx_hash", None)
+            bridge_status = "bridging" if source_tx_hash else "pending"
+        elif actual_provider == "across" and 'adapter' in dir():
+            transfer_result = await adapter.initiate_transfer(quote)
+            source_tx_hash = getattr(transfer_result, "deposit_tx_hash", None)
+            bridge_status = "bridging" if transfer_result.status == "deposited" else "pending"
+    except Exception as e:
+        logger.warning("Bridge initiate_transfer failed: %s", e)
+
     await Database.execute(
         """INSERT INTO bridge_transfers
            (transfer_id, from_chain, to_chain, token, amount,
-            bridge_provider, bridge_fee, status, estimated_seconds)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)""",
+            bridge_provider, bridge_fee, status, estimated_seconds,
+            source_tx_hash)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
         transfer_id, req.from_chain, req.to_chain, req.token,
-        req.amount, actual_provider, fee, "pending", estimated_seconds,
+        req.amount, actual_provider, fee, bridge_status, estimated_seconds,
+        source_tx_hash,
     )
 
     return BridgeTransferResponse(
@@ -377,7 +394,7 @@ async def create_bridge_transfer(
         amount=str(req.amount),
         bridge_provider=actual_provider,
         bridge_fee=str(fee),
-        status="pending",
+        status=bridge_status,
         estimated_seconds=estimated_seconds,
         created_at=datetime.now(UTC).isoformat(),
     )
