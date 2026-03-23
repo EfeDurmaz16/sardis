@@ -40,8 +40,8 @@
   --radius-lg: 12px;
 
   /* Fonts */
-  --font-sans: 'Space Grotesk', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-sans: 'Geist Sans', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
 
   /* Motion */
   --duration-fast: 100ms;

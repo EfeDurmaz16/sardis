@@ -1,20 +1,54 @@
 @import './styles/design-system.css';
-@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* Cabinet Grotesk + Satoshi — match landing page */
+/* === Geist Font Family === */
 @font-face {
-  font-family: "Cabinet Grotesk";
-  src: url("https://sardis.sh/fonts/CabinetGrotesk-Extrabold.woff2") format("woff2");
-  font-weight: 800;
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Bold.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: "Satoshi";
-  src: url("https://sardis.sh/fonts/Satoshi-Medium.woff2") format("woff2");
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Medium.woff2") format("woff2");
   font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Bold.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -46,10 +80,10 @@
   --color-dark-800: #030303;
   --color-dark-900: #010101;
 
-  /* Fonts — match landing */
-  --font-sans: "Satoshi", "Inter", system-ui, sans-serif;
-  --font-display: "Cabinet Grotesk", "Geist Mono", sans-serif;
-  --font-mono: "Geist Mono", "Fira Code", monospace;
+  /* Fonts — Geist family */
+  --font-sans: "Geist Sans", system-ui, sans-serif;
+  --font-display: "Geist Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", monospace;
 
   /* Kill all border radius — industrial flat */
   --radius-sm: 0px;
@@ -71,13 +105,13 @@ body {
   background: #0f0e0c;
   color: #f2f0e9;
   min-height: 100vh;
-  font-family: "Satoshi", "Inter", system-ui, sans-serif;
+  font-family: "Geist Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Cabinet Grotesk", "Geist Mono", sans-serif;
+  font-family: "Geist Sans", system-ui, sans-serif;
 }
 
 /* Custom scrollbar — warm anthracite */
