@@ -110,6 +110,8 @@ TOKEN_REGISTRY: dict[TokenType, TokenMetadata] = {
             "ethereum": "0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c",
             "polygon": "0x9912af6da4F87Fc2b0Ae0B77A124e9B1B7Ba2F70",
             "arc_testnet": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+            "tempo_testnet": "0x20C00000000000000000000000000000000E0B0C",
+            "tempo": "0x20C00000000000000000000000000000000E0B0C",
         },
     ),
 }
