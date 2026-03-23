@@ -68,6 +68,80 @@ DISPUTE_VALID_TRANSITIONS: dict[tuple[str, str], str] = {
     (DisputeStatus.UNDER_REVIEW, DisputeStatus.RESOLVED_SPLIT): "resolve_split",
 }
 
+DISPUTE_TERMINAL_STATES = frozenset({
+    DisputeStatus.RESOLVED_REFUND,
+    DisputeStatus.RESOLVED_RELEASE,
+    DisputeStatus.RESOLVED_SPLIT,
+    DisputeStatus.WITHDRAWN,
+})
+
+
+@dataclass
+class DisputeTransitionRecord:
+    """Audit record for a dispute lifecycle change."""
+    dispute_id: str
+    from_status: DisputeStatus
+    to_status: DisputeStatus
+    transition_name: str
+    actor: str
+    reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    id: str = field(default_factory=lambda: f"dstr_{uuid4().hex[:12]}")
+
+
+@dataclass
+class DisputeStateMachine:
+    """Manages the lifecycle of a dispute through 7 states."""
+
+    dispute_id: str
+    current_status: DisputeStatus = DisputeStatus.FILED
+    transition_log: list[DisputeTransitionRecord] = field(default_factory=list)
+
+    def can_transition(self, to_status: DisputeStatus) -> bool:
+        return (self.current_status, to_status) in DISPUTE_VALID_TRANSITIONS
+
+    def transition(
+        self,
+        to_status: DisputeStatus,
+        actor: str,
+        reason: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> DisputeTransitionRecord:
+        key = (self.current_status, to_status)
+        if key not in DISPUTE_VALID_TRANSITIONS:
+            raise ValueError(
+                f"Invalid dispute transition: {self.current_status.value} → {to_status.value}"
+            )
+        transition_name = DISPUTE_VALID_TRANSITIONS[key]
+        record = DisputeTransitionRecord(
+            dispute_id=self.dispute_id,
+            from_status=self.current_status,
+            to_status=to_status,
+            transition_name=transition_name,
+            actor=actor,
+            reason=reason,
+            metadata=metadata or {},
+        )
+        self.current_status = to_status
+        self.transition_log.append(record)
+        logger.info(
+            "Dispute %s: %s → %s (%s)",
+            self.dispute_id, record.from_status.value,
+            record.to_status.value, transition_name,
+        )
+        return record
+
+    def is_terminal(self) -> bool:
+        return self.current_status in DISPUTE_TERMINAL_STATES
+
+    def available_transitions(self) -> list[tuple[DisputeStatus, str]]:
+        return [
+            (to, name)
+            for (frm, to), name in DISPUTE_VALID_TRANSITIONS.items()
+            if frm == self.current_status
+        ]
+
 # Default deadlines
 EVIDENCE_DEADLINE_HOURS = 72
 REVIEW_DEADLINE_HOURS = 48
