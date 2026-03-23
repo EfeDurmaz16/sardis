@@ -243,3 +243,85 @@ class SardisMPPClient:
             (Decimal(r.amount) for r in self._payment_records if r.policy_result == "ALLOWED"),
             Decimal("0"),
         )
+
+
+# ---------------------------------------------------------------------------
+# Protocol v1.0 enhancements
+# ---------------------------------------------------------------------------
+
+
+class MPPSessionManager:
+    """Maps Sardis spending mandates to MPP session parameters.
+
+    NLP policies → MPP session params:
+      max_per_tx → maxDeposit
+      expires_at → session expiry
+      merchant_scope → allowed services
+
+    Also provides anomaly detection on voucher flow
+    and force-close for policy violations.
+    """
+
+    def __init__(self, policy_checker: PolicyChecker | None = None) -> None:
+        self._policy_checker = policy_checker
+        self._sessions: dict[str, dict[str, Any]] = {}
+        self._anomaly_threshold = Decimal("3.0")  # 3x average spend = anomaly
+
+    def mandate_to_session_params(self, mandate) -> dict[str, Any]:
+        """Convert a Sardis SpendingMandate to MPP session parameters."""
+        params: dict[str, Any] = {}
+
+        if mandate.amount_per_tx:
+            params["maxDeposit"] = str(mandate.amount_per_tx)
+        if mandate.amount_daily:
+            params["dailyLimit"] = str(mandate.amount_daily)
+        if mandate.expires_at:
+            params["expiry"] = int(mandate.expires_at.timestamp())
+
+        # Map merchant scope to allowed services
+        allowed = mandate.merchant_scope.get("allowed", [])
+        if allowed:
+            params["allowedServices"] = allowed
+
+        params["mandateId"] = mandate.id
+        params["agentId"] = mandate.agent_id
+
+        return params
+
+    def track_payment(self, session_id: str, amount: Decimal) -> None:
+        """Track a payment for anomaly detection."""
+        if session_id not in self._sessions:
+            self._sessions[session_id] = {
+                "payments": [],
+                "total": Decimal("0"),
+                "count": 0,
+            }
+
+        sess = self._sessions[session_id]
+        sess["payments"].append(amount)
+        sess["total"] += amount
+        sess["count"] += 1
+
+    def check_anomaly(self, session_id: str, amount: Decimal) -> bool:
+        """Check if a payment amount is anomalous for this session.
+
+        Returns True if the amount is suspicious (> 3x rolling average).
+        """
+        sess = self._sessions.get(session_id)
+        if not sess or sess["count"] < 5:
+            return False  # Not enough data
+
+        avg = sess["total"] / sess["count"]
+        return amount > avg * self._anomaly_threshold
+
+    async def force_close(self, session_id: str, reason: str) -> None:
+        """Force-close an MPP session that violates policy.
+
+        Logs the violation and marks the session as terminated.
+        """
+        logger.warning(
+            "Force-closing MPP session %s: %s", session_id, reason,
+        )
+        if session_id in self._sessions:
+            self._sessions[session_id]["status"] = "force_closed"
+            self._sessions[session_id]["close_reason"] = reason
