@@ -173,6 +173,7 @@ from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import payment_objects as payment_objects_router
 from .routers import spt as spt_router
+from .routers import acp as acp_router
 from .routers import streaming_payments as streaming_payments_router
 
 # Conditional import for approvals router (may not exist yet)
@@ -2069,6 +2070,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
     app.include_router(streaming_payments_router.router, prefix="/api/v2", tags=["streaming-payments"])
     app.include_router(spt_router.router, prefix="/api/v2", tags=["spt"])
+    app.include_router(acp_router.router, prefix="/api/v2", tags=["acp"])
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
