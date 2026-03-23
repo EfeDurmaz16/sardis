@@ -148,12 +148,22 @@ class AcrossBridgeAdapter:
             output_amount=amount - fee,
         )
 
-    async def initiate_transfer(self, quote: AcrossQuote) -> AcrossTransfer:
-        """Initiate a bridge transfer by calling Across deposit API.
+    async def initiate_transfer(
+        self,
+        quote: AcrossQuote,
+        signer=None,
+    ) -> AcrossTransfer:
+        """Initiate a bridge transfer by signing and broadcasting deposit tx.
 
-        Across deposits are initiated via their API which returns
-        deposit tx data. The actual on-chain deposit requires signing
-        and broadcasting the returned transaction.
+        Across deposit flow:
+        1. Call Across API to get deposit tx data (to, data, value)
+        2. Sign the tx via FXSigner (Turnkey MPC or EOA)
+        3. Broadcast to source chain RPC
+        4. Return transfer with deposit_tx_hash
+
+        Args:
+            quote: Bridge quote from quote().
+            signer: Optional FXSigner instance. Created from env if None.
         """
         import httpx
 
@@ -169,32 +179,69 @@ class AcrossBridgeAdapter:
         dst_chain_id = CHAIN_IDS.get(quote.to_chain)
         token_addr = USDC_ADDRESSES.get(quote.from_chain, "")
 
-        if src_chain_id and dst_chain_id and token_addr:
+        if not (src_chain_id and dst_chain_id and token_addr):
+            return transfer
+
+        # Get signer if not provided
+        if signer is None:
             try:
-                amount_raw = int(quote.amount * Decimal("1000000"))
-                async with httpx.AsyncClient(timeout=15) as client:
-                    resp = await client.post(
-                        f"{self._api_base}/deposit/tx",
-                        json={
-                            "originChainId": src_chain_id,
-                            "destinationChainId": dst_chain_id,
-                            "inputToken": token_addr,
-                            "outputToken": USDC_ADDRESSES.get(quote.to_chain, token_addr),
-                            "inputAmount": str(amount_raw),
-                        },
+                from sardis_chain.fx_signer import create_fx_signer
+                signer = await create_fx_signer()
+            except ImportError:
+                pass
+
+        try:
+            amount_raw = int(quote.amount * Decimal("1000000"))
+
+            # Get deposit tx data from Across API
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    f"{self._api_base}/deposit/tx",
+                    json={
+                        "originChainId": src_chain_id,
+                        "destinationChainId": dst_chain_id,
+                        "inputToken": token_addr,
+                        "outputToken": USDC_ADDRESSES.get(quote.to_chain, token_addr),
+                        "inputAmount": str(amount_raw),
+                    },
+                )
+
+            if resp.status_code != 200:
+                logger.warning("Across deposit API returned %d", resp.status_code)
+                return transfer
+
+            data = resp.json()
+
+            # If we have a signer, sign and broadcast the deposit tx
+            if signer and signer.is_available and data.get("to"):
+                rpc_url = self._get_rpc_for_chain(src_chain_id)
+                if rpc_url:
+                    tx_dict = {
+                        "to": data["to"],
+                        "data": data.get("data", "0x"),
+                        "value": int(data.get("value", "0"), 16) if isinstance(data.get("value"), str) else data.get("value", 0),
+                        "gas": 300_000,
+                        "chainId": src_chain_id,
+                    }
+
+                    tx_hash = await signer.sign_and_broadcast_evm(
+                        tx_dict=tx_dict,
+                        rpc_url=rpc_url,
+                        chain=quote.from_chain,
                     )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        transfer.status = "deposited"
-                        transfer.deposit_tx_hash = data.get("txHash")
-                        logger.info(
-                            "Across deposit initiated: %s (%s→%s)",
-                            transfer.transfer_id, quote.from_chain, quote.to_chain,
-                        )
-                    else:
-                        logger.warning("Across deposit API returned %d", resp.status_code)
-            except Exception as e:
-                logger.warning("Across deposit failed: %s", e)
+                    transfer.deposit_tx_hash = tx_hash
+                    transfer.status = "deposited"
+                    logger.info("Across deposit broadcast: %s (%s→%s)", tx_hash, quote.from_chain, quote.to_chain)
+                else:
+                    logger.warning("No RPC URL for chain %d — deposit not broadcast", src_chain_id)
+            else:
+                # No signer — just record the API response
+                transfer.deposit_tx_hash = data.get("txHash")
+                transfer.status = "pending_signature"
+                logger.info("Across deposit data received but not signed (no signer)")
+
+        except Exception as e:
+            logger.warning("Across deposit failed: %s", e)
 
         if transfer.status == "pending":
             logger.info(
@@ -225,3 +272,17 @@ class AcrossBridgeAdapter:
             logger.debug("Across status check failed for %s", transfer_id)
 
         return "pending"
+
+    @staticmethod
+    def _get_rpc_for_chain(chain_id: int) -> str:
+        """Get RPC URL for a chain from env vars."""
+        import os
+        rpc_map = {
+            4217: os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
+            42431: os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.moderato.tempo.xyz"),
+            8453: os.getenv("SARDIS_BASE_RPC_URL", ""),
+            1: os.getenv("SARDIS_ETH_RPC_URL", ""),
+            137: os.getenv("SARDIS_POLYGON_RPC_URL", ""),
+            42161: os.getenv("SARDIS_ARBITRUM_RPC_URL", ""),
+        }
+        return rpc_map.get(chain_id, "")
