@@ -7,6 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Design system surface tokens (from design-system.css)
+        'bg-root': '#09090B',
+        'bg-surface': '#18181B',
+        'bg-elevated': '#1F1F23',
+
         sardis: {
           50: 'rgb(240 253 244 / <alpha-value>)',
           100: 'rgb(220 252 231 / <alpha-value>)',
@@ -21,15 +26,16 @@ export default {
           950: 'rgb(5 46 22 / <alpha-value>)',
         },
         dark: {
-          100: 'rgb(30 41 59 / <alpha-value>)',
-          200: 'rgb(26 35 50 / <alpha-value>)',
-          300: 'rgb(21 29 41 / <alpha-value>)',
-          400: 'rgb(17 24 39 / <alpha-value>)',
-          500: 'rgb(15 23 42 / <alpha-value>)',
-          600: 'rgb(12 18 34 / <alpha-value>)',
-          700: 'rgb(9 13 24 / <alpha-value>)',
-          800: 'rgb(6 9 16 / <alpha-value>)',
-          900: 'rgb(3 4 8 / <alpha-value>)',
+          50:  '#27272A',  // hover  — matches --bg-hover
+          100: '#1F1F23',  // elevated — matches --bg-elevated
+          200: '#18181B',  // surface — matches --bg-surface
+          300: '#09090B',  // root — matches --bg-root
+          400: '#09090B',
+          500: '#09090B',
+          600: '#050506',
+          700: '#030304',
+          800: '#020202',
+          900: '#010101',
         }
       },
       fontFamily: {

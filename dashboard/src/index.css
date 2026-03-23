@@ -69,15 +69,16 @@
   --color-sardis-900: #7c2d12;
   --color-sardis-950: #431407;
 
-  /* Surface Scale — warm anthracite (was blue-navy) */
-  --color-dark-100: #2f2e2c;
-  --color-dark-200: #1f1e1c;
-  --color-dark-300: #141312;
-  --color-dark-400: #0f0e0c;
-  --color-dark-500: #0a0908;
-  --color-dark-600: #080706;
-  --color-dark-700: #050404;
-  --color-dark-800: #030303;
+  /* Surface Scale — aligned with design-system.css */
+  --color-dark-50:  #27272A;  /* hover  — var(--bg-hover) */
+  --color-dark-100: #1F1F23;  /* elevated — var(--bg-elevated) */
+  --color-dark-200: #18181B;  /* surface — var(--bg-surface) */
+  --color-dark-300: #09090B;  /* root — var(--bg-root) */
+  --color-dark-400: #09090B;
+  --color-dark-500: #09090B;
+  --color-dark-600: #050506;
+  --color-dark-700: #030304;
+  --color-dark-800: #020202;
   --color-dark-900: #010101;
 
   /* Fonts — Geist family */
@@ -102,8 +103,8 @@
 }
 
 body {
-  background: #0f0e0c;
-  color: #f2f0e9;
+  background: var(--bg-root, #09090B);
+  color: var(--text-primary, #FAFAFA);
   min-height: 100vh;
   font-family: "Geist Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -121,15 +122,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-track {
-  background: #141312;
+  background: var(--bg-root, #09090B);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2f2e2c;
+  background: var(--bg-hover, #27272A);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444341;
+  background: var(--bg-active, #2E2E33);
 }
 
 /* Accent glow — orange */
@@ -153,8 +154,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Card — flat, industrial, 1px border */
 .card {
-  background-color: #1f1e1c;
-  border: 1px solid #2f2e2c;
+  background-color: var(--bg-surface, #18181B);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
 }
 
 .card-hover {
@@ -195,7 +196,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Loading skeleton */
 .skeleton {
-  background: #2f2e2c;
+  background: var(--bg-hover, #27272A);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
