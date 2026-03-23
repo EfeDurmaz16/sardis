@@ -93,6 +93,7 @@ from typing import Any, Protocol
 
 from sardis_v2_core.dedup_store import DedupStorePort, InMemoryDedupStore
 from sardis_v2_core.mandates import MandateChain, PaymentMandate
+from sardis_v2_core.settlement_lock import SettlementLock, SettlementLockError
 from sardis_v2_core.state_machine import PaymentState, PaymentStateMachine
 from sardis_v2_core.state_handlers import StateHandlerRegistry, register_default_handlers
 
@@ -484,6 +485,7 @@ class PaymentOrchestrator:
         sanctions_service: SanctionsScreeningPort | None = None,
         dedup_store: DedupStorePort | None = None,
         spending_mandate_lookup: SpendingMandateLookupPort | None = None,
+        settlement_lock: SettlementLock | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -495,6 +497,7 @@ class PaymentOrchestrator:
         self._sanctions_service = sanctions_service
         self._dedup_store: DedupStorePort = dedup_store or InMemoryDedupStore()
         self._spending_mandate_lookup = spending_mandate_lookup
+        self._settlement_lock = settlement_lock
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
 
     def _audit(
@@ -877,41 +880,28 @@ class PaymentOrchestrator:
         )
         await _handler_registry.fire_on_enter(PaymentState.LOCKED, sm, record)
 
-        # Phase 3: Chain Execution
+        # Phase 3: Chain Execution (protected by SettlementLock)
+        # Acquire a PostgreSQL advisory lock keyed on the mandate_id before
+        # touching the chain.  This prevents a second worker (e.g. webhook
+        # retry + poll race) from settling the same payment concurrently.
+        # If no SettlementLock was injected, proceed without locking (dev mode).
         receipt = None
         try:
-            # ── State Machine: LOCKED → SETTLING ─────────────────────────
-            record = sm.transition(
-                PaymentState.SETTLING, actor="orchestrator",
-                reason="Chain execution started",
-                metadata={"chain": payment.chain},
-            )
-            await _handler_registry.fire_on_enter(PaymentState.SETTLING, sm, record)
-
-            receipt = await self._chain_executor.dispatch_payment(payment)
-            self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, True,
-                       {"tx_hash": receipt.tx_hash, "chain": receipt.chain,
-                        "block_number": receipt.block_number})
-
-            # ── State Machine: SETTLING → SETTLED ────────────────────────
-            record = sm.transition(
-                PaymentState.SETTLED, actor="orchestrator",
-                reason="On-chain settlement confirmed",
-                metadata={"tx_hash": receipt.tx_hash, "chain": receipt.chain},
-            )
-            await _handler_registry.fire_on_enter(PaymentState.SETTLED, sm, record)
-        except Exception as e:
-            self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False, error=str(e))
-            # ── State Machine: SETTLING → FAILED ─────────────────────────
-            if sm.can_transition(PaymentState.FAILED):
-                fail_rec = sm.transition(
-                    PaymentState.FAILED, actor="orchestrator",
-                    reason=f"Chain execution failed: {e}",
-                    metadata={"error": str(e)},
+            if self._settlement_lock is not None:
+                async with self._settlement_lock.with_lock(mandate_id):
+                    receipt = await self._execute_chain_settlement(
+                        sm, payment, mandate_id,
+                    )
+            else:
+                receipt = await self._execute_chain_settlement(
+                    sm, payment, mandate_id,
                 )
-                await _handler_registry.fire_on_enter(PaymentState.FAILED, sm, fail_rec)
+        except SettlementLockError:
+            # Another worker is already settling this payment — reject
+            self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False,
+                       error="settlement_lock_contention")
             raise ChainExecutionError(
-                f"Chain execution failed: {e}",
+                "Another worker is already settling this payment",
                 mandate_id=mandate_id,
                 chain=payment.chain,
             )
@@ -1057,6 +1047,64 @@ class PaymentOrchestrator:
         )
         await self._dedup_store.check_and_set(mandate_id, result)
         return result
+
+    async def _execute_chain_settlement(
+        self,
+        sm: PaymentStateMachine,
+        payment: PaymentMandate,
+        mandate_id: str,
+    ) -> Any:
+        """Execute on-chain settlement with state machine transitions.
+
+        Extracted so it can be called both with and without a SettlementLock
+        context manager while keeping the lock scope tight around the
+        actual chain interaction.
+
+        Returns:
+            The chain receipt from ``dispatch_payment``.
+
+        Raises:
+            ChainExecutionError: If chain dispatch or confirmation fails.
+        """
+        try:
+            # ── State Machine: LOCKED → SETTLING ─────────────────────────
+            record = sm.transition(
+                PaymentState.SETTLING, actor="orchestrator",
+                reason="Chain execution started",
+                metadata={"chain": payment.chain},
+            )
+            await _handler_registry.fire_on_enter(PaymentState.SETTLING, sm, record)
+
+            receipt = await self._chain_executor.dispatch_payment(payment)
+            self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, True,
+                       {"tx_hash": receipt.tx_hash, "chain": receipt.chain,
+                        "block_number": receipt.block_number})
+
+            # ── State Machine: SETTLING → SETTLED ────────────────────────
+            record = sm.transition(
+                PaymentState.SETTLED, actor="orchestrator",
+                reason="On-chain settlement confirmed",
+                metadata={"tx_hash": receipt.tx_hash, "chain": receipt.chain},
+            )
+            await _handler_registry.fire_on_enter(PaymentState.SETTLED, sm, record)
+            return receipt
+        except SettlementLockError:
+            raise
+        except Exception as e:
+            self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False, error=str(e))
+            # ── State Machine: SETTLING → FAILED ─────────────────────────
+            if sm.can_transition(PaymentState.FAILED):
+                fail_rec = sm.transition(
+                    PaymentState.FAILED, actor="orchestrator",
+                    reason=f"Chain execution failed: {e}",
+                    metadata={"error": str(e)},
+                )
+                await _handler_registry.fire_on_enter(PaymentState.FAILED, sm, fail_rec)
+            raise ChainExecutionError(
+                f"Chain execution failed: {e}",
+                mandate_id=mandate_id,
+                chain=payment.chain,
+            )
 
     async def reconcile_pending(self, limit: int = 10) -> int:
         """
