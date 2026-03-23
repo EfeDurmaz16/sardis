@@ -21,12 +21,19 @@ from typing import Any
 
 logger = logging.getLogger("sardis.chain.tempo")
 
-# System contract addresses
+# System contract addresses (from pympp _defaults.py)
 ACCOUNT_KEYCHAIN = "0xAAAAAAAA00000000000000000000000000000000"
 STABLECOIN_DEX = "0xdec0000000000000000000000000000000000000"
 FEE_MANAGER = "0xfeec000000000000000000000000000000000000"
 PATH_USD = "0x20c0000000000000000000000000000000000000"
 USDC_E_BRIDGED = "0x20C000000000000000000000b9537d11c60E8b50"
+
+# Escrow contracts (from pympp _defaults.py)
+ESCROW_CONTRACT_MAINNET = "0x33b901018174DDabE4841042ab76ba85D4e24f25"
+ESCROW_CONTRACT_TESTNET = "0xe1c4d3dce17bc111181ddf716f75bae49e61a336"
+
+# Fee payer service
+FEE_PAYER_TESTNET_URL = "https://sponsor.moderato.tempo.xyz"
 
 # Chain configs
 TEMPO_MAINNET = {
@@ -278,7 +285,7 @@ class TempoExecutor:
     @staticmethod
     def _encode_transfer_with_memo(to: str, amount: int, memo: bytes) -> bytes:
         """Encode TIP-20 transferWithMemo(address,uint256,bytes32)."""
-        selector = bytes.fromhex("b3e5ff47")  # transferWithMemo selector
+        selector = bytes.fromhex("95777d59")  # transferWithMemo selector (from pympp)
         addr = bytes.fromhex(to[2:].zfill(64))
         amt = amount.to_bytes(32, "big")
         memo_padded = memo.ljust(32, b"\x00")[:32]
