@@ -28,7 +28,7 @@ export class SubscriptionsV2Resource extends BaseResource {
    * @returns The created subscription
    */
   async create(params: CreateSubscriptionInput, options?: RequestOptions): Promise<Subscription> {
-    return this._post<Subscription>('/api/v2/subscriptions', params, options);
+    return this._post<Subscription>('/api/v2/mandate-subscriptions', params, options);
   }
 
   /**
@@ -39,7 +39,7 @@ export class SubscriptionsV2Resource extends BaseResource {
    * @returns The subscription
    */
   async get(id: string, options?: RequestOptions): Promise<Subscription> {
-    return this._get<Subscription>(`/api/v2/subscriptions/${id}`, undefined, options);
+    return this._get<Subscription>(`/api/v2/mandate-subscriptions/${id}`, undefined, options);
   }
 
   /**
@@ -51,7 +51,7 @@ export class SubscriptionsV2Resource extends BaseResource {
    */
   async list(params?: ListSubscriptionsParams, options?: RequestOptions): Promise<Subscription[]> {
     const response = await this._get<{ subscriptions: Subscription[] } | Subscription[]>(
-      '/api/v2/subscriptions',
+      '/api/v2/mandate-subscriptions',
       params as Record<string, unknown>,
       options
     );
@@ -72,7 +72,7 @@ export class SubscriptionsV2Resource extends BaseResource {
    * @returns The cancelled subscription
    */
   async cancel(id: string, options?: RequestOptions): Promise<Subscription> {
-    return this._post<Subscription>(`/api/v2/subscriptions/${id}/cancel`, {}, options);
+    return this._post<Subscription>(`/api/v2/mandate-subscriptions/${id}/cancel`, {}, options);
   }
 
   /**
@@ -91,7 +91,7 @@ export class SubscriptionsV2Resource extends BaseResource {
     params: AmendSubscriptionInput,
     options?: RequestOptions
   ): Promise<Subscription> {
-    return this._patch<Subscription>(`/api/v2/subscriptions/${id}`, params, options);
+    return this._patch<Subscription>(`/api/v2/mandate-subscriptions/${id}`, params, options);
   }
 
   /**
@@ -111,7 +111,7 @@ export class SubscriptionsV2Resource extends BaseResource {
     options?: RequestOptions
   ): Promise<ReportUsageResponse> {
     return this._post<ReportUsageResponse>(
-      `/api/v2/subscriptions/${id}/usage`,
+      `/api/v2/mandate-subscriptions/${id}/usage`,
       params,
       options
     );
