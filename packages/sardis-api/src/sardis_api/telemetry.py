@@ -1,181 +1,108 @@
-"""OpenTelemetry distributed tracing setup.
+"""OpenTelemetry instrumentation for Sardis API.
 
-Runs alongside Sentry (not a replacement). Provides trace context propagation
-through the 6-phase orchestrator and structured log correlation.
+Auto-instruments FastAPI endpoints and provides manual span helpers
+for tracing payment pipeline phases.
 
-Configuration via SARDIS_OTEL_* env vars (see SardisSettings in config.py).
+Setup:
+    pip install opentelemetry-sdk opentelemetry-instrumentation-fastapi \
+                opentelemetry-exporter-otlp-proto-http
+
+Environment variables:
+    OTEL_EXPORTER_OTLP_ENDPOINT — OTLP endpoint (e.g., https://otlp-gateway-prod-us-east-0.grafana.net/otlp)
+    OTEL_EXPORTER_OTLP_HEADERS — Auth headers (e.g., Authorization=Basic ...)
+    OTEL_SERVICE_NAME — Service name (default: sardis-api)
+    SARDIS_OTEL_ENABLED — Set to "1" to enable (default: disabled)
 """
 from __future__ import annotations
 
 import logging
+import os
+from contextlib import contextmanager
+from typing import Any, Generator
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
-_TRACER_PROVIDER = None
+_tracer = None
+_enabled = False
 
 
-def init_telemetry(
-    service_name: str = "sardis-api",
-    exporter: str = "sentry",
-    endpoint: str = "",
-    sample_rate: float = 0.1,
-) -> None:
-    """Initialize OpenTelemetry tracing.
+def init_telemetry(app: Any = None) -> None:
+    """Initialize OpenTelemetry instrumentation.
 
-    Args:
-        service_name: OTEL service name.
-        exporter: One of "sentry", "otlp", "console", "none".
-        endpoint: OTLP collector endpoint (when exporter="otlp").
-        sample_rate: Fraction of traces to sample (0.0-1.0).
+    Call once during app startup. No-op if SARDIS_OTEL_ENABLED != "1".
     """
-    global _TRACER_PROVIDER
+    global _tracer, _enabled
 
-    try:
-        from opentelemetry import trace
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-    except ImportError:
-        logger.warning("opentelemetry-sdk not installed — tracing disabled")
+    if os.getenv("SARDIS_OTEL_ENABLED", "").strip() not in ("1", "true", "yes"):
+        _logger.info("OpenTelemetry disabled (set SARDIS_OTEL_ENABLED=1 to enable)")
         return
 
-    if _TRACER_PROVIDER is not None:
-        return  # already initialized
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.sdk.resources import Resource
 
-    resource = Resource.create({"service.name": service_name})
-    sampler = TraceIdRatioBased(sample_rate)
-    provider = TracerProvider(resource=resource, sampler=sampler)
+        resource = Resource.create({
+            "service.name": os.getenv("OTEL_SERVICE_NAME", "sardis-api"),
+            "service.version": "2.0.0",
+            "deployment.environment": os.getenv("SARDIS_ENVIRONMENT", "dev"),
+        })
 
-    # Configure exporter
-    if exporter == "otlp" and endpoint:
+        provider = TracerProvider(resource=resource)
+
+        # OTLP exporter (works with Grafana Cloud, Jaeger, etc.)
         try:
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter,
-            )
-            from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-            otlp_exporter = OTLPSpanExporter(endpoint=endpoint)
-            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-            logger.info("OTEL: OTLP exporter -> %s", endpoint)
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            exporter = OTLPSpanExporter()
+            provider.add_span_processor(BatchSpanProcessor(exporter))
         except ImportError:
-            logger.warning(
-                "opentelemetry-exporter-otlp not installed — OTLP export disabled"
-            )
-    elif exporter == "console":
-        from opentelemetry.sdk.trace.export import (
-            ConsoleSpanExporter,
-            SimpleSpanProcessor,
-        )
+            _logger.warning("OTLP exporter not installed, traces will be logged only")
 
-        provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
-        logger.info("OTEL: Console exporter enabled")
-    elif exporter == "sentry":
-        # Sentry's own OTEL integration picks up the TracerProvider automatically.
-        # Just setting the provider is enough — Sentry SDK >= 2.x bridges spans.
-        logger.info("OTEL: Sentry bridge mode (TracerProvider set, Sentry SDK bridges spans)")
-    else:
-        logger.info("OTEL: No exporter configured (trace context propagation only)")
+        trace.set_tracer_provider(provider)
+        _tracer = trace.get_tracer("sardis-api")
+        _enabled = True
 
-    trace.set_tracer_provider(provider)
-    _TRACER_PROVIDER = provider
+        # Auto-instrument FastAPI if app provided
+        if app is not None:
+            try:
+                from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+                FastAPIInstrumentor.instrument_app(app)
+                _logger.info("FastAPI auto-instrumented with OpenTelemetry")
+            except ImportError:
+                _logger.warning("FastAPI instrumentor not installed")
 
-    logger.info(
-        "OpenTelemetry initialized: service=%s, exporter=%s, sample_rate=%s",
-        service_name,
-        exporter,
-        sample_rate,
-    )
+        _logger.info("OpenTelemetry initialized")
 
-
-def instrument_fastapi(app) -> None:
-    """Auto-instrument a FastAPI app with OTEL."""
-    try:
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-
-        FastAPIInstrumentor.instrument_app(app)
-        logger.info("OTEL: FastAPI instrumented")
     except ImportError:
-        logger.debug("opentelemetry-instrumentation-fastapi not available")
+        _logger.info("OpenTelemetry SDK not installed, tracing disabled")
 
 
-def instrument_asyncpg() -> None:
-    """Auto-instrument asyncpg with OTEL."""
-    try:
-        from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
+@contextmanager
+def trace_phase(phase_name: str, **attributes: Any) -> Generator[None, None, None]:
+    """Trace a payment pipeline phase.
 
-        AsyncPGInstrumentor().instrument()
-        logger.info("OTEL: asyncpg instrumented")
-    except ImportError:
-        logger.debug("opentelemetry-instrumentation-asyncpg not available")
-
-
-def get_tracer(name: str = "sardis"):
-    """Get an OTEL tracer for manual span creation.
-
-    Usage in orchestrator phases::
-
-        tracer = get_tracer("sardis.orchestrator")
-        with tracer.start_as_current_span("phase.policy_check") as span:
-            span.set_attribute("mandate_id", mandate_id)
-            ...
+    Usage:
+        with trace_phase("policy_check", agent_id="agent_123", amount=50.0):
+            result = await policy_engine.evaluate(...)
     """
-    try:
-        from opentelemetry import trace
+    if not _enabled or _tracer is None:
+        yield
+        return
 
-        return trace.get_tracer(name)
-    except ImportError:
-        return _NoOpTracer()
-
-
-def get_current_trace_id() -> str | None:
-    """Return the current trace ID as a hex string, or None."""
-    try:
-        from opentelemetry import trace
-
-        span = trace.get_current_span()
-        ctx = span.get_span_context()
-        if ctx and ctx.trace_id:
-            return format(ctx.trace_id, "032x")
-    except ImportError:
-        pass
-    return None
+    with _tracer.start_as_current_span(
+        f"sardis.{phase_name}",
+        attributes={f"sardis.{k}": str(v) for k, v in attributes.items()},
+    ):
+        yield
 
 
-def get_current_span_id() -> str | None:
-    """Return the current span ID as a hex string, or None."""
-    try:
-        from opentelemetry import trace
+def trace_event(name: str, **attributes: Any) -> None:
+    """Record an event on the current span."""
+    if not _enabled:
+        return
 
-        span = trace.get_current_span()
-        ctx = span.get_span_context()
-        if ctx and ctx.span_id:
-            return format(ctx.span_id, "016x")
-    except ImportError:
-        pass
-    return None
-
-
-class _NoOpTracer:
-    """Fallback when OTEL SDK is not installed."""
-
-    class _NoOpSpan:
-        def set_attribute(self, key, value):
-            pass
-
-        def set_status(self, status):
-            pass
-
-        def record_exception(self, exc):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    def start_as_current_span(self, name, **kwargs):
-        return self._NoOpSpan()
-
-    def start_span(self, name, **kwargs):
-        return self._NoOpSpan()
+    from opentelemetry import trace
+    span = trace.get_current_span()
+    if span:
+        span.add_event(name, attributes={k: str(v) for k, v in attributes.items()})
