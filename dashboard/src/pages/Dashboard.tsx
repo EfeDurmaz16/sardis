@@ -695,6 +695,7 @@ export default function DashboardPage() {
 
         <div className="overflow-x-auto">
           <table className="w-full">
+            <caption className="sr-only">Recent transaction activity</caption>
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase">
                 <th className="pb-3 font-medium">Status</th>

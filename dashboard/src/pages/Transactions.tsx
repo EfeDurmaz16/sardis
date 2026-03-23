@@ -217,6 +217,7 @@ export default function TransactionsPage() {
       {/* Transactions Table */}
       {!loading && !error && <div className="card overflow-hidden">
         <table className="w-full">
+          <caption className="sr-only">Transaction history</caption>
           <thead className="bg-dark-300">
             <tr>
               <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-8" />
