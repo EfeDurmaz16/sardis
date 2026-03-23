@@ -94,7 +94,7 @@ class AsyncFundingResource(AsyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return await self._post("funding/commitments", payload, timeout=timeout)
+        return await self._post("funding/commit", payload, timeout=timeout)
 
     async def list_commitments(
         self,
@@ -275,7 +275,7 @@ class FundingResource(SyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return self._post("funding/commitments", payload, timeout=timeout)
+        return self._post("funding/commit", payload, timeout=timeout)
 
     def list_commitments(
         self,
