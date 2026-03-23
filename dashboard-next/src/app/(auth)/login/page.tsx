@@ -41,7 +41,7 @@ export default function LoginPage() {
       if (data.access_token) {
         // Store JWT for API client + middleware
         localStorage.setItem("sardis_session", data.access_token);
-        document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax`;
+        document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax; domain=.sardis.sh`;
         router.push("/overview");
         return;
       }

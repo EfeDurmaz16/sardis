@@ -154,7 +154,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
     // Clear localStorage session / JWT
     localStorage.removeItem('sardis_session')
     // Clear the session cookie
-    document.cookie = 'better-auth.session_token=; path=/; max-age=0'
+    document.cookie = 'better-auth.session_token=; path=/; max-age=0; domain=.sardis.sh'
     // Redirect to login
     router.push('/login')
   }
