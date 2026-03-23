@@ -153,7 +153,7 @@ export default function Layout({ children }: LayoutProps) {
         Skip to content
       </a>
       {/* Sidebar */}
-      <aside className="w-64 bg-dark-300 border-r border-dark-100 flex flex-col">
+      <aside className="w-64 bg-dark-300 border-r border-dark-100 flex flex-col" aria-label="Main navigation">
         {/* Logo */}
         <div className="p-6 border-b border-dark-100">
           <Link to="/" className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto" aria-label="Primary">
           {/* Core — always visible */}
           {coreNavigation.map((item) => {
             const isActive = location.pathname === item.href
