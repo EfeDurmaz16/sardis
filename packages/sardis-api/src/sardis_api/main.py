@@ -170,6 +170,7 @@ from .routers import escrow_disputes as escrow_disputes_router
 from .routers import funding as funding_router
 from .routers import fx as fx_router
 from .routers import mandate_delegation as mandate_delegation_router
+from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import payment_objects as payment_objects_router
 from .routers import streaming_payments as streaming_payments_router
 
@@ -2064,6 +2065,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(usage_router.router, prefix="/api/v2", tags=["usage"])
     app.include_router(escrow_disputes_router.router, prefix="/api/v2", tags=["escrow", "disputes"])
     app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
+    app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
     app.include_router(streaming_payments_router.router, prefix="/api/v2", tags=["streaming-payments"])
 
     # A2A discovery: /.well-known/agent-card.json
