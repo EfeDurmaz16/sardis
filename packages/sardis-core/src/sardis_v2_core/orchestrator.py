@@ -555,7 +555,11 @@ class PaymentOrchestrator:
         logger.info(f"Starting payment execution: mandate_id={mandate_id}")
 
         # ── State Machine: create in ISSUED state ────────────────────────
-        sm = PaymentStateMachine(payment_object_id=mandate_id)
+        # Generate a unique payment_object_id for this execution.
+        # Each payment gets its own ID even if sharing the same mandate.
+        from uuid import uuid4
+        payment_object_id = f"po_{uuid4().hex[:16]}"
+        sm = PaymentStateMachine(payment_object_id=payment_object_id)
         # Machine starts in ISSUED (the default initial state).
 
         # ── Phase 0: KYA Verification (fail-fast) ───────────────────────
@@ -881,20 +885,20 @@ class PaymentOrchestrator:
         await _handler_registry.fire_on_enter(PaymentState.LOCKED, sm, record)
 
         # Phase 3: Chain Execution (protected by SettlementLock)
-        # Acquire a PostgreSQL advisory lock keyed on the mandate_id before
-        # touching the chain.  This prevents a second worker (e.g. webhook
-        # retry + poll race) from settling the same payment concurrently.
+        # Acquire a PostgreSQL advisory lock keyed on the payment_object_id
+        # (not mandate_id — multiple payments can share one mandate).
+        # This prevents a second worker from settling the same payment.
         # If no SettlementLock was injected, proceed without locking (dev mode).
         receipt = None
         try:
             if self._settlement_lock is not None:
-                async with self._settlement_lock.with_lock(mandate_id):
+                async with self._settlement_lock.with_lock(payment_object_id):
                     receipt = await self._execute_chain_settlement(
-                        sm, payment, mandate_id,
+                        sm, payment, payment_object_id,
                     )
             else:
                 receipt = await self._execute_chain_settlement(
-                    sm, payment, mandate_id,
+                    sm, payment, payment_object_id,
                 )
         except SettlementLockError:
             # Another worker is already settling this payment — reject
