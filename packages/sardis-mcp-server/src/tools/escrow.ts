@@ -264,7 +264,7 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        '/api/v2/escrows',
+        '/api/v2/escrow',
         { amount, token, chain, recipient, description, deadline_hours, arbiter },
       );
 
@@ -331,7 +331,7 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        `/api/v2/escrows/${escrow_id}/confirm`,
+        `/api/v2/escrow/${escrow_id}/confirm-delivery`,
         { rating, feedback },
       );
 
@@ -396,7 +396,7 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        `/api/v2/escrows/${escrow_id}/dispute`,
+        `/api/v2/escrow/${escrow_id}/dispute`,
         { reason, category, evidence_uri },
       );
 
@@ -461,7 +461,7 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        `/api/v2/escrows/${escrow_id}/evidence`,
+        `/api/v2/escrow/${escrow_id}/evidence`,
         { evidence_uri, evidence_type, description },
       );
 
@@ -530,7 +530,7 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        `/api/v2/escrows/${escrow_id}/resolve`,
+        `/api/v2/escrow/${escrow_id}/resolve`,
         { resolution, split_percentage, reason },
       );
 
