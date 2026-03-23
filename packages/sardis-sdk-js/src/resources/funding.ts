@@ -32,7 +32,7 @@ export class FundingResource extends BaseResource {
     params: CreateFundingCommitmentInput,
     options?: RequestOptions
   ): Promise<FundingCommitment> {
-    return this._post<FundingCommitment>('/api/v2/funding/commitments', params, options);
+    return this._post<FundingCommitment>('/api/v2/funding/commit', params, options);
   }
 
   /**
