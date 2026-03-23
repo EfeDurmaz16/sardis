@@ -178,13 +178,17 @@ async def execute_fx_quote(
     tx_hash = None
     swap_status = "failed"
     try:
+        # Get unified signer (Turnkey MPC or local EOA)
+        from sardis_chain.fx_signer import create_fx_signer
+        signer = await create_fx_signer()
+
         provider = row["provider"]
         if provider == "tempo_dex":
             from sardis_chain.tempo.dex import TempoDEXAdapter, DEXQuote
             import os
             dex = TempoDEXAdapter(
                 rpc_url=os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
-                private_key=os.getenv("SARDIS_TEMPO_SIGNER_KEY"),
+                private_key=signer.get_private_key(),  # From Turnkey or EOA
             )
             quote = DEXQuote(
                 quote_id=row["quote_id"],
@@ -212,7 +216,12 @@ async def execute_fx_quote(
             in_addr = TOKEN_REGISTRY[TokenType(row["from_currency"])].contract_addresses.get(chain, "")
             out_addr = TOKEN_REGISTRY[TokenType(row["to_currency"])].contract_addresses.get(chain, "")
             quote = await uni.get_quote(in_addr, out_addr, amount_raw)
-            result = await uni.execute_swap(quote)
+            # Use unified signer for execution
+            result = await uni.execute_swap(
+                quote,
+                private_key=signer.get_private_key(),
+                recipient=signer.address,
+            )
             tx_hash = result.get("tx_hash")
             swap_status = result.get("status", "failed")
 
