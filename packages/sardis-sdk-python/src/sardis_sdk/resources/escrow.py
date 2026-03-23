@@ -91,7 +91,7 @@ class AsyncEscrowResource(AsyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return await self._post("escrow/holds", payload, timeout=timeout)
+        return await self._post("escrow", payload, timeout=timeout)
 
     async def confirm_delivery(
         self,
@@ -114,7 +114,7 @@ class AsyncEscrowResource(AsyncBaseResource):
             payload["evidence"] = evidence
 
         return await self._post(
-            f"escrow/holds/{hold_id}/confirm", payload, timeout=timeout
+            f"escrow/{hold_id}/confirm-delivery", payload, timeout=timeout
         )
 
     async def file_dispute(
@@ -302,7 +302,7 @@ class EscrowResource(SyncBaseResource):
         if metadata is not None:
             payload["metadata"] = metadata
 
-        return self._post("escrow/holds", payload, timeout=timeout)
+        return self._post("escrow", payload, timeout=timeout)
 
     def confirm_delivery(
         self,
@@ -325,7 +325,7 @@ class EscrowResource(SyncBaseResource):
             payload["evidence"] = evidence
 
         return self._post(
-            f"escrow/holds/{hold_id}/confirm", payload, timeout=timeout
+            f"escrow/{hold_id}/confirm-delivery", payload, timeout=timeout
         )
 
     def file_dispute(
