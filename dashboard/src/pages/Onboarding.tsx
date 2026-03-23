@@ -12,7 +12,14 @@ function ProgressBar({ step, total = 5 }: { step: number; total?: number }) {
         <span className="text-sm text-gray-400">Step {step} of {total}</span>
         <span className="text-sm text-gray-500">{Math.round((step / total) * 100)}% complete</span>
       </div>
-      <div className="w-full h-1.5 bg-dark-200 rounded-full overflow-hidden">
+      <div
+        className="w-full h-1.5 bg-dark-200 rounded-full overflow-hidden"
+        role="progressbar"
+        aria-valuenow={step}
+        aria-valuemin={1}
+        aria-valuemax={total}
+        aria-label="Onboarding progress"
+      >
         <div
           className="h-full bg-sardis-500 rounded-full transition-all duration-500"
           style={{ width: `${(step / total) * 100}%` }}

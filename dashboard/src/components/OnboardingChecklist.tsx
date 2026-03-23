@@ -99,6 +99,7 @@ export function OnboardingChecklist() {
           onClick={() => setDismissed(true)}
           className="p-1 text-gray-500 hover:text-white transition-colors"
           title="Dismiss"
+          aria-label="Dismiss onboarding checklist"
         >
           <X className="w-4 h-4" />
         </button>
@@ -106,7 +107,14 @@ export function OnboardingChecklist() {
 
       {/* Progress Bar */}
       <div className="px-6 pt-4 pb-2">
-        <div className="w-full h-1.5 rounded-full bg-dark-100">
+        <div
+          className="w-full h-1.5 rounded-full bg-dark-100"
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Onboarding progress"
+        >
           <div
             className="h-full rounded-full bg-sardis-500 transition-all duration-500"
             style={{ width: `${progressPct}%` }}

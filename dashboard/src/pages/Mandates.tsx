@@ -81,7 +81,14 @@ function BudgetBar({ spent, total }: { spent: string; total: string | null }) {
         <span className="text-gray-400">${s.toFixed(2)} spent</span>
         <span className="text-gray-500">${t.toFixed(2)} total</span>
       </div>
-      <div className="w-full h-1.5 rounded-full bg-dark-100">
+      <div
+        className="w-full h-1.5 rounded-full bg-dark-100"
+        role="meter"
+        aria-valuenow={s}
+        aria-valuemin={0}
+        aria-valuemax={t}
+        aria-label="Budget usage"
+      >
         <div
           className="h-full rounded-full transition-all"
           style={{
