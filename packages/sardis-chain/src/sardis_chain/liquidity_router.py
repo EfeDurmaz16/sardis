@@ -1,18 +1,18 @@
-"""Liquidity Router — chain-aware FX routing.
+"""Liquidity Router — chain-aware FX routing with native-first priority.
 
 Routes stablecoin swaps through the optimal venue per chain:
-- Tempo → enshrined DEX orderbook (best execution)
-- Base → Uniswap V3/V4
-- Other EVM → DEX aggregators (1inch, Paraswap)
+- Tempo → pytempo StablecoinDEX (enshrined orderbook, no API key)
+- Base → Uniswap V3 direct (no API key, only RPC)
+- Optional fallbacks → CDPSwap, 1inch (if API keys configured)
 
-Also routes cross-chain bridge transfers through ecosystem bridges:
-- Relay (intent-based, lowest fees)
-- Across (optimistic, fast)
-- Squid, Bungee, LayerZero (fallbacks)
+Also routes cross-chain bridge transfers:
+- Relay (intent-based, free API, lowest fees)
+- Across (optimistic, free API for quotes)
 """
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
@@ -33,25 +33,22 @@ class RouteResult:
 
 
 class LiquidityRouter:
-    """Routes FX swaps and bridge transfers through optimal venues."""
+    """Routes FX swaps through optimal venues — native/on-chain first.
 
-    # Provider priority per chain
-    CHAIN_PROVIDERS: dict[str, list[str]] = {
-        "tempo": ["tempo_dex"],
-        "base": ["uniswap_v3", "uniswap_v4"],
-        "ethereum": ["uniswap_v3", "1inch"],
-        "polygon": ["uniswap_v3", "paraswap"],
-        "arbitrum": ["uniswap_v3", "1inch"],
-        "optimism": ["uniswap_v3"],
-    }
+    Priority (no API key needed for primary path):
+      tempo:    pytempo StablecoinDEX [free]
+      base:     Uniswap V3 direct [free] → CDPSwap [if key] → 1inch [if key]
+      ethereum: Uniswap V3 direct [free] → CDPSwap [if key]
+      polygon:  CDPSwap [if key] → indicative rate
+      arbitrum: CDPSwap [if key] → indicative rate
+    """
 
-    # Bridge provider priority for chain pairs
     BRIDGE_PROVIDERS: dict[tuple[str, str], list[str]] = {
         ("tempo", "base"): ["relay", "across"],
         ("base", "tempo"): ["relay", "across"],
         ("tempo", "ethereum"): ["across", "relay"],
-        ("base", "ethereum"): ["across", "relay", "cctp_v2"],
-        ("ethereum", "base"): ["cctp_v2", "across", "relay"],
+        ("base", "ethereum"): ["across", "relay"],
+        ("ethereum", "base"): ["across", "relay"],
     }
 
     def __init__(
@@ -62,6 +59,34 @@ class LiquidityRouter:
         self._tempo_dex = tempo_dex
         self._default_chain = default_chain
 
+        # Lazy-init adapters — only when first needed
+        self._uniswap: Any = None
+        self._cdp_swap: Any = None
+
+    def _get_uniswap(self, chain: str = "base"):
+        """Lazy-init Uniswap V3 adapter (no API key needed)."""
+        if self._uniswap is None:
+            rpc = os.getenv("SARDIS_BASE_RPC_URL", "")
+            if rpc:
+                try:
+                    from sardis_chain.uniswap_v3 import UniswapV3Adapter
+                    self._uniswap = UniswapV3Adapter(rpc_url=rpc, chain=chain)
+                except ImportError:
+                    pass
+        return self._uniswap
+
+    def _get_cdp_swap(self):
+        """Lazy-init CDPSwap (needs CDP_API_KEY)."""
+        if self._cdp_swap is None:
+            cdp_key = os.getenv("CDP_API_KEY", "")
+            if cdp_key:
+                try:
+                    from sardis_chain.cdp_swap import CDPSwapClient
+                    self._cdp_swap = CDPSwapClient(api_key=cdp_key)
+                except ImportError:
+                    pass
+        return self._cdp_swap
+
     async def find_best_route(
         self,
         from_token: str,
@@ -70,11 +95,7 @@ class LiquidityRouter:
         from_chain: str | None = None,
         to_chain: str | None = None,
     ) -> RouteResult:
-        """Find the best execution route for a swap.
-
-        If from_chain == to_chain: simple swap on the best DEX
-        If from_chain != to_chain: bridge + optional swap
-        """
+        """Find the best execution route for a swap."""
         src_chain = from_chain or self._default_chain
         dst_chain = to_chain or src_chain
 
@@ -92,45 +113,88 @@ class LiquidityRouter:
         amount: Decimal,
         chain: str,
     ) -> RouteResult:
-        """Route a swap on the same chain."""
-        providers = self.CHAIN_PROVIDERS.get(chain, ["uniswap_v3"])
-        provider = providers[0]
+        """Route a swap on the same chain — try native adapters first."""
 
-        # Get rate from the best provider
-        if provider == "tempo_dex" and self._tempo_dex:
-            quote = await self._tempo_dex.get_quote(from_token, to_token, amount)
-            return RouteResult(
-                provider=provider,
-                chain=chain,
-                estimated_rate=quote.rate,
-                estimated_fee_bps=0,  # Tempo DEX has no swap fee
-                estimated_output=quote.to_amount,
-                route_type="swap",
-                steps=[{
-                    "type": "swap",
-                    "provider": provider,
-                    "from": from_token,
-                    "to": to_token,
-                    "amount": str(amount),
-                }],
-            )
+        # 1. Tempo → pytempo StablecoinDEX (free)
+        if chain in ("tempo", "tempo_testnet") and self._tempo_dex:
+            try:
+                quote = await self._tempo_dex.get_quote(from_token, to_token, amount)
+                return RouteResult(
+                    provider="tempo_dex",
+                    chain=chain,
+                    estimated_rate=quote.rate,
+                    estimated_fee_bps=0,
+                    estimated_output=quote.to_amount,
+                    route_type="swap",
+                    steps=[{"type": "swap", "provider": "tempo_dex",
+                            "from": from_token, "to": to_token, "amount": str(amount)}],
+                )
+            except Exception as e:
+                logger.warning("Tempo DEX quote failed: %s", e)
 
-        # Fallback: indicative rate
+        # 2. Base/Ethereum → Uniswap V3 (free, only needs RPC)
+        if chain in ("base", "ethereum", "arbitrum", "optimism"):
+            uni = self._get_uniswap(chain)
+            if uni:
+                try:
+                    # Resolve token addresses for this chain
+                    from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+                    in_addr = self._resolve_token_address(from_token, chain)
+                    out_addr = self._resolve_token_address(to_token, chain)
+
+                    if in_addr and out_addr:
+                        amount_raw = int(amount * Decimal("1000000"))
+                        quote = await uni.get_quote(in_addr, out_addr, amount_raw)
+                        output = Decimal(quote.amount_out) / Decimal("1000000")
+                        return RouteResult(
+                            provider="uniswap_v3",
+                            chain=chain,
+                            estimated_rate=quote.rate,
+                            estimated_fee_bps=quote.fee_tier // 100,
+                            estimated_output=output.quantize(Decimal("0.000001")),
+                            route_type="swap",
+                            steps=[{"type": "swap", "provider": "uniswap_v3",
+                                    "from": from_token, "to": to_token, "amount": str(amount)}],
+                        )
+                except Exception as e:
+                    logger.warning("Uniswap V3 quote failed on %s: %s", chain, e)
+
+        # 3. CDPSwap fallback (needs CDP_API_KEY)
+        cdp = self._get_cdp_swap()
+        if cdp:
+            try:
+                quote = await cdp.get_quote(
+                    from_token=from_token, to_token=to_token,
+                    amount=str(amount), chain=chain,
+                )
+                return RouteResult(
+                    provider="cdp_swap",
+                    chain=chain,
+                    estimated_rate=Decimal(str(quote.get("exchange_rate", "1.0"))),
+                    estimated_fee_bps=10,
+                    estimated_output=Decimal(str(quote.get("to_amount", amount))),
+                    route_type="swap",
+                    steps=[{"type": "swap", "provider": "cdp_swap",
+                            "from": from_token, "to": to_token, "amount": str(amount)}],
+                )
+            except Exception as e:
+                logger.warning("CDPSwap quote failed: %s", e)
+
+        # 4. Fallback: indicative rate (no real execution possible)
         rate = Decimal("1.0") if from_token == to_token else Decimal("0.9999")
+        logger.warning(
+            "No real adapter available for %s on %s — returning indicative rate",
+            f"{from_token}/{to_token}", chain,
+        )
         return RouteResult(
-            provider=provider,
+            provider="indicative",
             chain=chain,
             estimated_rate=rate,
-            estimated_fee_bps=30 if provider != "tempo_dex" else 0,
+            estimated_fee_bps=0,
             estimated_output=(amount * rate).quantize(Decimal("0.000001")),
             route_type="swap",
-            steps=[{
-                "type": "swap",
-                "provider": provider,
-                "from": from_token,
-                "to": to_token,
-                "amount": str(amount),
-            }],
+            steps=[{"type": "swap", "provider": "indicative",
+                    "from": from_token, "to": to_token, "amount": str(amount)}],
         )
 
     async def _route_cross_chain(
@@ -141,54 +205,75 @@ class LiquidityRouter:
         src_chain: str,
         dst_chain: str,
     ) -> RouteResult:
-        """Route a cross-chain transfer (bridge + optional swap)."""
+        """Route cross-chain — try Relay first (free API), then Across."""
         bridge_providers = self.BRIDGE_PROVIDERS.get(
-            (src_chain, dst_chain),
-            ["relay"],
+            (src_chain, dst_chain), ["relay"]
         )
-        bridge = bridge_providers[0]
 
-        steps = []
+        # Try each bridge provider
+        for provider_name in bridge_providers:
+            try:
+                if provider_name == "relay":
+                    from sardis_chain.bridges.relay import RelayBridgeAdapter
+                    adapter = RelayBridgeAdapter()
+                    quote = await adapter.quote(src_chain, dst_chain, from_token, amount)
+                    fee = getattr(quote, "total_fee", Decimal("0"))
+                    return RouteResult(
+                        provider="relay",
+                        chain=f"{src_chain}→{dst_chain}",
+                        estimated_rate=Decimal("1.0"),
+                        estimated_fee_bps=int(fee / amount * 10000) if amount else 5,
+                        estimated_output=amount - fee,
+                        route_type="bridge",
+                        steps=[{"type": "bridge", "provider": "relay",
+                                "from_chain": src_chain, "to_chain": dst_chain,
+                                "token": from_token, "amount": str(amount)}],
+                    )
+                elif provider_name == "across":
+                    from sardis_chain.bridges.across import AcrossBridgeAdapter
+                    adapter = AcrossBridgeAdapter()
+                    quote = await adapter.quote(src_chain, dst_chain, from_token, amount)
+                    return RouteResult(
+                        provider="across",
+                        chain=f"{src_chain}→{dst_chain}",
+                        estimated_rate=Decimal("1.0"),
+                        estimated_fee_bps=int(quote.total_fee / amount * 10000) if amount else 8,
+                        estimated_output=quote.output_amount,
+                        route_type="bridge",
+                        steps=[{"type": "bridge", "provider": "across",
+                                "from_chain": src_chain, "to_chain": dst_chain,
+                                "token": from_token, "amount": str(amount)}],
+                    )
+            except Exception as e:
+                logger.warning("Bridge %s failed for %s→%s: %s", provider_name, src_chain, dst_chain, e)
 
-        # If tokens differ, need swap on source chain first
-        if from_token != to_token and from_token != "USDC":
-            steps.append({
-                "type": "swap",
-                "chain": src_chain,
-                "from": from_token,
-                "to": "USDC",
-                "amount": str(amount),
-            })
-
-        # Bridge
-        steps.append({
-            "type": "bridge",
-            "provider": bridge,
-            "from_chain": src_chain,
-            "to_chain": dst_chain,
-            "token": "USDC",
-            "amount": str(amount),
-        })
-
-        # If destination token differs, swap on destination chain
-        if to_token != "USDC":
-            steps.append({
-                "type": "swap",
-                "chain": dst_chain,
-                "from": "USDC",
-                "to": to_token,
-                "amount": str(amount),
-            })
-
-        route_type = "bridge" if len(steps) == 1 else "bridge+swap"
-        fee_bps = {"relay": 5, "across": 8}.get(bridge, 10)
-
+        # All bridges failed
+        fee_bps = 10
         return RouteResult(
-            provider=bridge,
+            provider="indicative",
             chain=f"{src_chain}→{dst_chain}",
             estimated_rate=Decimal("1.0"),
             estimated_fee_bps=fee_bps,
             estimated_output=(amount * (10000 - fee_bps) / 10000).quantize(Decimal("0.000001")),
-            route_type=route_type,
-            steps=steps,
+            route_type="bridge",
+            steps=[{"type": "bridge", "provider": "indicative",
+                    "from_chain": src_chain, "to_chain": dst_chain,
+                    "token": from_token, "amount": str(amount)}],
         )
+
+    @staticmethod
+    def _resolve_token_address(symbol: str, chain: str) -> str | None:
+        """Resolve a token symbol to its contract address on a chain."""
+        try:
+            from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+            for token_type in TokenType:
+                if token_type.value == symbol:
+                    meta = TOKEN_REGISTRY.get(token_type)
+                    if meta:
+                        return meta.contract_addresses.get(chain)
+        except (ImportError, ValueError):
+            pass
+        # If symbol looks like an address, return it directly
+        if symbol.startswith("0x") and len(symbol) == 42:
+            return symbol
+        return None
