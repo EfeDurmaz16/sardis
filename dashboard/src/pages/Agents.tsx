@@ -95,7 +95,7 @@ export default function AgentsPage() {
           placeholder="Search agents..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
+          className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:border-sardis-500/50"
         />
       </div>
 
@@ -258,7 +258,7 @@ function CreateAgentModal({
               required
               value={formData.name}
               onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))}
-              className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50"
+              className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50"
               placeholder="shopping_agent_001"
             />
           </div>
@@ -270,7 +270,7 @@ function CreateAgentModal({
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(d => ({ ...d, description: e.target.value }))}
-              className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 resize-none"
+              className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 resize-none"
               rows={2}
               placeholder="Optional description..."
             />
@@ -286,7 +286,7 @@ function CreateAgentModal({
                 required
                 value={formData.limit_per_tx}
                 onChange={(e) => setFormData(d => ({ ...d, limit_per_tx: e.target.value }))}
-                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50"
+                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50"
               />
             </div>
             <div>
@@ -298,7 +298,7 @@ function CreateAgentModal({
                 required
                 value={formData.limit_total}
                 onChange={(e) => setFormData(d => ({ ...d, limit_total: e.target.value }))}
-                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50"
+                className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50"
               />
             </div>
           </div>

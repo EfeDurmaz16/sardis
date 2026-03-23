@@ -164,7 +164,7 @@ export default function MPPSessionsPage() {
             placeholder="Search by session ID, agent, or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
+            className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:border-sardis-500/50"
           />
         </div>
         <div className="flex gap-2">

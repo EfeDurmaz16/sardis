@@ -166,7 +166,7 @@ export default function Signup() {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="you@company.com"
                                 required
                                 autoComplete="email"
@@ -181,7 +181,7 @@ export default function Signup() {
                                 type="text"
                                 value={displayName}
                                 onChange={(e) => setDisplayName(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="Your name"
                                 autoComplete="name"
                             />
@@ -195,7 +195,7 @@ export default function Signup() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="At least 8 characters"
                                 required
                                 minLength={8}
@@ -211,7 +211,7 @@ export default function Signup() {
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="Repeat password"
                                 required
                                 minLength={8}

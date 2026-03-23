@@ -130,7 +130,7 @@ function FieldInput({
           readOnly={readOnly}
           placeholder={placeholder}
           className={clsx(
-            'flex-1 px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded focus:outline-none',
+            'flex-1 px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded',
             readOnly ? 'text-gray-400 cursor-default' : 'focus:border-sardis-500/60'
           )}
         />
@@ -143,12 +143,15 @@ function FieldInput({
 
 // ── Toggle ───────────────────────────────────────────────────────────────────
 
-function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ enabled, onChange, label }: { enabled: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
       onClick={() => onChange(!enabled)}
+      role="switch"
+      aria-checked={enabled}
+      aria-label={label}
       className={clsx(
-        'w-12 h-6 rounded-full transition-colors relative focus:outline-none',
+        'w-12 h-6 rounded-full transition-colors relative',
         enabled ? 'bg-sardis-500' : 'bg-dark-100'
       )}
     >
@@ -610,7 +613,7 @@ function ProfileTab({ token }: { token: string | null }) {
               value={currentPwd}
               onChange={(e) => setCurrentPwd(e.target.value)}
               placeholder="Current password"
-              className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded focus:outline-none focus:border-sardis-500/60 pr-10"
+              className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded focus:border-sardis-500/60 pr-10"
             />
             <button
               type="button"
@@ -732,7 +735,7 @@ function ProfileTab({ token }: { token: string | null }) {
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded focus:outline-none focus:border-sardis-500/60 font-mono tracking-widest"
+                    className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-sm text-white rounded focus:border-sardis-500/60 font-mono tracking-widest"
                   />
                 </div>
 
@@ -1268,6 +1271,7 @@ function NotificationsTab({ token }: { token: string | null }) {
               <Toggle
                 enabled={alertPrefs[item.key]}
                 onChange={(v) => setAlertPrefs((prev) => ({ ...prev, [item.key]: v }))}
+                label={item.label}
               />
             </div>
           ))}
@@ -1337,7 +1341,7 @@ function NotificationsTab({ token }: { token: string | null }) {
       <div className="card p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-semibold text-white">Email Notifications</h3>
-          <Toggle enabled={emailEnabled} onChange={setEmailEnabled} />
+          <Toggle enabled={emailEnabled} onChange={setEmailEnabled} label="Email notifications" />
         </div>
 
         {emailEnabled && (

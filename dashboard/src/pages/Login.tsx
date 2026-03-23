@@ -72,7 +72,7 @@ export default function Login() {
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="admin"
                                 required
                             />
@@ -86,7 +86,7 @@ export default function Login() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 transition-colors"
+                                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white focus:border-sardis-500/50 transition-colors"
                                 placeholder="••••••••"
                                 required
                             />

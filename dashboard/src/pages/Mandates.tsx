@@ -149,43 +149,43 @@ function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">Purpose</label>
         <input value={purpose} onChange={e => setPurpose(e.target.value)} placeholder="e.g., Cloud infrastructure and API calls"
-          className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+          className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Per Transaction ($)</label>
           <input type="number" value={perTx} onChange={e => setPerTx(e.target.value)} placeholder="100"
-            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Daily ($)</label>
           <input type="number" value={daily} onChange={e => setDaily(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Monthly ($)</label>
           <input type="number" value={monthly} onChange={e => setMonthly(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Total Budget ($)</label>
           <input type="number" value={total} onChange={e => setTotal(e.target.value)} placeholder="Optional"
-            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
         </div>
       </div>
 
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1">Allowed Merchants (comma-separated, empty = all)</label>
         <input value={merchants} onChange={e => setMerchants(e.target.value)} placeholder="openai.com, anthropic.com, aws.amazon.com"
-          className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+          className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Approval Mode</label>
           <select value={approvalMode} onChange={e => setApprovalMode(e.target.value)}
-            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50">
+            className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50">
             <option value="auto">Auto-approve all</option>
             <option value="threshold">Approve below threshold</option>
             <option value="always_human">Always require human</option>
@@ -195,7 +195,7 @@ function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">Approval Threshold ($)</label>
             <input type="number" value={approvalThreshold} onChange={e => setApprovalThreshold(e.target.value)} placeholder="500"
-              className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" />
+              className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:border-sardis-500/50" />
           </div>
         )}
       </div>

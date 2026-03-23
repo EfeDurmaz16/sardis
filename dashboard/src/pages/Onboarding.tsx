@@ -191,7 +191,7 @@ function StepCreateAgent({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-sardis-500/50 transition-colors"
+            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:border-sardis-500/50 transition-colors"
             placeholder="my_shopping_agent"
           />
         </div>
@@ -203,7 +203,7 @@ function StepCreateAgent({
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-sardis-500/50 transition-colors resize-none"
+            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:border-sardis-500/50 transition-colors resize-none"
             rows={3}
             placeholder="Handles purchasing API credits and cloud resources..."
           />
@@ -300,7 +300,7 @@ function StepSetPolicy({
             required
             value={policyText}
             onChange={(e) => setPolicyText(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-sardis-500/50 transition-colors resize-none"
+            className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white placeholder-gray-600 focus:border-sardis-500/50 transition-colors resize-none"
             rows={5}
             placeholder="Allow max $500 per day, block gambling, require approval over $200"
           />
