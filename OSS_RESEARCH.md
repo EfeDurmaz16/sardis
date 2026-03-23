@@ -50,6 +50,17 @@
 | **Unkey** | AGPL-3.0 | Network copyleft — must open-source modifications |
 | **Metabase** | AGPL-3.0 | OK for internal use, NOT for embedding in product |
 
+## Safe Alternatives for Blocked Tools
+
+| Blocked Tool | Problem | Safe Alternative | License | Notes |
+|---|---|---|---|---|
+| **c15t** (GPL-3.0) | Cookie consent | **CookieConsent by Orestbida** | MIT | Lightweight, customizable, or build 20-line banner in Next.js |
+| **Citus** (AGPL-3.0) | PostgreSQL sharding | **Neon autoscaling** | Managed | Already using. Also: native `PARTITION BY RANGE` on org_id |
+| **circom/snarkjs** (GPL-3.0) | ZK proof circuits | **Noir** (Aztec) | MIT | Modern ZK DSL in Rust. Also: **Halo2** (MIT/Apache), **SP1** (Apache-2.0), **Risc Zero** (Apache-2.0) |
+| **Unkey** (AGPL-3.0) | API key management | **Sardis current system** | Own code | Already production-grade. Also: **Zuplo** (proprietary, free tier) |
+| **Metabase** (AGPL-3.0) | BI dashboards | **Apache Superset** | Apache-2.0 | Full BI platform. Also: **Redash** (BSD-2), **Evidence** (MIT) |
+| **Dradis** (GPLv2) | Pentest reporting | **OWASP ZAP** | Apache-2.0 | Automated security testing. Also: **Nuclei** (MIT) |
+
 ## License Caution — Conditional Use
 | Tool | License | Condition |
 |------|---------|-----------|
