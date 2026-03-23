@@ -55,7 +55,8 @@ class PaymentState(str, Enum):
     """All 22 states in the payment object lifecycle."""
 
     # Happy path
-    ISSUED = "issued"                    # Payment object minted
+    MINTED = "minted"                    # Payment object minted (canonical initial state)
+    ISSUED = "minted"                    # Alias for MINTED (temporary compatibility)
     PRESENTED = "presented"              # Shown to merchant for verification
     VERIFIED = "verified"                # Merchant verified signatures
     LOCKED = "locked"                    # Funds locked, ready for settlement
@@ -96,7 +97,7 @@ class PaymentState(str, Enum):
 # Any transition not in this dict is invalid and will be rejected.
 VALID_TRANSITIONS: dict[tuple[PaymentState, PaymentState], str] = {
     # ── Happy path ────────────────────────────────────────────────
-    (PaymentState.ISSUED, PaymentState.PRESENTED): "present",
+    (PaymentState.MINTED, PaymentState.PRESENTED): "present",
     (PaymentState.PRESENTED, PaymentState.VERIFIED): "verify",
     (PaymentState.VERIFIED, PaymentState.LOCKED): "lock",
     (PaymentState.LOCKED, PaymentState.SETTLING): "settle",
@@ -119,9 +120,9 @@ VALID_TRANSITIONS: dict[tuple[PaymentState, PaymentState], str] = {
     (PaymentState.ARBITRATING, PaymentState.RESOLVED_SPLIT): "resolve_split",
 
     # ── Terminal transitions ──────────────────────────────────────
-    (PaymentState.ISSUED, PaymentState.REVOKED): "revoke",
+    (PaymentState.MINTED, PaymentState.REVOKED): "revoke",
     (PaymentState.PRESENTED, PaymentState.REVOKED): "revoke",
-    (PaymentState.ISSUED, PaymentState.EXPIRED): "expire",
+    (PaymentState.MINTED, PaymentState.EXPIRED): "expire",
     (PaymentState.PRESENTED, PaymentState.EXPIRED): "expire",
     (PaymentState.VERIFIED, PaymentState.EXPIRED): "expire",
     (PaymentState.LOCKED, PaymentState.EXPIRED): "expire",
@@ -133,7 +134,7 @@ VALID_TRANSITIONS: dict[tuple[PaymentState, PaymentState], str] = {
     (PaymentState.SETTLING, PaymentState.PARTIAL_SETTLED): "partial_settle",
     (PaymentState.LOCKED, PaymentState.UNLOCKING): "unlock",
     (PaymentState.UNLOCKING, PaymentState.CANCELLED): "cancel",
-    (PaymentState.ISSUED, PaymentState.CANCELLED): "cancel",
+    (PaymentState.MINTED, PaymentState.CANCELLED): "cancel",
 }
 
 # States from which no further transitions are possible.
@@ -197,7 +198,7 @@ class PaymentStateMachine:
     """
 
     payment_object_id: str
-    current_state: PaymentState = PaymentState.ISSUED
+    current_state: PaymentState = PaymentState.MINTED
     transition_log: list[StateTransitionRecord] = field(default_factory=list)
 
     def can_transition(self, to_state: PaymentState) -> bool:
