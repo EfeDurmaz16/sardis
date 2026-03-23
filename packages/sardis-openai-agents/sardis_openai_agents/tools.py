@@ -122,6 +122,72 @@ try:
         )
         return f"ESCROW CREATED: {result.escrow_id} — ${amount} {token} held for {recipient} (deadline: {result.deadline})"
 
+    @function_tool
+    def sardis_list_transactions(limit: int = 10) -> str:
+        """List recent transactions from the agent's Sardis wallet."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        entries = client.ledger.list(wallet_id=wallet_id, limit=min(limit, 50))
+        lines = [f"  {e.tx_id}: ${e.amount} to {e.merchant} ({e.status})" for e in entries]
+        return f"Recent transactions ({len(lines)}):\n" + "\n".join(lines) if lines else "No transactions found."
+
+    @function_tool
+    def sardis_set_policy(policy_text: str, max_per_tx: float = 0, max_total: float = 0) -> str:
+        """Set or update the spending policy using natural language."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        result = client.policies.update(wallet_id, policy_text=policy_text,
+                                         max_per_tx=max_per_tx or None, max_total=max_total or None)
+        return f"Policy updated: per-tx=${result.limit_per_tx}, total=${result.limit_total}"
+
+    @function_tool
+    def sardis_create_hold(merchant: str, amount: float, token: str = "USDC") -> str:
+        """Create a payment hold (authorization without capture)."""
+        client, wallet_id = _ensure_client()
+        if not wallet_id:
+            return "Error: No wallet ID configured."
+        result = client.holds.create(wallet_id, merchant=merchant, amount=amount, token=token)
+        return f"Hold created: {result.hold_id} — ${amount} {token} for {merchant}"
+
+    @function_tool
+    def sardis_capture_hold(hold_id: str, amount: float = 0) -> str:
+        """Capture (settle) a previously created hold."""
+        client, _ = _ensure_client()
+        result = client.holds.capture(hold_id, amount=amount or None)
+        return f"Hold {hold_id} captured: ${result.captured_amount}"
+
+    @function_tool
+    def sardis_void_hold(hold_id: str) -> str:
+        """Void (cancel) a previously created hold."""
+        client, _ = _ensure_client()
+        client.holds.void(hold_id)
+        return f"Hold {hold_id} voided."
+
+    @function_tool
+    def sardis_get_mandate(mandate_id: str) -> str:
+        """Get details of a spending mandate."""
+        client, _ = _ensure_client()
+        result = client._request("GET", f"/api/v2/mandates/{mandate_id}")
+        return f"Mandate {mandate_id}: status={result.get('status')}, per_tx=${result.get('amount_per_tx')}, total=${result.get('amount_total')}"
+
+    @function_tool
+    def sardis_list_mandates(status: str = "active") -> str:
+        """List spending mandates."""
+        client, _ = _ensure_client()
+        results = client._request("GET", f"/api/v2/mandates?status={status}")
+        items = results if isinstance(results, list) else results.get("mandates", [])
+        lines = [f"  {m.get('id')}: {m.get('purpose_scope', 'N/A')} (${m.get('amount_total', '?')})" for m in items[:10]]
+        return f"Mandates ({len(lines)}):\n" + "\n".join(lines) if lines else "No mandates found."
+
+    @function_tool
+    def sardis_get_payment_object(object_id: str) -> str:
+        """Get details of a payment object."""
+        client, _ = _ensure_client()
+        result = client._request("GET", f"/api/v2/payment-objects/{object_id}")
+        return f"PaymentObject {object_id}: status={result.get('status')}, amount=${result.get('exact_amount')}, merchant={result.get('merchant_id')}"
+
 except ImportError:
     # openai-agents not installed - provide plain function versions
     def sardis_pay(amount: float, merchant: str, purpose: str = "Payment") -> str:
@@ -204,13 +270,21 @@ except ImportError:
 
 
 def get_sardis_tools() -> list:
-    """Get all Sardis tools for an OpenAI Agent."""
+    """Get all 15 Sardis tools for an OpenAI Agent."""
     return [
         sardis_pay,
         sardis_check_balance,
         sardis_check_policy,
+        sardis_list_transactions,
+        sardis_set_policy,
+        sardis_create_hold,
+        sardis_capture_hold,
+        sardis_void_hold,
+        sardis_get_mandate,
+        sardis_list_mandates,
         sardis_mint_payment,
         sardis_get_fx_quote,
         sardis_create_subscription,
         sardis_create_escrow,
+        sardis_get_payment_object,
     ]
