@@ -274,7 +274,14 @@ async def verify_payment_object(
     req: VerifyPaymentObjectRequest,
     principal: Principal = Depends(require_principal),
 ) -> PaymentObjectResponse:
-    """Transition a payment object from PRESENTED → VERIFIED."""
+    """Transition a payment object from PRESENTED → VERIFIED.
+
+    Validates the merchant_signature against the payment object's
+    object_hash using HMAC-SHA256 with the merchant's shared secret.
+    """
+    import hashlib
+    import hmac as _hmac
+
     from sardis_v2_core.database import Database
 
     async with Database.transaction() as conn:
@@ -291,6 +298,31 @@ async def verify_payment_object(
             )
         if row["merchant_id"] != req.merchant_id:
             raise HTTPException(status_code=403, detail="Merchant ID mismatch")
+
+        # Verify merchant signature over the object hash
+        object_hash = row.get("object_hash", "")
+        if not object_hash:
+            raise HTTPException(status_code=422, detail="Payment object has no hash to verify against")
+
+        # Look up merchant secret (fall back to merchant_id as HMAC key for dev)
+        merchant_row = await conn.fetchrow(
+            "SELECT webhook_secret FROM merchants WHERE merchant_id = $1",
+            req.merchant_id,
+        )
+        merchant_secret = (
+            merchant_row["webhook_secret"] if merchant_row and merchant_row.get("webhook_secret")
+            else req.merchant_id  # fallback for dev/test
+        )
+
+        expected_sig = _hmac.new(
+            merchant_secret.encode(), object_hash.encode(), hashlib.sha256
+        ).hexdigest()
+
+        if not _hmac.compare_digest(expected_sig, req.merchant_signature):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid merchant signature",
+            )
 
         await conn.execute(
             """UPDATE payment_objects
