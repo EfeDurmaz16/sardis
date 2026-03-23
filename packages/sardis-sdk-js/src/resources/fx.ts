@@ -43,7 +43,7 @@ export class FXResource extends BaseResource {
    * @returns The execution result
    */
   async execute(quoteId: string, options?: RequestOptions): Promise<FXExecuteResponse> {
-    return this._post<FXExecuteResponse>(`/api/v2/fx/quotes/${quoteId}/execute`, {}, options);
+    return this._post<FXExecuteResponse>('/api/v2/fx/execute', { quote_id: quoteId }, options);
   }
 
   /**
