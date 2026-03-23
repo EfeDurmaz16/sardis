@@ -98,12 +98,12 @@ export default function Footer() {
           {/* Columns 2-4 */}
           {footerColumns.map((col) => (
             <div key={col.header}>
-              <p
+              <h3
                 className="text-[11px] uppercase tracking-widest mb-4"
                 style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--landing-text-muted)' }}
               >
                 {col.header}
-              </p>
+              </h3>
               {col.links.map((link) =>
                 link.external ? (
                   <a

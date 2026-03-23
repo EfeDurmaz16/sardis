@@ -51,12 +51,12 @@ export default function ProblemCards() {
             >
               The Problem
             </div>
-            <div
+            <h2
               className="text-[30px] leading-[36px] md:text-[40px] md:leading-[46px] tracking-[-0.03em] font-semibold"
               style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", color: 'var(--landing-text-primary)' }}
             >
               What happens when agents spend without guardrails.
-            </div>
+            </h2>
           </div>
 
           {/* Cards */}

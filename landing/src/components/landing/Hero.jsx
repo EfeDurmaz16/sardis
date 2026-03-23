@@ -86,7 +86,7 @@ function CardsScreen() {
 
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <rect width="24" height="24" rx="4" fill="#3B82F6" fillOpacity="0.15" />
               <path d="M6 9H18M6 15H18" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
@@ -156,9 +156,9 @@ function PolicyScreen() {
             style={{ background: r.active ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)' }}
           >
             {r.active ? (
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="#22C55E" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 5l2.5 2.5L8 3" stroke="#22C55E" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             ) : (
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3 5h4" stroke="#505460" strokeWidth="1.2" strokeLinecap="round" /></svg>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M3 5h4" stroke="#505460" strokeWidth="1.2" strokeLinecap="round" /></svg>
             )}
           </div>
           <span style={{ color: r.active ? '#E0E0E0' : '#505460', fontSize: 13, fontFamily: "'Inter', sans-serif" }}>{r.rule}</span>
@@ -261,7 +261,7 @@ function WalletMockup() {
               border: '1px solid rgba(34,197,94,0.12)',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
               <path d="M7 1L12 3.5V6.5C12 9.5 9.5 12 7 13C4.5 12 2 9.5 2 6.5V3.5L7 1Z" stroke="#22C55E" strokeWidth="1.2" fill="none" />
               <path d="M5 7L6.5 8.5L9 5.5" stroke="#22C55E" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
