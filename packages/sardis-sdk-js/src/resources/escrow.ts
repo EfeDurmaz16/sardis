@@ -33,7 +33,7 @@ export class EscrowResource extends BaseResource {
     params: CreateEscrowHoldInput,
     options?: RequestOptions
   ): Promise<EscrowHold> {
-    return this._post<EscrowHold>('/api/v2/escrow/holds', params, options);
+    return this._post<EscrowHold>('/api/v2/escrow', params, options);
   }
 
   /**
@@ -53,7 +53,7 @@ export class EscrowResource extends BaseResource {
     options?: RequestOptions
   ): Promise<EscrowHold> {
     return this._post<EscrowHold>(
-      `/api/v2/escrow/holds/${holdId}/confirm`,
+      `/api/v2/escrow/${holdId}/confirm-delivery`,
       params ?? {},
       options
     );
