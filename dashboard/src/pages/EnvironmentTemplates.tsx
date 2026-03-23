@@ -8,22 +8,22 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  FlaskConical,
-  Cpu,
-  Rocket,
-  CheckCircle2,
+  ArrowSquareOut,
+  CaretDown,
+  CaretUp,
+  Check,
+  CheckCircle,
   Circle,
   Copy,
-  Check,
-  ExternalLink,
+  Cpu,
+  Flask,
+  Rocket,
+  Scroll,
   Shield,
-  ScrollText,
+  SpinnerGap,
   Tag,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  AlertCircle,
-} from 'lucide-react'
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { environmentTemplatesApi, type EnvironmentTemplate, type ProviderConfig } from '../api/client'
 
@@ -33,7 +33,7 @@ import { environmentTemplatesApi, type EnvironmentTemplate, type ProviderConfig 
 const LANE_META: Record<string, { label: string; icon: any; color: string; badge: string }> = {
   sandbox: {
     label: 'Sandbox',
-    icon: FlaskConical,
+    icon: Flask,
     color: 'border-blue-500/40 bg-blue-500/5',
     badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   },
@@ -56,7 +56,7 @@ function laneMeta(lane: string): { label: string; icon: any; color: string; badg
   return (
     LANE_META[lane] ?? {
       label: lane,
-      icon: FlaskConical,
+      icon: Flask,
       color: 'border-zinc-600 bg-zinc-800/50',
       badge: 'bg-zinc-700 text-zinc-300 border-zinc-600',
     }
@@ -73,7 +73,7 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
     <div className="flex items-center justify-between py-1.5 text-sm">
       <div className="flex items-center gap-2 min-w-0">
         {isConfigured ? (
-          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+          <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
         ) : (
           <Circle
             className={clsx(
@@ -113,7 +113,7 @@ function ProviderRow({ provider }: { provider: ProviderConfig }) {
             className="text-zinc-500 hover:text-zinc-300 transition-colors"
             title="View docs"
           >
-            <ExternalLink className="h-3 w-3" />
+            <ArrowSquareOut className="h-3 w-3" />
           </a>
         )}
       </div>
@@ -254,12 +254,12 @@ function TemplateCard({ template }: { template: EnvironmentTemplate }) {
       >
         {expanded ? (
           <>
-            <ChevronUp className="h-3.5 w-3.5" />
+            <CaretUp className="h-3.5 w-3.5" />
             Hide details
           </>
         ) : (
           <>
-            <ChevronDown className="h-3.5 w-3.5" />
+            <CaretDown className="h-3.5 w-3.5" />
             Show providers &amp; policy
           </>
         )}
@@ -287,7 +287,7 @@ function TemplateCard({ template }: { template: EnvironmentTemplate }) {
           {/* Policy defaults */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <ScrollText className="h-3.5 w-3.5 text-zinc-400" />
+              <Scroll className="h-3.5 w-3.5 text-zinc-400" />
               <span className="text-xs font-medium text-zinc-300">Policy Defaults</span>
             </div>
             <p className="rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2.5 text-xs text-zinc-400 leading-relaxed">
@@ -346,7 +346,7 @@ export default function EnvironmentTemplatesPage() {
       {/* Loading */}
       {loading && (
         <div className="flex items-center gap-2 text-sm text-zinc-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <SpinnerGap className="h-4 w-4 animate-spin" />
           Loading templates&hellip;
         </div>
       )}
@@ -354,7 +354,7 @@ export default function EnvironmentTemplatesPage() {
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+          <WarningCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}

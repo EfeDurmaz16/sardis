@@ -1,16 +1,16 @@
 import { useState, useMemo } from 'react'
 import {
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  TrendingUp,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
   Calendar,
-  Filter,
-} from 'lucide-react'
+  CaretDown,
+  CaretUp,
+  CheckCircle,
+  Clock,
+  Funnel,
+  ShieldCheck,
+  TrendUp,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { usePendingApprovals, useApprovals, useApproveApproval, useDenyApproval } from '../hooks/useApi'
 import type { ApprovalRecord } from '../api/client'
@@ -75,8 +75,8 @@ function getRiskBadgeColor(risk: 'low' | 'medium' | 'high'): string {
 function getRiskIcon(risk: 'low' | 'medium' | 'high') {
   switch (risk) {
     case 'low': return ShieldCheck
-    case 'medium': return AlertTriangle
-    case 'high': return AlertTriangle
+    case 'medium': return Warning
+    case 'high': return Warning
   }
 }
 
@@ -249,7 +249,7 @@ export default function ApprovalsPage() {
                 {historyLoading ? '—' : stats.approvedToday}
               </p>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-sardis-500" />
+            <CheckCircle className="w-8 h-8 text-sardis-500" />
           </div>
         </div>
 
@@ -261,7 +261,7 @@ export default function ApprovalsPage() {
                 {historyLoading ? '—' : stats.deniedToday}
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-blue-400" />
+            <TrendUp className="w-8 h-8 text-blue-400" />
           </div>
         </div>
       </div>
@@ -278,7 +278,7 @@ export default function ApprovalsPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-500" />
+              <Funnel className="w-4 h-4 text-gray-500" />
               <select
                 value={filterRisk}
                 onChange={(e) => setFilterRisk(e.target.value as typeof filterRisk)}
@@ -297,7 +297,7 @@ export default function ApprovalsPage() {
                   onClick={handleBulkApprove}
                   className="px-3 py-1.5 bg-sardis-500/10 text-sardis-400 border border-sardis-500/30 text-sm font-medium hover:bg-sardis-500/20 transition-all flex items-center gap-1"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4" />
                   Approve All
                 </button>
                 <button
@@ -410,7 +410,7 @@ export default function ApprovalsPage() {
                           isActioning ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sardis-500/20'
                         )}
                       >
-                        <CheckCircle2 className="w-4 h-4" />
+                        <CheckCircle className="w-4 h-4" />
                         {isActioning ? '...' : 'Approve'}
                       </button>
                       <button
@@ -428,7 +428,7 @@ export default function ApprovalsPage() {
                         onClick={() => toggleExpanded(item.id)}
                         className="p-2 bg-dark-300 border border-dark-100 text-gray-400 hover:text-white hover:border-sardis-500/30 transition-all"
                       >
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        {isExpanded ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
@@ -531,7 +531,7 @@ export default function ApprovalsPage() {
                             : 'text-red-400 bg-red-500/10 border-red-500/30'
                         )}>
                           {isApproved ? (
-                            <CheckCircle2 className="w-3 h-3" />
+                            <CheckCircle className="w-3 h-3" />
                           ) : (
                             <XCircle className="w-3 h-3" />
                           )}

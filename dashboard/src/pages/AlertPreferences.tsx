@@ -2,28 +2,28 @@
  * Alert Preferences Page
  *
  * Tabs:
- *  - Channels : configure Slack, Discord, Email, PagerDuty, WebSocket channels
+ *  - Channels : configure SlackLogo, Discord, Email, PagerDuty, WebSocket channels
  *  - Rules    : create, edit, enable/disable, delete alert rules
  */
 
 import { useState, useEffect } from 'react'
 import {
   Bell,
-  Slack,
-  Mail,
-  Globe,
-  AlertTriangle,
-  Plus,
-  Trash2,
-  Edit2,
-  Play,
+  ChatDots,
   CheckCircle,
-  XCircle,
+  Envelope,
+  FloppyDisk,
+  Globe,
+  PencilSimple,
+  Play,
+  Plus,
+  SlackLogo,
+  SpinnerGap,
+  Trash,
+  Warning,
   X,
-  Save,
-  Loader2,
-  MessageSquare,
-} from 'lucide-react'
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAuth } from '../auth/AuthContext'
 
@@ -63,7 +63,7 @@ type TabId = 'channels' | 'rules'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CHANNEL_LABELS: Record<ChannelType, string> = {
-  slack: 'Slack',
+  slack: 'SlackLogo',
   discord: 'Discord',
   email: 'Email',
   pagerduty: 'PagerDuty',
@@ -110,13 +110,13 @@ function ChannelIcon({ type, className }: { type: ChannelType; className?: strin
   const cls = clsx('w-5 h-5', className)
   switch (type) {
     case 'slack':
-      return <Slack className={cls} />
+      return <SlackLogo className={cls} />
     case 'discord':
-      return <MessageSquare className={cls} />
+      return <ChatDots className={cls} />
     case 'email':
-      return <Mail className={cls} />
+      return <Envelope className={cls} />
     case 'pagerduty':
-      return <AlertTriangle className={cls} />
+      return <Warning className={cls} />
     case 'websocket':
       return <Globe className={cls} />
   }
@@ -394,7 +394,7 @@ function ChannelCard({
             className="p-1.5 text-gray-400 hover:text-sardis-400 transition-colors disabled:opacity-50"
           >
             {testStatus === 'loading' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
             ) : (
               <Play className="w-4 h-4" />
             )}
@@ -455,11 +455,11 @@ function ChannelCard({
               className="flex items-center gap-1.5 px-4 py-1.5 bg-sardis-500 text-dark-400 text-xs font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
               {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Save className="w-3.5 h-3.5" />
+                <FloppyDisk className="w-3.5 h-3.5" />
               )}
-              Save
+              FloppyDisk
             </button>
           </div>
         </div>
@@ -746,13 +746,13 @@ function RuleModal({
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                   {mode === 'create' ? 'Creating…' : 'Saving…'}
                 </span>
               ) : mode === 'create' ? (
                 'Create Rule'
               ) : (
-                'Save Changes'
+                'FloppyDisk Changes'
               )}
             </button>
           </div>
@@ -877,7 +877,7 @@ function RuleCard({
               title="Edit rule"
               className="p-1.5 text-gray-400 hover:text-blue-400 transition-colors"
             >
-              <Edit2 className="w-4 h-4" />
+              <PencilSimple className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowConfirm(true)}
@@ -885,7 +885,7 @@ function RuleCard({
               title="Delete rule"
               className="p-1.5 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash className="w-4 h-4" />
             </button>
           </div>
         </div>

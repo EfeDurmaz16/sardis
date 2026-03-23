@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import {
-  Plus,
-  Webhook,
-  Trash2,
-  Play,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  Edit2,
+  ArrowCounterClockwise,
+  CaretDown,
+  CaretUp,
+  Check,
   CheckCircle,
-  XCircle,
   Clock,
   Copy,
-  Check,
+  PencilSimple,
+  Play,
+  Plus,
+  Trash,
+  WebhooksLogo,
   X,
-} from 'lucide-react'
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -229,7 +229,7 @@ function DeliveryLog({ subscriptionId }: { subscriptionId: string }) {
   )
 }
 
-// ─── Webhook Card ────────────────────────────────────────────────────────────
+// ─── Webhooks Card ────────────────────────────────────────────────────────────
 
 interface WebhookCardProps {
   webhook: WebhookSubscription
@@ -286,7 +286,7 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
               'mt-0.5 w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center',
               webhook.is_active ? 'bg-green-500/10' : 'bg-gray-500/10'
             )}>
-              <Webhook className={clsx(
+              <WebhooksLogo className={clsx(
                 'w-4 h-4',
                 webhook.is_active ? 'text-green-400' : 'text-gray-500'
               )} />
@@ -331,7 +331,7 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
               title="Edit webhook"
               className="p-1.5 text-gray-400 hover:text-blue-400 transition-colors"
             >
-              <Edit2 className="w-4 h-4" />
+              <PencilSimple className="w-4 h-4" />
             </button>
 
             {/* Rotate Secret */}
@@ -340,7 +340,7 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
               title="Rotate signing secret"
               className="p-1.5 text-gray-400 hover:text-yellow-400 transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
+              <ArrowCounterClockwise className="w-4 h-4" />
             </button>
 
             {/* Delete */}
@@ -349,7 +349,7 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
               title="Delete webhook"
               className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -398,9 +398,9 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
             className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
           >
             {showDeliveries ? (
-              <>Hide deliveries <ChevronUp className="w-3.5 h-3.5" /></>
+              <>Hide deliveries <CaretUp className="w-3.5 h-3.5" /></>
             ) : (
-              <>View deliveries <ChevronDown className="w-3.5 h-3.5" /></>
+              <>View deliveries <CaretDown className="w-3.5 h-3.5" /></>
             )}
           </button>
         </div>
@@ -592,7 +592,7 @@ function WebhookModal({
       <div className="card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white">
-            {mode === 'create' ? 'Create Webhook' : 'Edit Webhook'}
+            {mode === 'create' ? 'Create Webhooks' : 'Edit Webhooks'}
           </h2>
           <button
             onClick={onClose}
@@ -699,7 +699,7 @@ function WebhookModal({
             >
               {isLoading
                 ? mode === 'create' ? 'Creating…' : 'Saving…'
-                : mode === 'create' ? 'Create Webhook' : 'Save Changes'}
+                : mode === 'create' ? 'Create Webhooks' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -758,7 +758,7 @@ export default function WebhookManagerPage() {
           className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           <Plus className="w-5 h-5" />
-          Add Webhook
+          Add Webhooks
         </button>
       </div>
 
@@ -801,7 +801,7 @@ export default function WebhookManagerPage() {
         </div>
       ) : webhooks.length === 0 ? (
         <div className="card p-14 text-center">
-          <Webhook className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+          <WebhooksLogo className="w-12 h-12 text-gray-700 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No webhooks configured</h3>
           <p className="text-gray-500 mb-6 text-sm">
             Receive real-time event notifications by adding a webhook endpoint.

@@ -10,15 +10,15 @@
 
 import { useState, useEffect } from 'react';
 import {
-  CreditCard,
-  Zap,
-  Users,
-  TrendingUp,
+  ArrowSquareOut,
+  Buildings,
   CheckCircle,
-  AlertCircle,
-  ExternalLink,
-  Building2,
-} from 'lucide-react';
+  CreditCard,
+  Lightning,
+  TrendUp,
+  Users,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import { useAuth } from '../auth/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -241,7 +241,7 @@ function PlanColumn({ plan, isCurrent, isPopular, onUpgrade, upgrading }: PlanCo
             href="mailto:sales@sardis.sh"
             className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium bg-dark-200 text-gray-300 hover:bg-dark-100 hover:text-white transition-colors rounded"
           >
-            <Building2 className="w-4 h-4" />
+            <Buildings className="w-4 h-4" />
             Contact Sales
           </a>
         ) : (
@@ -376,7 +376,7 @@ export default function BillingPage() {
 
       {billingError && (
         <div className="card p-4 border-amber-500/30 bg-amber-500/5 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          <WarningCircle className="w-5 h-5 text-amber-400 shrink-0" />
           <p className="text-sm text-amber-300">
             Billing not configured. You are on the Free plan.
           </p>
@@ -423,7 +423,7 @@ export default function BillingPage() {
           >
             <CreditCard className="w-4 h-4" />
             {portalLoading ? 'Opening...' : 'Manage Billing'}
-            <ExternalLink className="w-3 h-3 opacity-60" />
+            <ArrowSquareOut className="w-3 h-3 opacity-60" />
           </button>
         </div>
       </div>
@@ -437,14 +437,14 @@ export default function BillingPage() {
             used={usage.api_calls_used}
             limit={usage.api_calls_limit}
             format={formatNumber}
-            icon={<Zap className="w-5 h-5" />}
+            icon={<Lightning className="w-5 h-5" />}
           />
           <UsageMeter
             label="Transaction Volume"
             used={usage.tx_volume_cents}
             limit={usage.tx_volume_limit_cents}
             format={formatCents}
-            icon={<TrendingUp className="w-5 h-5" />}
+            icon={<TrendUp className="w-5 h-5" />}
           />
           <UsageMeter
             label="Agents"

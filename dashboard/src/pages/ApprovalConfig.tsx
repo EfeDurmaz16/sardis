@@ -9,23 +9,24 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Users,
-  GitBranch,
-  Settings2,
-  Plus,
-  Trash2,
-  Pencil,
-  Save,
-  X,
+  ArrowUp,
+
+  CaretDown,
+  CaretRight,
   Check,
   Clock,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
+  FloppyDisk,
+  GearSix,
+  GitBranch,
+  PencilSimple,
+  Plus,
   Shield,
-  ArrowUp,
-} from 'lucide-react'
+  SpinnerGap,
+  Trash,
+  Users,
+  Warning,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   approvalConfigApi,
@@ -103,7 +104,7 @@ function Toast({
           : 'bg-red-500/10 border-red-500/40 text-red-300'
       )}
     >
-      {type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+      {type === 'success' ? <Check className="w-4 h-4" /> : <Warning className="w-4 h-4" />}
       {message}
       <button onClick={onDismiss} className="ml-2 opacity-60 hover:opacity-100">
         <X className="w-3.5 h-3.5" />
@@ -153,14 +154,14 @@ function GroupRow({ group, onEdit, onDelete }: GroupRowProps) {
           className="p-1.5 text-gray-500 hover:text-sardis-400 transition-colors"
           title="Edit group"
         >
-          <Pencil className="w-4 h-4" />
+          <PencilSimple className="w-4 h-4" />
         </button>
         <button
           onClick={() => onDelete(group.id)}
           className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
           title="Delete group"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -247,7 +248,7 @@ function GroupEditor({ initial, onSave, onCancel }: GroupEditorProps) {
             disabled={!id.trim() || !name.trim()}
             className="px-3 py-1.5 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Save Group
+            FloppyDisk Group
           </button>
         </div>
       </div>
@@ -274,7 +275,7 @@ function RuleRow({ rule, groupName, onEdit, onDelete }: RuleRowProps) {
           onClick={() => setExpanded((p) => !p)}
           className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0"
         >
-          {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {expanded ? <CaretDown className="w-4 h-4" /> : <CaretRight className="w-4 h-4" />}
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
@@ -303,14 +304,14 @@ function RuleRow({ rule, groupName, onEdit, onDelete }: RuleRowProps) {
             className="p-1.5 text-gray-500 hover:text-sardis-400 transition-colors"
             title="Edit rule"
           >
-            <Pencil className="w-4 h-4" />
+            <PencilSimple className="w-4 h-4" />
           </button>
           <button
             onClick={() => onDelete(rule.id)}
             className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
             title="Delete rule"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -495,7 +496,7 @@ function RuleEditor({ initial, groups, onSave, onCancel }: RuleEditorProps) {
             disabled={!isValid}
             className="px-3 py-1.5 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Save Rule
+            FloppyDisk Rule
           </button>
         </div>
       </div>
@@ -606,8 +607,8 @@ function DefaultsForm({ defaults, groups, saving, onSave }: DefaultsFormProps) {
           disabled={!isDirty || saving}
           className="flex items-center gap-2 px-4 py-2 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          Save Defaults
+          {saving ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
+          FloppyDisk Defaults
         </button>
       </div>
     </div>
@@ -745,7 +746,7 @@ export default function ApprovalConfigPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-sardis-400 animate-spin" />
+        <SpinnerGap className="w-8 h-8 text-sardis-400 animate-spin" />
       </div>
     )
   }
@@ -753,7 +754,7 @@ export default function ApprovalConfigPage() {
   if (error || !config) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
-        <AlertTriangle className="w-10 h-10 text-red-400" />
+        <Warning className="w-10 h-10 text-red-400" />
         <p className="text-sm text-gray-400">{error ?? 'Failed to load approval config'}</p>
       </div>
     )
@@ -824,7 +825,7 @@ export default function ApprovalConfigPage() {
 
         {savingGroups && (
           <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
             Saving groups…
           </div>
         )}
@@ -910,7 +911,7 @@ export default function ApprovalConfigPage() {
 
         {savingRules && (
           <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
             Saving rules…
           </div>
         )}
@@ -919,7 +920,7 @@ export default function ApprovalConfigPage() {
       {/* ── Section 3: Defaults ─────────────────────────────────────────────── */}
       <section>
         <SectionHeader
-          icon={Settings2}
+          icon={GearSix}
           title="Defaults"
           description="Fallback settings applied when no routing rule matches the approval request."
         />

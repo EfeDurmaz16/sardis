@@ -9,21 +9,21 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  ShoppingCart,
-  Plane,
-  ArrowLeftRight,
-  ChevronRight,
-  ChevronLeft,
+  AirplaneTilt,
+  ArrowSquareOut,
+  ArrowsLeftRight,
+  CaretLeft,
+  CaretRight,
+  CheckCircle,
+  ClipboardText,
   Copy,
-  CheckCircle2,
-  ClipboardList,
-  Shield,
+  GearSix,
   ListChecks,
-  Settings2,
-  Loader2,
-  AlertCircle,
-  ExternalLink,
-} from 'lucide-react'
+  Shield,
+  ShoppingCart,
+  SpinnerGap,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import { templatesApi } from '../api/client'
@@ -62,12 +62,12 @@ const CATEGORY_META: Record<string, { label: string; icon: any; color: string }>
   },
   travel: {
     label: 'Travel & Expense',
-    icon: Plane,
+    icon: AirplaneTilt,
     color: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
   },
   'agent-to-agent': {
     label: 'Agent-to-Agent',
-    icon: ArrowLeftRight,
+    icon: ArrowsLeftRight,
     color: 'text-sardis-400 bg-sardis-500/10 border-sardis-500/30',
   },
 }
@@ -77,7 +77,7 @@ function categoryMeta(category: string): { label: string; icon: any; color: stri
   return (
     CATEGORY_META[category] ?? {
       label: category,
-      icon: Settings2,
+      icon: GearSix,
       color: 'text-gray-400 bg-gray-500/10 border-gray-500/30',
     }
   )
@@ -155,7 +155,7 @@ function TemplateCard({ template, onSelect }: TemplateCardProps) {
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-sardis-500/10 hover:bg-sardis-500/20 text-sardis-400 border border-sardis-500/30 hover:border-sardis-500/60 transition-all duration-200 text-sm font-medium"
         >
           Use Template
-          <ChevronRight className="w-4 h-4" />
+          <CaretRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -180,7 +180,7 @@ function CopyButton({ text }: { text: string }) {
     >
       {copied ? (
         <>
-          <CheckCircle2 className="w-3.5 h-3.5 text-sardis-400" />
+          <CheckCircle className="w-3.5 h-3.5 text-sardis-400" />
           Copied
         </>
       ) : (
@@ -226,8 +226,8 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
   const tabs: { id: DetailTab; label: string; icon: any }[] = [
     { id: 'setup', label: 'Setup Steps', icon: ListChecks },
     { id: 'policy', label: 'Policy Text', icon: Shield },
-    { id: 'approval', label: 'Approval Config', icon: ClipboardList },
-    { id: 'evidence', label: 'Evidence', icon: CheckCircle2 },
+    { id: 'approval', label: 'Approval Config', icon: ClipboardText },
+    { id: 'evidence', label: 'Evidence', icon: CheckCircle },
   ]
 
   return (
@@ -238,7 +238,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
           onClick={onBack}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-4"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <CaretLeft className="w-4 h-4" />
           All Templates
         </button>
 
@@ -330,7 +330,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
                         : 'border-gray-600'
                     )}
                   >
-                    {checkedSteps.has(i) && <CheckCircle2 className="w-3.5 h-3.5 text-dark-400" />}
+                    {checkedSteps.has(i) && <CheckCircle className="w-3.5 h-3.5 text-dark-400" />}
                   </div>
                   <span className={clsx('text-sm', checkedSteps.has(i) && 'line-through')}>
                     <span className="text-gray-500 mr-2 font-mono text-xs">{i + 1}.</span>
@@ -341,7 +341,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
             </div>
             {checkedSteps.size === template.setup_steps.length && template.setup_steps.length > 0 && (
               <div className="flex items-center gap-2 p-3 bg-sardis-500/10 border border-sardis-500/30 text-sardis-400 text-sm">
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle className="w-4 h-4" />
                 All setup steps complete. Your agent is ready.
               </div>
             )}
@@ -358,7 +358,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
                 to="/control-center"
                 className="flex items-center justify-center gap-2 px-4 py-2.5 border border-dark-100 text-sm text-gray-300 hover:text-white hover:border-sardis-500/40 transition-all duration-200"
               >
-                <ExternalLink className="w-4 h-4" />
+                <ArrowSquareOut className="w-4 h-4" />
                 Open Control Center
               </Link>
             </div>
@@ -395,7 +395,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
               onClick={() => onApply(template.policy_text)}
               className="flex items-center gap-2 px-4 py-2.5 bg-sardis-500 hover:bg-sardis-600 text-dark-400 font-semibold text-sm transition-all duration-200"
             >
-              <ExternalLink className="w-4 h-4" />
+              <ArrowSquareOut className="w-4 h-4" />
               Apply to Policy Manager
             </button>
           </div>
@@ -430,7 +430,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
                   key={i}
                   className="flex items-start gap-3 p-4 bg-dark-200 border border-dark-100 text-sm text-gray-200"
                 >
-                  <CheckCircle2 className="w-4 h-4 text-sardis-400 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="w-4 h-4 text-sardis-400 flex-shrink-0 mt-0.5" />
                   {item}
                 </li>
               ))}
@@ -482,7 +482,7 @@ export default function WorkflowTemplatesPage() {
       {/* Loading */}
       {loading && (
         <div className="flex items-center gap-3 text-gray-400 py-12 justify-center">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <SpinnerGap className="w-5 h-5 animate-spin" />
           Loading templates...
         </div>
       )}
@@ -490,7 +490,7 @@ export default function WorkflowTemplatesPage() {
       {/* Error */}
       {error && !loading && (
         <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <WarningCircle className="w-4 h-4 flex-shrink-0" />
           {error}
         </div>
       )}
@@ -516,7 +516,7 @@ export default function WorkflowTemplatesPage() {
       {/* Empty state */}
       {!loading && !error && !selected && templates.length === 0 && (
         <div className="text-center py-16 text-gray-500">
-          <Settings2 className="w-10 h-10 mx-auto mb-3 opacity-40" />
+          <GearSix className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No templates available.</p>
         </div>
       )}

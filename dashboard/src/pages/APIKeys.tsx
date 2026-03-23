@@ -10,16 +10,16 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
+  Check,
+  Copy,
   Key,
   Plus,
-  Trash2,
-  Copy,
-  Check,
-  AlertTriangle,
-  AlertCircle,
+  SpinnerGap,
+  Trash,
+  Warning,
+  WarningCircle,
   X,
-  Loader2,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { useAuth } from '../auth/AuthContext';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -221,7 +221,7 @@ function CreateKeyModal({ token, onClose, onCreated }: CreateKeyModalProps) {
           </div>
 
           <div className="card p-4 border-amber-500/40 bg-amber-500/5 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <Warning className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <p className="text-sm text-amber-300 font-medium">
               Save this key now — you won't be able to see it again after closing this dialog.
             </p>
@@ -315,7 +315,7 @@ function CreateKeyModal({ token, onClose, onCreated }: CreateKeyModalProps) {
 
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-400">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+              <WarningCircle className="w-4 h-4 shrink-0" />
               {error}
             </div>
           )}
@@ -333,7 +333,7 @@ function CreateKeyModal({ token, onClose, onCreated }: CreateKeyModalProps) {
               disabled={submitting}
               className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
             >
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting && <SpinnerGap className="w-4 h-4 animate-spin" />}
               {submitting ? 'Creating...' : 'Create Key'}
             </button>
           </div>
@@ -358,7 +358,7 @@ function RevokeDialog({ keyName, onConfirm, onCancel, revoking }: RevokeDialogPr
       <div className="card w-full max-w-sm p-6 space-y-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center shrink-0">
-            <Trash2 className="w-5 h-5 text-red-400" />
+            <Trash className="w-5 h-5 text-red-400" />
           </div>
           <div>
             <h2 className="text-base font-semibold text-white">Revoke API Key</h2>
@@ -385,7 +385,7 @@ function RevokeDialog({ keyName, onConfirm, onCancel, revoking }: RevokeDialogPr
             disabled={revoking}
             className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium bg-red-600 text-white hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
           >
-            {revoking && <Loader2 className="w-4 h-4 animate-spin" />}
+            {revoking && <SpinnerGap className="w-4 h-4 animate-spin" />}
             {revoking ? 'Revoking...' : 'Revoke Key'}
           </button>
         </div>
@@ -472,7 +472,7 @@ export default function APIKeysPage() {
       {/* Error state */}
       {fetchError && (
         <div className="card p-4 border-red-500/30 bg-red-500/5 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          <WarningCircle className="w-5 h-5 text-red-400 shrink-0" />
           <p className="text-sm text-red-300">{fetchError}</p>
         </div>
       )}
@@ -557,7 +557,7 @@ export default function APIKeysPage() {
                             onClick={() => setRevokeTarget(key)}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors ml-auto"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash className="w-3.5 h-3.5" />
                             Revoke
                           </button>
                         )}

@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { Plus, Webhook, Trash2, CheckCircle, XCircle, Play } from 'lucide-react'
+import {
+  CheckCircle,
+  Play,
+  Plus,
+  Trash,
+  WebhooksLogo,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { useWebhooks, useCreateWebhook, useDeleteWebhook } from '../hooks/useApi'
@@ -36,7 +43,7 @@ export default function WebhooksPage() {
           className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           <Plus className="w-5 h-5" />
-          Add Webhook
+          Add Webhooks
         </button>
       </div>
       
@@ -52,7 +59,7 @@ export default function WebhooksPage() {
         </div>
       ) : webhooks.length === 0 ? (
         <div className="card p-12 text-center">
-          <Webhook className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <WebhooksLogo className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">No webhooks configured</h3>
           <p className="text-gray-400 mb-4">
             Add a webhook to receive real-time event notifications
@@ -62,7 +69,7 @@ export default function WebhooksPage() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            Add Webhook
+            Add Webhooks
           </button>
         </div>
       ) : (
@@ -107,7 +114,7 @@ function WebhookCard({
             'w-10 h-10 rounded-lg flex items-center justify-center',
             webhook.is_active ? 'bg-green-500/10' : 'bg-gray-500/10'
           )}>
-            <Webhook className={clsx(
+            <WebhooksLogo className={clsx(
               'w-5 h-5',
               webhook.is_active ? 'text-green-500' : 'text-gray-500'
             )} />
@@ -171,7 +178,7 @@ function WebhookCard({
             onClick={onDelete}
             className="p-2 text-gray-400 hover:text-red-500 transition-colors"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -202,7 +209,7 @@ function CreateWebhookModal({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="card max-w-lg w-full mx-4 p-6">
-        <h2 className="text-xl font-bold text-white mb-6">Add Webhook</h2>
+        <h2 className="text-xl font-bold text-white mb-6">Add Webhooks</h2>
         
         <form
           onSubmit={async (e) => {
@@ -261,7 +268,7 @@ function CreateWebhookModal({
               disabled={isLoading || events.length === 0}
               className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Creating...' : 'Create Webhook'}
+              {isLoading ? 'Creating...' : 'Create Webhooks'}
             </button>
           </div>
         </form>

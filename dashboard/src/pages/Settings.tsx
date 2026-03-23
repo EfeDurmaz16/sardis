@@ -11,25 +11,25 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  User,
-  Building2,
-  Key,
-  CreditCard,
+  ArrowSquareOut,
   Bell,
-  Copy,
+  Buildings,
+  CaretRight,
   Check,
-  Loader2,
-  AlertCircle,
-  ShieldCheck,
-  ShieldAlert,
   CheckCircle,
   Clock,
-  ExternalLink,
-  Send,
-  ChevronRight,
+  Copy,
+  CreditCard,
   Eye,
-  EyeOff,
-} from 'lucide-react'
+  EyeSlash,
+  Key,
+  PaperPlaneTilt,
+  ShieldCheck,
+  ShieldWarning,
+  SpinnerGap,
+  User,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
@@ -250,7 +250,7 @@ function VerificationSection({ token }: { token: string | null }) {
             <h3 className="text-base font-semibold text-white">Identity Verification</h3>
           </div>
           <div className="flex items-center gap-2 mt-4 text-sm text-gray-500">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SpinnerGap className="w-4 h-4 animate-spin" />
             Loading verification status...
           </div>
         </div>
@@ -292,16 +292,16 @@ function VerificationSection({ token }: { token: string | null }) {
     rejected: {
       badge: 'bg-red-500/20 text-red-300 border border-red-500/30',
       label: 'Failed',
-      icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
+      icon: <ShieldWarning className="w-4 h-4 text-red-400" />,
       iconBg: 'bg-red-500/10',
-      headerIcon: <ShieldAlert className="w-5 h-5 text-red-400" />,
+      headerIcon: <ShieldWarning className="w-5 h-5 text-red-400" />,
     },
     expired: {
       badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
       label: 'Expired',
-      icon: <AlertCircle className="w-4 h-4 text-amber-400" />,
+      icon: <WarningCircle className="w-4 h-4 text-amber-400" />,
       iconBg: 'bg-amber-500/10',
-      headerIcon: <AlertCircle className="w-5 h-5 text-amber-400" />,
+      headerIcon: <WarningCircle className="w-5 h-5 text-amber-400" />,
     },
   }
 
@@ -355,7 +355,7 @@ function VerificationSection({ token }: { token: string | null }) {
       {/* Pending message */}
       {status === 'pending' && (
         <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-300">
-          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <SpinnerGap className="w-4 h-4 animate-spin shrink-0" />
           Verification is in progress. This usually takes a few minutes.
         </div>
       )}
@@ -363,7 +363,7 @@ function VerificationSection({ token }: { token: string | null }) {
       {/* Rejected message */}
       {status === 'rejected' && (
         <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-300">
-          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <ShieldWarning className="w-4 h-4 shrink-0" />
           Verification failed. Please try again with valid documents.
         </div>
       )}
@@ -371,7 +371,7 @@ function VerificationSection({ token }: { token: string | null }) {
       {/* Expired message */}
       {status === 'expired' && (
         <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded text-sm text-amber-300">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+          <WarningCircle className="w-4 h-4 shrink-0" />
           Your verification has expired. Please re-verify to continue using live payments.
         </div>
       )}
@@ -391,9 +391,9 @@ function VerificationSection({ token }: { token: string | null }) {
             disabled={initiating}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {initiating && <Loader2 className="w-4 h-4 animate-spin" />}
+            {initiating && <SpinnerGap className="w-4 h-4 animate-spin" />}
             {ctaLabel}
-            <ExternalLink className="w-4 h-4" />
+            <ArrowSquareOut className="w-4 h-4" />
           </button>
         </div>
       )}
@@ -558,7 +558,7 @@ function ProfileTab({ token }: { token: string | null }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Loader2 className="w-6 h-6 animate-spin text-sardis-500" />
+        <SpinnerGap className="w-6 h-6 animate-spin text-sardis-500" />
       </div>
     )
   }
@@ -596,7 +596,7 @@ function ProfileTab({ token }: { token: string | null }) {
             disabled={saving}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {saving && <SpinnerGap className="w-4 h-4 animate-spin" />}
             Save Profile
           </button>
         </div>
@@ -622,7 +622,7 @@ function ProfileTab({ token }: { token: string | null }) {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
               aria-label={showPwd ? "Hide password" : "Show password"}
             >
-              {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPwd ? <EyeSlash className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
         </div>
@@ -645,7 +645,7 @@ function ProfileTab({ token }: { token: string | null }) {
 
         {pwdError && (
           <div className="flex items-center gap-2 text-sm text-red-400">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <WarningCircle className="w-4 h-4 shrink-0" />
             {pwdError}
           </div>
         )}
@@ -657,7 +657,7 @@ function ProfileTab({ token }: { token: string | null }) {
             disabled={pwdSaving}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-dark-200 border border-dark-100 text-gray-300 hover:text-white hover:bg-dark-100 transition-colors disabled:opacity-50"
           >
-            {pwdSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {pwdSaving && <SpinnerGap className="w-4 h-4 animate-spin" />}
             Update Password
           </button>
         </div>
@@ -688,7 +688,7 @@ function ProfileTab({ token }: { token: string | null }) {
                 disabled={mfaLoading}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
               >
-                {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {mfaLoading && <SpinnerGap className="w-4 h-4 animate-spin" />}
                 Enable MFA
               </button>
             )
@@ -743,7 +743,7 @@ function ProfileTab({ token }: { token: string | null }) {
 
                 {mfaError && (
                   <div className="flex items-center gap-2 text-sm text-red-400">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <WarningCircle className="w-4 h-4 shrink-0" />
                     {mfaError}
                   </div>
                 )}
@@ -760,7 +760,7 @@ function ProfileTab({ token }: { token: string | null }) {
                     disabled={mfaLoading || totpCode.length !== 6}
                     className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
                   >
-                    {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {mfaLoading && <SpinnerGap className="w-4 h-4 animate-spin" />}
                     Verify & Enable
                   </button>
                 </div>
@@ -844,7 +844,7 @@ function OrganizationTab({ token }: { token: string | null }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Loader2 className="w-6 h-6 animate-spin text-sardis-500" />
+        <SpinnerGap className="w-6 h-6 animate-spin text-sardis-500" />
       </div>
     )
   }
@@ -894,7 +894,7 @@ function OrganizationTab({ token }: { token: string | null }) {
               disabled={saving}
               className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
-              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving && <SpinnerGap className="w-4 h-4 animate-spin" />}
               Save
             </button>
           </div>
@@ -982,14 +982,14 @@ function ApiKeysTab({ token }: { token: string | null }) {
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors shrink-0"
           >
             Manage Keys
-            <ExternalLink className="w-4 h-4" />
+            <ArrowSquareOut className="w-4 h-4" />
           </Link>
         </div>
       </div>
 
       <div className="card p-5 border-dark-100/50">
         <div className="flex items-center gap-2 text-sm text-gray-400">
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+          <WarningCircle className="w-4 h-4 shrink-0 text-amber-400" />
           Keep your API keys secret. Never expose them in client-side code or public repositories.
         </div>
       </div>
@@ -1071,7 +1071,7 @@ function BillingTab({ token }: { token: string | null }) {
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors shrink-0"
           >
             Manage Billing
-            <ExternalLink className="w-4 h-4" />
+            <ArrowSquareOut className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -1092,7 +1092,7 @@ function BillingTab({ token }: { token: string | null }) {
             </p>
             <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-500 group-hover:text-sardis-400 transition-colors" />
+          <CaretRight className="w-4 h-4 text-gray-500 group-hover:text-sardis-400 transition-colors" />
         </Link>
       ))}
     </div>
@@ -1246,7 +1246,7 @@ function NotificationsTab({ token }: { token: string | null }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Loader2 className="w-6 h-6 animate-spin text-sardis-500" />
+        <SpinnerGap className="w-6 h-6 animate-spin text-sardis-500" />
       </div>
     )
   }
@@ -1325,7 +1325,7 @@ function NotificationsTab({ token }: { token: string | null }) {
             className="flex items-center gap-2 px-4 py-2 text-sm bg-dark-200 border border-dark-100 text-gray-300 hover:text-white transition-colors disabled:opacity-40"
             title={!channels.find((c) => c.type === 'slack') ? 'Save first to test' : ''}
           >
-            {slackTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {slackTesting ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <PaperPlaneTilt className="w-4 h-4" />}
             Test
           </button>
           <button
@@ -1333,7 +1333,7 @@ function NotificationsTab({ token }: { token: string | null }) {
             disabled={slackSaving}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
           >
-            {slackSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {slackSaving && <SpinnerGap className="w-4 h-4 animate-spin" />}
             Save Slack
           </button>
         </div>
@@ -1388,7 +1388,7 @@ function NotificationsTab({ token }: { token: string | null }) {
               className="flex items-center gap-2 px-4 py-2 text-sm bg-dark-200 border border-dark-100 text-gray-300 hover:text-white transition-colors disabled:opacity-40"
               title={!channels.find((c) => c.type === 'email') ? 'Save first to test' : ''}
             >
-              {emailTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {emailTesting ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <PaperPlaneTilt className="w-4 h-4" />}
               Test
             </button>
           )}
@@ -1397,7 +1397,7 @@ function NotificationsTab({ token }: { token: string | null }) {
             disabled={emailSaving}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
           >
-            {emailSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {emailSaving && <SpinnerGap className="w-4 h-4 animate-spin" />}
             Save Email
           </button>
         </div>
@@ -1410,7 +1410,7 @@ function NotificationsTab({ token }: { token: string | null }) {
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
-  { id: 'organization', label: 'Organization', icon: <Building2 className="w-4 h-4" /> },
+  { id: 'organization', label: 'Organization', icon: <Buildings className="w-4 h-4" /> },
   { id: 'api-keys', label: 'API Keys', icon: <Key className="w-4 h-4" /> },
   { id: 'billing', label: 'Billing', icon: <CreditCard className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
