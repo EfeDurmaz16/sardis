@@ -100,13 +100,14 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
-        result = client.subscriptions.create(
-            wallet_id, mandate_id=mandate_id, recipient=recipient, amount=amount,
-            token=token, interval=interval, purpose=purpose or None,
-        )
+        result = client._request("POST", "/api/v2/mandate-subscriptions", json={
+            "wallet_id": wallet_id, "mandate_id": mandate_id, "recipient": recipient,
+            "amount": amount, "token": token, "interval": interval,
+            "purpose": purpose or None,
+        })
         return (
-            f"SUBSCRIPTION CREATED: {result.subscription_id} — ${amount} {token} {interval} to {recipient} "
-            f"(next: {result.next_payment_at})"
+            f"SUBSCRIPTION CREATED: {result.get('subscription_id')} — ${amount} {token} {interval} to {recipient} "
+            f"(next: {result.get('next_payment_at')})"
         )
 
     @function_tool
@@ -115,12 +116,12 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
-        result = client.escrows.create(
-            wallet_id, recipient=recipient, amount=amount, token=token,
-            description=description or None, deadline_hours=deadline_hours,
-            arbiter=arbiter or None,
-        )
-        return f"ESCROW CREATED: {result.escrow_id} — ${amount} {token} held for {recipient} (deadline: {result.deadline})"
+        result = client._request("POST", "/api/v2/escrow", json={
+            "wallet_id": wallet_id, "recipient": recipient, "amount": amount,
+            "token": token, "description": description or None,
+            "deadline_hours": deadline_hours, "arbiter": arbiter or None,
+        })
+        return f"ESCROW CREATED: {result.get('escrow_id')} — ${amount} {token} held for {recipient} (deadline: {result.get('deadline')})"
 
     @function_tool
     def sardis_list_transactions(limit: int = 10) -> str:
@@ -247,13 +248,14 @@ except ImportError:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client.subscriptions.create(
-            wallet_id, mandate_id=mandate_id, recipient=recipient, amount=amount,
-            token=token, interval=interval, purpose=purpose or None,
-        )
+        result = client._request("POST", "/api/v2/mandate-subscriptions", json={
+            "wallet_id": wallet_id, "mandate_id": mandate_id, "recipient": recipient,
+            "amount": amount, "token": token, "interval": interval,
+            "purpose": purpose or None,
+        })
         return (
-            f"SUBSCRIPTION CREATED: {result.subscription_id} — ${amount} {token} {interval} to {recipient} "
-            f"(next: {result.next_payment_at})"
+            f"SUBSCRIPTION CREATED: {result.get('subscription_id')} — ${amount} {token} {interval} to {recipient} "
+            f"(next: {result.get('next_payment_at')})"
         )
 
     def sardis_create_escrow(recipient: str, amount: float, token: str = "USDC", description: str = "", deadline_hours: int = 168, arbiter: str = "") -> str:
@@ -261,12 +263,12 @@ except ImportError:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client.escrows.create(
-            wallet_id, recipient=recipient, amount=amount, token=token,
-            description=description or None, deadline_hours=deadline_hours,
-            arbiter=arbiter or None,
-        )
-        return f"ESCROW CREATED: {result.escrow_id} — ${amount} {token} held for {recipient} (deadline: {result.deadline})"
+        result = client._request("POST", "/api/v2/escrow", json={
+            "wallet_id": wallet_id, "recipient": recipient, "amount": amount,
+            "token": token, "description": description or None,
+            "deadline_hours": deadline_hours, "arbiter": arbiter or None,
+        })
+        return f"ESCROW CREATED: {result.get('escrow_id')} — ${amount} {token} held for {recipient} (deadline: {result.get('deadline')})"
 
 
 def get_sardis_tools() -> list:
