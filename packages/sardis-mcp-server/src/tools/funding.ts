@@ -225,7 +225,7 @@ export const fundingToolHandlers: Record<string, ToolHandler> = {
     try {
       const result = await apiRequest<Record<string, unknown>>(
         'POST',
-        '/api/v2/funding/commitments',
+        '/api/v2/funding/commit',
         { amount, token, chain, purpose, mandate_id, cell_count, expires_in_hours },
       );
 
