@@ -1,0 +1,16 @@
+[project]
+name = "sardis-agentkit"
+version = "0.1.0"
+description = "Sardis payment actions for Coinbase AgentKit"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+agentkit = ["coinbase-agentkit>=0.1.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
