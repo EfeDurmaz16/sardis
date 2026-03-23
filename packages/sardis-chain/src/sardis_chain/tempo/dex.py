@@ -130,21 +130,37 @@ class TempoDEXAdapter:
         self,
         quote: DEXQuote,
         private_key: str | None = None,
+        signer=None,
     ) -> dict[str, Any]:
         """Execute a swap using pytempo StablecoinDEX.
 
         Builds a type 0x76 batch transaction with:
-        1. TIP20.approve(DEX, amount) — authorize DEX to spend input token
-        2. StablecoinDEX.swap(token_in, amount_in, amount_out_min)
+        1. TIP20.approve(DEX, amount)
+        2. StablecoinDEX.swap_exact_amount_in(token_in, token_out, amount_in, min_amount_out)
 
-        Signs with the provided private key and broadcasts via RPC.
+        Signing: uses FXSigner (access key or EOA) for type 0x76.
+        Turnkey MPC is NOT used here (doesn't support type 0x76).
         """
         if quote.is_expired:
             raise ValueError("Quote has expired")
 
+        # Get signing key: from signer, explicit param, or constructor
         key = private_key or self._private_key
+        if signer is not None:
+            key = signer.get_tempo_key()
         if not key:
-            raise ValueError("Private key required for swap execution")
+            # Try to create signer from env
+            try:
+                from sardis_chain.fx_signer import create_fx_signer
+                auto_signer = await create_fx_signer()
+                key = auto_signer.get_tempo_key()
+            except Exception:
+                pass
+        if not key:
+            raise ValueError(
+                "No Tempo signing key. Set SARDIS_TEMPO_ACCESS_KEY (production) "
+                "or SARDIS_EOA_PRIVATE_KEY (dev)."
+            )
 
         try:
             from pytempo import TempoTransaction
@@ -170,10 +186,11 @@ class TempoDEXAdapter:
                     spender=StablecoinDEX.ADDRESS,
                     amount=quote.from_amount_raw,
                 ),
-                StablecoinDEX.swap(
+                StablecoinDEX.swap_exact_amount_in(
                     token_in=quote.from_token,
+                    token_out=quote.to_token,
                     amount_in=quote.from_amount_raw,
-                    amount_out_min=quote.min_output_raw,
+                    min_amount_out=quote.min_output_raw,
                 ),
             ),
         )
