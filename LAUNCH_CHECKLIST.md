@@ -86,6 +86,55 @@
 
 ---
 
+## PRIORITY 6: OSS Tool Activation (enable when ready)
+
+All tools are installed and opt-in. Enable via env vars:
+
+- [ ] **OpenTelemetry** — trace payment pipeline
+  ```bash
+  gcloud run services update sardis-api-staging --region us-east1 --update-env-vars \
+    "SARDIS_OTEL_ENABLED=1,OTEL_EXPORTER_OTLP_ENDPOINT=https://YOUR_GRAFANA_OTLP,OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic ..."
+  ```
+  Sign up for Grafana Cloud free tier (50GB logs): grafana.com
+
+- [ ] **Langfuse** — trace agent reasoning → payment decisions
+  ```bash
+  # Option A: Langfuse Cloud (free tier)
+  gcloud run services update sardis-api-staging --region us-east1 --update-env-vars \
+    "SARDIS_LANGFUSE_ENABLED=1,LANGFUSE_PUBLIC_KEY=pk_...,LANGFUSE_SECRET_KEY=sk_..."
+  # Option B: Self-host (Docker + existing Postgres/Redis)
+  docker run -d -p 3100:3000 langfuse/langfuse:latest
+  ```
+
+- [ ] **Convoy** — enterprise webhook delivery
+  ```bash
+  # Deploy Convoy
+  docker run -d -p 5005:5005 frain-dev/convoy:latest
+  # Set env vars
+  gcloud run services update sardis-api-staging --region us-east1 --update-env-vars \
+    "CONVOY_API_URL=https://convoy.sardis.sh,CONVOY_API_KEY=...,CONVOY_PROJECT_ID=..."
+  ```
+
+- [ ] **Infisical** — centralized secrets (when team grows)
+  ```bash
+  gcloud run services update sardis-api-staging --region us-east1 --update-env-vars \
+    "SARDIS_INFISICAL_ENABLED=1,INFISICAL_CLIENT_ID=...,INFISICAL_CLIENT_SECRET=...,INFISICAL_PROJECT_ID=..."
+  ```
+
+- [ ] **Apache Superset** — internal BI dashboards
+  ```bash
+  docker run -d -p 8088:8088 apache/superset:latest
+  # Connect to Neon PostgreSQL, see docs/integrations/superset-setup.md
+  ```
+
+- [ ] **k6 load test** — run before investor meetings
+  ```bash
+  brew install k6  # or download from k6.io
+  K6_API_KEY=sk_test_... k6 run tests/load/payment-flow.js
+  ```
+
+---
+
 ## Architecture
 
 ```
