@@ -553,6 +553,62 @@ Useful for budget tracking and reporting.`,
       inputSchema: z.object({}),
       execute: async () => client.getSpendingSummary(),
     }),
+
+    // ── Protocol v1.0 tools ──────────────────────────────────────
+
+    sardis_mint_payment_object: tool({
+      description: `Mint a signed, one-time payment object from a spending mandate.
+Payment objects are the core settlement primitive — they are merchant-bound
+tokens that can be presented for verification and on-chain settlement.`,
+      inputSchema: z.object({
+        mandate_id: z.string().describe('Spending mandate to mint from'),
+        merchant_id: z.string().describe('Merchant this payment is for'),
+        amount: z.string().describe('Exact payment amount'),
+        currency: z.string().default('USDC'),
+      }),
+      execute: async (params) =>
+        client.request('POST', '/api/v2/payment-objects/mint', params),
+    }),
+
+    sardis_get_fx_quote: tool({
+      description: `Get an FX quote for a stablecoin swap (e.g., USDC to EURC).
+Returns the exchange rate and expected output amount.`,
+      inputSchema: z.object({
+        from_currency: z.string().describe('Source currency'),
+        to_currency: z.string().describe('Target currency'),
+        from_amount: z.string().describe('Amount to convert'),
+        chain: z.string().default('tempo'),
+      }),
+      execute: async (params) =>
+        client.request('POST', '/api/v2/fx/quote', params),
+    }),
+
+    sardis_create_subscription: tool({
+      description: `Create a recurring subscription backed by a spending mandate.
+Supports daily, weekly, monthly, quarterly, or annual billing cycles.`,
+      inputSchema: z.object({
+        mandate_id: z.string().describe('Backing spending mandate'),
+        merchant_id: z.string().describe('Merchant to pay'),
+        charge_amount: z.string().describe('Amount per billing cycle'),
+        billing_cycle: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'annual']).default('monthly'),
+        currency: z.string().default('USDC'),
+      }),
+      execute: async (params) =>
+        client.request('POST', '/api/v2/mandate-subscriptions', params),
+    }),
+
+    sardis_create_escrow: tool({
+      description: `Create an escrow hold for a payment. Funds are locked until
+delivery is confirmed or the timelock expires (auto-release).`,
+      inputSchema: z.object({
+        payment_object_id: z.string().describe('Payment object to escrow'),
+        merchant_id: z.string().describe('Merchant receiving payment'),
+        amount: z.string().describe('Escrow amount'),
+        timelock_hours: z.number().default(72),
+      }),
+      execute: async (params) =>
+        client.request('POST', '/api/v2/escrow', params),
+    }),
   }
 }
 
