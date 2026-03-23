@@ -413,6 +413,43 @@ export default function Hero() {
             <WalletMockup />
           </motion.div>
         </div>
+
+        {/* Mobile mockup - condensed */}
+        <div className="lg:hidden mt-8 mx-auto max-w-[340px]">
+          <div style={{
+            background: 'var(--landing-surface, #18181B)',
+            border: '1px solid var(--landing-border, rgba(255,255,255,0.08))',
+            borderRadius: '16px',
+            padding: '24px',
+            fontFamily: "'Geist Sans', system-ui, sans-serif",
+          }}>
+            <div style={{ fontSize: '12px', color: 'var(--landing-text-ghost, #71717A)', marginBottom: '4px' }}>Available Balance</div>
+            <div style={{ fontSize: '28px', fontWeight: '600', color: 'var(--landing-text-primary, #FAFAFA)', marginBottom: '16px', fontFamily: "'Geist Mono', monospace" }}>$1,247.50</div>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <div style={{ flex: 1, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#22C55E', fontWeight: '500' }}>POLICY</div>
+                <div style={{ fontSize: '10px', color: 'var(--landing-text-ghost, #71717A)', marginTop: '2px' }}>Max $100/day</div>
+              </div>
+              <div style={{ flex: 1, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: '#3B82F6', fontWeight: '500' }}>CHAINS</div>
+                <div style={{ fontSize: '10px', color: 'var(--landing-text-ghost, #71717A)', marginTop: '2px' }}>7 EVM + Tempo</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '11px', color: 'var(--landing-text-ghost, #71717A)', marginBottom: '6px' }}>Recent</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '13px', color: 'var(--landing-text-primary, #FAFAFA)' }}>openai.com</span>
+                <span style={{ fontSize: '13px', color: '#22C55E', fontFamily: "'Geist Mono', monospace" }}>-$7.00</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+                <span style={{ fontSize: '13px', color: 'var(--landing-text-primary, #FAFAFA)' }}>anthropic.com</span>
+                <span style={{ fontSize: '13px', color: '#EF4444', fontFamily: "'Geist Mono', monospace" }}>BLOCKED</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
