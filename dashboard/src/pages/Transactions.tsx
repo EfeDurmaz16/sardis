@@ -258,6 +258,8 @@ export default function TransactionsPage() {
                       isExpanded && 'bg-dark-200/30'
                     )}
                     onClick={() => toggleExpand(tx.tx_id)}
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(tx.tx_id); } }}
                   >
                     <td className="px-4 py-4">
                       {isExpanded

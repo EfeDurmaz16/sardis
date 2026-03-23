@@ -335,6 +335,10 @@ export default function MandatesPage() {
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-dark-200/30 transition-colors"
                 onClick={() => toggleExpand(m.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpand(m.id); } }}
+                aria-expanded={expandedId === m.id}
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   {expandedId === m.id ? <ChevronDown size={16} className="text-gray-500 shrink-0" /> : <ChevronRight size={16} className="text-gray-500 shrink-0" />}
