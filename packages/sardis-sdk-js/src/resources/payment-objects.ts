@@ -92,7 +92,7 @@ export class PaymentObjectsResource extends BaseResource {
    * @returns List of payment objects
    */
   async list(params?: ListPaymentObjectsParams, options?: RequestOptions): Promise<PaymentObject[]> {
-    const response = await this._get<{ payment_objects: PaymentObject[] } | PaymentObject[]>(
+    const response = await this._get<{ objects: PaymentObject[] } | PaymentObject[]>(
       '/api/v2/payment-objects',
       params as Record<string, unknown>,
       options
@@ -101,6 +101,6 @@ export class PaymentObjectsResource extends BaseResource {
     if (Array.isArray(response)) {
       return response;
     }
-    return response.payment_objects || [];
+    return response.objects || [];
   }
 }
