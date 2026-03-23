@@ -149,10 +149,14 @@ class AcrossBridgeAdapter:
         )
 
     async def initiate_transfer(self, quote: AcrossQuote) -> AcrossTransfer:
-        """Initiate a bridge transfer from a quote.
+        """Initiate a bridge transfer by calling Across deposit API.
 
-        In production, this submits the deposit transaction on the source chain.
+        Across deposits are initiated via their API which returns
+        deposit tx data. The actual on-chain deposit requires signing
+        and broadcasting the returned transaction.
         """
+        import httpx
+
         transfer = AcrossTransfer(
             quote_id=quote.quote_id,
             from_chain=quote.from_chain,
@@ -161,14 +165,63 @@ class AcrossBridgeAdapter:
             status="pending",
         )
 
-        logger.info(
-            "Across transfer %s: %s %s %s→%s (fee: %s)",
-            transfer.transfer_id, quote.amount, quote.token,
-            quote.from_chain, quote.to_chain, quote.total_fee,
-        )
+        src_chain_id = CHAIN_IDS.get(quote.from_chain)
+        dst_chain_id = CHAIN_IDS.get(quote.to_chain)
+        token_addr = USDC_ADDRESSES.get(quote.from_chain, "")
+
+        if src_chain_id and dst_chain_id and token_addr:
+            try:
+                amount_raw = int(quote.amount * Decimal("1000000"))
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.post(
+                        f"{self._api_base}/deposit/tx",
+                        json={
+                            "originChainId": src_chain_id,
+                            "destinationChainId": dst_chain_id,
+                            "inputToken": token_addr,
+                            "outputToken": USDC_ADDRESSES.get(quote.to_chain, token_addr),
+                            "inputAmount": str(amount_raw),
+                        },
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        transfer.status = "deposited"
+                        transfer.deposit_tx_hash = data.get("txHash")
+                        logger.info(
+                            "Across deposit initiated: %s (%s→%s)",
+                            transfer.transfer_id, quote.from_chain, quote.to_chain,
+                        )
+                    else:
+                        logger.warning("Across deposit API returned %d", resp.status_code)
+            except Exception as e:
+                logger.warning("Across deposit failed: %s", e)
+
+        if transfer.status == "pending":
+            logger.info(
+                "Across transfer %s queued: %s %s %s→%s (fee: %s)",
+                transfer.transfer_id, quote.amount, quote.token,
+                quote.from_chain, quote.to_chain, quote.total_fee,
+            )
+
         return transfer
 
     async def check_status(self, transfer_id: str) -> str:
-        """Check the status of a bridge transfer."""
-        # In production, query Across API for fill status
+        """Check the status of a bridge transfer via Across API."""
+        import httpx
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{self._api_base}/deposit/status",
+                    params={"depositId": transfer_id},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    status = data.get("status", "pending")
+                    if status == "filled":
+                        return "completed"
+                    return status
+        except Exception:
+            logger.debug("Across status check failed for %s", transfer_id)
+
         return "pending"
