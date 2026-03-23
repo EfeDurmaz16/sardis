@@ -4,7 +4,8 @@ Laso Finance provides non-reloadable Visa prepaid virtual cards through the
 Locus (YC F25) MPP proxy. Cards range from $5-$1,000, US-only (IP-locked).
 
 Architecture:
-    AI Agent → Sardis → Locus x402 Proxy → Laso Finance API → Visa Prepaid Card
+    AI Agent → Sardis policy check → SardisMPPClient (auto-handles 402)
+    → Laso x402 challenge → USDC micro-payment → session token → card issued
 
 MPP Service Entry:
     ID: laso
@@ -27,16 +28,18 @@ Restrictions:
     - Max $1,000 per card, $6,000 daily (6 cards), $10,000 personal daily
     - No 3D Secure support
     - Card amount must match checkout total exactly
+
+No API key needed — authentication is via x402 USDC micro-payment ($0.001).
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass
 from decimal import Decimal
-
-import httpx
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +71,15 @@ class LasoPayment:
 
 
 class LasoMPPService:
-    """Client for Laso Finance virtual cards via MPP/Locus proxy.
+    """Client for Laso Finance virtual cards via MPP.
 
-    Uses the x402 payment protocol — authenticates with a micro-payment
-    ($0.001 USDC), then uses session tokens for subsequent API calls.
+    Uses SardisMPPClient to automatically handle x402 challenges:
+    1. First request → Laso returns 402 Payment Required
+    2. SardisMPPClient intercepts → signs USDC payment on Tempo
+    3. Retries with payment credential → gets session token
+    4. Subsequent requests use session token
+
+    No API key needed — just a funded Tempo wallet.
     """
 
     def __init__(
@@ -79,10 +87,52 @@ class LasoMPPService:
         base_url: str = LASO_MPP_BASE,
         session_token: str | None = None,
         timeout: float = 30.0,
+        tempo_private_key: str | None = None,
+        policy_checker=None,
     ):
         self.base_url = base_url.rstrip("/")
         self.session_token = session_token
         self.timeout = timeout
+        self._tempo_key = tempo_private_key
+        self._policy_checker = policy_checker
+        self._mpp_client = None
+
+    async def _get_mpp_client(self):
+        """Lazy-init SardisMPPClient with Tempo payment method."""
+        if self._mpp_client is not None:
+            return self._mpp_client
+
+        # Get signing key
+        key = self._tempo_key or os.getenv("SARDIS_TEMPO_SIGNER_KEY") or os.getenv("SARDIS_EOA_PRIVATE_KEY")
+        if not key:
+            raise RuntimeError(
+                "No signing key for Laso MPP. Set SARDIS_TEMPO_SIGNER_KEY or "
+                "SARDIS_EOA_PRIVATE_KEY to enable x402 authentication."
+            )
+
+        try:
+            from mpp.methods.tempo import tempo, TempoAccount, ChargeIntent
+
+            account = TempoAccount.from_key(key)
+            tempo_method = tempo(
+                account=account,
+                intents={"charge": ChargeIntent()},
+            )
+
+            from sardis_mpp.client import SardisMPPClient
+            self._mpp_client = SardisMPPClient(
+                methods=[tempo_method],
+                policy_checker=self._policy_checker,
+            )
+            logger.info("Laso MPP client initialized with Tempo wallet %s", account.address)
+            return self._mpp_client
+
+        except ImportError:
+            logger.warning(
+                "pympp not installed — falling back to raw httpx (402 will not be handled). "
+                "Install: pip install pympp"
+            )
+            return None
 
     async def _request(
         self,
@@ -90,20 +140,44 @@ class LasoMPPService:
         path: str,
         json_data: dict | None = None,
     ) -> dict:
-        """Make an authenticated request to the Laso MPP endpoint."""
+        """Make a request to Laso MPP, auto-handling x402 payment challenges.
+
+        Uses SardisMPPClient (with Tempo payment method) so 402 challenges
+        are automatically fulfilled with a USDC micro-payment.
+        """
         url = f"{self.base_url}{path}"
-        headers: dict[str, str] = {}
+
+        # Try with SardisMPPClient (auto-handles 402)
+        mpp_client = await self._get_mpp_client()
+        if mpp_client:
+            headers: dict[str, str] = {}
+            if self.session_token:
+                headers["Authorization"] = f"Bearer {self.session_token}"
+
+            if method.upper() == "POST":
+                resp = await mpp_client._http.post(url, json=json_data, headers=headers)
+            else:
+                resp = await mpp_client._http.get(url, headers=headers)
+
+            # Extract session token from response if present
+            data = resp.json()
+            if "token" in data and not self.session_token:
+                self.session_token = data["token"]
+                logger.info("Laso session token acquired via x402 payment")
+
+            resp.raise_for_status()
+            return data
+
+        # Fallback: raw httpx (will fail on 402)
+        import httpx
+        headers = {}
         if self.session_token:
             headers["Authorization"] = f"Bearer {self.session_token}"
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.request(method, url, json=json_data, headers=headers)
 
-            # Handle x402 payment challenge
             if resp.status_code == 402:
-                logger.info("Laso MPP: received 402 challenge, payment required")
-                # In production, this would be handled by the MPP client SDK
-                # which automatically fulfills the payment and retries
                 raise LasoPaymentRequired(
                     challenge=resp.headers.get("WWW-Authenticate", ""),
                     amount=LASO_AUTH_COST_USDC,
@@ -119,16 +193,16 @@ class LasoMPPService:
     ) -> LasoCard:
         """Issue a virtual prepaid card via Laso Finance.
 
+        The x402 authentication ($0.001 USDC) is handled automatically
+        by SardisMPPClient. The card amount ($5-$1,000) is charged
+        separately during the card creation flow.
+
         Args:
             amount: Card amount ($5-$1,000). Must match checkout total exactly.
             currency: Card currency (USD only currently).
 
         Returns:
             LasoCard with card number, CVV, and expiry.
-
-        Raises:
-            ValueError: If amount is out of range.
-            LasoPaymentRequired: If x402 auth payment needed.
         """
         if amount < 5 or amount > 1000:
             raise ValueError(f"Card amount must be between $5 and $1,000 (got ${amount})")
@@ -165,6 +239,7 @@ class LasoMPPService:
         interval: float = 3.0,
     ) -> dict:
         """Poll until card is ready or max attempts reached."""
+        data: dict[str, Any] = {}
         for attempt in range(1, max_attempts + 1):
             await asyncio.sleep(interval)
             data = await self._request("POST", "/get-card-data", json_data={
@@ -176,7 +251,7 @@ class LasoMPPService:
                 return data
             logger.debug("Laso: card %s still processing (attempt %d/%d)", card_id, attempt, max_attempts)
         logger.warning("Laso: card %s still processing after %d polls", card_id, max_attempts)
-        return data  # Return last response even if still processing
+        return data
 
     async def get_card_data(self, card_id: str) -> dict:
         """Get card details (free endpoint, no payment required)."""
@@ -228,9 +303,19 @@ class LasoMPPService:
         self.session_token = data.get("token", self.session_token)
         return self.session_token or ""
 
+    async def close(self) -> None:
+        """Close the underlying MPP client."""
+        if self._mpp_client:
+            await self._mpp_client.close()
+            self._mpp_client = None
+
 
 class LasoPaymentRequired(Exception):
-    """Raised when Laso MPP endpoint returns 402 requiring x402 payment."""
+    """Raised when Laso MPP endpoint returns 402 requiring x402 payment.
+
+    This should NOT happen when using SardisMPPClient — it auto-handles 402.
+    Only raised in the raw httpx fallback path (when pympp is not installed).
+    """
 
     def __init__(self, challenge: str, amount: Decimal):
         self.challenge = challenge
