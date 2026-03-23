@@ -35,7 +35,7 @@ FEE_MANAGER_ADDRESS = "0xfeec000000000000000000000000000000000000"
 TEMPO_TOKENS: dict[str, str] = {
     "USDC": "0x20c0000000000000000000000000000000000000",      # pathUSD
     "USDC.e": "0x20C000000000000000000000b9537d11c60E8b50",    # Bridged USDC
-    "EURC": "",  # To be confirmed at launch
+    "EURC": "0x20c0000000000000000000001621e21f71cf12fb",    # EURC on Tempo (from Bridge.xyz)
     "USDT": "",  # To be confirmed
 }
 
