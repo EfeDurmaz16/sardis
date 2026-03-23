@@ -1,0 +1,30 @@
+name: Sign Artifacts (Sigstore)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  id-token: write
+  packages: write
+  contents: read
+
+jobs:
+  sign-docker:
+    name: Sign Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Login to GCR
+        uses: docker/login-action@v3
+        with:
+          registry: gcr.io
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Sign image
+        env:
+          IMAGE: gcr.io/sardis-staging-01/sardis-api-staging:${{ github.ref_name }}
+        run: cosign sign --yes "$IMAGE"
