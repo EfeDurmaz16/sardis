@@ -69,7 +69,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <a href="/" className="flex items-center gap-2.5 flex-shrink-0">
-              <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
+              <svg width="34" height="34" viewBox="0 0 28 28" fill="none" aria-hidden="true">
                 <path
                   d="M20 5H10a7 7 0 000 14h2"
                   stroke="var(--landing-text-primary)"
@@ -171,7 +171,7 @@ export default function Navbar() {
                 className="flex items-center gap-2.5"
                 onClick={() => setMobileOpen(false)}
               >
-                <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
+                <svg width="34" height="34" viewBox="0 0 28 28" fill="none" aria-hidden="true">
                   <path
                     d="M20 5H10a7 7 0 000 14h2"
                     stroke="var(--landing-text-primary)"

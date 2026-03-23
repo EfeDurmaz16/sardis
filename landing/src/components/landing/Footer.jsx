@@ -64,7 +64,7 @@ export default function Footer() {
           {/* Column 1: Brand */}
           <div>
             <div className="flex items-center gap-2">
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
                 <path
                   d="M20 5H10a7 7 0 000 14h2"
                   stroke="var(--landing-text-muted)"
