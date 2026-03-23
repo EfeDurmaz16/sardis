@@ -24,7 +24,7 @@ sys.path.insert(0, str(root_dir))
 # Clear any cached settings and set clean test environment
 # Remove problematic env vars that might be read from .env
 for key in list(os.environ.keys()):
-    if key.startswith("SARDIS_") and key not in {"SARDIS_ENVIRONMENT", "SARDIS_ALLOW_ANON"}:
+    if key.startswith("SARDIS_") and key not in {"SARDIS_ENVIRONMENT", "SARDIS_ALLOW_ANON", "SARDIS_RUN_LIVE_CHAIN_TESTS"}:
         del os.environ[key]
 
 os.environ["SARDIS_ENVIRONMENT"] = "dev"
