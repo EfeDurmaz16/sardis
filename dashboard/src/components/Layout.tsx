@@ -149,6 +149,9 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:rounded">
+        Skip to content
+      </a>
       {/* Sidebar */}
       <aside className="w-64 bg-dark-300 border-r border-dark-100 flex flex-col">
         {/* Logo */}
@@ -295,7 +298,7 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto flex flex-col">
+      <main id="main-content" className="flex-1 overflow-auto flex flex-col">
         {/* Top header bar */}
         <header className="flex items-center justify-end px-8 py-3 border-b border-dark-100 bg-dark-300/50 flex-shrink-0">
           <NotificationCenter />
