@@ -200,8 +200,21 @@ async def execute_fx_quote(
             swap_status = result.get("status", "failed")
 
         elif provider in ("uniswap_v3", "uniswap_v4"):
-            # Will be wired in F4 (Uniswap V3 adapter)
-            raise NotImplementedError(f"Adapter {provider} execution not yet wired")
+            from sardis_chain.uniswap_v3 import UniswapV3Adapter, UniswapQuote
+            import os
+            chain = row.get("chain", "base")
+            rpc = os.getenv("SARDIS_BASE_RPC_URL", "")
+            if not rpc:
+                raise HTTPException(status_code=503, detail="SARDIS_BASE_RPC_URL not set for Uniswap V3")
+            uni = UniswapV3Adapter(rpc_url=rpc, chain=chain)
+            amount_raw = int(row["from_amount"] * Decimal("1000000"))
+            from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+            in_addr = TOKEN_REGISTRY[TokenType(row["from_currency"])].contract_addresses.get(chain, "")
+            out_addr = TOKEN_REGISTRY[TokenType(row["to_currency"])].contract_addresses.get(chain, "")
+            quote = await uni.get_quote(in_addr, out_addr, amount_raw)
+            result = await uni.execute_swap(quote)
+            tx_hash = result.get("tx_hash")
+            swap_status = result.get("status", "failed")
 
         else:
             # Try CDPSwap if available
@@ -257,20 +270,39 @@ async def execute_fx_quote(
 )
 async def get_fx_rates(
     principal: Principal = Depends(require_principal),
+    chain: str = Query(default="tempo"),
 ) -> FXRatesResponse:
+    """Get live FX rates from on-chain adapters (cached 30s)."""
+    from sardis_chain.liquidity_router import LiquidityRouter
+
+    router_instance = LiquidityRouter()
     pairs = [
         ("USDC", "EURC"), ("EURC", "USDC"),
         ("USDC", "USDT"), ("USDT", "USDC"),
     ]
     rates = []
     for from_c, to_c in pairs:
-        rate = _get_indicative_rate(from_c, to_c)
-        rates.append({
-            "from": from_c,
-            "to": to_c,
-            "rate": str(rate),
-            "provider": "tempo_dex",
-        })
+        try:
+            route = await router_instance.find_best_route(
+                from_token=from_c, to_token=to_c,
+                amount=Decimal("1000"), from_chain=chain,
+            )
+            rates.append({
+                "from": from_c,
+                "to": to_c,
+                "rate": str(route.estimated_rate),
+                "provider": route.provider,
+                "fee_bps": route.estimated_fee_bps,
+            })
+        except Exception:
+            # Fallback to indicative
+            rates.append({
+                "from": from_c,
+                "to": to_c,
+                "rate": str(_get_indicative_rate(from_c, to_c)),
+                "provider": "indicative",
+                "fee_bps": 0,
+            })
     return FXRatesResponse(
         rates=rates,
         updated_at=datetime.now(UTC).isoformat(),
