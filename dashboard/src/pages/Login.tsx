@@ -65,10 +65,11 @@ export default function Login() {
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="login-username" className="block text-sm font-medium text-gray-400 mb-2">
                                 Username
                             </label>
                             <input
+                                id="login-username"
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
@@ -79,10 +80,11 @@ export default function Login() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="login-password" className="block text-sm font-medium text-gray-400 mb-2">
                                 Password
                             </label>
                             <input
+                                id="login-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

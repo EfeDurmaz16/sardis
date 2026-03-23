@@ -159,10 +159,11 @@ export default function Signup() {
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="signup-email" className="block text-sm font-medium text-gray-400 mb-2">
                                 Email
                             </label>
                             <input
+                                id="signup-email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -174,10 +175,11 @@ export default function Signup() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="signup-display-name" className="block text-sm font-medium text-gray-400 mb-2">
                                 Display Name <span className="text-gray-600">(optional)</span>
                             </label>
                             <input
+                                id="signup-display-name"
                                 type="text"
                                 value={displayName}
                                 onChange={(e) => setDisplayName(e.target.value)}
@@ -188,10 +190,11 @@ export default function Signup() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="signup-password" className="block text-sm font-medium text-gray-400 mb-2">
                                 Password
                             </label>
                             <input
+                                id="signup-password"
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -204,10 +207,11 @@ export default function Signup() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-2">
+                            <label htmlFor="signup-confirm-password" className="block text-sm font-medium text-gray-400 mb-2">
                                 Confirm Password
                             </label>
                             <input
+                                id="signup-confirm-password"
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
