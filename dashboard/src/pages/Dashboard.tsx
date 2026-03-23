@@ -1,23 +1,23 @@
 import { useState } from 'react'
 import {
-  Users,
-  ArrowRightLeft,
-  DollarSign,
-  Wallet,
-  Activity,
-  TrendingUp,
-  Zap,
-  Globe,
-  Shield,
+  ArrowsLeftRight,
+  CaretRight,
+  ChartBar,
   Clock,
-  AlertTriangle,
-  BarChart2,
-  Rocket,
-  X,
+  CurrencyDollar,
+  Flask,
+  Globe,
   Key,
-  FlaskConical,
-  ChevronRight
-} from 'lucide-react'
+  Lightning,
+  Pulse,
+  Rocket,
+  Shield,
+  TrendUp,
+  Users,
+  Wallet,
+  Warning,
+  X,
+} from '@phosphor-icons/react'
 import { Link } from 'react-router-dom'
 import {
   AreaChart,
@@ -127,7 +127,7 @@ function QuickStartCard({ transactionCount }: { transactionCount: number }) {
   const steps = [
     { label: 'Create your first wallet', href: '/agents', icon: Wallet, color: '#818CF8' },
     { label: 'Set a spending policy', href: '/policy-management', icon: Shield, color: '#22C55E' },
-    { label: 'Make a test payment', href: '/simulation', icon: FlaskConical, color: '#F59E0B' },
+    { label: 'Make a test payment', href: '/simulation', icon: Flask, color: '#F59E0B' },
     { label: 'View your API keys', href: '/api-keys', icon: Key, color: '#60A5FA' },
   ];
 
@@ -153,7 +153,7 @@ function QuickStartCard({ transactionCount }: { transactionCount: number }) {
               <span className="text-xs font-bold" style={{ color: step.color }}>{i + 1}</span>
             </div>
             <span className="text-xs text-gray-300 group-hover:text-white transition-colors flex-1">{step.label}</span>
-            <ChevronRight size={12} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
+            <CaretRight size={12} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
           </Link>
         ))}
       </div>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
-            <Zap className="w-4 h-4 text-yellow-500" />
+            <Lightning className="w-4 h-4 text-yellow-500" />
             <span className="text-sm text-white mono-numbers">
               {transactions.length > 0 ? `${transactions.length} tx` : '— tx'}
             </span>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
         <div className="card p-4 border border-dark-100">
           <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Kill Switch</p>
           <div className="flex items-center gap-2">
-            {killSwitchActive && <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />}
+            {killSwitchActive && <Warning className="w-4 h-4 text-red-400 flex-shrink-0" />}
             <p className={clsx(
               "text-sm font-medium",
               killSwitchActive ? "text-red-400" : "text-white"
@@ -288,7 +288,7 @@ export default function DashboardPage() {
             : '—'}
           change={volume24h > 0 ? 'last 24 hours' : 'no completed transactions'}
           changeType={volume24h > 0 ? 'positive' : 'neutral'}
-          icon={<DollarSign className="w-6 h-6" />}
+          icon={<CurrencyDollar className="w-6 h-6" />}
         />
         <StatCard
           title="Transactions"
@@ -299,7 +299,7 @@ export default function DashboardPage() {
             ? `${metrics?.completed_transactions ?? transactions.filter(t => t.status === 'completed').length} completed`
             : 'no data yet'}
           changeType={(metrics?.total_transactions ?? transactions.length) > 0 ? 'positive' : 'neutral'}
-          icon={<ArrowRightLeft className="w-6 h-6" />}
+          icon={<ArrowsLeftRight className="w-6 h-6" />}
         />
         <StatCard
           title="Merchants"
@@ -316,7 +316,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 card p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-sardis-400" />
+              <Pulse className="w-5 h-5 text-sardis-400" />
               <h2 className="text-lg font-semibold text-white">Live Transaction Feed</h2>
             </div>
             <span className="text-xs text-gray-500">
@@ -464,7 +464,7 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400">Last 7 days</p>
             </div>
             <div className="flex items-center gap-2 text-sardis-400">
-              <TrendingUp className="w-5 h-5" />
+              <TrendUp className="w-5 h-5" />
               <span className="text-sm font-medium">
                 {volumeChartData.some(d => d.value > 0) ? 'Live data' : 'No data yet'}
               </span>
@@ -521,7 +521,7 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-white">By Chain</h2>
               <p className="text-sm text-gray-400">Transaction distribution</p>
             </div>
-            <Activity className="w-5 h-5 text-gray-400" />
+            <Pulse className="w-5 h-5 text-gray-400" />
           </div>
 
           <div className="h-64">
@@ -561,7 +561,7 @@ export default function DashboardPage() {
         <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-sardis-400" />
+              <ChartBar className="w-5 h-5 text-sardis-400" />
               <h2 className="text-lg font-semibold text-white">Usage</h2>
             </div>
             <div className="flex items-center gap-3">
@@ -686,10 +686,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent Activity */}
+      {/* Recent Pulse */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-white">Recent Pulse</h2>
           <button className="text-sm text-sardis-400 hover:text-sardis-300">View all →</button>
         </div>
 

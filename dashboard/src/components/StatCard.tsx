@@ -1,7 +1,6 @@
 import { ReactNode } from 'react'
 import clsx from 'clsx'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-
+import { Minus, TrendDown, TrendUp } from '@phosphor-icons/react'
 interface StatCardProps {
   title: string
   value: string | number
@@ -41,10 +40,10 @@ export default function StatCard({
       {change && (
         <div className="mt-4 flex items-center gap-2">
           {changeType === 'positive' && (
-            <TrendingUp className="w-4 h-4 text-sardis-400" />
+            <TrendUp className="w-4 h-4 text-sardis-400" />
           )}
           {changeType === 'negative' && (
-            <TrendingDown className="w-4 h-4 text-red-500" />
+            <TrendDown className="w-4 h-4 text-red-500" />
           )}
           {changeType === 'neutral' && (
             <Minus className="w-4 h-4 text-gray-500" />

@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, ArrowUpRight, ArrowDownLeft, ExternalLink, Loader2, Copy, Check, ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ArrowSquareOut,
+  ArrowUpRight,
+  CaretDown,
+  CaretRight,
+  Check,
+  Copy,
+  MagnifyingGlass,
+  SpinnerGap,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { ledgerApi } from '../api/client'
@@ -169,10 +179,10 @@ export default function TransactionsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search by TX ID, purpose, or hash..."
+            placeholder="MagnifyingGlass by TX ID, purpose, or hash..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:border-sardis-500/50"
@@ -200,7 +210,7 @@ export default function TransactionsPage() {
       {/* Loading / Error States */}
       {loading && (
         <div className="card p-12 text-center">
-          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <SpinnerGap className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
           <p className="text-gray-400">Loading transactions...</p>
         </div>
       )}
@@ -264,8 +274,8 @@ export default function TransactionsPage() {
                   >
                     <td className="px-4 py-4">
                       {isExpanded
-                        ? <ChevronDown className="w-4 h-4 text-gray-500" />
-                        : <ChevronRight className="w-4 h-4 text-gray-500" />
+                        ? <CaretDown className="w-4 h-4 text-gray-500" />
+                        : <CaretRight className="w-4 h-4 text-gray-500" />
                       }
                     </td>
                     <td className="px-4 py-4">
@@ -344,11 +354,11 @@ export default function TransactionsPage() {
                           title="View on explorer"
                           aria-label="View on explorer"
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <ArrowSquareOut className="w-4 h-4" />
                         </a>
                       ) : (
                         <span className="p-2 text-gray-600 inline-flex" title="No on-chain data">
-                          <ExternalLink className="w-4 h-4" />
+                          <ArrowSquareOut className="w-4 h-4" />
                         </span>
                       )}
                     </td>
@@ -427,7 +437,7 @@ export default function TransactionsPage() {
                                   rel="noopener noreferrer"
                                   className="text-sardis-400 hover:text-sardis-300 text-xs flex items-center gap-1"
                                 >
-                                  View on block explorer <ExternalLink size={12} />
+                                  View on block explorer <ArrowSquareOut size={12} />
                                 </a>
                               )}
                             </div>

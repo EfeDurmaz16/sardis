@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
-
+import { CheckCircle, Key, WarningCircle } from '@phosphor-icons/react';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export default function ResetPassword() {
@@ -58,7 +57,7 @@ export default function ResetPassword() {
             <div className="min-h-screen bg-dark-400 flex items-center justify-center p-4">
                 <div className="w-full max-w-md text-center">
                     <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <AlertCircle className="w-8 h-8 text-red-400" />
+                        <WarningCircle className="w-8 h-8 text-red-400" />
                     </div>
                     <h1 className="text-2xl font-bold text-white mb-2">Invalid Reset Link</h1>
                     <p className="text-gray-400 mb-6">This password reset link is missing or invalid.</p>
@@ -95,7 +94,7 @@ export default function ResetPassword() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <KeyRound className="w-8 h-8 text-sardis-400" />
+                        <Key className="w-8 h-8 text-sardis-400" />
                     </div>
                     <h1 className="text-3xl font-bold text-white font-display">Set New Password</h1>
                     <p className="text-gray-400 mt-2">Choose a strong password for your account</p>

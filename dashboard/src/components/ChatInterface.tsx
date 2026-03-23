@@ -1,6 +1,13 @@
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, User, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import {
+  CheckCircle,
+  PaperPlaneTilt,
+  Robot,
+  SpinnerGap,
+  User,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useInstructAgent } from '../hooks/useApi'
 import { getErrorMessage } from '../utils/errors'
@@ -119,7 +126,7 @@ export default function ChatInterface({ agentId, agentName, onClose }: ChatInter
                 <div className="p-4 border-b border-dark-100 flex items-center justify-between bg-dark-200">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center">
-                            <Bot className="w-6 h-6 text-sardis-400" />
+                            <Robot className="w-6 h-6 text-sardis-400" />
                         </div>
                         <div>
                             <h3 className="font-bold text-white">{agentName}</h3>
@@ -151,7 +158,7 @@ export default function ChatInterface({ agentId, agentName, onClose }: ChatInter
                                 "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                                 msg.role === 'agent' ? "bg-sardis-500/10 text-sardis-400" : "bg-dark-100 text-gray-400"
                             )}>
-                                {msg.role === 'agent' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                                {msg.role === 'agent' ? <Robot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                             </div>
 
                             <div className={clsx(
@@ -188,7 +195,7 @@ export default function ChatInterface({ agentId, agentName, onClose }: ChatInter
                                     msg.role === 'user' ? "text-white justify-end" : "text-gray-400"
                                 )}>
                                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {msg.status === 'error' && <AlertCircle className="w-3 h-3 text-red-400" />}
+                                    {msg.status === 'error' && <WarningCircle className="w-3 h-3 text-red-400" />}
                                 </div>
                             </div>
                         </div>
@@ -213,9 +220,9 @@ export default function ChatInterface({ agentId, agentName, onClose }: ChatInter
                             className="p-3 bg-sardis-500 text-white rounded-xl hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {instructAgent.isPending ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
+                                <SpinnerGap className="w-5 h-5 animate-spin" />
                             ) : (
-                                <Send className="w-5 h-5" />
+                                <PaperPlaneTilt className="w-5 h-5" />
                             )}
                         </button>
                     </div>

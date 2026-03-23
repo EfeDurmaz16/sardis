@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { Plus, Search, User, Wallet, ArrowRight } from 'lucide-react'
+import {
+  ArrowRight,
+  MagnifyingGlass,
+  Plus,
+  User,
+  Wallet,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '../hooks/useApi'
 import ChatInterface from '../components/ChatInterface'
@@ -87,12 +93,12 @@ export default function AgentsPage() {
         </button>
       </div>
 
-      {/* Search */}
+      {/* MagnifyingGlass */}
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+        <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
         <input
           type="text"
-          placeholder="Search agents..."
+          placeholder="MagnifyingGlass agents..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:border-sardis-500/50"

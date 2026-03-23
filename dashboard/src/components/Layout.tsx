@@ -2,43 +2,42 @@
 import { ReactNode, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard,
+  AddressBook,
+  Anchor,
+  ArrowsLeftRight,
+  CaretDown,
+  CaretRight,
+  ChartBar,
+  CheckSquare,
+  CreditCard,
+  Eye,
+  FileMagnifyingGlass,
+  Flask,
+  Flask as ExperimentalIcon,
+  Gear,
+  GitBranch,
+  GridFour,
+  Headset,
+  Key,
+  Layout,
+  Medal,
+  Power,
+  Pulse,
+  Receipt,
+  Rocket,
+  Crosshair,
+  Shield,
+  ShieldCheck,
+  SignOut,
+  Sparkle,
+  SquaresFour,
+  Storefront,
+  Target,
   Users,
   Wallet,
-  CreditCard,
-  Sparkles,
-  LogOut,
-  ShieldCheck,
-  FlaskConical,
-  Activity,
-  CheckSquare,
-  BarChart3,
-  Shield,
-  Target,
-  Anchor,
-  Award,
-  AlertTriangle,
-  Headset,
-  Power,
-  FileSearch,
-  Store,
-  Beaker,
-  Radar,
-  Receipt,
-  Key,
-  Webhook,
-  Settings,
-  ChevronDown,
-  ChevronRight,
-  FlaskConical as ExperimentalIcon,
-  Rocket,
-  LayoutGrid,
-  GitBranch,
-  LayoutTemplate,
-  BookUser,
-  Eye,
-  ArrowRightLeft
-} from 'lucide-react'
+  Warning,
+  WebhooksLogo,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useHealth } from '../hooks/useApi'
 import { useAuth } from '../auth/AuthContext'
@@ -50,13 +49,13 @@ interface LayoutProps {
 
 // Always visible — core product pages
 const coreNavigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', href: '/', icon: SquaresFour },
   { name: 'Agents', href: '/agents', icon: Users },
   { name: 'Spending Mandates', href: '/mandates', icon: Shield },
   { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
-  { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft },
+  { name: 'Transactions', href: '/transactions', icon: ArrowsLeftRight },
   { name: 'Cards', href: '/cards', icon: CreditCard },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Analytics', href: '/analytics', icon: ChartBar },
 ]
 
 // Collapsible grouped sections
@@ -64,10 +63,10 @@ const navSections = [
   {
     label: 'Control Plane',
     items: [
-      { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
-      { name: 'Control Plane Demo', href: '/demo', icon: Sparkles },
+      { name: 'Control Center', href: '/control-center', icon: GridFour },
+      { name: 'Control Plane Demo', href: '/demo', icon: Sparkle },
       { name: 'Approvals', href: '/approvals', icon: CheckSquare },
-      { name: 'Approval Routing', href: '/approval-config', icon: Settings },
+      { name: 'Approval Routing', href: '/approval-config', icon: Gear },
       { name: 'Kill Switch', href: '/kill-switch', icon: Power },
       { name: 'Fallback Rules', href: '/fallback-rules', icon: GitBranch },
     ],
@@ -75,11 +74,11 @@ const navSections = [
   {
     label: 'Monitoring',
     items: [
-      { name: 'Live Events', href: '/events', icon: Activity },
-      { name: 'Policy Analytics', href: '/policy-analytics', icon: BarChart3 },
-      { name: 'Anomaly Detection', href: '/anomaly', icon: Radar },
-      { name: 'Live Dry Run', href: '/simulation', icon: Beaker },
-      { name: 'Evidence', href: '/evidence', icon: FileSearch },
+      { name: 'Live Events', href: '/events', icon: Pulse },
+      { name: 'Policy Analytics', href: '/policy-analytics', icon: ChartBar },
+      { name: 'Anomaly Detection', href: '/anomaly', icon: Crosshair },
+      { name: 'Live Dry Run', href: '/simulation', icon: Flask },
+      { name: 'Evidence', href: '/evidence', icon: FileMagnifyingGlass },
       { name: 'Reconciliation', href: '/reconciliation', icon: ShieldCheck },
       { name: 'Agent Observability', href: '/agent-observability', icon: Eye },
     ],
@@ -87,33 +86,33 @@ const navSections = [
   {
     label: 'Payments',
     items: [
-      { name: 'Merchants', href: '/merchants', icon: Store },
-      { name: 'Counterparties', href: '/counterparties', icon: BookUser },
-      { name: 'MPP Sessions', href: '/mpp-sessions', icon: Activity },
+      { name: 'Merchants', href: '/merchants', icon: Storefront },
+      { name: 'Counterparties', href: '/counterparties', icon: AddressBook },
+      { name: 'MPP Sessions', href: '/mpp-sessions', icon: Pulse },
       { name: 'Stripe Issuing', href: '/stripe-issuing', icon: Wallet },
     ],
   },
   {
-    label: 'Settings',
+    label: 'Gear',
     items: [
       { name: 'API Keys', href: '/api-keys', icon: Key },
-      { name: 'Webhooks', href: '/webhooks', icon: Webhook },
+      { name: 'Webhooks', href: '/webhooks', icon: WebhooksLogo },
       { name: 'Billing', href: '/billing', icon: Receipt },
       { name: 'Enterprise Support', href: '/enterprise-support', icon: Headset },
-      { name: 'Env Templates', href: '/environment-templates', icon: FlaskConical },
+      { name: 'Env Templates', href: '/environment-templates', icon: Flask },
       { name: 'Go Live', href: '/go-live', icon: Rocket },
-      { name: 'Templates', href: '/templates', icon: LayoutTemplate },
-      { name: 'Settings', href: '/settings', icon: Settings },
+      { name: 'Templates', href: '/templates', icon: Layout },
+      { name: 'Gear', href: '/settings', icon: Gear },
     ],
   },
 ]
 
 const experimentalNavigation = [
-  { name: 'Agent Identity', href: '/agent-identity', icon: Award },
+  { name: 'Agent Identity', href: '/agent-identity', icon: Medal },
   { name: 'Guardrails', href: '/guardrails', icon: Shield },
   { name: 'Confidence Router', href: '/confidence-router', icon: Target },
   { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
-  { name: 'Goal Drift', href: '/goal-drift', icon: AlertTriangle },
+  { name: 'Goal Drift', href: '/goal-drift', icon: Warning },
 ]
 
 export default function Layout({ children }: LayoutProps) {
@@ -198,9 +197,9 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <span className="flex-1 text-left">{section.label}</span>
                 {openSections[section.label] ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
+                  <CaretDown className="w-3.5 h-3.5" />
                 ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <CaretRight className="w-3.5 h-3.5" />
                 )}
               </button>
               {openSections[section.label] && (
@@ -237,9 +236,9 @@ export default function Layout({ children }: LayoutProps) {
               <ExperimentalIcon className="w-3.5 h-3.5" />
               <span className="flex-1 text-left">Experimental</span>
               {experimentalOpen ? (
-                <ChevronDown className="w-3.5 h-3.5" />
+                <CaretDown className="w-3.5 h-3.5" />
               ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
+                <CaretRight className="w-3.5 h-3.5" />
               )}
             </button>
 
@@ -272,7 +271,7 @@ export default function Layout({ children }: LayoutProps) {
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-500 hover:text-white hover:bg-dark-200 transition-all duration-200"
             >
-              <LogOut className="w-5 h-5" />
+              <SignOut className="w-5 h-5" />
               Sign Out
             </button>
           </div>

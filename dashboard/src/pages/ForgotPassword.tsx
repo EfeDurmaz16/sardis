@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { KeyRound, ArrowLeft, CheckCircle } from 'lucide-react';
-
+import { ArrowLeft, CheckCircle, Key } from '@phosphor-icons/react';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export default function ForgotPassword() {
@@ -68,7 +67,7 @@ export default function ForgotPassword() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <KeyRound className="w-8 h-8 text-sardis-400" />
+                        <Key className="w-8 h-8 text-sardis-400" />
                     </div>
                     <h1 className="text-3xl font-bold text-white font-display">Reset Password</h1>
                     <p className="text-gray-400 mt-2">Enter your email to receive a reset link</p>

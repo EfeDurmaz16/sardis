@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { CheckCircle, ChevronRight, Loader2, Copy, Check, Terminal } from 'lucide-react'
+import {
+  CaretRight,
+  Check,
+  CheckCircle,
+  Copy,
+  SpinnerGap,
+  Terminal,
+} from '@phosphor-icons/react'
 import { useAuth } from '../auth/AuthContext'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -119,7 +126,7 @@ payment = sardis.payments.create(
           className="inline-flex items-center gap-2 px-8 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           {apiKey ? 'Set Up My Agent' : "Let's Go"}
-          <ChevronRight className="w-5 h-5" />
+          <CaretRight className="w-5 h-5" />
         </button>
         <SkipLink onSkip={onSkip} />
       </div>
@@ -223,13 +230,13 @@ function StepCreateAgent({
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
               Creating Agent...
             </>
           ) : (
             <>
               Create Agent
-              <ChevronRight className="w-5 h-5" />
+              <CaretRight className="w-5 h-5" />
             </>
           )}
         </button>
@@ -323,13 +330,13 @@ function StepSetPolicy({
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
               Saving Policy...
             </>
           ) : (
             <>
               Save Policy
-              <ChevronRight className="w-5 h-5" />
+              <CaretRight className="w-5 h-5" />
             </>
           )}
         </button>
@@ -439,7 +446,7 @@ function StepTestPayment({ agentId, onNext, onSkip }: { agentId: string; onNext:
         >
           {isLoading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
               Running Test...
             </>
           ) : (
@@ -452,7 +459,7 @@ function StepTestPayment({ agentId, onNext, onSkip }: { agentId: string; onNext:
           className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           Continue
-          <ChevronRight className="w-5 h-5" />
+          <CaretRight className="w-5 h-5" />
         </button>
       )}
 
@@ -486,7 +493,7 @@ function StepDone() {
           className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           Go to Dashboard
-          <ChevronRight className="w-5 h-5" />
+          <CaretRight className="w-5 h-5" />
         </button>
 
         <a

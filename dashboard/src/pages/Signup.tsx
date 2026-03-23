@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { Shield, Copy, Check } from 'lucide-react';
-
+import { Check, Copy, Shield } from '@phosphor-icons/react';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export default function Signup() {
