@@ -84,73 +84,95 @@ async def mint_payment_object(
 ) -> PaymentObjectResponse:
     """Mint a payment object from a spending mandate.
 
-    Validates mandate bounds, claims funding cells, signs the object,
-    and returns a ready-to-present payment token.
+    Delegates to PaymentObjectMinter which validates mandate bounds,
+    claims funding cells (org-scoped, FOR UPDATE SKIP LOCKED),
+    computes session hash, signs the object, and returns a minted token.
     """
+    import hashlib
+
+    from sardis_v2_core.cell_claim import CellClaimAlgorithm
     from sardis_v2_core.database import Database
-    from sardis_v2_core.payment_object import PaymentObject, PaymentObjectStatus, PrivacyTier
+    from sardis_v2_core.minter import MintError, PaymentObjectMinter
+    from sardis_v2_core.payment_object import PrivacyTier
+    from sardis_v2_core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
 
-    # Verify mandate ownership and status
-    row = await Database.fetchrow(
-        "SELECT * FROM spending_mandates WHERE id = $1 AND org_id = $2",
-        req.mandate_id, principal.org_id,
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="Mandate not found")
-    if row["status"] != "active":
-        raise HTTPException(status_code=409, detail=f"Mandate is {row['status']}")
+    # --- Concrete port implementations (org-scoped) ---
 
-    # Check amount bounds
-    if row["amount_per_tx"] is not None and req.amount > row["amount_per_tx"]:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Amount {req.amount} exceeds per-tx limit {row['amount_per_tx']}",
-        )
-    if row["amount_total"] is not None:
-        remaining = row["amount_total"] - (row["spent_total"] or 0)
-        if req.amount > remaining:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Amount {req.amount} exceeds remaining budget {remaining}",
+    class _MandateLookup:
+        """Fetches mandate from DB, scoped to the principal's org."""
+        async def get_mandate(self, mandate_id: str) -> SpendingMandate | None:
+            row = await Database.fetchrow(
+                "SELECT * FROM spending_mandates WHERE id = $1 AND org_id = $2",
+                mandate_id, principal.org_id,
+            )
+            if not row:
+                return None
+            return SpendingMandate(
+                principal_id=row["principal_id"],
+                issuer_id=row["issuer_id"],
+                org_id=row["org_id"],
+                agent_id=row.get("agent_id"),
+                wallet_id=row.get("wallet_id"),
+                id=row["id"],
+                merchant_scope=row.get("merchant_scope") or {},
+                purpose_scope=row.get("purpose_scope"),
+                amount_per_tx=row.get("amount_per_tx"),
+                amount_daily=row.get("amount_daily"),
+                amount_weekly=row.get("amount_weekly"),
+                amount_monthly=row.get("amount_monthly"),
+                amount_total=row.get("amount_total"),
+                currency=row.get("currency", "USDC"),
+                spent_total=row.get("spent_total") or Decimal("0"),
+                allowed_rails=row.get("allowed_rails") or ["card", "usdc", "bank"],
+                allowed_chains=row.get("allowed_chains"),
+                allowed_tokens=row.get("allowed_tokens"),
+                expires_at=row.get("expires_at"),
+                approval_threshold=row.get("approval_threshold"),
+                approval_mode=ApprovalMode(row.get("approval_mode", "auto")),
+                status=MandateStatus(row.get("status", "active")),
             )
 
-    # Claim funding cells
-    claimed_cell_ids: list[str] = []
-    async with Database.transaction() as conn:
-        rows = await conn.fetch(
-            """SELECT cell_id, value FROM funding_cells
-               WHERE currency = $1 AND status = 'available'
-               ORDER BY value DESC
-               FOR UPDATE SKIP LOCKED""",
-            req.currency,
-        )
-        remaining_amount = req.amount
-        for cell_row in rows:
-            if remaining_amount <= 0:
-                break
-            claimed_cell_ids.append(cell_row["cell_id"])
-            remaining_amount -= cell_row["value"]
-            await conn.execute(
-                """UPDATE funding_cells
-                   SET status = 'claimed', owner_mandate_id = $1, claimed_at = now()
-                   WHERE cell_id = $2""",
-                req.mandate_id, cell_row["cell_id"],
-            )
+    class _CellClaimer:
+        """Claims funding cells scoped to the mandate's org via CellClaimAlgorithm."""
+        async def claim_cells(self, mandate_id: str, amount: Decimal, currency: str) -> list[str]:
+            pool = await Database.get_pool()
+            algo = CellClaimAlgorithm(pool)
+            cells = await algo.claim_cells(mandate_id, amount, currency)
+            return [c.cell_id for c in cells]
 
-    # Create payment object
-    expires_at = datetime.now(UTC) + timedelta(seconds=req.expires_in_seconds)
-    po = PaymentObject(
-        mandate_id=req.mandate_id,
-        cell_ids=claimed_cell_ids,
-        merchant_id=req.merchant_id,
-        exact_amount=req.amount,
-        currency=req.currency,
-        privacy_tier=PrivacyTier(req.privacy_tier),
-        expires_at=expires_at,
-        metadata=req.metadata or {},
+    class _Signer:
+        """HMAC signer using the org's API key hash as signing secret."""
+        async def sign(self, data: bytes) -> str:
+            secret = principal.org_id.encode()
+            return hashlib.sha256(secret + data).hexdigest()
+
+    # --- Mint via PaymentObjectMinter ---
+
+    minter = PaymentObjectMinter(
+        mandate_lookup=_MandateLookup(),
+        cell_claimer=_CellClaimer(),
+        signer=_Signer(),
     )
 
-    # Persist
+    try:
+        po = await minter.mint(
+            mandate_id=req.mandate_id,
+            merchant_id=req.merchant_id,
+            amount=req.amount,
+            currency=req.currency,
+            privacy_tier=PrivacyTier(req.privacy_tier),
+            expires_in_seconds=req.expires_in_seconds,
+            metadata=req.metadata,
+        )
+    except MintError as exc:
+        status_code = {
+            "MANDATE_NOT_FOUND": 404,
+            "MANDATE_NOT_ACTIVE": 409,
+            "MANDATE_EXPIRED": 410,
+        }.get(exc.error_code, 422)
+        raise HTTPException(status_code=status_code, detail=str(exc))
+
+    # Persist the minter-produced PaymentObject
     await Database.execute(
         """INSERT INTO payment_objects
            (object_id, mandate_id, cell_ids, merchant_id, exact_amount,
