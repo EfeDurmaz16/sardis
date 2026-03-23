@@ -176,7 +176,9 @@ function AgentCard({ agent, onChat }: { agent: AgentListItem; onChat: () => void
             <p className="text-xs text-gray-500 font-mono">{agent.agent_id}</p>
           </div>
         </div>
-        <div className={clsx(
+        <div
+          aria-hidden="true"
+          className={clsx(
           'status-dot',
           agent.is_active ? 'success' : 'error'
         )} />

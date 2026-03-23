@@ -416,6 +416,7 @@ export default function LiveEventsPage() {
             <button
               key={cat.value}
               onClick={() => setSelectedCategory(cat.value)}
+              aria-pressed={selectedCategory === cat.value}
               className={clsx(
                 'flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 text-sm font-medium border',
                 isActive
@@ -518,7 +519,9 @@ export default function LiveEventsPage() {
 
                         {/* Status indicator */}
                         <div className="flex-shrink-0">
-                          <div className={clsx(
+                          <div
+                            aria-hidden="true"
+                            className={clsx(
                             'w-2 h-2 rounded-full',
                             event.status === 'success' && 'bg-sardis-500',
                             event.status === 'warning' && 'bg-yellow-500',
