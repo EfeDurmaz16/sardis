@@ -1,25 +1,25 @@
 import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  ArrowSquareOut,
+  CaretDown,
+  CaretRight,
+  CheckCircle,
+  Clock,
+  Copy,
+  FileText,
+  Hash,
+  MagnifyingGlass,
+  Package,
+  Pulse,
   Shield,
   ShieldCheck,
-  Search,
-  Copy,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
-  Hash,
-  FileText,
-  Activity,
+  SpinnerGap,
   User,
-  Loader2,
-  AlertCircle,
-  Package,
-} from 'lucide-react'
+  Warning,
+  WarningCircle,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useQuery } from '@tanstack/react-query'
 import { useTransactionEvidence, usePolicyDecisions, useAgents } from '../hooks/useApi'
@@ -132,7 +132,7 @@ function VerdictBadge({ verdict }: { verdict: Verdict }) {
         verdict === 'approval_required' && 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30',
       )}
     >
-      {verdict === 'allowed' && <CheckCircle2 className="w-3 h-3" />}
+      {verdict === 'allowed' && <CheckCircle className="w-3 h-3" />}
       {verdict === 'denied' && <XCircle className="w-3 h-3" />}
       {verdict === 'approval_required' && <Clock className="w-3 h-3" />}
       {verdict.replace('_', ' ')}
@@ -166,7 +166,7 @@ function HashField({ label, value }: { label: string; value: string }) {
           title="Copy full hash"
         >
           {copied ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+            <CheckCircle className="w-3.5 h-3.5 text-green-400" />
           ) : (
             <Copy className="w-3.5 h-3.5" />
           )}
@@ -211,8 +211,8 @@ function PolicyStepRow({ step, index }: { step: PolicyStep; index: number }) {
         </span>
         {hasDetail && (
           expanded
-            ? <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            ? <CaretDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            : <CaretRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
         )}
       </button>
       {expanded && hasDetail && (
@@ -279,8 +279,8 @@ function PolicyDecisionRow({
             </code>
           )}
           {expanded
-            ? <ChevronDown className="w-4 h-4 text-gray-500" />
-            : <ChevronRight className="w-4 h-4 text-gray-500" />
+            ? <CaretDown className="w-4 h-4 text-gray-500" />
+            : <CaretRight className="w-4 h-4 text-gray-500" />
           }
         </div>
       </button>
@@ -289,13 +289,13 @@ function PolicyDecisionRow({
         <div className="border-t border-dark-100 px-4 py-4 space-y-4">
           {detailQuery.isLoading && (
             <div className="flex items-center gap-2 py-4 justify-center text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
               <span className="text-sm">Loading decision detail...</span>
             </div>
           )}
           {detailQuery.isError && (
             <div className="flex items-center gap-2 text-red-400 text-sm py-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <WarningCircle className="w-4 h-4 flex-shrink-0" />
               <span>Failed to load detail: {(detailQuery.error as Error).message}</span>
             </div>
           )}
@@ -335,7 +335,7 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-        <Loader2 className="w-5 h-5 animate-spin text-sardis-400" />
+        <SpinnerGap className="w-5 h-5 animate-spin text-sardis-400" />
         <span>Loading transaction evidence...</span>
       </div>
     )
@@ -344,7 +344,7 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
   if (isError) {
     return (
       <div className="card p-8 flex items-center gap-4">
-        <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+        <WarningCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
         <div>
           <p className="text-red-400 font-medium">Failed to load evidence</p>
           <p className="text-sm text-gray-500 mt-0.5">{(error as Error).message}</p>
@@ -417,7 +417,7 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
             {receipt.tx_hash && (
               <div className="flex items-center justify-between px-4 py-3 bg-dark-200 border border-dark-100">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Activity className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  <Pulse className="w-4 h-4 text-blue-400 flex-shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs text-gray-500 mb-0.5">On-chain Transaction</p>
                     <code className="text-xs font-mono text-blue-400 truncate block">
@@ -432,7 +432,7 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 hover:text-sardis-400 border border-dark-100 hover:border-sardis-500/40 transition-colors ml-3 flex-shrink-0"
                 >
                   View on Explorer
-                  <ExternalLink className="w-3 h-3" />
+                  <ArrowSquareOut className="w-3 h-3" />
                 </a>
               </div>
             )}
@@ -615,7 +615,7 @@ function AgentDecisionsView({ agentId }: { agentId: string }) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-        <Loader2 className="w-5 h-5 animate-spin text-sardis-400" />
+        <SpinnerGap className="w-5 h-5 animate-spin text-sardis-400" />
         <span>Loading policy decisions...</span>
       </div>
     )
@@ -624,7 +624,7 @@ function AgentDecisionsView({ agentId }: { agentId: string }) {
   if (isError) {
     return (
       <div className="card p-8 flex items-center gap-4">
-        <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
+        <WarningCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
         <div>
           <p className="text-red-400 font-medium">Failed to load decisions</p>
           <p className="text-sm text-gray-500 mt-0.5">{(error as Error).message}</p>
@@ -808,11 +808,11 @@ export default function EvidencePage() {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* MagnifyingGlass Bar */}
       <div className="card p-5">
         <div className="flex items-center gap-2">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
             <input
               type="text"
               value={inputValue}
@@ -844,8 +844,8 @@ export default function EvidencePage() {
                 : 'bg-dark-200 text-gray-600 border border-dark-100 cursor-not-allowed',
             )}
           >
-            <Search className="w-4 h-4" />
-            Search
+            <MagnifyingGlass className="w-4 h-4" />
+            MagnifyingGlass
           </button>
         </div>
 
@@ -854,7 +854,7 @@ export default function EvidencePage() {
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dark-100">
             {searchMode === 'transaction' ? (
               <>
-                <Activity className="w-3.5 h-3.5 text-sardis-400" />
+                <Pulse className="w-3.5 h-3.5 text-sardis-400" />
                 <span className="text-xs text-gray-500">
                   Showing transaction evidence for{' '}
                   <code className="font-mono text-gray-400">{searchedValue}</code>
@@ -869,7 +869,7 @@ export default function EvidencePage() {
                 </span>
               </>
             )}
-            <AlertTriangle className="w-3 h-3 text-gray-600 ml-1" />
+            <Warning className="w-3 h-3 text-gray-600 ml-1" />
             <span className="text-xs text-gray-600">IDs starting with tx_ search transactions, all others search agents</span>
             {searchMode === 'transaction' && (
               <button

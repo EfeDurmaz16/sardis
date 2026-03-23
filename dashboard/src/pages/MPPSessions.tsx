@@ -5,13 +5,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Loader2,
-  Search,
-  Zap,
   Clock,
-  DollarSign,
+  CurrencyDollar,
   Hash,
-} from 'lucide-react'
+  Lightning,
+  MagnifyingGlass,
+  SpinnerGap,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { mppApi } from '../api/client'
@@ -107,7 +107,7 @@ export default function MPPSessionsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white font-display flex items-center gap-3">
-          <Zap className="w-8 h-8 text-sardis-400" />
+          <Lightning className="w-8 h-8 text-sardis-400" />
           MPP Sessions
         </h1>
         <p className="text-gray-400 mt-1">
@@ -123,7 +123,7 @@ export default function MPPSessionsPage() {
               <p className="text-sm text-gray-400">Active Sessions</p>
               <p className="text-2xl font-bold text-green-500">{activeSessions}</p>
             </div>
-            <Zap className="w-8 h-8 text-green-500/30" />
+            <Lightning className="w-8 h-8 text-green-500/30" />
           </div>
         </div>
         <div className="card p-4">
@@ -132,7 +132,7 @@ export default function MPPSessionsPage() {
               <p className="text-sm text-gray-400">Total Limit</p>
               <p className="text-2xl font-bold text-white mono-numbers">${totalLimit.toFixed(2)}</p>
             </div>
-            <DollarSign className="w-8 h-8 text-sardis-400/30" />
+            <CurrencyDollar className="w-8 h-8 text-sardis-400/30" />
           </div>
         </div>
         <div className="card p-4">
@@ -141,7 +141,7 @@ export default function MPPSessionsPage() {
               <p className="text-sm text-gray-400">Remaining</p>
               <p className="text-2xl font-bold text-sardis-400 mono-numbers">${totalRemaining.toFixed(2)}</p>
             </div>
-            <DollarSign className="w-8 h-8 text-blue-400/30" />
+            <CurrencyDollar className="w-8 h-8 text-blue-400/30" />
           </div>
         </div>
         <div className="card p-4">
@@ -158,10 +158,10 @@ export default function MPPSessionsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search by session ID, agent, or description..."
+            placeholder="MagnifyingGlass by session ID, agent, or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:border-sardis-500/50"
@@ -188,7 +188,7 @@ export default function MPPSessionsPage() {
       {/* Loading */}
       {isLoading && (
         <div className="card p-12 text-center">
-          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <SpinnerGap className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
           <p className="text-gray-400">Loading MPP sessions...</p>
         </div>
       )}
@@ -205,7 +205,7 @@ export default function MPPSessionsPage() {
       {/* Empty */}
       {!isLoading && !error && sessions.length === 0 && (
         <div className="card p-12 text-center">
-          <Zap className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <Lightning className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400 mb-2">No MPP sessions found</p>
           <p className="text-sm text-gray-500">
             MPP sessions will appear here when agents initiate Machine Payments Protocol flows.

@@ -8,21 +8,21 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
+  ArrowsClockwise,
+  CheckCircle,
+  FloppyDisk,
   GitBranch,
+  PencilSimple,
   Plus,
-  Pencil,
-  Trash2,
-  Save,
+  Pulse,
+  ShieldWarning,
+  SpinnerGap,
+  Trash,
+  Warning,
   X,
-  Loader2,
-  RefreshCw,
-  CheckCircle2,
   XCircle,
-  AlertTriangle,
-  ShieldAlert,
-  Activity,
-  type LucideIcon,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
+import type { Icon } from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   fallbackPoliciesApi,
@@ -73,7 +73,7 @@ function SectionHeader({
   description,
   action,
 }: {
-  icon: LucideIcon
+  icon: Icon
   title: string
   description: string
   action?: React.ReactNode
@@ -139,7 +139,7 @@ function RuleFormModal({
     try {
       await onSave(form)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : 'FloppyDisk failed')
     } finally {
       setSaving(false)
     }
@@ -327,8 +327,8 @@ function RuleFormModal({
               disabled={saving}
               className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? 'Saving…' : 'Save Rule'}
+              {saving ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <FloppyDisk className="w-4 h-4" />}
+              {saving ? 'Saving…' : 'FloppyDisk Rule'}
             </button>
             <button
               type="button"
@@ -420,7 +420,7 @@ function FallbackRulesSection() {
               disabled={refreshing}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 border border-dark-100 hover:text-white hover:border-gray-500 transition-all duration-150"
             >
-              <RefreshCw className={clsx('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+              <ArrowsClockwise className={clsx('w-3.5 h-3.5', refreshing && 'animate-spin')} />
               Refresh
             </button>
             <button
@@ -443,7 +443,7 @@ function FallbackRulesSection() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-400 py-8">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <SpinnerGap className="w-4 h-4 animate-spin" />
           <span className="text-sm">Loading rules…</span>
         </div>
       ) : rules.length === 0 ? (
@@ -525,7 +525,7 @@ function FallbackRulesSection() {
                         className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-100 transition-all duration-150"
                         title="Edit"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <PencilSimple className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(rule.id)}
@@ -534,9 +534,9 @@ function FallbackRulesSection() {
                         title="Delete"
                       >
                         {deleting === rule.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
@@ -571,13 +571,13 @@ function FallbackRulesSection() {
 
 const DEGRADED_MODES = ['normal', 'degraded', 'maintenance', 'disabled'] as const
 
-function getRailIcon(rail: string): LucideIcon {
+function getRailIcon(rail: string): Icon {
   switch (rail) {
-    case 'stablecoin': return Activity
-    case 'virtual_card': return ShieldAlert
-    case 'x402': return AlertTriangle
+    case 'stablecoin': return Pulse
+    case 'virtual_card': return ShieldWarning
+    case 'x402': return Warning
     case 'bank_transfer': return GitBranch
-    default: return Activity
+    default: return Pulse
   }
 }
 
@@ -613,7 +613,7 @@ function DegradedModeCard({
       onUpdate(updated)
       setEditing(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : 'FloppyDisk failed')
     } finally {
       setSaving(false)
     }
@@ -660,7 +660,7 @@ function DegradedModeCard({
             className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-100 transition-all duration-150"
             title="Edit mode"
           >
-            <Pencil className="w-3.5 h-3.5" />
+            <PencilSimple className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
@@ -782,9 +782,9 @@ function DegradedModeCard({
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
             >
               {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle className="w-3.5 h-3.5" />
               )}
               {saving ? 'Saving…' : 'Apply'}
             </button>
@@ -831,7 +831,7 @@ function DegradedModesSection() {
   return (
     <div>
       <SectionHeader
-        icon={ShieldAlert}
+        icon={ShieldWarning}
         title="Degraded Mode Controls"
         description="Set per-rail operating mode, amount overrides, and approval requirements during incidents."
       />
@@ -845,7 +845,7 @@ function DegradedModesSection() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-400 py-8">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <SpinnerGap className="w-4 h-4 animate-spin" />
           <span className="text-sm">Loading degraded modes…</span>
         </div>
       ) : (

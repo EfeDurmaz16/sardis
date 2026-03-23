@@ -9,15 +9,15 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  CheckCircle2,
-  Circle,
-  Lock,
   ArrowRight,
+  ArrowSquareOut,
+  CheckCircle,
+  Circle,
+  Flask,
+  Lightning,
+  Lock,
   Rocket,
-  FlaskConical,
-  Zap,
-  ExternalLink,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAgents, useWebhooks, useBillingAccount, useTransactions } from '../hooks/useApi'
 import { useQuery } from '@tanstack/react-query'
@@ -88,7 +88,7 @@ interface Stage {
 function CheckItem({ check }: { check: ReadinessCheck }) {
   const iconEl = useMemo(() => {
     if (check.status === 'complete') {
-      return <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+      return <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
     }
     if (check.status === 'locked') {
       return <Lock className="w-4 h-4 text-gray-600 flex-shrink-0 mt-0.5" />
@@ -123,7 +123,7 @@ function CheckItem({ check }: { check: ReadinessCheck }) {
             className="flex items-center gap-1 text-xs text-sardis-400 hover:text-sardis-300 transition-colors flex-shrink-0 ml-2"
           >
             {check.actionLabel ?? 'Open'}
-            <ExternalLink className="w-3 h-3" />
+            <ArrowSquareOut className="w-3 h-3" />
           </a>
         ) : (
           <Link
@@ -166,14 +166,14 @@ function StageStatusBadge({
   if (allComplete) {
     return (
       <span className="flex items-center gap-1.5 text-xs text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1">
-        <CheckCircle2 className="w-3 h-3" />
+        <CheckCircle className="w-3 h-3" />
         Complete
       </span>
     )
   }
   return (
     <span className="flex items-center gap-1.5 text-xs text-amber-400 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1">
-      <Zap className="w-3 h-3" />
+      <Lightning className="w-3 h-3" />
       {done} of {total} complete
     </span>
   )
@@ -392,14 +392,14 @@ export default function LiveLaneOnboarding() {
     {
       id: 'sandbox',
       title: 'Sandbox',
-      icon: <FlaskConical className="w-4 h-4" />,
+      icon: <Flask className="w-4 h-4" />,
       checks: sandboxChecks,
       locked: false,
     },
     {
       id: 'test-integration',
       title: 'Test Integration',
-      icon: <Zap className="w-4 h-4" />,
+      icon: <Lightning className="w-4 h-4" />,
       checks: testIntegrationChecks,
       locked: !sandboxAllComplete,
     },
@@ -462,7 +462,7 @@ export default function LiveLaneOnboarding() {
           <span className="text-xs text-gray-500">{completedChecks} of {totalChecks} checks complete</span>
           {overallPct === 100 && (
             <span className="text-xs text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
+              <CheckCircle className="w-3 h-3" />
               Ready to go live
             </span>
           )}
@@ -495,7 +495,7 @@ export default function LiveLaneOnboarding() {
                 className="flex items-center gap-1.5 text-xs text-sardis-400 hover:text-sardis-300 border border-sardis-500/30 hover:border-sardis-400 px-3 py-1.5 transition-colors"
               >
                 Documentation
-                <ExternalLink className="w-3 h-3" />
+                <ArrowSquareOut className="w-3 h-3" />
               </a>
               <Link
                 to="/enterprise-support"

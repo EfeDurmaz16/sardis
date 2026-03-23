@@ -1,22 +1,22 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  FlaskConical,
-  Sparkles,
-  Play,
-  Shuffle,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  ChevronRight,
-  DollarSign,
-  ShieldCheck,
-  Target,
-  Clock,
-  Zap,
-  Copy,
+  CaretRight,
   Check,
-} from 'lucide-react'
+  CheckCircle,
+  Clock,
+  Copy,
+  CurrencyDollar,
+  Flask,
+  Lightning,
+  Play,
+  ShieldCheck,
+  Shuffle,
+  Sparkle,
+  Target,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import {
   AreaChart,
   Area,
@@ -472,7 +472,7 @@ export default function PolicyPlaygroundPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-200 rounded-full">
-          <FlaskConical className="w-4 h-4 text-sardis-400" />
+          <Flask className="w-4 h-4 text-sardis-400" />
           <span className="text-sm text-gray-400">Sandbox Only</span>
         </div>
       </div>
@@ -480,7 +480,7 @@ export default function PolicyPlaygroundPage() {
       {/* Section 1: Natural Language Policy Editor */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-5 h-5 text-sardis-400" />
+          <Sparkle className="w-5 h-5 text-sardis-400" />
           <h2 className="text-lg font-semibold text-white">Natural Language Policy</h2>
         </div>
         <p className="text-sm text-gray-400 mb-4">
@@ -523,7 +523,7 @@ export default function PolicyPlaygroundPage() {
             {isParsing ? (
               <div className="w-4 h-4 border-2 border-dark-400 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Zap className="w-4 h-4" />
+              <Lightning className="w-4 h-4" />
             )}
             Parse Policy
           </button>
@@ -538,7 +538,7 @@ export default function PolicyPlaygroundPage() {
                 label="Per-TX Limit"
                 value={parsedPolicy.per_tx_limit !== null ? `$${parsedPolicy.per_tx_limit.toFixed(2)}` : 'No limit'}
                 active={parsedPolicy.per_tx_limit !== null}
-                icon={<DollarSign className="w-4 h-4" />}
+                icon={<CurrencyDollar className="w-4 h-4" />}
               />
               <PolicyField
                 label={parsedPolicy.time_window ? `Total (${parsedPolicy.time_window})` : 'Total Limit'}
@@ -673,9 +673,9 @@ export default function PolicyPlaygroundPage() {
                     simResult.status === 'approval_required' && 'bg-yellow-500/5 border-yellow-500/30',
                   )}>
                     <div className="flex justify-center mb-3">
-                      {simResult.status === 'approved' && <CheckCircle2 className="w-12 h-12 text-sardis-400" />}
+                      {simResult.status === 'approved' && <CheckCircle className="w-12 h-12 text-sardis-400" />}
                       {simResult.status === 'rejected' && <XCircle className="w-12 h-12 text-red-400" />}
-                      {simResult.status === 'approval_required' && <AlertTriangle className="w-12 h-12 text-yellow-400" />}
+                      {simResult.status === 'approval_required' && <Warning className="w-12 h-12 text-yellow-400" />}
                     </div>
                     <p className={clsx(
                       'text-lg font-semibold',
@@ -695,7 +695,7 @@ export default function PolicyPlaygroundPage() {
                     {simResult.checks.map((check, i) => (
                       <div key={i} className="flex items-start gap-3 p-3 bg-dark-300/50 rounded-lg">
                         {check.passed ? (
-                          <CheckCircle2 className="w-4 h-4 text-sardis-400 mt-0.5 shrink-0" />
+                          <CheckCircle className="w-4 h-4 text-sardis-400 mt-0.5 shrink-0" />
                         ) : (
                           <XCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
                         )}
@@ -710,7 +710,7 @@ export default function PolicyPlaygroundPage() {
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-600">
                   <div className="text-center">
-                    <ChevronRight className="w-10 h-10 mx-auto mb-2" />
+                    <CaretRight className="w-10 h-10 mx-auto mb-2" />
                     <p className="text-sm">Configure a transaction and check it against your policy</p>
                   </div>
                 </div>

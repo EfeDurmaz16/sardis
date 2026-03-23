@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Clock3,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  Server,
-  ShieldAlert,
-  Zap,
-} from 'lucide-react'
+  ArrowSquareOut,
+  ArrowsClockwise,
+  CaretDown,
+  CaretUp,
+  CheckCircle,
+  Clock,
+  HardDrives,
+  Lightning,
+  Pulse,
+  ShieldWarning,
+  SpinnerGap,
+  Warning,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 
 import {
@@ -315,7 +315,7 @@ function ProviderCard({ provider }: { provider: ProviderAggregate }) {
         className="w-full px-5 py-3 border-t border-dark-100/60 flex items-center justify-between text-xs text-gray-500 hover:text-gray-300 transition-colors"
       >
         <span>Chain breakdown</span>
-        {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {expanded ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />}
       </button>
 
       {expanded && (
@@ -395,21 +395,21 @@ export default function ProviderScorecardsPage() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-sardis-400 border border-sardis-500/30 hover:bg-sardis-500/10 transition-colors"
           >
             Control Center
-            <ExternalLink className="w-3 h-3" />
+            <ArrowSquareOut className="w-3 h-3" />
           </Link>
           <Link
             to="/fallback-rules"
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-300 border border-dark-100 hover:border-sardis-500/30 hover:text-sardis-400 transition-colors"
           >
             Fallback Rules
-            <ExternalLink className="w-3 h-3" />
+            <ArrowSquareOut className="w-3 h-3" />
           </Link>
           <button
             onClick={() => void load(true)}
             disabled={refreshing}
             className="flex items-center gap-2 px-3 py-2 text-xs font-medium border border-dark-100 text-gray-300 hover:text-white hover:border-sardis-500/30 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={clsx('w-4 h-4', refreshing && 'animate-spin')} />
+            <ArrowsClockwise className={clsx('w-4 h-4', refreshing && 'animate-spin')} />
             Refresh
           </button>
         </div>
@@ -418,7 +418,7 @@ export default function ProviderScorecardsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-dark-300 border border-dark-100 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <Server className="w-4 h-4 text-gray-500" />
+            <HardDrives className="w-4 h-4 text-gray-500" />
             <span className="text-xs uppercase tracking-wider text-gray-500">Providers</span>
           </div>
           <p className="text-2xl font-bold font-mono text-white">{providers.length}</p>
@@ -427,7 +427,7 @@ export default function ProviderScorecardsPage() {
 
         <div className="bg-dark-300 border border-sardis-500/20 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <CheckCircle2 className="w-4 h-4 text-sardis-400" />
+            <CheckCircle className="w-4 h-4 text-sardis-400" />
             <span className="text-xs uppercase tracking-wider text-gray-500">Operational</span>
           </div>
           <p className="text-2xl font-bold font-mono text-sardis-400">{operationalCount}</p>
@@ -436,7 +436,7 @@ export default function ProviderScorecardsPage() {
 
         <div className="bg-dark-300 border border-yellow-500/20 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="w-4 h-4 text-yellow-400" />
+            <Warning className="w-4 h-4 text-yellow-400" />
             <span className="text-xs uppercase tracking-wider text-gray-500">Degraded</span>
           </div>
           <p className="text-2xl font-bold font-mono text-yellow-400">{degradedCount}</p>
@@ -445,7 +445,7 @@ export default function ProviderScorecardsPage() {
 
         <div className="bg-dark-300 border border-red-500/20 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldAlert className="w-4 h-4 text-red-400" />
+            <ShieldWarning className="w-4 h-4 text-red-400" />
             <span className="text-xs uppercase tracking-wider text-gray-500">Down</span>
           </div>
           <p className="text-2xl font-bold font-mono text-red-400">{downCount}</p>
@@ -455,17 +455,17 @@ export default function ProviderScorecardsPage() {
 
       {loading ? (
         <div className="flex items-center gap-3 text-gray-400 py-10">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <SpinnerGap className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading reliability scorecards…</span>
         </div>
       ) : error ? (
         <div className="flex items-center gap-3 px-4 py-3 border border-red-500/20 bg-red-500/5 text-red-400">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <Warning className="w-4 h-4 flex-shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
       ) : providers.length === 0 ? (
         <div className="border border-dark-100 bg-dark-300 p-8 text-center space-y-3">
-          <Activity className="w-8 h-8 text-gray-600 mx-auto" />
+          <Pulse className="w-8 h-8 text-gray-600 mx-auto" />
           <h2 className="text-lg font-semibold text-white">No provider scorecards yet</h2>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             Reliability telemetry is mounted, but no provider events have been recorded yet. Once
@@ -485,7 +485,7 @@ export default function ProviderScorecardsPage() {
               </div>
               {lastRefreshed && (
                 <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                  <Clock3 className="w-3.5 h-3.5" />
+                  <Clock className="w-3.5 h-3.5" />
                   Refreshed {formatRelativeTime(lastRefreshed)}
                 </p>
               )}
@@ -500,7 +500,7 @@ export default function ProviderScorecardsPage() {
           <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
             <div className="bg-dark-300 border border-dark-100 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Zap className="w-5 h-5 text-sardis-400" />
+                <Lightning className="w-5 h-5 text-sardis-400" />
                 <div>
                   <h2 className="text-lg font-semibold text-white">Rail Posture</h2>
                   <p className="text-sm text-gray-500">
@@ -547,7 +547,7 @@ export default function ProviderScorecardsPage() {
 
             <div className="bg-dark-300 border border-dark-100 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-sardis-400" />
+                <Pulse className="w-5 h-5 text-sardis-400" />
                 <div>
                   <h2 className="text-lg font-semibold text-white">SLO Snapshot</h2>
                   <p className="text-sm text-gray-500">

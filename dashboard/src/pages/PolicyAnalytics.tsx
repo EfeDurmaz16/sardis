@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle,
-  BarChart3,
-  CheckCircle2,
+  ArrowSquareOut,
+  ArrowsClockwise,
+  ChartBar,
+  CheckCircle,
   Clock,
-  ExternalLink,
   Lightbulb,
-  Loader2,
-  RefreshCw,
-  TrendingDown,
-  TrendingUp,
+  SpinnerGap,
+  TrendDown,
+  TrendUp,
+  Warning,
   XCircle,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 
 import {
@@ -40,8 +40,8 @@ function emptySummary(): PolicyAnalyticsSummary {
 }
 
 function trendIcon(trend: 'up' | 'down' | 'flat') {
-  if (trend === 'up') return <TrendingUp className="w-4 h-4 text-red-400" />
-  if (trend === 'down') return <TrendingDown className="w-4 h-4 text-sardis-400" />
+  if (trend === 'up') return <TrendUp className="w-4 h-4 text-red-400" />
+  if (trend === 'down') return <TrendDown className="w-4 h-4 text-sardis-400" />
   return <span className="text-gray-500">•</span>
 }
 
@@ -343,7 +343,7 @@ export default function PolicyAnalyticsPage() {
             disabled={refreshing}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium border border-dark-100 text-gray-300 hover:text-white hover:border-sardis-500/30 transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={clsx('w-4 h-4', refreshing && 'animate-spin')} />
+            <ArrowsClockwise className={clsx('w-4 h-4', refreshing && 'animate-spin')} />
             Refresh
           </button>
         </div>
@@ -351,17 +351,17 @@ export default function PolicyAnalyticsPage() {
 
       {loading ? (
         <div className="flex items-center gap-3 text-gray-400 py-10">
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <SpinnerGap className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading policy analytics…</span>
         </div>
       ) : error ? (
         <div className="flex items-center gap-3 px-4 py-3 border border-red-500/20 bg-red-500/5 text-red-400">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <Warning className="w-4 h-4 flex-shrink-0" />
           <span className="text-sm">{error}</span>
         </div>
       ) : !hasData ? (
         <div className="border border-dark-100 bg-dark-300 p-8 text-center space-y-3">
-          <BarChart3 className="w-8 h-8 text-gray-600 mx-auto" />
+          <ChartBar className="w-8 h-8 text-gray-600 mx-auto" />
           <h2 className="text-lg font-semibold text-white">No live policy outcome data yet</h2>
           <p className="text-sm text-gray-500 max-w-xl mx-auto">
             This page becomes useful once live policy decisions are recorded. Until then, use
@@ -374,14 +374,14 @@ export default function PolicyAnalyticsPage() {
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-sardis-400 border border-sardis-500/30 hover:bg-sardis-500/10 transition-colors"
             >
               Policy Manager
-              <ExternalLink className="w-3 h-3" />
+              <ArrowSquareOut className="w-3 h-3" />
             </Link>
             <Link
               to="/simulation"
               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-gray-300 border border-dark-100 hover:border-sardis-500/30 hover:text-sardis-400 transition-colors"
             >
               Scenario Testing
-              <ExternalLink className="w-3 h-3" />
+              <ArrowSquareOut className="w-3 h-3" />
             </Link>
           </div>
         </div>
@@ -389,7 +389,7 @@ export default function PolicyAnalyticsPage() {
         <>
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-sardis-400" />
+              <ChartBar className="w-5 h-5 text-sardis-400" />
               Outcome Summary
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -422,7 +422,7 @@ export default function PolicyAnalyticsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-sardis-400" />
+              <ArrowsClockwise className="w-5 h-5 text-sardis-400" />
               Outcome Over Time
             </h2>
             <div className="card p-6">
@@ -457,7 +457,7 @@ export default function PolicyAnalyticsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-sardis-400" />
+              <CheckCircle className="w-5 h-5 text-sardis-400" />
               Deterministic Tuning Suggestions
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

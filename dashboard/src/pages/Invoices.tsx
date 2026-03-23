@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, FileText, Plus, CheckCircle, Clock, XCircle, AlertTriangle, ExternalLink, Copy } from 'lucide-react'
+import {
+  ArrowSquareOut,
+  CheckCircle,
+  Clock,
+  Copy,
+  FileText,
+  MagnifyingGlass,
+  Plus,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { invoicesApi } from '../api/client'
@@ -95,11 +105,11 @@ export default function InvoicesPage() {
       case 'pending':
         return <Clock className="w-4 h-4" />
       case 'partial':
-        return <AlertTriangle className="w-4 h-4" />
+        return <Warning className="w-4 h-4" />
       case 'cancelled':
         return <XCircle className="w-4 h-4" />
       case 'overdue':
-        return <AlertTriangle className="w-4 h-4" />
+        return <Warning className="w-4 h-4" />
       default:
         return <FileText className="w-4 h-4" />
     }
@@ -166,10 +176,10 @@ export default function InvoicesPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search invoices..."
+            placeholder="MagnifyingGlass invoices..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
@@ -303,7 +313,7 @@ export default function InvoicesPage() {
                       Send Reminder
                     </button>
                     <button className="px-4 py-2 bg-dark-200 text-gray-400 rounded-lg text-sm font-medium hover:bg-dark-100 transition-colors">
-                      <ExternalLink className="w-4 h-4" />
+                      <ArrowSquareOut className="w-4 h-4" />
                     </button>
                   </div>
                 )}

@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import {
-  Activity,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  Settings,
-  ShieldAlert,
-  ShieldOff,
-  Zap,
-  XCircle,
-  BarChart3,
+  ArrowsClockwise,
+  CaretDown,
+  CaretRight,
+  ChartBar,
+  Gear,
+  Lightning,
+  Pulse,
+  ShieldSlash,
+  ShieldWarning,
   Sliders,
-} from 'lucide-react'
+  SpinnerGap,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import { useAnomalyEvents, useAnomalyConfig, useUpdateAnomalyConfig, useAssessRisk } from '../hooks/useApi'
@@ -242,8 +242,8 @@ function EventRow({ event }: { event: AnomalyEvent }) {
         {/* Expand chevron */}
         <span className="flex-shrink-0 ml-2">
           {expanded
-            ? <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
-            : <ChevronRight className="w-3.5 h-3.5 text-gray-500" />}
+            ? <CaretDown className="w-3.5 h-3.5 text-gray-500" />
+            : <CaretRight className="w-3.5 h-3.5 text-gray-500" />}
         </span>
       </button>
 
@@ -347,7 +347,7 @@ function AssessmentTool() {
       >
         <div className="flex items-center gap-3">
           <div className="p-2 bg-sardis-500/10 border border-sardis-500/20">
-            <Zap className="w-4 h-4 text-sardis-400" />
+            <Lightning className="w-4 h-4 text-sardis-400" />
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-white">Risk Assessment Tool</p>
@@ -355,8 +355,8 @@ function AssessmentTool() {
           </div>
         </div>
         {open
-          ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
-          : <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+          ? <CaretDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+          : <CaretRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
       </button>
 
       {open && (
@@ -436,12 +436,12 @@ function AssessmentTool() {
               >
                 {assessRisk.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SpinnerGap className="w-4 h-4 animate-spin" />
                     Assessing...
                   </>
                 ) : (
                   <>
-                    <Zap className="w-4 h-4" />
+                    <Lightning className="w-4 h-4" />
                     Assess Risk
                   </>
                 )}
@@ -484,7 +484,7 @@ function AssessmentTool() {
             {assessRisk.isPending && (
               <div className="flex-1 flex items-center justify-center min-h-[120px]">
                 <div className="flex items-center gap-3 text-gray-500">
-                  <Loader2 className="w-5 h-5 animate-spin text-sardis-400" />
+                  <SpinnerGap className="w-5 h-5 animate-spin text-sardis-400" />
                   <span className="text-sm">Evaluating risk signals...</span>
                 </div>
               </div>
@@ -556,10 +556,10 @@ function ThresholdConfig() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {configQuery.isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
+          {configQuery.isLoading && <SpinnerGap className="w-3.5 h-3.5 animate-spin text-gray-500" />}
           {open
-            ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            : <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+            ? <CaretDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+            : <CaretRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
         </div>
       </button>
 
@@ -567,7 +567,7 @@ function ThresholdConfig() {
         <div className="px-5 pb-5 pt-1 border-t border-dark-100">
           {configQuery.isError && (
             <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-red-500/5 border border-red-500/25">
-              <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <Warning className="w-4 h-4 text-red-400 flex-shrink-0" />
               <p className="text-xs text-red-300">Failed to load config from API.</p>
             </div>
           )}
@@ -651,12 +651,12 @@ function ThresholdConfig() {
             >
               {updateConfig.isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Settings className="w-4 h-4" />
+                  <Gear className="w-4 h-4" />
                   Save Configuration
                 </>
               )}
@@ -703,7 +703,7 @@ function EventsTable({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 border-b border-dark-100">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-dark-200 border border-dark-100">
-            <BarChart3 className="w-4 h-4 text-gray-400" />
+            <ChartBar className="w-4 h-4 text-gray-400" />
           </div>
           <div>
             <p className="text-sm font-semibold text-white">Recent Anomaly Events</p>
@@ -734,7 +734,7 @@ function EventsTable({
             className="p-2 bg-dark-200 border border-dark-100 hover:border-sardis-500/40 transition-colors"
             title="Refresh"
           >
-            <RefreshCw className={clsx('w-3.5 h-3.5 text-gray-400', isLoading && 'animate-spin')} />
+            <ArrowsClockwise className={clsx('w-3.5 h-3.5 text-gray-400', isLoading && 'animate-spin')} />
           </button>
         </div>
       </div>
@@ -752,14 +752,14 @@ function EventsTable({
       {/* Rows */}
       {isLoading && (
         <div className="flex items-center justify-center gap-3 py-16 text-gray-500">
-          <Loader2 className="w-5 h-5 animate-spin text-sardis-400" />
+          <SpinnerGap className="w-5 h-5 animate-spin text-sardis-400" />
           <span className="text-sm">Loading events...</span>
         </div>
       )}
 
       {isError && !isLoading && (
         <div className="flex items-center justify-center gap-3 py-12 text-gray-500">
-          <AlertTriangle className="w-5 h-5 text-yellow-400" />
+          <Warning className="w-5 h-5 text-yellow-400" />
           <span className="text-sm">Failed to load anomaly events.</span>
         </div>
       )}
@@ -767,7 +767,7 @@ function EventsTable({
       {!isLoading && !isError && events.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
           <div className="p-5 bg-dark-200 border border-dark-100">
-            <Activity className="w-10 h-10 text-gray-600" />
+            <Pulse className="w-10 h-10 text-gray-600" />
           </div>
           <div className="text-center">
             <p className="text-sm font-semibold text-white mb-1">No anomaly events</p>
@@ -818,7 +818,7 @@ export default function AnomalyDashboard() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white font-display flex items-center gap-3">
-            <Activity className="w-8 h-8 text-sardis-400" />
+            <Pulse className="w-8 h-8 text-sardis-400" />
             Anomaly Detection
           </h1>
           <p className="text-gray-400 mt-1 max-w-xl">
@@ -826,7 +826,7 @@ export default function AnomalyDashboard() {
           </p>
         </div>
         <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-500">
-          <ShieldAlert className="w-4 h-4 text-sardis-400" />
+          <ShieldWarning className="w-4 h-4 text-sardis-400" />
           Live — refreshes every 15s
         </div>
       </div>
@@ -836,27 +836,27 @@ export default function AnomalyDashboard() {
         <StatCard
           title="Total Events"
           value={totalEvents}
-          icon={<BarChart3 className="w-5 h-5" />}
+          icon={<ChartBar className="w-5 h-5" />}
           subtitle="In current filter"
         />
         <StatCard
           title="High Risk"
           value={highRiskEvents}
-          icon={<AlertTriangle className="w-5 h-5" />}
+          icon={<Warning className="w-5 h-5" />}
           subtitle="Score >= 0.60"
           changeType={highRiskEvents > 0 ? 'negative' : 'neutral'}
         />
         <StatCard
           title="Auto-Frozen"
           value={autoFrozenCount}
-          icon={<ShieldOff className="w-5 h-5" />}
+          icon={<ShieldSlash className="w-5 h-5" />}
           subtitle="Freeze / kill-switch"
           changeType={autoFrozenCount > 0 ? 'negative' : 'neutral'}
         />
         <StatCard
           title="Avg Risk Score"
           value={rawEvents.length > 0 ? avgScore.toFixed(3) : '—'}
-          icon={<Activity className="w-5 h-5" />}
+          icon={<Pulse className="w-5 h-5" />}
           subtitle="Across filtered events"
           changeType={avgScore >= 0.6 ? 'negative' : avgScore >= 0.3 ? 'neutral' : 'positive'}
         />

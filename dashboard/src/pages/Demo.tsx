@@ -1,24 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
+  ArrowCounterClockwise,
+  CaretDown,
+  CaretRight,
+  CheckCircle,
   Copy,
-  Loader2,
+  Flask,
+  Lightning,
   Power,
-  PowerOff,
+  Prohibit,
   Shield,
-  ShieldAlert,
   ShieldCheck,
-  ShieldX,
-  Sparkles,
-  XCircle,
-  FlaskConical,
-  RotateCcw,
+  ShieldSlash,
+  ShieldWarning,
+  Sparkle,
+  SpinnerGap,
   ThumbsUp,
-  Ban,
-  Zap,
-} from 'lucide-react'
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { policiesApi, approvalsApi, killSwitchApi, simulationApi, agentApi } from '../api/client'
 
@@ -107,7 +106,7 @@ function VerdictBadge({ allowed, label }: { allowed: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2">
       {allowed ? (
-        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+        <CheckCircle className="w-5 h-5 text-emerald-400" />
       ) : (
         <XCircle className="w-5 h-5 text-red-400" />
       )}
@@ -159,7 +158,7 @@ function ProgressStepper({ currentBeat, beatStatuses }: { currentBeat: number; b
               )}
             >
               {isDone && !isCurrent ? (
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle className="w-4 h-4" />
               ) : isError && !isCurrent ? (
                 <XCircle className="w-4 h-4" />
               ) : (
@@ -253,7 +252,7 @@ function BeatSection({
           <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
         </div>
         <div className="flex-shrink-0 text-gray-500">
-          {isOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          {isOpen ? <CaretDown className="w-5 h-5" /> : <CaretRight className="w-5 h-5" />}
         </div>
       </button>
 
@@ -618,7 +617,7 @@ export default function DemoPage() {
         disabled={disabled || loading}
         className="w-full py-3 bg-sardis-500 text-dark-400 font-bold hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {loading && <SpinnerGap className="w-4 h-4 animate-spin" />}
         {label}
       </button>
     )
@@ -635,7 +634,7 @@ export default function DemoPage() {
           extraClass
         )}
       >
-        {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {loading && <SpinnerGap className="w-4 h-4 animate-spin" />}
         {label}
       </button>
     )
@@ -649,7 +648,7 @@ export default function DemoPage() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-sardis-500/10 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-sardis-400" />
+            <Sparkle className="w-5 h-5 text-sardis-400" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white font-display">Control Plane Demo</h1>
@@ -661,7 +660,7 @@ export default function DemoPage() {
           onClick={resetDemo}
           className="flex items-center gap-2 px-4 py-2 bg-dark-200 border border-dark-100 text-gray-300 hover:text-white hover:bg-dark-100 transition-colors"
         >
-          <RotateCcw className="w-4 h-4" />
+          <ArrowCounterClockwise className="w-4 h-4" />
           Reset Demo
         </button>
       </div>
@@ -681,7 +680,7 @@ export default function DemoPage() {
       {/* Setup indicator */}
       {setupStatus === 'running' && (
         <div className="card p-4 flex items-center gap-3 border-sardis-500/30">
-          <Loader2 className="w-5 h-5 text-sardis-400 animate-spin" />
+          <SpinnerGap className="w-5 h-5 text-sardis-400 animate-spin" />
           <span className="text-sm text-gray-300">Creating demo agent...</span>
         </div>
       )}
@@ -741,7 +740,7 @@ export default function DemoPage() {
         beatNumber={2}
         title="Normal Payment (Success)"
         subtitle="$50 to OpenAI (MCC 5734, Software) — within all policy bounds"
-        icon={CheckCircle2}
+        icon={CheckCircle}
         currentBeat={currentBeat}
         status={b2Status}
       >
@@ -783,7 +782,7 @@ export default function DemoPage() {
         beatNumber={3}
         title="Over-Limit Block"
         subtitle="$600 payment exceeds $500/day limit — policy engine rejects"
-        icon={ShieldX}
+        icon={ShieldSlash}
         currentBeat={currentBeat}
         status={b3Status}
       >
@@ -873,7 +872,7 @@ export default function DemoPage() {
                 <div key={idx} className="mb-3 last:mb-0">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <ShieldAlert className="w-4 h-4 text-amber-400" />
+                      <ShieldWarning className="w-4 h-4 text-amber-400" />
                       <span className="text-sm text-amber-300">Pending approval</span>
                     </div>
                     <span className="text-xs font-mono text-gray-500">{String(approval.id || `appr_${idx}`)}</span>
@@ -900,7 +899,7 @@ export default function DemoPage() {
           {b4ApproveResult && (
             <ResultBlock label="Approval Result">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <CheckCircle className="w-4 h-4 text-emerald-400" />
                 <span className="text-sm text-emerald-300">Approved — payment would now proceed</span>
               </div>
               <JsonPreview data={b4ApproveResult} />
@@ -918,7 +917,7 @@ export default function DemoPage() {
         beatNumber={5}
         title="Category Block"
         subtitle="$50 to gambling merchant (MCC 7995) — blocked by category policy"
-        icon={Ban}
+        icon={Prohibit}
         currentBeat={currentBeat}
         status={b5Status}
       >
@@ -1013,7 +1012,7 @@ export default function DemoPage() {
             <>
               <ResultBlock label="Kill Switch Status">
                 <div className="flex items-center gap-2">
-                  <PowerOff className="w-4 h-4 text-emerald-400" />
+                  <Power className="w-4 h-4 text-emerald-400" />
                   <span className="text-sm text-emerald-300">Kill switch deactivated</span>
                 </div>
               </ResultBlock>
@@ -1043,7 +1042,7 @@ export default function DemoPage() {
         beatNumber={7}
         title="Simulate / Replay"
         subtitle="What if we tried $400 instead of $600? Dry-run without executing."
-        icon={FlaskConical}
+        icon={Flask}
         currentBeat={currentBeat}
         status={b7Status}
       >
@@ -1114,7 +1113,7 @@ export default function DemoPage() {
 
               {b7Result.would_succeed && (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-emerald-400" />
+                  <Lightning className="w-5 h-5 text-emerald-400" />
                   <span className="text-sm text-emerald-300">
                     Simulation passed — this payment could be executed for real via the Payments API.
                   </span>
@@ -1126,7 +1125,7 @@ export default function DemoPage() {
           {b7Status === 'done' && (
             <div className="mt-6 p-4 bg-sardis-500/10 border border-sardis-500/30">
               <div className="flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-sardis-400" />
+                <Sparkle className="w-5 h-5 text-sardis-400" />
                 <div>
                   <h4 className="text-white font-semibold">Demo Complete</h4>
                   <p className="text-sm text-gray-400 mt-0.5">

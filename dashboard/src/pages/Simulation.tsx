@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  FlaskConical,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Loader2,
+  CaretDown,
+  CaretRight,
+  CheckCircle,
+  Flask,
+  Power,
   Shield,
   ShieldCheck,
-  Power,
-  ChevronDown,
-  ChevronRight,
+  SpinnerGap,
   User,
-} from 'lucide-react'
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useSimulate, useAgents } from '../hooks/useApi'
 
@@ -111,8 +111,8 @@ function StepRow({ step, index }: { step: PolicyStep; index: number }) {
         </span>
         {hasReason && (
           expanded
-            ? <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            ? <CaretDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            : <CaretRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
         )}
       </button>
       {expanded && hasReason && (
@@ -200,7 +200,7 @@ function ResultsPanel({ result }: { result: SimulateResult }) {
         )}
       >
         {would_succeed ? (
-          <CheckCircle2 className="w-14 h-14 text-green-400 mb-3" />
+          <CheckCircle className="w-14 h-14 text-green-400 mb-3" />
         ) : (
           <XCircle className="w-14 h-14 text-red-400 mb-3" />
         )}
@@ -224,7 +224,7 @@ function ResultsPanel({ result }: { result: SimulateResult }) {
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-red-500/10 border border-red-500/20">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <Warning className="w-4 h-4 text-red-400" />
             </div>
             <h3 className="text-sm font-semibold text-white">Failure Reasons</h3>
           </div>
@@ -394,7 +394,7 @@ function EmptyState() {
   return (
     <div className="card p-16 flex flex-col items-center justify-center gap-5 h-full min-h-[320px]">
       <div className="p-5 bg-dark-200 border border-dark-100">
-        <FlaskConical className="w-12 h-12 text-gray-600" />
+        <Flask className="w-12 h-12 text-gray-600" />
       </div>
       <div className="text-center max-w-xs">
         <h3 className="text-base font-semibold text-white mb-2">No simulation run yet</h3>
@@ -449,7 +449,7 @@ export default function SimulationPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white font-display flex items-center gap-3">
-            <FlaskConical className="w-8 h-8 text-sardis-400" />
+            <Flask className="w-8 h-8 text-sardis-400" />
             Live Policy Dry Run
           </h1>
           <p className="text-gray-400 mt-1 max-w-lg">
@@ -485,7 +485,7 @@ export default function SimulationPage() {
         <div className="w-full lg:w-[40%] flex-shrink-0">
           <form onSubmit={handleSubmit} className="card p-6 space-y-5">
             <div className="flex items-center gap-2 mb-1">
-              <FlaskConical className="w-4 h-4 text-sardis-400" />
+              <Flask className="w-4 h-4 text-sardis-400" />
               <h2 className="text-base font-semibold text-white">Simulation Parameters</h2>
             </div>
 
@@ -494,7 +494,7 @@ export default function SimulationPage() {
               <FieldLabel>Agent <span className="text-red-400">*</span></FieldLabel>
               {agentsQuery.isLoading ? (
                 <div className="flex items-center gap-2 px-3 py-2.5 bg-dark-200 border border-dark-100 text-gray-500 text-sm">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
                   Loading agents...
                 </div>
               ) : agents.length === 0 ? (
@@ -574,12 +574,12 @@ export default function SimulationPage() {
             >
               {simulate.isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                   Running simulation...
                 </>
               ) : (
                 <>
-                  <FlaskConical className="w-4 h-4" />
+                  <Flask className="w-4 h-4" />
                   Run Live Dry Run
                 </>
               )}
@@ -591,7 +591,7 @@ export default function SimulationPage() {
         <div className="w-full lg:flex-1 min-w-0">
           {simulate.isPending && (
             <div className="card p-16 flex flex-col items-center justify-center gap-4 min-h-[320px]">
-              <Loader2 className="w-10 h-10 text-sardis-400 animate-spin" />
+              <SpinnerGap className="w-10 h-10 text-sardis-400 animate-spin" />
               <p className="text-gray-400 text-sm">Running policy evaluation...</p>
             </div>
           )}

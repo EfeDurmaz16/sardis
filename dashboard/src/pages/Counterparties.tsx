@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 import {
-  Search,
-  ShieldCheck,
-  ShieldX,
+  CaretDown,
+  ChartBar,
   Clock,
+  MagnifyingGlass,
+  PencilSimple,
   Plus,
-  Pencil,
-  Trash2,
-  AlertCircle,
+  ShieldCheck,
+  ShieldSlash,
+  Trash,
   Users,
+  WarningCircle,
   X,
-  ChevronDown,
-  BarChart2,
-  type LucideIcon,
-} from 'lucide-react'
+} from '@phosphor-icons/react'
+import type { Icon } from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   counterpartiesApi,
@@ -30,11 +30,11 @@ type CounterpartyType = 'merchant' | 'vendor' | 'agent' | 'service'
 
 const TRUST_STATUS_CONFIG: Record<
   TrustStatus,
-  { label: string; color: string; bg: string; icon: LucideIcon }
+  { label: string; color: string; bg: string; icon: Icon }
 > = {
   pending:  { label: 'Pending',  color: 'text-yellow-400', bg: 'bg-yellow-500/10', icon: Clock },
   approved: { label: 'Approved', color: 'text-green-400',  bg: 'bg-green-500/10',  icon: ShieldCheck },
-  blocked:  { label: 'Blocked',  color: 'text-red-400',    bg: 'bg-red-500/10',    icon: ShieldX },
+  blocked:  { label: 'Blocked',  color: 'text-red-400',    bg: 'bg-red-500/10',    icon: ShieldSlash },
 } as const
 
 const TYPE_CONFIG: Record<CounterpartyType, { label: string; color: string; bg: string }> = {
@@ -437,7 +437,7 @@ function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-dark-100">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-sardis-400" />
+            <ChartBar className="w-5 h-5 text-sardis-400" />
             Trust Profile
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
@@ -457,7 +457,7 @@ function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) 
 
           {error && (
             <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <WarningCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -475,7 +475,7 @@ function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) 
                     {profile.policy_compatible ? (
                       <ShieldCheck className="w-4 h-4 text-green-400" />
                     ) : (
-                      <ShieldX className="w-4 h-4 text-red-400" />
+                      <ShieldSlash className="w-4 h-4 text-red-400" />
                     )}
                     <span className={clsx('text-sm', profile.policy_compatible ? 'text-green-400' : 'text-red-400')}>
                       {profile.policy_compatible ? 'Policy Compatible' : 'Policy Incompatible'}
@@ -737,7 +737,7 @@ export default function CounterpartiesPage() {
       {/* Error */}
       {error && (
         <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <WarningCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-auto">
             <X className="w-4 h-4" />
@@ -747,12 +747,12 @@ export default function CounterpartiesPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
+        {/* MagnifyingGlass */}
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search by name, identifier, or category..."
+            placeholder="MagnifyingGlass by name, identifier, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
@@ -768,7 +768,7 @@ export default function CounterpartiesPage() {
             <span className="text-sm">
               {typeFilter === 'all' ? 'All Types' : TYPE_CONFIG[typeFilter].label}
             </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', typeOpen && 'rotate-180')} />
+            <CaretDown className={clsx('w-4 h-4 transition-transform', typeOpen && 'rotate-180')} />
           </button>
           {typeOpen && (
             <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
@@ -800,7 +800,7 @@ export default function CounterpartiesPage() {
             <span className="text-sm">
               {statusFilter === 'all' ? 'All Statuses' : TRUST_STATUS_CONFIG[statusFilter].label}
             </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', statusOpen && 'rotate-180')} />
+            <CaretDown className={clsx('w-4 h-4 transition-transform', statusOpen && 'rotate-180')} />
           </button>
           {statusOpen && (
             <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
@@ -934,21 +934,21 @@ export default function CounterpartiesPage() {
                             className="p-1.5 text-gray-500 hover:text-sardis-400 hover:bg-sardis-500/10 transition-colors"
                             title="View Trust Profile"
                           >
-                            <BarChart2 className="w-4 h-4" />
+                            <ChartBar className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleOpenEdit(c)}
                             className="p-1.5 text-gray-500 hover:text-white hover:bg-dark-200 transition-colors"
                             title="Edit"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <PencilSimple className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(c)}
                             className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                             title="Delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash className="w-4 h-4" />
                           </button>
                         </div>
                       </td>

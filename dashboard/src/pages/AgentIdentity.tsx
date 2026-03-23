@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  Users,
-  Shield,
-  Award,
   CheckCircle,
-  AlertCircle,
   Code,
-  TrendingUp,
-  Plus,
   Eye,
-  Star
-} from 'lucide-react'
+  Medal,
+  Plus,
+  Shield,
+  Star,
+  TrendUp,
+  Users,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 
@@ -245,7 +245,7 @@ export default function AgentIdentityPage() {
           value={avgReputation}
           change="Out of 100"
           changeType="positive"
-          icon={<Award className="w-6 h-6" />}
+          icon={<Medal className="w-6 h-6" />}
         />
         <StatCard
           title="Total Validations"
@@ -453,7 +453,7 @@ export default function AgentIdentityPage() {
               <h2 className="text-lg font-semibold text-white">Reputation Events</h2>
               <p className="text-sm text-gray-400 mt-1">Recent validation and violation events</p>
             </div>
-            <TrendingUp className="w-5 h-5 text-sardis-400" />
+            <TrendUp className="w-5 h-5 text-sardis-400" />
           </div>
 
           <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -473,10 +473,10 @@ export default function AgentIdentityPage() {
                       <CheckCircle className="w-4 h-4 text-sardis-400" />
                     )}
                     {event.event_type === 'violation' && (
-                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <WarningCircle className="w-4 h-4 text-red-500" />
                     )}
                     {event.event_type === 'transaction' && (
-                      <TrendingUp className="w-4 h-4 text-blue-500" />
+                      <TrendUp className="w-4 h-4 text-blue-500" />
                     )}
                     <span className="text-xs font-medium text-white capitalize">{event.event_type}</span>
                   </div>

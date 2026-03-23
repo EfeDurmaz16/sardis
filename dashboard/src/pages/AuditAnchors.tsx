@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
   Anchor,
+  ArrowSquareOut,
   CheckCircle,
   Clock,
-  AlertCircle,
+  FileText,
   GitBranch,
   Hash,
-  FileText,
+  MagnifyingGlass,
   Shield,
-  ExternalLink,
-  Search
-} from 'lucide-react'
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 
@@ -181,7 +181,7 @@ export default function AuditAnchorsPage() {
       case 'pending':
         return <Clock className="w-5 h-5 text-yellow-500" />
       case 'failed':
-        return <AlertCircle className="w-5 h-5 text-red-500" />
+        return <WarningCircle className="w-5 h-5 text-red-500" />
     }
   }
 
@@ -303,7 +303,7 @@ export default function AuditAnchorsPage() {
 
                 <div>
                   <p className="text-gray-500 text-xs mb-1 flex items-center gap-1">
-                    <ExternalLink className="w-3 h-3" />
+                    <ArrowSquareOut className="w-3 h-3" />
                     Transaction Hash
                   </p>
                   <div className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export default function AuditAnchorsPage() {
                       rel="noopener noreferrer"
                       className="text-gray-400 hover:text-sardis-400 transition-colors"
                     >
-                      <ExternalLink className="w-3 h-3" />
+                      <ArrowSquareOut className="w-3 h-3" />
                     </a>
                   </div>
                 </div>
@@ -365,7 +365,7 @@ export default function AuditAnchorsPage() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Search className="w-4 h-4 text-gray-400" />
+                    <MagnifyingGlass className="w-4 h-4 text-gray-400" />
                     <span className="text-xs font-mono text-gray-400">{entry.id}</span>
                   </div>
                   <span className="text-sm font-medium text-sardis-400 mono-numbers">
@@ -432,7 +432,7 @@ export default function AuditAnchorsPage() {
                     </>
                   ) : (
                     <>
-                      <AlertCircle className="w-5 h-5 text-red-500" />
+                      <WarningCircle className="w-5 h-5 text-red-500" />
                       <span className="font-semibold text-red-500">Proof Invalid</span>
                     </>
                   )}
@@ -473,7 +473,7 @@ export default function AuditAnchorsPage() {
           ) : (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
-                <Search className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <MagnifyingGlass className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <p className="text-sm text-gray-400">
                   Select an entry to verify its Merkle proof
                 </p>

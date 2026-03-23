@@ -1,23 +1,23 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Shield,
-  Sparkles,
-  ChevronDown,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  DollarSign,
-  Tag,
+  CaretDown,
+  ChartBar,
+  CheckCircle,
   Clock,
-  ShieldCheck,
+  CurrencyDollar,
   Eye,
-  Send,
+  MagnifyingGlass,
+  PaperPlaneTilt,
+  Shield,
+  ShieldCheck,
+  Sparkle,
+  SpinnerGap,
+  Tag,
   User,
-  BarChart2,
-  Search,
-} from 'lucide-react'
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   useAgents,
@@ -112,7 +112,7 @@ function WarningBox({ warnings }: { warnings: string[] }) {
   return (
     <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+        <Warning className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
         <div className="space-y-1">
           {warnings.map((w, i) => (
             <p key={i} className="text-sm text-yellow-300">
@@ -228,7 +228,7 @@ function ParsedResult({ result }: { result: ParsedPolicyResult }) {
               className="p-3 bg-sardis-500/5 border border-sardis-500/20"
             >
               <div className="flex items-center gap-1.5 mb-1">
-                <DollarSign className="w-3 h-3 text-sardis-400" />
+                <CurrencyDollar className="w-3 h-3 text-sardis-400" />
                 <p className="text-xs text-gray-500 uppercase tracking-wider">
                   {label}
                 </p>
@@ -414,7 +414,7 @@ export default function PoliciesPage() {
             to="/simulation"
             className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 text-xs text-gray-300 hover:text-white hover:border-sardis-500/40 transition-colors"
           >
-            <Search className="w-3.5 h-3.5 text-sardis-400" />
+            <MagnifyingGlass className="w-3.5 h-3.5 text-sardis-400" />
             Use Live Dry Run
           </Link>
         </div>
@@ -425,9 +425,9 @@ export default function PoliciesPage() {
         <summary
           className="flex items-center gap-2 cursor-pointer list-none text-sm font-medium text-gray-300 hover:text-white transition-colors"
         >
-          <Sparkles className="w-4 h-4 text-sardis-400" />
+          <Sparkle className="w-4 h-4 text-sardis-400" />
           Start from Template
-          <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          <CaretDown className="w-4 h-4 transition-transform group-open:rotate-180" />
         </summary>
         <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <PolicyTemplates
@@ -448,7 +448,7 @@ export default function PoliciesPage() {
         <div className="lg:col-span-2 space-y-5">
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-5">
-              <Sparkles className="w-5 h-5 text-sardis-400" />
+              <Sparkle className="w-5 h-5 text-sardis-400" />
               <h2 className="text-lg font-semibold text-white">Policy Editor</h2>
             </div>
 
@@ -478,7 +478,7 @@ export default function PoliciesPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                <CaretDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
               </div>
             </div>
 
@@ -488,7 +488,7 @@ export default function PoliciesPage() {
                 <SectionLabel>Current Policy</SectionLabel>
                 {policyLoading ? (
                   <div className="flex items-center gap-2 py-4 text-gray-500 text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <SpinnerGap className="w-4 h-4 animate-spin" />
                     Loading current policy…
                   </div>
                 ) : currentPolicy ? (
@@ -546,9 +546,9 @@ export default function PoliciesPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-dark-200 border border-dark-100 text-gray-300 hover:text-white hover:border-sardis-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
               >
                 {parseMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Search className="w-4 h-4" />
+                  <MagnifyingGlass className="w-4 h-4" />
                 )}
                 Parse
               </button>
@@ -563,7 +563,7 @@ export default function PoliciesPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-dark-200 border border-dark-100 text-gray-300 hover:text-white hover:border-sardis-500/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
               >
                 {previewMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                 ) : (
                   <Eye className="w-4 h-4" />
                 )}
@@ -580,7 +580,7 @@ export default function PoliciesPage() {
                   }
                   className="flex items-center gap-2 px-5 py-2 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                 >
-                  <Send className="w-4 h-4" />
+                  <PaperPlaneTilt className="w-4 h-4" />
                   Apply Policy
                 </button>
               ) : (
@@ -592,9 +592,9 @@ export default function PoliciesPage() {
                     className="flex items-center gap-1.5 px-4 py-2 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 text-sm"
                   >
                     {applyMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <SpinnerGap className="w-4 h-4 animate-spin" />
                     ) : (
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle className="w-4 h-4" />
                     )}
                     Yes, Apply
                   </button>
@@ -611,7 +611,7 @@ export default function PoliciesPage() {
             {/* Success message */}
             {applySuccess && (
               <div className="mt-4 flex items-center gap-2 p-3 bg-sardis-500/10 border border-sardis-500/30 text-sardis-400 text-sm">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <CheckCircle className="w-4 h-4 shrink-0" />
                 Policy applied successfully.
               </div>
             )}
@@ -738,7 +738,7 @@ export default function PoliciesPage() {
                 className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
               >
                 {checkMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <SpinnerGap className="w-4 h-4 animate-spin" />
                 ) : (
                   <ShieldCheck className="w-4 h-4" />
                 )}
@@ -758,7 +758,7 @@ export default function PoliciesPage() {
               >
                 <div className="flex justify-center mb-3">
                   {checkResult.allowed ? (
-                    <CheckCircle2 className="w-10 h-10 text-sardis-400" />
+                    <CheckCircle className="w-10 h-10 text-sardis-400" />
                   ) : (
                     <XCircle className="w-10 h-10 text-red-400" />
                   )}
@@ -790,13 +790,13 @@ export default function PoliciesPage() {
       {/* Applied Policies Summary */}
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
-          <BarChart2 className="w-5 h-5 text-sardis-400" />
+          <ChartBar className="w-5 h-5 text-sardis-400" />
           <h2 className="text-lg font-semibold text-white">Applied Policies</h2>
         </div>
 
         {agentsLoading ? (
           <div className="flex items-center gap-2 py-6 text-gray-500 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SpinnerGap className="w-4 h-4 animate-spin" />
             Loading agents…
           </div>
         ) : agentsWithPolicies.length === 0 ? (
@@ -887,7 +887,7 @@ function AgentPolicyRow({
       </td>
       <td className="py-3 pr-4">
         {isLoading ? (
-          <Loader2 className="w-3.5 h-3.5 text-gray-600 animate-spin" />
+          <SpinnerGap className="w-3.5 h-3.5 text-gray-600 animate-spin" />
         ) : (
           <span className="text-sm text-gray-300 capitalize">
             {p?.trust_level ?? '—'}

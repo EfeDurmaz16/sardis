@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import {
-  Search,
-  Store,
+  CaretDown,
+  ChartBar,
+  CurrencyDollar,
+  MagnifyingGlass,
   ShieldCheck,
-  BarChart3,
-  DollarSign,
-  ChevronDown,
-  AlertCircle,
-} from 'lucide-react'
+  Storefront,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import { useMerchants } from '../hooks/useApi'
@@ -111,7 +111,7 @@ export default function MerchantsPage() {
         <StatCard
           title="Total Merchants"
           value={isLoading ? '—' : merchants.length}
-          icon={<Store className="w-5 h-5" />}
+          icon={<Storefront className="w-5 h-5" />}
           change="+3 this month"
           changeType="positive"
         />
@@ -128,14 +128,14 @@ export default function MerchantsPage() {
         <StatCard
           title="Avg Trust Score"
           value={isLoading ? '—' : avgTrustScore}
-          icon={<BarChart3 className="w-5 h-5" />}
+          icon={<ChartBar className="w-5 h-5" />}
           change="+4 vs last month"
           changeType="positive"
         />
         <StatCard
           title="Total Volume"
           value={isLoading ? '—' : formatVolume(totalVolume)}
-          icon={<DollarSign className="w-5 h-5" />}
+          icon={<CurrencyDollar className="w-5 h-5" />}
           change="+12.3%"
           changeType="positive"
         />
@@ -144,7 +144,7 @@ export default function MerchantsPage() {
       {/* Error state */}
       {error && (
         <div className="flex items-center gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <WarningCircle className="w-4 h-4 flex-shrink-0" />
           <span>Failed to load merchants. Please try refreshing the page.</span>
         </div>
       )}
@@ -152,10 +152,10 @@ export default function MerchantsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search merchants..."
+            placeholder="MagnifyingGlass merchants..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
@@ -173,7 +173,7 @@ export default function MerchantsPage() {
                 ? 'All Trust Levels'
                 : TRUST_LEVEL_CONFIG[trustFilter].label}
             </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', filterOpen && 'rotate-180')} />
+            <CaretDown className={clsx('w-4 h-4 transition-transform', filterOpen && 'rotate-180')} />
           </button>
           {filterOpen && (
             <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
@@ -240,7 +240,7 @@ export default function MerchantsPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-sardis-500/10 flex items-center justify-center">
-                            <Store className="w-4 h-4 text-sardis-400" />
+                            <Storefront className="w-4 h-4 text-sardis-400" />
                           </div>
                           <span className="text-sm font-medium text-white">{merchant.name}</span>
                         </div>
@@ -323,7 +323,7 @@ export default function MerchantsPage() {
 
         {!isLoading && filtered.length === 0 && (
           <div className="p-12 text-center">
-            <Store className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <Storefront className="w-12 h-12 text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No merchants found</h3>
             <p className="text-gray-400">
               {search || trustFilter !== 'all'

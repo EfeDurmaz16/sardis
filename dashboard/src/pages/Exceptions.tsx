@@ -1,21 +1,21 @@
 import { useState, useMemo } from 'react'
 import {
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
+  ArrowCounterClockwise,
   ArrowUpRight,
+  CaretDown,
+  CaretUp,
+  CheckCircle,
   Clock,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  Filter,
-  Loader2,
+  Funnel,
+  MagnifyingGlass,
+  PencilSimple,
   Plus,
-  Pencil,
-  Trash2,
   ShieldCheck,
-} from 'lucide-react'
+  SpinnerGap,
+  Trash,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   useExceptions,
@@ -106,8 +106,8 @@ function typeBadgeClass(type: ExceptionType): string {
 function StatusIcon({ status }: { status: ExceptionStatus }) {
   switch (status) {
     case 'OPEN':        return <Clock className="w-3 h-3" />
-    case 'IN_PROGRESS': return <RotateCcw className="w-3 h-3" />
-    case 'RESOLVED':    return <CheckCircle2 className="w-3 h-3" />
+    case 'IN_PROGRESS': return <ArrowCounterClockwise className="w-3 h-3" />
+    case 'RESOLVED':    return <CheckCircle className="w-3 h-3" />
     case 'ESCALATED':   return <ArrowUpRight className="w-3 h-3" />
     case 'ABANDONED':   return <XCircle className="w-3 h-3" />
   }
@@ -167,7 +167,7 @@ function ResolveInput({ value, onChange, onConfirm, onCancel, loading }: Resolve
             loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sardis-500/20'
           )}
         >
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+          {loading ? <SpinnerGap className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
           Confirm Resolve
         </button>
         <button
@@ -408,7 +408,7 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
               saving || !form.name ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sardis-500/20'
             )}
           >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {saving ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
             {initial ? 'Save Changes' : 'Create Policy'}
           </button>
           <button
@@ -503,7 +503,7 @@ function RetryPoliciesSection() {
 
       {isLoading ? (
         <div className="bg-dark-300 border border-dark-100 p-8 text-center">
-          <Loader2 className="w-6 h-6 text-sardis-500 mx-auto animate-spin" />
+          <SpinnerGap className="w-6 h-6 text-sardis-500 mx-auto animate-spin" />
         </div>
       ) : policies.length === 0 ? (
         <div className="bg-dark-300 border border-dark-100 p-8 text-center text-gray-500 text-sm">
@@ -585,7 +585,7 @@ function RetryPoliciesSection() {
                         className="p-1.5 text-gray-500 hover:text-white transition-colors"
                         title="Edit policy"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <PencilSimple className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(policy.id)}
@@ -594,9 +594,9 @@ function RetryPoliciesSection() {
                         title="Delete policy"
                       >
                         {deletingId === policy.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
@@ -729,7 +729,7 @@ export default function ExceptionsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold font-display text-gradient flex items-center gap-3">
-          <AlertTriangle className="w-8 h-8 text-yellow-500" />
+          <Warning className="w-8 h-8 text-yellow-500" />
           Exception Handling
         </h1>
         <p className="text-gray-400 mt-1">
@@ -749,13 +749,13 @@ export default function ExceptionsPage() {
           label="In Progress"
           value={stats.inProgress}
           color="text-blue-400"
-          icon={<RotateCcw className="w-5 h-5 text-blue-400" />}
+          icon={<ArrowCounterClockwise className="w-5 h-5 text-blue-400" />}
         />
         <StatCard
           label="Resolved Today"
           value={stats.resolvedToday}
           color="text-sardis-400"
-          icon={<CheckCircle2 className="w-5 h-5 text-sardis-400" />}
+          icon={<CheckCircle className="w-5 h-5 text-sardis-400" />}
         />
         <StatCard
           label="Escalated"
@@ -765,14 +765,14 @@ export default function ExceptionsPage() {
         />
       </div>
 
-      {/* Filter bar */}
+      {/* Funnel bar */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Agent search */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
             type="text"
-            placeholder="Search by agent ID..."
+            placeholder="MagnifyingGlass by agent ID..."
             value={agentSearch}
             onChange={(e) => setAgentSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-dark-300 border border-dark-100 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
@@ -781,7 +781,7 @@ export default function ExceptionsPage() {
 
         {/* Status filter */}
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-gray-500 shrink-0" />
+          <Funnel className="w-4 h-4 text-gray-500 shrink-0" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
@@ -818,7 +818,7 @@ export default function ExceptionsPage() {
       {/* Loading */}
       {isLoading && (
         <div className="bg-dark-300 border border-dark-100 p-12 text-center">
-          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-3 animate-spin" />
+          <SpinnerGap className="w-8 h-8 text-sardis-500 mx-auto mb-3 animate-spin" />
           <p className="text-gray-400 text-sm">Loading exceptions...</p>
         </div>
       )}
@@ -839,7 +839,7 @@ export default function ExceptionsPage() {
         <div className="space-y-2">
           {filtered.length === 0 ? (
             <div className="bg-dark-300 border border-dark-100 p-16 text-center">
-              <AlertTriangle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <Warning className="w-12 h-12 text-gray-600 mx-auto mb-4" />
               <p className="text-gray-400 font-medium">No exceptions found</p>
               <p className="text-gray-600 text-sm mt-1">Try adjusting your filters</p>
             </div>
@@ -918,9 +918,9 @@ export default function ExceptionsPage() {
                         {formatTimeAgo(exc.created_at)}
                       </span>
                       {isExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-gray-500" />
+                        <CaretUp className="w-4 h-4 text-gray-500" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                        <CaretDown className="w-4 h-4 text-gray-500" />
                       )}
                     </div>
                   </div>
@@ -1006,7 +1006,7 @@ export default function ExceptionsPage() {
                                   isActioning ? 'opacity-50 cursor-not-allowed' : 'hover:bg-sardis-500/20'
                                 )}
                               >
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle className="w-4 h-4" />
                                 Resolve
                               </button>
 
@@ -1021,7 +1021,7 @@ export default function ExceptionsPage() {
                                 )}
                               >
                                 {isActioning ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <SpinnerGap className="w-4 h-4 animate-spin" />
                                 ) : (
                                   <ArrowUpRight className="w-4 h-4" />
                                 )}
@@ -1039,9 +1039,9 @@ export default function ExceptionsPage() {
                                 )}
                               >
                                 {isActioning ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  <SpinnerGap className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <RotateCcw className="w-4 h-4" />
+                                  <ArrowCounterClockwise className="w-4 h-4" />
                                 )}
                                 Evaluate Recovery
                                 {exc.retry_count >= exc.max_retries && (

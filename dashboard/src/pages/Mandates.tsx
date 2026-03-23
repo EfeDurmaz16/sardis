@@ -7,20 +7,20 @@
 
 import { useState } from 'react';
 import {
-  Shield,
-  Plus,
-  Loader2,
+  CaretDown,
+  CaretRight,
   CheckCircle,
-  XCircle,
-  PauseCircle,
   Clock,
-  DollarSign,
-  ChevronDown,
-  ChevronRight,
-  Ban,
-  Play,
+  CurrencyDollar,
   Pause,
-} from 'lucide-react';
+  PauseCircle,
+  Play,
+  Plus,
+  Prohibit,
+  Shield,
+  SpinnerGap,
+  XCircle,
+} from '@phosphor-icons/react';
 import clsx from 'clsx';
 import { useMandates, useMandateTransitions, useCreateMandate, useMandateAction } from '../hooks/useApi';
 
@@ -56,7 +56,7 @@ function StatusBadge({ status }: { status: string }) {
     suspended: { bg: 'bg-yellow-500/10', text: 'text-yellow-500', icon: PauseCircle },
     revoked: { bg: 'bg-red-500/10', text: 'text-red-500', icon: XCircle },
     expired: { bg: 'bg-gray-500/10', text: 'text-gray-500', icon: Clock },
-    consumed: { bg: 'bg-blue-500/10', text: 'text-blue-400', icon: DollarSign },
+    consumed: { bg: 'bg-blue-500/10', text: 'text-blue-400', icon: CurrencyDollar },
   };
   const c = config[status] || config.draft;
   const Icon = c.icon;
@@ -220,7 +220,7 @@ function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
 function TransitionHistory({ mandateId }: { mandateId: string }) {
   const { data: transitions, isLoading } = useMandateTransitions(mandateId);
 
-  if (isLoading) return <Loader2 size={14} className="text-gray-500 animate-spin" />;
+  if (isLoading) return <SpinnerGap size={14} className="text-gray-500 animate-spin" />;
 
   if (!transitions || transitions.length === 0) {
     return <p className="text-xs text-gray-500">No transitions yet</p>;
@@ -313,7 +313,7 @@ export default function MandatesPage() {
       {/* Loading */}
       {loading && (
         <div className="card p-12 text-center">
-          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <SpinnerGap className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
           <p className="text-gray-400">Loading mandates...</p>
         </div>
       )}
@@ -348,7 +348,7 @@ export default function MandatesPage() {
                 aria-expanded={expandedId === m.id}
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  {expandedId === m.id ? <ChevronDown size={16} className="text-gray-500 shrink-0" /> : <ChevronRight size={16} className="text-gray-500 shrink-0" />}
+                  {expandedId === m.id ? <CaretDown size={16} className="text-gray-500 shrink-0" /> : <CaretRight size={16} className="text-gray-500 shrink-0" />}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-mono text-white">{m.id}</span>
@@ -374,7 +374,7 @@ export default function MandatesPage() {
                         </button>
                         <button onClick={() => handleAction(m.id, 'revoke', 'Revoked from dashboard')} disabled={actionLoading === m.id}
                           className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke" aria-label="Revoke mandate">
-                          <Ban size={14} />
+                          <Prohibit size={14} />
                         </button>
                       </>
                     )}
@@ -386,7 +386,7 @@ export default function MandatesPage() {
                         </button>
                         <button onClick={() => handleAction(m.id, 'revoke', 'Revoked from dashboard')} disabled={actionLoading === m.id}
                           className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors" title="Revoke" aria-label="Revoke mandate">
-                          <Ban size={14} />
+                          <Prohibit size={14} />
                         </button>
                       </>
                     )}

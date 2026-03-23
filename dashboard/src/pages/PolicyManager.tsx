@@ -10,22 +10,22 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import {
-  FileText,
-  FlaskConical,
-  Send,
+  ArrowCounterClockwise,
+  CheckCircle,
   Clock,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  RotateCcw,
-  DollarSign,
-  Tag,
-  ShieldCheck,
+  CurrencyDollar,
   Eye,
-  Sparkles,
+  FileText,
+  Flask,
   Info,
-} from 'lucide-react'
+  PaperPlaneTilt,
+  ShieldCheck,
+  Sparkle,
+  SpinnerGap,
+  Tag,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useLocation } from 'react-router-dom'
 import {
@@ -199,7 +199,7 @@ function PolicyPreview({ parsed }: { parsed: ParsedPolicy }) {
       {/* Spending limits */}
       <div className="bg-dark-200 border border-dark-100 p-4 space-y-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <DollarSign className="w-4 h-4 text-sardis-400" />
+          <CurrencyDollar className="w-4 h-4 text-sardis-400" />
           Spending Limits
         </div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -269,7 +269,7 @@ function PolicyPreview({ parsed }: { parsed: ParsedPolicy }) {
       {/* Warnings */}
       {parsed.warnings?.length ? (
         <div className="bg-yellow-500/5 border border-yellow-500/20 p-3 flex gap-2">
-          <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <Warning className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
           <ul className="space-y-1">
             {parsed.warnings.map((w, i) => (
               <li key={i} className="text-sm text-yellow-300">{w}</li>
@@ -335,9 +335,9 @@ function AuthorTab({
             className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {parse.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <SpinnerGap className="w-4 h-4 animate-spin" />
             ) : (
-              <Sparkles className="w-4 h-4" />
+              <Sparkle className="w-4 h-4" />
             )}
             {parse.isPending ? 'Parsing…' : 'Parse Policy'}
           </button>
@@ -476,7 +476,7 @@ function TestTab({ draftText }: { draftText: string }) {
     <div className="space-y-6">
       {!draftText.trim() && (
         <div className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 p-3">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <Warning className="w-4 h-4 flex-shrink-0" />
           No draft policy written yet. Go to the Author tab first. Draft policy tests do not use the live policy.
         </div>
       )}
@@ -524,7 +524,7 @@ function TestTab({ draftText }: { draftText: string }) {
               disabled={running || !draftText.trim()}
               className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full justify-center mt-2"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+              {running ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <Flask className="w-4 h-4" />}
               {running ? 'Running…' : 'Run All Scenarios'}
             </button>
           </div>
@@ -558,7 +558,7 @@ function TestTab({ draftText }: { draftText: string }) {
               disabled={!customAmount || running || !draftText.trim()}
               className="flex items-center gap-2 px-5 py-2.5 border border-sardis-500/40 text-sardis-400 text-sm font-medium hover:bg-sardis-500/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors w-full justify-center"
             >
-              {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
+              {running ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <Flask className="w-4 h-4" />}
               Test Custom Scenario
             </button>
           </div>
@@ -570,7 +570,7 @@ function TestTab({ draftText }: { draftText: string }) {
           {results.length === 0 ? (
             <div className="bg-dark-200 border border-dashed border-dark-100 flex items-center justify-center min-h-64">
               <div className="text-center text-gray-600 space-y-2">
-                <FlaskConical className="w-8 h-8 mx-auto opacity-40" />
+                <Flask className="w-8 h-8 mx-auto opacity-40" />
                 <p className="text-sm">Run scenarios to see results</p>
               </div>
             </div>
@@ -590,12 +590,12 @@ function TestTab({ draftText }: { draftText: string }) {
                     <span className="text-sm font-medium text-white">{r.label}</span>
                     {r.verdict === 'allow' ? (
                       <Badge variant="success">
-                        <CheckCircle2 className="w-3 h-3" />
+                        <CheckCircle className="w-3 h-3" />
                         ALLOW
                       </Badge>
                     ) : r.verdict === 'approval_required' ? (
                       <Badge variant="warn">
-                        <AlertTriangle className="w-3 h-3" />
+                        <Warning className="w-3 h-3" />
                         APPROVAL
                       </Badge>
                     ) : (
@@ -662,14 +662,14 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
     <div className="space-y-6 max-w-2xl">
       {!draftText.trim() && (
         <div className="flex items-center gap-2 text-sm text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 p-3">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <Warning className="w-4 h-4 flex-shrink-0" />
           No draft policy. Write one in the Author tab before deploying.
         </div>
       )}
 
       {deploySuccess && (
         <div className="flex items-center gap-2 text-sm text-green-400 bg-green-500/5 border border-green-500/20 p-3">
-          <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+          <CheckCircle className="w-4 h-4 flex-shrink-0" />
           Policy deployed successfully to agent {selectedAgentId.slice(0, 8)}…
         </div>
       )}
@@ -734,7 +734,7 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
                 <div className="space-y-2">
                   <p className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">{draftText}</p>
                   <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 p-2.5">
-                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <Warning className="w-3.5 h-3.5 flex-shrink-0" />
                     Parse the draft before deploying so you can review the structured policy output.
                   </div>
                 </div>
@@ -760,7 +760,7 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
         disabled={!selectedAgentId || !draftText.trim() || applyPolicy.isPending}
         className="flex items-center gap-2 px-6 py-3 bg-sardis-500 text-dark-400 text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        <Send className="w-4 h-4" />
+        <PaperPlaneTilt className="w-4 h-4" />
         Deploy Policy
       </button>
 
@@ -791,7 +791,7 @@ function DeployTab({ draftText, parsedPolicy }: { draftText: string; parsedPolic
                 disabled={applyPolicy.isPending}
                 className="flex items-center gap-2 px-5 py-2 bg-sardis-500 text-dark-400 text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 transition-colors"
               >
-                {applyPolicy.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {applyPolicy.isPending ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <PaperPlaneTilt className="w-4 h-4" />}
                 {applyPolicy.isPending ? 'Deploying…' : 'Confirm Deploy'}
               </button>
             </div>
@@ -922,9 +922,9 @@ function HistoryTab({
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-dark-100 text-gray-400 hover:text-white hover:border-sardis-500/40 disabled:opacity-50 transition-colors flex-shrink-0"
                 >
                   {loadingCommitId === entry.id ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <SpinnerGap className="w-3 h-3 animate-spin" />
                   ) : (
-                    <RotateCcw className="w-3 h-3" />
+                    <ArrowCounterClockwise className="w-3 h-3" />
                   )}
                   {loadingCommitId === entry.id ? 'Loading…' : 'Load for Rollback'}
                 </button>
@@ -948,8 +948,8 @@ function HistoryTab({
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'author', label: 'Author', icon: <FileText className="w-4 h-4" /> },
-  { id: 'test', label: 'Draft Scenarios', icon: <FlaskConical className="w-4 h-4" /> },
-  { id: 'deploy', label: 'Deploy', icon: <Send className="w-4 h-4" /> },
+  { id: 'test', label: 'Draft Scenarios', icon: <Flask className="w-4 h-4" /> },
+  { id: 'deploy', label: 'Deploy', icon: <PaperPlaneTilt className="w-4 h-4" /> },
   { id: 'history', label: 'History', icon: <Clock className="w-4 h-4" /> },
 ]
 
@@ -1003,7 +1003,7 @@ export default function PolicyManagerPage() {
         </div>
         {parsedPolicy && (
           <Badge variant="success">
-            <CheckCircle2 className="w-3 h-3" />
+            <CheckCircle className="w-3 h-3" />
             Parsed
           </Badge>
         )}

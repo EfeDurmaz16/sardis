@@ -11,16 +11,16 @@
 
 import { useState, useEffect } from 'react';
 import {
-  TrendingUp,
-  AlertCircle,
-  Download,
   Calendar,
-  Filter,
-  DollarSign,
-  Activity,
+  CurrencyDollar,
+  Download,
+  Funnel,
+  Pulse,
   Shield,
-  Store,
-} from 'lucide-react';
+  Storefront,
+  TrendUp,
+  WarningCircle,
+} from '@phosphor-icons/react';
 import { SpendingChart } from '../components/charts/SpendingChart';
 import { AgentSpendingBar } from '../components/charts/AgentSpendingBar';
 import { CategoryPie } from '../components/charts/CategoryPie';
@@ -89,7 +89,7 @@ const DEMO_TOP_MERCHANTS = [
 const DEMO_POLICY_BLOCKS = [
   { timestamp: new Date().toISOString(), agent_id: 'agent_002', agent_name: 'Travel Booker', amount: 3500, merchant: 'Luxury Hotels Inc', reason: 'Exceeds per-transaction limit ($2000)' },
   { timestamp: new Date(Date.now() - 3600000).toISOString(), agent_id: 'agent_005', agent_name: 'Marketing AI', amount: 800, merchant: 'Casino Online', reason: 'Blocked merchant category: gambling' },
-  { timestamp: new Date(Date.now() - 7200000).toISOString(), agent_id: 'agent_001', agent_name: 'Shopping Agent', amount: 150, merchant: 'Unknown Store', reason: 'Merchant not in allowlist' },
+  { timestamp: new Date(Date.now() - 7200000).toISOString(), agent_id: 'agent_001', agent_name: 'Shopping Agent', amount: 150, merchant: 'Unknown Storefront', reason: 'Merchant not in allowlist' },
 ];
 
 // Types matching backend response models
@@ -332,7 +332,7 @@ export default function Analytics() {
                   : 'bg-dark-200 text-gray-400 hover:bg-dark-100'
               }`}
             >
-              <Filter className="w-4 h-4" />
+              <Funnel className="w-4 h-4" />
               All Agents
             </button>
             <button
@@ -352,7 +352,7 @@ export default function Analytics() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-400">Total Spend</span>
-              <DollarSign className="w-5 h-5 text-sardis-400" />
+              <CurrencyDollar className="w-5 h-5 text-sardis-400" />
             </div>
             <p className="text-2xl font-bold text-white">{formatCurrency(summary.total_spend)}</p>
             <p className="text-xs text-gray-500 mt-1">
@@ -363,7 +363,7 @@ export default function Analytics() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-400">Transactions</span>
-              <Activity className="w-5 h-5 text-sardis-400" />
+              <Pulse className="w-5 h-5 text-sardis-400" />
             </div>
             <p className="text-2xl font-bold text-white">{summary.total_transactions}</p>
             <p className="text-xs text-gray-500 mt-1">
@@ -374,7 +374,7 @@ export default function Analytics() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-400">Active Agents</span>
-              <TrendingUp className="w-5 h-5 text-sardis-400" />
+              <TrendUp className="w-5 h-5 text-sardis-400" />
             </div>
             <p className="text-2xl font-bold text-white">{summary.active_agents}</p>
             <p className="text-xs text-gray-500 mt-1">
@@ -481,7 +481,7 @@ export default function Analytics() {
         {/* Top Merchants */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Store className="w-5 h-5 text-sardis-400" />
+            <Storefront className="w-5 h-5 text-sardis-400" />
             Top Merchants
           </h3>
           {loading ? (
@@ -519,7 +519,7 @@ export default function Analytics() {
         {/* Policy Blocks */}
         <div className="card p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-500" />
+            <WarningCircle className="w-5 h-5 text-red-500" />
             Recent Policy Blocks
           </h3>
           {loading ? (

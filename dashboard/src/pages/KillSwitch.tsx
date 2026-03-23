@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import {
-  Power,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
+  ArrowsClockwise,
+  CheckCircle,
   Clock,
+  LinkSimple,
+  Power,
+  Pulse,
+  Stack,
   User,
-  Activity,
-  Link,
-  Layers,
-  RefreshCw,
-} from 'lucide-react'
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import {
@@ -181,7 +181,7 @@ function ActivateModal({ target, onConfirm, onCancel, isLoading }: ActivateModal
             >
               {isLoading ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <ArrowsClockwise className="w-4 h-4 animate-spin" />
                   Activating...
                 </>
               ) : (
@@ -269,9 +269,9 @@ function SwitchCard({
               className="px-3 py-1.5 bg-dark-400 border border-dark-100 text-gray-300 text-xs font-medium hover:border-sardis-500/40 hover:text-sardis-400 transition-all disabled:opacity-50 flex items-center gap-1.5"
             >
               {isDeactivating ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
+                <ArrowsClockwise className="w-3 h-3 animate-spin" />
               ) : (
-                <CheckCircle2 className="w-3 h-3" />
+                <CheckCircle className="w-3 h-3" />
               )}
               Restore
             </button>
@@ -291,7 +291,7 @@ function SwitchCard({
       {isActive && activeSwitch && (
         <div className="mt-3 pt-3 border-t border-red-500/20 space-y-2">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+            <Warning className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-red-300 leading-tight">{activeSwitch.reason}</p>
           </div>
 
@@ -312,7 +312,7 @@ function SwitchCard({
 
           {activeSwitch.auto_reactivate_at && (
             <div className="pl-5 flex items-center gap-1 text-xs text-yellow-500">
-              <RefreshCw className="w-3 h-3" />
+              <ArrowsClockwise className="w-3 h-3" />
               Auto-restores {formatDatetime(activeSwitch.auto_reactivate_at)}
             </div>
           )}
@@ -385,7 +385,7 @@ export default function KillSwitchPage() {
           <p className="text-gray-400 mt-1">Emergency payment suspension controls</p>
         </div>
         <div className="flex items-center justify-center h-64 text-gray-500">
-          <RefreshCw className="w-6 h-6 animate-spin mr-3" />
+          <ArrowsClockwise className="w-6 h-6 animate-spin mr-3" />
           Loading kill switch status...
         </div>
       </div>
@@ -479,7 +479,7 @@ export default function KillSwitchPage() {
           </div>
 
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <Activity className="w-4 h-4" />
+            <Pulse className="w-4 h-4" />
             <span>Polling every 10s</span>
           </div>
         </div>
@@ -498,14 +498,14 @@ export default function KillSwitchPage() {
             value={railsBlocked}
             change={`${RAILS.length} total rails`}
             changeType={railsBlocked > 0 ? 'negative' : 'positive'}
-            icon={<Link className="w-6 h-6" />}
+            icon={<LinkSimple className="w-6 h-6" />}
           />
           <StatCard
             title="Chains Blocked"
             value={chainsBlocked}
             change={`${CHAINS.length} total chains`}
             changeType={chainsBlocked > 0 ? 'negative' : 'positive'}
-            icon={<Layers className="w-6 h-6" />}
+            icon={<Stack className="w-6 h-6" />}
           />
         </div>
 
@@ -514,7 +514,7 @@ export default function KillSwitchPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Link className="w-5 h-5 text-sardis-400" />
+                <LinkSimple className="w-5 h-5 text-sardis-400" />
                 Payment Rails
               </h2>
               <p className="text-sm text-gray-400 mt-1">
@@ -535,7 +535,7 @@ export default function KillSwitchPage() {
                 name={rail}
                 label={rail.toUpperCase()}
                 activeSwitch={rails[rail] ?? null}
-                icon={<Link className="w-4 h-4" />}
+                icon={<LinkSimple className="w-4 h-4" />}
                 onActivate={() => setPendingActivation({ type: 'rail', name: rail })}
                 onDeactivate={() => deactivateRail.mutate(rail)}
                 isDeactivating={deactivateRail.isPending && deactivateRail.variables === rail}
@@ -549,7 +549,7 @@ export default function KillSwitchPage() {
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-sardis-400" />
+                <Stack className="w-5 h-5 text-sardis-400" />
                 Blockchain Networks
               </h2>
               <p className="text-sm text-gray-400 mt-1">
@@ -570,7 +570,7 @@ export default function KillSwitchPage() {
                 name={chain}
                 label={chain.charAt(0).toUpperCase() + chain.slice(1)}
                 activeSwitch={chains[chain] ?? null}
-                icon={<Layers className="w-4 h-4" />}
+                icon={<Stack className="w-4 h-4" />}
                 onActivate={() => setPendingActivation({ type: 'chain', name: chain })}
                 onDeactivate={() => deactivateChain.mutate(chain)}
                 isDeactivating={deactivateChain.isPending && deactivateChain.variables === chain}

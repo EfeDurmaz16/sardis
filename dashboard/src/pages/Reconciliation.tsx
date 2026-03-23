@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Download, RefreshCw, ShieldAlert } from 'lucide-react'
+import {
+  ArrowsClockwise,
+  Download,
+  ShieldWarning,
+  Warning,
+} from '@phosphor-icons/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { treasuryOpsApi } from '../api/client'
@@ -92,7 +97,7 @@ export default function ReconciliationPage() {
             }}
             className="inline-flex items-center gap-2 px-3 py-2 bg-dark-200 border border-dark-100 rounded-lg text-gray-200 hover:text-white hover:border-sardis-500/40"
           >
-            <RefreshCw className="w-4 h-4" />
+            <ArrowsClockwise className="w-4 h-4" />
             Refresh
           </button>
           <button
@@ -228,7 +233,7 @@ export default function ReconciliationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-4">
           <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-yellow-400" />
+            <Warning className="w-5 h-5 text-yellow-400" />
             Drift Breaks
           </h2>
           <div className="space-y-2 max-h-[420px] overflow-auto">
@@ -248,7 +253,7 @@ export default function ReconciliationPage() {
 
         <div className="card p-4">
           <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-red-400" />
+            <ShieldWarning className="w-5 h-5 text-red-400" />
             ACH Return Codes
           </h2>
           <div className="space-y-2 max-h-[420px] overflow-auto">

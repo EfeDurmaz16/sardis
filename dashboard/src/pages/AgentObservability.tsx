@@ -7,18 +7,17 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Activity,
-  TrendingUp,
+  CheckCircle,
+  CurrencyDollar,
+  Eye,
+  Pulse,
   Shield,
   ShieldCheck,
-  ShieldAlert,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
+  ShieldWarning,
+  TrendUp,
+  Warning,
   XCircle,
-  Eye,
-} from 'lucide-react';
-
+} from '@phosphor-icons/react';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // ── Demo data ───────────────────────────────────────────────────────────
@@ -268,8 +267,8 @@ export default function AgentObservability() {
       {/* Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Spent (7d)', value: `$${totalSpent.toLocaleString()}`, icon: DollarSign, color: '#818CF8' },
-          { label: 'Transactions', value: transactions.length.toString(), icon: Activity, color: '#60A5FA' },
+          { label: 'Total Spent (7d)', value: `$${totalSpent.toLocaleString()}`, icon: CurrencyDollar, color: '#818CF8' },
+          { label: 'Transactions', value: transactions.length.toString(), icon: Pulse, color: '#60A5FA' },
           { label: 'Policy Passed', value: passedChecks.toString(), icon: CheckCircle, color: '#22C55E' },
           { label: 'Policy Denied', value: failedChecks.toString(), icon: XCircle, color: '#EF4444' },
         ].map((stat) => (
@@ -296,7 +295,7 @@ export default function AgentObservability() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-white flex items-center gap-2">
-              <TrendingUp size={16} color="#818CF8" /> Daily Spending (Last 7 Days)
+              <TrendUp size={16} color="#818CF8" /> Daily Spending (Last 7 Days)
             </h3>
           </div>
           <SpendChart data={dailySpend} />
@@ -334,7 +333,7 @@ export default function AgentObservability() {
             style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
           >
             <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-3">
-              <DollarSign size={16} color="#F59E0B" /> Budget ({budget.period})
+              <CurrencyDollar size={16} color="#F59E0B" /> Budget ({budget.period})
             </h3>
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
@@ -366,7 +365,7 @@ export default function AgentObservability() {
           style={{ background: '#0A0B0D', border: '1px solid rgba(255,255,255,0.07)' }}
         >
           <h3 className="text-sm font-medium text-white flex items-center gap-2 mb-4">
-            <Activity size={16} color="#60A5FA" /> Recent Transactions
+            <Pulse size={16} color="#60A5FA" /> Recent Transactions
           </h3>
           <div className="space-y-2">
             {transactions.slice(0, 6).map((tx) => (
@@ -410,9 +409,9 @@ export default function AgentObservability() {
                     {pc.result === 'passed' ? (
                       <CheckCircle size={14} color="#22C55E" />
                     ) : pc.result === 'escalated' ? (
-                      <AlertTriangle size={14} color="#F59E0B" />
+                      <Warning size={14} color="#F59E0B" />
                     ) : (
-                      <ShieldAlert size={14} color="#EF4444" />
+                      <ShieldWarning size={14} color="#EF4444" />
                     )}
                     <span className="text-sm text-white">{pc.rule}</span>
                   </div>

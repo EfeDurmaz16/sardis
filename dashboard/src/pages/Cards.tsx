@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react'
-import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check } from 'lucide-react'
+import {
+  ArrowsClockwise,
+  CaretDown,
+  Check,
+  Copy,
+  CreditCard,
+  Plus,
+  ShoppingCart,
+  Snowflake,
+  Sun,
+  Trash,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '../api/client'
@@ -184,7 +195,7 @@ export default function CardsPage() {
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
+          <CaretDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
         </div>
         {selectedAgent && !selectedAgent.wallet_id && (
           <p className="text-yellow-400 text-sm mt-2">This agent has no wallet. Create one first.</p>
@@ -283,7 +294,7 @@ export default function CardsPage() {
             onClick={() => refetchCards()}
             className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            <RefreshCw className="w-4 h-4" />
+            <ArrowsClockwise className="w-4 h-4" />
             Refresh
           </button>
         </div>
@@ -489,7 +500,7 @@ function SardisCard({
                 onClick={onCancel}
                 className="flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash className="w-4 h-4" />
               </button>
             )}
           </div>

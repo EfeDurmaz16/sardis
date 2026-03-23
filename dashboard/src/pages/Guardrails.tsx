@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react'
 import {
-  Shield,
-  Zap,
-  Power,
-  TrendingDown,
-  Activity,
-  AlertCircle,
+  Buildings,
   CheckCircle,
-  XCircle,
-  Settings,
+  Gear,
+  Lightning,
+  Power,
+  Pulse,
+  Shield,
+  TrendDown,
   Users,
-  Building
-} from 'lucide-react'
+  WarningCircle,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 
@@ -212,7 +212,7 @@ export default function GuardrailsPage() {
       case 'CLOSED':
         return <CheckCircle className="w-5 h-5" />
       case 'HALF_OPEN':
-        return <AlertCircle className="w-5 h-5" />
+        return <WarningCircle className="w-5 h-5" />
       case 'OPEN':
         return <XCircle className="w-5 h-5" />
     }
@@ -223,11 +223,11 @@ export default function GuardrailsPage() {
       case 'global':
         return <Shield className="w-4 h-4" />
       case 'organization':
-        return <Building className="w-4 h-4" />
+        return <Buildings className="w-4 h-4" />
       case 'agent':
         return <Users className="w-4 h-4" />
       default:
-        return <Settings className="w-4 h-4" />
+        return <Gear className="w-4 h-4" />
     }
   }
 
@@ -266,14 +266,14 @@ export default function GuardrailsPage() {
           value={rateLimiters.length}
           change={`${highUtilizationLimiters} high usage`}
           changeType={highUtilizationLimiters > 0 ? 'negative' : 'positive'}
-          icon={<TrendingDown className="w-6 h-6" />}
+          icon={<TrendDown className="w-6 h-6" />}
         />
         <StatCard
           title="System Health"
           value="98.2%"
           change="Last 24h"
           changeType="positive"
-          icon={<Activity className="w-6 h-6" />}
+          icon={<Pulse className="w-6 h-6" />}
         />
       </div>
 
@@ -424,7 +424,7 @@ export default function GuardrailsPage() {
               <h2 className="text-lg font-semibold text-white">Rate Limiters</h2>
               <p className="text-sm text-gray-400 mt-1">Request throttling and limits</p>
             </div>
-            <Zap className="w-5 h-5 text-sardis-400" />
+            <Lightning className="w-5 h-5 text-sardis-400" />
           </div>
 
           <div className="space-y-4">

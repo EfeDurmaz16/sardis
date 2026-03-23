@@ -1,5 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, Plus, Eye, EyeOff, Snowflake, Sun, ShoppingCart, Check, Copy, Loader2, User, Mail, Phone, AlertCircle } from 'lucide-react'
+import {
+  Check,
+  Copy,
+  CreditCard,
+  Envelope,
+  Eye,
+  EyeSlash,
+  Phone,
+  Plus,
+  ShoppingCart,
+  Snowflake,
+  SpinnerGap,
+  Sun,
+  User,
+  WarningCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '../api/client'
@@ -86,9 +101,9 @@ function PANReveal({ cardId, providerCardId }: { cardId: string; providerCardId:
         )}
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <SpinnerGap className="w-4 h-4 animate-spin" />
         ) : revealed ? (
-          <EyeOff className="w-4 h-4" />
+          <EyeSlash className="w-4 h-4" />
         ) : (
           <Eye className="w-4 h-4" />
         )}
@@ -97,7 +112,7 @@ function PANReveal({ cardId, providerCardId }: { cardId: string; providerCardId:
 
       {error && (
         <div className="flex items-center gap-2 text-red-400 text-sm">
-          <AlertCircle className="w-4 h-4" />
+          <WarningCircle className="w-4 h-4" />
           {error}
         </div>
       )}
@@ -182,7 +197,7 @@ function IssueCardModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-gray-400 mb-1">
-                <Mail className="w-3 h-3 inline mr-1" />
+                <Envelope className="w-3 h-3 inline mr-1" />
                 Email
               </label>
               <input
@@ -278,7 +293,7 @@ function IssueCardModal({
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <SpinnerGap className="w-4 h-4 animate-spin" />
                 Issuing...
               </>
             ) : (
@@ -363,7 +378,7 @@ function SimulatePurchaseModal({
                 disabled={loading}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+                {loading ? <SpinnerGap className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
                 {loading ? 'Processing...' : 'Simulate'}
               </button>
             </div>
@@ -378,7 +393,7 @@ function SimulatePurchaseModal({
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-red-400">
-                  <AlertCircle className="w-5 h-5" />
+                  <WarningCircle className="w-5 h-5" />
                   <span className="font-medium">Transaction Declined</span>
                 </div>
               )}

@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Clock, CheckCircle, XCircle, AlertTriangle, Lock, Loader2 } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  Lock,
+  MagnifyingGlass,
+  SpinnerGap,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { format, formatDistanceToNow } from 'date-fns'
 import { holdsApi } from '../api/client'
@@ -81,7 +89,7 @@ export default function HoldsPage() {
       case 'voided':
         return <XCircle className="w-4 h-4" />
       case 'expired':
-        return <AlertTriangle className="w-4 h-4" />
+        return <Warning className="w-4 h-4" />
       default:
         return <Clock className="w-4 h-4" />
     }
@@ -135,10 +143,10 @@ export default function HoldsPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <MagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
-            placeholder="Search holds..."
+            placeholder="MagnifyingGlass holds..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50"
@@ -166,7 +174,7 @@ export default function HoldsPage() {
       {/* Loading / Error States */}
       {loading && (
         <div className="card p-12 text-center">
-          <Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
+          <SpinnerGap className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" />
           <p className="text-gray-400">Loading holds...</p>
         </div>
       )}

@@ -1,17 +1,17 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import {
-  Activity,
+  Circle,
+  CreditCard,
+  CurrencyDollar,
   Pause,
   Play,
-  Circle,
-  DollarSign,
+  Pulse,
   ShieldCheck,
-  CreditCard,
-  AlertTriangle,
-  Users,
   Target,
-  Trash2,
-} from 'lucide-react'
+  Trash,
+  Users,
+  Warning,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useEventStream } from '../hooks/useEventStream'
 import type { LiveEvent as SSEEvent } from '../hooks/useEventStream'
@@ -165,12 +165,12 @@ function sseToLiveEvent(sse: SSEEvent): LiveEvent {
 function getCategoryIcon(category: EventCategory) {
   switch (category) {
     case 'policy': return ShieldCheck
-    case 'spend': return DollarSign
-    case 'approval': return AlertTriangle
+    case 'spend': return CurrencyDollar
+    case 'approval': return Warning
     case 'card': return CreditCard
     case 'compliance': return Target
     case 'group': return Users
-    default: return Activity
+    default: return Pulse
   }
 }
 
@@ -296,11 +296,11 @@ export default function LiveEventsPage() {
     clearSSE()
   }
 
-  const categories: { value: EventCategory; label: string; icon: typeof Activity }[] = [
-    { value: 'all', label: 'All Events', icon: Activity },
+  const categories: { value: EventCategory; label: string; icon: typeof Pulse }[] = [
+    { value: 'all', label: 'All Events', icon: Pulse },
     { value: 'policy', label: 'Policy', icon: ShieldCheck },
-    { value: 'spend', label: 'Spend', icon: DollarSign },
-    { value: 'approval', label: 'Approval', icon: AlertTriangle },
+    { value: 'spend', label: 'Spend', icon: CurrencyDollar },
+    { value: 'approval', label: 'Approval', icon: Warning },
     { value: 'card', label: 'Card', icon: CreditCard },
     { value: 'compliance', label: 'Compliance', icon: Target },
     { value: 'group', label: 'Group', icon: Users },
@@ -339,7 +339,7 @@ export default function LiveEventsPage() {
             onClick={handleClear}
             className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-sm font-medium bg-dark-200 text-gray-400 border border-dark-100 hover:text-white"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash className="w-4 h-4" />
             Clear
           </button>
 
@@ -378,7 +378,7 @@ export default function LiveEventsPage() {
                 {stats.eventsPerMinute}
               </p>
             </div>
-            <Activity className="w-8 h-8 text-sardis-400/50" />
+            <Pulse className="w-8 h-8 text-sardis-400/50" />
           </div>
         </div>
 
@@ -453,7 +453,7 @@ export default function LiveEventsPage() {
           <div className="divide-y divide-dark-100">
             {filteredEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500 py-20">
-                <Activity className="w-12 h-12 mb-3" />
+                <Pulse className="w-12 h-12 mb-3" />
                 <p className="text-sm">No events yet. Waiting for activity...</p>
               </div>
             ) : (

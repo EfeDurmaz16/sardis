@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import {
-  Target,
-  AlertTriangle,
-  TrendingUp,
-  Activity,
-  Zap,
-  Shield,
-  BarChart3,
+  ChartBar,
   Clock,
-  DollarSign
-} from 'lucide-react'
+  CurrencyDollar,
+  Lightning,
+  Pulse,
+  Shield,
+  Target,
+  TrendUp,
+  Warning,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 import {
@@ -221,9 +221,9 @@ export default function GoalDriftPage() {
     switch (severity) {
       case 'critical':
       case 'high':
-        return <AlertTriangle className="w-5 h-5" />
+        return <Warning className="w-5 h-5" />
       case 'medium':
-        return <Activity className="w-5 h-5" />
+        return <Pulse className="w-5 h-5" />
       case 'low':
         return <Target className="w-5 h-5" />
       default:
@@ -253,7 +253,7 @@ export default function GoalDriftPage() {
           value={activeAlerts}
           change={`${criticalAlerts} critical`}
           changeType={criticalAlerts > 0 ? 'negative' : 'positive'}
-          icon={<AlertTriangle className="w-6 h-6" />}
+          icon={<Warning className="w-6 h-6" />}
         />
         <StatCard
           title="Avg Drift Score"
@@ -267,14 +267,14 @@ export default function GoalDriftPage() {
           value={throttledAgents}
           change="Velocity limited"
           changeType={throttledAgents > 0 ? 'negative' : 'positive'}
-          icon={<Zap className="w-6 h-6" />}
+          icon={<Lightning className="w-6 h-6" />}
         />
         <StatCard
           title="Monitoring"
           value={velocityGovernors.length}
           change="Agents tracked"
           changeType="positive"
-          icon={<Activity className="w-6 h-6" />}
+          icon={<Pulse className="w-6 h-6" />}
         />
       </div>
 
@@ -285,7 +285,7 @@ export default function GoalDriftPage() {
             <h2 className="text-lg font-semibold text-white">Drift Alerts</h2>
             <p className="text-sm text-gray-400 mt-1">Behavioral anomalies and pattern changes</p>
           </div>
-          <AlertTriangle className="w-5 h-5 text-sardis-400" />
+          <Warning className="w-5 h-5 text-sardis-400" />
         </div>
 
         <div className="space-y-3">
@@ -427,7 +427,7 @@ export default function GoalDriftPage() {
               <h2 className="text-lg font-semibold text-white">Spending Distribution</h2>
               <p className="text-sm text-gray-400 mt-1">Category shifts from baseline</p>
             </div>
-            <BarChart3 className="w-5 h-5 text-sardis-400" />
+            <ChartBar className="w-5 h-5 text-sardis-400" />
           </div>
 
           <div className="h-80">
@@ -466,7 +466,7 @@ export default function GoalDriftPage() {
             <h2 className="text-lg font-semibold text-white">Velocity Governors</h2>
             <p className="text-sm text-gray-400 mt-1">Transaction and spending rate limits</p>
           </div>
-          <Zap className="w-5 h-5 text-sardis-400" />
+          <Lightning className="w-5 h-5 text-sardis-400" />
         </div>
 
         <div className="space-y-4">
@@ -482,7 +482,7 @@ export default function GoalDriftPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Zap className={clsx(
+                  <Lightning className={clsx(
                     'w-5 h-5',
                     governor.is_throttled ? 'text-red-500' : 'text-sardis-400'
                   )} />

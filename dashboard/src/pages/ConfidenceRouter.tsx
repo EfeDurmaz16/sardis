@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  Shield,
   CheckCircle,
-  AlertTriangle,
-  XCircle,
   Clock,
-  TrendingUp,
-  Users,
-  Settings,
+  Gear,
+  Shield,
+  ThumbsDown,
   ThumbsUp,
-  ThumbsDown
-} from 'lucide-react'
+  TrendUp,
+  Users,
+  Warning,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import StatCard from '../components/StatCard'
 
@@ -198,9 +198,9 @@ export default function ConfidenceRouterPage() {
       case 'multi_sig':
         return <Users className="w-4 h-4" />
       case 'human':
-        return <AlertTriangle className="w-4 h-4" />
+        return <Warning className="w-4 h-4" />
       default:
-        return <Settings className="w-4 h-4" />
+        return <Gear className="w-4 h-4" />
     }
   }
 
@@ -254,7 +254,7 @@ export default function ConfidenceRouterPage() {
           value={avgConfidence}
           change="Last 100 txns"
           changeType="positive"
-          icon={<TrendingUp className="w-6 h-6" />}
+          icon={<TrendUp className="w-6 h-6" />}
         />
         <StatCard
           title="Approval Rate"
@@ -272,7 +272,7 @@ export default function ConfidenceRouterPage() {
             <h2 className="text-lg font-semibold text-white">Confidence Thresholds</h2>
             <p className="text-sm text-gray-400 mt-1">Configure routing tiers and approval requirements</p>
           </div>
-          <Settings className="w-5 h-5 text-sardis-400" />
+          <Gear className="w-5 h-5 text-sardis-400" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -328,7 +328,7 @@ export default function ConfidenceRouterPage() {
               <h2 className="text-lg font-semibold text-white">Pending Approvals</h2>
               <p className="text-sm text-gray-400 mt-1">Transactions awaiting review</p>
             </div>
-            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+            <Warning className="w-5 h-5 text-yellow-500" />
           </div>
 
           <div className="space-y-3">

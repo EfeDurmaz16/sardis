@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Headset, LifeBuoy, ShieldCheck } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  Headset,
+  Lifebuoy,
+  ShieldCheck,
+  Warning,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 
 import {
@@ -109,7 +116,7 @@ export default function EnterpriseSupportPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card p-4 border border-dark-100">
           <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1">
-            <LifeBuoy className="w-4 h-4" />
+            <Lifebuoy className="w-4 h-4" />
             First Response SLA
           </div>
           <p className="text-white text-2xl font-semibold mono-numbers">
@@ -134,7 +141,7 @@ export default function EnterpriseSupportPage() {
         </div>
         <div className="card p-4 border border-dark-100">
           <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1">
-            <AlertTriangle className="w-4 h-4" />
+            <Warning className="w-4 h-4" />
             SLA Breaches
           </div>
           <p className="text-white text-2xl font-semibold mono-numbers">{slaBreaches}</p>
@@ -272,7 +279,7 @@ export default function EnterpriseSupportPage() {
                         className="px-3 py-1.5 text-xs bg-sardis-500 text-dark-400 font-semibold disabled:opacity-50"
                       >
                         <span className="inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <CheckCircle className="w-3.5 h-3.5" />
                           Resolve
                         </span>
                       </button>

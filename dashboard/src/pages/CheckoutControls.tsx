@@ -11,21 +11,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ShoppingCart,
-  AlertTriangle,
-  Settings2,
-  Save,
-  Loader2,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
+  ArrowSquareOut,
+  ArrowsClockwise,
+  CheckCircle,
   Clock,
+  FileMagnifyingGlass,
+  FloppyDisk,
+  GearSix,
+  Lightning,
   Shield,
-  Zap,
-  FileSearch,
-  Webhook,
-  ExternalLink,
-} from 'lucide-react'
+  ShoppingCart,
+  SpinnerGap,
+  Warning,
+  WebhooksLogo,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import {
   checkoutControlsApi,
@@ -155,7 +155,7 @@ function ControlsConfigSection() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : 'FloppyDisk failed')
     } finally {
       setSaving(false)
     }
@@ -164,7 +164,7 @@ function ControlsConfigSection() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-gray-400 py-8">
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <SpinnerGap className="w-4 h-4 animate-spin" />
         <span className="text-sm">Loading config…</span>
       </div>
     )
@@ -253,7 +253,7 @@ function ControlsConfigSection() {
       {/* Incident webhook */}
       <div>
         <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
-          Incident Webhook URL
+          Incident Webhooks URL
         </label>
         <input
           type="url"
@@ -285,13 +285,13 @@ function ControlsConfigSection() {
             key: 'evidence_export_auto' as const,
             label: 'Auto-Export Evidence',
             description: 'Automatically generate an evidence bundle on completion.',
-            icon: FileSearch,
+            icon: FileMagnifyingGlass,
           },
           {
             key: 'freeze_on_dispute' as const,
             label: 'Freeze on Dispute',
             description: 'Auto-freeze the payer wallet when a dispute is filed.',
-            icon: Zap,
+            icon: Lightning,
           },
         ].map(({ key, label, description, icon: Icon }) => (
           <button
@@ -347,7 +347,7 @@ function ControlsConfigSection() {
         </div>
       )}
 
-      {/* Save */}
+      {/* FloppyDisk */}
       <div className="flex items-center gap-3 pt-2">
         <button
           onClick={handleSave}
@@ -360,13 +360,13 @@ function ControlsConfigSection() {
           )}
         >
           {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <SpinnerGap className="w-4 h-4 animate-spin" />
           ) : saved ? (
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle className="w-4 h-4" />
           ) : (
-            <Save className="w-4 h-4" />
+            <FloppyDisk className="w-4 h-4" />
           )}
-          {saving ? 'Saving…' : saved ? 'Saved' : 'Save Config'}
+          {saving ? 'Saving…' : saved ? 'Saved' : 'FloppyDisk Config'}
         </button>
       </div>
     </div>
@@ -402,7 +402,7 @@ function IncidentsSection() {
   return (
     <div>
       <SectionHeader
-        icon={AlertTriangle}
+        icon={Warning}
         title="Checkout Incidents"
         description="Disputes, fraud flags, timeouts, and settlement failures reported during checkout."
         action={
@@ -411,7 +411,7 @@ function IncidentsSection() {
             disabled={refreshing}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-400 border border-dark-100 hover:text-white hover:border-gray-500 transition-all duration-150"
           >
-            <RefreshCw className={clsx('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+            <ArrowsClockwise className={clsx('w-3.5 h-3.5', refreshing && 'animate-spin')} />
             Refresh
           </button>
         }
@@ -419,7 +419,7 @@ function IncidentsSection() {
 
       {loading ? (
         <div className="flex items-center gap-2 text-gray-400 py-8">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <SpinnerGap className="w-4 h-4 animate-spin" />
           <span className="text-sm">Loading incidents…</span>
         </div>
       ) : error ? (
@@ -429,7 +429,7 @@ function IncidentsSection() {
         </div>
       ) : incidents.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
-          <CheckCircle2 className="w-10 h-10 text-green-500/40" />
+          <CheckCircle className="w-10 h-10 text-green-500/40" />
           <p className="text-sm">No incidents reported. Checkout is healthy.</p>
         </div>
       ) : (
@@ -549,14 +549,14 @@ export default function CheckoutControlsPage() {
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-sardis-400 border border-sardis-500/30 hover:bg-sardis-500/10 transition-colors"
           >
             Control Center
-            <ExternalLink className="w-3 h-3" />
+            <ArrowSquareOut className="w-3 h-3" />
           </Link>
           <Link
             to="/evidence"
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-300 border border-dark-100 hover:border-sardis-500/30 hover:text-sardis-400 transition-colors"
           >
             Evidence Explorer
-            <ExternalLink className="w-3 h-3" />
+            <ArrowSquareOut className="w-3 h-3" />
           </Link>
         </div>
       </div>
@@ -564,7 +564,7 @@ export default function CheckoutControlsPage() {
       {/* Config section */}
       <div className="bg-dark-300 border border-dark-100 p-6">
         <SectionHeader
-          icon={Settings2}
+          icon={GearSix}
           title="Controls Configuration"
           description="Configure approval thresholds, allowed chains/tokens, KYC, evidence, and incident webhooks."
         />
