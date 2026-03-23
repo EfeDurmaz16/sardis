@@ -204,9 +204,9 @@ class TestAgentSDKIntegration:
 
     def test_tool_definitions_import(self):
         from sardis_agent_sdk.tools import ALL_TOOLS, READ_ONLY_TOOLS, TOOL_NAMES
-        assert len(ALL_TOOLS) == 6
+        assert len(ALL_TOOLS) == 10  # 6 original + 4 protocol v1.0
         assert len(READ_ONLY_TOOLS) < len(ALL_TOOLS)
-        assert len(TOOL_NAMES) == 6
+        assert len(TOOL_NAMES) == 10
 
     def test_tool_definitions_schema(self):
         """Each tool definition should have proper Anthropic tool_use schema."""
@@ -227,7 +227,7 @@ class TestAgentSDKIntegration:
         toolkit = SardisToolkit(client=mock_client, wallet_id="test_wallet")
         tools = toolkit.get_tools()
 
-        assert len(tools) == 6
+        assert len(tools) == 10  # 6 original + 4 protocol v1.0
 
     def test_toolkit_read_only(self):
         from sardis_agent_sdk import SardisToolkit
