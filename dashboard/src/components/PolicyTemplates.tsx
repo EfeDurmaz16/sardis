@@ -7,17 +7,16 @@
 
 import { useState } from 'react';
 import {
-  Cpu,
-  ShoppingCart,
-  Briefcase,
   BookOpen,
-  Users,
+  Briefcase,
+  CaretRight,
+  Cpu,
+  MagnifyingGlass,
   Shield,
-  Search,
-  ChevronRight,
-  Sparkles,
-} from 'lucide-react';
-
+  ShoppingCart,
+  Sparkle,
+  Users,
+} from '@phosphor-icons/react';
 // ── Template Data ───────────────────────────────────────────────────────
 
 interface PolicyTemplate {
@@ -30,7 +29,7 @@ interface PolicyTemplate {
 }
 
 const CATEGORIES = [
-  { id: 'all', name: 'All Templates', icon: Sparkles },
+  { id: 'all', name: 'All Templates', icon: Sparkle },
   { id: 'api', name: 'API Consumption', icon: Cpu },
   { id: 'ecommerce', name: 'E-commerce', icon: ShoppingCart },
   { id: 'procurement', name: 'Procurement', icon: Briefcase },
@@ -205,12 +204,12 @@ export default function PolicyTemplates({ onSelectTemplate }: PolicyTemplatesPro
 
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* MagnifyingGlass */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#505460' }} />
+        <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: '#505460' }} />
         <input
           type="text"
-          placeholder="Search templates..."
+          placeholder="MagnifyingGlass templates..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 rounded-lg text-sm"
@@ -276,7 +275,7 @@ export default function PolicyTemplates({ onSelectTemplate }: PolicyTemplatesPro
                   {template.rules}
                 </p>
               </div>
-              <ChevronRight
+              <CaretRight
                 size={16}
                 className="shrink-0 ml-2 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ color: '#818CF8' }}

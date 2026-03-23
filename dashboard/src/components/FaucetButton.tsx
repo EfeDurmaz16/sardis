@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Droplets, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import {
+  CheckCircle,
+  Drop,
+  SpinnerGap,
+  XCircle,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { faucetApi } from '../api/client'
 import { useHealth } from '../hooks/useApi'
@@ -51,7 +56,7 @@ export function FaucetButton() {
     >
       {drip.isPending ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <SpinnerGap className="w-4 h-4 animate-spin" />
           Requesting...
         </>
       ) : feedback === 'success' ? (
@@ -66,7 +71,7 @@ export function FaucetButton() {
         </>
       ) : (
         <>
-          <Droplets className="w-4 h-4" />
+          <Drop className="w-4 h-4" />
           Get 100 Test USDC
         </>
       )}

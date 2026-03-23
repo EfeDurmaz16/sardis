@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  Sparkles,
-  AlertCircle,
+  CaretDown,
   Check,
-  X,
-  ChevronDown,
-  DollarSign,
-  Shield,
   Clock,
-  Ban,
-  Info
-} from 'lucide-react'
+  CurrencyDollar,
+  Info,
+  Prohibit,
+  Shield,
+  Sparkle,
+  WarningCircle,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 
 interface SpendingLimit {
@@ -194,7 +194,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-sardis-400" />
+            <Sparkle className="w-6 h-6 text-sardis-400" />
             Natural Language Policy Builder
           </h2>
           <p className="text-gray-400 mt-1">
@@ -214,7 +214,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
               ? `Template: ${templates[selectedTemplate]?.name || selectedTemplate}`
               : 'Choose a template (optional)'}
           </span>
-          <ChevronDown
+          <CaretDown
             className={clsx(
               'w-5 h-5 text-gray-400 transition-transform',
               showTemplates && 'rotate-180'
@@ -278,7 +278,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
+                <Sparkle className="w-4 h-4" />
                 Parse Policy
               </>
             )}
@@ -289,7 +289,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
       {/* Error Display */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <WarningCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
           <div>
             <div className="text-red-400 font-medium">Error</div>
             <div className="text-red-300 text-sm mt-1">{error}</div>
@@ -331,7 +331,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
               {parsedPolicy.spending_limits && parsedPolicy.spending_limits.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                    <DollarSign className="w-4 h-4 text-sardis-400" />
+                    <CurrencyDollar className="w-4 h-4 text-sardis-400" />
                     Spending Limits
                   </div>
                   {parsedPolicy.spending_limits.map((limit, idx) => (
@@ -381,7 +381,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
                 parsedPolicy.category_restrictions.blocked_categories.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                      <Ban className="w-4 h-4 text-red-400" />
+                      <Prohibit className="w-4 h-4 text-red-400" />
                       Blocked Categories
                     </div>
                     <div className="flex flex-wrap gap-2">

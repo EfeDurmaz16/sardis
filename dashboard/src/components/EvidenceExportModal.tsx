@@ -1,16 +1,16 @@
 import { useState, useCallback } from 'react'
 import {
-  X,
-  Download,
+  CheckCircle,
   Copy,
-  CheckCircle2,
-  Loader2,
-  AlertCircle,
+  Download,
+  FileJs,
   Package,
-  FileJson,
   ShieldCheck,
-  ShieldAlert,
-} from 'lucide-react'
+  ShieldWarning,
+  SpinnerGap,
+  WarningCircle,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { evidenceApi } from '../api/client'
 
@@ -78,7 +78,7 @@ function SectionRow({
         )}
       >
         {available ? (
-          <CheckCircle2 className="w-4 h-4" />
+          <CheckCircle className="w-4 h-4" />
         ) : (
           <div className="w-2 h-2 bg-gray-600" />
         )}
@@ -215,7 +215,7 @@ export default function EvidenceExportModal({
           {/* Intro */}
           {!bundle && !loading && !error && (
             <div className="text-center py-6 space-y-3">
-              <FileJson className="w-10 h-10 text-gray-600 mx-auto" />
+              <FileJs className="w-10 h-10 text-gray-600 mx-auto" />
               <p className="text-sm text-gray-400 max-w-xs mx-auto leading-relaxed">
                 Export a JSON bundle with all available evidence artifacts:
                 transaction details, policy decision, approval state, execution
@@ -235,7 +235,7 @@ export default function EvidenceExportModal({
           {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-10 gap-3 text-gray-400">
-              <Loader2 className="w-5 h-5 animate-spin text-sardis-400" />
+              <SpinnerGap className="w-5 h-5 animate-spin text-sardis-400" />
               <span className="text-sm">Collecting evidence artifacts…</span>
             </div>
           )}
@@ -243,7 +243,7 @@ export default function EvidenceExportModal({
           {/* Error */}
           {error && (
             <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/25">
-              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <WarningCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-red-400">
                   Export failed
@@ -258,7 +258,7 @@ export default function EvidenceExportModal({
             <div className="space-y-4">
               {/* Summary */}
               <div className="flex items-center gap-3 px-4 py-3 bg-dark-300 border border-dark-100">
-                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium">
                     Bundle ready
@@ -325,7 +325,7 @@ export default function EvidenceExportModal({
                         className="flex items-center gap-2 px-3 py-1.5 bg-dark-300 border border-dark-100 hover:border-sardis-500/40 text-gray-300 hover:text-white text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {verifying ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <SpinnerGap className="w-3.5 h-3.5 animate-spin" />
                         ) : (
                           <ShieldCheck className="w-3.5 h-3.5" />
                         )}
@@ -344,7 +344,7 @@ export default function EvidenceExportModal({
                         {verifyResult.valid ? (
                           <ShieldCheck className="w-3.5 h-3.5 text-green-400 flex-shrink-0 mt-0.5" />
                         ) : (
-                          <ShieldAlert className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                          <ShieldWarning className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                         )}
                         <div>
                           <p className={clsx(
@@ -363,7 +363,7 @@ export default function EvidenceExportModal({
                     {/* Verify error */}
                     {verifyError && (
                       <div className="flex items-start gap-2 px-3 py-2 bg-red-500/10 border border-red-500/25">
-                        <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <WarningCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-red-400">{verifyError}</p>
                       </div>
                     )}
@@ -391,7 +391,7 @@ export default function EvidenceExportModal({
             >
               {copied ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                  <CheckCircle className="w-4 h-4 text-green-400" />
                   <span className="text-green-400">Copied</span>
                 </>
               ) : (

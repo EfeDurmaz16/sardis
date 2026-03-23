@@ -11,7 +11,14 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
-import { X, Loader2, CheckCircle, AlertTriangle, Clock, ShieldAlert } from 'lucide-react'
+import {
+  CheckCircle,
+  Clock,
+  ShieldWarning,
+  SpinnerGap,
+  Warning,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAuth } from '../auth/AuthContext'
 
@@ -171,7 +178,7 @@ export default function KYCBanner() {
             config.ctaClass
           )}
         >
-          {initiating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+          {initiating && <SpinnerGap className="w-3.5 h-3.5 animate-spin" />}
           {config.ctaLabel}
         </button>
       )}
@@ -204,7 +211,7 @@ interface BannerConfig {
 const BANNER_CONFIG: Record<KYCStatus, BannerConfig> = {
   not_started: {
     wrapper: 'bg-amber-500/10 border-amber-500/30',
-    icon: <AlertTriangle className="w-4 h-4 text-amber-400" />,
+    icon: <Warning className="w-4 h-4 text-amber-400" />,
     message: 'Complete identity verification to enable live payments.',
     textPrimary: 'text-amber-300',
     textSecondary: 'text-amber-400/70',
@@ -230,7 +237,7 @@ const BANNER_CONFIG: Record<KYCStatus, BannerConfig> = {
   },
   rejected: {
     wrapper: 'bg-red-500/10 border-red-500/30',
-    icon: <ShieldAlert className="w-4 h-4 text-red-400" />,
+    icon: <ShieldWarning className="w-4 h-4 text-red-400" />,
     message: 'Verification failed. Please try again.',
     textPrimary: 'text-red-300',
     textSecondary: 'text-red-400/70',
@@ -240,7 +247,7 @@ const BANNER_CONFIG: Record<KYCStatus, BannerConfig> = {
   },
   expired: {
     wrapper: 'bg-amber-500/10 border-amber-500/30',
-    icon: <AlertTriangle className="w-4 h-4 text-amber-400" />,
+    icon: <Warning className="w-4 h-4 text-amber-400" />,
     message: 'Verification expired. Please re-verify.',
     textPrimary: 'text-amber-300',
     textSecondary: 'text-amber-400/70',

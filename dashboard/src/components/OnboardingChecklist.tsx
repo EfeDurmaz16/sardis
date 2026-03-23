@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, Circle, X, Rocket } from 'lucide-react'
+import {
+  CheckCircle,
+  Circle,
+  Rocket,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAgents, useWallets, useTransactions, useHealth } from '../hooks/useApi'
 

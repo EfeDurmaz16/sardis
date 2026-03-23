@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Info, AlertTriangle, AlertOctagon, X, CheckCheck, ExternalLink } from 'lucide-react'
+import {
+  ArrowSquareOut,
+  Bell,
+  Checks,
+  Info,
+  Warning,
+  WarningOctagon,
+  X,
+} from '@phosphor-icons/react'
 import clsx from 'clsx'
 import { useAuth } from '../auth/AuthContext'
 
@@ -61,9 +69,9 @@ function severityHref(alert: Alert): string {
 
 function SeverityIcon({ severity }: { severity: Alert['severity'] }) {
   if (severity === 'critical')
-    return <AlertOctagon className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+    return <WarningOctagon className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
   if (severity === 'warning')
-    return <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+    return <Warning className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
   return <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
 }
 
@@ -309,7 +317,7 @@ export default function NotificationCenter() {
                   className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
                   title="Mark all as read"
                 >
-                  <CheckCheck className="w-3.5 h-3.5" />
+                  <Checks className="w-3.5 h-3.5" />
                   Mark all read
                 </button>
               )}
@@ -352,7 +360,7 @@ export default function NotificationCenter() {
                 }}
                 className="w-full flex items-center justify-center gap-1.5 px-4 py-3 text-xs text-sardis-400 hover:text-sardis-300 hover:bg-dark-200 transition-colors"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ArrowSquareOut className="w-3.5 h-3.5" />
                 View all events
               </button>
             </div>
