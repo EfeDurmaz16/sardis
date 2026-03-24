@@ -207,7 +207,7 @@ export default function PlaygroundPage() {
               {isRunning ? 'Running...' : 'Run Request'}
             </button>
           </div>
-          <div className="lg:hidden flex border-b border-dark-100 mb-4">
+          <div className="lg:hidden flex border-b border-dark-100 mb-4" data-testid="mobile-tabs">
             {(['editor', 'trace', 'result'] as MobileTab[]).map((tab) => (
               <button key={tab} onClick={() => setMobileTab(tab)} className={clsx('flex-1 py-2.5 text-sm font-medium text-center border-b-2 transition-colors', mobileTab === tab ? 'border-sardis-500 text-sardis-400' : 'border-transparent text-gray-500 hover:text-gray-300')}>
                 {tab === 'editor' && 'Editor'}{tab === 'trace' && 'Trace'}{tab === 'result' && 'Result'}
