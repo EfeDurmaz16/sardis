@@ -51,24 +51,31 @@ interface BillingAccount {
   current_period_end: string | null;
 }
 
-const PLAN_ORDER = ['free', 'starter', 'growth', 'enterprise'];
+const PLAN_ORDER = ['dev', 'starter', 'growth', 'enterprise'];
 
 const PLAN_LABELS: Record<string, string> = {
-  free: 'Free',
+  dev: 'Dev',
   starter: 'Starter',
   growth: 'Growth',
   enterprise: 'Enterprise',
 };
 
+const PLAN_DESCRIPTIONS: Record<string, string> = {
+  dev: 'Testnet only, 100 tx/mo, no SLA',
+  starter: 'Production, unlimited tx, mainnet, SLA',
+  growth: '+ KYB, PEP screening, advanced audit, FX',
+  enterprise: 'White-glove, dedicated support',
+};
+
 const PLAN_SUPPORT: Record<string, string> = {
-  free: 'Community',
-  starter: 'Email',
+  dev: 'Community',
+  starter: 'Email + SLA',
   growth: 'Priority',
   enterprise: 'Dedicated SLA',
 };
 
 const PLAN_BADGE_COLORS: Record<string, string> = {
-  free: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
+  dev: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
   starter: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
   growth: 'bg-sardis-500/20 text-sardis-300 border border-sardis-500/30',
   enterprise: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
@@ -308,7 +315,6 @@ export default function BillingPage() {
   async function handleUpgrade(plan: string) {
     setUpgrading(plan);
     try {
-      // Try Sardis billing first, fall back to Polar checkout
       const res = await fetch(`${API_BASE}/api/v2/billing/checkout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
@@ -318,17 +324,8 @@ export default function BillingPage() {
         const data = await res.json();
         window.open(data.checkout_url, '_blank');
       } else {
-        // Billing not configured — open Polar checkout as fallback
-        const polarUrls: Record<string, string> = {
-          starter: 'https://polar.sh/sardislabs/subscribe?tier=starter',
-          growth: 'https://polar.sh/sardislabs/subscribe?tier=growth',
-        };
-        const url = polarUrls[plan.toLowerCase()];
-        if (url) {
-          window.open(url, '_blank');
-        } else {
-          alert('Billing is being set up. Please try again later or contact support@sardis.sh');
-        }
+        const err = await res.json().catch(() => null);
+        alert(err?.detail || 'Billing is being set up. Please try again later or contact support@sardis.sh');
       }
     } catch {
       alert('Network error. Please try again.');
@@ -348,11 +345,10 @@ export default function BillingPage() {
         const data = await res.json();
         window.open(data.portal_url, '_blank');
       } else {
-        // Fall back to Polar portal
-        window.open('https://polar.sh/sardislabs', '_blank');
+        alert('Billing portal is not available. Please contact support@sardis.sh');
       }
     } catch {
-      window.open('https://polar.sh/sardislabs', '_blank');
+      alert('Network error. Please try again.');
     } finally {
       setPortalLoading(false);
     }
@@ -366,7 +362,7 @@ export default function BillingPage() {
     );
   }
 
-  const currentPlan = account?.plan ?? 'free';
+  const currentPlan = account?.plan ?? 'dev';
   const status = account?.status ?? 'active';
   const usage = account?.usage ?? {
     api_calls_used: 0,
@@ -402,7 +398,7 @@ export default function BillingPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <span
                 className={`text-sm font-semibold px-3 py-1 rounded-full ${
-                  PLAN_BADGE_COLORS[currentPlan] ?? PLAN_BADGE_COLORS.free
+                  PLAN_BADGE_COLORS[currentPlan] ?? PLAN_BADGE_COLORS.dev
                 }`}
               >
                 {PLAN_LABELS[currentPlan] ?? currentPlan}
@@ -477,7 +473,7 @@ export default function BillingPage() {
                 key={plan.plan}
                 plan={plan}
                 isCurrent={plan.plan === currentPlan}
-                isPopular={plan.plan === 'growth'}
+                isPopular={plan.plan === 'starter'}
                 onUpgrade={handleUpgrade}
                 upgrading={upgrading}
               />
@@ -492,16 +488,16 @@ export default function BillingPage() {
           <h2 className="text-lg font-semibold text-white mb-4">Plans</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { plan: 'free', price_monthly_cents: 0, api_calls_per_month: 1000, agents: 1, tx_fee_bps: 50, monthly_tx_volume_cents: 100000 },
-              { plan: 'starter', price_monthly_cents: 4900, api_calls_per_month: 50000, agents: 10, tx_fee_bps: 30, monthly_tx_volume_cents: 1000000 },
-              { plan: 'growth', price_monthly_cents: 24900, api_calls_per_month: null, agents: null, tx_fee_bps: 20, monthly_tx_volume_cents: null },
-              { plan: 'enterprise', price_monthly_cents: 0, api_calls_per_month: null, agents: null, tx_fee_bps: 10, monthly_tx_volume_cents: null },
+              { plan: 'dev', price_monthly_cents: 4900, api_calls_per_month: 1000, agents: 2, tx_fee_bps: 150, monthly_tx_volume_cents: 100000 },
+              { plan: 'starter', price_monthly_cents: 19900, api_calls_per_month: 50000, agents: 25, tx_fee_bps: 100, monthly_tx_volume_cents: 10000000 },
+              { plan: 'growth', price_monthly_cents: 49900, api_calls_per_month: 500000, agents: 100, tx_fee_bps: 75, monthly_tx_volume_cents: 100000000 },
+              { plan: 'enterprise', price_monthly_cents: 0, api_calls_per_month: null, agents: null, tx_fee_bps: 50, monthly_tx_volume_cents: null },
             ].map((plan) => (
               <PlanColumn
                 key={plan.plan}
                 plan={plan}
                 isCurrent={plan.plan === currentPlan}
-                isPopular={plan.plan === 'growth'}
+                isPopular={plan.plan === 'starter'}
                 onUpgrade={handleUpgrade}
                 upgrading={upgrading}
               />

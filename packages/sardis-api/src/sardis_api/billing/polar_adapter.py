@@ -1,30 +1,10 @@
-"""Polar.sh billing adapter — Merchant of Record for pre-incorporation billing.
+"""Polar.sh billing adapter — DEPRECATED, replaced by direct Stripe billing.
 
-Polar.sh handles tax, compliance, and payment processing as a Merchant of Record,
-making it possible to accept subscription payments without a US corporation or
-Stripe account. Use this adapter until Stripe Atlas incorporation completes,
-then switch to the Stripe billing adapter.
+Sardis Labs, Inc. is now incorporated (Delaware C-corp via Stripe Atlas, March 2026).
+All billing goes through Stripe directly. This adapter is retained for historical
+reference and in case any existing Polar subscriptions need to be migrated.
 
-Architecture:
-    BillingProvider (interface)
-    ├── StripeBillingAdapter   (post-incorporation, direct Stripe)
-    └── PolarBillingAdapter    (pre-incorporation, Polar as MoR)
-
-Both adapters implement the same interface, so the billing router doesn't
-need to know which one is active.
-
-Setup:
-    1. Create products on polar.sh dashboard (Sardis Starter $49/mo, Sardis Growth $249/mo)
-    2. Set env vars: POLAR_ACCESS_TOKEN, POLAR_PRODUCT_STARTER_ID, POLAR_PRODUCT_GROWTH_ID
-    3. Set SARDIS_BILLING_PROVIDER=polar in Cloud Run env vars
-    4. Register webhook at polar.sh → https://api.sardis.sh/api/v2/billing/polar-webhook
-
-Usage:
-    from sardis_api.billing.polar_adapter import PolarBillingAdapter
-
-    adapter = PolarBillingAdapter()
-    checkout_url = await adapter.create_checkout(org_id, plan="starter")
-    # Redirect user to checkout_url
+DO NOT USE for new integrations. See services/stripe_billing.py instead.
 """
 from __future__ import annotations
 
@@ -247,19 +227,18 @@ class PolarBillingAdapter:
 # ---------------------------------------------------------------------------
 
 def get_billing_provider():
-    """Get the active billing provider based on configuration.
+    """Get the active billing provider.
 
-    Returns PolarBillingAdapter if SARDIS_BILLING_PROVIDER=polar,
-    otherwise returns StripeBillingService.
+    Always returns StripeBillingService. Polar is deprecated since
+    Sardis Labs, Inc. incorporation (March 2026).
     """
     provider = os.getenv("SARDIS_BILLING_PROVIDER", "stripe").lower()
 
     if provider == "polar":
-        adapter = PolarBillingAdapter()
-        if not adapter.is_configured:
-            logger.warning("Polar billing selected but POLAR_ACCESS_TOKEN not set")
-        return adapter
+        logger.warning(
+            "SARDIS_BILLING_PROVIDER=polar is deprecated. "
+            "Polar adapter is no longer maintained. Falling back to Stripe."
+        )
 
-    # Default: Stripe
     from sardis_api.services.stripe_billing import StripeBillingService
     return StripeBillingService()

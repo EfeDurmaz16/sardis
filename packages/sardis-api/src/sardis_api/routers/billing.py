@@ -67,7 +67,7 @@ class PlanResponse(BaseModel):
 
 
 class SubscribeRequest(BaseModel):
-    plan: str = Field(description="Plan name: free, growth, scale, enterprise")
+    plan: str = Field(description="Plan name: dev, starter, growth, enterprise")
     stripe_customer_id: str | None = None
     stripe_subscription_id: str | None = None
 
@@ -103,7 +103,7 @@ class BillingAccountResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    plan: str = Field(description="Plan to subscribe to: starter or growth")
+    plan: str = Field(description="Plan to subscribe to: dev, starter, or growth")
 
 
 class CheckoutResponse(BaseModel):
@@ -143,7 +143,7 @@ async def get_plan(
 ):
     """Get current subscription plan and limits."""
     sub = await billing.get_or_create_subscription(principal.organization_id)
-    plan_info = PLANS.get(sub.plan, PLANS["free"])
+    plan_info = PLANS.get(sub.plan, PLANS["dev"])
 
     return PlanResponse(
         plan=plan_info.name,
@@ -227,14 +227,14 @@ async def stripe_billing_webhook(
 # New endpoints: plans, account, checkout, portal
 # ---------------------------------------------------------------------------
 
-_PAID_PLANS = {"starter", "growth"}
+_PAID_PLANS = {"dev", "starter", "growth"}
 
 
 @webhook_router.get("/plans", response_model=PlansResponse)
 async def list_plans():
     """Return all available plans with pricing and limits. No auth required."""
     plans = []
-    for plan_name in ("free", "starter", "growth", "enterprise"):
+    for plan_name in ("dev", "starter", "growth", "enterprise"):
         limits = PLAN_LIMITS[plan_name]
         plans.append(
             PlanInfo(
@@ -256,8 +256,8 @@ async def get_account(
 ):
     """Return billing account for the authenticated org (defaults to free plan)."""
     sub = await billing.get_or_create_subscription(principal.organization_id)
-    plan_name = sub.plan or "free"
-    limits = PLAN_LIMITS.get(plan_name, PLAN_LIMITS["free"])
+    plan_name = sub.plan or "dev"
+    limits = PLAN_LIMITS.get(plan_name, PLAN_LIMITS["dev"])
 
     account = BillingAccount(
         id=f"ba_{principal.organization_id}",
@@ -296,11 +296,12 @@ async def create_checkout_session(
             detail=f"Plan must be one of: {sorted(_PAID_PLANS)}",
         )
 
-    price_id = (
-        _billing_config.stripe_price_starter
-        if body.plan == "starter"
-        else _billing_config.stripe_price_growth
-    )
+    _plan_to_price = {
+        "dev": _billing_config.stripe_price_dev,
+        "starter": _billing_config.stripe_price_starter,
+        "growth": _billing_config.stripe_price_growth,
+    }
+    price_id = _plan_to_price[body.plan]
 
     try:
         import stripe  # type: ignore[import]
