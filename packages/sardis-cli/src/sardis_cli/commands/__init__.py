@@ -1,5 +1,4 @@
 """CLI command modules."""
-from . import agents, auth, cards, chains, demo, fiat, holds, init, payments, policies, spending, wallets
+from . import agents, approvals, auth, cards, chains, demo, fiat, groups, holds, init, ledger, payments, policies, spending, wallets
 
-__all__ = ["agents", "auth", "chains", "holds", "init", "payments", "policies", "wallets", "fiat", "cards", "spending", "demo"]
-
+__all__ = ["agents", "approvals", "auth", "chains", "demo", "fiat", "groups", "holds", "init", "ledger", "payments", "policies", "spending", "wallets"]
