@@ -156,7 +156,7 @@ contract SardisJobRegistryTest is Test {
     function testGetTrustScore_lowCompletionWithVolume() public {
         vm.startPrank(writer);
         registry.recordCompletion(agent1, 500 ether); // 1 completed, volume bonus
-        registry.recordRejection(agent1);               // 1 rejected
+        registry.recordRejection(agent1); // 1 rejected
         vm.stopPrank();
 
         uint256 score = registry.getTrustScore(agent1);

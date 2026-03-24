@@ -9,18 +9,12 @@ pragma solidity ^0.8.24;
 contract MandateComplianceVerifier {
     /// @notice Emitted when a proof is verified
     event ProofVerified(
-        bytes32 indexed mandateCommitment,
-        bytes32 indexed paymentCommitment,
-        address verifier,
-        uint256 timestamp
+        bytes32 indexed mandateCommitment, bytes32 indexed paymentCommitment, address verifier, uint256 timestamp
     );
 
     /// @notice Emitted when a proof verification fails
     event ProofRejected(
-        bytes32 indexed mandateCommitment,
-        bytes32 indexed paymentCommitment,
-        address verifier,
-        string reason
+        bytes32 indexed mandateCommitment, bytes32 indexed paymentCommitment, address verifier, string reason
     );
 
     /// @notice Verification record for audit trail
@@ -43,11 +37,10 @@ contract MandateComplianceVerifier {
     /// @param paymentCommitment Poseidon hash of the payment details (public input)
     /// @param proof The zero-knowledge proof bytes
     /// @return valid Whether the proof is valid
-    function verify(
-        bytes32 mandateCommitment,
-        bytes32 paymentCommitment,
-        bytes calldata proof
-    ) external returns (bool valid) {
+    function verify(bytes32 mandateCommitment, bytes32 paymentCommitment, bytes calldata proof)
+        external
+        returns (bool valid)
+    {
         // TODO: Replace with Noir-generated verification logic
         // For now, validate proof structure
         require(proof.length >= 32, "Proof too short");
@@ -58,13 +51,15 @@ contract MandateComplianceVerifier {
         // In production: UltraPlonk verification from Noir output
         valid = true;
 
-        records.push(VerificationRecord({
-            mandateCommitment: mandateCommitment,
-            paymentCommitment: paymentCommitment,
-            valid: valid,
-            timestamp: block.timestamp,
-            verifier: msg.sender
-        }));
+        records.push(
+            VerificationRecord({
+                mandateCommitment: mandateCommitment,
+                paymentCommitment: paymentCommitment,
+                valid: valid,
+                timestamp: block.timestamp,
+                verifier: msg.sender
+            })
+        );
 
         verificationCount++;
 

@@ -12,6 +12,9 @@ import hashlib
 import struct
 
 import pytest
+
+pytest.importorskip("solders", reason="solders not installed")
+
 from sardis_chain.solana.program import (
     DISC_EXECUTE_TRANSFER,
     DISC_FREEZE_WALLET,

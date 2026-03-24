@@ -108,7 +108,8 @@ contract RefundProtocolTest is Test {
         vm.prank(arbiter);
         protocol.earlyWithdrawByArbiter(paymentIDs, withdrawalAmounts, 0, expiry, 2, recipient, v, r, s);
 
-        (, uint256 paymentAmount,, address paymentRefundTo, uint256 withdrawnAmount, bool refunded) = protocol.payments(0);
+        (, uint256 paymentAmount,, address paymentRefundTo, uint256 withdrawnAmount, bool refunded) =
+            protocol.payments(0);
         assertEq(paymentAmount, 100e6);
         assertEq(paymentRefundTo, refundTo);
         assertEq(withdrawnAmount, 60e6);
@@ -213,9 +214,8 @@ contract RefundProtocolTest is Test {
         uint256[] memory withdrawalAmounts = new uint256[](1);
         withdrawalAmounts[0] = 60e6;
         uint256 expiry = block.timestamp + ONE_DAY;
-        (uint8 v, bytes32 r, bytes32 s) = _signEarlyWithdrawalForProtocol(
-            falseProtocol, paymentIDs, withdrawalAmounts, 0, expiry, 3
-        );
+        (uint8 v, bytes32 r, bytes32 s) =
+            _signEarlyWithdrawalForProtocol(falseProtocol, paymentIDs, withdrawalAmounts, 0, expiry, 3);
 
         falseToken.setFailTransfer(true);
 
@@ -223,7 +223,8 @@ contract RefundProtocolTest is Test {
         vm.prank(arbiter);
         falseProtocol.earlyWithdrawByArbiter(paymentIDs, withdrawalAmounts, 0, expiry, 3, recipient, v, r, s);
 
-        (, uint256 paymentAmount,, address paymentRefundTo, uint256 withdrawnAmount, bool refunded) = falseProtocol.payments(0);
+        (, uint256 paymentAmount,, address paymentRefundTo, uint256 withdrawnAmount, bool refunded) =
+            falseProtocol.payments(0);
         assertEq(paymentAmount, 100e6);
         assertEq(paymentRefundTo, refundTo);
         assertEq(withdrawnAmount, 0);
@@ -252,17 +253,7 @@ contract RefundProtocolTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = _signEarlyWithdrawal(paymentIDs, withdrawalAmounts, feeAmount, expiry, salt);
 
         vm.prank(arbiter);
-        protocol.earlyWithdrawByArbiter(
-            paymentIDs,
-            withdrawalAmounts,
-            feeAmount,
-            expiry,
-            salt,
-            recipient,
-            v,
-            r,
-            s
-        );
+        protocol.earlyWithdrawByArbiter(paymentIDs, withdrawalAmounts, feeAmount, expiry, salt, recipient, v, r, s);
     }
 
     function _signEarlyWithdrawal(

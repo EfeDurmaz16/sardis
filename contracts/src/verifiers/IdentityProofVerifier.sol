@@ -7,10 +7,7 @@ pragma solidity ^0.8.24;
 /// @dev Generated from Noir circuit `identity_proof.nr`.
 contract IdentityProofVerifier {
     event IdentityVerified(
-        bytes32 indexed identityCommitment,
-        uint8 requiredLevel,
-        address verifier,
-        uint256 timestamp
+        bytes32 indexed identityCommitment, uint8 requiredLevel, address verifier, uint256 timestamp
     );
 
     /// @notice Minimum KYA levels
@@ -22,11 +19,10 @@ contract IdentityProofVerifier {
     /// @param identityCommitment Poseidon hash of the identity attestation
     /// @param requiredKyaLevel Minimum required KYA level
     /// @param proof The zero-knowledge proof bytes
-    function verify(
-        bytes32 identityCommitment,
-        uint8 requiredKyaLevel,
-        bytes calldata proof
-    ) external returns (bool valid) {
+    function verify(bytes32 identityCommitment, uint8 requiredKyaLevel, bytes calldata proof)
+        external
+        returns (bool valid)
+    {
         require(proof.length >= 32, "Proof too short");
         require(identityCommitment != bytes32(0), "Empty commitment");
         require(requiredKyaLevel >= LEVEL_BASIC && requiredKyaLevel <= LEVEL_ATTESTED, "Invalid level");
