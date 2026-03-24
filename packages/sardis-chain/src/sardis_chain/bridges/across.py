@@ -231,7 +231,13 @@ class AcrossBridgeAdapter:
                     )
                     transfer.deposit_tx_hash = tx_hash
                     transfer.status = "deposited"
-                    logger.info("Across deposit broadcast: %s (%s→%s)", tx_hash, quote.from_chain, quote.to_chain)
+
+                    # Extract on-chain depositId from FundsDeposited event logs
+                    deposit_id = await self._extract_deposit_id(rpc_url, tx_hash)
+                    if deposit_id is not None:
+                        transfer.transfer_id = str(deposit_id)
+
+                    logger.info("Across deposit broadcast: %s (depositId=%s, %s→%s)", tx_hash, transfer.transfer_id, quote.from_chain, quote.to_chain)
                 else:
                     logger.warning("No RPC URL for chain %d — deposit not broadcast", src_chain_id)
             else:
@@ -252,15 +258,24 @@ class AcrossBridgeAdapter:
 
         return transfer
 
-    async def check_status(self, transfer_id: str) -> str:
-        """Check the status of a bridge transfer via Across API."""
+    async def check_status(self, transfer_id: str, origin_chain_id: int | None = None) -> str:
+        """Check the status of a bridge transfer via Across API.
+
+        Args:
+            transfer_id: The on-chain depositId (not local UUID).
+            origin_chain_id: Source chain ID (required by Across V3 API).
+        """
         import httpx
 
         try:
+            params: dict[str, Any] = {"depositId": transfer_id}
+            if origin_chain_id is not None:
+                params["originChainId"] = origin_chain_id
+
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(
                     f"{self._api_base}/deposit/status",
-                    params={"depositId": transfer_id},
+                    params=params,
                 )
                 if resp.status_code == 200:
                     data = resp.json()
@@ -272,6 +287,52 @@ class AcrossBridgeAdapter:
             logger.debug("Across status check failed for %s", transfer_id)
 
         return "pending"
+
+    async def _extract_deposit_id(self, rpc_url: str, tx_hash: str) -> int | None:
+        """Extract depositId from FundsDeposited event in transaction receipt.
+
+        Across V3 FundsDeposited event signature:
+        FundsDeposited(uint256,uint256,uint256,int64,uint32,uint32,...)
+        Topic0: 0xa123dc29aebf7d0c3322c8eeb5b999e859f39937950ed31056532713d0de396f
+        The depositId is the 4th indexed field (int64).
+        """
+        import httpx
+
+        # FundsDeposited event topic0 (Across V3 SpokePool)
+        FUNDS_DEPOSITED_TOPIC = "0xa123dc29aebf7d0c3322c8eeb5b999e859f39937950ed31056532713d0de396f"
+
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_getTransactionReceipt",
+                        "params": [tx_hash],
+                        "id": 1,
+                    },
+                )
+                result = resp.json()
+
+            receipt = result.get("result")
+            if not receipt or not receipt.get("logs"):
+                return None
+
+            for log in receipt["logs"]:
+                topics = log.get("topics", [])
+                if topics and topics[0] == FUNDS_DEPOSITED_TOPIC:
+                    # depositId is encoded in the log data; first 32 bytes
+                    # of non-indexed data after the indexed topics
+                    log_data = log.get("data", "0x")
+                    if len(log_data) >= 66:
+                        deposit_id = int(log_data[2:66], 16)
+                        logger.info("Extracted on-chain depositId: %d from %s", deposit_id, tx_hash)
+                        return deposit_id
+
+        except Exception as e:
+            logger.warning("Failed to extract depositId from %s: %s", tx_hash, e)
+
+        return None
 
     @staticmethod
     def _get_rpc_for_chain(chain_id: int) -> str:
