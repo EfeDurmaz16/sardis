@@ -108,27 +108,18 @@ async def provision_credential(
         allowed_merchant_ids=body.allowed_merchant_ids or [],
     )
 
-    # Use mock adapter to provision
-    mock_adapter = getattr(request.app.state, "delegated_adapter", None)
-    if mock_adapter and hasattr(mock_adapter, "provision_credential"):
-        encryption = getattr(request.app.state, "credential_encryption", None)
-        cred = await mock_adapter.provision_credential(
-            org_id=org_id,
-            agent_id=body.agent_id,
-            scope=scope,
-            encryption=encryption,
-        )
-    else:
-        cred = DelegatedCredential(
-            org_id=org_id,
-            agent_id=body.agent_id,
-            network=network,
-            status=CredentialStatus.ACTIVE,
-            token_reference=f"tok_placeholder_{body.network}",
-            token_encrypted=b"placeholder",
-            scope=scope,
-            consent_id=body.consent_id,
-        )
+    # Provision via delegated adapter
+    adapter = getattr(request.app.state, "delegated_adapter", None)
+    if not adapter or not hasattr(adapter, "provision_credential"):
+        raise HTTPException(503, "Delegated credential provider not configured")
+
+    encryption = getattr(request.app.state, "credential_encryption", None)
+    cred = await adapter.provision_credential(
+        org_id=org_id,
+        agent_id=body.agent_id,
+        scope=scope,
+        encryption=encryption,
+    )
 
     cred.consent_id = body.consent_id
     cred_id = await cred_store.store(cred)
