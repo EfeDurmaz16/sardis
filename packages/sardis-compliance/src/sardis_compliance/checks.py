@@ -598,6 +598,21 @@ class ComplianceEngine:
                     )
 
             # Sanctions screening (if service available and not already blocked)
+            if result.allowed and not self._sanctions_service:
+                # No sanctions service configured — record skip in audit trail
+                skip_entry = ComplianceAuditEntry(
+                    mandate_id=mandate.mandate_id,
+                    subject=mandate.subject,
+                    allowed=True,
+                    reason="sanctions_skipped",
+                    rule_id="sanctions_screening",
+                    provider=None,
+                    metadata={"note": "sanctions_service not configured"},
+                )
+                skip_id_or_awaitable = self._audit_store.append(skip_entry)
+                if isawaitable(skip_id_or_awaitable):
+                    await skip_id_or_awaitable
+
             if result.allowed and self._sanctions_service:
                 try:
                     screening = await self._sanctions_service.screen_address(
