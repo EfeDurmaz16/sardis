@@ -183,6 +183,21 @@ async def execute_fx_quote(
         signer = await create_fx_signer()
 
         provider = row["provider"]
+
+        # Chain-aware signing validation: Tempo needs access key, not Turnkey MPC
+        if provider == "tempo_dex" and not signer.can_sign_tempo():
+            raise HTTPException(
+                status_code=503,
+                detail="Tempo swaps require SARDIS_TEMPO_ACCESS_KEY (or SARDIS_EOA_PRIVATE_KEY). "
+                       "Turnkey MPC is available but only supports Base/ETH (type 0x02). "
+                       "Set SARDIS_TEMPO_ACCESS_KEY for Tempo type 0x76 signing.",
+            )
+        if provider in ("uniswap_v3", "uniswap_v4") and not signer.can_sign_evm():
+            raise HTTPException(
+                status_code=503,
+                detail="EVM swaps require Turnkey MPC (TURNKEY_API_KEY) or SARDIS_EOA_PRIVATE_KEY.",
+            )
+
         if provider == "tempo_dex":
             from sardis_chain.tempo.dex import TempoDEXAdapter, DEXQuote
             import os

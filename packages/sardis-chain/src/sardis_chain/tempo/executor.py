@@ -218,21 +218,11 @@ class TempoExecutor:
                     gas_used=receipt_data.get("gas_used", 0),
                 )
 
-        except ImportError:
-            logger.warning("pytempo not installed — falling back to manual encoding")
-
-        # Fallback: use manual encoding via batch submit
-        approve_data = self._encode_approve(STABLECOIN_DEX, amount)
-        # Note: StablecoinDEX.swap() calldata from pytempo is preferred
-        # This fallback uses the old batch path
-        batch = BatchTransaction(
-            calls=[
-                BatchCall(to=from_token, data=approve_data),
-            ],
-            fee_token=from_token,
-            chain_id=self._chain_id,
-        )
-        return await self._submit_batch(batch)
+        except ImportError as e:
+            raise RuntimeError(
+                "pytempo is required for Tempo DEX swaps. "
+                "Install: pip install pytempo"
+            ) from e
 
     async def _submit_batch(self, batch: BatchTransaction) -> TempoReceipt:
         """Submit a type 0x76 batch transaction to Tempo."""

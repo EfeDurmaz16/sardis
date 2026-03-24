@@ -542,6 +542,14 @@ class ComplianceEngine:
         sanctions_service: Any | None = None,
         kya_service: Any | None = None,
     ):
+        import os
+
+        if os.getenv("SARDIS_ENVIRONMENT") in ("prod", "production"):
+            if kyc_service is None:
+                raise RuntimeError("Production ComplianceEngine requires kyc_service")
+            if sanctions_service is None:
+                raise RuntimeError("Production ComplianceEngine requires sanctions_service")
+
         self._provider = provider or SimpleRuleProvider(settings)
         self._audit_store = audit_store or get_audit_store()
         self._kyc_service = kyc_service
