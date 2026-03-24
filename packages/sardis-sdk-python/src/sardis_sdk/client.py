@@ -632,6 +632,8 @@ class AsyncSardisClient(BaseClient):
         self._subscriptions_v2: AsyncSubscriptionsV2Resource | None = None
         self._escrow: AsyncEscrowResource | None = None
         self._pay: AsyncPayResource | None = None
+        self._mandate_delegation: Any = None
+        self._batch: Any = None
 
     @property
     def pay(self) -> AsyncPayResource:
@@ -640,6 +642,22 @@ class AsyncSardisClient(BaseClient):
             from .resources.pay import AsyncPayResource
             self._pay = AsyncPayResource(self)
         return self._pay
+
+    @property
+    def mandate_delegation(self):
+        """Access the mandate delegation resource."""
+        if self._mandate_delegation is None:
+            from .resources.mandate_delegation import AsyncMandateDelegationResource
+            self._mandate_delegation = AsyncMandateDelegationResource(self)
+        return self._mandate_delegation
+
+    @property
+    def batch(self):
+        """Access the batch payments resource."""
+        if self._batch is None:
+            from .resources.batch import AsyncBatchResource
+            self._batch = AsyncBatchResource(self)
+        return self._batch
 
     @property
     def groups(self) -> AsyncGroupsResource:
@@ -1130,6 +1148,8 @@ class SardisClient(BaseClient):
         self._subscriptions_v2: SubscriptionsV2Resource | None = None
         self._escrow: EscrowResource | None = None
         self._pay: PayResource | None = None
+        self._mandate_delegation: Any = None
+        self._batch: Any = None
 
     @property
     def pay(self) -> PayResource:
@@ -1138,6 +1158,22 @@ class SardisClient(BaseClient):
             from .resources.pay import PayResource
             self._pay = PayResource(self)
         return self._pay
+
+    @property
+    def mandate_delegation(self):
+        """Access the mandate delegation resource."""
+        if self._mandate_delegation is None:
+            from .resources.mandate_delegation import MandateDelegationResource
+            self._mandate_delegation = MandateDelegationResource(self)
+        return self._mandate_delegation
+
+    @property
+    def batch(self):
+        """Access the batch payments resource."""
+        if self._batch is None:
+            from .resources.batch import BatchResource
+            self._batch = BatchResource(self)
+        return self._batch
 
     @property
     def groups(self) -> GroupsResource:
