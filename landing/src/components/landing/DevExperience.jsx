@@ -78,10 +78,11 @@ export default function DevExperience() {
             </code>
             <button
               onClick={handleCopy}
-              className="text-[12px] transition-colors duration-150 shrink-0"
+              className="text-[12px] transition-colors duration-150 shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
               style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--landing-text-muted)' }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--landing-text-primary)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--landing-text-muted)'}
+              aria-label="Copy install command to clipboard"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>

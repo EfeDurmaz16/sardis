@@ -36,13 +36,19 @@ export default function Marquee() {
           0% { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
+        @media (prefers-reduced-motion: reduce) {
+          .marquee-track {
+            animation: none !important;
+          }
+        }
       `}</style>
       <div
         className="overflow-hidden py-6 md:py-8 group"
         style={{ borderTop: '1px solid var(--landing-border)', borderBottom: '1px solid var(--landing-border)' }}
       >
         <div
-          className="flex whitespace-nowrap"
+          className="flex whitespace-nowrap marquee-track"
+          aria-hidden="true"
           style={{ animation: 'marquee 30s linear infinite' }}
           onMouseEnter={(e) => (e.currentTarget.style.animationPlayState = 'paused')}
           onMouseLeave={(e) => (e.currentTarget.style.animationPlayState = 'running')}

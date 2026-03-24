@@ -71,12 +71,12 @@ export default function ProblemCards() {
                 }}
               >
                 <div>{card.icon}</div>
-                <div
+                <h3
                   className="text-[18px] leading-[24px] font-semibold"
-                  style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", color: 'var(--landing-text-primary)' }}
+                  style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", color: 'var(--landing-text-primary)', margin: 0 }}
                 >
                   {card.title}
-                </div>
+                </h3>
                 <div
                   className="text-[14px] leading-6 font-light"
                   style={{ fontFamily: "'Inter', system-ui, sans-serif", color: 'var(--landing-text-tertiary)' }}

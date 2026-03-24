@@ -137,7 +137,7 @@ export default function Integrations() {
                       >
                         <img
                           src={icon}
-                          alt={item.name}
+                          alt={`${item.name} integration icon`}
                           width={22}
                           height={22}
                           loading="lazy"

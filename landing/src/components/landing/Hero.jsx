@@ -275,8 +275,10 @@ function WalletMockup() {
             <button
               key={item.label}
               onClick={() => setActiveTab(item.label)}
-              className="flex flex-col items-center gap-1 transition-colors"
+              className="flex flex-col items-center gap-1 transition-colors min-w-[44px] min-h-[44px] justify-center"
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              aria-label={`View ${item.label} tab`}
+              aria-selected={activeTab === item.label}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeTab === item.label ? '#3B82F6' : '#505460'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d={item.path} />

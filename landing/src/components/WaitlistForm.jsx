@@ -68,8 +68,10 @@ const WaitlistForm = ({
     return (
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <div className="flex-1 relative">
+                <label htmlFor="waitlist-email" className="sr-only">Email address</label>
                 <input
-                    type="text"
+                    id="waitlist-email"
+                    type="email"
                     inputMode="email"
                     autoComplete="email"
                     value={email}
@@ -77,10 +79,13 @@ const WaitlistForm = ({
                     placeholder="you@company.com"
                     className="w-full h-12 px-4 bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[var(--sardis-orange)] transition-colors font-mono"
                     disabled={status === 'loading'}
+                    aria-describedby={status === 'error' ? 'waitlist-error' : undefined}
                 />
                 <AnimatePresence>
                     {status === 'error' && (
                         <motion.p
+                            id="waitlist-error"
+                            role="alert"
                             initial={{ opacity: 0, y: -5 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
