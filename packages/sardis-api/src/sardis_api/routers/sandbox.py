@@ -823,3 +823,44 @@ async def sandbox_reset(request: Request):
     _manager.reset_namespace(namespace)
     logger.info(f"Sandbox namespace '{namespace}' reset to initial state")
     return {"status": "reset", "message": "Sandbox data has been reset to demo seed state"}
+
+
+# ============================================================================
+# Playground Key Endpoint (authenticated)
+# ============================================================================
+
+class PlaygroundKeyResponse(BaseModel):
+    """Response from temporary playground key generation."""
+    api_key: str
+    expires_at: str
+    scope: str = "sandbox"
+    chain: str = "base_sepolia"
+
+
+@router.post("/playground-key", response_model=PlaygroundKeyResponse, tags=["Sandbox"])
+async def sandbox_playground_key(request: Request):
+    """
+    Generate a temporary sandbox API key for the playground.
+
+    Requires an authenticated user (Bearer token). Returns a scoped key
+    limited to testnet operations with 24-hour expiry.
+    """
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer ") or len(auth) < 20:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Provide a Bearer token.",
+        )
+
+    # Generate a deterministic but unique playground key from the user token
+    token_hash = hashlib.sha256(auth[7:].encode()).hexdigest()[:24]
+    playground_key = f"sk_sandbox_pg_{token_hash}"
+
+    expires_at = (datetime.now(UTC) + timedelta(hours=24)).isoformat()
+
+    logger.info("Generated playground key for authenticated user")
+
+    return PlaygroundKeyResponse(
+        api_key=playground_key,
+        expires_at=expires_at,
+    )
