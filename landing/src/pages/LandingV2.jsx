@@ -16,6 +16,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import SocialProof from '@/components/landing/SocialProof';
+import HeroTrace from '@/components/landing/HeroTrace';
 import DashboardMockup from '@/components/landing/DashboardMockup';
 import ProblemCards from '@/components/landing/ProblemCards';
 import HowItWorks from '@/components/landing/HowItWorks';
@@ -60,6 +61,13 @@ export default function LandingV2() {
       <div className="h-[72px]" />
 
       <Hero />
+
+      {/* Live payment trace animation — visual anchor */}
+      <AnimatedSection>
+        <div className="flex justify-center py-10 md:py-16" style={{ backgroundColor: 'var(--landing-bg)' }}>
+          <HeroTrace />
+        </div>
+      </AnimatedSection>
 
       <AnimatedSection>
         <SocialProof />
