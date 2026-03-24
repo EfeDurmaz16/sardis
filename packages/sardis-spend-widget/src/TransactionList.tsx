@@ -1,0 +1,93 @@
+import type { Transaction } from "./types";
+
+interface TransactionListProps {
+  transactions: Transaction[];
+  isDark: boolean;
+}
+
+export function TransactionList({ transactions, isDark }: TransactionListProps) {
+  if (transactions.length === 0) {
+    return (
+      <div style={{ fontSize: 13, opacity: 0.5, textAlign: "center", padding: 8 }}>
+        No transactions yet
+      </div>
+    );
+  }
+
+  const borderColor = isDark ? "#374151" : "#e5e7eb";
+
+  const headerStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    opacity: 0.6,
+    padding: "4px 0",
+  };
+
+  return (
+    <div style={{ flex: "0 1 auto", overflow: "auto", maxHeight: 160 }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
+            <th style={{ ...headerStyle, textAlign: "left" }}>Date</th>
+            <th style={{ ...headerStyle, textAlign: "left" }}>Recipient</th>
+            <th style={{ ...headerStyle, textAlign: "right" }}>Amount</th>
+            <th style={{ ...headerStyle, textAlign: "right" }}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((tx) => (
+            <TransactionRow key={tx.id} tx={tx} isDark={isDark} borderColor={borderColor} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TransactionRow({
+  tx,
+  isDark,
+  borderColor,
+}: {
+  tx: Transaction;
+  isDark: boolean;
+  borderColor: string;
+}) {
+  const cellStyle: React.CSSProperties = { padding: "6px 0" };
+
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    completed: { bg: isDark ? "#064e3b" : "#dcfce7", text: isDark ? "#6ee7b7" : "#166534" },
+    pending: { bg: isDark ? "#422006" : "#fef9c3", text: isDark ? "#fbbf24" : "#854d0e" },
+    blocked: { bg: isDark ? "#450a0a" : "#fee2e2", text: isDark ? "#fca5a5" : "#991b1b" },
+  };
+
+  const statusStyle = statusColors[tx.status] ?? statusColors.pending;
+
+  return (
+    <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
+      <td style={cellStyle}>{tx.date}</td>
+      <td style={cellStyle}>{tx.recipient}</td>
+      <td style={{ ...cellStyle, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+        ${tx.amount.toFixed(2)}
+      </td>
+      <td style={{ ...cellStyle, textAlign: "right" }}>
+        <span
+          data-testid={`status-${tx.status}`}
+          style={{
+            display: "inline-block",
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 9999,
+            backgroundColor: statusStyle.bg,
+            color: statusStyle.text,
+          }}
+        >
+          {tx.status}
+        </span>
+      </td>
+    </tr>
+  );
+}
