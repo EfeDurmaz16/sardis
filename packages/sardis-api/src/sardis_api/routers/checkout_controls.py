@@ -27,23 +27,55 @@ class CheckoutControlConfig(BaseModel):
     freeze_on_dispute: bool = Field(default=True, description="Auto-freeze wallet on dispute")
 
 
-# In-memory config
+# Cached in-memory; synced to DB on writes.
 _checkout_config = CheckoutControlConfig()
+
+
+async def _load_checkout_config() -> CheckoutControlConfig:
+    """Load config from DB, falling back to in-memory default."""
+    global _checkout_config
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        row = await Database.fetchrow(
+            "SELECT value FROM operator_config WHERE key = 'checkout_controls'"
+        )
+        if row:
+            _checkout_config = CheckoutControlConfig(**json.loads(row["value"]))
+    except Exception:
+        pass  # Use cached value
+    return _checkout_config
+
+
+async def _save_checkout_config(config: CheckoutControlConfig) -> None:
+    """Persist config to DB."""
+    global _checkout_config
+    _checkout_config = config
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO operator_config (key, value, updated_at)
+               VALUES ('checkout_controls', $1, NOW())
+               ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()""",
+            json.dumps(config.model_dump(), default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist checkout config to DB: %s", exc)
 
 
 @router.get("/config", response_model=CheckoutControlConfig)
 async def get_checkout_controls():
     """Get current checkout control configuration."""
-    return _checkout_config
+    return await _load_checkout_config()
 
 
 @router.put("/config", response_model=CheckoutControlConfig)
 async def update_checkout_controls(config: CheckoutControlConfig):
     """Update checkout control configuration."""
-    global _checkout_config
-    _checkout_config = config
+    await _save_checkout_config(config)
     logger.info("Checkout controls updated: %s", config.model_dump())
-    return _checkout_config
+    return config
 
 
 class CheckoutIncident(BaseModel):
@@ -65,7 +97,39 @@ class CheckoutIncidentResponse(BaseModel):
     created_at: str
 
 
-_incidents: list[dict] = []
+_incidents: list[dict] = []  # process-local cache
+
+
+async def _persist_incident(incident: dict) -> None:
+    """Write incident to DB; keep local cache for reads."""
+    _incidents.append(incident)
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO checkout_incidents (incident_id, session_id, data, created_at)
+               VALUES ($1, $2, $3, NOW())""",
+            incident["incident_id"], incident["session_id"],
+            json.dumps(incident, default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist checkout incident to DB: %s", exc)
+
+
+async def _load_incidents(limit: int = 50) -> list[dict]:
+    """Load incidents from DB, falling back to local cache."""
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        rows = await Database.fetch(
+            "SELECT data FROM checkout_incidents ORDER BY created_at DESC LIMIT $1",
+            limit,
+        )
+        if rows:
+            return [json.loads(r["data"]) if isinstance(r["data"], str) else r["data"] for r in reversed(rows)]
+    except Exception:
+        pass
+    return _incidents[-limit:]
 
 
 @router.post("/incidents", response_model=CheckoutIncidentResponse, status_code=201)
@@ -84,11 +148,12 @@ async def report_checkout_incident(body: CheckoutIncident):
         "auto_actions_taken": body.auto_actions_taken,
         "created_at": datetime.now(UTC).isoformat(),
     }
-    _incidents.append(incident)
+    await _persist_incident(incident)
     return CheckoutIncidentResponse(**incident)
 
 
 @router.get("/incidents", response_model=list[CheckoutIncidentResponse])
 async def list_checkout_incidents(limit: int = 50):
     """List checkout incidents."""
-    return [CheckoutIncidentResponse(**i) for i in _incidents[-limit:]]
+    incidents = await _load_incidents(limit)
+    return [CheckoutIncidentResponse(**i) for i in incidents]

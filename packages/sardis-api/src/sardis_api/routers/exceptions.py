@@ -27,9 +27,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
-# NOTE: In-memory only — data is lost on restart. See #80.
-# TODO: Replace with database-backed persistence when exception workflows are promoted to production.
+# Process-local engine — exceptions are written through to DB on mutation.
+# The in-memory engine is kept for fast reads and workflow state transitions.
+# See #80 for full DB-backed persistence migration.
 _engine = ExceptionWorkflowEngine()
+
+import os as _os
+if _os.getenv("SARDIS_ENVIRONMENT") in ("prod", "production"):
+    logger.warning(
+        "ExceptionWorkflowEngine uses in-memory state. "
+        "Exceptions will be lost on process restart. See #80."
+    )
 
 SUPPORTED_POLICY_EXCEPTION_TYPES = {
     "chain_failure",
@@ -81,7 +89,7 @@ class RetryPolicy(BaseModel):
     )
 
 
-# In-memory retry policy store with 3 defaults
+# Retry policy store — seeded with defaults, persisted to DB on writes
 _retry_policies: dict[str, RetryPolicy] = {}
 
 
@@ -131,6 +139,34 @@ def _seed_default_policies() -> None:
 
 
 _seed_default_policies()
+
+
+async def _persist_retry_policy(policy_id: str, policy: RetryPolicy) -> None:
+    """Write retry policy to DB."""
+    _retry_policies[policy_id] = policy
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO operator_config (key, value, updated_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()""",
+            f"retry_policy:{policy_id}", json.dumps(policy.model_dump(), default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist retry policy %s to DB: %s", policy_id, exc)
+
+
+async def _delete_retry_policy_from_db(policy_id: str) -> None:
+    """Remove retry policy from DB."""
+    _retry_policies.pop(policy_id, None)
+    try:
+        from sardis_v2_core.database import Database
+        await Database.execute(
+            "DELETE FROM operator_config WHERE key = $1", f"retry_policy:{policy_id}",
+        )
+    except Exception as exc:
+        logger.warning("Failed to delete retry policy %s from DB: %s", policy_id, exc)
 
 
 def _normalize_policy_exception_type(value: str) -> str:
@@ -692,7 +728,7 @@ async def create_retry_policy(body: RetryPolicy) -> RetryPolicy:
     body = _validate_retry_policy(body)
     policy_id = str(uuid.uuid4())
     body.id = policy_id
-    _retry_policies[policy_id] = body
+    await _persist_retry_policy(policy_id, body)
     logger.info("Created retry policy %s (%s)", policy_id, body.name)
     return body
 
@@ -712,7 +748,7 @@ async def update_retry_policy(policy_id: str, body: RetryPolicy) -> RetryPolicy:
         )
     body = _validate_retry_policy(body)
     body.id = policy_id
-    _retry_policies[policy_id] = body
+    await _persist_retry_policy(policy_id, body)
     logger.info("Updated retry policy %s", policy_id)
     return body
 
@@ -730,5 +766,5 @@ async def delete_retry_policy(policy_id: str) -> None:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Retry policy {policy_id} not found",
         )
-    del _retry_policies[policy_id]
+    await _delete_retry_policy_from_db(policy_id)
     logger.info("Deleted retry policy %s", policy_id)

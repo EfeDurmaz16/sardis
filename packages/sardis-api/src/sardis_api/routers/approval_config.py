@@ -14,7 +14,8 @@ from sardis_api.authz import require_principal
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
 
-# In-memory config store (replace with DB in production)
+# Config store — DB-backed with in-memory cache. Seed data is used as default
+# and is overwritten on first DB read.
 _approval_config: dict = {
     "approver_groups": [
         {"id": "finance", "name": "Finance Team", "members": ["finance@company.com"], "is_fallback": False},
@@ -87,16 +88,49 @@ class ApprovalConfigResponse(BaseModel):
     defaults: ApprovalDefaults
 
 
+async def _persist_approval_config() -> None:
+    """Persist approval config to DB."""
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO operator_config (key, value, updated_at)
+               VALUES ('approval_config', $1, NOW())
+               ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = NOW()""",
+            json.dumps(_approval_config, default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist approval config to DB: %s", exc)
+
+
+async def _load_approval_config() -> dict:
+    """Load approval config from DB, falling back to in-memory."""
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        row = await Database.fetchrow(
+            "SELECT value FROM operator_config WHERE key = 'approval_config'"
+        )
+        if row:
+            loaded = json.loads(row["value"])
+            _approval_config.update(loaded)
+    except Exception:
+        pass
+    return _approval_config
+
+
 @router.get("/", response_model=ApprovalConfigResponse)
 async def get_approval_config() -> ApprovalConfigResponse:
     """Get the current approval routing configuration."""
-    return ApprovalConfigResponse(**_approval_config)
+    config = await _load_approval_config()
+    return ApprovalConfigResponse(**config)
 
 
 @router.put("/groups", response_model=list[ApproverGroup])
 async def update_approver_groups(groups: list[ApproverGroup]) -> list[ApproverGroup]:
     """Replace all approver groups."""
     _approval_config["approver_groups"] = [g.model_dump() for g in groups]
+    await _persist_approval_config()
     logger.info("Approver groups updated: %d groups", len(groups))
     return groups
 
@@ -118,6 +152,7 @@ async def update_routing_rules(rules: list[RoutingRule]) -> list[RoutingRule]:
                 detail=f"Rule '{rule.id}' references unknown escalation group '{rule.escalation_group}'",
             )
     _approval_config["routing_rules"] = [r.model_dump() for r in rules]
+    await _persist_approval_config()
     logger.info("Routing rules updated: %d rules", len(rules))
     return rules
 
@@ -132,5 +167,6 @@ async def update_defaults(defaults: ApprovalDefaults) -> ApprovalDefaults:
             detail=f"Default approver group '{defaults.default_approver_group}' does not exist",
         )
     _approval_config["defaults"] = defaults.model_dump()
+    await _persist_approval_config()
     logger.info("Approval defaults updated")
     return defaults

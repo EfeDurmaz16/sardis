@@ -59,9 +59,9 @@ class DegradedModePolicy(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# In-memory stores (swappable for Postgres in a future migration)
+# Stores — DB-backed with in-memory cache
 # ---------------------------------------------------------------------------
-_fallback_rules: dict[str, dict] = {}
+_fallback_rules: dict[str, dict] = {}  # process-local cache
 _degraded_modes: dict[str, dict] = {
     "stablecoin": {
         "rail": "stablecoin",
@@ -113,6 +113,50 @@ _fallback_rules[_default_rule_id] = {
 }
 
 
+async def _persist_rule(rule_id: str, record: dict) -> None:
+    """Write fallback rule to DB."""
+    _fallback_rules[rule_id] = record
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO operator_config (key, value, updated_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()""",
+            f"fallback_rule:{rule_id}", json.dumps(record, default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist fallback rule %s to DB: %s", rule_id, exc)
+
+
+async def _delete_rule_from_db(rule_id: str) -> None:
+    """Remove rule from DB."""
+    _fallback_rules.pop(rule_id, None)
+    try:
+        from sardis_v2_core.database import Database
+        await Database.execute(
+            "DELETE FROM operator_config WHERE key = $1", f"fallback_rule:{rule_id}",
+        )
+    except Exception as exc:
+        logger.warning("Failed to delete fallback rule %s from DB: %s", rule_id, exc)
+
+
+async def _persist_degraded_mode(rail: str, record: dict) -> None:
+    """Write degraded mode to DB."""
+    _degraded_modes[rail] = record
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO operator_config (key, value, updated_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()""",
+            f"degraded_mode:{rail}", json.dumps(record, default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist degraded mode %s to DB: %s", rail, exc)
+
+
 # ---------------------------------------------------------------------------
 # Fallback Rules CRUD
 # ---------------------------------------------------------------------------
@@ -130,7 +174,7 @@ async def create_fallback_rule(body: FallbackRule) -> FallbackRule:
     rule_id = f"fbr_{uuid.uuid4().hex[:12]}"
     record = body.model_dump()
     record["id"] = rule_id
-    _fallback_rules[rule_id] = record
+    await _persist_rule(rule_id, record)
     logger.info("Fallback rule created id=%s primary=%s fallback=%s", rule_id, body.primary_rail, body.fallback_rail)
     return FallbackRule(**record)
 
@@ -142,7 +186,7 @@ async def update_fallback_rule(rule_id: str, body: FallbackRule) -> FallbackRule
         raise HTTPException(status_code=404, detail="Rule not found")
     record = body.model_dump()
     record["id"] = rule_id
-    _fallback_rules[rule_id] = record
+    await _persist_rule(rule_id, record)
     logger.info("Fallback rule updated id=%s", rule_id)
     return FallbackRule(**record)
 
@@ -152,7 +196,7 @@ async def delete_fallback_rule(rule_id: str) -> None:
     """Delete a fallback rule."""
     if rule_id not in _fallback_rules:
         raise HTTPException(status_code=404, detail="Rule not found")
-    del _fallback_rules[rule_id]
+    await _delete_rule_from_db(rule_id)
     logger.info("Fallback rule deleted id=%s", rule_id)
 
 
@@ -175,6 +219,6 @@ async def set_degraded_mode(rail: str, body: DegradedModePolicy) -> DegradedMode
     record = body.model_dump()
     record["rail"] = rail
     record["updated_at"] = datetime.now(UTC).isoformat()
-    _degraded_modes[rail] = record
+    await _persist_degraded_mode(rail, record)
     logger.info("Degraded mode updated rail=%s mode=%s", rail, body.mode)
     return DegradedModePolicy(**record)

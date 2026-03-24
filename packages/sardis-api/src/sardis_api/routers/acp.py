@@ -29,10 +29,45 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# In-memory store  (swap for DB-backed repository in production)
+# Store — DB-backed with in-memory cache for single-process dev
 # ---------------------------------------------------------------------------
 
-_checkouts: dict[str, dict[str, Any]] = {}
+_checkouts: dict[str, dict[str, Any]] = {}  # process-local cache
+
+
+async def _persist_checkout(checkout_id: str, data: dict[str, Any]) -> None:
+    """Write checkout to DB when available, always cache locally."""
+    _checkouts[checkout_id] = data
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO acp_checkouts (checkout_id, data, updated_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (checkout_id) DO UPDATE SET data = $2, updated_at = NOW()""",
+            checkout_id, json.dumps(data, default=str),
+        )
+    except Exception as exc:
+        logger.warning("ACP checkout DB persist failed for %s: %s", checkout_id, exc)
+
+
+async def _load_checkout(checkout_id: str) -> dict[str, Any] | None:
+    """Load from local cache first, then fall back to DB."""
+    if checkout_id in _checkouts:
+        return _checkouts[checkout_id]
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        row = await Database.fetchrow(
+            "SELECT data FROM acp_checkouts WHERE checkout_id = $1", checkout_id,
+        )
+        if row:
+            data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            _checkouts[checkout_id] = data
+            return data
+    except Exception as exc:
+        logger.warning("ACP checkout DB load failed for %s: %s", checkout_id, exc)
+    return None
 
 
 def _gen_id() -> str:
@@ -271,8 +306,8 @@ def _to_response(data: dict[str, Any]) -> CheckoutResponse:
     )
 
 
-def _get_or_404(checkout_id: str) -> dict[str, Any]:
-    data = _checkouts.get(checkout_id)
+async def _get_or_404(checkout_id: str) -> dict[str, Any]:
+    data = await _load_checkout(checkout_id)
     if data is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -324,7 +359,7 @@ async def create_checkout(
     }
     data["status"] = _determine_status(data)
 
-    _checkouts[checkout_id] = data
+    await _persist_checkout(checkout_id, data)
     logger.info("ACP checkout created: %s by %s", checkout_id, principal.account_id)
     return _to_response(data)
 
@@ -339,7 +374,7 @@ async def get_checkout(
     principal: Principal = Depends(require_principal),
 ) -> CheckoutResponse:
     """Return the current state of a checkout session."""
-    data = _get_or_404(checkout_id)
+    data = await _get_or_404(checkout_id)
     return _to_response(data)
 
 
@@ -359,7 +394,7 @@ async def update_checkout(
     or select a fulfillment option.  The totals are recalculated
     automatically.
     """
-    data = _get_or_404(checkout_id)
+    data = await _get_or_404(checkout_id)
 
     if data["status"] in (CheckoutStatus.completed, CheckoutStatus.canceled):
         raise HTTPException(
@@ -413,7 +448,7 @@ async def complete_checkout(
     on the payment provider, and transitions the checkout to
     ``completed``.
     """
-    data = _get_or_404(checkout_id)
+    data = await _get_or_404(checkout_id)
 
     if data["status"] == CheckoutStatus.completed:
         raise HTTPException(
@@ -476,7 +511,7 @@ async def cancel_checkout(
     Terminal checkouts (completed / already canceled) cannot be canceled
     again.
     """
-    data = _get_or_404(checkout_id)
+    data = await _get_or_404(checkout_id)
 
     if data["status"] == CheckoutStatus.completed:
         raise HTTPException(
