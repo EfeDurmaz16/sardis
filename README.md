@@ -16,6 +16,7 @@
     <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
     <a href="https://github.com/EfeDurmaz16/sardis/stargazers"><img src="https://img.shields.io/github/stars/EfeDurmaz16/sardis?style=social" alt="GitHub stars"></a>
     <a href="https://github.com/EfeDurmaz16/sardis/commits/main"><img src="https://img.shields.io/github/last-commit/EfeDurmaz16/sardis" alt="Last commit"></a>
+    <a href="https://securityscorecards.dev/viewer/?uri=github.com/EfeDurmaz16/sardis"><img src="https://api.securityscorecards.dev/projects/github.com/EfeDurmaz16/sardis/badge" alt="OpenSSF Scorecard"></a>
     <a href="https://discord.gg/XMA9JwDJ"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   </p>
 </div>
