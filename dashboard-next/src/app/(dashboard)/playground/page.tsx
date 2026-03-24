@@ -16,10 +16,8 @@ export interface EndpointDef {
   defaultBody: Record<string, unknown>
 }
 
-=======
 /* ─── Endpoints ─── */
 
->>>>>>> 7d0ade61 (feat(api): add notification_configs table (migration 089))
 const ENDPOINTS: EndpointDef[] = [
   {
     id: 'pay',
@@ -41,7 +39,6 @@ const ENDPOINTS: EndpointDef[] = [
     name: '/policy/check',
     method: 'POST',
     path: '/sandbox/policy-check',
-<<<<<<< HEAD
     description: "Dry-run a payment against an agent's spending policy",
     defaultBody: {
       agent_id: 'agent_demo_002',
