@@ -32,6 +32,16 @@ if TYPE_CHECKING:
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
+# ORDER BY column whitelist — prevents SQL injection if sort column is
+# ever made dynamic.  Only columns listed here may appear after ORDER BY.
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "updated_at", "status", "amount_minor"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
+
 
 # Stored mandate model
 class StoredMandate(BaseModel):
@@ -113,8 +123,9 @@ async def _list_mandates(
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     args.extend([limit, offset])
 
+    sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
-        f"SELECT * FROM mandates {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+        f"SELECT * FROM mandates {where} ORDER BY {sort_col} DESC LIMIT ${idx} OFFSET ${idx + 1}",
         *args,
     )
     return [_row_to_stored(r) for r in rows]

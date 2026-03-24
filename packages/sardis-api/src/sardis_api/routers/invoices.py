@@ -13,6 +13,14 @@ from sardis_api.middleware.auth import APIKey, require_api_key
 
 router = APIRouter()
 
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "paid_at", "status", "amount"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
+
 
 # Request/Response Models
 class CreateInvoiceRequest(BaseModel):
@@ -103,8 +111,9 @@ async def list_invoices(
     where = " AND ".join(conditions)
     args.extend([limit, offset])
 
+    sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
-        f"SELECT * FROM invoices WHERE {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+        f"SELECT * FROM invoices WHERE {where} ORDER BY {sort_col} DESC LIMIT ${idx} OFFSET ${idx + 1}",
         *args,
     )
 

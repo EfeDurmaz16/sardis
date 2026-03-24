@@ -19,6 +19,15 @@ from sardis_api.authz import Principal, require_principal
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
 
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "next_billing_at", "status"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
+
+
 CYCLE_DAYS = {
     "daily": 1, "weekly": 7, "biweekly": 14,
     "monthly": 30, "quarterly": 90, "annual": 365,
@@ -143,8 +152,9 @@ async def list_mandate_subscriptions(
         idx += 1
 
     where = " AND ".join(conditions)
+    sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
-        f"SELECT * FROM subscriptions WHERE {where} ORDER BY created_at DESC",
+        f"SELECT * FROM subscriptions WHERE {where} ORDER BY {sort_col} DESC",
         *params,
     )
     return [_row_to_response(r) for r in rows]
