@@ -1,0 +1,133 @@
+---
+title: Policy Engine
+description: Every transaction passes through the Sardis Policy Engine before execution. Define spending rules in natural language or structured JSON.
+---
+
+## Overview
+
+The Sardis Policy Engine is the core enforcement layer that sits between payment requests
+and chain execution. Every transaction must pass policy checks before it can be signed
+and broadcast.
+
+```
+Payment Request → Policy Engine → MPC Signing → Chain Execution
+```
+
+The policy engine evaluates:
+
+- **Spending limits** (per-transaction, daily, weekly, monthly)
+- **Merchant rules** (allowlists, blocklists, category restrictions)
+- **Amount thresholds** (auto-approve vs human review)
+- **Time-based rules** (business hours only, no weekends)
+- **Compliance checks** (sanctions screening, risk scoring)
+
+## Natural Language Policies
+
+Define policies in plain English. The policy engine parses and enforces them automatically:
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="sk_...")
+
+wallet = client.wallets.create(
+    name="research-agent",
+    chain="base",
+    token="USDC",
+    policy="Max $100/day, Max $25 per transaction, only OpenAI and Anthropic"
+)
+```
+
+### Supported Policy Expressions
+
+| Expression | Example |
+| --- | --- |
+| Per-transaction limit | `"Max $50 per transaction"` |
+| Daily limit | `"Max $500/day"` |
+| Weekly limit | `"Max $2000/week"` |
+| Monthly limit | `"Max $5000/month"` |
+| Merchant allowlist | `"only openai.com, anthropic.com"` |
+| Merchant blocklist | `"block gambling, adult content"` |
+| Category restriction | `"only SaaS and cloud infrastructure"` |
+| Approval threshold | `"human approval above $100"` |
+| Time restriction | `"business hours only (9am-5pm EST)"` |
+
+## Structured Policies
+
+For programmatic control, use structured JSON policies:
+
+```python
+policy = {
+    "limits": {
+        "per_transaction": 5000,
+        "daily": 20000,
+        "monthly": 100000,
+    },
+    "merchants": {
+        "allowed": ["aws.amazon.com", "openai.com"],
+        "blocked_categories": ["gambling", "adult"],
+    },
+    "approval": {
+        "auto_below": 1000,
+        "human_above": 1000,
+    },
+    "time": {
+        "allowed_hours": {"start": 9, "end": 17},
+        "timezone": "America/New_York",
+        "block_weekends": True,
+    },
+}
+
+wallet = client.wallets.create(
+    name="ops-agent",
+    chain="base",
+    token="USDC",
+    policy=policy,
+)
+```
+
+## Policy Evaluation
+
+When a payment is requested, the policy engine runs through this evaluation pipeline:
+
+1. **Parse** — Natural language or JSON policy is parsed into rules
+2. **Check limits** — Per-tx, daily, weekly, monthly against current usage
+3. **Check merchants** — Destination against allowlist/blocklist
+4. **Check time** — Current time against time restrictions
+5. **Check compliance** — Sanctions screening (Elliptic), risk scoring
+6. **Determine approval** — Auto-approve or require human review
+7. **Return verdict** — Allow, deny, or require approval with reason
+
+```python
+# Check a transaction against policy before executing
+verdict = wallet.check_policy(
+    amount=250,
+    destination="openai.com",
+    purpose="GPT-4 API credits",
+)
+
+print(verdict.allowed)       # True
+print(verdict.reason)        # "Within all policy limits"
+print(verdict.requires_human) # False
+```
+
+## MCP Policy Tools
+
+The MCP server exposes policy tools for Claude and Cursor:
+
+| Tool | Description |
+| --- | --- |
+| `sardis_check_policy` | Validate a transaction against wallet policy |
+| `sardis_update_policy` | Update wallet spending policy |
+| `sardis_get_policy` | Get current policy for a wallet |
+
+## Fail-Closed Design
+
+The policy engine defaults to **deny** on any failure:
+
+- If the policy cannot be parsed, the transaction is denied
+- If compliance screening times out, the transaction is denied
+- If the merchant cannot be verified, the transaction is denied
+- If any rule evaluation fails, the transaction is denied
+
+This fail-closed approach ensures that bugs or outages never result in unauthorized payments.

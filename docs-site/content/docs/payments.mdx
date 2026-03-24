@@ -1,0 +1,114 @@
+---
+title: Payments
+description: Execute AI agent payments via bank transfer, virtual card, or stablecoins. Every payment passes policy checks and compliance screening before chain execution.
+---
+
+## Payment Flow
+
+Every payment follows this pipeline:
+
+```
+Payment Request
+      │
+      ▼
+┌─────────────────┐
+│ Policy Check    │ ← Spending limits, vendor rules
+└─────────────────┘
+      │ ✓
+      ▼
+┌─────────────────┐
+│ Compliance      │ ← Sanctions screening
+└─────────────────┘
+      │ ✓
+      ▼
+┌─────────────────┐
+│ Chain Execution │ ← MPC signing, on-chain transfer
+└─────────────────┘
+      │
+      ▼
+Transaction Hash
+```
+
+## Python
+
+```python
+from sardis import SardisClient
+
+async with SardisClient(api_key="sk_...") as client:
+    # Execute payment
+    result = await client.payments.execute({
+        "wallet_id": "wallet_abc123",
+        "destination": "0x...",
+        "amount_minor": 10_000_000,  # $10.00
+        "token": "USDC",
+        "chain": "base",
+        "purpose": "API subscription",
+    })
+
+    print(f"Transaction: {result.tx_hash}")
+    print(f"Status: {result.status}")
+
+    # Get transaction details
+    tx = await client.transactions.get(result.tx_id)
+    print(f"Confirmed: {tx.confirmed_at}")
+```
+
+## TypeScript
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({ apiKey: 'sk_...' });
+
+const result = await client.payments.execute({
+  walletId: 'wallet_abc123',
+  destination: '0x...',
+  amountMinor: 10_000_000,
+  token: 'USDC',
+  chain: 'base',
+  purpose: 'API subscription',
+});
+
+console.log('Transaction:', result.txHash);
+
+// List transactions
+const txs = await client.transactions.list({
+  walletId: 'wallet_abc123',
+  limit: 10,
+});
+```
+
+## sardis.pay()
+
+The simplest way to make a payment:
+
+```python
+result = wallet.pay(
+    to="openai.com",
+    amount="20.00",
+    purpose="GPT-4 API credits"
+)
+```
+
+This single call handles policy checking, compliance screening, MPC signing, and chain execution.
+
+## Supported Tokens
+
+| Token | Chains |
+| --- | --- |
+| `USDC` | All chains |
+| `USDT` | Polygon, Ethereum, Arbitrum, Optimism |
+| `EURC` | Base, Polygon, Ethereum |
+| `PYUSD` | Ethereum |
+
+## MCP Payment Tools
+
+| Tool | Description |
+| --- | --- |
+| `sardis_pay` | Execute a payment |
+| `sardis_pay_invoice` | Pay structured invoice with line items |
+| `sardis_request_approval` | Request human approval for large transaction |
+| `sardis_list_transactions` | List transaction history |
+| `sardis_get_transaction` | Get transaction details |
+| `sardis_estimate_gas` | Estimate transaction gas fees |
+| `sardis_get_tx_status` | Check on-chain transaction status |

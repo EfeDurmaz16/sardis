@@ -1,0 +1,93 @@
+---
+title: Authentication
+description: Three ways to start using Sardis. Get your API key via simulation mode, the dashboard, or the CLI.
+---
+
+## Option 1: No API Key Needed
+
+Start in simulation mode immediately. No signup, no API key, no credit card. Everything runs locally.
+
+```python
+pip install sardis
+
+python -c "
+from sardis import SardisClient
+client = SardisClient()       # Simulation mode — no API key needed
+result = client.quickstart()  # Guided first payment in 30 seconds
+"
+```
+
+When you're ready for real payments, continue to option 2 or 3.
+
+## Option 2: Dashboard
+
+Sign up to get a sandbox API key. Create wallets, set policies, and manage spending mandates from the dashboard.
+
+1. Go to [dashboard.sardis.sh/signup](https://dashboard.sardis.sh/signup)
+2. Register with email + password
+3. **Your API key is shown immediately** (copy it — shown only once)
+4. You're redirected to the onboarding wizard with quickstart code
+
+```python
+import os
+from sardis import SardisClient
+
+client = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+wallet = client.wallets.create(name="my-agent", policy="Max $100/day")
+tx = wallet.pay(to="openai.com", amount=25)
+print(tx.success)  # True
+```
+
+## Option 3: CLI
+
+Use the interactive setup wizard. It guides you through account creation, API key configuration, and your first payment.
+
+```bash
+pip install sardis-cli
+
+# Interactive setup wizard
+sardis init
+
+# Check your connection
+sardis status
+
+# Make your first payment
+sardis payments execute --to openai.com --amount 25 --purpose "API credits"
+```
+
+## Option 4: MCP (Claude & Cursor)
+
+Use Sardis directly from Claude Desktop, Cursor, or any MCP-compatible client. No code needed — just natural language.
+
+```bash
+# Install and start (simulated mode — no API key)
+npx @sardis/mcp-server init --mode simulated
+npx @sardis/mcp-server start
+
+# Then ask Claude: "Create a wallet and make a $25 payment to OpenAI"
+```
+
+## API Key Types
+
+| Prefix | Mode | Real Money? | Use Case |
+| --- | --- | --- | --- |
+| (none) | Simulation | No | Local development, prototyping, learning |
+| `sk_test_` | Sandbox | No | Testing with real API, testnet chains |
+| `sk_live_` | Production | Yes | Real payments on mainnet |
+
+## Managing API Keys
+
+From the [dashboard API Keys page](https://dashboard.sardis.sh/api-keys), you can:
+
+- **Create** new keys with specific scopes (read, write, admin)
+- **Set expiration** (30, 90, 365 days, or never)
+- **Revoke** keys instantly (takes effect immediately)
+- **View** key prefix and last usage timestamp
+
+Keys are SHA-256 hashed before storage — we never store or display the full key after creation.
+
+## Next Steps
+
+- [Set up a spending mandate](/docs/spending-mandates) — define what your agent can spend
+- [Configure the policy engine](/docs/policy-engine) — fine-grained rules
+- [Go to production](/docs/quickstart) — simulation to testnet to mainnet

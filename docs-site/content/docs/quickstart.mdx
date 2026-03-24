@@ -1,0 +1,153 @@
+---
+title: Quick Start
+description: Get Sardis running in under 5 minutes. Install the SDK, create an MPC wallet, set a spending policy, and execute your first AI agent payment.
+---
+
+import { Callout, Steps, Tab, Tabs } from 'fumadocs-ui/components/callout';
+
+<Callout type="info">
+Smart contracts deployed and verified on Base Sepolia. Ready for testnet integration.
+</Callout>
+
+## USD-First Treasury Flow (Design Partner Lane)
+
+Launch default is fiat-first treasury. Card spend is backed by prefunded USD accounts.
+Stablecoin conversion is optional and quote-based.
+
+```bash
+# 1) Sync financial accounts
+POST /api/v2/treasury/account-holders/sync
+
+# 2) Link bank account (MICRO_DEPOSIT flow)
+POST /api/v2/treasury/external-bank-accounts
+POST /api/v2/treasury/external-bank-accounts/{token}/verify-micro-deposits
+
+# 3) Fund treasury (ACH collection)
+POST /api/v2/treasury/fund
+
+# 4) Observe payment + balances
+GET /api/v2/treasury/payments/{payment_token}
+GET /api/v2/treasury/balances
+```
+
+## Zero Integration (MCP)
+
+The fastest way to start using Sardis with Claude Desktop or Cursor.
+
+```bash
+npx @sardis/mcp-server init --mode simulated
+npx @sardis/mcp-server start
+```
+
+`init` creates a local `.env.sardis` template. Then add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  }
+}
+```
+
+## Python SDK
+
+### Installation
+
+```bash
+pip install sardis
+# or install individual packages: sardis-core, sardis-protocol, sardis-chain
+```
+
+### Basic Usage
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="your_api_key")
+
+wallet = client.wallets.create(
+    name="research-agent",
+    chain="base",
+    token="USDC",
+    policy="Max $100/day, Max $25 per tx"
+)
+
+result = wallet.pay(
+    to="openai.com",
+    amount="20.00",
+    purpose="GPT-4 API credits"
+)
+
+print(result.success)
+print(result.tx_id)
+```
+
+## TypeScript SDK
+
+### Installation
+
+```bash
+npm install @sardis/sdk
+```
+
+### Basic Usage
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({ apiKey: 'your_api_key' });
+
+const result = await client.payments.executeMandate({
+  psp_domain: 'api.openai.com',
+  amount: '20.00',
+  token: 'USDC',
+  chain: 'base',
+  purpose: 'GPT-4 API credits'
+});
+
+console.log('Payment ID:', result.payment_id);
+console.log('Status:', result.status);
+```
+
+## Run the Demo
+
+```bash
+python examples/simple_payment.py
+```
+
+Expected output:
+
+```
+1. Creating wallet with $50 USDC...
+2. Executing payment of $2 to OpenAI API...
+3. Checking wallet balance...
+✓ Demo completed successfully!
+```
+
+## Testnet Configuration
+
+Configure your environment to use deployed contracts on Base Sepolia:
+
+```bash
+# Deployed Contract Addresses (Base Sepolia)
+SARDIS_WALLET_FACTORY=0x0922f46cbDA32D93691FE8a8bD7271D24E53B3D7
+SARDIS_ESCROW=0x5cf752B512FE6066a8fc2E6ce555c0C755aB5932
+
+# API Configuration
+SARDIS_API_URL=https://api.sardis.sh
+SARDIS_API_KEY=sk_test_...
+
+# Network Configuration
+SARDIS_CHAIN=base_sepolia
+SARDIS_RPC_URL=https://sepolia.base.org
+```
+
+## Next Steps
+
+- Learn about the [Architecture](/docs/wallets)
+- Explore the [SDK Reference](/docs/sdk-reference)
+- Set up [Spending Mandates](/docs/spending-mandates)
+- Read about the [Policy Engine](/docs/policy-engine)

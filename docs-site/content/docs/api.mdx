@@ -1,0 +1,121 @@
+---
+title: API Reference
+description: Complete REST API reference for the Sardis Payment OS. 47+ endpoints covering wallets, payments, mandates, treasury, cards, compliance, and more.
+---
+
+## Base URL
+
+```
+https://api.sardis.sh/api/v2
+```
+
+## Authentication
+
+All API requests require an API key in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer sk_..." https://api.sardis.sh/api/v2/wallets
+```
+
+## Endpoints
+
+### Wallets
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/wallets` | Create a new MPC wallet |
+| `GET` | `/wallets` | List all wallets |
+| `GET` | `/wallets/{id}` | Get wallet details |
+| `GET` | `/wallets/{id}/balance` | Get wallet balance |
+| `PATCH` | `/wallets/{id}/policy` | Update spending policy |
+| `DELETE` | `/wallets/{id}` | Archive wallet |
+
+### Payments
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/payments/execute` | Execute a payment |
+| `POST` | `/payments/mandate` | Execute via spending mandate |
+| `GET` | `/payments/{id}` | Get payment details |
+| `GET` | `/payments` | List payments |
+
+### Spending Mandates
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/mandates` | Create a spending mandate |
+| `GET` | `/mandates` | List mandates |
+| `GET` | `/mandates/{id}` | Get mandate details |
+| `POST` | `/mandates/{id}/check` | Check transaction against mandate |
+| `POST` | `/mandates/{id}/revoke` | Revoke mandate |
+
+### Treasury
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/treasury/fund` | Fund from bank account (ACH) |
+| `POST` | `/treasury/withdraw` | Withdraw to bank account |
+| `GET` | `/treasury/balances` | Get treasury balances |
+| `POST` | `/treasury/external-bank-accounts` | Link external bank account |
+| `POST` | `/treasury/account-holders/sync` | Sync financial accounts |
+
+### Virtual Cards
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/cards` | Issue virtual card |
+| `GET` | `/cards` | List cards |
+| `GET` | `/cards/{id}` | Get card details |
+| `POST` | `/cards/{id}/freeze` | Freeze card |
+| `POST` | `/cards/{id}/cancel` | Cancel card |
+
+### Compliance
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `POST` | `/compliance/screen` | Screen address/merchant |
+| `GET` | `/compliance/{id}` | Get screening result |
+
+### Audit
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/audit/events` | List audit events |
+| `GET` | `/audit/events/{id}` | Get audit event details |
+
+## Error Codes
+
+| Code | Description |
+| --- | --- |
+| `400` | Bad request — invalid parameters |
+| `401` | Unauthorized — invalid or missing API key |
+| `403` | Forbidden — insufficient permissions |
+| `404` | Not found |
+| `409` | Conflict — duplicate idempotency key |
+| `422` | Policy violation — transaction blocked by spending policy |
+| `429` | Rate limited |
+| `500` | Internal server error |
+
+## Rate Limits
+
+| Plan | Requests/minute |
+| --- | --- |
+| Free | 60 |
+| Growth | 600 |
+| Enterprise | Custom |
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 58
+X-RateLimit-Reset: 1711234567
+```
+
+## Interactive API Docs
+
+The full OpenAPI spec with interactive playground is available at:
+
+```
+https://api.sardis.sh/api/v2/docs
+```
