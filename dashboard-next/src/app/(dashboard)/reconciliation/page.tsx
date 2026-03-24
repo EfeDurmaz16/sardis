@@ -109,6 +109,22 @@ export default function ReconciliationPage() {
         </div>
       </div>
 
+      {loading && (
+        <div className="flex items-center gap-3 py-6">
+          <RefreshCw className="w-5 h-5 text-sardis-400 animate-spin" />
+          <span className="text-sm text-gray-400">Loading reconciliation data...</span>
+        </div>
+      )}
+
+      {(journeysQuery.isError || driftQuery.isError || returnsQuery.isError || reviewsQuery.isError) && (
+        <div className="card p-4 border-red-500/30">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-400" />
+            <span className="text-sm text-red-400">Failed to load some reconciliation data. Check API connectivity.</span>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card p-4">
           <p className="text-sm text-gray-400">Journeys</p>
@@ -270,9 +286,6 @@ export default function ReconciliationPage() {
         </div>
       </div>
 
-      {loading && (
-        <p className="text-sm text-gray-400">Loading reconciliation data...</p>
-      )}
     </div>
   )
 }
