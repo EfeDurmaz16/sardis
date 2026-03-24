@@ -41,6 +41,7 @@ const DocsHolds = lazy(() => import('./docs/pages/Holds.jsx'))
 const DocsPolicies = lazy(() => import('./docs/pages/Policies.jsx'))
 const DocsTimeBasedPolicies = lazy(() => import('./docs/pages/TimeBasedPolicies.jsx'))
 const DocsMerchantCategories = lazy(() => import('./docs/pages/MerchantCategories.jsx'))
+const DocsWebhooks = lazy(() => import('./docs/pages/Webhooks.jsx'))
 // SDKs & Tools
 const DocsSDKPython = lazy(() => import('./docs/pages/SDKPython.jsx'))
 const DocsSDKTypeScript = lazy(() => import('./docs/pages/SDKTypeScript.jsx'))
@@ -96,6 +97,8 @@ const Enterprise = lazy(() => import('./pages/Enterprise.jsx'))
 // Signup removed — using waitlist for now
 const Pricing = lazy(() => import('./pages/Pricing.jsx'))
 const Status = lazy(() => import('./pages/Status.jsx'))
+// Wedge pages
+const WedgeSecurePayments = lazy(() => import('./pages/WedgeSecurePayments.jsx'))
 // Solution pages
 const AgentPlatformsPage = lazy(() => import('./pages/solutions/AgentPlatforms.jsx'))
 const ProcurementPage = lazy(() => import('./pages/solutions/Procurement.jsx'))
@@ -116,6 +119,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/solutions/agent-platforms" element={<AgentPlatformsPage />} />
         <Route path="/solutions/procurement" element={<ProcurementPage />} />
         <Route path="/solutions/payouts" element={<PayoutsPage />} />
+        <Route path="/wedge/secure-payments" element={<WedgeSecurePayments />} />
         {/* Signup removed — using waitlist */}
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/status" element={<Status />} />
