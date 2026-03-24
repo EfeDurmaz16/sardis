@@ -49,7 +49,15 @@ try:
             wid = self._wallet_id
             if not wid:
                 return "Error: No wallet ID configured. Set SARDIS_WALLET_ID env var."
-            result = self._client.payments.send(wid, to=merchant, amount=amount, purpose=purpose)
+            try:
+                result = self._client.payments.send(wid, to=merchant, amount=amount, purpose=purpose)
+            except (ValueError, KeyError):
+                # Production mode: wallet not in simulation dict, fall back to wallet.pay()
+                try:
+                    wallet = self._client.wallets.get(wid)
+                    result = wallet.pay(to=merchant, amount=amount, purpose=purpose)
+                except Exception as e:
+                    return f"Error executing payment: {e}"
             if result.success:
                 return f"APPROVED: ${amount} to {merchant} (tx: {result.tx_id})"
             return f"BLOCKED by policy: {result.message}"
@@ -71,7 +79,10 @@ try:
             if not wid:
                 return "Error: No wallet ID configured."
             balance = self._client.wallets.get_balance(wid, token=token)
-            return f"Balance: ${balance.balance} {token} | Remaining limit: ${balance.remaining}"
+            remaining = getattr(balance, "remaining", None)
+            if remaining is None:
+                remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", "N/A"))
+            return f"Balance: ${balance.balance} {token} | Remaining limit: ${remaining}"
 
     class SardisPolicyCheckTool(BaseTool):
         name: str = "sardis_check_policy"
@@ -90,11 +101,15 @@ try:
             if not wid:
                 return "Error: No wallet ID configured."
             balance = self._client.wallets.get_balance(wid)
-            if amount > balance.remaining:
-                return f"WOULD BE BLOCKED: ${amount} exceeds remaining limit ${balance.remaining}"
-            if amount > balance.balance:
-                return f"WOULD BE BLOCKED: ${amount} exceeds balance ${balance.balance}"
-            return f"WOULD BE ALLOWED: ${amount} to {merchant} (balance: ${balance.balance}, remaining: ${balance.remaining})"
+            remaining = getattr(balance, "remaining", None)
+            if remaining is None:
+                remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", 0))
+            bal = balance.balance
+            if amount > float(remaining):
+                return f"WOULD BE BLOCKED: ${amount} exceeds remaining limit ${remaining}"
+            if amount > float(bal):
+                return f"WOULD BE BLOCKED: ${amount} exceeds balance ${bal}"
+            return f"WOULD BE ALLOWED: ${amount} to {merchant} (balance: ${bal}, remaining: ${remaining})"
 
 except ImportError:
     # crewai_tools not installed - provide stubs

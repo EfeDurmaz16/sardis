@@ -19,6 +19,23 @@ def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     return _cached_clients[key], wid
 
 
+def _execute_payment(client: SardisClient, wallet_id: str, merchant: str,
+                     amount: float, purpose: str, token: str):
+    """Execute payment with fallback for production mode compatibility."""
+    try:
+        return client.payments.send(
+            wallet_id,
+            to=merchant,
+            amount=amount,
+            purpose=purpose,
+            token=token,
+        )
+    except (ValueError, KeyError):
+        # Production mode: wallet not in simulation dict, fall back to wallet.pay()
+        wallet = client.wallets.get(wallet_id)
+        return wallet.pay(to=merchant, amount=amount, purpose=purpose)
+
+
 # --- Block Schemas ---
 
 class SardisPayBlockInput(BaseModel):
@@ -88,18 +105,25 @@ class SardisPayBlock:
             )
             return
 
-        result = client.payments.send(
-            wallet_id,
-            to=input_data.merchant,
-            amount=input_data.amount,
-            purpose=input_data.purpose,
-            token=input_data.token,
-        )
+        try:
+            result = _execute_payment(
+                client, wallet_id, input_data.merchant,
+                input_data.amount, input_data.purpose, input_data.token,
+            )
+        except Exception as e:
+            yield SardisPayBlockOutput(
+                status="ERROR",
+                message=str(e),
+                amount=input_data.amount,
+                merchant=input_data.merchant,
+            )
+            return
+
         yield SardisPayBlockOutput(
             status="APPROVED" if result.success else "BLOCKED",
-            tx_id=result.tx_id,
-            message=result.message or "",
-            amount=float(result.amount),
+            tx_id=getattr(result, "tx_id", ""),
+            message=getattr(result, "message", "") or "",
+            amount=float(getattr(result, "amount", input_data.amount)),
             merchant=input_data.merchant,
         )
 
@@ -124,9 +148,12 @@ class SardisBalanceBlock:
             return
 
         balance = client.wallets.get_balance(wallet_id, token=input_data.token)
+        remaining = getattr(balance, "remaining", None)
+        if remaining is None:
+            remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", 0))
         yield SardisBalanceBlockOutput(
             balance=float(balance.balance),
-            remaining=float(balance.remaining),
+            remaining=float(remaining),
             token=input_data.token,
         )
 
@@ -151,12 +178,15 @@ class SardisPolicyCheckBlock:
             return
 
         balance = client.wallets.get_balance(wallet_id)
-        if input_data.amount > balance.remaining:
+        remaining = getattr(balance, "remaining", None)
+        if remaining is None:
+            remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", 0))
+        if input_data.amount > float(remaining):
             yield SardisPolicyCheckBlockOutput(
                 allowed=False,
-                reason=f"Amount ${input_data.amount} exceeds remaining limit ${balance.remaining}",
+                reason=f"Amount ${input_data.amount} exceeds remaining limit ${remaining}",
             )
-        elif input_data.amount > balance.balance:
+        elif input_data.amount > float(balance.balance):
             yield SardisPolicyCheckBlockOutput(
                 allowed=False,
                 reason=f"Amount ${input_data.amount} exceeds balance ${balance.balance}",

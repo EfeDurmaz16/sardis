@@ -9,7 +9,7 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
-from .commands import agents, auth, cards, chains, demo, fiat, holds, init, payments, policies, spending, wallets
+from .commands import agents, approvals, auth, cards, chains, demo, fiat, groups, holds, init, ledger, payments, policies, spending, wallets
 from .config import load_config
 
 console = Console()
@@ -87,7 +87,7 @@ def login(ctx):
 
     save_config(config)
 
-    console.print("\n[green]✓ Credentials saved successfully[/green]\n")
+    console.print("\n[green]Credentials saved successfully[/green]\n")
 
 
 @cli.command()
@@ -101,7 +101,7 @@ def logout(ctx):
 
     save_config(config)
 
-    console.print("[green]✓ Logged out successfully[/green]")
+    console.print("[green]Logged out successfully[/green]")
 
 
 # Register command groups
@@ -117,6 +117,9 @@ cli.add_command(fiat.fiat)
 cli.add_command(cards.cards)
 cli.add_command(spending.spending)
 cli.add_command(demo.demo)
+cli.add_command(groups.groups)
+cli.add_command(approvals.approvals)
+cli.add_command(ledger.ledger)
 
 # Spending mandates
 from sardis_cli.commands import mandates
@@ -130,4 +133,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
