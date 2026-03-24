@@ -11,9 +11,12 @@ transacting on mainnet.
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
 import os
+import time
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -242,80 +245,257 @@ async def handle_kyc_webhook(request: Request) -> dict:
     calls it server-to-server.  Authenticity is verified via HMAC-SHA256
     signature in the ``X-Signature-V2`` header.
 
-    On ``approved`` status the user's ``kyc_status`` is updated in the
+    Security measures:
+    - HMAC-SHA256 signature verification (constant-time comparison)
+    - Timestamp freshness check (±300 seconds)
+    - Raw body read before JSON parsing
+    - Raw body logged on signature failures
+
+    Idempotency:
+    - Same (session_id, status) pair is not reprocessed
+
+    On ``Approved`` status the user's ``kyc_status`` is updated in the
     ``ba_user`` table and a production API key is generated.
     """
-    provider = _get_didit_provider()
-
-    # ---- Signature verification ----
+    # ---- 1. Read raw body BEFORE any parsing ----
     body_bytes = await request.body()
-    signature = request.headers.get("X-Signature-V2", "")
 
+    # ---- 2. Verify HMAC-SHA256 signature ----
+    webhook_secret = os.getenv("DIDIT_WEBHOOK_SECRET", "").strip()
+    if not webhook_secret:
+        logger.error("DIDIT_WEBHOOK_SECRET not configured — rejecting webhook")
+        raise HTTPException(status_code=401, detail="Webhook secret not configured.")
+
+    signature = request.headers.get("X-Signature-V2", "")
     if not signature:
-        logger.warning("Didit webhook received without signature header")
+        logger.warning(
+            "Didit webhook received without X-Signature-V2 header. Body: %s",
+            body_bytes[:500],
+        )
         raise HTTPException(status_code=401, detail="Missing webhook signature.")
 
-    sig_valid = await provider.verify_webhook(body_bytes, signature)
-    if not sig_valid:
-        logger.warning("Didit webhook signature verification failed")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature.")
+    # ---- 3. Validate timestamp freshness ----
+    timestamp_header = request.headers.get("X-Timestamp", "")
+    if timestamp_header:
+        try:
+            ts = int(timestamp_header)
+            now = int(time.time())
+            if abs(now - ts) > 300:
+                logger.warning(
+                    "Didit webhook timestamp too old/future: header=%s now=%s delta=%ds",
+                    ts, now, abs(now - ts),
+                )
+                raise HTTPException(
+                    status_code=401,
+                    detail="Webhook timestamp expired.",
+                )
+        except ValueError:
+            logger.warning("Didit webhook X-Timestamp not a valid integer: %s", timestamp_header)
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid timestamp header.",
+            )
 
-    # ---- Parse payload ----
+    # ---- 4. Compute and compare HMAC-SHA256 (constant-time) ----
     try:
-        payload = json.loads(body_bytes)
-    except (json.JSONDecodeError, ValueError) as exc:
-        logger.error("Didit webhook: invalid JSON body: %s", exc)
-        raise HTTPException(status_code=400, detail="Invalid JSON payload.") from exc
+        body_dict = json.loads(body_bytes)
+        canonical = json.dumps(
+            body_dict,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        expected_sig = hmac.new(
+            webhook_secret.encode("utf-8"),
+            canonical.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
 
-    event_type = payload.get("type", payload.get("event", ""))
-    verification_id = (
-        payload.get("data", {}).get("id")
+        if not hmac.compare_digest(signature, expected_sig):
+            logger.warning(
+                "Didit webhook signature mismatch. Body: %s",
+                body_bytes[:1000],
+            )
+            raise HTTPException(status_code=401, detail="Invalid webhook signature.")
+    except json.JSONDecodeError as exc:
+        logger.error("Didit webhook: invalid JSON body during sig check: %s", exc)
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.") from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Didit webhook signature verification error: %s", exc)
+        raise HTTPException(status_code=401, detail="Signature verification failed.") from exc
+
+    # ---- 5. Parse payload (already parsed during sig verification) ----
+    payload = body_dict
+
+    session_id = (
+        payload.get("session_id")
+        or payload.get("data", {}).get("id")
         or payload.get("verification_id", "")
     )
-
-    if not verification_id:
-        logger.warning("Didit webhook missing verification_id: %s", event_type)
-        return {"status": "ignored", "reason": "no verification_id"}
-
-    logger.info("Didit webhook received: type=%s id=%s", event_type, verification_id)
-
-    # ---- Fetch latest status from Didit ----
-    try:
-        result = await provider.get_inquiry_status(verification_id)
-    except Exception as exc:
-        logger.error("Didit get_inquiry_status failed for %s: %s", verification_id, exc)
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to fetch verification status from provider.",
-        ) from exc
-
-    new_status = result.status.value
-    reference_id = result.metadata.get("reference_id", "")
-
-    # ---- Persist status ----
-    await _update_kyc_status(
-        inquiry_id=verification_id,
-        status=new_status,
-        verified_at=result.verified_at,
-        expires_at=result.expires_at,
-        reason=result.reason,
-        metadata=result.metadata,
+    status_raw = (
+        payload.get("status")
+        or payload.get("data", {}).get("status", "")
+    )
+    vendor_data = (
+        payload.get("vendor_data")
+        or payload.get("data", {}).get("vendor_data", "")
     )
 
-    # ---- Side-effects on approval ----
-    if new_status == "approved" and reference_id:
-        await _on_kyc_approved(user_id=reference_id, organization_id=None)
+    if not session_id:
+        logger.warning("Didit webhook missing session_id: payload=%s", payload)
+        return {"status": "ignored", "reason": "no session_id"}
+
+    logger.info(
+        "Didit webhook received: session_id=%s status=%s vendor_data=%s",
+        session_id, status_raw, vendor_data,
+    )
+
+    # ---- 6. Idempotency check: same session_id + status = skip ----
+    already_processed = await _check_idempotency(session_id, status_raw)
+    if already_processed:
+        logger.info(
+            "Didit webhook already processed: session_id=%s status=%s — skipping",
+            session_id, status_raw,
+        )
+        return {"status": "already_processed", "session_id": session_id}
+
+    # ---- 7. Map Didit status and process ----
+    mapped_status = _map_didit_webhook_status(status_raw)
+
+    now = datetime.now(UTC)
+    verified_at: datetime | None = None
+    reason: str | None = None
+
+    if mapped_status == "approved":
+        verified_at = now
+        # Persist status
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="approved",
+            verified_at=verified_at,
+            reason=None,
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+        # Side-effects: update ba_user, generate API key
+        reference_id = vendor_data or ""
+        if reference_id:
+            await _on_kyc_approved(user_id=reference_id, organization_id=None)
+
+    elif mapped_status == "declined":
+        reason = payload.get("reason") or payload.get("data", {}).get("reason")
+        logger.warning(
+            "Didit KYC declined for session %s (vendor_data=%s): reason=%s",
+            session_id, vendor_data, reason,
+        )
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="declined",
+            reason=reason,
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    elif mapped_status == "pending_review":
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="needs_review",
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    elif mapped_status == "in_progress":
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="pending",
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    elif mapped_status == "abandoned":
+        logger.info("Didit KYC abandoned for session %s — may trigger reminder", session_id)
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="expired",
+            reason="Session abandoned by user",
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    elif mapped_status == "expired":
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="expired",
+            reason="Session expired",
+            expires_at=now,
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    else:
+        logger.warning("Unhandled Didit webhook status: %s for session %s", status_raw, session_id)
+        await _update_kyc_status(
+            inquiry_id=session_id,
+            status="pending",
+            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+        )
+
+    # ---- 8. Send KYC status email notification (fire-and-forget) ----
+    if mapped_status in ("approved", "declined"):
+        try:
+            user_email = await _resolve_user_email(vendor_data or "")
+            if user_email:
+                from sardis_api.email_templates import send_kyc_status_email
+                await send_kyc_status_email(user_email, mapped_status)
+        except Exception as exc:
+            logger.debug("KYC email notification skipped for %s: %s", vendor_data, exc)
+
+    # ---- 9. Record idempotency marker ----
+    await _record_idempotency(session_id, status_raw)
 
     return {
         "status": "processed",
-        "verification_id": verification_id,
-        "kyc_status": new_status,
+        "session_id": session_id,
+        "kyc_status": mapped_status,
     }
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+async def _resolve_user_email(user_id: str) -> str | None:
+    """Best-effort email lookup for a user reference (id, email, or name).
+
+    Checks ``ba_user`` first, then ``organizations`` settings.
+    Returns ``None`` if the user cannot be resolved.
+    """
+    if not user_id:
+        return None
+    # If the reference itself looks like an email, use it directly
+    if "@" in user_id:
+        return user_id
+    try:
+        from sardis_v2_core.database import Database
+
+        # Try ba_user table
+        row = await Database.fetchrow(
+            "SELECT email FROM ba_user WHERE id = $1 OR name = $1 LIMIT 1",
+            user_id,
+        )
+        if row and row.get("email"):
+            return row["email"]
+
+        # Fallback: organizations settings JSON
+        row = await Database.fetchrow(
+            "SELECT settings FROM organizations WHERE external_id = $1 LIMIT 1",
+            user_id,
+        )
+        if row and row.get("settings"):
+            settings = row["settings"]
+            if isinstance(settings, str):
+                settings = json.loads(settings)
+            return settings.get("email")
+    except Exception:
+        pass
+    return None
 
 
 async def _upsert_kyc_verification(
@@ -428,6 +608,79 @@ async def _get_latest_verification(user_id: str) -> dict | None:
         return None
 
 
+def _map_didit_webhook_status(raw_status: str) -> str:
+    """Map a raw Didit webhook status string to an internal status key.
+
+    Didit sends Title Case statuses:
+    ``Approved``, ``Declined``, ``In Review``, ``In Progress``,
+    ``Abandoned``, ``Expired``, ``Kyc Expired``, ``Resubmitted``.
+    """
+    normalized = raw_status.lower().strip()
+    mapping = {
+        "approved": "approved",
+        "declined": "declined",
+        "in review": "pending_review",
+        "in progress": "in_progress",
+        "not started": "in_progress",
+        "resubmitted": "in_progress",
+        "abandoned": "abandoned",
+        "expired": "expired",
+        "kyc expired": "expired",
+    }
+    return mapping.get(normalized, "unknown")
+
+
+# In-memory idempotency set for environments without a database.
+# In production the DB-backed helpers below are used instead.
+_idempotency_cache: set[str] = set()
+
+
+async def _check_idempotency(session_id: str, status: str) -> bool:
+    """Return ``True`` if this (session_id, status) pair was already processed.
+
+    Tries the database first; falls back to an in-memory set so the
+    endpoint works even when the DB is unavailable (dev/test).
+    """
+    key = f"{session_id}:{status}"
+    try:
+        from sardis_v2_core.database import Database
+
+        row = await Database.fetchrow(
+            """
+            SELECT 1 FROM kyc_webhook_events
+            WHERE session_id = $1 AND status = $2
+            LIMIT 1
+            """,
+            session_id,
+            status,
+        )
+        return row is not None
+    except Exception:
+        # Table may not exist yet — fall back to in-memory
+        return key in _idempotency_cache
+
+
+async def _record_idempotency(session_id: str, status: str) -> None:
+    """Record that this (session_id, status) pair has been processed."""
+    key = f"{session_id}:{status}"
+    _idempotency_cache.add(key)
+    try:
+        from sardis_v2_core.database import Database
+
+        await Database.execute(
+            """
+            INSERT INTO kyc_webhook_events (session_id, status, processed_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (session_id, status) DO NOTHING
+            """,
+            session_id,
+            status,
+        )
+    except Exception as exc:
+        # Non-fatal — in-memory cache is the safety net
+        logger.debug("Could not record kyc_webhook_events row: %s", exc)
+
+
 async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
     """Side-effects when a user passes KYC.
 
@@ -493,6 +746,14 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
                 organization_id,
                 full_key[:12],
             )
+            # Notify user about the new live API key
+            try:
+                user_email = await _resolve_user_email(user_id)
+                if user_email:
+                    from sardis_api.email_templates import send_api_key_generated_email
+                    await send_api_key_generated_email(user_email, full_key[:12], "live")
+            except Exception:
+                pass  # Email must never block KYC approval flow
         except Exception as exc:
             logger.error(
                 "Failed to generate production API key for org %s after KYC approval: %s",

@@ -577,6 +577,13 @@ async def signup(request: Request, body: SignupRequest):
     # Auto-provisioning deferred to first dashboard login (via onboarding flow)
     # Prevents signup from failing if agent/wallet services are unavailable
 
+    # Fire-and-forget welcome email — never blocks the signup response
+    try:
+        from sardis_api.email_templates import send_welcome_email
+        await send_welcome_email(email, api_key.key_prefix)
+    except Exception:
+        pass  # Email delivery must never fail signup
+
     return SignupResponse(
         key=full_key,
         key_id=api_key.key_id,
