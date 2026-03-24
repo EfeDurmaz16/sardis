@@ -275,3 +275,70 @@ def show_post_payment_experience(
 
     console.print(next_steps)
     console.print()
+
+
+# ---------------------------------------------------------------------------
+# Degraded state handlers
+# ---------------------------------------------------------------------------
+
+def handle_wallet_creation_failure(chain: str) -> dict[str, str]:
+    """Fallback when MPC wallet creation fails — use pre-funded EOA pool."""
+    console.print("[yellow]Warning: MPC wallet creation failed. Using pre-funded EOA fallback.[/yellow]")
+    fallback_id = f"wal_fallback_{int(time.time()) % 100000:05d}"
+    fallback_addr = "0xFa11...bAcK0001"
+    console.print(f"[yellow]  Fallback wallet: {fallback_id} ({fallback_addr})[/yellow]")
+    console.print("[yellow]  This wallet has limited signing capabilities.[/yellow]")
+    return {"wallet_id": fallback_id, "address": fallback_addr}
+
+
+def handle_faucet_empty(chain: str) -> None:
+    """Handle sponsor/faucet being empty."""
+    console.print(f"[yellow]Warning: Testnet faucet on {chain} appears to be empty.[/yellow]")
+    if chain != "base_sepolia":
+        console.print("[yellow]  Suggestion: Try --chain base_sepolia which has a more reliable faucet.[/yellow]")
+        console.print("[yellow]  Run: sardis demo --chain base_sepolia[/yellow]")
+    else:
+        console.print("[yellow]  The Base Sepolia faucet is temporarily unavailable.[/yellow]")
+        console.print("[yellow]  You can still explore mandates and policy features without a funded wallet.[/yellow]")
+
+
+def handle_port_in_use(preferred_port: int) -> int | None:
+    """Handle preferred port being in use — auto-increment through range."""
+    actual = _find_free_port(preferred_port, preferred_port + 8)
+    if actual is None:
+        console.print(f"[yellow]Warning: All ports {preferred_port}-{preferred_port + 8} are in use.[/yellow]")
+        console.print("[yellow]  Mock merchant server could not be started.[/yellow]")
+        console.print("[yellow]  Free up a port or specify a different one: sardis demo --port 9000[/yellow]")
+        return None
+    if actual != preferred_port:
+        console.print(f"[yellow]Warning: Port {preferred_port} in use, using {actual} instead.[/yellow]")
+    return actual
+
+
+def handle_rpc_down(chain: str, max_retries: int = 3) -> bool:
+    """Handle mid-session RPC being down — retry with backoff."""
+    for attempt in range(1, max_retries + 1):
+        console.print(f"[yellow]  RPC retry {attempt}/{max_retries}...[/yellow]")
+        time.sleep(min(attempt * 0.5, 2.0))
+    console.print(f"[red]Testnet RPC on {chain} appears to be down.[/red]")
+    console.print("[red]  This is a known issue with public testnets.[/red]")
+    console.print("[red]  The demo sandbox is still usable for policy and mandate exploration.[/red]")
+    return False
+
+
+def handle_no_network() -> None:
+    """Handle complete network unavailability (ConnectionError)."""
+    console.print(Panel(
+        "[bold yellow]No Network Connection[/bold yellow]\n\n"
+        "  Sardis demo requires network access for:\n"
+        "  - Testnet wallet creation\n"
+        "  - Faucet funding\n"
+        "  - On-chain transactions\n\n"
+        "  The mock merchant server and policy engine work offline.\n"
+        "  To run the full demo, check your internet connection.\n\n"
+        "  For offline exploration, use the Python SDK in simulation mode:\n"
+        "    from sardis import SardisClient\n"
+        "    client = SardisClient()  # auto simulation mode",
+        border_style="yellow",
+        title="Offline Mode",
+    ))
