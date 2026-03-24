@@ -717,7 +717,7 @@ async def register_user(request: Request, body: RegisterRequest):
 
     # Analytics: identify and track signup (fire-and-forget, never blocks the request)
     from sardis_api.analytics.posthog_tracker import SIGNUP_COMPLETED, identify_user, track_event
-    identify_user(result.user_id, {"email": result.email, "plan": "free"})
+    identify_user(result.user_id, {"email": result.email, "plan": "dev"})
     track_event(result.user_id, SIGNUP_COMPLETED, {"method": "email"})
 
     # Auto-provisioning deferred to first dashboard login (via onboarding flow)

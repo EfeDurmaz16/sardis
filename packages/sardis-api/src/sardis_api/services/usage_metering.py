@@ -24,11 +24,11 @@ class UsageSummary:
 
 
 # Tier limits: plan -> {event_type -> monthly_limit}
-# Canonical plan names: free, starter, growth, enterprise (from billing/config.py)
+# Canonical plan names: dev, starter, growth, enterprise (from billing/config.py)
 TIER_LIMITS: dict[str, dict[str, int]] = {
-    "free": {"transaction": 100, "card_issued": 1, "policy_check": 1000, "api_call": 1000},
-    "starter": {"transaction": 10000, "card_issued": 10, "policy_check": 50000, "api_call": 50000},
-    "growth": {"transaction": 100000, "card_issued": 25, "policy_check": 500000, "api_call": 500000},
+    "dev": {"transaction": 100, "card_issued": 1, "policy_check": 1000, "api_call": 1000},
+    "starter": {"transaction": -1, "card_issued": 25, "policy_check": 50000, "api_call": 50000},
+    "growth": {"transaction": -1, "card_issued": -1, "policy_check": 500000, "api_call": 500000},
     "enterprise": {"transaction": -1, "card_issued": -1, "policy_check": -1, "api_call": -1},  # -1 = unlimited
 }
 
@@ -113,12 +113,12 @@ class UsageMeteringService:
                 period_end=period_end.isoformat(),
             )
 
-    async def check_limit(self, org_id: str, event_type: str, plan: str = "free") -> bool:
+    async def check_limit(self, org_id: str, event_type: str, plan: str = "dev") -> bool:
         """Check if an org is within their plan limits for an event type.
 
         Returns True if the event is allowed, False if limit exceeded.
         """
-        limits = TIER_LIMITS.get(plan, TIER_LIMITS["free"])
+        limits = TIER_LIMITS.get(plan, TIER_LIMITS["dev"])
         limit = limits.get(event_type, 0)
         if limit == -1:
             return True  # unlimited

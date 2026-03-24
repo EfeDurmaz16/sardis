@@ -119,7 +119,7 @@ async def test_rate_limit_headers_added_for_metered_request():
     assert "X-RateLimit-Remaining" in resp.headers
     assert "X-RateLimit-Reset" in resp.headers
 
-    plan_limit = PLAN_LIMITS["free"]["api_calls_per_month"]
+    plan_limit = PLAN_LIMITS["dev"]["api_calls_per_month"]
     assert resp.headers["X-RateLimit-Limit"] == str(plan_limit)
     # After 1 call, remaining = limit - 1
     assert resp.headers["X-RateLimit-Remaining"] == str(plan_limit - 1)
@@ -140,7 +140,7 @@ async def test_counter_increments_across_requests():
 async def test_429_when_over_limit():
     org = "org_over_limit"
     # Artificially set counter to the limit.
-    plan_limit = PLAN_LIMITS["free"]["api_calls_per_month"]
+    plan_limit = PLAN_LIMITS["dev"]["api_calls_per_month"]
     _usage_counters[org] = plan_limit
 
     app = _make_app(org_id=org)
@@ -149,7 +149,7 @@ async def test_429_when_over_limit():
 
     assert resp.status_code == 429
     body = resp.json()
-    assert body["plan"] == "free"
+    assert body["plan"] == "dev"
     assert body["limit"] == plan_limit
     assert "sardis.sh/pricing" in body["detail"]
 
@@ -171,7 +171,7 @@ async def test_no_op_when_billing_disabled():
     org = "org_billing_off"
     app = _make_app(billing_enabled=False, org_id=org)
     # Pre-seed counter beyond limit — should still be let through.
-    plan_limit = PLAN_LIMITS["free"]["api_calls_per_month"]
+    plan_limit = PLAN_LIMITS["dev"]["api_calls_per_month"]
     _usage_counters[org] = plan_limit + 9999
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -185,7 +185,7 @@ async def test_no_op_when_billing_disabled():
 async def test_remaining_header_clamps_to_zero():
     """X-RateLimit-Remaining must not go negative."""
     org = "org_clamp"
-    plan_limit = PLAN_LIMITS["free"]["api_calls_per_month"]
+    plan_limit = PLAN_LIMITS["dev"]["api_calls_per_month"]
     # Set to limit-1 so after increment it equals limit, remaining = 0.
     _usage_counters[org] = plan_limit - 1
 

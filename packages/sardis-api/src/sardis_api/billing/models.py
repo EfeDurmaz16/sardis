@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class BillingAccount(BaseModel):
     id: str
     org_id: str
-    plan: str = "free"
+    plan: str = "dev"
     status: str = "active"
     stripe_customer_id: str | None = None
     stripe_subscription_id: str | None = None

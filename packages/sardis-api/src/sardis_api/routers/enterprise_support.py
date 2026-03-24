@@ -25,7 +25,7 @@ def get_deps() -> EnterpriseSupportDependencies:
 
 class SupportProfileResponse(BaseModel):
     organization_id: str
-    plan: Literal["free", "pro", "enterprise"]
+    plan: Literal["dev", "starter", "growth", "enterprise"]
     first_response_sla_minutes: int
     resolution_sla_hours: int
     channels: list[str]

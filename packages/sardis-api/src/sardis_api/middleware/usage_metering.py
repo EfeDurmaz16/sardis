@@ -57,8 +57,8 @@ def _period_reset_epoch() -> int:
 async def _lookup_org_plan(org_id: str) -> str:
     """Look up an org's billing plan from the DB with a TTL cache.
 
-    Returns the plan name (free, starter, growth, enterprise).
-    Falls back to "free" on any error.
+    Returns the plan name (dev, starter, growth, enterprise).
+    Falls back to "dev" on any error.
     """
     now = time.monotonic()
     cached = _plan_cache.get(org_id)
@@ -77,19 +77,19 @@ async def _lookup_org_plan(org_id: str) -> str:
                 org_id,
             )
 
-        plan = row["plan"] if row else "free"
+        plan = row["plan"] if row else "dev"
         # Validate the plan name exists in PLAN_LIMITS
         if plan not in PLAN_LIMITS:
-            logger.warning("org=%s has unknown plan %r, defaulting to free", org_id, plan)
-            plan = "free"
+            logger.warning("org=%s has unknown plan %r, defaulting to dev", org_id, plan)
+            plan = "dev"
 
         _plan_cache[org_id] = (plan, now)
         return plan
 
     except Exception:
-        logger.debug("Could not look up plan for org=%s, defaulting to free", org_id, exc_info=True)
-        _plan_cache[org_id] = ("free", now)
-        return "free"
+        logger.debug("Could not look up plan for org=%s, defaulting to dev", org_id, exc_info=True)
+        _plan_cache[org_id] = ("dev", now)
+        return "dev"
 
 
 class UsageMeteringMiddleware(BaseHTTPMiddleware):
@@ -125,7 +125,7 @@ class UsageMeteringMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         plan = await _lookup_org_plan(org_id)
-        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+        limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["dev"])
         api_limit: int | None = limits.get("api_calls_per_month")
 
         # Build the Redis key: usage:api_call:{org_id}:{YYYY-MM}

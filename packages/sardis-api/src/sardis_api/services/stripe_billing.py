@@ -3,11 +3,11 @@
 Handles customer creation, subscription lifecycle, usage reporting,
 and webhook processing for Stripe Billing.
 
-Tiers (canonical names from billing/config.py):
-  Free:       $0/mo  — 1K API calls, 2 agents, 1.5% tx fee, $1K/mo volume
-  Starter:    $49/mo — 50K API calls, 10 agents, 1.0% tx fee, $25K/mo volume
-  Growth:     $249/mo — 500K API calls, 100 agents, 0.75% tx fee, $250K/mo volume
-  Enterprise: custom — unlimited, 0.5% tx fee
+Tiers (March 2026 CEO review):
+  Dev:        $49/mo  — testnet only, 100 tx/mo, 2 agents, 1.5% tx fee, no SLA
+  Starter:    $199/mo — production, unlimited tx, mainnet, 25 agents, 1.0% fee, SLA
+  Growth:     $499/mo — + KYB, PEP screening, advanced audit, FX, 100 agents, 0.75% fee
+  Enterprise: custom  — unlimited, 0.5% fee (negotiable), white-glove
 """
 from __future__ import annotations
 
@@ -33,9 +33,9 @@ class BillingPlan:
 
 
 PLANS: dict[str, BillingPlan] = {
-    "free": BillingPlan("free", "Free", 0, 150, 100, 2, 1),
-    "starter": BillingPlan("starter", "Starter", 4900, 100, 10000, 10, 25),
-    "growth": BillingPlan("growth", "Growth", 24900, 75, 100000, 100, -1),
+    "dev": BillingPlan("dev", "Dev", 4900, 150, 100, 2, 1),
+    "starter": BillingPlan("starter", "Starter", 19900, 100, -1, 25, 25),
+    "growth": BillingPlan("growth", "Growth", 49900, 75, -1, 100, -1),
     "enterprise": BillingPlan("enterprise", "Enterprise", 0, 50, -1, -1, -1),
 }
 
@@ -91,11 +91,11 @@ class StripeBillingService:
                 )
 
             # No subscription — return free tier default
-            return SubscriptionInfo(org_id=org_id, plan="free", status="active")
+            return SubscriptionInfo(org_id=org_id, plan="dev", status="active")
 
         except Exception as e:
             logger.error("Failed to get subscription for %s: %s", org_id, e)
-            return SubscriptionInfo(org_id=org_id, plan="free", status="active")
+            return SubscriptionInfo(org_id=org_id, plan="dev", status="active")
 
     async def create_subscription(
         self,
@@ -200,14 +200,19 @@ class StripeBillingService:
     def _resolve_plan_from_price(self, price_id: str) -> str | None:
         """Map a Stripe price ID back to a plan name.
 
-        Reads SARDIS_BILLING_STRIPE_PRICE_STARTER / _GROWTH env vars.
+        Reads SARDIS_BILLING_STRIPE_PRICE_DEV / _STARTER / _GROWTH env vars.
         Returns None if no match (caller should keep existing plan).
         """
+        if not price_id:
+            return None
+        dev_price = os.getenv("SARDIS_BILLING_STRIPE_PRICE_DEV", "")
         starter_price = os.getenv("SARDIS_BILLING_STRIPE_PRICE_STARTER", "")
         growth_price = os.getenv("SARDIS_BILLING_STRIPE_PRICE_GROWTH", "")
-        if price_id and price_id == starter_price:
+        if price_id == dev_price:
+            return "dev"
+        if price_id == starter_price:
             return "starter"
-        if price_id and price_id == growth_price:
+        if price_id == growth_price:
             return "growth"
         return None
 
@@ -294,7 +299,7 @@ class StripeBillingService:
                         await conn.execute(
                             """
                             UPDATE billing_subscriptions
-                            SET status = 'canceled', plan = 'free', updated_at = NOW()
+                            SET status = 'canceled', plan = 'dev', updated_at = NOW()
                             WHERE stripe_customer_id = $1
                             """,
                             stripe_customer_id,

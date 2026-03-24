@@ -1,8 +1,8 @@
 """Tests for the Stripe Billing API router.
 
 Covers:
-- GET /api/v2/billing/plans   — public, returns 4 plans
-- GET /api/v2/billing/account — auth required, returns free plan default
+- GET /api/v2/billing/plans   — public, returns 4 plans (dev/starter/growth/enterprise)
+- GET /api/v2/billing/account — auth required, returns dev plan default
 - POST /api/v2/billing/checkout — returns 503 when billing disabled
 - POST /api/v2/billing/webhook  — rejects invalid Stripe signature
 """
@@ -61,22 +61,22 @@ class TestListPlans:
     def test_plan_names(self, client):
         resp = client.get("/api/v2/billing/plans")
         names = {p["plan"] for p in resp.json()["plans"]}
-        assert names == {"free", "starter", "growth", "enterprise"}
+        assert names == {"dev", "starter", "growth", "enterprise"}
 
-    def test_free_plan_price_is_zero(self, client):
+    def test_dev_plan_price(self, client):
         resp = client.get("/api/v2/billing/plans")
-        free = next(p for p in resp.json()["plans"] if p["plan"] == "free")
-        assert free["price_monthly_cents"] == 0
+        dev = next(p for p in resp.json()["plans"] if p["plan"] == "dev")
+        assert dev["price_monthly_cents"] == 4_900
 
     def test_starter_plan_price(self, client):
         resp = client.get("/api/v2/billing/plans")
         starter = next(p for p in resp.json()["plans"] if p["plan"] == "starter")
-        assert starter["price_monthly_cents"] == 4_900
+        assert starter["price_monthly_cents"] == 19_900
 
     def test_growth_plan_price(self, client):
         resp = client.get("/api/v2/billing/plans")
         growth = next(p for p in resp.json()["plans"] if p["plan"] == "growth")
-        assert growth["price_monthly_cents"] == 24_900
+        assert growth["price_monthly_cents"] == 49_900
 
     def test_plan_info_has_required_fields(self, client):
         resp = client.get("/api/v2/billing/plans")
@@ -101,9 +101,9 @@ class TestListPlans:
 
 
 class TestGetAccount:
-    def test_returns_free_plan_by_default(self, client):
+    def test_returns_dev_plan_by_default(self, client):
         mock_sub = MagicMock()
-        mock_sub.plan = "free"
+        mock_sub.plan = "dev"
         mock_sub.status = "active"
         mock_sub.stripe_customer_id = None
         mock_sub.stripe_subscription_id = None
@@ -116,12 +116,12 @@ class TestGetAccount:
 
         assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["account"]["plan"] == "free"
+        assert data["account"]["plan"] == "dev"
         assert data["account"]["status"] == "active"
 
     def test_account_contains_usage_snapshot(self, client):
         mock_sub = MagicMock()
-        mock_sub.plan = "free"
+        mock_sub.plan = "dev"
         mock_sub.status = "active"
         mock_sub.stripe_customer_id = None
         mock_sub.stripe_subscription_id = None
@@ -140,7 +140,7 @@ class TestGetAccount:
 
     def test_account_org_id_matches_principal(self, client):
         mock_sub = MagicMock()
-        mock_sub.plan = "free"
+        mock_sub.plan = "dev"
         mock_sub.status = "active"
         mock_sub.stripe_customer_id = None
         mock_sub.stripe_subscription_id = None
@@ -163,18 +163,19 @@ class TestCheckout:
         assert "billing" in resp.json()["detail"].lower()
 
     def test_returns_400_for_invalid_plan(self, client):
-        """POST /checkout with a non-paid plan returns 400 even before billing check."""
+        """POST /checkout with an invalid plan returns 400 even before billing check."""
         # Patch billing_enabled to True to reach plan validation
         with patch(
             "sardis_api.routers.billing._billing_config",
             MagicMock(
                 billing_enabled=True,
                 stripe_secret_key="stripe_key_for_testing",
+                stripe_price_dev="price_dev",
                 stripe_price_starter="price_starter",
                 stripe_price_growth="price_growth",
             ),
         ):
-            resp = client.post("/api/v2/billing/checkout", json={"plan": "free"})
+            resp = client.post("/api/v2/billing/checkout", json={"plan": "enterprise"})
         assert resp.status_code == 400, resp.text
 
     def test_checkout_with_billing_enabled_and_stripe_mocked(self, client):
@@ -190,6 +191,7 @@ class TestCheckout:
             MagicMock(
                 billing_enabled=True,
                 stripe_secret_key="stripe_key_for_testing",
+                stripe_price_dev="price_dev",
                 stripe_price_starter="price_starter",
                 stripe_price_growth="price_growth",
             ),

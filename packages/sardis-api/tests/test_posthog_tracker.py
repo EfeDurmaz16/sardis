@@ -60,7 +60,7 @@ def test_identify_user_does_not_raise_on_error():
     tracker._client = mock_client
 
     try:
-        tracker.identify_user("user_123", {"plan": "free"})
+        tracker.identify_user("user_123", {"plan": "dev"})
     except Exception as exc:
         raise AssertionError(f"identify_user raised unexpectedly: {exc}") from exc
     finally:

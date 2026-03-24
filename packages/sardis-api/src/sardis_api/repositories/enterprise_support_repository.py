@@ -17,15 +17,21 @@ class EnterpriseSupportRepository:
     """Support ticket storage with in-memory fallback and optional PostgreSQL persistence."""
 
     _PLAN_SLA: dict[str, dict[str, Any]] = {
-        "free": {
+        "dev": {
             "first_response_sla_minutes": 1440,
             "resolution_sla_hours": 72,
             "channels": ["email"],
             "pager": False,
         },
-        "pro": {
-            "first_response_sla_minutes": 240,
+        "starter": {
+            "first_response_sla_minutes": 480,
             "resolution_sla_hours": 24,
+            "channels": ["email"],
+            "pager": False,
+        },
+        "growth": {
+            "first_response_sla_minutes": 240,
+            "resolution_sla_hours": 12,
             "channels": ["email", "slack_connect"],
             "pager": False,
         },
