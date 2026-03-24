@@ -57,7 +57,7 @@ export default function Footer() {
   };
 
   return (
-    <footer style={{ backgroundColor: 'var(--landing-bg)', borderTop: '1px solid var(--landing-border)' }}>
+    <footer aria-label="Site footer" style={{ backgroundColor: 'var(--landing-bg)', borderTop: '1px solid var(--landing-border)' }}>
       <div className="max-w-[1440px] mx-auto px-5 md:px-12 xl:px-20 pt-12 md:pt-16 pb-8">
         {/* Top grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">

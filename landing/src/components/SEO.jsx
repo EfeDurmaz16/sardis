@@ -41,6 +41,9 @@ export default function SEO({
       <meta property="og:site_name" content={SITE_NAME} />
       <meta property="og:locale" content="en_US" />
       <meta property="og:image" content={DEFAULT_OG_IMAGE} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:alt" content="Sardis AI agent payments platform" />
 
       {/* Article-specific OG */}
       {article && <meta property="article:published_time" content={article.publishedDate} />}

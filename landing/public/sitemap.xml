@@ -3,7 +3,7 @@
   <!-- Main Pages -->
   <url>
     <loc>https://www.sardis.sh/</loc>
-    <lastmod>2026-03-17</lastmod>
+    <lastmod>2026-03-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -22,6 +22,38 @@
   <url>
     <loc>https://www.sardis.sh/demo</loc>
     <lastmod>2026-02-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/pricing</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/status</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Solutions -->
+  <url>
+    <loc>https://www.sardis.sh/solutions/agent-platforms</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/solutions/procurement</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/solutions/payouts</loc>
+    <lastmod>2026-03-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -68,6 +100,30 @@
   <url>
     <loc>https://www.sardis.sh/docs/authentication</loc>
     <lastmod>2026-02-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/production-guide</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/trust</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/spending-mandates</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/get-api-key</loc>
+    <lastmod>2026-03-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -135,6 +191,24 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/time-based-policies</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/merchant-categories</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/webhooks</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
   <!-- Documentation - SDKs & Tools -->
   <url>
@@ -167,6 +241,50 @@
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/error-reference</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Documentation - Framework Integrations -->
+  <url>
+    <loc>https://www.sardis.sh/docs/integrations</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/integration-langchain</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/integration-crewai</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/integration-adk</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/integration-openai-agents</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.sardis.sh/docs/integration-mpp</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
 
   <!-- Documentation - Resources -->
   <url>
@@ -188,22 +306,10 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.sardis.sh/docs/provider-diligence</loc>
-    <lastmod>2026-02-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://www.sardis.sh/docs/runtime-guardrails</loc>
     <lastmod>2026-02-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/deployment</loc>
-    <lastmod>2026-02-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.sardis.sh/docs/comparison</loc>
@@ -218,10 +324,10 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.sardis.sh/docs/roadmap</loc>
-    <lastmod>2026-02-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://www.sardis.sh/docs/troubleshooting</loc>
+    <lastmod>2026-03-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.sardis.sh/docs/changelog</loc>
@@ -233,15 +339,9 @@
   <!-- Blog -->
   <url>
     <loc>https://www.sardis.sh/docs/blog</loc>
-    <lastmod>2026-02-26</lastmod>
+    <lastmod>2026-03-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-9-5-strict-live-ops-hardening</loc>
-    <lastmod>2026-02-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://www.sardis.sh/docs/blog/sardis-ai-agent-payments</loc>
@@ -310,62 +410,8 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.sardis.sh/docs/blog/mcp-36-tools</loc>
-    <lastmod>2025-12-18</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/why-sardis</loc>
-    <lastmod>2026-01-05</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/fiat-rails</loc>
-    <lastmod>2026-01-15</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-7-production-hardening</loc>
-    <lastmod>2026-01-25</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-8-1-protocol-conformance</loc>
-    <lastmod>2026-01-28</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-8-2-release-readiness</loc>
-    <lastmod>2026-02-01</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-8-3-demo-ops-cloud-deploy</loc>
-    <lastmod>2026-02-05</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://www.sardis.sh/docs/blog/sardis-v0-8-4-packages-live</loc>
     <lastmod>2026-02-08</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-8-7-launch-hardening</loc>
-    <lastmod>2026-02-15</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://www.sardis.sh/docs/blog/sardis-v0-9-0-multi-provider-fiat</loc>
-    <lastmod>2026-02-20</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>

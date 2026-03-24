@@ -54,13 +54,23 @@ export default function LandingV2() {
       <SEO
         title="Sardis: The Payment OS for the Agent Economy"
         description="AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Base with multi-chain funding."
+        path="/"
       />
+
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:text-white"
+        style={{ backgroundColor: 'var(--landing-accent)' }}
+      >
+        Skip to main content
+      </a>
 
       <Navbar />
 
       {/* Spacer for fixed navbar */}
       <div className="h-[72px]" />
 
+      <main id="main-content">
       <Hero />
 
       {/* Live payment trace animation — visual anchor */}
@@ -161,6 +171,7 @@ export default function LandingV2() {
       <AnimatedSection>
         <CTASection />
       </AnimatedSection>
+      </main>
 
       <Footer />
     </div>
