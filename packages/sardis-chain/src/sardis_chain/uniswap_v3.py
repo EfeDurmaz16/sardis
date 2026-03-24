@@ -209,29 +209,56 @@ class UniswapV3Adapter:
             to, quote.amount_in, min_out,
         )
 
-        # First: approve SwapRouter02 to spend token_in
-        approve_data = self._encode_approve(self._router, quote.amount_in)
-
-        # Sign and send approve tx
-        approve_tx = {
-            "to": quote.token_in,
-            "data": "0x" + approve_data.hex(),
-            "gas": 100_000,
-            "gasPrice": gas_price,
-            "nonce": nonce,
-            "chainId": chain_id,
-        }
-        signed_approve = Account.sign_transaction(approve_tx, key)
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
-                "params": ["0x" + signed_approve.raw_transaction.hex()], "id": 1,
+        # Check current allowance — skip approve if already sufficient
+        allowance_data = self._encode_allowance(sender, self._router)
+        async with httpx.AsyncClient(timeout=15) as client:
+            allowance_resp = await client.post(self._rpc_url, json={
+                "jsonrpc": "2.0", "method": "eth_call",
+                "params": [{"to": quote.token_in, "data": "0x" + allowance_data.hex()}, "latest"],
+                "id": 1,
             })
-            approve_result = resp.json()
+            allowance_result = allowance_resp.json()
 
-        if "error" in approve_result:
-            raise RuntimeError(f"Approve tx failed: {approve_result['error']}")
+        current_allowance = 0
+        if "result" in allowance_result and allowance_result["result"] != "0x":
+            current_allowance = int(allowance_result["result"], 16)
+
+        if current_allowance < quote.amount_in:
+            # Approve SwapRouter02 to spend token_in
+            approve_data = self._encode_approve(self._router, quote.amount_in)
+
+            approve_tx = {
+                "to": quote.token_in,
+                "data": "0x" + approve_data.hex(),
+                "gas": 100_000,
+                "gasPrice": gas_price,
+                "nonce": nonce,
+                "chainId": chain_id,
+            }
+            signed_approve = Account.sign_transaction(approve_tx, key)
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(self._rpc_url, json={
+                    "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
+                    "params": ["0x" + signed_approve.raw_transaction.hex()], "id": 1,
+                })
+                approve_result = resp.json()
+
+            if "error" in approve_result:
+                raise RuntimeError(f"Approve tx failed: {approve_result['error']}")
+
+            approve_hash = approve_result.get("result", "")
+            logger.info("Approve tx broadcast: %s — waiting for receipt", approve_hash)
+
+            # Wait for approve receipt before sending swap
+            approve_receipt = await self._wait_for_receipt(approve_hash, max_attempts=30)
+            if not approve_receipt.get("status"):
+                raise RuntimeError(f"Approve tx failed on-chain: {approve_hash}")
+
+            # Increment nonce for the swap tx
+            nonce += 1
+        else:
+            logger.info("Sufficient allowance already set — skipping approve")
 
         # Sign and send swap tx
         swap_tx = {
@@ -239,7 +266,7 @@ class UniswapV3Adapter:
             "data": "0x" + swap_data.hex(),
             "gas": 300_000,
             "gasPrice": gas_price,
-            "nonce": nonce + 1,
+            "nonce": nonce,
             "chainId": chain_id,
         }
         signed_swap = Account.sign_transaction(swap_tx, key)
@@ -332,6 +359,14 @@ class UniswapV3Adapter:
         )
         # Offset to tuple (0x20)
         return selector + bytes.fromhex("0" * 62 + "20") + params
+
+    @staticmethod
+    def _encode_allowance(owner: str, spender: str) -> bytes:
+        """Encode ERC-20 allowance(address,address)."""
+        selector = bytes.fromhex("dd62ed3e")
+        owner_bytes = bytes.fromhex(owner[2:].zfill(64))
+        spender_bytes = bytes.fromhex(spender[2:].zfill(64))
+        return selector + owner_bytes + spender_bytes
 
     @staticmethod
     def _encode_approve(spender: str, amount: int) -> bytes:
