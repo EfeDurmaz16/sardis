@@ -1,0 +1,43 @@
+name: Deploy Dashboard (Next.js)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard-next/**'
+
+jobs:
+  deploy:
+    name: Build & Deploy Dashboard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: dashboard-next
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        working-directory: dashboard-next
+        run: pnpm build
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_DASHBOARD_NEXT_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: dashboard-next
+          vercel-args: '--prod'
