@@ -42,7 +42,7 @@ class SecurityConfig:
     # CSP settings
     csp_default_src: str = "'self'"
     csp_script_src: str = "'self'"
-    csp_style_src: str = "'self' 'unsafe-inline'"
+    csp_style_src: str = "'self'"
     csp_img_src: str = "'self' data: https:"
     csp_connect_src: str = "'self'"
     csp_frame_ancestors: str = "'none'"
