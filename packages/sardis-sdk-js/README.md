@@ -313,13 +313,12 @@ console.log(tx.tx_hash);
 
 | Chain | Mainnet | Testnet |
 |-------|---------|---------|
+| Arc (Circle L1) | `arc` | `arc_testnet` |
 | Base | `base` | `base_sepolia` |
 | Polygon | `polygon` | `polygon_amoy` |
 | Ethereum | `ethereum` | `ethereum_sepolia` |
 | Arbitrum | `arbitrum` | `arbitrum_sepolia` |
 | Optimism | `optimism` | `optimism_sepolia` |
-
-> **Note:** Solana support is planned but not yet implemented.
 
 ## Supported Tokens
 
