@@ -52,6 +52,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    # Disabled -- docs deployed via Vercel (fumadocs), not GitHub Pages
+    if: false
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

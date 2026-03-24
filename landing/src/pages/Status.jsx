@@ -28,7 +28,7 @@ function StatusDot({ status }) {
 }
 
 // ─── Component Card ─────────────────────────────────────────────────────
-function ComponentCard({ name, status, details }) {
+function ComponentCard({ name, status }) {
   return (
     <div
       className="flex items-center justify-between py-3 px-4 rounded-lg"
@@ -114,7 +114,7 @@ export default function Status() {
       } else {
         setError(`API returned ${res.status}`);
       }
-    } catch (e) {
+    } catch {
       setError('Unable to reach API');
     } finally {
       setLoading(false);

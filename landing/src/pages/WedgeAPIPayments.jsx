@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Sun, Moon, Zap, Shield, CreditCard, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";

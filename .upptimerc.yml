@@ -29,7 +29,7 @@ sites:
     url: $BASE_RPC_URL
     method: POST
     headers:
-      Content-Type: application/json
+      - "Content-Type: application/json"
     body: '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
     expectedStatusCodes:
       - 200

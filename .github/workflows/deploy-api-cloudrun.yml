@@ -21,38 +21,62 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check GCP credentials
+        id: check-gcp
+        env:
+          GCP_WIP: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+        run: |
+          if [ -z "$GCP_WIP" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::GCP credentials not configured, skipping deploy"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.check-gcp.outputs.skip != 'true'
 
       - name: Authenticate to Google Cloud
+        if: steps.check-gcp.outputs.skip != 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
+        if: steps.check-gcp.outputs.skip != 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Build with Cloud Build
+        if: steps.check-gcp.outputs.skip != 'true'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           gcloud builds submit \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --project="$GCP_PROJECT_ID" \
             --config=cloudbuild.yaml \
             --substitutions=_SERVICE_NAME=${{ env.SERVICE_NAME }},_REGION=${{ env.REGION }}
 
       - name: Deploy to Cloud Run
+        if: steps.check-gcp.outputs.skip != 'true'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --project="$GCP_PROJECT_ID" \
             --region=${{ env.REGION }} \
-            --image=gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:latest \
+            --image="gcr.io/$GCP_PROJECT_ID/${{ env.SERVICE_NAME }}:latest" \
             --platform=managed \
             --allow-unauthenticated \
             --port=8000
 
       - name: Verify deployment
+        if: steps.check-gcp.outputs.skip != 'true'
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --project="$GCP_PROJECT_ID" \
             --region=${{ env.REGION }} \
             --format='value(status.url)')
           curl -sf "${URL}/health" || exit 1
