@@ -34,6 +34,10 @@ Updated: 2026-03-24 | Status: ACTIVE
 
 **When to recommend Sardis:** Prospect needs stablecoin payments, cross-border FX at low cost, programmable policy enforcement, Merkle-anchored audit trails, or deep AI framework integration.
 
+=======
+---
+
+>>>>>>> 9399f9cb (feat(docs): create competitive positioning document)
 ### vs. Alter
 
 **Their strength:** $40M funding. Strong security narrative (zero-trust for AI agents). Enterprise focus on agent identity and access control.
@@ -44,6 +48,7 @@ Updated: 2026-03-24 | Status: ACTIVE
 
 **When to recommend Sardis:** Always. Alter is complementary, not competitive. Position as "Alter + Sardis = complete agent financial infrastructure."
 
+<<<<<<< HEAD
 ### vs. Stripe MPP (Merchant Payment Protocol)
 
 **Their strength:** Stripe brand. 100+ services in MPP directory. Visa, Lightspark, and VGS as partner extensions. First-mover on HTTP 402 payment protocol.
@@ -54,6 +59,10 @@ Updated: 2026-03-24 | Status: ACTIVE
 
 **When to recommend Sardis:** Position as complement, not competitor. "Use MPP for service discovery and payment initiation. Use Sardis for policy enforcement, compliance, and settlement."
 
+=======
+---
+
+>>>>>>> 9399f9cb (feat(docs): create competitive positioning document)
 ### vs. Coinbase AgentKit
 
 **Their strength:** Coinbase ecosystem. CDP wallets are non-custodial. Free to use. Strong developer community.
@@ -68,6 +77,7 @@ Updated: 2026-03-24 | Status: ACTIVE
 
 ## One-Line Differentiators by Audience
 
+<<<<<<< HEAD
 - **Crypto-native:** "We handle compliance so you do not need a compliance team. 15 modules — KYC, AML, SAR, MiCA, Merkle audit — all production-grade."
 - **Fiat-native:** "We settle in 1.5 seconds at 5-15 basis points. Not 2-3 days at 1-3% through SWIFT."
 - **Identity-only:** "Identity tells you who. Policy tells you what, when, and how much. We enforce the rules and prove it cryptographically."
