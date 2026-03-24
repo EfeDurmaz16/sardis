@@ -54,6 +54,7 @@ const navigation = [
       { name: 'MCP Server', href: '/docs/mcp-server' },
       { name: 'API Reference', href: '/docs/api-reference' },
       { name: 'Interactive API', href: '/docs/api-reference-interactive' },
+      { name: 'Error Codes', href: '/docs/error-reference' },
     ],
   },
   {

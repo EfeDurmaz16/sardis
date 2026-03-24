@@ -48,6 +48,7 @@ const DocsSDKTypeScript = lazy(() => import('./docs/pages/SDKTypeScript.jsx'))
 const DocsMCPServer = lazy(() => import('./docs/pages/MCPServer.jsx'))
 const DocsSDK = lazy(() => import('./docs/pages/SDK.jsx'))
 const APIReference = lazy(() => import('./docs/pages/APIReference.jsx'))
+const DocsErrorReference = lazy(() => import('./docs/pages/ErrorReference.jsx'))
 // Framework Integrations
 const DocsIntegrations = lazy(() => import('./docs/pages/Integrations.jsx'))
 const DocsIntegrationLangChain = lazy(() => import('./docs/pages/IntegrationLangChain.jsx'))
@@ -153,6 +154,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="mcp-server" element={<DocsMCPServer />} />
           <Route path="sdk" element={<DocsSDK />} />
           <Route path="api-reference" element={<APIReference />} />
+          <Route path="error-reference" element={<DocsErrorReference />} />
           {/* Framework Integrations */}
           <Route path="integrations" element={<DocsIntegrations />} />
           <Route path="integration-langchain" element={<DocsIntegrationLangChain />} />
