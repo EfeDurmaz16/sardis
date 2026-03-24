@@ -1,11 +1,13 @@
 "use client";
-import { useState, useEffect } from 'react'
-import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check, Lock } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '@/api/client'
 import { useWallets } from '@/hooks/useApi'
 import type { Agent } from '@/types'
+
+type CardProvider = 'all' | 'sardis' | 'stripe'
 
 type AgentOption = Pick<Agent, 'agent_id' | 'name' | 'wallet_id'>
 
@@ -19,6 +21,7 @@ type CardRecord = {
   limit_monthly?: number | string
   wallet_id?: string
   currency?: string
+  provider?: string
 }
 
 type CurrencyFilter = 'All' | 'USD' | 'EUR'
@@ -67,6 +70,7 @@ export default function CardsPage() {
   const [showPurchase, setShowPurchase] = useState<string | null>(null)
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [currencyFilter, setCurrencyFilter] = useState<CurrencyFilter>('All')
+  const [providerFilter, setProviderFilter] = useState<CardProvider>('all')
 
   const selectedAgent = agents.find((agent) => agent.agent_id === selectedAgentId)
   const walletId = selectedAgent?.wallet_id || ''
@@ -87,10 +91,18 @@ export default function CardsPage() {
   const cards: CardRecord[] = apiCards
 
   const cardCurrency = (card: CardRecord) => card.currency || 'USD'
+  const cardProvider = (card: CardRecord): string =>
+    card.provider || (card.provider_card_id?.startsWith('ic_') ? 'stripe_issuing' : 'sardis')
+
+  const providerFiltered = providerFilter === 'all'
+    ? cards
+    : providerFilter === 'stripe'
+      ? cards.filter((c) => cardProvider(c) === 'stripe_issuing')
+      : cards.filter((c) => cardProvider(c) !== 'stripe_issuing')
 
   const filteredCards = currencyFilter === 'All'
-    ? cards
-    : cards.filter((c) => cardCurrency(c) === currencyFilter)
+    ? providerFiltered
+    : providerFiltered.filter((c) => cardCurrency(c) === currencyFilter)
 
   const hasMultipleCurrencies = new Set(cards.map(cardCurrency)).size > 1
 
@@ -142,6 +154,28 @@ export default function CardsPage() {
           <Plus className="w-5 h-5" />
           Issue Card
         </button>
+      </div>
+
+      {/* Provider Toggle */}
+      <div className="flex items-center gap-1 p-1 bg-dark-300 rounded-lg w-fit">
+        {([
+          { id: 'all' as CardProvider, label: 'All Cards' },
+          { id: 'sardis' as CardProvider, label: 'Sardis' },
+          { id: 'stripe' as CardProvider, label: 'Stripe Issuing' },
+        ]).map((opt) => (
+          <button
+            key={opt.id}
+            onClick={() => setProviderFilter(opt.id)}
+            className={clsx(
+              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+              providerFilter === opt.id
+                ? 'bg-sardis-500 text-dark-400'
+                : 'text-gray-400 hover:text-white',
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Loading */}
@@ -387,6 +421,9 @@ function SardisCard({
               <CreditCard className="w-4 h-4 text-dark-400" />
             </div>
             <span className="text-sm font-bold text-sardis-400 tracking-wider">SARDIS</span>
+            {card.provider_card_id?.startsWith('ic_') && (
+              <span className="text-[9px] uppercase tracking-widest text-gray-500 bg-dark-300 px-1.5 py-0.5 rounded">Stripe</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <CurrencyBadge currency={currency} />
@@ -498,8 +535,116 @@ function SardisCard({
             )}
           </div>
 
+          {/* PAN Reveal (Stripe Issuing cards only) */}
+          {card.provider_card_id?.startsWith('ic_') && (
+            <PANReveal cardId={card.card_id} />
+          )}
+
           {/* Transactions */}
           <CardTransactions cardId={card.card_id} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+/* --- PAN Reveal --- */
+
+function PANReveal({ cardId }: { cardId: string }) {
+  const [revealed, setRevealed] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [cardNumber, setCardNumber] = useState<string | null>(null)
+  const [cvc, setCvc] = useState<string | null>(null)
+  const [expiry, setExpiry] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleReveal = useCallback(async () => {
+    if (revealed) {
+      setRevealed(false)
+      setCardNumber(null)
+      setCvc(null)
+      setExpiry(null)
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const data = await cardsApi.revealCard(cardId)
+      const num = data.card_number || ''
+      setCardNumber(num.replace(/(.{4})/g, '$1 ').trim())
+      setCvc(data.cvc || '***')
+      setExpiry(`${String(data.exp_month).padStart(2, '0')}/${String(data.exp_year).slice(-2)}`)
+      setRevealed(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reveal card details')
+    } finally {
+      setLoading(false)
+    }
+  }, [revealed, cardId])
+
+  const handleCopy = useCallback(() => {
+    if (cardNumber) {
+      navigator.clipboard.writeText(cardNumber.replace(/\s/g, ''))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [cardNumber])
+
+  return (
+    <div className="space-y-3 pt-2 border-t border-dark-100">
+      <button
+        onClick={handleReveal}
+        disabled={loading}
+        className={clsx(
+          'flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-lg border',
+          revealed
+            ? 'bg-sardis-500/10 border-sardis-500/30 text-sardis-400'
+            : 'bg-dark-200 border-dark-100 text-gray-300 hover:border-sardis-500/30 hover:text-white',
+          loading && 'opacity-50 cursor-wait',
+        )}
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : revealed ? (
+          <EyeOff className="w-4 h-4" />
+        ) : (
+          <Eye className="w-4 h-4" />
+        )}
+        {loading ? 'Revealing...' : revealed ? 'Hide Details' : 'Reveal Card Details'}
+      </button>
+
+      {error && (
+        <div className="flex items-center gap-2 text-red-400 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {revealed && cardNumber && (
+        <div className="bg-dark-300 border border-dark-100 p-4 rounded-lg space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Card Number</p>
+              <p className="font-mono text-lg text-white tracking-wider">{cardNumber}</p>
+            </div>
+            <button onClick={handleCopy} className="p-2 text-gray-400 hover:text-white transition-colors">
+              {copied ? <Check className="w-4 h-4 text-sardis-400" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="flex gap-8">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Expiry</p>
+              <p className="font-mono text-white">{expiry}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">CVC</p>
+              <p className="font-mono text-white">{cvc}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>
