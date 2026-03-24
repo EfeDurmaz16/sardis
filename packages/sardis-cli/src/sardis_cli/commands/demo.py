@@ -204,3 +204,74 @@ print(tx.success)  # True"""
 
     console.print(Syntax(code_example, "python", theme="monokai"))
     console.print()
+
+
+# ---------------------------------------------------------------------------
+# Post-payment aha moment
+# ---------------------------------------------------------------------------
+
+def show_post_payment_experience(
+    *,
+    tx_id: str = "tx_demo_00001",
+    tx_hash: str = "0xabcd1234...ef567890",
+    amount: float = 10.0,
+    merchant: str = "localhost:8402",
+    chain: str = "tempo_moderato",
+    blocked: bool = False,
+) -> None:
+    """Display the guided post-payment experience after a demo payment.
+
+    Called after ``sardis pay`` succeeds or is blocked in demo mode.
+    """
+    if blocked:
+        # Red: blocked payment
+        console.print(Panel(
+            f"[bold red]Payment Blocked[/bold red]\n\n"
+            f"  Amount:    [red]${amount:.2f} USDC[/red]\n"
+            f"  Merchant:  [red]{merchant}[/red]\n"
+            f"  Reason:    [yellow]Exceeds spending mandate limit[/yellow]\n\n"
+            "  The spending policy correctly prevented this transaction.\n"
+            "  This is Sardis in action — agents can reason, but they\n"
+            "  cannot be trusted with money without guardrails.",
+            border_style="red",
+            title="Policy Enforcement",
+        ))
+    else:
+        # Green: successful payment
+        explorer_base = {
+            "tempo_moderato": "https://moderato.explorer.caldera.xyz/tx",
+            "base_sepolia": "https://sepolia.basescan.org/tx",
+            "base": "https://basescan.org/tx",
+        }
+        explorer_url = f"{explorer_base.get(chain, explorer_base['base_sepolia'])}/{tx_hash}"
+
+        console.print(Panel(
+            f"[bold green]Payment Successful[/bold green]\n\n"
+            f"  Amount:    [green]${amount:.2f} USDC[/green]\n"
+            f"  Merchant:  [cyan]{merchant}[/cyan]\n"
+            f"  TX ID:     [cyan]{tx_id}[/cyan]\n"
+            f"  TX Hash:   [cyan]{tx_hash}[/cyan]\n"
+            f"  Chain:     [cyan]{chain}[/cyan]\n"
+            f"  Explorer:  [link={explorer_url}]{explorer_url}[/link]\n"
+            f"  Dashboard: [link=https://app.sardis.sh/transactions]https://app.sardis.sh/transactions[/link]",
+            border_style="green",
+            title="Transaction Receipt",
+        ))
+
+    # What's next menu
+    console.print()
+    console.print("[bold]What's next?[/bold]\n")
+
+    next_steps = Table(show_header=False, box=None, padding=(0, 2))
+    next_steps.add_column("Num", style="bold cyan", width=3)
+    next_steps.add_column("Action", style="white")
+    next_steps.add_column("Command", style="dim")
+
+    next_steps.add_row("1", "Try a blocked payment (exceeds limit)", "sardis pay --to binance.com --amount 50000")
+    next_steps.add_row("2", "Set a custom spending limit", "sardis mandates create --per-tx 50 --daily 200")
+    next_steps.add_row("3", "Add wallet to an AI agent", "sardis agents create --name my-agent")
+    next_steps.add_row("4", "View audit trail", "sardis ledger list")
+    next_steps.add_row("5", "Open dashboard", "https://app.sardis.sh")
+
+    console.print(next_steps)
+    console.print()
