@@ -1024,7 +1024,8 @@ async def pay_onchain(
         proof=VCProof(
             verification_method=f"wallet:{wallet_id}#key-1",
             created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            proof_value="onchain-payment",
+            proof_purpose="internal_system_execution",
+            proof_value=hashlib.sha256(f"wallet:{wallet_id}:onchain:{nonce}".encode()).hexdigest(),
         ),
         domain="sardis.sh",
         purpose="checkout",
@@ -1054,10 +1055,14 @@ async def pay_onchain(
         mandate.amount_minor = net_amount_minor
 
     _now_ts = int(time.time())
+    _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    _vm = f"wallet:{wallet_id}#key-1"
+    _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{nonce}".encode()).hexdigest()
     _stub_proof = VCProof(
-        verification_method=f"wallet:{wallet_id}#key-1",
-        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        proof_value="onchain-payment-stub",
+        verification_method=_vm,
+        created=_created_ts,
+        proof_purpose="internal_system_execution",
+        proof_value=_attestation_hash,
     )
     _chain = MandateChain(
         intent=IntentMandate(
@@ -1118,7 +1123,8 @@ async def pay_onchain(
                     proof=VCProof(
                         verification_method=f"wallet:{wallet_id}#key-1",
                         created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        proof_value="platform-fee",
+                        proof_purpose="internal_system_execution",
+                        proof_value=hashlib.sha256(f"wallet:{wallet_id}:fee:{nonce}".encode()).hexdigest(),
                     ),
                     domain="sardis.sh",
                     purpose="platform_fee",
@@ -1134,10 +1140,14 @@ async def pay_onchain(
                     smart_account_address=wallet.smart_account_address,
                 )
                 _fee_now_ts = int(time.time())
+                _fee_created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                _fee_vm = f"wallet:{wallet_id}#key-1"
+                _fee_attestation = hashlib.sha256(f"{_fee_vm}:{_fee_created_ts}:fee_{nonce}".encode()).hexdigest()
                 _fee_stub_proof = VCProof(
-                    verification_method=f"wallet:{wallet_id}#key-1",
-                    created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    proof_value="onchain-payment-stub",
+                    verification_method=_fee_vm,
+                    created=_fee_created_ts,
+                    proof_purpose="internal_system_execution",
+                    proof_value=_fee_attestation,
                 )
                 fee_chain = MandateChain(
                     intent=IntentMandate(

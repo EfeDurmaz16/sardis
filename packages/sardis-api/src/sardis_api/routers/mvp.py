@@ -1,6 +1,7 @@
 """Narrowed execution MVP endpoints (TAP issuance, AP2 validation, Base Sepolia USDC execution)."""
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from dataclasses import dataclass, replace
@@ -277,10 +278,14 @@ async def execute_payment(
         )
 
     _now_ts = int(time.time())
+    _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    _vm = f"did:sardis:{mandate.subject}#key-1"
+    _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{mandate.mandate_id}".encode()).hexdigest()
     _stub_proof = VCProof(
-        verification_method=f"did:sardis:{mandate.subject}#key-1",
-        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        proof_value="mvp-execution-stub",
+        verification_method=_vm,
+        created=_created_ts,
+        proof_purpose="internal_system_execution",
+        proof_value=_attestation_hash,
     )
     _chain = MandateChain(
         intent=IntentMandate(
