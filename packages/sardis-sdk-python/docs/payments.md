@@ -5,7 +5,7 @@ Execute and manage stablecoin payments on supported chains.
 ## Execute Payment
 
 ```python
-result = await client.payments.execute(
+result = await client.payments.execute_mandate(
     from_wallet="wallet_001",
     destination="0x1234567890123456789012345678901234567890",
     amount=100.00,
@@ -105,7 +105,7 @@ Use idempotency keys to prevent duplicate payments:
 
 ```python
 # First call
-result1 = await client.payments.execute(
+result1 = await client.payments.execute_mandate(
     from_wallet="wallet_001",
     destination="0x...",
     amount=100.00,
@@ -113,7 +113,7 @@ result1 = await client.payments.execute(
 )
 
 # Second call with same key returns cached result
-result2 = await client.payments.execute(
+result2 = await client.payments.execute_mandate(
     from_wallet="wallet_001",
     destination="0x...",
     amount=100.00,

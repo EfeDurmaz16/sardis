@@ -20,7 +20,7 @@ client = SardisClient(
 )
 
 # Execute a payment
-result = await client.payments.execute(
+result = await client.payments.execute_mandate(
     from_wallet="wallet_001",
     destination="0x1234567890123456789012345678901234567890",
     amount=100.00,
@@ -68,7 +68,7 @@ client = SardisClient(
 from sardis_sdk.models.errors import APIError, AuthenticationError, RateLimitError
 
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except AuthenticationError:
     print("Invalid API key")
 except RateLimitError as e:
@@ -89,7 +89,7 @@ async def main():
     client = SardisClient(api_key="sk_...")
     
     # All methods are async
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
     
     # Close client when done
     await client.close()
@@ -101,7 +101,7 @@ asyncio.run(main())
 
 ```python
 async with SardisClient(api_key="sk_...") as client:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 # Client automatically closed
 ```
 

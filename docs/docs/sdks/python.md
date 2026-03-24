@@ -39,7 +39,7 @@ wallet = client.wallets.create(
 )
 
 # Execute payment
-payment = client.payments.execute(
+payment = client.payments.execute_mandate(
     wallet_id=wallet.id,
     to="0x1234...",
     amount=50,
@@ -155,7 +155,7 @@ client.wallets.delete("wallet_abc123")
 ### Execute Payment
 
 ```python
-payment = client.payments.execute(
+payment = client.payments.execute_mandate(
     wallet_id="wallet_abc123",
     to="0x1234567890abcdef1234567890abcdef12345678",
     amount=50.0,
@@ -374,7 +374,7 @@ from sardis.exceptions import (
 )
 
 try:
-    payment = client.payments.execute(
+    payment = client.payments.execute_mandate(
         wallet_id="wallet_abc123",
         to="0x...",
         amount=10000,
@@ -406,7 +406,7 @@ async def main():
         chain="base"
     )
 
-    payment = await client.payments.execute(
+    payment = await client.payments.execute_mandate(
         wallet_id=wallet.id,
         to="0x...",
         amount=50,

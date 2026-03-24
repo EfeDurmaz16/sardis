@@ -164,7 +164,7 @@ print(wallet.faucet_url)
 
 ```python
 # Execute a payment
-result = client.payments.execute(
+result = client.payments.execute_mandate(
     wallet_id=wallet.id,
     to="0x1234...merchant_address",
     amount=50,
@@ -226,7 +226,7 @@ client.wallets.unfreeze("wallet_abc123")
 
 ```python
 # Withdraw all funds first
-client.payments.execute(
+client.payments.execute_mandate(
     wallet_id=wallet.id,
     to="your_safe_address",
     amount=wallet.balances["USDC"],
@@ -276,7 +276,7 @@ balances = client.wallets.get_balances(wallet.id)
 print(balances)  # {"USDC": "1000.00", "EURC": "500.00"}
 
 # Pay with specific token
-client.payments.execute(
+client.payments.execute_mandate(
     wallet_id=wallet.id,
     to="0x...",
     amount=50,
@@ -399,7 +399,7 @@ if balance == 0:
 
 ```python
 try:
-    result = client.payments.execute(...)
+    result = client.payments.execute_mandate(...)
 except PolicyViolationError as e:
     print(f"Policy violation: {e.message}")
 except InsufficientBalanceError as e:

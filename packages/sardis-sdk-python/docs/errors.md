@@ -25,7 +25,7 @@ Base exception for all API errors.
 from sardis_sdk.models.errors import APIError
 
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except APIError as e:
     print(f"Status: {e.status_code}")
     print(f"Message: {e.message}")
@@ -41,7 +41,7 @@ from sardis_sdk.models.errors import AuthenticationError
 
 try:
     client = SardisClient(api_key="invalid_key")
-    await client.payments.execute(...)
+    await client.payments.execute_mandate(...)
 except AuthenticationError:
     print("Invalid or missing API key")
 ```
@@ -55,7 +55,7 @@ from sardis_sdk.models.errors import RateLimitError
 import asyncio
 
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except RateLimitError as e:
     print(f"Rate limited. Retry after {e.retry_after} seconds")
     await asyncio.sleep(e.retry_after)
@@ -70,7 +70,7 @@ Raised when request parameters are invalid.
 from sardis_sdk.models.errors import ValidationError
 
 try:
-    result = await client.payments.execute(
+    result = await client.payments.execute_mandate(
         amount=-100,  # Invalid negative amount
     )
 except ValidationError as e:
@@ -105,7 +105,7 @@ Retried errors:
 
 ```python
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except AuthenticationError:
     # Re-authenticate
     pass
@@ -128,7 +128,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except APIError as e:
     logger.error(
         "Payment failed",
@@ -147,7 +147,7 @@ except APIError as e:
 from sardis_sdk.models.errors import NetworkError
 
 try:
-    result = await client.payments.execute(...)
+    result = await client.payments.execute_mandate(...)
 except NetworkError as e:
     print("Network error - check internet connection")
     print(f"Details: {e}")

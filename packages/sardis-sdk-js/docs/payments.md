@@ -5,7 +5,7 @@ Execute and manage stablecoin payments on supported chains.
 ## Execute Payment
 
 ```typescript
-const result = await client.payments.execute({
+const result = await client.payments.executeMandate({
   fromWallet: 'wallet_001',
   destination: '0x1234567890123456789012345678901234567890',
   amount: 100.00,
@@ -103,7 +103,7 @@ console.log(`Estimated cost: ${estimate.estimatedCostWei} wei`);
 
 ```typescript
 // First call
-const result1 = await client.payments.execute({
+const result1 = await client.payments.executeMandate({
   fromWallet: 'wallet_001',
   destination: '0x...',
   amount: 100.00,
@@ -111,7 +111,7 @@ const result1 = await client.payments.execute({
 });
 
 // Second call returns cached result
-const result2 = await client.payments.execute({
+const result2 = await client.payments.executeMandate({
   fromWallet: 'wallet_001',
   destination: '0x...',
   amount: 100.00,
@@ -131,7 +131,7 @@ function PaymentButton() {
 
   const handlePayment = async () => {
     try {
-      const result = await client.payments.execute({
+      const result = await client.payments.executeMandate({
         fromWallet: 'wallet_001',
         destination: '0x...',
         amount: 50.00,

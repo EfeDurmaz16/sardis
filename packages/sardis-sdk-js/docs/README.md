@@ -22,7 +22,7 @@ const client = new SardisClient({
 });
 
 // Execute a payment
-const result = await client.payments.execute({
+const result = await client.payments.executeMandate({
   fromWallet: 'wallet_001',
   destination: '0x1234567890123456789012345678901234567890',
   amount: 100.00,
@@ -70,7 +70,7 @@ const client = new SardisClient({
 import { SardisClient, APIError, AuthenticationError, RateLimitError } from '@sardis/sdk';
 
 try {
-  const result = await client.payments.execute({...});
+  const result = await client.payments.executeMandate({...});
 } catch (error) {
   if (error instanceof AuthenticationError) {
     console.log('Invalid API key');
@@ -95,7 +95,7 @@ import {
 } from '@sardis/sdk';
 
 // Type-safe method calls
-const result: PaymentResult = await client.payments.execute({
+const result: PaymentResult = await client.payments.executeMandate({
   fromWallet: 'wallet_001',
   destination: '0x...',
   amount: 100.00,
@@ -129,7 +129,7 @@ await client.close();
 
 // Or use the client in a try-finally block
 try {
-  const result = await client.payments.execute({...});
+  const result = await client.payments.executeMandate({...});
 } finally {
   await client.close();
 }
