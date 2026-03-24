@@ -109,6 +109,24 @@ def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     return client, wid
 
 
+def _execute_payment(client: SardisClient, wid: str, merchant: str, amount: float,
+                     purpose: str, memo: str, metadata: dict[str, Any]) -> Any:
+    """Execute payment with fallback for production mode compatibility."""
+    try:
+        return client.payments.send(
+            wid,
+            to=merchant,
+            amount=amount,
+            purpose=purpose,
+            memo=memo,
+            metadata=metadata,
+        )
+    except (ValueError, KeyError):
+        # Production mode: wallet not in simulation dict, fall back to wallet.pay()
+        wallet = client.wallets.get(wid)
+        return wallet.pay(to=merchant, amount=amount, purpose=purpose)
+
+
 # ---------------------------------------------------------------------------
 # Public registration API
 # ---------------------------------------------------------------------------
@@ -189,11 +207,8 @@ def register_sardis_actions(
         if card_id:
             payment_metadata["card_id"] = card_id
 
-        result = client.payments.send(
-            wid,
-            to=merchant,
-            amount=amount,
-            purpose=purpose,
+        result = _execute_payment(
+            client, wid, merchant, amount, purpose,
             memo=f"[browser:{ctx.action_hash[:12]}] {purpose}",
             metadata=payment_metadata,
         )
@@ -210,7 +225,10 @@ def register_sardis_actions(
         if not wid:
             return "Error: No wallet ID configured."
         balance = client.wallets.get_balance(wid, token=token)
-        return f"Balance: ${balance.balance} {token} | Remaining limit: ${balance.remaining}"
+        remaining = getattr(balance, "remaining", None)
+        if remaining is None:
+            remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", "N/A"))
+        return f"Balance: ${balance.balance} {token} | Remaining limit: ${remaining}"
 
     @controller.action("Check if a purchase would be allowed by Sardis spending policy")
     async def sardis_check_policy(amount: float, merchant: str) -> str:
@@ -224,11 +242,15 @@ def register_sardis_actions(
             return "BLOCKED: prompt injection signal detected"
 
         balance = client.wallets.get_balance(wid)
-        if amount > balance.remaining:
-            return f"WOULD BE BLOCKED: ${amount} exceeds remaining limit ${balance.remaining}"
-        if amount > balance.balance:
-            return f"WOULD BE BLOCKED: ${amount} exceeds balance ${balance.balance}"
-        return f"WOULD BE ALLOWED: ${amount} to {merchant} (balance: ${balance.balance}, remaining: ${balance.remaining})"
+        remaining = getattr(balance, "remaining", None)
+        if remaining is None:
+            remaining = getattr(balance, "remaining_limit", getattr(balance, "daily_remaining", 0))
+        bal = balance.balance
+        if amount > float(remaining):
+            return f"WOULD BE BLOCKED: ${amount} exceeds remaining limit ${remaining}"
+        if amount > float(bal):
+            return f"WOULD BE BLOCKED: ${amount} exceeds balance ${bal}"
+        return f"WOULD BE ALLOWED: ${amount} to {merchant} (balance: ${bal}, remaining: ${remaining})"
 
     @controller.action("Select the best card for a merchant purchase based on currency, merchant lock, and spend")
     async def select_best_card(
