@@ -59,6 +59,7 @@ const DocsIntegrationComposio = lazy(() => import('./docs/pages/IntegrationCompo
 const DocsIntegrationAutogpt = lazy(() => import('./docs/pages/IntegrationAutogpt.jsx'))
 const DocsIntegrationN8N = lazy(() => import('./docs/pages/IntegrationN8N.jsx'))
 const DocsIntegrationVercelAISdk = lazy(() => import('./docs/pages/IntegrationVercelAISdk.jsx'))
+const DocsIntegrationMPP = lazy(() => import('./docs/pages/IntegrationMPP.jsx'))
 // Resources
 const DocsBlockchainInfrastructure = lazy(() => import('./docs/pages/BlockchainInfrastructure.jsx'))
 const DocsArchitecture = lazy(() => import('./docs/pages/Architecture.jsx'))
@@ -159,6 +160,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="integration-autogpt" element={<DocsIntegrationAutogpt />} />
           <Route path="integration-n8n" element={<DocsIntegrationN8N />} />
           <Route path="integration-vercel-ai-sdk" element={<DocsIntegrationVercelAISdk />} />
+          <Route path="integration-mpp" element={<DocsIntegrationMPP />} />
           {/* Resources */}
           <Route path="blockchain-infrastructure" element={<DocsBlockchainInfrastructure />} />
           <Route path="architecture" element={<DocsArchitecture />} />
