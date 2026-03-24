@@ -23,6 +23,7 @@ for pkg in [
     "sardis-compliance",
     "sardis-checkout",
     "sardis-coinbase",
+    "sardis-guardrails",
 ]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists():
@@ -33,7 +34,7 @@ os.environ["SARDIS_ENVIRONMENT"] = "dev"  # Use 'dev' as test environment
 os.environ["DATABASE_URL"] = "memory://"
 os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_32chars"  # Min 32 chars required
-os.environ["SARDIS_TEST_API_KEY"] = "sk_test_demo123"
+os.environ["SARDIS_TEST_API_KEY"] = "sk_test_demo123"  # nosecret: test-only dummy key
 
 from sardis_api.main import create_app
 
@@ -58,7 +59,7 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
-        headers={"X-API-Key": "sk_test_demo123"},
+        headers={"X-API-Key": "sk_test_demo123"},  # nosecret: test-only dummy key
     ) as ac:
         yield ac
 
