@@ -67,6 +67,7 @@ const navigation = [
       { name: 'Browser Use', href: '/docs/integration-browser-use' },
       { name: 'AutoGPT', href: '/docs/integration-autogpt' },
       { name: 'Composio', href: '/docs/integration-composio' },
+      { name: 'Vercel AI SDK', href: '/docs/integration-vercel-ai-sdk' },
       { name: 'n8n', href: '/docs/integration-n8n' },
     ],
   },
