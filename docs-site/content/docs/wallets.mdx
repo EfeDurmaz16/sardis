@@ -1,0 +1,121 @@
+---
+title: Wallets
+description: Non-custodial MPC wallets for AI agents. Create, fund, and manage wallets with spending policies across multiple chains.
+---
+
+## Overview
+
+Sardis wallets are non-custodial MPC wallets powered by Turnkey. Private keys are never stored
+or accessible — all signing happens through MPC (Multi-Party Computation).
+
+Each wallet is:
+
+- **Non-custodial** — Sardis never holds private keys
+- **Policy-governed** — Every wallet has a spending policy
+- **Multi-chain** — Supports Base, Polygon, Ethereum, Arbitrum, Optimism
+- **Multi-token** — USDC, USDT, EURC, PYUSD
+
+## Create a Wallet
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(api_key="sk_...")
+
+wallet = client.wallets.create(
+    name="research-agent",
+    chain="base",
+    token="USDC",
+    policy="Max $100/day, Max $25 per tx, only OpenAI and Anthropic"
+)
+
+print(wallet.id)       # "wal_abc123"
+print(wallet.address)  # "0x..."
+print(wallet.chain)    # "base"
+```
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({ apiKey: 'sk_...' });
+
+const wallet = await client.wallets.create({
+  name: 'research-agent',
+  chain: 'base',
+  token: 'USDC',
+  policy: 'Max $100/day, Max $25 per tx, only OpenAI and Anthropic',
+});
+
+console.log(wallet.id);      // "wal_abc123"
+console.log(wallet.address); // "0x..."
+```
+
+## Check Balance
+
+```python
+balance = await client.wallets.get_balance(wallet.id)
+
+print(balance.available)  # "95.00"
+print(balance.held)       # "5.00"
+print(balance.token)      # "USDC"
+print(balance.chain)      # "base"
+```
+
+## Fund a Wallet
+
+Wallets can be funded via:
+
+- **Direct deposit** — Send USDC to the wallet address
+- **Bank transfer (ACH)** — Fund from a linked bank account
+- **Coinbase Onramp** — Fiat-to-crypto conversion
+
+```python
+# Fund from linked bank account
+result = await client.treasury.fund(
+    wallet_id=wallet.id,
+    amount=500,
+    source="bank_account_token",
+)
+
+print(result.status)  # "pending"
+print(result.eta)     # "1-2 business days"
+```
+
+## List Wallets
+
+```python
+wallets = await client.wallets.list()
+
+for w in wallets:
+    print(f"{w.name}: {w.address} ({w.chain})")
+```
+
+## Update Policy
+
+```python
+# Update spending policy
+await client.wallets.update_policy(
+    wallet_id=wallet.id,
+    policy="Max $200/day, Max $50 per tx"
+)
+```
+
+## Archive a Wallet
+
+```python
+# Archive wallet (soft delete)
+await client.wallets.archive(wallet_id=wallet.id)
+```
+
+## MCP Wallet Tools
+
+| Tool | Description |
+| --- | --- |
+| `sardis_create_wallet` | Create new MPC wallet with optional policy |
+| `sardis_get_wallet` | Get wallet details by ID |
+| `sardis_list_wallets` | List all wallets for current user |
+| `sardis_get_balance` | Get wallet balance |
+| `sardis_get_address` | Get deposit address for specific chain |
+| `sardis_update_policy` | Update wallet spending policy |
+| `sardis_check_policy` | Validate transaction against policy |
+| `sardis_archive_wallet` | Archive inactive wallet |

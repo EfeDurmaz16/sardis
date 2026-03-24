@@ -1,0 +1,19 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "quickstart",
+    "authentication",
+    "---Core Concepts---",
+    "spending-mandates",
+    "policy-engine",
+    "wallets",
+    "payments",
+    "---SDKs & Tools---",
+    "mcp-server",
+    "sdk-reference",
+    "---API---",
+    "api"
+  ]
+}
