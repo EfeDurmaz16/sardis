@@ -17,6 +17,7 @@ import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import SocialProof from '@/components/landing/SocialProof';
 import HeroTrace from '@/components/landing/HeroTrace';
+import PressStrip from '@/components/landing/PressStrip';
 import DashboardMockup from '@/components/landing/DashboardMockup';
 import ProblemCards from '@/components/landing/ProblemCards';
 import HowItWorks from '@/components/landing/HowItWorks';
@@ -68,6 +69,8 @@ export default function LandingV2() {
           <HeroTrace />
         </div>
       </AnimatedSection>
+
+      <PressStrip />
 
       <AnimatedSection>
         <SocialProof />
