@@ -2,15 +2,15 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-// Font imports (fix latent bug - these packages are installed but never imported)
-import '@fontsource/space-grotesk/400.css';
-import '@fontsource/space-grotesk/500.css';
-import '@fontsource/space-grotesk/600.css';
-import '@fontsource/space-grotesk/700.css';
-import '@fontsource/inter/300.css';
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/500.css';
-import '@fontsource/jetbrains-mono/400.css';
+// Font imports — Latin-only subsets to reduce bundle size (~40% smaller than full)
+import '@fontsource/space-grotesk/latin-400.css';
+import '@fontsource/space-grotesk/latin-500.css';
+import '@fontsource/space-grotesk/latin-600.css';
+import '@fontsource/space-grotesk/latin-700.css';
+import '@fontsource/inter/latin-300.css';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
+import '@fontsource/jetbrains-mono/latin-400.css';
 
 // Section components
 import Navbar from '@/components/landing/Navbar';

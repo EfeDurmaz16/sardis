@@ -7,6 +7,11 @@
     <title>Sardis AI Agent Payments | The Payment OS for the Agent Economy</title>
     <meta name="description" content="Sardis is AI agent payments infrastructure: policy-controlled wallets, virtual cards, and on-chain + fiat rails with deterministic guardrails." />
 
+    <!-- DNS Prefetch / Preconnect for third-party services -->
+    <link rel="dns-prefetch" href="https://us.i.posthog.com" />
+    <link rel="dns-prefetch" href="https://va.vercel-scripts.com" />
+    <link rel="preconnect" href="https://us.i.posthog.com" crossorigin />
+
     <!-- Canonical URL -->
     <link rel="canonical" href="https://www.sardis.sh/" />
     <link rel="alternate" hreflang="en" href="https://www.sardis.sh/" />
@@ -317,9 +322,12 @@
     }
     </script>
 
-    <!-- Critical Font Preloads (LCP optimization — removed render-blocking Google Fonts, using @fontsource instead) -->
+    <!-- Critical Font Preloads (LCP optimization) -->
+    <!-- Geist Sans: used for body text and docs -->
     <link rel="preload" href="/fonts/geist/Geist-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/geist/Geist-SemiBold.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Geist Mono: used for code blocks and labels -->
+    <link rel="preload" href="/fonts/geist/GeistMono-Regular.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

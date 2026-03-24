@@ -14,6 +14,10 @@ export default defineConfig({
     },
   },
   build: {
+    // Target modern browsers for smaller output
+    target: 'es2020',
+    // Enable CSS code splitting
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -21,6 +25,7 @@ export default defineConfig({
           'vendor-motion': ['framer-motion'],
           'vendor-helmet': ['react-helmet-async'],
           'vendor-analytics': ['posthog-js'],
+          'vendor-icons': ['lucide-react'],
         },
       },
     },
