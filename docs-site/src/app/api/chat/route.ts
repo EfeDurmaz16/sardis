@@ -9,8 +9,8 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const pages = source.getPages().map((page) => ({
-    title: page.data.title,
-    description: page.data.description ?? '',
+    title: String(page.data.title ?? ''),
+    description: String(page.data.description ?? ''),
     url: page.url,
   }));
 

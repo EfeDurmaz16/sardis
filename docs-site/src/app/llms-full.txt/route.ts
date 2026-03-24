@@ -6,12 +6,13 @@ export function GET() {
   const pages = source.getPages();
 
   const sections = pages.map((page) => {
-    const title = page.data.title;
-    const description = page.data.description ?? '';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = page.data as any;
+    const title = String(data.title ?? '');
+    const description = String(data.description ?? '');
     const url = `https://docs.sardis.sh${page.url}`;
 
-    // Get the raw MDX content from the page
-    const content = page.data.structuredData?.contents
+    const content = data.structuredData?.contents
       ?.map((c: { content: string }) => c.content)
       .join('\n\n') ?? '';
 
