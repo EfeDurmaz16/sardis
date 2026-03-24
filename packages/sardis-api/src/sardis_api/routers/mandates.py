@@ -1,6 +1,7 @@
 """Mandate ingestion + execution endpoints."""
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -30,6 +31,16 @@ if TYPE_CHECKING:
     from sardis_wallet.manager import WalletManager
 
 router = APIRouter(dependencies=[Depends(require_principal)])
+
+# ORDER BY column whitelist — prevents SQL injection if sort column is
+# ever made dynamic.  Only columns listed here may appear after ORDER BY.
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "updated_at", "status", "amount_minor"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
 
 
 # Stored mandate model
@@ -112,8 +123,9 @@ async def _list_mandates(
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     args.extend([limit, offset])
 
+    sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
-        f"SELECT * FROM mandates {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+        f"SELECT * FROM mandates {where} ORDER BY {sort_col} DESC LIMIT ${idx} OFFSET ${idx + 1}",
         *args,
     )
     return [_row_to_stored(r) for r in rows]
@@ -416,10 +428,14 @@ async def execute_stored_mandate(
 
     _mandate = stored.mandate
     _now_ts = int(_time.time())
+    _created_ts = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+    _vm = f"mandate:{_mandate.mandate_id}#key-1"
+    _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{_mandate.mandate_id}".encode()).hexdigest()
     _stub_proof = VCProof(
-        verification_method=f"mandate:{_mandate.mandate_id}#key-1",
-        created=_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
-        proof_value="mandate-execution-stub",
+        verification_method=_vm,
+        created=_created_ts,
+        proof_purpose="internal_system_execution",
+        proof_value=_attestation_hash,
     )
     _chain = MandateChain(
         intent=IntentMandate(
@@ -575,10 +591,14 @@ async def execute_payment_mandate(
             )
 
         _now_ts = int(_time.time())
+        _created_ts = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+        _vm = f"mandate:{mandate.mandate_id}#key-1"
+        _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{mandate.mandate_id}".encode()).hexdigest()
         _stub_proof = VCProof(
-            verification_method=f"mandate:{mandate.mandate_id}#key-1",
-            created=_time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()),
-            proof_value="mandate-execution-stub",
+            verification_method=_vm,
+            created=_created_ts,
+            proof_purpose="internal_system_execution",
+            proof_value=_attestation_hash,
         )
         _chain = MandateChain(
             intent=IntentMandate(

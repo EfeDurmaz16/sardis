@@ -544,24 +544,7 @@ async def issue_virtual_card(
         )
 
     except ImportError:
-        # sardis_mpp not installed — return stub for demo
-        card_id = f"card_{uuid4().hex[:12]}"
-        logger.info("Virtual card issued (stub): %s amount=%s", card_id, req.amount)
-
-        # Deduct from session if applicable
-        if req.session_id and req.session_id in _sessions:
-            session = _sessions[req.session_id]
-            session["remaining"] = session["remaining"] - req.amount
-            session["total_spent"] = session["total_spent"] + req.amount
-            session["payment_count"] += 1
-
-        return IssueCardResponse(
-            card_id=card_id,
-            card_number="4111XXXXXXXX1234",
-            cvv="***",
-            expiry="12/27",
-            amount=str(req.amount),
-            currency=req.currency,
-            status="issued",
-            card_type="single_use",
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="sardis_mpp package not installed",
         )

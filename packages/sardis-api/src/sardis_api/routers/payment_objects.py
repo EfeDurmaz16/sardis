@@ -17,6 +17,14 @@ from sardis_api.authz import Principal, require_principal
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
 
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "updated_at", "status", "amount"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
+
 
 # ---------------------------------------------------------------------------
 # Request / Response Models
@@ -459,9 +467,10 @@ async def list_payment_objects(
     count = await Database.fetchval(
         f"SELECT COUNT(*) FROM payment_objects WHERE {where}", *params
     )
+    sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
         f"""SELECT * FROM payment_objects WHERE {where}
-            ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}""",
+            ORDER BY {sort_col} DESC LIMIT ${idx} OFFSET ${idx + 1}""",
         *params, limit, offset,
     )
 

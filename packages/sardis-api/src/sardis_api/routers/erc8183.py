@@ -20,6 +20,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["erc8183"])
 
+SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "updated_at", "state"})
+
+
+def _validate_sort_column(col: str) -> str:
+    if col not in SORTABLE_COLUMNS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid sort column: {col}")
+    return col
+
 
 # ---------------------------------------------------------------------------
 # Request / Response models
@@ -319,8 +327,9 @@ async def list_jobs(
         count_row = await conn.fetchrow(f"SELECT COUNT(*) as total FROM erc8183_jobs WHERE {where}", *params)
         total = count_row["total"] if count_row else 0
 
+        sort_col = _validate_sort_column("created_at")
         rows = await conn.fetch(
-            f"SELECT * FROM erc8183_jobs WHERE {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+            f"SELECT * FROM erc8183_jobs WHERE {where} ORDER BY {sort_col} DESC LIMIT ${idx} OFFSET ${idx + 1}",
             *params,
             limit,
             offset,

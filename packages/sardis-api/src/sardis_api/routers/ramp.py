@@ -465,15 +465,45 @@ async def withdraw_crypto(
     if not source_address:
         raise HTTPException(status_code=400, detail=f"Wallet has no address on {req.chain}")
 
-    # TODO: Execute via chain executor (Tempo TIP-20 or ERC-20)
-    # For demo: accept the request and return pending status
     logger.info(
         "Crypto withdrawal: %s %s on %s from %s to %s",
         req.amount, req.token, req.chain, source_address, req.destination_address,
     )
 
+    # Execute via chain executor when in live mode
+    import os
+    chain_mode = os.environ.get("SARDIS_CHAIN_MODE", "simulated")
+    if chain_mode == "live":
+        chain_executor = getattr(deps, "chain_executor", None) or getattr(deps, "fiat_ramp", None)
+        if not chain_executor:
+            raise HTTPException(status_code=503, detail="Chain executor not available")
+
+        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+        amount_minor = to_raw_token_amount(TokenType(req.token.upper()), req.amount)
+
+        try:
+            receipt = await chain_executor.send_erc20(
+                wallet_id=req.wallet_id,
+                chain=req.chain,
+                token=req.token,
+                amount_minor=amount_minor,
+                destination=req.destination_address,
+            )
+            return WithdrawCryptoResponse(
+                tx_hash=receipt.tx_hash,
+                status="submitted",
+                amount=str(req.amount),
+                chain=req.chain,
+                token=req.token,
+                destination=req.destination_address,
+            )
+        except Exception as e:
+            logger.exception("Crypto withdrawal failed: %s", e)
+            raise HTTPException(status_code=502, detail=f"Withdrawal failed: {e}")
+
+    # Non-live mode: return pending stub
     return WithdrawCryptoResponse(
-        tx_hash=None,  # Will be populated when executor integration is complete
+        tx_hash=None,
         status="pending",
         amount=str(req.amount),
         chain=req.chain,

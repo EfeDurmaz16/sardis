@@ -209,22 +209,29 @@ class MarketplaceRepository:
         status: ServiceStatus = ServiceStatus.ACTIVE,
         limit: int = 50,
     ) -> list[ServiceListing]:
-        """List services with optional filters."""
+        """List services with offer counts via LEFT JOIN (no N+1)."""
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
-                query = "SELECT * FROM marketplace_services WHERE status = $1"
-                params = [status.value]
+                query = """
+                    SELECT s.*,
+                           COUNT(o.id) AS total_orders,
+                           COUNT(o.id) FILTER (WHERE o.status = 'completed') AS completed_orders
+                    FROM marketplace_services s
+                    LEFT JOIN marketplace_offers o ON o.service_id = s.id
+                    WHERE s.status = $1
+                """
+                params: list = [status.value]
 
                 if category:
-                    query += f" AND category = ${len(params) + 1}"
+                    query += f" AND s.category = ${len(params) + 1}"
                     params.append(category.value)
 
                 if provider_id:
-                    query += f" AND provider_agent_id = ${len(params) + 1}"
+                    query += f" AND s.provider_agent_id = ${len(params) + 1}"
                     params.append(provider_id)
 
-                query += f" ORDER BY created_at DESC LIMIT ${len(params) + 1}"
+                query += f" GROUP BY s.id ORDER BY s.created_at DESC LIMIT ${len(params) + 1}"
                 params.append(limit)
 
                 rows = await conn.fetch(query, *params)

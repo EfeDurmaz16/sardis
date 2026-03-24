@@ -155,32 +155,36 @@ async def estimate_gas(
             detail=f"Token {request.token} not supported on {request.chain}. Supported: {list(supported_tokens.keys())}",
         )
 
-    # Create a mock mandate for gas estimation
+    # Create a sentinel mandate for gas estimation (bypasses proof verification)
+    import hashlib
     import time
 
     from sardis_v2_core.mandates import VCProof
 
+    _gas_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    _gas_nonce = hashlib.sha256(f"gas_estimate:{request.chain}:{request.destination}:{request.amount}".encode()).hexdigest()[:16]
     proof = VCProof(
-        verification_method="did:key:system#key-1",
-        created="2025-01-01T00:00:00Z",
-        proof_value="mock_signature",
+        verification_method="did:sardis:system#gas-estimate",
+        created=_gas_ts,
+        proof_purpose="gas_estimation",
+        proof_value=hashlib.sha256(f"gas:{_gas_nonce}:{_gas_ts}".encode()).hexdigest(),
     )
 
     mandate = PaymentMandate(
-        mandate_id="gas_estimate",
+        mandate_id=f"gas_estimate_{_gas_nonce}",
         mandate_type="payment",
         issuer="system",
         subject="system",
         expires_at=int(time.time()) + 300,
-        nonce="gas_estimate_nonce",
+        nonce=_gas_nonce,
         proof=proof,
         domain="sardis.sh",
-        purpose="checkout",
+        purpose="gas_estimation",
         destination=request.destination,
         amount_minor=int(request.amount),
         token=request.token,
         chain=request.chain,
-        audit_hash="gas_estimate_hash",
+        audit_hash=hashlib.sha256(f"gas:{_gas_nonce}".encode()).hexdigest(),
     )
 
     try:

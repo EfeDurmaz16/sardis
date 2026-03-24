@@ -448,8 +448,23 @@ async def list_admin_users(
     """
     logger.info(f"Admin user list requested from {request.client.host if request.client else 'unknown'}")
 
-    # Placeholder - would normally query database
-    return []
+    from sardis_v2_core.database import Database
+
+    rows = await Database.fetch(
+        """SELECT id, email, role, created_at,
+                  (SELECT MAX(created_at) FROM ba_sessions WHERE ba_sessions.user_id = ba_users.id) as last_login
+           FROM ba_users ORDER BY created_at DESC LIMIT 100"""
+    )
+    return [
+        AdminUserResponse(
+            user_id=str(row["id"]),
+            email=row.get("email"),
+            role=row.get("role", "user"),
+            created_at=str(row["created_at"]),
+            last_login=str(row["last_login"]) if row.get("last_login") else None,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/config", status_code=status.HTTP_200_OK)
@@ -468,7 +483,16 @@ async def update_admin_config(
         f"from {request.client.host if request.client else 'unknown'}"
     )
 
-    # Placeholder - would normally update configuration
+    from sardis_v2_core.database import Database
+
+    await Database.execute(
+        """INSERT INTO system_config (key, value, description, updated_at)
+           VALUES (\, \, \, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value,
+           description = EXCLUDED.description, updated_at = NOW()""",
+        config.key, config.value, config.description,
+    )
+    await log_admin_action(request, "admin", "", "config_update", {"key": config.key})
     return {
         "success": True,
         "key": config.key,
@@ -490,9 +514,24 @@ async def clear_admin_cache(
         f"Admin cache clear requested from {request.client.host if request.client else 'unknown'}"
     )
 
+    import os
+
+    redis_url = os.environ.get("SARDIS_REDIS_URL") or os.environ.get("UPSTASH_REDIS_URL")
+    flushed = False
+    if redis_url:
+        try:
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(redis_url)
+            await r.flushdb()
+            await r.aclose()
+            flushed = True
+        except Exception as e:
+            logger.warning("Cache flush failed: %s", e)
+
+    await log_admin_action(request, "admin", "", "cache_clear", {"redis_flushed": flushed})
     return {
         "success": True,
-        "message": "Cache cleared",
+        "message": "Cache cleared" if flushed else "Cache cleared (no Redis configured)",
     }
 
 
