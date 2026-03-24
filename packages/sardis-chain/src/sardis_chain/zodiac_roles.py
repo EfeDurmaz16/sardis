@@ -184,7 +184,7 @@ def encode_role_key(name: str) -> bytes:
         raise ValueError(f"Role key must be 1-{MAX_ROLE_KEY_LENGTH} characters")
     encoded = name.encode("ascii")
     if len(encoded) > 32:
-        raise ValueError(f"Role key exceeds 32 bytes when encoded")
+        raise ValueError("Role key exceeds 32 bytes when encoded")
     return encoded.ljust(32, b"\x00")
 
 

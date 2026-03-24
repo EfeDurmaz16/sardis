@@ -1,10 +1,7 @@
 """Tests for Striga KYC provider."""
 from __future__ import annotations
 
-import hashlib
-import hmac
 
-import pytest
 
 from sardis_striga.kyc import StrigaKYCProvider
 

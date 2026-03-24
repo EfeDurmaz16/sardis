@@ -2,18 +2,14 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 from decimal import Decimal
 
 from sardis_cards.models import Card, CardStatus, CardTransaction, CardType, TransactionStatus
+from sardis_cards.providers.base import CardProvider
 
 from .client import StrigaClient
-from .models import StrigaCardStatus
 
 logger = logging.getLogger(__name__)
-
-# Import ABC conditionally to avoid circular imports at module level
-from sardis_cards.providers.base import CardProvider
 
 
 class StrigaCardProvider(CardProvider):

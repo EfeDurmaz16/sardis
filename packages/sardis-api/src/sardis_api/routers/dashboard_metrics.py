@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import logging
-import os
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from sardis_api.authz import Principal, require_principal

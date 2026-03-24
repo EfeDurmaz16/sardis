@@ -199,8 +199,9 @@ async def execute_fx_quote(
             )
 
         if provider == "tempo_dex":
-            from sardis_chain.tempo.dex import TempoDEXAdapter, DEXQuote
             import os
+
+            from sardis_chain.tempo.dex import DEXQuote, TempoDEXAdapter
             dex = TempoDEXAdapter(
                 rpc_url=os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
                 private_key=signer.get_private_key(),  # From Turnkey or EOA
@@ -219,8 +220,9 @@ async def execute_fx_quote(
             swap_status = result.get("status", "failed")
 
         elif provider in ("uniswap_v3", "uniswap_v4"):
-            from sardis_chain.uniswap_v3 import UniswapV3Adapter, UniswapQuote
             import os
+
+            from sardis_chain.uniswap_v3 import UniswapV3Adapter
             chain = row.get("chain", "base")
             rpc = os.getenv("SARDIS_BASE_RPC_URL", "")
             if not rpc:
@@ -243,8 +245,9 @@ async def execute_fx_quote(
         else:
             # Try CDPSwap if available
             try:
-                from sardis_chain.cdp_swap import CDPSwapClient
                 import os
+
+                from sardis_chain.cdp_swap import CDPSwapClient
                 cdp_key = os.getenv("CDP_API_KEY")
                 if cdp_key:
                     cdp = CDPSwapClient(api_key=cdp_key)

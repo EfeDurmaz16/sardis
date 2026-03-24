@@ -6,7 +6,7 @@ They are the core settlement primitive in the Sardis protocol.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -323,8 +323,8 @@ async def verify_payment_object(
         # Primary: EIP-712 typed data verification
         if merchant_row and merchant_row.get("settlement_address"):
             try:
-                from eth_account.messages import encode_typed_data
                 from eth_account import Account
+                from eth_account.messages import encode_typed_data
 
                 typed_data = {
                     "types": {
@@ -364,8 +364,8 @@ async def verify_payment_object(
         # Fallback: EIP-191 personal_sign (temporary, one release)
         if not verified and merchant_row and merchant_row.get("settlement_address"):
             try:
-                from eth_account.messages import encode_defunct
                 from eth_account import Account
+                from eth_account.messages import encode_defunct
 
                 message = encode_defunct(text=object_hash)
                 recovered = Account.recover_message(message, signature=bytes.fromhex(

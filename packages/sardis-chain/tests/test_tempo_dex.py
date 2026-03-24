@@ -16,12 +16,11 @@ import pytest
 
 from sardis_chain.tempo.dex import (
     DEX_ADDRESS,
-    DEXQuote,
     TEMPO_TOKENS,
     TOKEN_DECIMALS,
+    DEXQuote,
     TempoDEXAdapter,
 )
-
 
 # ── DEXQuote tests ───────────────────────────────────────────────────
 

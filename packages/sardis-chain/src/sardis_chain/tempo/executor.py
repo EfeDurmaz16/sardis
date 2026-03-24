@@ -283,6 +283,7 @@ class TempoExecutor:
     async def _wait_for_receipt(self, tx_hash: str) -> TempoReceipt:
         """Poll for transaction receipt (Tempo has ~0.5s finality)."""
         import asyncio
+
         import httpx
 
         for _ in range(20):  # 10 seconds max

@@ -1,7 +1,6 @@
 """Tests for Striga EURC→EUR swap provider."""
 from __future__ import annotations
 
-import pytest
 
 from sardis_striga.swap import StrigaSwapProvider
 

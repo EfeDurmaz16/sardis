@@ -8,7 +8,6 @@ from __future__ import annotations
 import time
 
 import pytest
-
 from sardis_protocol.erc8001 import (
     AGENT_INTENT_TYPEHASH,
     CHAIN_IDS,
@@ -30,7 +29,6 @@ from sardis_protocol.erc8001 import (
     compute_intent_hash,
     create_coordination_manager,
 )
-
 
 # ============ Coordination Payload Tests ============
 

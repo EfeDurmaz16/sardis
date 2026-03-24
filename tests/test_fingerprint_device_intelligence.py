@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-
 from sardis_guardrails.fingerprint import (
     API_REGIONS,
     BotResult,
@@ -20,7 +19,6 @@ from sardis_guardrails.fingerprint import (
     VPNResult,
     get_fingerprint_provider,
 )
-
 
 # ============ Mock API Responses ============
 

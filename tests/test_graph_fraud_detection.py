@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis_guardrails.graph_fraud import (
     CLUSTER_MIN_SIZE,
     HUB_DEGREE_THRESHOLD,

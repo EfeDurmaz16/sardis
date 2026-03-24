@@ -9,7 +9,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis_protocol.kleros import (
     ARBITRATION_FEE_ESTIMATES,
     DEFAULT_APPEAL_PERIOD_DAYS,
@@ -34,7 +33,6 @@ from sardis_protocol.kleros import (
     build_submit_evidence_calldata,
     create_dispute_resolver,
 )
-
 
 # ============ Dispute Creation Tests ============
 
@@ -606,7 +604,7 @@ class TestConstants:
         assert DEFAULT_APPEAL_PERIOD_DAYS == 3
 
     def test_min_dispute_amount(self):
-        assert MIN_DISPUTE_AMOUNT_USD == Decimal("10")
+        assert Decimal("10") == MIN_DISPUTE_AMOUNT_USD
 
     def test_fee_estimates(self):
         assert CourtCategory.ESCROW in ARBITRATION_FEE_ESTIMATES

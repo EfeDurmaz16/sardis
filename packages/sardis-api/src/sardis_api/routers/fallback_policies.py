@@ -117,8 +117,9 @@ async def _persist_rule(rule_id: str, record: dict) -> None:
     """Write fallback rule to DB."""
     _fallback_rules[rule_id] = record
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())
@@ -145,8 +146,9 @@ async def _persist_degraded_mode(rail: str, record: dict) -> None:
     """Write degraded mode to DB."""
     _degraded_modes[rail] = record
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())

@@ -41,9 +41,7 @@ async def create_fiat_payout(req: FiatPayoutRequest):
     # Provider selection based on currency + rail
     if req.currency.upper() == "EUR" and req.rail.upper() in ("SEPA", "SEPA_INSTANT"):
         provider = "striga_sepa"
-    elif req.rail.upper() in ("RTP", "FEDNOW"):
-        provider = "lightspark_grid"
-    elif req.rail.upper() == "WIRE":
+    elif req.rail.upper() in ("RTP", "FEDNOW") or req.rail.upper() == "WIRE":
         provider = "lightspark_grid"
     else:
         provider = "lightspark_grid"  # Default to Grid for ACH

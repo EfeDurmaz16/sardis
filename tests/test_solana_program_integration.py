@@ -12,7 +12,6 @@ import hashlib
 import struct
 
 import pytest
-
 from sardis_chain.solana.program import (
     DISC_EXECUTE_TRANSFER,
     DISC_FREEZE_WALLET,
@@ -45,7 +44,6 @@ from sardis_chain.solana.program import (
     parse_program_error,
 )
 
-
 # ── Discriminator Tests ────────────────────────────────────────────────────
 
 class TestDiscriminators:
@@ -54,7 +52,7 @@ class TestDiscriminators:
     def test_discriminator_algorithm(self):
         """SHA256("global:<name>")[:8] should match pre-computed discriminators."""
         expected = hashlib.sha256(b"global:execute_transfer").digest()[:8]
-        assert DISC_EXECUTE_TRANSFER == expected
+        assert expected == DISC_EXECUTE_TRANSFER
 
     def test_discriminator_uniqueness(self):
         """All instruction discriminators must be unique."""

@@ -111,9 +111,9 @@ def demo(ctx, chain: str, port: int):
         "[bold blue]Sardis Demo — Testnet Sandbox[/bold blue]\n\n"
         "Creates a sandbox environment with:\n"
         "  - Testnet API key\n"
-        "  - Funded wallet on [cyan]{chain}[/cyan]\n"
+        f"  - Funded wallet on [cyan]{chain}[/cyan]\n"
         "  - 3 sample spending mandates\n"
-        "  - Local mock merchant server".format(chain=chain),
+        "  - Local mock merchant server",
         border_style="blue",
     ))
 
@@ -136,7 +136,7 @@ def demo(ctx, chain: str, port: int):
 
         task = progress.add_task("Funding wallet via testnet faucet (1,000 USDC)...", total=None)
         time.sleep(1.0)
-        progress.update(task, description="[green]Funded: 1,000.00 USDC on {chain}".format(chain=chain))
+        progress.update(task, description=f"[green]Funded: 1,000.00 USDC on {chain}")
 
     console.print()
 

@@ -6,11 +6,9 @@ Dispute lifecycle: FILED → EVIDENCE_COLLECTION → UNDER_REVIEW → RESOLVED_*
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal

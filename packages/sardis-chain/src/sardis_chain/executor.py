@@ -1514,7 +1514,7 @@ class ChainRPCClient:
     """
 
     def __init__(self, rpc_url: str, chain: str = ""):
-        from .config import RPCEndpointConfig, ChainConfig
+        from .config import ChainConfig, RPCEndpointConfig
         config = ChainConfig(
             name=chain,
             display_name=chain,
@@ -2382,7 +2382,7 @@ class ChainExecutor:
                 execution_path="tempo_tip20",
             )
 
-        except Exception as e:
+        except Exception:
             if not broadcast_success:
                 await self._nonce_manager.release_nonce(sender_address, nonce)
             raise

@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
-
 # Map reason codes from SpendingPolicy.evaluate() to human-readable messages
 _REASON_DESCRIPTIONS: dict[str, str] = {
     "amount_must_be_positive": "Amount must be greater than zero",

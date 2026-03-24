@@ -11,7 +11,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
-from typing import Any
 
 from sardis_compliance.sanctions import (
     EntityType,

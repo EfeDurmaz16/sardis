@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis_compliance.mica import (
     EU_EEA_COUNTRIES,
     SAR_DEADLINES,
@@ -36,7 +35,6 @@ from sardis_compliance.mica import (
     get_sar_deadline,
     is_eu_country,
 )
-
 
 # ============ Token Classification Tests ============
 
@@ -248,7 +246,7 @@ class TestTransactionAssessment:
 class TestWhitepaperValidation:
     def test_complete_whitepaper(self):
         engine = MiCAComplianceEngine()
-        fields = {f: True for f in WhitepaperField}
+        fields = dict.fromkeys(WhitepaperField, True)
         result = engine.validate_whitepaper("TEST", fields)
         assert result.is_valid is True
         assert result.missing_fields == []
@@ -556,7 +554,7 @@ class TestConstants:
         assert len(EU_EEA_COUNTRIES) == 30
 
     def test_travel_rule_threshold(self):
-        assert TRAVEL_RULE_THRESHOLD_EUR == Decimal("1000")
+        assert Decimal("1000") == TRAVEL_RULE_THRESHOLD_EUR
 
     def test_sar_deadline_eu(self):
         assert SAR_DEADLINES[SARRegion.EU] == timedelta(hours=72)

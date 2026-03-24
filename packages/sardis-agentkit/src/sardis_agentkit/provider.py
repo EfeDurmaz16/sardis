@@ -177,7 +177,7 @@ class SardisActionProvider(ActionProvider):
         except Exception as e:
             return f"Error checking balance: {e}"
 
-    def supports_network(self, network: "Network") -> bool:
+    def supports_network(self, network: Network) -> bool:
         """Sardis is network-agnostic — policy layer sits above chain execution."""
         return True
 

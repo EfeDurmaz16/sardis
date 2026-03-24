@@ -1,7 +1,6 @@
 """Tests for Striga vIBAN management."""
 from __future__ import annotations
 
-import pytest
 
 from sardis_striga.models import StrigaVIBAN, StrigaVIBANStatus
 

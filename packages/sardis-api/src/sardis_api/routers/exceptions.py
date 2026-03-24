@@ -33,6 +33,7 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 _engine = ExceptionWorkflowEngine()
 
 import os as _os
+
 if _os.getenv("SARDIS_ENVIRONMENT") in ("prod", "production"):
     logger.warning(
         "ExceptionWorkflowEngine uses in-memory state. "
@@ -145,8 +146,9 @@ async def _persist_retry_policy(policy_id: str, policy: RetryPolicy) -> None:
     """Write retry policy to DB."""
     _retry_policies[policy_id] = policy
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())

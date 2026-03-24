@@ -85,8 +85,6 @@ async def provision_credential(
     from sardis_v2_core.delegated_credential import (
         CredentialNetwork,
         CredentialScope,
-        CredentialStatus,
-        DelegatedCredential,
     )
 
     org_id = principal.org_id
@@ -97,7 +95,7 @@ async def provision_credential(
         raise HTTPException(400, "Invalid or expired consent")
 
     try:
-        network = CredentialNetwork(body.network)
+        CredentialNetwork(body.network)
     except ValueError:
         raise HTTPException(400, f"Unknown network: {body.network}")
 

@@ -10,7 +10,6 @@ Oracle docs: https://go.chainalysis.com/chainalysis-oracle-docs.html
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from sardis_compliance.sanctions import (
     EntityType,

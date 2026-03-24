@@ -119,6 +119,7 @@ class TestPolicyExplainer:
 
     def test_json_serialization(self):
         import json
+
         from sardis_v2_core.policy_explainer import explain_denial
         result = explain_denial("merchant_denied")
         parsed = json.loads(result.to_json())
@@ -144,8 +145,9 @@ class TestWalletBalanceRemaining:
     """Test WalletBalance.remaining property."""
 
     def test_remaining_equals_balance(self):
-        from sardis_sdk.models.wallet import WalletBalance
         from datetime import datetime, timezone
+
+        from sardis_sdk.models.wallet import WalletBalance
         balance = WalletBalance(
             wallet_id="wal_1",
             chain="base",

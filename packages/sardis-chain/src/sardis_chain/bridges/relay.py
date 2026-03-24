@@ -15,7 +15,6 @@ import logging
 import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from decimal import Decimal
 
 import httpx
 

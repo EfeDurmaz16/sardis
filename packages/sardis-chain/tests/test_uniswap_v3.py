@@ -16,14 +16,13 @@ import pytest
 
 from sardis_chain.uniswap_v3 import (
     DEFAULT_FEE_TIER,
+    EURC_BASE,
     QUOTER_V2,
     SWAP_ROUTER_02,
     USDC_BASE,
-    EURC_BASE,
     UniswapQuote,
     UniswapV3Adapter,
 )
-
 
 # ── UniswapQuote tests ───────────────────────────────────────────────
 

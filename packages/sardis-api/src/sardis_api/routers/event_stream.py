@@ -83,7 +83,7 @@ async def event_stream(
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=30)
                     yield f"event: {event.get('type', 'message')}\ndata: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Keepalive comment
                     yield f": keepalive {datetime.now(UTC).isoformat()}\n\n"
         finally:

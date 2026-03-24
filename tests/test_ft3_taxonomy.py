@@ -1,9 +1,9 @@
 """Tests for the FT3 (Fraud Tools, Tactics, Techniques) taxonomy module."""
 from __future__ import annotations
 
-import pytest
 from datetime import UTC, datetime
 
+import pytest
 from sardis_guardrails.ft3_taxonomy import (
     FT3_AGENT_TACTIC_COUNT,
     FT3_STANDARD_TACTIC_COUNT,
@@ -21,7 +21,6 @@ from sardis_guardrails.ft3_taxonomy import (
     classify_event,
     create_ft3_registry,
 )
-
 
 # ============ FT3Technique ============
 
@@ -537,16 +536,16 @@ class TestClassifyEvent:
 class TestModuleExports:
     def test_import_from_sardis_guardrails(self):
         from sardis_guardrails import (
-            FT3TaxonomyRegistry,
-            FT3Tactic,
-            FT3Technique,
             FT3Event,
-            FT3Severity,
             FT3Mitigation,
             FT3MitigationStatus,
+            FT3Severity,
+            FT3Tactic,
+            FT3TaxonomyRegistry,
             FT3TaxonomyStats,
-            create_ft3_registry,
+            FT3Technique,
             classify_event,
+            create_ft3_registry,
         )
         # Just verify they imported without error
         assert FT3TaxonomyRegistry is not None

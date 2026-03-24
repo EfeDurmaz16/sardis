@@ -437,7 +437,7 @@ class ZKPassVerifier:
         """
         valid_proofs = self.get_valid_proofs_for_address(address)
         proof_types = {p.proof_type for p in valid_proofs}
-        proof_type_values = {p.proof_type.value for p in valid_proofs}
+        {p.proof_type.value for p in valid_proofs}
 
         # Determine KYC level
         kyc_level = ""

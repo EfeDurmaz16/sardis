@@ -130,8 +130,8 @@ from .zodiac_roles import (
     ZodiacRolesSetup,
     build_agent_wallet_setup,
     build_role_setup_transactions,
-    encode_role_key,
     decode_role_key,
+    encode_role_key,
     policy_to_role_config,
 )
 

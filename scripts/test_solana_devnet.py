@@ -21,7 +21,6 @@ sys.path.insert(0, "packages/sardis-ledger/src")
 
 from sardis_chain.solana.client import SolanaClient, SolanaConfig
 
-
 DEVNET_RPC = "https://api.devnet.solana.com"
 
 

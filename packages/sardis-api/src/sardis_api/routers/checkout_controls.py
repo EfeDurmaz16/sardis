@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import require_principal
@@ -35,8 +35,9 @@ async def _load_checkout_config() -> CheckoutControlConfig:
     """Load config from DB, falling back to in-memory default."""
     global _checkout_config
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         row = await Database.fetchrow(
             "SELECT value FROM operator_config WHERE key = 'checkout_controls'"
         )
@@ -52,8 +53,9 @@ async def _save_checkout_config(config: CheckoutControlConfig) -> None:
     global _checkout_config
     _checkout_config = config
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ('checkout_controls', $1, NOW())
@@ -104,8 +106,9 @@ async def _persist_incident(incident: dict) -> None:
     """Write incident to DB; keep local cache for reads."""
     _incidents.append(incident)
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO checkout_incidents (incident_id, session_id, data, created_at)
                VALUES ($1, $2, $3, NOW())""",
@@ -119,8 +122,9 @@ async def _persist_incident(incident: dict) -> None:
 async def _load_incidents(limit: int = 50) -> list[dict]:
     """Load incidents from DB, falling back to local cache."""
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         rows = await Database.fetch(
             "SELECT data FROM checkout_incidents ORDER BY created_at DESC LIMIT $1",
             limit,

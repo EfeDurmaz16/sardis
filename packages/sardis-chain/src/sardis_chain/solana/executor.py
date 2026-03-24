@@ -28,13 +28,11 @@ from .client import (
 from .gasless import KoraGaslessClient
 from .program import (
     SARDIS_WALLET_PROGRAM_ID,
-    build_execute_transfer_data,
     build_execute_transfer_ix,
     derive_wallet_pdas,
     parse_program_error,
 )
 from .transfer import (
-    PreparedSolanaTransaction,
     SolanaTransferParams,
     build_spl_transfer,
 )
@@ -312,8 +310,8 @@ class SolanaExecutor:
         from solders.message import MessageV0
         from solders.pubkey import Pubkey
 
-        from .client import TOKEN_PROGRAM_ID, derive_ata
-        from .transfer import get_or_create_ata, _build_create_ata_instruction
+        from .client import TOKEN_PROGRAM_ID
+        from .transfer import _build_create_ata_instruction, get_or_create_ata
 
         start = datetime.now(UTC)
         pid = self._program_id or SARDIS_WALLET_PROGRAM_ID
@@ -339,7 +337,7 @@ class SolanaExecutor:
             sender_pk = Pubkey.from_string(sender)
             recipient_pk = Pubkey.from_string(recipient)
             mint_pk = Pubkey.from_string(mint)
-            wallet_pk = Pubkey.from_string(pdas.wallet)
+            Pubkey.from_string(pdas.wallet)
 
             # Resolve source ATA (owned by wallet PDA, not sender directly)
             source_ata_str, source_needs_create = await get_or_create_ata(

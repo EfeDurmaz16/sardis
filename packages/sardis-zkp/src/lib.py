@@ -298,7 +298,8 @@ class ZKProver:
         with open(prover_toml, "w") as f:
             for k, v in inputs.items():
                 if isinstance(v, list):
-                    f.write(f'{k} = [{", ".join(f\'"{x}\'' for x in v)}]\n')
+                    items = ", ".join(f'"{x}"' for x in v)
+                    f.write(f'{k} = [{items}]\n')
                 else:
                     f.write(f'{k} = "{v}"\n')
 

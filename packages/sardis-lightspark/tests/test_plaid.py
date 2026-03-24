@@ -1,7 +1,6 @@
 """Tests for Plaid Link integration."""
 from __future__ import annotations
 
-import pytest
 
 from sardis_lightspark.plaid import PlaidService
 

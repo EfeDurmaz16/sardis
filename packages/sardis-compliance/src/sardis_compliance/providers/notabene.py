@@ -26,7 +26,6 @@ from sardis_compliance.travel_rule import (
     TravelRuleProvider,
     TravelRuleStatus,
     TravelRuleTransfer,
-    VASPProtocol,
 )
 
 logger = logging.getLogger(__name__)
@@ -305,7 +304,7 @@ class NotabeneTravelRuleProvider(TravelRuleProvider):
         if not self.is_configured:
             raise NotabeneError("Notabene provider not configured")
 
-        chain = CHAIN_MAP.get(transfer.chain or "", "ETH")
+        CHAIN_MAP.get(transfer.chain or "", "ETH")
         asset = ASSET_MAP.get(transfer.currency, transfer.currency)
 
         payload: dict[str, Any] = {

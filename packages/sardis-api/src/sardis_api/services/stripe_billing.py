@@ -11,8 +11,6 @@ Tiers (March 2026 CEO review):
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
 import logging
 import os
 from dataclasses import dataclass

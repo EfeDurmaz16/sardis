@@ -1,7 +1,6 @@
 """Tests for card routing engine."""
 from __future__ import annotations
 
-import pytest
 from sardis_cards.card_routing import CardRouter, CardRoutingStrategy, CardSelectionResult
 
 

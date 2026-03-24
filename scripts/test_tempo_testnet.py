@@ -16,7 +16,6 @@ import sys
 
 import httpx
 
-
 TEMPO_RPC = "https://rpc.moderato.tempo.xyz"
 CHAIN_ID = 42431
 PATH_USD = "0x20c0000000000000000000000000000000000000"
@@ -79,7 +78,7 @@ async def main() -> int:
                 "data": "0x18160ddd",  # totalSupply()
             }, "latest"])
             if "error" in result:
-                print(f"[WARN] pathUSD totalSupply: RPC error (contract may not support totalSupply)")
+                print("[WARN] pathUSD totalSupply: RPC error (contract may not support totalSupply)")
             else:
                 print(f"[OK] pathUSD totalSupply response: {result['result'][:20]}...")
             ok += 1

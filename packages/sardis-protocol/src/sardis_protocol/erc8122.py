@@ -15,13 +15,10 @@ Depends on: ERC-6909, ERC-7930, ERC-8048, ERC-8049
 """
 from __future__ import annotations
 
-import hashlib
-import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
-
 
 # ============ Enums ============
 

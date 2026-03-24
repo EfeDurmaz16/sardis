@@ -4,13 +4,13 @@ import sys
 import types
 
 import pytest
-from starlette.requests import Request
 from sardis_api.middleware.rate_limit import (
     InMemoryRateLimiter,
     RateLimitConfig,
     RedisRateLimiter,
     create_rate_limiter,
 )
+from starlette.requests import Request
 
 
 def test_rate_limiter_requires_redis_in_production(monkeypatch) -> None:

@@ -93,6 +93,7 @@ from sardis_wallet.manager import WalletManager
 
 from .routers import a2a as a2a_router
 from .routers import a2a_payments as a2a_payments_router
+from .routers import acp as acp_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agents as agents_router
@@ -103,6 +104,9 @@ from .routers import api_keys as api_keys_router
 from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
 from .routers import audit_anchors as audit_anchors_router
+
+# Protocol v1.0 routers
+from .routers import batch_payments as batch_payments_router
 from .routers import billing as billing_router
 from .routers import cards as cards_router
 from .routers import checkout as checkout_router
@@ -118,6 +122,7 @@ from .routers import email_verification as email_verification_router
 from .routers import emergency as emergency_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import environment_templates as environment_templates_router
+from .routers import escrow_disputes as escrow_disputes_router
 from .routers import event_stream as event_stream_router
 from .routers import evidence as evidence_router
 from .routers import evidence_export as evidence_export_router
@@ -125,21 +130,28 @@ from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
 from .routers import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
+from .routers import funding as funding_router
 from .routers import funding_capabilities as funding_capabilities_router
+from .routers import fx as fx_router
 from .routers import groups as groups_router
 from .routers import holds as holds_router
 from .routers import invoices as invoices_router
 from .routers import kyc_onboarding as kyc_onboarding_router
 from .routers import ledger as ledger_router
+from .routers import mandate_delegation as mandate_delegation_router
+from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
+from .routers import offramp as offramp_router
 from .routers import onchain_payments as onchain_payments_router
+from .routers import onramp as onramp_router
 from .routers import outcomes as outcomes_router
 from .routers import partner_card_webhooks as partner_card_webhooks_router
+from .routers import payment_objects as payment_objects_router
 from .routers import payments_refund as payments_refund_router
 from .routers import policies as policies_router
 from .routers import policy_analytics as policy_analytics_router
@@ -152,6 +164,8 @@ from .routers import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
 from .routers import settlements as settlements_router
 from .routers import simulation as simulation_router
+from .routers import spt as spt_router
+from .routers import streaming_payments as streaming_payments_router
 from .routers import stripe_funding as stripe_funding_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
@@ -159,27 +173,13 @@ from .routers import swap as swap_router
 from .routers import transactions as transactions_router
 from .routers import treasury as treasury_router
 from .routers import treasury_ops as treasury_ops_router
+from .routers import usage as usage_router
+from .routers import virtual_cards as virtual_cards_router
 from .routers import wallets as wallets_router
 from .routers import webhooks as webhooks_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
-from .routers import usage as usage_router
 from .routers import x402 as x402_router
-
-# Protocol v1.0 routers
-from .routers import batch_payments as batch_payments_router
-from .routers import escrow_disputes as escrow_disputes_router
-from .routers import funding as funding_router
-from .routers import fx as fx_router
-from .routers import mandate_delegation as mandate_delegation_router
-from .routers import mandate_subscriptions as mandate_subscriptions_router
-from .routers import offramp as offramp_router
-from .routers import onramp as onramp_router
-from .routers import payment_objects as payment_objects_router
-from .routers import spt as spt_router
-from .routers import acp as acp_router
-from .routers import streaming_payments as streaming_payments_router
-from .routers import virtual_cards as virtual_cards_router
 
 # Conditional import for approvals router (may not exist yet)
 try:

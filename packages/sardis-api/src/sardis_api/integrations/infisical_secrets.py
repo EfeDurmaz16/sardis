@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
 
 _logger = logging.getLogger(__name__)
 _client = None

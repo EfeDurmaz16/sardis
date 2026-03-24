@@ -156,7 +156,7 @@ class Timer:
         self.start: float = 0
         self.elapsed_ms: float = 0
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Timer:
         self.start = time.monotonic()
         return self
 
@@ -181,7 +181,7 @@ ENV_VARS = [
 def check_configuration() -> list[tuple[str, bool, str]]:
     """Check which env vars are set. Returns list of (name, is_set, description)."""
     results = []
-    for name, required, desc in ENV_VARS:
+    for name, _required, desc in ENV_VARS:
         is_set = bool(os.getenv(name, "").strip())
         results.append((name, is_set, desc))
     return results
@@ -710,11 +710,11 @@ async def step_7_audit_trail(client: Any, state: DemoState) -> StepResult:
         print()
         entries = [
             ("2026-03-10T14:00:01Z", "wallet_created", f"Agent wallet {state.wallet_id} created (Safe v1.4.1)"),
-            ("2026-03-10T14:00:02Z", "funding_received", f"1,000.00 USDC deposited via Coinbase Onramp"),
+            ("2026-03-10T14:00:02Z", "funding_received", "1,000.00 USDC deposited via Coinbase Onramp"),
             ("2026-03-10T14:00:03Z", "policy_attached", f"Policy {state.policy_id} attached (daily $100, no gambling)"),
             ("2026-03-10T14:00:04Z", "card_issued", f"Virtual Visa ****{state.card_last4} issued (Stripe Issuing)"),
-            ("2026-03-10T14:00:05Z", "payment_authorized", f"$49.99 to GitHub Inc. -- policy APPROVED (12ms)"),
-            ("2026-03-10T14:00:09Z", "payment_settled", f"USDC settlement confirmed (Base, 2 confirmations)"),
+            ("2026-03-10T14:00:05Z", "payment_authorized", "$49.99 to GitHub Inc. -- policy APPROVED (12ms)"),
+            ("2026-03-10T14:00:09Z", "payment_settled", "USDC settlement confirmed (Base, 2 confirmations)"),
         ]
         for ts, etype, desc in entries:
             print(f"    {C.DIM}{ts}{C.RESET}  {C.CYAN}{etype:22s}{C.RESET}  {desc}")
@@ -911,7 +911,7 @@ async def main() -> None:
     try:
         import httpx
     except ImportError:
-        print(f"ERROR: httpx is required. Install with: pip install httpx")
+        print("ERROR: httpx is required. Install with: pip install httpx")
         sys.exit(1)
 
     api_url = os.getenv("SARDIS_API_URL", "http://localhost:8000/api/v2")

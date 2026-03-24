@@ -10,18 +10,15 @@ Tests:
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 from sardis_mpp.client import (
-    MPPPaymentDenied,
     MPPPaymentRecord,
     MPPSessionManager,
     SardisMPPClient,
     SardisPolicyTransport,
 )
-
 
 # ── MPPPaymentRecord ─────────────────────────────────────────────────
 

@@ -15,8 +15,7 @@ import hmac
 import json
 import logging
 import os
-import time
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from sardis_compliance.kyc import (

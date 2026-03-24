@@ -119,18 +119,24 @@ from .constants import (
     RetryConfig as RetryDefaults,
 )
 from .database import SCHEMA_SQL, Database, init_database
+from .dispute import (
+    Dispute,
+    DisputeEvidence,
+    DisputeProtocol,
+    DisputeReason,
+    DisputeResolution,
+    DisputeStatus,
+)
 from .drift_policy_integrator import (
     DriftAction,
     DriftActionResult,
     DriftPolicyConfig,
     DriftPolicyIntegrator,
 )
-from .funding_cell import CellStatus, FundingCell, VALID_CELL_TRANSITIONS
-from .funding_commitment import (
-    CellStrategy,
-    CommitmentStatus,
-    FundingCommitment,
-    VALID_COMMITMENT_TRANSITIONS,
+from .escrow import (
+    EscrowHold,
+    EscrowManager,
+    EscrowStatus,
 )
 from .event_bus import (
     EventBus,
@@ -192,6 +198,19 @@ from .exceptions import (
     exception_from_mpc_error,
     get_exception_class,
 )
+from .funding_cell import VALID_CELL_TRANSITIONS, CellStatus, FundingCell
+from .funding_commitment import (
+    VALID_COMMITMENT_TRANSITIONS,
+    CellStrategy,
+    CommitmentStatus,
+    FundingCommitment,
+)
+from .fx_quote import (
+    BridgeTransfer,
+    FXProvider,
+    FXQuote,
+    QuoteStatus,
+)
 from .group_policy import (
     GroupPolicyEvaluator,
     GroupPolicyPort,
@@ -211,8 +230,21 @@ from .logging import (
     mask_headers,
     mask_sensitive_data,
 )
+from .mandate_tree import (
+    DelegationResult,
+    MandateTreeNode,
+    MandateTreeValidator,
+    build_mandate_tree,
+)
 from .mandates import CartMandate, IntentMandate, MandateChain, PaymentMandate
 from .merchant_trust import MerchantProfile, MerchantTrustLevel, MerchantTrustService
+from .minter import (
+    CellClaimPort,
+    MintError,
+    PaymentObjectMinter,
+    SigningPort,
+    SpendingMandateLookupPort,
+)
 from .nl_policy_parser import (
     NLPolicyParser,
     RegexPolicyParser,
@@ -231,6 +263,14 @@ from .orchestrator import (
     PaymentOrchestrator,
     PaymentResult,
     SanctionsScreeningPort,
+)
+from .payment_object import (
+    VALID_TRANSITIONS as PAYMENT_OBJECT_TRANSITIONS,
+)
+from .payment_object import (
+    PaymentObject,
+    PaymentObjectStatus,
+    PrivacyTier,
 )
 from .policy_evidence import (
     PolicyDecisionLog,
@@ -258,6 +298,10 @@ from .retry import (
     retry_async,
     retry_sync,
 )
+from .settlement_lock import (
+    SettlementLock,
+    SettlementLockError,
+)
 from .spending_policy import (
     KYA_TO_TRUST,
     TRUST_TO_KYA,
@@ -270,43 +314,28 @@ from .spending_policy import (
     kya_level_for_trust,
     trust_level_for_kya,
 )
-from .minter import (
-    CellClaimPort,
-    MintError,
-    PaymentObjectMinter,
-    SigningPort,
-    SpendingMandateLookupPort,
+from .spending_policy_json import spending_policy_from_json, spending_policy_to_json
+from .spending_policy_store import SpendingPolicyStore
+from .spending_tracker import (
+    InMemorySpendingTracker,
+    SpendingTracker,
+    create_spending_tracker,
 )
-from .payment_object import (
-    VALID_TRANSITIONS as PAYMENT_OBJECT_TRANSITIONS,
-    PaymentObject,
-    PaymentObjectStatus,
-    PrivacyTier,
+from .state_handlers import (
+    StateHandler,
+    StateHandlerRegistry,
+    register_default_handlers,
 )
-from .dispute import (
-    Dispute,
-    DisputeEvidence,
-    DisputeProtocol,
-    DisputeReason,
-    DisputeResolution,
-    DisputeStatus,
+
+# Payment state machine
+from .state_machine import (
+    TERMINAL_STATES,
+    PaymentState,
+    PaymentStateMachine,
+    StateTransitionRecord,
 )
-from .escrow import (
-    EscrowHold,
-    EscrowManager,
-    EscrowStatus,
-)
-from .fx_quote import (
-    BridgeTransfer,
-    FXProvider,
-    FXQuote,
-    QuoteStatus,
-)
-from .mandate_tree import (
-    DelegationResult,
-    MandateTreeNode,
-    MandateTreeValidator,
-    build_mandate_tree,
+from .state_machine import (
+    VALID_TRANSITIONS as PAYMENT_STATE_TRANSITIONS,
 )
 from .subscription import (
     BillingCycle,
@@ -315,13 +344,6 @@ from .subscription import (
     SubscriptionMandate,
     SubscriptionStatus,
     UsageMeter,
-)
-from .spending_policy_json import spending_policy_from_json, spending_policy_to_json
-from .spending_policy_store import SpendingPolicyStore
-from .spending_tracker import (
-    InMemorySpendingTracker,
-    SpendingTracker,
-    create_spending_tracker,
 )
 from .tokens import TokenMetadata, TokenType
 from .transactions import OnChainRecord, Transaction, TransactionStatus
@@ -353,24 +375,6 @@ from .webhooks import (
     WebhookSubscription,
     create_hold_event,
     create_payment_event,
-)
-
-# Payment state machine
-from .state_machine import (
-    TERMINAL_STATES,
-    VALID_TRANSITIONS as PAYMENT_STATE_TRANSITIONS,
-    PaymentState,
-    PaymentStateMachine,
-    StateTransitionRecord,
-)
-from .state_handlers import (
-    StateHandler,
-    StateHandlerRegistry,
-    register_default_handlers,
-)
-from .settlement_lock import (
-    SettlementLock,
-    SettlementLockError,
 )
 
 __all__ = [

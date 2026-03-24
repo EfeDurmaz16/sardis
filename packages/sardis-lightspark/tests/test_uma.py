@@ -1,7 +1,6 @@
 """Tests for UMA address management."""
 from __future__ import annotations
 
-import pytest
 
 from sardis_lightspark.models import UMAAddress, UMAAddressStatus
 

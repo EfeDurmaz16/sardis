@@ -39,8 +39,9 @@ async def _persist_checkout(checkout_id: str, data: dict[str, Any]) -> None:
     """Write checkout to DB when available, always cache locally."""
     _checkouts[checkout_id] = data
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO acp_checkouts (checkout_id, data, updated_at)
                VALUES ($1, $2, NOW())
@@ -56,8 +57,9 @@ async def _load_checkout(checkout_id: str) -> dict[str, Any] | None:
     if checkout_id in _checkouts:
         return _checkouts[checkout_id]
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         row = await Database.fetchrow(
             "SELECT data FROM acp_checkouts WHERE checkout_id = $1", checkout_id,
         )

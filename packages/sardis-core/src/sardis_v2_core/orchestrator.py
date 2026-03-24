@@ -94,8 +94,8 @@ from typing import Any, Protocol
 from sardis_v2_core.dedup_store import DedupStorePort, InMemoryDedupStore
 from sardis_v2_core.mandates import MandateChain, PaymentMandate
 from sardis_v2_core.settlement_lock import SettlementLock, SettlementLockError
-from sardis_v2_core.state_machine import PaymentState, PaymentStateMachine
 from sardis_v2_core.state_handlers import StateHandlerRegistry, register_default_handlers
+from sardis_v2_core.state_machine import PaymentState, PaymentStateMachine
 
 logger = logging.getLogger(__name__)
 

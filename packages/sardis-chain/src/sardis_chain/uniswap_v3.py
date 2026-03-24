@@ -176,8 +176,8 @@ class UniswapV3Adapter:
         if not self._router or not self._rpc_url:
             raise ValueError(f"SwapRouter02 not configured for {self._chain}")
 
-        from eth_account import Account
         import httpx
+        from eth_account import Account
 
         account = Account.from_key(key)
         sender = account.address
@@ -300,6 +300,7 @@ class UniswapV3Adapter:
     async def _wait_for_receipt(self, tx_hash: str, max_attempts: int = 30) -> dict:
         """Poll for transaction receipt."""
         import asyncio
+
         import httpx
 
         for _ in range(max_attempts):

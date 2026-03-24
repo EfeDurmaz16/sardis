@@ -37,17 +37,14 @@ References:
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Awaitable, Callable, Sequence
 
 import httpx
-
 from mpp.client.transport import (
     Challenge,
-    Client as MPPBaseClient,
     Method,
-    PaymentTransport,
 )
 
 logger = logging.getLogger(__name__)

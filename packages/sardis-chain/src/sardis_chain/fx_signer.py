@@ -230,6 +230,7 @@ class FXSigner:
             raise RuntimeError("Turnkey MPC required to authorize access keys")
 
         import time
+
         from pytempo.contracts import AccountKeychain
 
         expiry = int(time.time()) + expiry_seconds

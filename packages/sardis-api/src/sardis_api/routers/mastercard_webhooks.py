@@ -165,7 +165,7 @@ async def _handle_authorization_result(event_type: str, event: dict) -> None:
     # Persist authorization outcome to ledger
     if transaction_id:
         await Database.execute(
-            """INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
+            r"""INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
                VALUES (\, \, \, \, NOW())
                ON CONFLICT DO NOTHING""",
             "mastercard_authorization", transaction_id, event_type,

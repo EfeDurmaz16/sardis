@@ -7,7 +7,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from sardis_protocol.zkpass_transgate import (
     DEFAULT_PROOF_TTL_HOURS,
     IDENFY_COST_PER_VERIFICATION,
@@ -29,7 +28,6 @@ from sardis_protocol.zkpass_transgate import (
     create_zkpass_verifier,
     hash_public_inputs,
 )
-
 
 # ============ TestTransgateSchema ============
 
@@ -726,16 +724,16 @@ class TestHashPublicInputs:
 class TestModuleExports:
     def test_import_from_sardis_protocol(self):
         from sardis_protocol import (
-            ZKPassVerifier,
-            TransgateProofType,
-            TransgateIssuer,
-            TransgateSchema,
-            ZKProof,
+            PortableKYCResult,
             ProofStatus,
+            TransgateConfig,
+            TransgateIssuer,
+            TransgateProofType,
+            TransgateSchema,
             VerificationMethod,
             ZKPassVerificationResult,
-            PortableKYCResult,
-            TransgateConfig,
+            ZKPassVerifier,
+            ZKProof,
             create_zkpass_verifier,
             hash_public_inputs,
         )
