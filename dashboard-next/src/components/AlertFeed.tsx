@@ -72,14 +72,11 @@ const AlertFeed: React.FC<AlertFeedProps> = ({
     const authToken = token || `org_${organizationId}`;
     const url = `${wsUrl}/api/v2/ws/alerts?token=${encodeURIComponent(authToken)}`;
 
-    console.log('Connecting to WebSocket:', url);
-
     try {
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
         setIsConnected(true);
         setConnectionError(null);
         reconnectAttempts.current = 0;
@@ -92,8 +89,6 @@ const AlertFeed: React.FC<AlertFeedProps> = ({
           if (message.type === 'ping') {
             // Respond to heartbeat
             ws.send(JSON.stringify({ type: 'pong' }));
-          } else if (message.type === 'system') {
-            console.log('System message:', message.message);
           } else if (message.alert_type) {
             // This is an alert
             const alert: Alert = {
@@ -134,7 +129,6 @@ const AlertFeed: React.FC<AlertFeedProps> = ({
       };
 
       ws.onclose = () => {
-        console.log('WebSocket disconnected');
         setIsConnected(false);
         wsRef.current = null;
 
@@ -143,7 +137,6 @@ const AlertFeed: React.FC<AlertFeedProps> = ({
         const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
 
         if (reconnectAttempts.current < maxAttempts) {
-          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1}/${maxAttempts})`);
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current += 1;
             connect();
