@@ -2,7 +2,17 @@
 
 ## Python Packages
 
-### Core SDK
+There are two Python packages:
+
+- **`sardis`** — Simple, simulation-first client. Great for prototyping and testing agent payment flows locally (no API key needed in simulation mode).
+- **`sardis-sdk`** — Full async production SDK with typed models, retries, and all API endpoints.
+
+### Simple Client (Simulation + Production)
+```bash
+pip install sardis
+```
+
+### Full Async SDK (Production)
 ```bash
 pip install sardis-sdk
 ```
