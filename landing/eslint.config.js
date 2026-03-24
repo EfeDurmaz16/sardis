@@ -27,6 +27,12 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/main.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: ['api/**/*.js'],
     languageOptions: {
       globals: globals.node,
