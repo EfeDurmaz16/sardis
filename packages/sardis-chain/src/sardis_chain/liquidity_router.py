@@ -165,14 +165,14 @@ class LiquidityRouter:
             try:
                 quote = await cdp.get_quote(
                     from_token=from_token, to_token=to_token,
-                    amount=str(amount), chain=chain,
+                    amount=amount, chain=chain,
                 )
                 return RouteResult(
                     provider="cdp_swap",
                     chain=chain,
-                    estimated_rate=Decimal(str(quote.get("exchange_rate", "1.0"))),
+                    estimated_rate=quote.exchange_rate,
                     estimated_fee_bps=10,
-                    estimated_output=Decimal(str(quote.get("to_amount", amount))),
+                    estimated_output=quote.to_amount,
                     route_type="swap",
                     steps=[{"type": "swap", "provider": "cdp_swap",
                             "from": from_token, "to": to_token, "amount": str(amount)}],
