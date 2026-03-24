@@ -3,3 +3,4 @@ packages:
   - 'landing'
   - 'dashboard'
   - 'demos/*'
+  - 'docs-site'
