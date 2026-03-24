@@ -420,6 +420,13 @@ async def bootstrap_api_key(
             detail="Bootstrap API keys are disabled in production",
         )
 
+    if env in ("prod", "production"):
+        _logger.critical(
+            "SECURITY ALERT: Bootstrap API key created in production by user=%s scopes=%s",
+            user.email,
+            body.scopes,
+        )
+
     from sardis_api.middleware.auth import get_api_key_manager
 
     org_id = body.organization_id or os.getenv("SARDIS_DEFAULT_ORG_ID", "org_demo")
