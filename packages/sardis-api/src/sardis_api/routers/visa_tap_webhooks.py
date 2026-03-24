@@ -39,18 +39,37 @@ AUTHORIZATION_EVENTS = {
 
 async def _handle_token_lifecycle(event_type: str, event_data: dict) -> None:
     """Process Visa token lifecycle events (suspended / expired / deactivated)."""
+    from sardis_v2_core.database import Database
+
     token_id = event_data.get("tokenId") or event_data.get("token_id", "")
     logger.info(
         "Visa TAP token lifecycle event: type=%s token_id=%s",
         event_type,
         token_id,
     )
-    # TODO: update DelegatedCredential status in DB when credential store is wired
-    # e.g. await credential_store.update_status(token_id, new_status)
+
+    # Map Visa event types to credential statuses
+    status_map = {
+        "token.suspended": "suspended",
+        "token.expired": "expired",
+        "token.deactivated": "revoked",
+        "token.activated": "active",
+        "token.deleted": "revoked",
+    }
+    new_status = status_map.get(event_type)
+    if new_status and token_id:
+        await Database.execute(
+            """UPDATE delegated_credentials SET status = \, updated_at = NOW()
+               WHERE token_reference = """,
+            new_status, token_id,
+        )
+        logger.info("Visa TAP credential updated: token_id=%s status=%s", token_id, new_status)
 
 
 async def _handle_authorization_result(event_type: str, event_data: dict) -> None:
     """Process Visa TAP authorization result events."""
+    from sardis_v2_core.database import Database
+
     transaction_id = (
         event_data.get("transactionId")
         or event_data.get("transaction_id", "")
@@ -62,7 +81,16 @@ async def _handle_authorization_result(event_type: str, event_data: dict) -> Non
         transaction_id,
         response_code,
     )
-    # TODO: persist authorization outcome to ledger when wired
+
+    # Persist authorization outcome to ledger
+    if transaction_id:
+        await Database.execute(
+            """INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
+               VALUES (\, \, \, \, NOW())
+               ON CONFLICT DO NOTHING""",
+            "visa_tap_authorization", transaction_id, event_type,
+            json.dumps({"response_code": response_code, **event_data}),
+        )
 
 
 # ---------------------------------------------------------------------------

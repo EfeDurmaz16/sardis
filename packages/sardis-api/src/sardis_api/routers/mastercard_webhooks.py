@@ -114,9 +114,9 @@ async def handle_mastercard_webhook(
 
     try:
         if event_type in TOKEN_LIFECYCLE_EVENTS:
-            _handle_token_lifecycle(event_type, event)
+            await _handle_token_lifecycle(event_type, event)
         elif event_type in AUTHORIZATION_EVENTS:
-            _handle_authorization_result(event_type, event)
+            await _handle_authorization_result(event_type, event)
         else:
             logger.debug("Unhandled Mastercard event type: %s", event_type)
     except Exception as e:
@@ -148,8 +148,10 @@ def _handle_token_lifecycle(event_type: str, event: dict) -> None:
     #      TOKEN_DELETED   → CredentialStatus.REVOKED
 
 
-def _handle_authorization_result(event_type: str, event: dict) -> None:
+async def _handle_authorization_result(event_type: str, event: dict) -> None:
     """Process MDES authorization result event."""
+    from sardis_v2_core.database import Database
+
     data = event.get("data") or event
     transaction_id = str(data.get("transactionId") or "")
     authorization_code = str(data.get("authorizationCode") or "")
@@ -159,4 +161,13 @@ def _handle_authorization_result(event_type: str, event: dict) -> None:
         transaction_id,
         authorization_code,
     )
-    # TODO: Record authorization outcome in ledger / audit trail
+
+    # Persist authorization outcome to ledger
+    if transaction_id:
+        await Database.execute(
+            """INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
+               VALUES (\, \, \, \, NOW())
+               ON CONFLICT DO NOTHING""",
+            "mastercard_authorization", transaction_id, event_type,
+            json.dumps({"authorization_code": authorization_code, **data}),
+        )
