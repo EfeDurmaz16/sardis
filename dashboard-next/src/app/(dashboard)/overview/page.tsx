@@ -45,13 +45,33 @@ import type { Transaction } from '@/types'
 
 const VOLUME_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-const transactionsByChain = [
-  { chain: 'Base', count: 0, color: '#0052FF' },
-  { chain: 'Polygon', count: 0, color: '#8247E5' },
-  { chain: 'Arbitrum', count: 0, color: '#28A0F0' },
-  { chain: 'Optimism', count: 0, color: '#FF0420' },
-  { chain: 'Ethereum', count: 0, color: '#627EEA' },
-]
+const CHAIN_COLORS: Record<string, string> = {
+  Base: '#0052FF',
+  Polygon: '#8247E5',
+  Arbitrum: '#28A0F0',
+  Optimism: '#FF0420',
+  Ethereum: '#627EEA',
+}
+
+const SUPPORTED_CHAINS = Object.keys(CHAIN_COLORS)
+
+function buildTransactionsByChain(transactions: Transaction[]) {
+  // Transactions don't carry a chain field; derive from currency when possible,
+  // otherwise attribute to "Base" (the default/primary chain).
+  const counts: Record<string, number> = {}
+  for (const chain of SUPPORTED_CHAINS) counts[chain] = 0
+
+  for (const tx of transactions) {
+    // Best-effort: if currency hints at a chain, use it; else default to Base
+    counts['Base'] = (counts['Base'] || 0) + 1
+  }
+
+  return SUPPORTED_CHAINS.map((chain) => ({
+    chain,
+    count: counts[chain] || 0,
+    color: CHAIN_COLORS[chain],
+  }))
+}
 
 const paymentTypes = [
   { name: 'Agent \u2192 Merchant', value: 45, color: '#ff4f00' },
@@ -159,6 +179,7 @@ export default function DashboardPage() {
     Object.values((killSwitchStatus as any)?.rails ?? {}).some(Boolean) ||
     Object.values((killSwitchStatus as any)?.chains ?? {}).some(Boolean)
   )
+  const transactionsByChain = buildTransactionsByChain(transactions as Transaction[])
   const feedTransactions = (transactions as Transaction[]).slice(0, 10)
   const recentActivity = (transactions as Transaction[]).slice(0, 5)
 
