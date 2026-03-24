@@ -33,10 +33,10 @@
     "nodes": ["dist/nodes/Sardis/Sardis.node.js"]
   },
   "devDependencies": {
-    "n8n-workflow": "^1.0.0",
+    "n8n-workflow": "^2.14.0",
     "typescript": "^5.4.0"
   },
   "peerDependencies": {
-    "n8n-workflow": ">=1.0.0"
+    "n8n-workflow": ">=2.0.0"
   }
 }
