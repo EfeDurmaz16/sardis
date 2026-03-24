@@ -3,12 +3,17 @@
 All email sending is fire-and-forget — callers should wrap in try/except and
 never let email failures block API responses.
 
-SMTP is configured via environment variables:
-  SMTP_HOST         SMTP server hostname (required; no-op if missing)
-  SMTP_PORT         SMTP port (default 587)
-  SMTP_USER         SMTP username / login
-  SMTP_PASSWORD     SMTP password
-  SMTP_FROM_EMAIL   From address (default noreply@sardis.sh)
+**Primary transport: Resend API** (set ``RESEND_API_KEY``).
+Fallback: raw SMTP via ``SMTP_HOST`` / ``SMTP_PORT`` / ``SMTP_USER`` / ``SMTP_PASSWORD``.
+
+Environment variables:
+  RESEND_API_KEY     Resend API key (recommended — ``re_…``)
+  RESEND_FROM_EMAIL  From address for Resend (default ``Sardis <noreply@sardis.sh>``)
+  SMTP_HOST          SMTP server hostname (fallback if RESEND_API_KEY not set)
+  SMTP_PORT          SMTP port (default 587)
+  SMTP_USER          SMTP username / login
+  SMTP_PASSWORD      SMTP password
+  SMTP_FROM_EMAIL    From address for SMTP (default noreply@sardis.sh)
 """
 from __future__ import annotations
 
@@ -18,6 +23,11 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+try:
+    import resend as _resend_sdk
+except ImportError:  # pragma: no cover
+    _resend_sdk = None  # type: ignore[assignment]
 
 _logger = logging.getLogger(__name__)
 
@@ -271,21 +281,85 @@ def _plan_upgrade_html(plan: str) -> str:
     return _render(f"Plan Upgraded: {plan_label}", body)
 
 
+def _api_key_generated_html(key_prefix: str, mode: str) -> str:
+    mode_label = mode.replace("_", " ").title()
+    is_live = mode.lower() in ("live", "production")
+    color = "#27ae60" if is_live else "#2563eb"
+    badge_text = "Live" if is_live else "Test"
+    body = f"""\
+<h2 style="margin:0 0 8px 0;font-size:24px;font-weight:700;color:#0a0a0a;">New API Key Generated</h2>
+<p style="margin:0 0 20px 0;font-size:15px;color:#444444;line-height:1.7;">
+  A new <strong>{mode_label}</strong> API key has been generated for your account.
+</p>
+<div style="display:inline-block;background:{color};color:#ffffff;border-radius:20px;padding:4px 14px;font-size:13px;font-weight:700;margin-bottom:20px;">
+  {badge_text} Mode
+</div>
+<div style="background:#f4f4f4;border-radius:6px;padding:14px 18px;font-family:monospace;font-size:15px;color:#0a0a0a;letter-spacing:0.5px;margin-top:12px;">
+  {key_prefix}...
+</div>
+<p style="margin:20px 0 0 0;font-size:14px;color:#555555;line-height:1.7;">
+  The full key was shown at the time of creation and cannot be retrieved again.
+  Keep it in a secure location.
+</p>
+{_button(f"{_DASHBOARD_URL}/settings/api-keys", "Manage API Keys")}
+<p style="margin:20px 0 0 0;font-size:13px;color:#888888;line-height:1.6;">
+  If you did not generate this key, please rotate your credentials immediately
+  and contact <a href="mailto:support@sardis.sh" style="color:#0a0a0a;font-weight:600;">support@sardis.sh</a>.
+</p>
+"""
+    return _render(f"New {mode_label} API Key Generated", body)
+
+
 # ---------------------------------------------------------------------------
 # Core send function
 # ---------------------------------------------------------------------------
 
 async def send_email(to: str, subject: str, html_body: str) -> bool:
-    """Send a transactional HTML email via SMTP.
+    """Send a transactional HTML email via Resend API (preferred) or SMTP fallback.
 
-    Returns True if sent, False if SMTP is not configured or an error occurs.
+    Returns True if sent, False if no transport is configured or an error occurs.
     This function is safe to fire-and-forget — it never raises.
     """
+    # --- Primary: Resend API ---
+    resend_api_key = os.getenv("RESEND_API_KEY", "").strip()
+    if resend_api_key and _resend_sdk is not None:
+        return await _send_via_resend(to, subject, html_body, resend_api_key)
+
+    # --- Fallback: raw SMTP ---
     smtp_host = os.getenv("SMTP_HOST", "").strip()
-    if not smtp_host:
-        _logger.debug("send_email: SMTP_HOST not set, skipping email to %s", to)
+    if smtp_host:
+        return await _send_via_smtp(to, subject, html_body)
+
+    _logger.debug("send_email: neither RESEND_API_KEY nor SMTP_HOST set — skipping email to %s", to)
+    return False
+
+
+async def _send_via_resend(to: str, subject: str, html_body: str, api_key: str) -> bool:
+    """Send via the Resend Python SDK in a thread-pool executor."""
+    from_email = os.getenv("RESEND_FROM_EMAIL", "Sardis <noreply@sardis.sh>").strip()
+
+    def _do_send() -> dict:
+        _resend_sdk.api_key = api_key
+        return _resend_sdk.Emails.send({
+            "from": from_email,
+            "to": [to],
+            "subject": subject,
+            "html": html_body,
+        })
+
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _do_send)
+        _logger.info("send_email[resend]: sent '%s' to %s (id=%s)", subject, to, result.get("id", "?"))
+        return True
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning("send_email[resend]: failed '%s' to %s: %s", subject, to, exc)
         return False
 
+
+async def _send_via_smtp(to: str, subject: str, html_body: str) -> bool:
+    """Send via raw SMTP (legacy fallback)."""
+    smtp_host = os.getenv("SMTP_HOST", "").strip()
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER", "").strip()
     smtp_password = os.getenv("SMTP_PASSWORD", "").strip()
@@ -321,10 +395,10 @@ async def send_email(to: str, subject: str, html_body: str) -> bool:
     try:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, _smtp_send)
-        _logger.info("send_email: sent '%s' to %s", subject, to)
+        _logger.info("send_email[smtp]: sent '%s' to %s", subject, to)
         return True
     except Exception as exc:  # noqa: BLE001
-        _logger.warning("send_email: failed to send '%s' to %s: %s", subject, to, exc)
+        _logger.warning("send_email[smtp]: failed '%s' to %s: %s", subject, to, exc)
         return False
 
 
@@ -426,4 +500,14 @@ async def send_password_reset_email(email: str, reset_token: str) -> None:
         to=email,
         subject="Reset your Sardis password",
         html_body=_password_reset_html(reset_url),
+    )
+
+
+async def send_api_key_generated_email(email: str, key_prefix: str, mode: str = "test") -> None:
+    """Notify the user that a new API key has been generated."""
+    mode_label = mode.replace("_", " ").title()
+    await send_email(
+        to=email,
+        subject=f"New {mode_label} API key generated for your Sardis account",
+        html_body=_api_key_generated_html(key_prefix, mode),
     )
