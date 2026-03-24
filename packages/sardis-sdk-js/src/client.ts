@@ -46,6 +46,7 @@ import { FundingResource } from './resources/funding.js';
 import { FXResource } from './resources/fx.js';
 import { SubscriptionsV2Resource } from './resources/subscriptions-v2.js';
 import { EscrowResource } from './resources/escrow.js';
+import { CheckoutResource } from './resources/checkout.js';
 import type {
   SardisClientOptions,
   RequestOptions,
@@ -315,6 +316,12 @@ export class SardisClient {
   public readonly escrow: EscrowResource;
 
   /**
+   * Checkout operations - merchant checkout sessions for Pay with Sardis.
+   * @see {@link CheckoutResource}
+   */
+  public readonly checkout: CheckoutResource;
+
+  /**
    * Creates a new SardisClient instance.
    *
    * @param options - Client configuration options
@@ -387,6 +394,7 @@ export class SardisClient {
     this.fx = new FXResource(this);
     this.subscriptions = new SubscriptionsV2Resource(this);
     this.escrow = new EscrowResource(this);
+    this.checkout = new CheckoutResource(this);
   }
 
   /**
