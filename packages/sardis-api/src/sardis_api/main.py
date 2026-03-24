@@ -136,6 +136,7 @@ from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
+from .routers import notifications as notifications_router
 from .routers import onchain_payments as onchain_payments_router
 from .routers import outcomes as outcomes_router
 from .routers import partner_card_webhooks as partner_card_webhooks_router
@@ -1895,6 +1896,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(data_export_router.router, tags=["account"])
 
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
+
+    # Notification webhook config
+    app.include_router(notifications_router.router, prefix="/api/v2/notifications", tags=["notifications"])
 
     # Alert routes (REST API and WebSocket)
     app.include_router(alerts_router.router, prefix="/api/v2/alerts", tags=["alerts"])
