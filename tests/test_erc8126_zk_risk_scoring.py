@@ -6,7 +6,6 @@ ZK proof commitments, and calldata builders.
 from __future__ import annotations
 
 import pytest
-
 from sardis_protocol.erc8126 import (
     DEFAULT_WEIGHTS,
     AgentVerification,
@@ -27,7 +26,6 @@ from sardis_protocol.erc8126 import (
     score_to_risk_band,
     verify_agent,
 )
-
 
 # ============ Risk Band Tests ============
 

@@ -1,9 +1,6 @@
 """Tests for card lifecycle manager."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
-import pytest
 from sardis_cards.card_lifecycle import CardLifecycleManager, CardReplacement
 
 

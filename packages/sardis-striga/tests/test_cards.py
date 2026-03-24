@@ -1,9 +1,7 @@
 """Tests for Striga card provider."""
 from __future__ import annotations
 
-from decimal import Decimal
 
-import pytest
 
 from sardis_striga.models import StrigaCard, StrigaCardStatus, StrigaCardType
 

@@ -992,7 +992,7 @@ class SardisClient:
         result = wallet.pay(to="openai.com", amount=25, purpose="Quickstart test payment")
 
         if result.success:
-            _print(f"  ✓ Payment successful!")
+            _print("  ✓ Payment successful!")
             _print(f"  ✓ TX ID: {result.tx_id}")
             _print(f"  ✓ TX Hash: {result.tx_hash}")
             _print(f"  ✓ Remaining: ${wallet.balance}\n")

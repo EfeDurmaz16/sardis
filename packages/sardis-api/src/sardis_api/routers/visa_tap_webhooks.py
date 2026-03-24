@@ -59,7 +59,7 @@ async def _handle_token_lifecycle(event_type: str, event_data: dict) -> None:
     new_status = status_map.get(event_type)
     if new_status and token_id:
         await Database.execute(
-            """UPDATE delegated_credentials SET status = \, updated_at = NOW()
+            r"""UPDATE delegated_credentials SET status = \, updated_at = NOW()
                WHERE token_reference = """,
             new_status, token_id,
         )
@@ -85,7 +85,7 @@ async def _handle_authorization_result(event_type: str, event_data: dict) -> Non
     # Persist authorization outcome to ledger
     if transaction_id:
         await Database.execute(
-            """INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
+            r"""INSERT INTO ledger_entries (entry_type, reference_id, event_type, payload, created_at)
                VALUES (\, \, \, \, NOW())
                ON CONFLICT DO NOTHING""",
             "visa_tap_authorization", transaction_id, event_type,

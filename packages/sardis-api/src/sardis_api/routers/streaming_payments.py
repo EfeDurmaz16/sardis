@@ -35,6 +35,7 @@ async def _persist_stream_meta(stream_id: str, data: dict) -> None:
         return
     try:
         import json as _json
+
         import redis.asyncio as aioredis
         r = aioredis.from_url(url, decode_responses=True)
         serializable = {k: str(v) if isinstance(v, Decimal) else v for k, v in data.items() if k not in ("channel_mgr", "events")}
@@ -92,8 +93,9 @@ async def open_stream(
     principal: Principal = Depends(require_principal),
 ) -> StreamResponse:
     """Open an SSE streaming payment channel backed by TempoStreamChannel."""
-    from sardis_chain.tempo.stream_channel import TempoStreamChannel
     from uuid import uuid4
+
+    from sardis_chain.tempo.stream_channel import TempoStreamChannel
 
     channel_mgr = TempoStreamChannel()
     session = await channel_mgr.open(
@@ -214,7 +216,7 @@ async def stream_events(
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=30)
                 yield f"data: {json.dumps(event)}\n\n"
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 yield f": keepalive {datetime.now(UTC).isoformat()}\n\n"
 
         yield f"data: {json.dumps({'type': 'closed', 'stream_id': stream_id})}\n\n"
@@ -241,7 +243,7 @@ async def settle_stream(
         raise HTTPException(status_code=404, detail="Stream not found")
 
     channel_mgr = stream["channel_mgr"]
-    session = await channel_mgr.settle(stream["channel_id"])
+    await channel_mgr.settle(stream["channel_id"])
     stream["status"] = "settled"
 
     return StreamResponse(

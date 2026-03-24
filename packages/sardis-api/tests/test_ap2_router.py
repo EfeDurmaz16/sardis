@@ -15,7 +15,6 @@ import pytest
 
 from sardis_api.routers.ap2 import PROMPT_INJECTION_PATTERNS
 
-
 # ── Prompt injection detection tests ─────────────────────────────────
 
 

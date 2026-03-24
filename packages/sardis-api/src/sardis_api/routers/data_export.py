@@ -43,8 +43,9 @@ async def _persist_export(export_id: str, record: dict[str, Any]) -> None:
     """Write export record to DB."""
     _export_store[export_id] = record
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO data_exports (export_id, user_id, status, data, expires_at, created_at)
                VALUES ($1, $2, $3, $4, $5, NOW())
@@ -62,8 +63,9 @@ async def _load_export(export_id: str) -> dict[str, Any] | None:
     if export_id in _export_store:
         return _export_store[export_id]
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         row = await Database.fetchrow(
             "SELECT data FROM data_exports WHERE export_id = $1", export_id,
         )
@@ -138,7 +140,7 @@ class ExportListItem(BaseModel):
 
 
 def _now_utc() -> datetime.datetime:
-    return datetime.datetime.now(tz=datetime.timezone.utc)
+    return datetime.datetime.now(tz=datetime.UTC)
 
 
 def _is_export_expired(record: dict[str, Any]) -> bool:
@@ -380,8 +382,9 @@ async def list_exports(
     # Try DB first, fall back to process-local cache
     records: list[dict[str, Any]] = []
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         rows = await Database.fetch(
             "SELECT data FROM data_exports WHERE user_id = $1 ORDER BY created_at DESC",
             user_id,

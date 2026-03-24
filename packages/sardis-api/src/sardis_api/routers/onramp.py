@@ -12,7 +12,7 @@ import logging
 import os
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal

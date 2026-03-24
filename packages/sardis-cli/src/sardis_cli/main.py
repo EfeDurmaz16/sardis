@@ -9,7 +9,23 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
-from .commands import agents, approvals, auth, cards, chains, demo, fiat, groups, holds, init, ledger, payments, policies, spending, wallets
+from .commands import (
+    agents,
+    approvals,
+    auth,
+    cards,
+    chains,
+    demo,
+    fiat,
+    groups,
+    holds,
+    init,
+    ledger,
+    payments,
+    policies,
+    spending,
+    wallets,
+)
 from .config import load_config
 
 console = Console()
@@ -123,6 +139,7 @@ cli.add_command(ledger.ledger)
 
 # Spending mandates
 from sardis_cli.commands import mandates
+
 cli.add_command(mandates.mandates)
 
 

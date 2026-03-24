@@ -24,11 +24,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum, IntEnum
+from enum import Enum
 from typing import Any
 
 from eth_abi import encode

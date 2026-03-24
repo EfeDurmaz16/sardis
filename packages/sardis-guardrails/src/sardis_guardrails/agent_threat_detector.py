@@ -12,16 +12,11 @@ Designed to complement the existing AnomalyEngine with agent-only signals.
 """
 from __future__ import annotations
 
-import hashlib
 import logging
-import math
-import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
 
 from .anomaly_engine import RiskAction, RiskSignal
 

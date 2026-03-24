@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from solders.instruction import AccountMeta, Instruction
 from solders.pubkey import Pubkey
 
-from .client import TOKEN_PROGRAM_ID, SYSTEM_PROGRAM_ID, SYSVAR_RENT_PUBKEY
+from .client import SYSTEM_PROGRAM_ID, TOKEN_PROGRAM_ID
 
 logger = logging.getLogger(__name__)
 

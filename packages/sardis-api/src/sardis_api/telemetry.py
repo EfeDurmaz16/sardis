@@ -39,9 +39,9 @@ def init_telemetry(app: Any = None) -> None:
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.sdk.resources import Resource
 
         resource = Resource.create({
             "service.name": os.getenv("OTEL_SERVICE_NAME", "sardis-api"),

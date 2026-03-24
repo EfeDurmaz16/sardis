@@ -24,18 +24,17 @@ from sardis_v2_core.spending_policy import (
     create_default_policy,
 )
 
-
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
 def _policy(**overrides) -> SpendingPolicy:
     """Create a policy with sensible test defaults."""
-    defaults = dict(
-        agent_id="agent_test",
-        trust_level=TrustLevel.MEDIUM,
-        limit_per_tx=Decimal("500"),
-        limit_total=Decimal("5000"),
-    )
+    defaults = {
+        "agent_id": "agent_test",
+        "trust_level": TrustLevel.MEDIUM,
+        "limit_per_tx": Decimal("500"),
+        "limit_total": Decimal("5000"),
+    }
     defaults.update(overrides)
     return SpendingPolicy(**defaults)
 

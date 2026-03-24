@@ -15,7 +15,6 @@ import pytest
 
 from sardis_chain.fx_signer import FXSigner, create_fx_signer
 
-
 # ── Mode detection ───────────────────────────────────────────────────
 
 

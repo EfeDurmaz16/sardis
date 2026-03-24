@@ -7,7 +7,7 @@ import time
 from collections import defaultdict
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -68,7 +68,6 @@ async def faucet_drip(
 
     # Find wallet
     wallet_address = None
-    wallet_id_resolved = req.wallet_id
 
     # Try to find wallet — gracefully handle missing dependencies
     try:
@@ -79,7 +78,6 @@ async def faucet_drip(
             wallet = await container.wallet_repository.get(req.wallet_id)
             if wallet:
                 wallet_address = wallet.get_address("base_sepolia")
-                wallet_id_resolved = wallet.wallet_id
         else:
             # Find default wallet for this org
             wallets = await container.wallet_repository.list(limit=100)
@@ -87,7 +85,6 @@ async def faucet_drip(
                 addr = w.get_address("base_sepolia")
                 if addr:
                     wallet_address = addr
-                    wallet_id_resolved = w.wallet_id
                     break
     except Exception as e:
         logger.warning("Could not resolve wallet: %s", e)

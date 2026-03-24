@@ -5,7 +5,7 @@ Pre-built configurations that reduce setup time for design partner pilots.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 router = APIRouter()
 

@@ -12,28 +12,26 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.spending_mandate import (
+    VALID_TRANSITIONS,
     ApprovalMode,
     MandateCheckResult,
     MandateStatus,
     SpendingMandate,
-    VALID_TRANSITIONS,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
 def _mandate(**overrides) -> SpendingMandate:
-    defaults = dict(
-        principal_id="usr_abc",
-        issuer_id="usr_abc",
-        agent_id="agent_001",
-        amount_per_tx=Decimal("500"),
-        amount_total=Decimal("5000"),
-        status=MandateStatus.ACTIVE,
-    )
+    defaults = {
+        "principal_id": "usr_abc",
+        "issuer_id": "usr_abc",
+        "agent_id": "agent_001",
+        "amount_per_tx": Decimal("500"),
+        "amount_total": Decimal("5000"),
+        "status": MandateStatus.ACTIVE,
+    }
     defaults.update(overrides)
     return SpendingMandate(**defaults)
 

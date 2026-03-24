@@ -111,7 +111,7 @@ class LasoMPPService:
             )
 
         try:
-            from mpp.methods.tempo import tempo, TempoAccount, ChargeIntent
+            from mpp.methods.tempo import ChargeIntent, TempoAccount, tempo
 
             account = TempoAccount.from_key(key)
             tempo_method = tempo(

@@ -195,9 +195,11 @@ async def list_mandates(
             q = "SELECT * FROM spending_mandates WHERE org_id = $1"
             p: list = [principal.organization_id]
             if status_filter:
-                q += f" AND status = ${len(p)+1}"; p.append(status_filter)
+                q += f" AND status = ${len(p)+1}"
+                p.append(status_filter)
             if agent_id:
-                q += f" AND agent_id = ${len(p)+1}"; p.append(agent_id)
+                q += f" AND agent_id = ${len(p)+1}"
+                p.append(agent_id)
             q += " ORDER BY created_at DESC LIMIT 100"
             rows = await conn.fetch(q, *p)
     except Exception as exc:

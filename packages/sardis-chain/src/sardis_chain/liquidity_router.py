@@ -138,7 +138,6 @@ class LiquidityRouter:
             if uni:
                 try:
                     # Resolve token addresses for this chain
-                    from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
                     in_addr = self._resolve_token_address(from_token, chain)
                     out_addr = self._resolve_token_address(to_token, chain)
 

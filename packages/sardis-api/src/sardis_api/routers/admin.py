@@ -486,7 +486,7 @@ async def update_admin_config(
     from sardis_v2_core.database import Database
 
     await Database.execute(
-        """INSERT INTO system_config (key, value, description, updated_at)
+        r"""INSERT INTO system_config (key, value, description, updated_at)
            VALUES (\, \, \, NOW())
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value,
            description = EXCLUDED.description, updated_at = NOW()""",

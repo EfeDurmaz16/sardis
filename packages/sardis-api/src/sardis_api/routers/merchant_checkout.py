@@ -196,7 +196,7 @@ async def _save_demo_session(session: Any) -> None:
         _DEMO_SESSIONS_FALLBACK[session.client_secret] = payload
 
 
-async def _persist_session(session: Any, deps: "MerchantCheckoutDependencies", **updates: Any):
+async def _persist_session(session: Any, deps: MerchantCheckoutDependencies, **updates: Any):
     if _is_demo_session(session):
         for key, value in updates.items():
             setattr(session, key, value)

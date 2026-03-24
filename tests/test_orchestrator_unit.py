@@ -18,7 +18,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from sardis_v2_core.mandates import (
     CartMandate,
     IntentMandate,
@@ -34,7 +33,6 @@ from sardis_v2_core.orchestrator import (
     PaymentResult,
     PolicyViolationError,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────
 

@@ -23,12 +23,10 @@ Usage::
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger("sardis.chain.tempo.stream_channel")
@@ -178,7 +176,7 @@ class TempoStreamChannel:
                 token_address=session.token_address,
                 to=session.service_address,
                 amount=amount_raw,
-                memo=f"settle:{channel_id}".encode("utf-8")[:32],
+                memo=f"settle:{channel_id}".encode()[:32],
             )
             session.settle_tx_hash = receipt.tx_hash
 

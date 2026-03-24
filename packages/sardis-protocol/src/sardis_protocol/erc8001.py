@@ -19,13 +19,11 @@ from __future__ import annotations
 
 import hashlib
 import os
-import struct
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
-
 
 # ============ Enums ============
 
@@ -137,7 +135,7 @@ class AgentIntent:
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # Tracking
-    acceptances: dict[str, "AcceptanceAttestation"] = field(default_factory=dict)
+    acceptances: dict[str, AcceptanceAttestation] = field(default_factory=dict)
 
     @property
     def is_expired(self) -> bool:

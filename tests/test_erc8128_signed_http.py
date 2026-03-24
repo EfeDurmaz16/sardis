@@ -24,7 +24,6 @@ from sardis_protocol.erc8128 import (
     verify_request,
 )
 
-
 # Test wallet (DO NOT use in production — this is a well-known test key)
 TEST_PRIVATE_KEY = "0x4c0883a69102937d6231471b5dbb6204fe512961708279f47e9e3e2b30cd9ad3"
 TEST_ADDRESS = "0x0aEc616Dff22F6066AcD22EA10A63017CE58cadf"

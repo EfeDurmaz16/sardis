@@ -25,8 +25,9 @@ async def _persist_counterparty(cpty_id: str, record: dict) -> None:
     """Write counterparty to DB."""
     _counterparties[cpty_id] = record
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO counterparties (id, name, type, identifier, data, updated_at)
                VALUES ($1, $2, $3, $4, $5, NOW())
@@ -53,8 +54,9 @@ async def _load_counterparty(cpty_id: str) -> dict | None:
     if cpty_id in _counterparties:
         return _counterparties[cpty_id]
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         row = await Database.fetchrow("SELECT data FROM counterparties WHERE id = $1", cpty_id)
         if row:
             data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 from sardis_api.services.sdk_metrics import SDKMetricsService
 

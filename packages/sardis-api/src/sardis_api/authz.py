@@ -16,7 +16,7 @@ from typing import Literal
 
 from fastapi import Depends, HTTPException, Request, status
 
-from .middleware.auth import APIKey, APIKeyManager, get_api_key
+from .middleware.auth import APIKey, get_api_key
 from .routers.auth import UserInfo, get_current_user
 
 _logger = logging.getLogger("sardis.api.authz")

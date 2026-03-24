@@ -9,8 +9,6 @@ from decimal import Decimal
 
 import pytest
 from eth_abi import decode, encode
-from web3 import Web3
-
 from sardis_chain.zodiac_roles import (
     APPROVE_SELECTOR,
     EURC_ADDRESSES,
@@ -48,7 +46,7 @@ from sardis_chain.zodiac_roles import (
     make_allowance_key,
     policy_to_role_config,
 )
-
+from web3 import Web3
 
 # ============ Stub SpendingPolicy for testing ============
 
@@ -571,9 +569,9 @@ class TestConstants:
 
     def test_function_selectors(self):
         # transfer(address,uint256) = 0xa9059cbb
-        assert TRANSFER_SELECTOR == bytes.fromhex("a9059cbb")
+        assert bytes.fromhex("a9059cbb") == TRANSFER_SELECTOR
         # approve(address,uint256) = 0x095ea7b3
-        assert APPROVE_SELECTOR == bytes.fromhex("095ea7b3")
+        assert bytes.fromhex("095ea7b3") == APPROVE_SELECTOR
 
 
 class TestEnums:

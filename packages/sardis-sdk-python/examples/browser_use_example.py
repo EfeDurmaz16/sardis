@@ -23,21 +23,11 @@ async def main():
         balance = await client.wallets.get_balance(wallet_id)
         print(f"Wallet balance: {balance.balance} {balance.currency}")
 
-        # In production, you'd integrate with Browser Use:
-        #
-        #   from browser_use import Controller
-        #   from sardis_browser_use import register_sardis_actions
-        #
-        #   controller = Controller()
-        #   register_sardis_actions(
-        #       controller,
-        #       client=client,
-        #       wallet_id=wallet_id,
-        #       allowed_origins=["https://shop.example.com"],
-        #   )
-        #
-        # The agent can now use sardis_pay, sardis_balance,
-        # sardis_check_policy, and select_best_card actions.
+        # In production, integrate with Browser Use by importing Controller
+        # from browser_use and register_sardis_actions from sardis_browser_use.
+        # Then register actions with the controller, client, wallet_id,
+        # and allowed_origins. The agent can then use sardis_pay,
+        # sardis_balance, sardis_check_policy, and select_best_card actions.
 
         print("Browser Use integration ready!")
         print("See sardis-browser-use package for full integration.")

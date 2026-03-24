@@ -8,7 +8,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
 from sardis_compliance.marble import (
     DEFAULT_BLOCK_THRESHOLD,
     DEFAULT_REVIEW_THRESHOLD,
@@ -27,7 +26,6 @@ from sardis_compliance.marble import (
     create_marble_engine,
     create_rule,
 )
-
 
 # ============ TestMarbleRule ============
 
@@ -663,11 +661,11 @@ class TestConstants:
         assert DEFAULT_BLOCK_THRESHOLD == 80
 
     def test_gambling_mccs(self):
-        assert GAMBLING_MCCS == frozenset({"7995", "7801", "7802"})
+        assert frozenset({"7995", "7801", "7802"}) == GAMBLING_MCCS
         assert isinstance(GAMBLING_MCCS, frozenset)
 
     def test_high_risk_countries(self):
-        assert HIGH_RISK_COUNTRIES == frozenset({"KP", "IR", "SY", "CU", "RU"})
+        assert frozenset({"KP", "IR", "SY", "CU", "RU"}) == HIGH_RISK_COUNTRIES
         assert isinstance(HIGH_RISK_COUNTRIES, frozenset)
 
 

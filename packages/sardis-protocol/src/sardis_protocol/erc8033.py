@@ -20,12 +20,10 @@ Depends on: EIP-712, ERC-4337 (Account Abstraction)
 """
 from __future__ import annotations
 
-import hashlib
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-
 
 # ============ Constants ============
 

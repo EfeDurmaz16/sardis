@@ -154,7 +154,7 @@ class TempoKeychainProvider:
 
         if self._executor:
             # Build the provisioning transaction
-            tx_data = self._build_provision_tx(account_address, config)
+            self._build_provision_tx(account_address, config)
             receipt = await self._executor.execute_transfer(
                 token_address=KEYCHAIN_PRECOMPILE,
                 to=account_address,

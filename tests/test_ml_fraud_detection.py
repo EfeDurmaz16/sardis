@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
-
 from sardis_guardrails.ml_fraud import (
     FEATURE_SCHEMA,
     HIGH_RISK_COUNTRIES,
@@ -24,7 +23,6 @@ from sardis_guardrails.ml_fraud import (
     extract_features,
     get_ml_fraud_scorer,
 )
-
 
 # ============ Feature Extraction Tests ============
 

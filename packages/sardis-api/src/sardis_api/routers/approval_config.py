@@ -91,8 +91,9 @@ class ApprovalConfigResponse(BaseModel):
 async def _persist_approval_config() -> None:
     """Persist approval config to DB."""
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ('approval_config', $1, NOW())
@@ -106,8 +107,9 @@ async def _persist_approval_config() -> None:
 async def _load_approval_config() -> dict:
     """Load approval config from DB, falling back to in-memory."""
     try:
-        from sardis_v2_core.database import Database
         import json
+
+        from sardis_v2_core.database import Database
         row = await Database.fetchrow(
             "SELECT value FROM operator_config WHERE key = 'approval_config'"
         )

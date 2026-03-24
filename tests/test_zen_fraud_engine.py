@@ -19,7 +19,6 @@ from sardis_guardrails.zen_engine import (
     ZenFraudProvider,
 )
 
-
 # ---------------------------------------------------------------------------
 # ZenFraudEngine — core evaluation
 # ---------------------------------------------------------------------------
@@ -276,17 +275,17 @@ class TestModuleExports:
     """Verify Zen engine classes are exported from sardis_guardrails."""
 
     def test_zen_fraud_engine_exported(self):
-        from sardis_guardrails import ZenFraudEngine as ZFE
-        assert ZFE is not None
+        from sardis_guardrails import ZenFraudEngine
+        assert ZenFraudEngine is not None
 
     def test_zen_fraud_provider_exported(self):
-        from sardis_guardrails import ZenFraudProvider as ZFP
-        assert ZFP is not None
+        from sardis_guardrails import ZenFraudProvider
+        assert ZenFraudProvider is not None
 
     def test_fraud_action_exported(self):
-        from sardis_guardrails import FraudAction as FA
-        assert FA is not None
+        from sardis_guardrails import FraudAction
+        assert FraudAction is not None
 
     def test_fraud_rule_result_exported(self):
-        from sardis_guardrails import FraudRuleResult as FRR
-        assert FRR is not None
+        from sardis_guardrails import FraudRuleResult
+        assert FraudRuleResult is not None

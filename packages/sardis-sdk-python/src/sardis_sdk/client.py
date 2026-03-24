@@ -68,7 +68,6 @@ if TYPE_CHECKING:
 
     from .resources.agents import AgentsResource, AsyncAgentsResource
     from .resources.approvals import ApprovalsResource, AsyncApprovalsResource
-    from .resources.pay import AsyncPayResource, PayResource
     from .resources.cards import AsyncCardsResource, CardsResource
     from .resources.escrow import AsyncEscrowResource, EscrowResource
     from .resources.evidence import AsyncEvidenceResource, EvidenceResource
@@ -80,6 +79,7 @@ if TYPE_CHECKING:
     from .resources.kill_switch import AsyncKillSwitchResource, KillSwitchResource
     from .resources.ledger import AsyncLedgerResource, LedgerResource
     from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
+    from .resources.pay import AsyncPayResource, PayResource
     from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
     from .resources.payments import AsyncPaymentsResource, PaymentsResource
     from .resources.policies import AsyncPoliciesResource, PoliciesResource

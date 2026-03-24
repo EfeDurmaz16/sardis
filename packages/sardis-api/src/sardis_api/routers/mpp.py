@@ -518,7 +518,7 @@ async def issue_virtual_card(
 
     # Issue card via Laso MPP service
     try:
-        from sardis_mpp.services.laso import LasoMPPService, LasoPaymentRequired
+        from sardis_mpp.services.laso import LasoMPPService
 
         laso = LasoMPPService()
         card = await laso.issue_card(amount=req.amount, currency=req.currency)

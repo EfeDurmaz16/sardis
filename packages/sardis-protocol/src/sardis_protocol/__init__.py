@@ -106,10 +106,18 @@ with contextlib.suppress(ImportError):
         ERC8128SignatureInput,
         ERC8128VerificationResult,
         build_keyid,
-        build_signature_base as erc8128_build_signature_base,
         compute_content_digest,
+    )
+    from .erc8128 import (
+        build_signature_base as erc8128_build_signature_base,
+    )
+    from .erc8128 import (
         parse_signature_input as erc8128_parse_signature_input,
+    )
+    from .erc8128 import (
         sign_request as erc8128_sign_request,
+    )
+    from .erc8128 import (
         verify_request as erc8128_verify_request,
     )
 
@@ -130,8 +138,6 @@ with contextlib.suppress(ImportError):
     from .erc8126 import (
         AgentVerification,
         RiskBand,
-        VerificationResult as ERC8126VerificationResult,
-        VerificationStatus as ERC8126VerificationStatus,
         VerificationType,
         ZKProofCommitment,
         compute_composite_score,
@@ -144,18 +150,22 @@ with contextlib.suppress(ImportError):
         score_to_risk_band,
         verify_agent,
     )
+    from .erc8126 import (
+        VerificationResult as ERC8126VerificationResult,
+    )
+    from .erc8126 import (
+        VerificationStatus as ERC8126VerificationStatus,
+    )
 
 # Kleros dispute resolution
 with contextlib.suppress(ImportError):
     from .kleros import (
         ArbitrationCostEstimate,
         CourtCategory,
-        Dispute as KlerosDispute,
         DisputeParty,
         DisputePartyRole,
         DisputeRulingResult,
         DisputeStatus,
-        Evidence as KlerosEvidence,
         EvidenceType,
         KlerosDisputeResolver,
         Ruling,
@@ -164,6 +174,12 @@ with contextlib.suppress(ImportError):
         build_rule_calldata,
         build_submit_evidence_calldata,
         create_dispute_resolver,
+    )
+    from .kleros import (
+        Dispute as KlerosDispute,
+    )
+    from .kleros import (
+        Evidence as KlerosEvidence,
     )
 
 # ERC-8001: Agent Coordination
@@ -176,8 +192,10 @@ with contextlib.suppress(ImportError):
         CoordinationPayload,
         CoordinationStatus,
         CoordinationType,
-        ExecutionResult as CoordinationExecutionResult,
         create_coordination_manager,
+    )
+    from .erc8001 import (
+        ExecutionResult as CoordinationExecutionResult,
     )
 
 # ERC-8122: Minimal Agent Registry
@@ -206,6 +224,7 @@ with contextlib.suppress(ImportError):
 # Paladin Privacy: privacy-preserving transactions
 with contextlib.suppress(ImportError):
     from .paladin_privacy import (
+        UTXO,
         NotaryDecision,
         NotaryValidation,
         PaladinPrivacyManager,
@@ -214,7 +233,6 @@ with contextlib.suppress(ImportError):
         PrivacyGroup,
         PrivacyLevel,
         PrivateTransfer,
-        UTXO,
         UTXOState,
         create_privacy_manager,
     )
@@ -222,17 +240,17 @@ with contextlib.suppress(ImportError):
 # ERC-8033: Paymaster Protocol
 with contextlib.suppress(ImportError):
     from .erc8033 import (
-        PaymasterManager,
-        PaymasterConfig,
-        GasSession,
-        SessionStatus,
-        PaymasterType,
-        GasPolicy,
-        SponsorshipTier,
-        SponsorshipRecord,
         GasEstimate,
-        PaymasterTransaction,
+        GasPolicy,
+        GasSession,
+        PaymasterConfig,
+        PaymasterManager,
         PaymasterStats,
+        PaymasterTransaction,
+        PaymasterType,
+        SessionStatus,
+        SponsorshipRecord,
+        SponsorshipTier,
         create_paymaster_manager,
         estimate_tx_cost,
     )
@@ -240,18 +258,20 @@ with contextlib.suppress(ImportError):
 # zkPass Transgate: portable ZK-based KYC verification
 with contextlib.suppress(ImportError):
     from .zkpass_transgate import (
-        ZKPassVerifier,
-        TransgateProofType,
-        TransgateIssuer,
-        TransgateSchema,
-        ZKProof,
-        ProofStatus,
-        VerificationMethod,
-        VerificationResult as ZKPassVerificationResult,
         PortableKYCResult,
+        ProofStatus,
         TransgateConfig,
+        TransgateIssuer,
+        TransgateProofType,
+        TransgateSchema,
+        VerificationMethod,
+        ZKPassVerifier,
+        ZKProof,
         create_zkpass_verifier,
         hash_public_inputs,
+    )
+    from .zkpass_transgate import (
+        VerificationResult as ZKPassVerificationResult,
     )
 
 __all__ = [

@@ -8,12 +8,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
 from sardis_protocol.paladin_privacy import (
     DEFAULT_ENDORSEMENT_POLICY,
     MAX_UTXO_INPUTS,
     PALADIN_VERSION,
     SUPPORTED_PRIVACY_TOKENS,
+    UTXO,
     NotaryDecision,
     NotaryValidation,
     PaladinPrivacyManager,
@@ -23,14 +23,12 @@ from sardis_protocol.paladin_privacy import (
     PrivacyGroupStatus,
     PrivacyLevel,
     PrivateTransfer,
-    UTXO,
     UTXOState,
     ZKProofRequest,
     build_create_privacy_group_calldata,
     build_notarized_transfer_calldata,
     create_privacy_manager,
 )
-
 
 # ============ UTXO Tests ============
 
@@ -589,7 +587,7 @@ class TestConstants:
         assert DEFAULT_ENDORSEMENT_POLICY == "all"
 
     def test_supported_tokens(self):
-        assert SUPPORTED_PRIVACY_TOKENS == frozenset({"USDC", "EURC", "USDT"})
+        assert frozenset({"USDC", "EURC", "USDT"}) == SUPPORTED_PRIVACY_TOKENS
         assert "USDC" in SUPPORTED_PRIVACY_TOKENS
         assert "EURC" in SUPPORTED_PRIVACY_TOKENS
         assert "USDT" in SUPPORTED_PRIVACY_TOKENS
@@ -651,6 +649,7 @@ class TestPrivacyConfig:
 class TestModuleExports:
     def test_imports_from_protocol(self):
         from sardis_protocol import (
+            UTXO,
             NotaryDecision,
             NotaryValidation,
             PaladinPrivacyManager,
@@ -659,7 +658,6 @@ class TestModuleExports:
             PrivacyGroup,
             PrivacyLevel,
             PrivateTransfer,
-            UTXO,
             UTXOState,
             create_privacy_manager,
         )

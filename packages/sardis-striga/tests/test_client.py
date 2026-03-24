@@ -3,15 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
-import time
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from sardis_striga.client import StrigaClient
 from sardis_striga.config import StrigaConfig
-from sardis_striga.exceptions import StrigaAuthError, StrigaRateLimitError, StrigaValidationError
 
 
 @pytest.fixture

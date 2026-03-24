@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-
 from sardis_compliance.providers.notabene import (
     ASSET_MAP,
     CHAIN_MAP,
@@ -34,7 +33,6 @@ from sardis_compliance.travel_rule import (
     VASPProtocol,
     create_travel_rule_service,
 )
-
 
 # ============ Mock API Responses ============
 

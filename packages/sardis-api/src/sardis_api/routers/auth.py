@@ -41,7 +41,7 @@ JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
 
 # JWKS client for validating better-auth EdDSA tokens
 _jwks_url = os.getenv("BETTER_AUTH_JWKS_URL", "")
-_jwks_client: "pyjwt.PyJWKClient | None" = None
+_jwks_client: pyjwt.PyJWKClient | None = None
 if _jwks_url:
     _jwks_client = pyjwt.PyJWKClient(_jwks_url, cache_jwk_set=True, lifespan=3600)
     _logger.info("JWKS validation enabled: %s", _jwks_url)

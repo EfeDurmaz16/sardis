@@ -17,9 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_v2_core.mandates import PaymentMandate, VCProof
-
 
 # ── Fake DB layer ────────────────────────────────────────────────────
 

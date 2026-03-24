@@ -4,9 +4,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .client import GridClient
-from .config import LightsparkConfig
-from .models import UMAAddress, UMAAddressStatus
+from .models import UMAAddress
 from .uma import UMAService
 
 logger = logging.getLogger(__name__)

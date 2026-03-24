@@ -241,8 +241,8 @@ class TempoDEXAdapter:
     async def _get_tx_params(self, private_key: str) -> tuple[int, int, int]:
         """Fetch chain_id, nonce, gas_price for building a transaction."""
         import asyncio
-        import httpx
 
+        import httpx
         from eth_account import Account
         address = Account.from_key(private_key).address
 
@@ -292,6 +292,7 @@ class TempoDEXAdapter:
     async def _wait_for_receipt(self, tx_hash: str, max_attempts: int = 20) -> dict:
         """Poll for transaction receipt (Tempo has ~0.5s finality)."""
         import asyncio
+
         import httpx
 
         for _ in range(max_attempts):
