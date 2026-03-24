@@ -83,7 +83,7 @@ const MERCHANTS = ['OpenAI', 'Anthropic', 'AWS', 'Vercel', 'Stripe', 'GitHub']
 
 /* ─── Helpers ─── */
 
-function generateMockEvent(): LiveEvent {
+function generateSampleEvent(): LiveEvent {
   const eventTypeKeys = Object.keys(EVENT_TYPES)
   const randomType = eventTypeKeys[Math.floor(Math.random() * eventTypeKeys.length)]
   const eventConfig = EVENT_TYPES[randomType]
@@ -220,17 +220,17 @@ export default function LiveEventsPage() {
     }
   }, [sseEvents, isPaused])
 
-  // Mock fallback: if SSE is not connected after a brief period, generate mock events
+  // Demo fallback: if SSE is not connected after a brief period, generate sample events
   useEffect(() => {
     if (isPaused) return
-    if (sseConnected && hasReceivedSSE.current) return // SSE is working, no mock needed
+    if (sseConnected && hasReceivedSSE.current) return // SSE is working, no demo fallback needed
 
-    // Give SSE 3 seconds to connect before falling back to mock
+    // Give SSE 3 seconds to connect before falling back to sample data
     const fallbackTimeout = setTimeout(() => {
       if (hasReceivedSSE.current) return
 
       // Initial burst
-      const initialEvents = Array.from({ length: 10 }, () => generateMockEvent())
+      const initialEvents = Array.from({ length: 10 }, () => generateSampleEvent())
         .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
       setEvents(initialEvents)
 
@@ -242,7 +242,7 @@ export default function LiveEventsPage() {
         timeoutId = setTimeout(() => {
           if (hasReceivedSSE.current) return
           setEvents(prev => {
-            const newEvents = [...prev, generateMockEvent()]
+            const newEvents = [...prev, generateSampleEvent()]
             return newEvents.slice(-200)
           })
           scheduleNext()
@@ -262,7 +262,7 @@ export default function LiveEventsPage() {
     }
   }, [isPaused, sseConnected])
 
-  // Connection state: prefer SSE status, fall back to "connected" if using mock
+  // Connection state: prefer SSE status, fall back to "connected" if using sample data
   const isConnected = sseConnected || !hasReceivedSSE.current
 
   // Stats
