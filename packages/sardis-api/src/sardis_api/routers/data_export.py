@@ -5,7 +5,7 @@ personal data (GDPR Art. 20 — right to data portability).
 
 Implementation notes:
 - Exports are generated synchronously (no job queue yet).
-- Export content is held in-memory (TODO: write to S3/GCS for large datasets).
+- Export content is held in-memory (future: write to S3/GCS for large datasets).
 - Rate limit: 1 export per 24 h per user (in-memory dict).
 """
 

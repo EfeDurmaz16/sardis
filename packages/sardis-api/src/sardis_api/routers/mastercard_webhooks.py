@@ -143,7 +143,7 @@ def _handle_token_lifecycle(event_type: str, event: dict) -> None:
         event_type,
         token_ref,
     )
-    # TODO: Update DelegatedCredential status in store when token state changes
+    # NOTE(roadmap): Update DelegatedCredential status in store when token state changes
     # e.g. TOKEN_SUSPENDED → CredentialStatus.SUSPENDED
     #      TOKEN_DELETED   → CredentialStatus.REVOKED
 

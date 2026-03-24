@@ -126,7 +126,7 @@ def create_cards_router(
     ) -> tuple[bool, str]:
         if not policy_store or not wallet_repo:
             # In production, policy enforcement is mandatory
-            # TODO: Migrate to PaymentOrchestrator gateway
+            # NOTE(roadmap): Migrate to PaymentOrchestrator gateway
             if environment and environment.lower() in ("production", "prod"):
                 logger.error("CRITICAL: policy_store or wallet_repo not configured in production")
                 return False, "policy_enforcement_unavailable_in_production"
