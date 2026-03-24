@@ -25,6 +25,7 @@ import {
   GitBranch,
   ArrowRightLeft,
   User,
+  Terminal,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
@@ -66,6 +67,7 @@ const navSections: NavSection[] = [
     items: [
       { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
       { name: 'Simulation', href: '/simulation', icon: Beaker },
+      { name: 'API Playground', href: '/playground', icon: Terminal },
       { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     ],
   },
