@@ -279,41 +279,15 @@ token: Token = "USDC"
 
 ## Framework Integrations
 
-### LangChain
+> **Deprecated:** The built-in integration shims (`sardis_sdk.integrations.*`) are deprecated. Use the standalone packages instead for better maintenance and framework-specific features.
 
-```python
-from sardis_sdk.integrations.langchain import SardisToolkit
-
-toolkit = SardisToolkit(client=client)
-tools = toolkit.get_tools()
-
-# Use with LangChain agent
-agent = create_openai_functions_agent(llm, tools, prompt)
-```
-
-### LlamaIndex
-
-```python
-from sardis_sdk.integrations.llamaindex import SardisToolSpec
-
-tool_spec = SardisToolSpec(client=client)
-tools = tool_spec.to_tool_list()
-
-# Use with LlamaIndex agent
-agent = OpenAIAgent.from_tools(tools)
-```
-
-### OpenAI Function Calling
-
-```python
-from sardis_sdk.integrations.openai import sardis_functions, handle_sardis_call
-
-# Get function definitions
-functions = sardis_functions(client)
-
-# Handle function calls
-result = await handle_sardis_call(client, function_name, arguments)
-```
+| Framework | Standalone Package | Install |
+|-----------|-------------------|---------|
+| LangChain | `sardis-langchain` | `pip install sardis-langchain` |
+| OpenAI Agents | `sardis-openai-agents` | `pip install sardis-openai-agents` |
+| CrewAI | `sardis-crewai` | `pip install sardis-crewai` |
+| Google ADK | `sardis-adk` | `pip install sardis-adk` |
+| Anthropic Agent SDK | `sardis-agent-sdk` | `pip install sardis-agent-sdk` |
 
 ## License
 
