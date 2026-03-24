@@ -24,6 +24,7 @@ class EventType(str, Enum):
     PAYMENT_COMPLETED = "payment.completed"
     PAYMENT_FAILED = "payment.failed"
     PAYMENT_REFUNDED = "payment.refunded"
+    PAYMENT_REFUND_FAILED = "payment.refund_failed"
 
     # Hold events
     HOLD_CREATED = "hold.created"

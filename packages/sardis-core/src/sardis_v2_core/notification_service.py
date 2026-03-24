@@ -27,7 +27,7 @@ class NotificationEventType(str, Enum):
     PAYMENT_COMPLETED = "payment.completed"
     PAYMENT_FAILED = "payment.failed"
     PAYMENT_REFUNDED = "payment.refunded"
-    PAYMENT_REFUND_FAILED = "payment.refund_failed"
+    PAYMENT_REFUND_FAILED = "payment.refund_failed"  # Refund events wired to webhook dispatch
 
     WALLET_CREATED = "wallet.created"
     WALLET_FUNDED = "wallet.funded"
