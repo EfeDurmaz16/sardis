@@ -45,6 +45,7 @@ def _pool_kwargs(database_url: str) -> dict:
             "min_size": neon_min,
             "max_size": neon_max,
             "statement_cache_size": 0,  # Required for pgbouncer/Neon pooler
+            "max_inactive_connection_lifetime": 300,
         })
 
     return pool_kwargs
