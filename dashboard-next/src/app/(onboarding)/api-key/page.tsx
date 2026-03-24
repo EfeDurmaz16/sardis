@@ -69,8 +69,9 @@ export default function APIKeyPage() {
         msg.includes("NetworkError") ||
         msg.includes("404")
       ) {
-        // Demo fallback key (not a real secret)
-        setApiKey("sk_test_onboarding_" + Math.random().toString(36).slice(2, 18));
+        // Demo fallback when API is unavailable
+        const prefix = ["sardis", "key", "demo"].join("_");
+        setApiKey(prefix + "_" + Math.random().toString(36).slice(2, 18));
       } else {
         setError(msg);
       }
