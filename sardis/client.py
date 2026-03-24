@@ -760,6 +760,25 @@ class LedgerManager:
 # ---------------------------------------------------------------------------
 
 
+class _StubManager:
+    """Stub for production-only resource managers.
+
+    Raises NotImplementedError with a clear message pointing users
+    to the full sardis-sdk package for production features.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def __getattr__(self, attr: str) -> Any:
+        def _stub(*_args: Any, **_kwargs: Any) -> Any:
+            raise NotImplementedError(
+                f"'{self._name}.{attr}()' requires the production SDK. "
+                f"Install it: pip install sardis-sdk"
+            )
+        return _stub
+
+
 class SardisClient:
     """
     Sardis client for agent payments with policy enforcement.
@@ -862,6 +881,15 @@ class SardisClient:
         self.payments = PaymentManager(self)
         self.groups = GroupManager(self)
         self.ledger = LedgerManager(self)
+
+        # Stub managers for production-only features
+        self.payment_objects = _StubManager("payment_objects")
+        self.fx = _StubManager("fx")
+        self.holds = _StubManager("holds")
+        self.policies = _StubManager("policies")
+        self.subscriptions = _StubManager("subscriptions")
+        self.escrow = _StubManager("escrow")
+        self.mandates = _StubManager("mandates")
 
     def pay(
         self,
