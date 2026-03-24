@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  // Fix workspace root detection in monorepo
+  outputFileTracingRoot: path.join(__dirname),
+
   // Rewrite /docs/* to the fumadocs site
   async rewrites() {
     return [

@@ -40,8 +40,8 @@ def fuzz_validate_payment(data: bytes) -> None:
         policy = SpendingPolicy(
             trust_level=trust_choices[trust_idx],
             allowed_scopes=[scope_choices[scope_idx]],
-            per_transaction_limit=Decimal(str(per_tx)),
-            total_limit=Decimal(str(total)),
+            limit_per_tx=Decimal(str(per_tx)),
+            limit_total=Decimal(str(total)),
         )
     except (InvalidOperation, ValueError, OverflowError):
         return

@@ -173,7 +173,6 @@ export default async function handler(req, res) {
   const merchant = String(body.merchant || 'DataCorp');
   const mccCode = String(body.mccCode || '5734');
   const agentId = String(body.agentId || config.defaultAgentId || '');
-  const cardId = String(body.cardId || config.defaultCardId || '');
   const steps = [];
 
   const health = await checkHealth();
