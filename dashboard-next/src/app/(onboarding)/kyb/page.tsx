@@ -303,16 +303,23 @@ export default function KYBPage() {
               <p className="text-gray-400 mb-2">
                 Your verification is being reviewed manually. This typically takes up to 24 hours.
               </p>
-              <p className="text-gray-500 text-sm mb-8">
-                We&apos;ll send you an email when the review is complete.
-              </p>
-              <button
-                onClick={() => router.push("/overview")}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-dark-200 text-gray-300 font-medium rounded-lg hover:bg-dark-100 hover:text-white transition-colors"
-              >
-                Explore Dashboard (Read-Only)
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="p-3 bg-dark-300 border border-dark-100 rounded-lg mb-8 inline-block">
+                <p className="text-gray-500 text-sm">
+                  We&apos;ll send a confirmation email to <span className="text-white">{contactEmail || "your registered email"}</span> when the review is complete.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => router.push("/overview")}
+                  className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-dark-200 text-gray-300 font-medium rounded-lg hover:bg-dark-100 hover:text-white transition-colors"
+                >
+                  Explore Dashboard (Read-Only)
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <p className="text-xs text-gray-600">
+                  You can use the dashboard in read-only mode while verification is pending.
+                </p>
+              </div>
             </div>
           )}
 
@@ -324,14 +331,21 @@ export default function KYBPage() {
                 Verification Failed
               </h2>
               {error && (
-                <p className="text-red-400/80 text-sm mb-6">{error}</p>
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg mb-6 max-w-sm mx-auto">
+                  <p className="text-red-400/80 text-sm">{error}</p>
+                </div>
               )}
-              <button
-                onClick={handleRetry}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors"
-              >
-                Try Again
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={handleRetry}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors"
+                >
+                  Try Again
+                </button>
+                <p className="text-xs text-gray-600">
+                  Please correct the information and resubmit. Contact support@sardis.sh if the issue persists.
+                </p>
+              </div>
             </div>
           )}
         </div>
