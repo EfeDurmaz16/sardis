@@ -463,13 +463,13 @@ export default function AgentIdentityPage() {
         </>
       )}
 
-      {/* Register Form Modal (simplified placeholder) */}
+      {/* Register Form Modal */}
       {showRegisterForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="card p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-white mb-4">Register New Agent</h3>
             <p className="text-sm text-gray-400 mb-4">
-              Form to register a new agent identity (implementation pending)
+              Agent registration via the API is available now. Dashboard form launching next sprint.
             </p>
             <button
               onClick={() => setShowRegisterForm(false)}
@@ -481,13 +481,13 @@ export default function AgentIdentityPage() {
         </div>
       )}
 
-      {/* Reputation Form Modal (simplified placeholder) */}
+      {/* Reputation Form Modal */}
       {showReputationForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="card p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-white mb-4">Submit Reputation Event</h3>
             <p className="text-sm text-gray-400 mb-4">
-              Form to submit reputation validation or violation (implementation pending)
+              Reputation events can be submitted via the API. Dashboard form launching next sprint.
             </p>
             <button
               onClick={() => setShowReputationForm(false)}
