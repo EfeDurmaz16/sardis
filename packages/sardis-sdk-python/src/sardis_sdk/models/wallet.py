@@ -51,12 +51,22 @@ class Wallet(SardisModel):
 
 class WalletBalance(SardisModel):
     """Wallet balance from chain (read-only, non-custodial)."""
-    
+
     wallet_id: str
     chain: str
     token: str
     balance: Decimal
     address: str
+
+    @property
+    def remaining(self) -> Decimal:
+        """Available balance (alias for balance on non-custodial wallets).
+
+        CrewAI and BrowserUse integrations access .remaining on balance
+        objects. For non-custodial wallets the available balance equals
+        the on-chain balance.
+        """
+        return self.balance
 
 
 class WalletTransferRequest(SardisModel):
