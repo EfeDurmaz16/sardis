@@ -459,12 +459,24 @@ async def execute_stored_mandate(
         stored.status = "failed"
         stored.updated_at = datetime.now(UTC)
         await _save_mandate(stored)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        from sardis_v2_core.policy_explainer import explain_denial
+        reason = getattr(e, "rule_id", None) or "policy_violation"
+        explanation = explain_denial(reason)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": str(e), "policy_explanation": explanation.to_dict()},
+        )
     except ComplianceViolationError as e:
         stored.status = "failed"
         stored.updated_at = datetime.now(UTC)
         await _save_mandate(stored)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        from sardis_v2_core.policy_explainer import explain_denial
+        reason = getattr(e, "rule_id", None) or "compliance_violation"
+        explanation = explain_denial(reason)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"message": str(e), "policy_explanation": explanation.to_dict()},
+        )
     except ChainExecutionError as e:
         stored.status = "failed"
         stored.updated_at = datetime.now(UTC)
@@ -615,9 +627,21 @@ async def execute_payment_mandate(
         try:
             orch_result = await deps.payment_orchestrator.execute_chain(_chain)
         except PolicyViolationError as e:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+            from sardis_v2_core.policy_explainer import explain_denial
+            reason = getattr(e, "rule_id", None) or "policy_violation"
+            explanation = explain_denial(reason)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": str(e), "policy_explanation": explanation.to_dict()},
+            )
         except ComplianceViolationError as e:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+            from sardis_v2_core.policy_explainer import explain_denial
+            reason = getattr(e, "rule_id", None) or "compliance_violation"
+            explanation = explain_denial(reason)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"message": str(e), "policy_explanation": explanation.to_dict()},
+            )
         except ChainExecutionError as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

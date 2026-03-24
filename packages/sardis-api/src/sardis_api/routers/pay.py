@@ -30,6 +30,7 @@ from sardis_v2_core.orchestrator import (
     PaymentOrchestrator,
     PolicyViolationError,
 )
+from sardis_v2_core.policy_explainer import explain_denial
 
 from sardis_api.authz import Principal, require_principal
 
@@ -72,6 +73,15 @@ class PayRequest(BaseModel):
     mandate_id: str | None = Field(default=None, description="Spending mandate ID")
 
 
+class PolicyExplanationResponse(BaseModel):
+    allowed: bool
+    summary: str
+    checks_passed: list[str] = []
+    checks_failed: list[str] = []
+    suggested_action: str | None = None
+    reason_code: str | None = None
+
+
 class PayResponse(BaseModel):
     status: PayStatus
     tx_hash: str | None = None
@@ -79,6 +89,7 @@ class PayResponse(BaseModel):
     chain: str | None = None
     message: str | None = None
     mandate_id: str | None = None
+    policy_explanation: PolicyExplanationResponse | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -152,28 +163,40 @@ async def pay(
             mandate_id=result.mandate_id,
         )
     except PolicyViolationError as exc:
+        reason = getattr(exc, "rule_id", None) or "policy_violation"
+        explanation = explain_denial(reason)
         return PayResponse(
             status=PayStatus.blocked,
             message=str(exc),
             mandate_id=mandate_id,
+            policy_explanation=PolicyExplanationResponse(**explanation.to_dict()),
         )
     except MandateViolationError as exc:
+        reason = getattr(exc, "error_code", None) or "mandate_violation"
+        explanation = explain_denial(reason)
         return PayResponse(
             status=PayStatus.blocked,
             message=str(exc),
             mandate_id=mandate_id,
+            policy_explanation=PolicyExplanationResponse(**explanation.to_dict()),
         )
     except KYAViolationError as exc:
+        reason = getattr(exc, "reason", None) or "kya_violation"
+        explanation = explain_denial(reason)
         return PayResponse(
             status=PayStatus.blocked,
             message=str(exc),
             mandate_id=mandate_id,
+            policy_explanation=PolicyExplanationResponse(**explanation.to_dict()),
         )
     except ComplianceViolationError as exc:
+        reason = getattr(exc, "rule_id", None) or "compliance_violation"
+        explanation = explain_denial(reason)
         return PayResponse(
             status=PayStatus.blocked,
             message=str(exc),
             mandate_id=mandate_id,
+            policy_explanation=PolicyExplanationResponse(**explanation.to_dict()),
         )
     except ChainExecutionError as exc:
         return PayResponse(
