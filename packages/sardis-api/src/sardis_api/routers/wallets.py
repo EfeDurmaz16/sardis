@@ -749,7 +749,8 @@ async def transfer_crypto(
             proof=VCProof(
                 verification_method=f"wallet:{wallet_id}#key-1",
                 created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                proof_value="internal-transfer",
+                proof_purpose="internal_system_execution",
+                proof_value=hashlib.sha256(f"wallet:{wallet_id}:transfer:{digest}".encode()).hexdigest(),
             ),
             domain="sardis.sh",
             purpose="checkout",
@@ -798,10 +799,14 @@ async def transfer_crypto(
 
         # Build a synthetic MandateChain for the orchestrator
         _now_ts = int(time.time())
+        _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        _vm = f"wallet:{wallet_id}#key-1"
+        _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{digest}".encode()).hexdigest()
         _stub_proof = VCProof(
-            verification_method=f"wallet:{wallet_id}#key-1",
-            created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            proof_value="internal-transfer-stub",
+            verification_method=_vm,
+            created=_created_ts,
+            proof_purpose="internal_system_execution",
+            proof_value=_attestation_hash,
         )
         _chain = MandateChain(
             intent=IntentMandate(
@@ -871,7 +876,8 @@ async def transfer_crypto(
                         proof=VCProof(
                             verification_method=f"wallet:{wallet_id}#key-1",
                             created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                            proof_value="platform-fee",
+                            proof_purpose="internal_system_execution",
+                            proof_value=hashlib.sha256(f"wallet:{wallet_id}:fee:{digest}".encode()).hexdigest(),
                         ),
                         domain="sardis.sh",
                         purpose="platform_fee",
@@ -886,10 +892,14 @@ async def transfer_crypto(
                         account_type=wallet.account_type,
                         smart_account_address=wallet.smart_account_address,
                     )
+                    _fee_created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                    _fee_vm = f"wallet:{wallet_id}#key-1"
+                    _fee_attestation = hashlib.sha256(f"{_fee_vm}:{_fee_created_ts}:fee_{digest}".encode()).hexdigest()
                     _fee_proof = VCProof(
-                        verification_method=f"wallet:{wallet_id}#key-1",
-                        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        proof_value="platform-fee-stub",
+                        verification_method=_fee_vm,
+                        created=_fee_created_ts,
+                        proof_purpose="internal_system_execution",
+                        proof_value=_fee_attestation,
                     )
                     _now_ts = int(time.time())
                     fee_chain = MandateChain(
@@ -2416,10 +2426,14 @@ async def execute_offramp_send(
     )
 
     _now_ts = int(time.time())
+    _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    _vm = f"wallet:{wallet_id}#key-1"
+    _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:offramp_{offramp_id}".encode()).hexdigest()
     _stub_proof = VCProof(
-        verification_method=f"wallet:{wallet_id}#key-1",
-        created=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        proof_value="offramp-stub",
+        verification_method=_vm,
+        created=_created_ts,
+        proof_purpose="internal_system_execution",
+        proof_value=_attestation_hash,
     )
     _amount_minor = int(float(sell_amount) * 1_000_000)
     _audit_hash = hashlib.sha256(f"offramp:{wallet_id}:{to_address}:{sell_amount}".encode()).hexdigest()
