@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SardisSpendWidgetProps, SpendingData } from "./types";
+import { getTheme, themeToCSS } from "./theme";
 import { BudgetBar } from "./BudgetBar";
 import { SpendChart } from "./SpendChart";
+import { Sparkline } from "./Sparkline";
 import { TransactionList } from "./TransactionList";
 
 export function SardisSpendWidget({
@@ -15,6 +17,8 @@ export function SardisSpendWidget({
   const [data, setData] = useState<SpendingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [narrow, setNarrow] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,17 +52,34 @@ export function SardisSpendWidget({
     return () => { cancelled = true; };
   }, [agentId, apiKey, baseUrl, period]);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setNarrow(entry.contentRect.width < 320);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const tokens = getTheme(theme);
   const isDark = theme === "dark";
+  const cssVars = themeToCSS(tokens);
 
   const containerStyle: React.CSSProperties = {
+    ...cssVars as unknown as React.CSSProperties,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     height,
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
-    color: isDark ? "#d1d5db" : "#374151",
-    border: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+    backgroundColor: tokens.bg,
+    color: tokens.text,
+    border: `1px solid ${tokens.border}`,
     borderRadius: 8,
     padding: 16,
     boxSizing: "border-box",
@@ -66,16 +87,16 @@ export function SardisSpendWidget({
 
   if (loading) {
     return (
-      <div style={containerStyle} data-testid="sardis-spend-widget">
-        <LoadingSkeleton isDark={isDark} />
+      <div ref={containerRef} style={containerStyle} data-testid="sardis-spend-widget">
+        <LoadingSkeleton bgColor={tokens.bgSecondary} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={containerStyle} data-testid="sardis-spend-widget">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: isDark ? "#f87171" : "#dc2626" }}>
+      <div ref={containerRef} style={containerStyle} data-testid="sardis-spend-widget">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: tokens.error }}>
           {error}
         </div>
       </div>
@@ -84,7 +105,7 @@ export function SardisSpendWidget({
 
   if (!data) {
     return (
-      <div style={containerStyle} data-testid="sardis-spend-widget">
+      <div ref={containerRef} style={containerStyle} data-testid="sardis-spend-widget">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, opacity: 0.5 }}>
           No spending data available
         </div>
@@ -93,27 +114,30 @@ export function SardisSpendWidget({
   }
 
   return (
-    <div style={containerStyle} data-testid="sardis-spend-widget">
+    <div ref={containerRef} style={containerStyle} data-testid="sardis-spend-widget">
       <BudgetBar budget={data.budget} isDark={isDark} />
-      <SpendChart chart={data.chart} isDark={isDark} />
+      {narrow ? (
+        <Sparkline chart={data.chart} isDark={isDark} />
+      ) : (
+        <SpendChart chart={data.chart} isDark={isDark} />
+      )}
       <TransactionList transactions={data.transactions} isDark={isDark} />
     </div>
   );
 }
 
-function LoadingSkeleton({ isDark }: { isDark: boolean }) {
-  const pulseColor = isDark ? "#2d2d2d" : "#f3f4f6";
+function LoadingSkeleton({ bgColor }: { bgColor: string }) {
   const barStyle: React.CSSProperties = {
     height: 12,
     borderRadius: 6,
-    backgroundColor: pulseColor,
+    backgroundColor: bgColor,
     marginBottom: 8,
   };
   return (
     <div data-testid="loading-skeleton" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ ...barStyle, width: "60%" }} />
       <div style={{ ...barStyle, height: 20, width: "100%" }} />
-      <div style={{ flex: 1, backgroundColor: pulseColor, borderRadius: 6 }} />
+      <div style={{ flex: 1, backgroundColor: bgColor, borderRadius: 6 }} />
       <div style={{ ...barStyle, width: "90%" }} />
       <div style={{ ...barStyle, width: "75%" }} />
       <div style={{ ...barStyle, width: "85%" }} />
