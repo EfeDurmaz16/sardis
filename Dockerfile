@@ -1,6 +1,6 @@
 # Multi-stage build for Sardis FastAPI backend
 # Stage 1: Builder
-FROM python:3.14-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN uv pip install --python /app/.venv/bin/python \
     "gunicorn>=25" "uvicorn[standard]"
 
 # Stage 2: Runtime
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
