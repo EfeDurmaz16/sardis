@@ -348,5 +348,19 @@ async def create_fx_signer() -> FXSigner:
     if signer._has_eoa:
         modes.append("eoa")
 
+    # Enforce Turnkey MPC in production — never silently fall back to EOA
+    env = os.getenv("SARDIS_ENV", "").lower()
+    chain_mode = os.getenv("SARDIS_CHAIN_MODE", "").lower()
+    is_production = env in ("production", "prod") or chain_mode == "live"
+
+    if is_production and not signer._has_turnkey:
+        raise RuntimeError(
+            "Turnkey MPC credentials required in production. "
+            "Set TURNKEY_API_KEY, TURNKEY_API_PRIVATE_KEY, "
+            "TURNKEY_ORGANIZATION_ID, and SARDIS_TURNKEY_WALLET_ID. "
+            "EOA fallback is not allowed when SARDIS_ENV=production "
+            "or SARDIS_CHAIN_MODE=live."
+        )
+
     logger.info("FX signer initialized: %s", " + ".join(modes) or "NONE")
     return signer
