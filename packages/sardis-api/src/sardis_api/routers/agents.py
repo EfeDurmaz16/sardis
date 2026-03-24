@@ -1072,3 +1072,135 @@ async def reactivate_agent_kya(
         kya_status="active",
         manifest=agent.metadata.get("manifest"),
     )
+
+
+# ── Spend Widget Endpoint ──────────────────────────────────────────────
+
+class SpendingBudgetResponse(BaseModel):
+    used: Decimal
+    total: Decimal
+    period: str
+
+
+class SpendingChartPoint(BaseModel):
+    date: str
+    amount: Decimal
+
+
+class SpendingTransactionExplanation(BaseModel):
+    checks_failed: list[str]
+    suggested_action: str
+
+
+class SpendingTransaction(BaseModel):
+    id: str
+    date: str
+    recipient: str
+    amount: Decimal
+    status: str
+    explanation: SpendingTransactionExplanation | None = None
+
+
+class AgentSpendingResponse(BaseModel):
+    budget: SpendingBudgetResponse
+    chart: list[SpendingChartPoint]
+    transactions: list[SpendingTransaction]
+
+
+_spending_cache: dict[str, tuple[float, AgentSpendingResponse]] = {}
+_SPENDING_CACHE_TTL = 30  # seconds
+
+
+@router.get("/{agent_id}/spending", response_model=AgentSpendingResponse)
+async def get_agent_spending(
+    agent_id: str,
+    period: str = Query(default="7d", regex="^(7d|30d)$"),
+    deps: AgentDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Return spending summary for the spend widget: budget, chart, transactions."""
+    import time
+
+    cache_key = f"{agent_id}:{period}"
+    now = time.time()
+    if cache_key in _spending_cache:
+        ts, cached = _spending_cache[cache_key]
+        if now - ts < _SPENDING_CACHE_TTL:
+            return cached
+
+    agent = await deps.agent_repo.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if agent.owner_id != principal.user_id and not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    days = 7 if period == "7d" else 30
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+
+    # Query execution receipts for this agent
+    budget_total = Decimal(str(agent.spending_limits.daily)) * days
+    budget_used = Decimal("0")
+    chart_data: dict[str, Decimal] = {}
+    txns: list[SpendingTransaction] = []
+
+    try:
+        from sardis_v2_core import get_db_pool
+
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, created_at, recipient, amount, status, metadata
+                FROM execution_receipts
+                WHERE agent_id = $1 AND created_at >= $2
+                ORDER BY created_at DESC
+                LIMIT 200
+                """,
+                agent_id,
+                cutoff,
+            )
+
+            for row in rows:
+                amt = Decimal(str(row["amount"]))
+                if row["status"] == "completed":
+                    budget_used += amt
+                day_key = row["created_at"].strftime("%b %d")
+                chart_data[day_key] = chart_data.get(day_key, Decimal("0")) + amt
+
+                explanation = None
+                if row["status"] == "blocked" and row.get("metadata"):
+                    meta = row["metadata"] if isinstance(row["metadata"], dict) else {}
+                    if "checks_failed" in meta:
+                        explanation = SpendingTransactionExplanation(
+                            checks_failed=meta["checks_failed"],
+                            suggested_action=meta.get("suggested_action", "Contact admin"),
+                        )
+
+                txns.append(
+                    SpendingTransaction(
+                        id=row["id"],
+                        date=row["created_at"].strftime("%Y-%m-%d"),
+                        recipient=row.get("recipient", "Unknown"),
+                        amount=amt,
+                        status=row["status"],
+                        explanation=explanation,
+                    )
+                )
+    except Exception:
+        logger.warning("Failed to query execution_receipts for spending widget, returning empty data")
+
+    # Build chart points for each day in range
+    chart: list[SpendingChartPoint] = []
+    for i in range(days):
+        day = datetime.now(UTC) - timedelta(days=days - 1 - i)
+        key = day.strftime("%b %d")
+        chart.append(SpendingChartPoint(date=key, amount=chart_data.get(key, Decimal("0"))))
+
+    result = AgentSpendingResponse(
+        budget=SpendingBudgetResponse(used=budget_used, total=budget_total, period=period),
+        chart=chart,
+        transactions=txns[:50],
+    )
+
+    _spending_cache[cache_key] = (now, result)
+    return result
