@@ -273,7 +273,7 @@ console.log(applied.policy_id);
 ## Cards (Virtual Cards + Simulated Purchase Demo)
 
 ```typescript
-// Issue a virtual card (Lithic-backed)
+// Issue a virtual card (Stripe Issuing)
 const card = await client.cards.issue({
   wallet_id: wallet.id,
   limit_per_tx: "100.00",
