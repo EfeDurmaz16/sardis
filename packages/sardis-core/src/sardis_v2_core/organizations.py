@@ -504,13 +504,28 @@ class OrganizationManager:
         org_id: str,
         parent_team_id: str | None = None,
     ) -> list[Team]:
-        """Get all teams in an organization, optionally filtered by parent."""
+        """Get all teams in an organization, optionally filtered by parent.
+
+        When parent_team_id is provided, uses a recursive CTE to fetch
+        the entire sub-tree in a single query instead of requiring the
+        caller to issue separate queries per level (N+1).
+        """
         if self._use_postgres:
             from sardis_v2_core.database import Database
 
             if parent_team_id is not None:
                 rows = await Database.fetch(
-                    "SELECT * FROM teams WHERE org_id = $1 AND parent_team_id = $2",
+                    """
+                    WITH RECURSIVE team_tree AS (
+                        SELECT * FROM teams
+                        WHERE org_id = $1 AND parent_team_id = $2
+                        UNION ALL
+                        SELECT t.* FROM teams t
+                        INNER JOIN team_tree tt ON t.parent_team_id = tt.id
+                        WHERE t.org_id = $1
+                    )
+                    SELECT * FROM team_tree
+                    """,
                     org_id,
                     parent_team_id,
                 )
