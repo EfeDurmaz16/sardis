@@ -24,6 +24,7 @@ const DASHBOARD_PREFIXES = [
   "/provider-health", "/counterparties", "/fallback-rules",
   "/live-events", "/approval-config", "/exceptions",
   "/webhook-manager",
+  "/kyb", "/terms", "/api-key", "/mandate", "/first-payment",
 ];
 
 export function middleware(request: NextRequest) {
