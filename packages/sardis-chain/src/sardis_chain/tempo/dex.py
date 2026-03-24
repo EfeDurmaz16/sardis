@@ -331,29 +331,35 @@ class TempoDEXAdapter:
 
         amount_raw = int(amount * Decimal("1000000"))
 
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(
-                    self._rpc_url,
-                    json={
-                        "jsonrpc": "2.0",
-                        "method": "eth_call",
-                        "params": [{
-                            "to": DEX_ADDRESS,
-                            "data": self._encode_get_rate(from_token, to_token, amount_raw),
-                        }, "latest"],
-                        "id": 1,
-                    },
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                self._rpc_url,
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "eth_call",
+                    "params": [{
+                        "to": DEX_ADDRESS,
+                        "data": self._encode_get_rate(from_token, to_token, amount_raw),
+                    }, "latest"],
+                    "id": 1,
+                },
+            )
+            result = resp.json()
+
+        if "error" in result:
+            raise RuntimeError(f"DEX rate query failed: {result['error']}")
+
+        if "result" in result and result["result"] != "0x":
+            rate_raw = int(result["result"], 16)
+            if rate_raw == 0:
+                raise RuntimeError(
+                    f"DEX rate query returned zero for {from_token}/{to_token}"
                 )
-                result = resp.json()
+            return Decimal(rate_raw) / Decimal(10**18)
 
-            if "result" in result and result["result"] != "0x":
-                rate_raw = int(result["result"], 16)
-                return Decimal(rate_raw) / Decimal(10**18)
-        except Exception:
-            logger.debug("DEX rate query failed, using fallback rate")
-
-        return Decimal("1.0")
+        raise RuntimeError(
+            f"DEX rate query returned empty result for {from_token}/{to_token}"
+        )
 
     @staticmethod
     def _encode_get_rate(from_token: str, to_token: str, amount: int) -> str:
