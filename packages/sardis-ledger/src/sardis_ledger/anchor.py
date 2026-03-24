@@ -548,7 +548,12 @@ class AnchorScheduler:
     based on configured intervals and entry thresholds.
     """
 
-    def __init__(self, config: AnchorConfig, chain_provider: Any | None = None):
+    def __init__(
+        self,
+        config: AnchorConfig,
+        chain_provider: Any | None = None,
+        compliance_audit_store: Any | None = None,
+    ):
         """
         Initialize anchor scheduler.
 
@@ -556,15 +561,21 @@ class AnchorScheduler:
             config: Anchor configuration
             chain_provider: Optional chain provider passed through to LedgerAnchor instances.
                             If None, simulated mode is used.
+            compliance_audit_store: Optional PostgresAuditStore from sardis-compliance.
+                                   When provided, compliance decisions are included in
+                                   Merkle anchoring alongside main ledger entries.
         """
         self.config = config
         self._chain_provider = chain_provider
+        self._compliance_audit_store = compliance_audit_store
+        self._last_compliance_anchor_count: int = 0
         self._running = False
         self._task: asyncio.Task | None = None
 
         logger.info(
             f"AnchorScheduler initialized: interval={config.anchor_interval}s, "
-            f"min_entries={config.min_entries_per_anchor}"
+            f"min_entries={config.min_entries_per_anchor}, "
+            f"compliance_store={'yes' if compliance_audit_store else 'no'}"
         )
 
     async def run(self, ledger_engine: Any, anchor: LedgerAnchor) -> None:
@@ -594,6 +605,23 @@ class AnchorScheduler:
                     # For now, simulate with empty list
                     unanchored_entries: list[dict] = []
 
+                    # Include compliance audit entries if store is wired
+                    if self._compliance_audit_store:
+                        try:
+                            from inspect import isawaitable
+                            recent_or_aw = self._compliance_audit_store.get_recent(
+                                limit=self.config.max_entries_per_anchor,
+                            )
+                            recent = await recent_or_aw if isawaitable(recent_or_aw) else recent_or_aw
+                            # Only include entries we haven't anchored yet
+                            new_entries = recent[self._last_compliance_anchor_count:]
+                            for entry in new_entries:
+                                unanchored_entries.append(
+                                    entry.to_dict() if hasattr(entry, "to_dict") else entry
+                                )
+                        except Exception as ce:
+                            logger.warning(f"Failed to fetch compliance entries for anchoring: {ce}")
+
                     # Check if we should create an anchor
                     should_anchor = (
                         len(unanchored_entries) >= self.config.min_entries_per_anchor
@@ -613,11 +641,9 @@ class AnchorScheduler:
                             f"tx={tx_hash[:16]}..."
                         )
 
-                        datetime.now(UTC)
-                        if unanchored_entries:
-                            unanchored_entries[-1].get(
-                                "entry_id", unanchored_entries[-1].get("audit_id")
-                            )
+                        # Update compliance anchor watermark
+                        if self._compliance_audit_store:
+                            self._last_compliance_anchor_count += len(unanchored_entries)
                     else:
                         logger.debug(
                             f"Skipping anchor: only {len(unanchored_entries)} entries "
