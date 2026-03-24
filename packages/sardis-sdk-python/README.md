@@ -217,7 +217,7 @@ Manage non-custodial MPC wallets:
 # Create a wallet for an agent
 wallet = await client.wallets.create(
     agent_id=agent.agent_id,
-    mpc_provider="turnkey",  # or "fireblocks"
+    mpc_provider="turnkey",
     limit_per_tx="500.00",
     limit_total="10000.00",
 )
