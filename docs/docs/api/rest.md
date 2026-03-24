@@ -11,11 +11,11 @@ Testnet:    https://api-testnet.sardis.sh/v2
 
 ## Authentication
 
-All API requests require authentication via API key in the `Authorization` header:
+All API requests require authentication via API key in the `X-API-Key` header:
 
 ```bash
 curl https://api.sardis.sh/v2/wallets \
-  -H "Authorization: Bearer sk_..."
+  -H "X-API-Key: sk_..."
 ```
 
 ### Getting an API Key
@@ -696,7 +696,7 @@ Prevent duplicate payments with idempotency keys:
 
 ```bash
 curl https://api.sardis.sh/v2/payments \
-  -H "Authorization: Bearer sk_..." \
+  -H "X-API-Key: sk_..." \
   -H "Idempotency-Key: unique-key-123" \
   -d '{"wallet_id": "wallet_abc123", "amount": "50", "token": "USDC", "to": "0x..."}'
 ```
