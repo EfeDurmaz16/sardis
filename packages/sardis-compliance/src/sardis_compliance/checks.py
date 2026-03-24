@@ -645,6 +645,7 @@ class ComplianceEngine:
 
             # KYC verification (if service available and not already blocked)
             if result.allowed and self._kyc_service:
+                kyc_provider_name = getattr(self._kyc_service, "PROVIDER_NAME", None) or type(self._kyc_service).__name__.lower().replace("kycprovider", "")
                 try:
                     kyc = await self._kyc_service.check_verification(mandate.subject)
                     if not kyc.is_verified:
@@ -654,7 +655,7 @@ class ComplianceEngine:
                                 allowed=False,
                                 reason="kyc_denied",
                                 rule_id="kyc_verification",
-                                provider="persona",
+                                provider=kyc_provider_name,
                             )
                         else:
                             # Not verified yet - fail closed
@@ -662,7 +663,7 @@ class ComplianceEngine:
                                 allowed=False,
                                 reason=f"kyc_not_verified: status={kyc_status}",
                                 rule_id="kyc_verification",
-                                provider="persona",
+                                provider=kyc_provider_name,
                             )
                 except Exception as e:
                     logger.warning(f"KYC check error for {mandate.subject}: {e}")
@@ -671,7 +672,7 @@ class ComplianceEngine:
                         allowed=False,
                         reason=f"kyc_service_error: {str(e)}",
                         rule_id="kyc_verification",
-                        provider="persona",
+                        provider=kyc_provider_name,
                     )
 
         # Record to audit trail (ALWAYS, regardless of outcome)

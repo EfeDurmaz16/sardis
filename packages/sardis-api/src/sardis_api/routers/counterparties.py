@@ -17,8 +17,52 @@ from sardis_api.authz import Principal, require_principal
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
 
-# In-memory store (replace with DB)
+# DB-backed with in-memory cache
 _counterparties: dict[str, dict] = {}
+
+
+async def _persist_counterparty(cpty_id: str, record: dict) -> None:
+    """Write counterparty to DB."""
+    _counterparties[cpty_id] = record
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO counterparties (id, name, type, identifier, data, updated_at)
+               VALUES ($1, $2, $3, $4, $5, NOW())
+               ON CONFLICT (id) DO UPDATE SET data = $5, updated_at = NOW()""",
+            cpty_id, record["name"], record["type"], record["identifier"],
+            json.dumps(record, default=str),
+        )
+    except Exception as exc:
+        logger.warning("Failed to persist counterparty %s to DB: %s", cpty_id, exc)
+
+
+async def _delete_counterparty_from_db(cpty_id: str) -> None:
+    """Remove counterparty from DB."""
+    _counterparties.pop(cpty_id, None)
+    try:
+        from sardis_v2_core.database import Database
+        await Database.execute("DELETE FROM counterparties WHERE id = $1", cpty_id)
+    except Exception as exc:
+        logger.warning("Failed to delete counterparty %s from DB: %s", cpty_id, exc)
+
+
+async def _load_counterparty(cpty_id: str) -> dict | None:
+    """Load counterparty from cache or DB."""
+    if cpty_id in _counterparties:
+        return _counterparties[cpty_id]
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        row = await Database.fetchrow("SELECT data FROM counterparties WHERE id = $1", cpty_id)
+        if row:
+            data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            _counterparties[cpty_id] = data
+            return data
+    except Exception:
+        pass
+    return None
 
 
 class CounterpartyCreate(BaseModel):
@@ -83,7 +127,7 @@ async def create_counterparty(body: CounterpartyCreate, principal: Principal = D
         "created_at": now,
         "updated_at": now,
     }
-    _counterparties[cpty_id] = record
+    await _persist_counterparty(cpty_id, record)
     logger.info("Created counterparty id=%s name=%s type=%s", cpty_id, body.name, body.type)
     return CounterpartyResponse(**record)
 
@@ -104,19 +148,21 @@ async def list_counterparties(
 
 @router.get("/{cpty_id}", response_model=CounterpartyResponse)
 async def get_counterparty(cpty_id: str):
-    if cpty_id not in _counterparties:
+    data = await _load_counterparty(cpty_id)
+    if data is None:
         raise HTTPException(status_code=404, detail=f"Counterparty {cpty_id} not found")
-    return CounterpartyResponse(**_counterparties[cpty_id])
+    return CounterpartyResponse(**data)
 
 
 @router.patch("/{cpty_id}", response_model=CounterpartyResponse)
 async def update_counterparty(cpty_id: str, body: CounterpartyUpdate):
-    if cpty_id not in _counterparties:
+    record = await _load_counterparty(cpty_id)
+    if record is None:
         raise HTTPException(status_code=404, detail=f"Counterparty {cpty_id} not found")
-    record = _counterparties[cpty_id]
-    for field, value in body.model_dump(exclude_unset=True).items():
-        record[field] = value
+    for field_name, value in body.model_dump(exclude_unset=True).items():
+        record[field_name] = value
     record["updated_at"] = datetime.now(UTC).isoformat()
+    await _persist_counterparty(cpty_id, record)
     logger.info("Updated counterparty id=%s", cpty_id)
     return CounterpartyResponse(**record)
 
@@ -124,10 +170,9 @@ async def update_counterparty(cpty_id: str, body: CounterpartyUpdate):
 @router.get("/{cpty_id}/trust-profile", response_model=TrustProfileResponse)
 async def get_trust_profile(cpty_id: str):
     """Get trust profile for a counterparty including reliability and policy compatibility."""
-    if cpty_id not in _counterparties:
+    cpty = await _load_counterparty(cpty_id)
+    if cpty is None:
         raise HTTPException(status_code=404, detail=f"Counterparty {cpty_id} not found")
-
-    cpty = _counterparties[cpty_id]
     trust_status = cpty.get("trust_status", "pending")
 
     # Derive mock trust score from trust_status
@@ -174,7 +219,8 @@ async def get_trust_profile(cpty_id: str):
 
 @router.delete("/{cpty_id}", status_code=204)
 async def delete_counterparty(cpty_id: str):
-    if cpty_id not in _counterparties:
+    data = await _load_counterparty(cpty_id)
+    if data is None:
         raise HTTPException(status_code=404, detail=f"Counterparty {cpty_id} not found")
-    del _counterparties[cpty_id]
+    await _delete_counterparty_from_db(cpty_id)
     logger.info("Deleted counterparty id=%s", cpty_id)

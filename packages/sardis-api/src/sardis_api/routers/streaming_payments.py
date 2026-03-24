@@ -21,8 +21,27 @@ from sardis_api.authz import Principal, require_principal
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
 
-# In-memory stream sessions (production: Redis or DB)
-_active_streams: dict[str, dict] = {}
+# Stream sessions stored in Redis for multi-instance support.
+# Falls back to in-memory dict only in dev/test (single instance).
+import os as _os
+
+_active_streams: dict[str, dict] = {}  # process-local cache (always kept for channel_mgr)
+
+
+async def _persist_stream_meta(stream_id: str, data: dict) -> None:
+    """Write serializable stream metadata to Redis when available."""
+    url = _os.getenv("SARDIS_REDIS_URL", "")
+    if not url:
+        return
+    try:
+        import json as _json
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(url, decode_responses=True)
+        serializable = {k: str(v) if isinstance(v, Decimal) else v for k, v in data.items() if k not in ("channel_mgr", "events")}
+        await r.set(f"stream:{stream_id}", _json.dumps(serializable), ex=86400)
+        await r.close()
+    except Exception as exc:
+        logger.warning("Redis stream persist failed for %s: %s", stream_id, exc)
 
 
 class OpenStreamRequest(BaseModel):
@@ -86,7 +105,7 @@ async def open_stream(
     )
 
     stream_id = f"stream_{uuid4().hex[:12]}"
-    _active_streams[stream_id] = {
+    stream_data = {
         "channel_id": session.channel_id,
         "channel_mgr": channel_mgr,
         "unit_price": req.unit_price,
@@ -97,6 +116,8 @@ async def open_stream(
         "status": "open",
         "events": asyncio.Queue(),
     }
+    _active_streams[stream_id] = stream_data
+    await _persist_stream_meta(stream_id, stream_data)
 
     return StreamResponse(
         stream_id=stream_id,

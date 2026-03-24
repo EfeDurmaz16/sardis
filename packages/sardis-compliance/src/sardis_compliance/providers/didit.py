@@ -56,10 +56,20 @@ class DiditKYCProvider(KYCProvider):
     ):
         self._api_key = api_key or os.getenv("DIDIT_API_KEY", "")
         self._webhook_secret = webhook_secret or os.getenv("DIDIT_WEBHOOK_SECRET", "")
-        self._workflow_id = workflow_id or os.getenv(
-            "DIDIT_WORKFLOW_ID",
-            "5851a693-9276-4d7e-ae87-d5f348b5f0bd",  # Custom KYC default
-        )
+
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+        workflow_from_env = os.getenv("DIDIT_WORKFLOW_ID", "")
+        if workflow_id:
+            self._workflow_id = workflow_id
+        elif workflow_from_env:
+            self._workflow_id = workflow_from_env
+        elif env in ("prod", "production"):
+            raise ValueError(
+                "DIDIT_WORKFLOW_ID environment variable is required in production. "
+                "Set it to your Didit workflow UUID."
+            )
+        else:
+            self._workflow_id = "5851a693-9276-4d7e-ae87-d5f348b5f0bd"  # Dev fallback
 
         if not self._api_key:
             raise ValueError(

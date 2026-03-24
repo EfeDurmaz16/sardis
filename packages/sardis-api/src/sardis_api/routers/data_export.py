@@ -26,17 +26,90 @@ _logger = logging.getLogger("sardis.api.data_export")
 router = APIRouter(prefix="/api/v2/account", tags=["account"])
 
 # ---------------------------------------------------------------------------
-# In-memory stores (process-local; good enough for single-instance / tests)
+# Stores — DB-backed with process-local cache
 # ---------------------------------------------------------------------------
 
-# export_id -> export record dict
+# export_id -> export record dict (process-local cache)
 _export_store: dict[str, dict[str, Any]] = {}
 
-# user_id -> datetime of last export request
+# user_id -> datetime of last export request (process-local cache)
 _rate_limit_store: dict[str, datetime.datetime] = {}
 
 _RATE_LIMIT_HOURS = 24
 _EXPORT_TTL_DAYS = 7
+
+
+async def _persist_export(export_id: str, record: dict[str, Any]) -> None:
+    """Write export record to DB."""
+    _export_store[export_id] = record
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        await Database.execute(
+            """INSERT INTO data_exports (export_id, user_id, status, data, expires_at, created_at)
+               VALUES ($1, $2, $3, $4, $5, NOW())
+               ON CONFLICT (export_id) DO UPDATE SET status = $3, data = $4""",
+            export_id, record["user_id"], record["status"],
+            json.dumps(record, default=str),
+            record.get("expires_at"),
+        )
+    except Exception as exc:
+        _logger.warning("Failed to persist export %s to DB: %s", export_id, exc)
+
+
+async def _load_export(export_id: str) -> dict[str, Any] | None:
+    """Load export from cache or DB."""
+    if export_id in _export_store:
+        return _export_store[export_id]
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        row = await Database.fetchrow(
+            "SELECT data FROM data_exports WHERE export_id = $1", export_id,
+        )
+        if row:
+            data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            _export_store[export_id] = data
+            return data
+    except Exception:
+        pass
+    return None
+
+
+async def _check_rate_limit(user_id: str) -> datetime.datetime | None:
+    """Check rate limit from cache or Redis."""
+    if user_id in _rate_limit_store:
+        return _rate_limit_store[user_id]
+    import os
+    url = os.getenv("SARDIS_REDIS_URL", "")
+    if url:
+        try:
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(url, decode_responses=True)
+            val = await r.get(f"export_rate:{user_id}")
+            await r.close()
+            if val:
+                ts = datetime.datetime.fromisoformat(val)
+                _rate_limit_store[user_id] = ts
+                return ts
+        except Exception:
+            pass
+    return None
+
+
+async def _set_rate_limit(user_id: str, now: datetime.datetime) -> None:
+    """Set rate limit in cache and Redis."""
+    _rate_limit_store[user_id] = now
+    import os
+    url = os.getenv("SARDIS_REDIS_URL", "")
+    if url:
+        try:
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(url, decode_responses=True)
+            await r.set(f"export_rate:{user_id}", now.isoformat(), ex=_RATE_LIMIT_HOURS * 3600)
+            await r.close()
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +275,7 @@ async def create_export(
     now = _now_utc()
 
     # --- rate limit check ---
-    last = _rate_limit_store.get(user_id)
+    last = await _check_rate_limit(user_id)
     if last is not None:
         elapsed = now - last
         if elapsed < datetime.timedelta(hours=_RATE_LIMIT_HOURS):
@@ -234,8 +307,8 @@ async def create_export(
         "expires_at": expires_at.isoformat(),
         "created_at": now.isoformat(),
     }
-    _export_store[export_id] = record
-    _rate_limit_store[user_id] = now
+    await _persist_export(export_id, record)
+    await _set_rate_limit(user_id, now)
 
     _logger.info("GDPR export created export_id=%s user_id=%s", export_id, user_id)
 
@@ -262,7 +335,7 @@ async def get_export(
     Returns 410 Gone if the export has expired.
     Returns the status object if still pending/processing.
     """
-    record = _export_store.get(export_id)
+    record = await _load_export(export_id)
     if record is None or record["user_id"] != principal.user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -303,6 +376,23 @@ async def list_exports(
 ) -> list[ExportListItem]:
     """Return all export records for the authenticated user, newest first."""
     user_id = principal.user_id
+
+    # Try DB first, fall back to process-local cache
+    records: list[dict[str, Any]] = []
+    try:
+        from sardis_v2_core.database import Database
+        import json
+        rows = await Database.fetch(
+            "SELECT data FROM data_exports WHERE user_id = $1 ORDER BY created_at DESC",
+            user_id,
+        )
+        for row in rows:
+            data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]
+            records.append(data)
+    except Exception:
+        # Fall back to cache
+        records = [r for r in _export_store.values() if r["user_id"] == user_id]
+
     results = [
         ExportListItem(
             export_id=r["export_id"],
@@ -310,8 +400,7 @@ async def list_exports(
             expires_at=r.get("expires_at"),
             created_at=r["created_at"],
         )
-        for r in _export_store.values()
-        if r["user_id"] == user_id
+        for r in records
     ]
     results.sort(key=lambda x: x.created_at, reverse=True)
     return results
