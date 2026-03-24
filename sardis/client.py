@@ -863,6 +863,57 @@ class SardisClient:
         self.groups = GroupManager(self)
         self.ledger = LedgerManager(self)
 
+    def pay(
+        self,
+        to: str,
+        amount: float | str | Decimal,
+        *,
+        currency: str = "USDC",
+        chain: str = "base",
+        mandate_id: str | None = None,
+    ) -> TransactionResult | dict:
+        """Execute a payment — the simplest way to pay with Sardis.
+
+        Args:
+            to: Recipient address or merchant domain
+            amount: Payment amount
+            currency: Token (default USDC)
+            chain: Target chain (default base)
+            mandate_id: Optional spending mandate ID
+
+        Returns:
+            TransactionResult in simulation mode, dict in production mode.
+        """
+        if not self._simulation and hasattr(self, "_prod_client"):
+            import httpx
+            resp = httpx.post(
+                f"{self._prod_client._base_url}/api/v2/pay",
+                json={
+                    "to": to,
+                    "amount": str(amount),
+                    "currency": currency,
+                    "chain": chain,
+                    "mandate_id": mandate_id,
+                },
+                headers={"X-API-Key": self._prod_client._api_key},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+        # Simulation mode: find or create a wallet and execute locally
+        wallets = list(self._wallets.values())
+        if not wallets:
+            wallet = self.wallets.create(name="default-pay", chain=chain, token=currency)
+        else:
+            wallet = wallets[0]
+        return self.payments.send(
+            wallet_id=wallet.wallet_id,
+            to=to,
+            amount=amount,
+            token=currency,
+        )
+
     @property
     def is_simulation(self) -> bool:
         """True if running in local simulation mode."""
