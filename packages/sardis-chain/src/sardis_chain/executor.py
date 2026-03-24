@@ -1506,299 +1506,79 @@ class LocalAccountSigner(MPCSignerPort):
         return signed.signature.hex()
 
 
-@dataclass
-class RPCEndpoint:
-    """An RPC endpoint with health tracking."""
-    url: str
-    priority: int = 0  # Lower is higher priority
-    healthy: bool = True
-    last_check: datetime = field(default_factory=lambda: datetime.now(UTC))
-    failure_count: int = 0
-    latency_ms: float = 0.0
-
-    # Health thresholds
-    MAX_FAILURES = 3
-    HEALTH_CHECK_INTERVAL = 60  # seconds
-
-    def mark_success(self, latency_ms: float) -> None:
-        """Mark endpoint as healthy after successful call."""
-        self.healthy = True
-        self.failure_count = 0
-        self.latency_ms = latency_ms
-        self.last_check = datetime.now(UTC)
-
-    def mark_failure(self) -> None:
-        """Mark endpoint as potentially unhealthy after failure."""
-        self.failure_count += 1
-        if self.failure_count >= self.MAX_FAILURES:
-            self.healthy = False
-        self.last_check = datetime.now(UTC)
-
-    def needs_health_check(self) -> bool:
-        """Check if this endpoint needs a health check."""
-        if self.healthy:
-            return False
-        elapsed = (datetime.now(UTC) - self.last_check).total_seconds()
-        return elapsed >= self.HEALTH_CHECK_INTERVAL
-
-
-# Additional fallback RPC URLs for each chain
-FALLBACK_RPC_URLS = {
-    "base_sepolia": [
-        "https://sepolia.base.org",
-        "https://base-sepolia-rpc.publicnode.com",
-    ],
-    "base": [
-        "https://mainnet.base.org",
-        "https://base-mainnet.public.blastapi.io",
-    ],
-    "polygon": [
-        "https://polygon-rpc.com",
-        "https://polygon-mainnet.public.blastapi.io",
-    ],
-    "polygon_amoy": [
-        "https://rpc-amoy.polygon.technology",
-    ],
-    "ethereum": [
-        "https://eth.llamarpc.com",
-        "https://ethereum-rpc.publicnode.com",
-    ],
-    "ethereum_sepolia": [
-        "https://rpc.sepolia.org",
-        "https://ethereum-sepolia-rpc.publicnode.com",
-    ],
-    "arbitrum": [
-        "https://arb1.arbitrum.io/rpc",
-        "https://arbitrum-one-rpc.publicnode.com",
-    ],
-    "arbitrum_sepolia": [
-        "https://sepolia-rollup.arbitrum.io/rpc",
-    ],
-    "optimism": [
-        "https://mainnet.optimism.io",
-        "https://optimism-rpc.publicnode.com",
-    ],
-    "optimism_sepolia": [
-        "https://sepolia.optimism.io",
-    ],
-}
-
-
 class ChainRPCClient:
-    """
-    JSON-RPC client with fallback RPC providers and health checking.
+    """Legacy RPC client -- thin wrapper around ProductionRPCClient.
 
-    Features:
-    - Multiple RPC endpoints per chain
-    - Automatic failover on errors
-    - Health-based endpoint selection
-    - Latency-based prioritization
+    Kept for backward compatibility with deposit_monitor and other consumers.
+    New code should use ProductionRPCClient directly.
     """
 
     def __init__(self, rpc_url: str, chain: str = ""):
+        from .config import RPCEndpointConfig, ChainConfig
+        config = ChainConfig(
+            name=chain,
+            display_name=chain,
+            chain_id=CHAIN_CONFIGS.get(chain, {}).get("chain_id", 0),
+            rpc_endpoints=[RPCEndpointConfig(url=rpc_url, priority=0)],
+        )
+        self._delegate = ProductionRPCClient(
+            chain=chain,
+            chain_config=config,
+            validate_chain_id_on_connect=False,
+        )
         self._chain = chain
-        self._request_id = 0
-        self._http_client = None
-
-        # Initialize endpoints with primary and fallbacks
-        self._endpoints: list[RPCEndpoint] = [
-            RPCEndpoint(url=rpc_url, priority=0)
-        ]
-
-        # Add fallback endpoints
-        if chain in FALLBACK_RPC_URLS:
-            for i, url in enumerate(FALLBACK_RPC_URLS[chain]):
-                if url != rpc_url:  # Don't duplicate primary
-                    self._endpoints.append(RPCEndpoint(url=url, priority=i + 1))
-
-    async def _get_client(self):
-        """Get or create HTTP client."""
-        if self._http_client is None:
-            import httpx
-            self._http_client = httpx.AsyncClient(timeout=30)
-        return self._http_client
-
-    def _get_healthy_endpoint(self) -> RPCEndpoint:
-        """Get the best healthy endpoint based on priority and latency."""
-        healthy = [e for e in self._endpoints if e.healthy]
-        if not healthy:
-            # All unhealthy, return lowest priority one and hope for the best
-            return min(self._endpoints, key=lambda e: e.priority)
-
-        # Sort by priority, then by latency
-        return min(healthy, key=lambda e: (e.priority, e.latency_ms))
 
     async def _call(self, method: str, params: list[Any] = None) -> Any:
-        """Make JSON-RPC call with automatic failover."""
-        import time
-
-        self._request_id += 1
-        payload = {
-            "jsonrpc": "2.0",
-            "id": self._request_id,
-            "method": method,
-            "params": params or [],
-        }
-
-        # Try endpoints in order of health/priority
-        last_error = None
-        tried_endpoints = set()
-
-        for _attempt in range(len(self._endpoints)):
-            endpoint = self._get_healthy_endpoint()
-
-            # Skip if we've already tried this endpoint
-            if endpoint.url in tried_endpoints:
-                # Try any untried endpoint
-                untried = [e for e in self._endpoints if e.url not in tried_endpoints]
-                if not untried:
-                    break
-                endpoint = untried[0]
-
-            tried_endpoints.add(endpoint.url)
-
-            try:
-                client = await self._get_client()
-                start_time = time.time()
-
-                response = await client.post(
-                    endpoint.url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                )
-
-                latency_ms = (time.time() - start_time) * 1000
-                response.raise_for_status()
-                result = response.json()
-
-                if "error" in result:
-                    endpoint.mark_failure()
-                    last_error = Exception(f"RPC error: {result['error']}")
-                    continue
-
-                # Success!
-                endpoint.mark_success(latency_ms)
-                return result.get("result")
-
-            except Exception as e:
-                endpoint.mark_failure()
-                last_error = e
-                logger.warning(f"RPC call to {endpoint.url} failed: {e}")
-                continue
-
-        # All endpoints failed
-        raise last_error or Exception("All RPC endpoints failed")
-
-    async def health_check(self) -> dict[str, bool]:
-        """Perform health check on all endpoints."""
-        results = {}
-
-        for endpoint in self._endpoints:
-            try:
-                # Simple block number check
-                await self._call_endpoint(endpoint, "eth_blockNumber", [])
-                endpoint.healthy = True
-                endpoint.failure_count = 0
-                results[endpoint.url] = True
-            except Exception:
-                endpoint.healthy = False
-                results[endpoint.url] = False
-
-        return results
-
-    async def _call_endpoint(self, endpoint: RPCEndpoint, method: str, params: list[Any]) -> Any:
-        """Make a call to a specific endpoint."""
-        self._request_id += 1
-        payload = {
-            "jsonrpc": "2.0",
-            "id": self._request_id,
-            "method": method,
-            "params": params,
-        }
-
-        client = await self._get_client()
-        response = await client.post(
-            endpoint.url,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-        )
-        response.raise_for_status()
-        result = response.json()
-
-        if "error" in result:
-            raise Exception(f"RPC error: {result['error']}")
-
-        return result.get("result")
-
-    def get_endpoint_stats(self) -> list[dict[str, Any]]:
-        """Get stats for all endpoints."""
-        return [
-            {
-                "url": e.url,
-                "priority": e.priority,
-                "healthy": e.healthy,
-                "failure_count": e.failure_count,
-                "latency_ms": e.latency_ms,
-            }
-            for e in self._endpoints
-        ]
+        return await self._delegate.call(method, params or [])
 
     async def get_gas_price(self) -> int:
-        """Get current gas price in wei."""
         result = await self._call("eth_gasPrice")
         return int(result, 16)
 
     async def get_max_priority_fee(self) -> int:
-        """Get max priority fee for EIP-1559."""
         try:
             result = await self._call("eth_maxPriorityFeePerGas")
             return int(result, 16)
         except Exception:
-            # Fallback for chains that don't support this
-            return 1_000_000_000  # 1 gwei
+            return 1_000_000_000
 
     async def estimate_gas(self, tx: dict[str, Any]) -> int:
-        """Estimate gas for a transaction."""
         result = await self._call("eth_estimateGas", [tx])
         return int(result, 16)
 
     async def get_nonce(self, address: str) -> int:
-        """Get transaction count (nonce) for address."""
         result = await self._call("eth_getTransactionCount", [address, "pending"])
         return int(result, 16)
 
     async def get_balance(self, address: str) -> int:
-        """Get ETH balance for address in wei."""
         result = await self._call("eth_getBalance", [address, "latest"])
         return int(result, 16)
 
     async def send_raw_transaction(self, signed_tx: str) -> str:
-        """Broadcast signed transaction."""
-        # Ensure hex prefix
         if not signed_tx.startswith("0x"):
             signed_tx = "0x" + signed_tx
         result = await self._call("eth_sendRawTransaction", [signed_tx])
         return result
 
-    # Alias for backwards compatibility
     async def broadcast_transaction(self, signed_tx: str) -> str:
-        """Broadcast signed transaction (alias for send_raw_transaction)."""
         return await self.send_raw_transaction(signed_tx)
 
     async def get_transaction_receipt(self, tx_hash: str) -> dict[str, Any] | None:
-        """Get transaction receipt."""
         return await self._call("eth_getTransactionReceipt", [tx_hash])
 
     async def get_block_number(self) -> int:
-        """Get current block number."""
         result = await self._call("eth_blockNumber")
         return int(result, 16)
 
+    async def health_check(self) -> dict[str, bool]:
+        return await self._delegate.health_check()
+
+    def get_endpoint_stats(self) -> list[dict[str, Any]]:
+        return self._delegate.get_endpoint_stats()
+
     async def close(self):
-        """Close HTTP client."""
-        if self._http_client:
-            await self._http_client.aclose()
-            self._http_client = None
+        await self._delegate.close()
+
 
 
 def encode_erc20_transfer(to_address: str, amount: int) -> bytes:
