@@ -129,41 +129,40 @@ class TempoFeePayer:
         sender_address, auth_list, optional key_auth, sender_signature.
         """
         if not self._private_key:
-            return "0x78" + "0" * 128  # Placeholder when no key configured
+            raise RuntimeError(
+                "Fee payer private key required for 0x78 envelope signing. "
+                "Set SARDIS_FEE_PAYER_KEY."
+            )
 
-        try:
-            from eth_account import Account
+        import rlp
+        from eth_account import Account
+        from eth_hash.auto import keccak
 
-            # Build the fee payer envelope fields
-            envelope_fields = [
-                tx_data.get("chainId", 4217),           # chain_id
-                tx_data.get("maxPriorityFeePerGas", 0),  # priority fee
-                tx_data.get("maxFeePerGas", 0),          # max fee
-                tx_data.get("gas", 1000000),             # gas limit
-                tx_data.get("calls", []),                # batch calls
-                [],                                       # access list
-                tx_data.get("nonceKey", 0),              # 2D nonce key
-                tx_data.get("nonceSeq", 0),              # 2D nonce seq
-                tx_data.get("validBefore", 0),           # expiry timestamp
-                tx_data.get("validAfter", 0),            # start timestamp
-                tx_data.get("feeToken", b""),             # fee token address
-            ]
+        # Build the fee payer envelope fields
+        envelope_fields = [
+            tx_data.get("chainId", 4217),           # chain_id
+            tx_data.get("maxPriorityFeePerGas", 0),  # priority fee
+            tx_data.get("maxFeePerGas", 0),          # max fee
+            tx_data.get("gas", 1000000),             # gas limit
+            tx_data.get("calls", []),                # batch calls
+            [],                                       # access list
+            tx_data.get("nonceKey", 0),              # 2D nonce key
+            tx_data.get("nonceSeq", 0),              # 2D nonce seq
+            tx_data.get("validBefore", 0),           # expiry timestamp
+            tx_data.get("validAfter", 0),            # start timestamp
+            tx_data.get("feeToken", b""),             # fee token address
+        ]
 
-            # Hash the envelope for signing
-            import hashlib
-            envelope_bytes = str(envelope_fields).encode()
-            msg_hash = hashlib.sha256(b"\x78" + envelope_bytes).digest()
+        # RLP-encode the envelope and hash with 0x78 magic byte prefix
+        rlp_encoded = rlp.encode(envelope_fields)
+        msg_hash = keccak(b"\x78" + rlp_encoded)
 
-            # Sign with fee payer private key
-            signed = Account.unsafe_sign_hash(msg_hash, self._private_key)
-            sig_bytes = signed.signature
+        # Sign with fee payer private key
+        signed = Account.unsafe_sign_hash(msg_hash, self._private_key)
+        sig_bytes = signed.signature
 
-            # Return 0x78 prefix + RLP-encoded envelope + signature
-            return "0x78" + sig_bytes.hex()
-
-        except ImportError:
-            logger.warning("eth_account not installed — using placeholder fee payer signature")
-            return "0x78" + "0" * 128
+        # Return 0x78 prefix + signature
+        return "0x78" + sig_bytes.hex()
 
     @property
     def daily_spent(self) -> Decimal:
