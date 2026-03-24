@@ -1,0 +1,289 @@
+@import "tailwindcss";
+
+/* === Geist Font Family (Vercel) === */
+
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Sans";
+  src: url("/fonts/geist/Geist-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/geist/GeistMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 17px;
+
+  --sardis-canvas: #fff8f0;
+  --sardis-ink: #1a1614;
+  --sardis-orange: #ff4f00;
+  --sardis-teal: #9DD9D2;
+  --sardis-teal-strong: #3BA99E;
+  --sardis-rose: #f4d0df;
+  --sardis-rose-strong: #c4708a;
+  --sardis-gray: #e0ddd8;
+  --sardis-ghost: #fff8f0;
+  --sardis-border: #1a1614;
+
+  --font-display: "Geist Mono", "Fira Code", monospace;
+  --font-body: "Geist Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Fira Code", monospace;
+
+  --background: #fff8f0;
+  --foreground: #1a1614;
+  --card: #fff8f0;
+  --card-foreground: #1a1614;
+  --popover: #fff8f0;
+  --popover-foreground: #1a1614;
+  --primary: #ff4f00;
+  --primary-foreground: #fff8f0;
+  --secondary: #9DD9D2;
+  --secondary-foreground: #1a1614;
+  --muted: #f0ece6;
+  --muted-foreground: #6b6560;
+  --accent: #ff4f00;
+  --accent-foreground: #fff8f0;
+  --destructive: #dc2626;
+  --destructive-foreground: #fff8f0;
+  --border: #d6d3cd;
+  --input: #d6d3cd;
+  --ring: #ff4f00;
+  --radius: 0px;
+
+  /* Landing page theme tokens */
+  --landing-bg: #FAFAFA;
+  --landing-surface: #FFFFFF;
+  --landing-surface-elevated: #F5F5F5;
+  --landing-border: rgba(0, 0, 0, 0.08);
+  --landing-border-hover: rgba(0, 0, 0, 0.15);
+  --landing-text-primary: #1A1A1A;
+  --landing-text-secondary: #4A4A4A;
+  --landing-text-tertiary: #5A5A64;
+  --landing-text-muted: #6E6E78;
+  --landing-text-ghost: #8A8A94;
+  --landing-accent: #FF4F00;
+  --landing-accent-hover: #ff6a2a;
+  --landing-blue: #3B7AE0;
+  --landing-green: #16A34A;
+  --landing-amber: #D97706;
+  --landing-red: #DC2626;
+  --landing-button-bg: #1A1A1A;
+  --landing-button-text: #FFFFFF;
+  --landing-button-hover: #333333;
+  --landing-code-bg: #F5F5F5;
+  --landing-mockup-bg: #FAFAFA;
+  --landing-mockup-surface: #FFFFFF;
+  --landing-marquee-text: #C8C8CC;
+}
+
+.dark {
+  --background: #0c0a09;
+  --foreground: #fafaf9;
+  --card: #0c0a09;
+  --card-foreground: #fafaf9;
+  --popover: #0c0a09;
+  --popover-foreground: #fafaf9;
+  --primary: #ff4f00;
+  --primary-foreground: #0c0a09;
+  --secondary: #1c1917;
+  --secondary-foreground: #fafaf9;
+  --muted: #1c1917;
+  --muted-foreground: #a8a29e;
+  --accent: #ff4f00;
+  --accent-foreground: #0c0a09;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafaf9;
+  --border: #292524;
+  --input: #292524;
+  --ring: #ff4f00;
+
+  /* Landing specific dark */
+  --landing-bg: #08090A;
+  --landing-surface: #111318;
+  --landing-surface-elevated: #1A1B22;
+  --landing-border: rgba(255, 255, 255, 0.10);
+  --landing-border-hover: rgba(255, 255, 255, 0.18);
+  --landing-text-primary: #ECECEE;
+  --landing-text-secondary: #A0A0AA;
+  --landing-text-tertiary: #8A8A94;
+  --landing-text-muted: #7A7C8A;
+  --landing-text-ghost: #606068;
+  --landing-accent: #FF4F00;
+  --landing-accent-hover: #ff6a2a;
+  --landing-blue: #5B8DEF;
+  --landing-green: #4ADE80;
+  --landing-amber: #E8A44A;
+  --landing-red: #E85D5D;
+  --landing-button-bg: #ECECEE;
+  --landing-button-text: #0C0D10;
+  --landing-button-hover: #D0D0D4;
+  --landing-code-bg: #111318;
+  --landing-mockup-bg: #111318;
+  --landing-mockup-surface: #08090A;
+  --landing-marquee-text: #3A3A4A;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  --font-display: "Geist Mono", "Fira Code", monospace;
+  --font-sans: "Geist Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Fira Code", monospace;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    font-weight: 400;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    font-kerning: normal;
+    font-feature-settings: "kern", "liga", "calt";
+    text-rendering: optimizeLegibility;
+    text-wrap: pretty;
+    hanging-punctuation: first allow-end last;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    hyphens: none;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  h1 { margin-top: 0; }
+
+  blockquote {
+    font-size: 0.95em;
+    padding-left: 1.5rem;
+    border-left: 3px solid var(--sardis-orange);
+  }
+
+  p + p {
+    margin-top: 0.75em;
+  }
+}
+
+/* Marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none !important;
+  }
+}
+
+/* Protocol Card */
+.protocol-card {
+  background: var(--background);
+  border: 1px solid var(--border);
+  transition: all 0.2s ease;
+}
+
+.protocol-card:hover {
+  border-color: var(--sardis-orange);
+}
+
+/* Orange accent text */
+.orange-text {
+  color: var(--sardis-orange);
+}
