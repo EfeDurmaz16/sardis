@@ -146,6 +146,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="policies" element={<DocsPolicies />} />
           <Route path="time-based-policies" element={<DocsTimeBasedPolicies />} />
           <Route path="merchant-categories" element={<DocsMerchantCategories />} />
+          <Route path="webhooks" element={<DocsWebhooks />} />
           {/* SDKs & Tools */}
           <Route path="sdk-python" element={<DocsSDKPython />} />
           <Route path="sdk-typescript" element={<DocsSDKTypeScript />} />

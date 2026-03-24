@@ -32,6 +32,7 @@ const navigation = [
       { name: 'Policies', href: '/docs/policies' },
       { name: 'Time-Based Policies', href: '/docs/time-based-policies' },
       { name: 'Merchant Categories', href: '/docs/merchant-categories' },
+      { name: 'Webhooks', href: '/docs/webhooks' },
     ],
   },
   {
