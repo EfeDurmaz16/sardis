@@ -80,14 +80,14 @@ const EXAMPLE_POLICIES = [
 
 const TOKEN_OPTIONS = ['USDC', 'USDT', 'EURC', 'PYUSD']
 
-const MOCK_DESTINATIONS = [
+const SAMPLE_DESTINATIONS = [
   'OpenAI', 'Anthropic', 'AWS', 'Google Cloud', 'Vercel',
   'Stripe', 'Twilio', 'GitHub', 'Cloudflare', 'DataDog',
   'PokerStars', 'DraftKings', 'Binance', 'Coinbase',
   'Shopify', 'Heroku', 'DigitalOcean', 'Netlify',
 ]
 
-const MOCK_PURPOSES = [
+const SAMPLE_PURPOSES = [
   'API inference call', 'Cloud compute', 'Data storage',
   'Monitoring service', 'CI/CD pipeline', 'Domain renewal',
   'Model fine-tuning', 'Database hosting', 'CDN bandwidth',
@@ -283,9 +283,9 @@ function generateRandomTransactions(policy: ParsedPolicy, count: number): SimTra
   for (let i = 0; i < count; i++) {
     const maxRange = policy.per_tx_limit ? policy.per_tx_limit * 2.5 : 200
     const amount = parseFloat((Math.random() * maxRange + 1).toFixed(2))
-    const destination = MOCK_DESTINATIONS[Math.floor(Math.random() * MOCK_DESTINATIONS.length)]
+    const destination = SAMPLE_DESTINATIONS[Math.floor(Math.random() * SAMPLE_DESTINATIONS.length)]
     const token = TOKEN_OPTIONS[Math.floor(Math.random() * TOKEN_OPTIONS.length)]
-    const purpose = MOCK_PURPOSES[Math.floor(Math.random() * MOCK_PURPOSES.length)]
+    const purpose = SAMPLE_PURPOSES[Math.floor(Math.random() * SAMPLE_PURPOSES.length)]
 
     const result = checkTransaction({ amount, destination, token, purpose }, policy, runningTotal)
     if (result.status === 'approved') runningTotal += amount
