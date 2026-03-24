@@ -13,6 +13,15 @@ export default function DocsIntegrationN8N() {
         </p>
       </div>
 
+      <div className="not-prose mb-8 p-4 border border-yellow-500/30 bg-yellow-500/5 rounded-lg">
+        <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-1">Coming Soon</p>
+        <p className="text-sm text-muted-foreground">
+          The n8n Sardis node is not yet available for installation. This page describes the planned integration.
+          In the meantime, you can use the <a href="/docs/api-reference" className="underline hover:text-foreground">REST API</a> directly
+          from n8n's HTTP Request node.
+        </p>
+      </div>
+
       <section className="mb-12">
         <h2 className="text-2xl font-bold font-display mb-4 flex items-center gap-2">
           <span className="text-[var(--sardis-orange)]">#</span> Installation
