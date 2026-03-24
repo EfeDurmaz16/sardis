@@ -1,5 +1,6 @@
 import './global.css';
 import { RootProvider } from 'fumadocs-ui/provider';
+import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
@@ -15,7 +16,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          <AISearch>
+            {children}
+            <AISearchPanel />
+            <AISearchTrigger
+              position="float"
+              className="rounded-2xl border border-fd-border bg-fd-background px-4 py-2 text-sm text-fd-muted-foreground shadow-lg transition-colors hover:bg-fd-muted"
+            >
+              Ask AI
+            </AISearchTrigger>
+          </AISearch>
+        </RootProvider>
       </body>
     </html>
   );
