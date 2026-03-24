@@ -760,6 +760,25 @@ class LedgerManager:
 # ---------------------------------------------------------------------------
 
 
+class _StubManager:
+    """Stub for production-only resource managers.
+
+    Raises NotImplementedError with a clear message pointing users
+    to the full sardis-sdk package for production features.
+    """
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def __getattr__(self, attr: str) -> Any:
+        def _stub(*_args: Any, **_kwargs: Any) -> Any:
+            raise NotImplementedError(
+                f"'{self._name}.{attr}()' requires the production SDK. "
+                f"Install it: pip install sardis-sdk"
+            )
+        return _stub
+
+
 class SardisClient:
     """
     Sardis client for agent payments with policy enforcement.
@@ -862,6 +881,66 @@ class SardisClient:
         self.payments = PaymentManager(self)
         self.groups = GroupManager(self)
         self.ledger = LedgerManager(self)
+
+        # Stub managers for production-only features
+        self.payment_objects = _StubManager("payment_objects")
+        self.fx = _StubManager("fx")
+        self.holds = _StubManager("holds")
+        self.policies = _StubManager("policies")
+        self.subscriptions = _StubManager("subscriptions")
+        self.escrow = _StubManager("escrow")
+        self.mandates = _StubManager("mandates")
+
+    def pay(
+        self,
+        to: str,
+        amount: float | str | Decimal,
+        *,
+        currency: str = "USDC",
+        chain: str = "base",
+        mandate_id: str | None = None,
+    ) -> TransactionResult | dict:
+        """Execute a payment — the simplest way to pay with Sardis.
+
+        Args:
+            to: Recipient address or merchant domain
+            amount: Payment amount
+            currency: Token (default USDC)
+            chain: Target chain (default base)
+            mandate_id: Optional spending mandate ID
+
+        Returns:
+            TransactionResult in simulation mode, dict in production mode.
+        """
+        if not self._simulation and hasattr(self, "_prod_client"):
+            import httpx
+            resp = httpx.post(
+                f"{self._prod_client._base_url}/api/v2/pay",
+                json={
+                    "to": to,
+                    "amount": str(amount),
+                    "currency": currency,
+                    "chain": chain,
+                    "mandate_id": mandate_id,
+                },
+                headers={"X-API-Key": self._prod_client._api_key},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+        # Simulation mode: find or create a wallet and execute locally
+        wallets = list(self._wallets.values())
+        if not wallets:
+            wallet = self.wallets.create(name="default-pay", chain=chain, token=currency)
+        else:
+            wallet = wallets[0]
+        return self.payments.send(
+            wallet_id=wallet.wallet_id,
+            to=to,
+            amount=amount,
+            token=currency,
+        )
 
     @property
     def is_simulation(self) -> bool:

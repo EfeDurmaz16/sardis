@@ -3,6 +3,9 @@
  *
  * Tools for creating, managing, and validating spending mandates —
  * the core authorization primitive for AI agent payments.
+ *
+ * API base: /api/v2/spending-mandates (registered in sardis-api/main.py)
+ * Query params: status_filter, agent_id (match API exactly)
  */
 
 import { z } from 'zod';

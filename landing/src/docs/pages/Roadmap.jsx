@@ -91,7 +91,7 @@ export default function Roadmap() {
         { text: 'UCP (Universal Commerce Protocol)', done: true },
         { text: 'A2A (Agent-to-Agent) protocol', done: true },
         { text: 'TAP identity verification', done: true },
-        { text: 'MCP Server expanded to 36+ tools', done: true },
+        { text: 'MCP Server expanded to 52 tools', done: true },
       ],
     },
     {

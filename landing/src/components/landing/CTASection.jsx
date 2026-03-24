@@ -34,6 +34,30 @@ export default function CTASection() {
               Get Started Free
             </span>
           </a>
+          <a
+            href="mailto:contact@sardis.sh"
+            className="rounded-lg py-3.5 px-9 transition-colors text-center inline-block"
+            style={{
+              border: '1px solid var(--landing-border)',
+              color: 'var(--landing-text-secondary)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--landing-text-muted)';
+              e.currentTarget.style.color = 'var(--landing-text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--landing-border)';
+              e.currentTarget.style.color = 'var(--landing-text-secondary)';
+            }}
+          >
+            <span
+              className="text-[15px] font-medium"
+              style={{ fontFamily: "'Inter', sans-serif" }}
+            >
+              Book a Demo →
+            </span>
+          </a>
         </div>
       </div>
     </section>

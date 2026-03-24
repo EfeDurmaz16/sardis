@@ -29,7 +29,7 @@ const wallet = await client.wallets.create({
 });
 
 // Execute payment
-const payment = await client.payments.execute({
+const payment = await client.payments.executeMandate({
   walletId: wallet.id,
   to: '0x1234...',
   amount: '50',
@@ -145,7 +145,7 @@ await client.wallets.delete('wallet_abc123');
 ### Execute Payment
 
 ```typescript
-const payment = await client.payments.execute({
+const payment = await client.payments.executeMandate({
   walletId: 'wallet_abc123',
   to: '0x1234567890abcdef1234567890abcdef12345678',
   amount: '50.00',
@@ -363,7 +363,7 @@ import {
 } from '@sardis/sdk';
 
 try {
-  const payment = await client.payments.execute({
+  const payment = await client.payments.executeMandate({
     walletId: 'wallet_abc123',
     to: '0x...',
     amount: '10000',
@@ -490,7 +490,7 @@ export async function POST(request: NextRequest) {
   const { walletId, amount, to } = await request.json();
 
   try {
-    const payment = await client.payments.execute({
+    const payment = await client.payments.executeMandate({
       walletId,
       to,
       amount,
@@ -518,7 +518,7 @@ const client = new SardisClient({ apiKey: process.env.SARDIS_API_KEY! });
 
 app.post('/payments', async (req, res) => {
   try {
-    const payment = await client.payments.execute({
+    const payment = await client.payments.executeMandate({
       walletId: req.body.walletId,
       to: req.body.to,
       amount: req.body.amount,

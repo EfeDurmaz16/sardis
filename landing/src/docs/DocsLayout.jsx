@@ -32,6 +32,7 @@ const navigation = [
       { name: 'Policies', href: '/docs/policies' },
       { name: 'Time-Based Policies', href: '/docs/time-based-policies' },
       { name: 'Merchant Categories', href: '/docs/merchant-categories' },
+      { name: 'Webhooks', href: '/docs/webhooks' },
     ],
   },
   {
@@ -53,6 +54,7 @@ const navigation = [
       { name: 'MCP Server', href: '/docs/mcp-server' },
       { name: 'API Reference', href: '/docs/api-reference' },
       { name: 'Interactive API', href: '/docs/api-reference-interactive' },
+      { name: 'Error Codes', href: '/docs/error-reference' },
     ],
   },
   {
@@ -67,6 +69,8 @@ const navigation = [
       { name: 'Browser Use', href: '/docs/integration-browser-use' },
       { name: 'AutoGPT', href: '/docs/integration-autogpt' },
       { name: 'Composio', href: '/docs/integration-composio' },
+      { name: 'Vercel AI SDK', href: '/docs/integration-vercel-ai-sdk' },
+      { name: 'MPP / Tempo', href: '/docs/integration-mpp' },
       { name: 'n8n', href: '/docs/integration-n8n' },
     ],
   },

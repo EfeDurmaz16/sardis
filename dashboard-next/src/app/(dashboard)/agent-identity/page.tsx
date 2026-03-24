@@ -132,11 +132,6 @@ export default function AgentIdentityPage() {
   }
 
   const verifiedAgents = agents.filter(a => a.status === 'verified').length
-  const avgReputation = agents.length > 0
-    ? (agents.reduce((sum, a) => sum + a.reputation_score, 0) / agents.length).toFixed(1)
-    : '0'
-  const totalValidations = agents.reduce((sum, a) => sum + a.validation_count, 0)
-  const totalTrustedBy = agents.reduce((sum, a) => sum + a.metadata.trusted_by, 0)
 
   return (
     <div className="space-y-8">
@@ -150,19 +145,28 @@ export default function AgentIdentityPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowReputationForm(true)}
-            className="px-4 py-2 bg-dark-200 text-gray-400 hover:bg-dark-100 hover:text-white transition-colors font-medium flex items-center gap-2"
-          >
-            <Star className="w-4 h-4" />
-            Submit Reputation
-          </button>
-          <button
             onClick={() => setShowRegisterForm(true)}
             className="px-4 py-2 bg-sardis-500 text-white hover:bg-sardis-600 transition-colors font-medium flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Register Agent
           </button>
+        </div>
+      </div>
+
+      {/* Coming Soon Banner */}
+      <div className="card p-6 border border-sardis-500/20 bg-sardis-500/5">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Award className="w-5 h-5 text-sardis-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-white mb-1">Agent Identity &amp; Reputation &mdash; Coming Soon</h3>
+            <p className="text-sm text-gray-400">
+              Decentralized identity (DID) and on-chain reputation scoring are under active development.
+              Your agents are listed below, and reputation data will appear here once the protocol is live.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -200,23 +204,23 @@ export default function AgentIdentityPage() {
             />
             <StatCard
               title="Avg Reputation"
-              value={avgReputation}
-              change="Out of 100"
-              changeType="positive"
+              value={'\u2014'}
+              change="Coming soon"
+              changeType="neutral"
               icon={<Award className="w-6 h-6" />}
             />
             <StatCard
               title="Total Validations"
-              value={totalValidations.toLocaleString()}
-              change="All time"
-              changeType="positive"
+              value={'\u2014'}
+              change="Coming soon"
+              changeType="neutral"
               icon={<CheckCircle className="w-6 h-6" />}
             />
             <StatCard
               title="Trust Network"
-              value={totalTrustedBy.toString()}
-              change="Connected entities"
-              changeType="positive"
+              value={'\u2014'}
+              change="Coming soon"
+              changeType="neutral"
               icon={<Shield className="w-6 h-6" />}
             />
           </div>
@@ -272,34 +276,22 @@ export default function AgentIdentityPage() {
                   <div className="grid grid-cols-4 gap-4 mb-3">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Reputation</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-dark-300 rounded-full h-2">
-                          <div
-                            className={clsx('h-2 rounded-full', getReputationBgColor(agent.reputation_score))}
-                            style={{ width: `${Math.max(agent.reputation_score, 1)}%` }}
-                          />
-                        </div>
-                        <span className={clsx('text-sm font-bold mono-numbers', getReputationColor(agent.reputation_score))}>
-                          {agent.reputation_score}
-                        </span>
-                      </div>
+                      <span className="text-xs text-gray-500 italic">Coming soon</span>
                     </div>
 
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Validations</p>
-                      <p className="text-sm font-medium text-white mono-numbers">{agent.validation_count}</p>
+                      <span className="text-xs text-gray-500 italic">Coming soon</span>
                     </div>
 
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Total Volume</p>
-                      <p className="text-sm font-medium text-sardis-400 mono-numbers">
-                        ${agent.total_volume.toLocaleString()}
-                      </p>
+                      <span className="text-xs text-gray-500 italic">Coming soon</span>
                     </div>
 
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Trusted By</p>
-                      <p className="text-sm font-medium text-white mono-numbers">{agent.metadata.trusted_by}</p>
+                      <span className="text-xs text-gray-500 italic">Coming soon</span>
                     </div>
                   </div>
 

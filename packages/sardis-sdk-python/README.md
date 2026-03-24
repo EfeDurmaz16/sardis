@@ -217,7 +217,7 @@ Manage non-custodial MPC wallets:
 # Create a wallet for an agent
 wallet = await client.wallets.create(
     agent_id=agent.agent_id,
-    mpc_provider="turnkey",  # or "fireblocks"
+    mpc_provider="turnkey",
     limit_per_tx="500.00",
     limit_total="10000.00",
 )
@@ -242,13 +242,12 @@ await client.wallets.set_address(
 
 | Chain | Mainnet | Testnet |
 |-------|---------|---------|
+| Arc (Circle L1) | `arc` | `arc_testnet` |
 | Base | `base` | `base_sepolia` |
 | Polygon | `polygon` | `polygon_amoy` |
 | Ethereum | `ethereum` | `ethereum_sepolia` |
 | Arbitrum | `arbitrum` | `arbitrum_sepolia` |
 | Optimism | `optimism` | `optimism_sepolia` |
-
-> **Note:** Solana support is planned but not yet implemented.
 
 ## Supported Tokens
 
@@ -279,41 +278,15 @@ token: Token = "USDC"
 
 ## Framework Integrations
 
-### LangChain
+> **Deprecated:** The built-in integration shims (`sardis_sdk.integrations.*`) are deprecated. Use the standalone packages instead for better maintenance and framework-specific features.
 
-```python
-from sardis_sdk.integrations.langchain import SardisToolkit
-
-toolkit = SardisToolkit(client=client)
-tools = toolkit.get_tools()
-
-# Use with LangChain agent
-agent = create_openai_functions_agent(llm, tools, prompt)
-```
-
-### LlamaIndex
-
-```python
-from sardis_sdk.integrations.llamaindex import SardisToolSpec
-
-tool_spec = SardisToolSpec(client=client)
-tools = tool_spec.to_tool_list()
-
-# Use with LlamaIndex agent
-agent = OpenAIAgent.from_tools(tools)
-```
-
-### OpenAI Function Calling
-
-```python
-from sardis_sdk.integrations.openai import sardis_functions, handle_sardis_call
-
-# Get function definitions
-functions = sardis_functions(client)
-
-# Handle function calls
-result = await handle_sardis_call(client, function_name, arguments)
-```
+| Framework | Standalone Package | Install |
+|-----------|-------------------|---------|
+| LangChain | `sardis-langchain` | `pip install sardis-langchain` |
+| OpenAI Agents | `sardis-openai-agents` | `pip install sardis-openai-agents` |
+| CrewAI | `sardis-crewai` | `pip install sardis-crewai` |
+| Google ADK | `sardis-adk` | `pip install sardis-adk` |
+| Anthropic Agent SDK | `sardis-agent-sdk` | `pip install sardis-agent-sdk` |
 
 ## License
 

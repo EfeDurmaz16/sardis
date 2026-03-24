@@ -112,7 +112,7 @@ client = SardisClient(
 )
 
 # Execute payment
-result = await client.payments.execute(
+result = await client.payments.execute_mandate(
     from_wallet="wallet_alice",
     destination="0x1234...",
     amount=50.00,

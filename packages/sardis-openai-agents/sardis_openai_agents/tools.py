@@ -76,11 +76,14 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
-        result = client.payment_objects.mint(
-            wallet_id, mandate_id=mandate_id, amount=amount, token=token,
-            recipient=recipient or None, purpose=purpose or None,
-        )
-        return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+        try:
+            result = client.payment_objects.mint(
+                wallet_id, mandate_id=mandate_id, amount=amount, token=token,
+                recipient=recipient or None, purpose=purpose or None,
+            )
+            return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+        except (NotImplementedError, AttributeError):
+            return "Error: payment_objects requires the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_get_fx_quote(from_token: str, to_token: str, amount: float) -> str:
@@ -88,11 +91,14 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
-        return (
-            f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
-            f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
-        )
+        try:
+            quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
+            return (
+                f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
+                f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
+            )
+        except (NotImplementedError, AttributeError):
+            return "Error: FX quotes require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_create_subscription(mandate_id: str, recipient: str, amount: float, interval: str = "monthly", token: str = "USDC", purpose: str = "") -> str:
@@ -100,15 +106,16 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
-        result = client._request("POST", "/api/v2/mandate-subscriptions", json={
-            "wallet_id": wallet_id, "mandate_id": mandate_id, "recipient": recipient,
-            "amount": amount, "token": token, "interval": interval,
-            "purpose": purpose or None,
-        })
-        return (
-            f"SUBSCRIPTION CREATED: {result.get('subscription_id')} — ${amount} {token} {interval} to {recipient} "
-            f"(next: {result.get('next_payment_at')})"
-        )
+        try:
+            result = client.subscriptions.create(
+                wallet_id=wallet_id, mandate_id=mandate_id, recipient=recipient,
+                amount=amount, token=token, interval=interval,
+                purpose=purpose or None,
+            )
+            sub_id = result.get("subscription_id", "unknown") if isinstance(result, dict) else getattr(result, "subscription_id", "unknown")
+            return f"SUBSCRIPTION CREATED: {sub_id} — ${amount} {token} {interval} to {recipient}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Subscriptions require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_create_escrow(recipient: str, amount: float, token: str = "USDC", description: str = "", deadline_hours: int = 168, arbiter: str = "") -> str:
@@ -116,12 +123,16 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured. Set SARDIS_WALLET_ID or call configure()."
-        result = client._request("POST", "/api/v2/escrow", json={
-            "wallet_id": wallet_id, "recipient": recipient, "amount": amount,
-            "token": token, "description": description or None,
-            "deadline_hours": deadline_hours, "arbiter": arbiter or None,
-        })
-        return f"ESCROW CREATED: {result.get('escrow_id')} — ${amount} {token} held for {recipient} (deadline: {result.get('deadline')})"
+        try:
+            result = client.escrow.create(
+                wallet_id=wallet_id, recipient=recipient, amount=amount,
+                token=token, description=description or None,
+                deadline_hours=deadline_hours, arbiter=arbiter or None,
+            )
+            escrow_id = result.get("escrow_id", "unknown") if isinstance(result, dict) else getattr(result, "escrow_id", "unknown")
+            return f"ESCROW CREATED: {escrow_id} — ${amount} {token} held for {recipient}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Escrow requires the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_list_transactions(limit: int = 10) -> str:
@@ -139,9 +150,12 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client.policies.update(wallet_id, policy_text=policy_text,
-                                         max_per_tx=max_per_tx or None, max_total=max_total or None)
-        return f"Policy updated: per-tx=${result.limit_per_tx}, total=${result.limit_total}"
+        try:
+            result = client.policies.update(wallet_id, policy_text=policy_text,
+                                             max_per_tx=max_per_tx or None, max_total=max_total or None)
+            return f"Policy updated: per-tx=${result.limit_per_tx}, total=${result.limit_total}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Policy management requires the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_create_hold(merchant: str, amount: float, token: str = "USDC") -> str:
@@ -149,45 +163,67 @@ try:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client.holds.create(wallet_id, merchant=merchant, amount=amount, token=token)
-        return f"Hold created: {result.hold_id} — ${amount} {token} for {merchant}"
+        try:
+            result = client.holds.create(wallet_id, merchant=merchant, amount=amount, token=token)
+            return f"Hold created: {result.hold_id} — ${amount} {token} for {merchant}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Holds require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_capture_hold(hold_id: str, amount: float = 0) -> str:
         """Capture (settle) a previously created hold."""
         client, _ = _ensure_client()
-        result = client.holds.capture(hold_id, amount=amount or None)
-        return f"Hold {hold_id} captured: ${result.captured_amount}"
+        try:
+            result = client.holds.capture(hold_id, amount=amount or None)
+            return f"Hold {hold_id} captured: ${result.captured_amount}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Holds require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_void_hold(hold_id: str) -> str:
         """Void (cancel) a previously created hold."""
         client, _ = _ensure_client()
-        client.holds.void(hold_id)
-        return f"Hold {hold_id} voided."
+        try:
+            client.holds.void(hold_id)
+            return f"Hold {hold_id} voided."
+        except (NotImplementedError, AttributeError):
+            return "Error: Holds require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_get_mandate(mandate_id: str) -> str:
         """Get details of a spending mandate."""
         client, _ = _ensure_client()
-        result = client._request("GET", f"/api/v2/mandates/{mandate_id}")
-        return f"Mandate {mandate_id}: status={result.get('status')}, per_tx=${result.get('amount_per_tx')}, total=${result.get('amount_total')}"
+        try:
+            result = client.mandates.get(mandate_id)
+            if isinstance(result, dict):
+                return f"Mandate {mandate_id}: status={result.get('status')}, per_tx=${result.get('amount_per_tx')}, total=${result.get('amount_total')}"
+            return f"Mandate {mandate_id}: status={getattr(result, 'status', 'unknown')}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Mandates require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_list_mandates(status: str = "active") -> str:
         """List spending mandates."""
         client, _ = _ensure_client()
-        results = client._request("GET", f"/api/v2/mandates?status={status}")
-        items = results if isinstance(results, list) else results.get("mandates", [])
-        lines = [f"  {m.get('id')}: {m.get('purpose_scope', 'N/A')} (${m.get('amount_total', '?')})" for m in items[:10]]
-        return f"Mandates ({len(lines)}):\n" + "\n".join(lines) if lines else "No mandates found."
+        try:
+            results = client.mandates.list(status=status)
+            items = results if isinstance(results, list) else getattr(results, "mandates", [])
+            lines = [f"  {m.get('id') if isinstance(m, dict) else getattr(m, 'id', '?')}: {m.get('purpose_scope', 'N/A') if isinstance(m, dict) else 'N/A'}" for m in items[:10]]
+            return f"Mandates ({len(lines)}):\n" + "\n".join(lines) if lines else "No mandates found."
+        except (NotImplementedError, AttributeError):
+            return "Error: Mandates require the production SDK. pip install sardis-sdk"
 
     @function_tool
     def sardis_get_payment_object(object_id: str) -> str:
         """Get details of a payment object."""
         client, _ = _ensure_client()
-        result = client._request("GET", f"/api/v2/payment-objects/{object_id}")
-        return f"PaymentObject {object_id}: status={result.get('status')}, amount=${result.get('exact_amount')}, merchant={result.get('merchant_id')}"
+        try:
+            result = client.payment_objects.get(object_id)
+            if isinstance(result, dict):
+                return f"PaymentObject {object_id}: status={result.get('status')}, amount=${result.get('exact_amount')}, merchant={result.get('merchant_id')}"
+            return f"PaymentObject {object_id}: status={getattr(result, 'status', 'unknown')}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Payment objects require the production SDK. pip install sardis-sdk"
 
 except ImportError:
     # openai-agents not installed - provide plain function versions
@@ -226,49 +262,60 @@ except ImportError:
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client.payment_objects.mint(
-            wallet_id, mandate_id=mandate_id, amount=amount, token=token,
-            recipient=recipient or None, purpose=purpose or None,
-        )
-        return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+        try:
+            result = client.payment_objects.mint(
+                wallet_id, mandate_id=mandate_id, amount=amount, token=token,
+                recipient=recipient or None, purpose=purpose or None,
+            )
+            return f"MINTED: Payment object {result.payment_object_id} for ${amount} {token} (mandate: {mandate_id})"
+        except (NotImplementedError, AttributeError):
+            return "Error: payment_objects requires the production SDK. pip install sardis-sdk"
 
     def sardis_get_fx_quote(from_token: str, to_token: str, amount: float) -> str:
         """Get an FX quote for swapping between stablecoins."""
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
-        return (
-            f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
-            f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
-        )
+        try:
+            quote = client.fx.get_quote(wallet_id, from_token=from_token, to_token=to_token, amount=amount)
+            return (
+                f"FX Quote {quote.quote_id}: {amount} {from_token} -> {quote.output_amount} {to_token} "
+                f"(rate: {quote.exchange_rate}, fee: {quote.fee}, expires: {quote.expires_at})"
+            )
+        except (NotImplementedError, AttributeError):
+            return "Error: FX quotes require the production SDK. pip install sardis-sdk"
 
     def sardis_create_subscription(mandate_id: str, recipient: str, amount: float, interval: str = "monthly", token: str = "USDC", purpose: str = "") -> str:
         """Create a recurring payment subscription funded by a spending mandate."""
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client._request("POST", "/api/v2/mandate-subscriptions", json={
-            "wallet_id": wallet_id, "mandate_id": mandate_id, "recipient": recipient,
-            "amount": amount, "token": token, "interval": interval,
-            "purpose": purpose or None,
-        })
-        return (
-            f"SUBSCRIPTION CREATED: {result.get('subscription_id')} — ${amount} {token} {interval} to {recipient} "
-            f"(next: {result.get('next_payment_at')})"
-        )
+        try:
+            result = client.subscriptions.create(
+                wallet_id=wallet_id, mandate_id=mandate_id, recipient=recipient,
+                amount=amount, token=token, interval=interval,
+                purpose=purpose or None,
+            )
+            sub_id = result.get("subscription_id", "unknown") if isinstance(result, dict) else getattr(result, "subscription_id", "unknown")
+            return f"SUBSCRIPTION CREATED: {sub_id} — ${amount} {token} {interval} to {recipient}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Subscriptions require the production SDK. pip install sardis-sdk"
 
     def sardis_create_escrow(recipient: str, amount: float, token: str = "USDC", description: str = "", deadline_hours: int = 168, arbiter: str = "") -> str:
         """Create an escrow hold that locks funds until delivery is confirmed."""
         client, wallet_id = _ensure_client()
         if not wallet_id:
             return "Error: No wallet ID configured."
-        result = client._request("POST", "/api/v2/escrow", json={
-            "wallet_id": wallet_id, "recipient": recipient, "amount": amount,
-            "token": token, "description": description or None,
-            "deadline_hours": deadline_hours, "arbiter": arbiter or None,
-        })
-        return f"ESCROW CREATED: {result.get('escrow_id')} — ${amount} {token} held for {recipient} (deadline: {result.get('deadline')})"
+        try:
+            result = client.escrow.create(
+                wallet_id=wallet_id, recipient=recipient, amount=amount,
+                token=token, description=description or None,
+                deadline_hours=deadline_hours, arbiter=arbiter or None,
+            )
+            escrow_id = result.get("escrow_id", "unknown") if isinstance(result, dict) else getattr(result, "escrow_id", "unknown")
+            return f"ESCROW CREATED: {escrow_id} — ${amount} {token} held for {recipient}"
+        except (NotImplementedError, AttributeError):
+            return "Error: Escrow requires the production SDK. pip install sardis-sdk"
 
 
 def get_sardis_tools() -> list:

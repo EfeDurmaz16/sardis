@@ -34,7 +34,7 @@ AI agents can reason, but they cannot be trusted with money. Sardis is how they 
         policy="Max $100/day"
     )
 
-    result = client.payments.execute(
+    result = client.payments.execute_mandate(
         wallet_id=wallet.id,
         to="0x...",
         amount=50,
@@ -58,7 +58,7 @@ AI agents can reason, but they cannot be trusted with money. Sardis is how they 
       policy: 'Max $100/day',
     });
 
-    const result = await client.payments.execute({
+    const result = await client.payments.executeMandate({
       walletId: wallet.id,
       to: '0x...',
       amount: 50,

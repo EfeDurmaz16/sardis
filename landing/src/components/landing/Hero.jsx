@@ -363,6 +363,26 @@ export default function Hero() {
             >
               Get Started Free
             </a>
+            <a
+              href="mailto:contact@sardis.sh"
+              className="rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap text-center inline-block"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                border: '1px solid var(--landing-border)',
+                color: 'var(--landing-text-secondary)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'var(--landing-text-muted)';
+                e.currentTarget.style.color = 'var(--landing-text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--landing-border)';
+                e.currentTarget.style.color = 'var(--landing-text-secondary)';
+              }}
+            >
+              Book a Demo →
+            </a>
           </div>
 
           {/* Install command */}

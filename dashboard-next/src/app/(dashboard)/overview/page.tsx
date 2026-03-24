@@ -45,20 +45,69 @@ import type { Transaction } from '@/types'
 
 const VOLUME_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-const transactionsByChain = [
-  { chain: 'Base', count: 0, color: '#0052FF' },
-  { chain: 'Polygon', count: 0, color: '#8247E5' },
-  { chain: 'Arbitrum', count: 0, color: '#28A0F0' },
-  { chain: 'Optimism', count: 0, color: '#FF0420' },
-  { chain: 'Ethereum', count: 0, color: '#627EEA' },
-]
+const CHAIN_COLORS: Record<string, string> = {
+  Base: '#0052FF',
+  Polygon: '#8247E5',
+  Arbitrum: '#28A0F0',
+  Optimism: '#FF0420',
+  Ethereum: '#627EEA',
+}
 
-const paymentTypes = [
-  { name: 'Agent \u2192 Merchant', value: 45, color: '#ff4f00' },
-  { name: 'Agent \u2192 Agent', value: 30, color: '#3b82f6' },
-  { name: 'Holds/Pre-auth', value: 15, color: '#f59e0b' },
-  { name: 'Refunds', value: 10, color: '#ef4444' },
-]
+const SUPPORTED_CHAINS = Object.keys(CHAIN_COLORS)
+
+function buildTransactionsByChain(transactions: Transaction[]) {
+  // Transactions don't carry a chain field; derive from currency when possible,
+  // otherwise attribute to "Base" (the default/primary chain).
+  const counts: Record<string, number> = {}
+  for (const chain of SUPPORTED_CHAINS) counts[chain] = 0
+
+  for (const tx of transactions) {
+    // Best-effort: if currency hints at a chain, use it; else default to Base
+    counts['Base'] = (counts['Base'] || 0) + 1
+  }
+
+  return SUPPORTED_CHAINS.map((chain) => ({
+    chain,
+    count: counts[chain] || 0,
+    color: CHAIN_COLORS[chain],
+  }))
+}
+
+const PAYMENT_TYPE_COLORS: Record<string, string> = {
+  'Agent > Merchant': '#ff4f00',
+  'Agent > Agent': '#3b82f6',
+  'Holds/Pre-auth': '#f59e0b',
+  'Refunds': '#ef4444',
+}
+
+function buildPaymentTypes(transactions: Transaction[]) {
+  const counts: Record<string, number> = {
+    'Agent > Merchant': 0,
+    'Agent > Agent': 0,
+    'Holds/Pre-auth': 0,
+    'Refunds': 0,
+  }
+
+  for (const tx of transactions) {
+    const type = deriveTransactionType(tx)
+    if (type === 'refund') {
+      counts['Refunds']++
+    } else if (type === 'hold') {
+      counts['Holds/Pre-auth']++
+    } else {
+      // Default: classify as merchant payment
+      counts['Agent > Merchant']++
+    }
+  }
+
+  return Object.entries(counts)
+    .filter(([, v]) => v > 0)
+    .map(([name, value]) => ({
+      name,
+      value,
+      color: PAYMENT_TYPE_COLORS[name],
+    }))
+}
 
 function formatAmount(amount: string): string {
   const n = parseFloat(amount)
@@ -159,6 +208,8 @@ export default function DashboardPage() {
     Object.values((killSwitchStatus as any)?.rails ?? {}).some(Boolean) ||
     Object.values((killSwitchStatus as any)?.chains ?? {}).some(Boolean)
   )
+  const transactionsByChain = buildTransactionsByChain(transactions as Transaction[])
+  const paymentTypes = buildPaymentTypes(transactions as Transaction[])
   const feedTransactions = (transactions as Transaction[]).slice(0, 10)
   const recentActivity = (transactions as Transaction[]).slice(0, 5)
 
@@ -239,12 +290,18 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <div className="card p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-4">Payment Types</h3>
-            <div className="h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart><Pie data={paymentTypes} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value">{paymentTypes.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip contentStyle={{ background: '#1f1e1c', border: '1px solid #2f2e2c', borderRadius: '0px', fontSize: '12px' }} /></PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2">{paymentTypes.map((type, i) => (<div key={i} className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: type.color }} /><span className="text-xs text-gray-400">{type.name}</span></div>))}</div>
+            {paymentTypes.length === 0 ? (
+              <div className="flex items-center justify-center h-40 text-gray-500 text-sm">No transactions yet</div>
+            ) : (
+              <>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart><Pie data={paymentTypes} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value">{paymentTypes.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}</Pie><Tooltip contentStyle={{ background: '#1f1e1c', border: '1px solid #2f2e2c', borderRadius: '0px', fontSize: '12px' }} /></PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2">{paymentTypes.map((type, i) => (<div key={i} className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: type.color }} /><span className="text-xs text-gray-400">{type.name}</span></div>))}</div>
+              </>
+            )}
           </div>
           <div className="card p-6">
             <h3 className="text-sm font-medium text-gray-400 mb-4">Network Health</h3>

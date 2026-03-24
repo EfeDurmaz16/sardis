@@ -791,7 +791,7 @@ const releases = [
           'A2A (Agent-to-Agent) protocol - Multi-agent communication and discovery',
           'sardis-ucp package with checkout, order, and fulfillment capabilities',
           'sardis-a2a package with agent cards and message handling',
-          'MCP Server expanded from 4 to 36+ tools',
+          'MCP Server expanded from 4 to 52 tools',
           'AP2 mandate adapter for UCP-AP2 interoperability',
           'Agent discovery service with TTL caching',
           'TAP (Trusted Agent Protocol) identity verification',

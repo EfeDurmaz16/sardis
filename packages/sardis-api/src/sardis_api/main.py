@@ -98,7 +98,7 @@ from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
-from .routers import ap2, auth, mandates, mvp
+from .routers import ap2, auth, mandates, mvp, pay
 from .routers import api_keys as api_keys_router
 from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
@@ -780,6 +780,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         payment_orchestrator=orchestrator,
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
+
+    # Unified /pay endpoint
+    app.dependency_overrides[pay.get_deps] = lambda: pay.PayDependencies(  # type: ignore[arg-type]
+        orchestrator=orchestrator,
+    )
+    app.include_router(pay.router, prefix="/api/v2/pay", tags=["pay"])
 
     app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]
         ledger=ledger_store,

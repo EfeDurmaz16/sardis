@@ -237,7 +237,7 @@ Manage non-custodial MPC wallets:
 // Create a wallet for an agent
 const wallet = await client.wallets.create({
   agent_id: agent.id,
-  mpc_provider: 'turnkey', // or 'fireblocks'
+  mpc_provider: 'turnkey',
   limit_per_tx: '500.00',
   limit_total: '10000.00',
 });
@@ -273,7 +273,7 @@ console.log(applied.policy_id);
 ## Cards (Virtual Cards + Simulated Purchase Demo)
 
 ```typescript
-// Issue a virtual card (Lithic-backed)
+// Issue a virtual card (Stripe Issuing)
 const card = await client.cards.issue({
   wallet_id: wallet.id,
   limit_per_tx: "100.00",
@@ -313,13 +313,12 @@ console.log(tx.tx_hash);
 
 | Chain | Mainnet | Testnet |
 |-------|---------|---------|
+| Arc (Circle L1) | `arc` | `arc_testnet` |
 | Base | `base` | `base_sepolia` |
 | Polygon | `polygon` | `polygon_amoy` |
 | Ethereum | `ethereum` | `ethereum_sepolia` |
 | Arbitrum | `arbitrum` | `arbitrum_sepolia` |
 | Optimism | `optimism` | `optimism_sepolia` |
-
-> **Note:** Solana support is planned but not yet implemented.
 
 ## Supported Tokens
 

@@ -147,7 +147,7 @@ When a transaction violates a policy, Sardis returns a detailed error:
 
 ```python
 try:
-    result = client.payments.execute(
+    result = client.payments.execute_mandate(
         wallet_id=wallet.id,
         to="0x...",
         amount=5000,  # Exceeds daily limit

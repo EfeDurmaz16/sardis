@@ -41,12 +41,14 @@ const DocsHolds = lazy(() => import('./docs/pages/Holds.jsx'))
 const DocsPolicies = lazy(() => import('./docs/pages/Policies.jsx'))
 const DocsTimeBasedPolicies = lazy(() => import('./docs/pages/TimeBasedPolicies.jsx'))
 const DocsMerchantCategories = lazy(() => import('./docs/pages/MerchantCategories.jsx'))
+const DocsWebhooks = lazy(() => import('./docs/pages/Webhooks.jsx'))
 // SDKs & Tools
 const DocsSDKPython = lazy(() => import('./docs/pages/SDKPython.jsx'))
 const DocsSDKTypeScript = lazy(() => import('./docs/pages/SDKTypeScript.jsx'))
 const DocsMCPServer = lazy(() => import('./docs/pages/MCPServer.jsx'))
 const DocsSDK = lazy(() => import('./docs/pages/SDK.jsx'))
 const APIReference = lazy(() => import('./docs/pages/APIReference.jsx'))
+const DocsErrorReference = lazy(() => import('./docs/pages/ErrorReference.jsx'))
 // Framework Integrations
 const DocsIntegrations = lazy(() => import('./docs/pages/Integrations.jsx'))
 const DocsIntegrationLangChain = lazy(() => import('./docs/pages/IntegrationLangChain.jsx'))
@@ -58,6 +60,8 @@ const DocsIntegrationOpenAIAgents = lazy(() => import('./docs/pages/IntegrationO
 const DocsIntegrationComposio = lazy(() => import('./docs/pages/IntegrationComposio.jsx'))
 const DocsIntegrationAutogpt = lazy(() => import('./docs/pages/IntegrationAutogpt.jsx'))
 const DocsIntegrationN8N = lazy(() => import('./docs/pages/IntegrationN8N.jsx'))
+const DocsIntegrationVercelAISdk = lazy(() => import('./docs/pages/IntegrationVercelAISdk.jsx'))
+const DocsIntegrationMPP = lazy(() => import('./docs/pages/IntegrationMPP.jsx'))
 // Resources
 const DocsBlockchainInfrastructure = lazy(() => import('./docs/pages/BlockchainInfrastructure.jsx'))
 const DocsArchitecture = lazy(() => import('./docs/pages/Architecture.jsx'))
@@ -94,6 +98,8 @@ const Enterprise = lazy(() => import('./pages/Enterprise.jsx'))
 // Signup removed — using waitlist for now
 const Pricing = lazy(() => import('./pages/Pricing.jsx'))
 const Status = lazy(() => import('./pages/Status.jsx'))
+// Wedge pages
+const WedgeSecurePayments = lazy(() => import('./pages/WedgeSecurePayments.jsx'))
 // Solution pages
 const AgentPlatformsPage = lazy(() => import('./pages/solutions/AgentPlatforms.jsx'))
 const ProcurementPage = lazy(() => import('./pages/solutions/Procurement.jsx'))
@@ -114,6 +120,7 @@ createRoot(document.getElementById('root')).render(
         <Route path="/solutions/agent-platforms" element={<AgentPlatformsPage />} />
         <Route path="/solutions/procurement" element={<ProcurementPage />} />
         <Route path="/solutions/payouts" element={<PayoutsPage />} />
+        <Route path="/wedge/secure-payments" element={<WedgeSecurePayments />} />
         {/* Signup removed — using waitlist */}
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/status" element={<Status />} />
@@ -140,12 +147,14 @@ createRoot(document.getElementById('root')).render(
           <Route path="policies" element={<DocsPolicies />} />
           <Route path="time-based-policies" element={<DocsTimeBasedPolicies />} />
           <Route path="merchant-categories" element={<DocsMerchantCategories />} />
+          <Route path="webhooks" element={<DocsWebhooks />} />
           {/* SDKs & Tools */}
           <Route path="sdk-python" element={<DocsSDKPython />} />
           <Route path="sdk-typescript" element={<DocsSDKTypeScript />} />
           <Route path="mcp-server" element={<DocsMCPServer />} />
           <Route path="sdk" element={<DocsSDK />} />
           <Route path="api-reference" element={<APIReference />} />
+          <Route path="error-reference" element={<DocsErrorReference />} />
           {/* Framework Integrations */}
           <Route path="integrations" element={<DocsIntegrations />} />
           <Route path="integration-langchain" element={<DocsIntegrationLangChain />} />
@@ -157,6 +166,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="integration-composio" element={<DocsIntegrationComposio />} />
           <Route path="integration-autogpt" element={<DocsIntegrationAutogpt />} />
           <Route path="integration-n8n" element={<DocsIntegrationN8N />} />
+          <Route path="integration-vercel-ai-sdk" element={<DocsIntegrationVercelAISdk />} />
+          <Route path="integration-mpp" element={<DocsIntegrationMPP />} />
           {/* Resources */}
           <Route path="blockchain-infrastructure" element={<DocsBlockchainInfrastructure />} />
           <Route path="architecture" element={<DocsArchitecture />} />
