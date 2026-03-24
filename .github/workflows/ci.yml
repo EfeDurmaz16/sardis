@@ -46,6 +46,7 @@ jobs:
         run: |
           uv run pytest packages/sardis-core/tests/ -v --tb=short
           uv run pytest packages/sardis-ledger/tests/ -v --tb=short
+          uv run pytest packages/sardis-chain/tests/ -v --tb=short
 
   idempotency-replay-e2e:
     name: Idempotency Replay E2E
@@ -174,6 +175,9 @@ jobs:
 
       - name: Type check SDK
         run: pnpm --filter @sardis/sdk-js tsc --noEmit
+
+      - name: Test SDK
+        run: pnpm --filter @sardis/sdk-js test
 
   dashboard-build:
     name: Dashboard Build
