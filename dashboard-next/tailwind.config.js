@@ -6,17 +6,17 @@ const config = {
     extend: {
       colors: {
         sardis: {
-          50: "rgb(240 253 244 / <alpha-value>)",
-          100: "rgb(220 252 231 / <alpha-value>)",
-          200: "rgb(187 247 208 / <alpha-value>)",
-          300: "rgb(134 239 172 / <alpha-value>)",
-          400: "rgb(74 222 128 / <alpha-value>)",
-          500: "rgb(34 197 94 / <alpha-value>)",
-          600: "rgb(22 163 74 / <alpha-value>)",
-          700: "rgb(21 128 61 / <alpha-value>)",
-          800: "rgb(22 101 52 / <alpha-value>)",
-          900: "rgb(20 83 45 / <alpha-value>)",
-          950: "rgb(5 46 22 / <alpha-value>)",
+          50: "rgb(255 247 237 / <alpha-value>)",
+          100: "rgb(255 237 213 / <alpha-value>)",
+          200: "rgb(255 213 173 / <alpha-value>)",
+          300: "rgb(255 169 107 / <alpha-value>)",
+          400: "rgb(255 106 42 / <alpha-value>)",
+          500: "rgb(255 79 0 / <alpha-value>)",
+          600: "rgb(221 62 0 / <alpha-value>)",
+          700: "rgb(180 47 0 / <alpha-value>)",
+          800: "rgb(140 38 0 / <alpha-value>)",
+          900: "rgb(112 32 0 / <alpha-value>)",
+          950: "rgb(64 16 0 / <alpha-value>)",
         },
         dark: {
           100: "#1f1f28",
@@ -42,7 +42,7 @@ const config = {
           muted: "#71717a",
           ghost: "#52525b",
           faint: "#3a3a44",
-          accent: "#22c55e",
+          accent: "#ff4f00",
         },
       },
       fontFamily: {
@@ -57,11 +57,11 @@ const config = {
       keyframes: {
         glow: {
           "0%": {
-            boxShadow: "0 0 5px #22c55e, 0 0 10px #22c55e, 0 0 15px #22c55e",
+            boxShadow: "0 0 5px #ff4f00, 0 0 10px #ff4f00, 0 0 15px #ff4f00",
           },
           "100%": {
             boxShadow:
-              "0 0 10px #22c55e, 0 0 20px #22c55e, 0 0 30px #22c55e",
+              "0 0 10px #ff4f00, 0 0 20px #ff4f00, 0 0 30px #ff4f00",
           },
         },
       },

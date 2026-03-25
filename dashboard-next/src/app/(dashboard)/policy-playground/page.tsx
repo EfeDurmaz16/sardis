@@ -95,7 +95,7 @@ const SAMPLE_PURPOSES = [
 ]
 
 const SPEND_CATEGORIES = [
-  { name: 'AI/ML APIs', value: 340, color: '#22c55e' },
+  { name: 'AI/ML APIs', value: 340, color: '#ff4f00' },
   { name: 'Cloud Infra', value: 220, color: '#3b82f6' },
   { name: 'SaaS Tools', value: 150, color: '#f59e0b' },
   { name: 'Data Services', value: 90, color: '#8b5cf6' },
@@ -519,7 +519,7 @@ export default function PolicyPlaygroundPage() {
           <button
             onClick={handleParsePolicy}
             disabled={!policyText.trim() || isParsing}
-            className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-semibold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-semibold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isParsing ? (
               <div className="w-4 h-4 border-2 border-dark-400 border-t-transparent rounded-full animate-spin" />
@@ -651,7 +651,7 @@ export default function PolicyPlaygroundPage() {
               <button
                 onClick={handleCheckTransaction}
                 disabled={isChecking}
-                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-semibold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-semibold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
               >
                 {isChecking ? (
                   <div className="w-4 h-4 border-2 border-dark-400 border-t-transparent rounded-full animate-spin" />
@@ -843,8 +843,8 @@ export default function PolicyPlaygroundPage() {
                 <AreaChart data={spendData}>
                   <defs>
                     <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#ff4f00" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ff4f00" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2f2e2c" />
@@ -859,7 +859,7 @@ export default function PolicyPlaygroundPage() {
                   <Area
                     type="monotone"
                     dataKey="cumulative"
-                    stroke="#22c55e"
+                    stroke="#ff4f00"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorSpend)"

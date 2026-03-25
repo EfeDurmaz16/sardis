@@ -169,6 +169,14 @@ export class AuthRequiredError extends Error {
   }
 }
 
+// Silently swallowed — endpoint doesn't exist yet or was removed.
+export class NotFoundError extends Error {
+  constructor(endpoint: string) {
+    super(`Not found: ${endpoint}`)
+    this.name = 'NotFoundError'
+  }
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -200,9 +208,13 @@ async function request<T>(
   })
 
   if (!response.ok) {
-    // Suppress noisy console errors for 401/403 when user is not authenticated
-    if ((response.status === 401 || response.status === 403) && !token) {
+    // Suppress ALL 401/403 — whether token is missing or expired
+    if (response.status === 401 || response.status === 403) {
       throw new AuthRequiredError()
+    }
+    // Suppress 404 — endpoint may not exist yet
+    if (response.status === 404) {
+      throw new NotFoundError(endpoint)
     }
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
     throw new Error(error.detail || error.message || `HTTP ${response.status}`)

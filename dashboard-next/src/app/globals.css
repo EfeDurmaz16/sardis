@@ -79,7 +79,7 @@
   --mono-text: #e4e4e7;
   --mono-text-muted: #71717a;
   --mono-text-ghost: #52525b;
-  --mono-accent: #22c55e;
+  --mono-accent: #ff4f00;
 }
 
 /* ── Base styles (premium monokrom) ────────────────── */
@@ -106,16 +106,16 @@ body {
 /* ── Buttons ──────────────────────────────────────── */
 
 .btn-primary {
-  background-color: #22c55e;
-  color: #09090b;
+  background-color: #ff4f00;
+  color: #ffffff;
   font-weight: 600;
   font-size: 14px;
   padding: 8px 16px;
   border-radius: 6px;
   transition: background-color 150ms;
 }
-.btn-primary:hover { background-color: #16a34a; }
-.btn-primary:active { background-color: #15803d; }
+.btn-primary:hover { background-color: #ff6a2a; }
+.btn-primary:active { background-color: #dd3e00; }
 
 .btn-ghost {
   background: transparent;
@@ -174,9 +174,9 @@ input[type="text"], input[type="email"], input[type="password"], textarea, selec
 }
 input::placeholder, textarea::placeholder { color: #52525b; }
 input:focus, textarea:focus, select:focus {
-  border-color: #22c55e;
+  border-color: #ff4f00;
   outline: none;
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+  box-shadow: 0 0 0 1px rgba(255, 79, 0, 0.2);
 }
 
 /* ── Tables (subtle, tight) ───────────────────────── */
@@ -204,7 +204,7 @@ tr:hover { background-color: rgba(255, 255, 255, 0.02); }
 /* ── Subtle hover glow ────────────────────────────── */
 
 .glow-green-hover:hover {
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.12);
+  box-shadow: 0 0 8px rgba(255, 79, 0, 0.12);
 }
 
 /* ── Section labels (uppercase, tracked) ──────────── */
@@ -255,8 +255,8 @@ tr:hover { background-color: rgba(255, 255, 255, 0.02); }
 }
 
 .sardis-tour .driver-popover-next-btn {
-  background: rgb(34 197 94) !important;
-  color: rgb(17 24 39) !important;
+  background: rgb(255 79 0) !important;
+  color: rgb(255 255 255) !important;
   border: none !important;
   border-radius: 8px !important;
   font-weight: 600 !important;
@@ -264,7 +264,7 @@ tr:hover { background-color: rgba(255, 255, 255, 0.02); }
 }
 
 .sardis-tour .driver-popover-next-btn:hover {
-  background: rgb(74 222 128) !important;
+  background: rgb(255 106 42) !important;
 }
 
 .sardis-tour .driver-popover-prev-btn {

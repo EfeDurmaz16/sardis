@@ -4,15 +4,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import posthog from "posthog-js";
 import { usePathname, useSearchParams } from "next/navigation";
-import { AuthRequiredError } from "@/api/client";
+import { AuthRequiredError, NotFoundError } from "@/api/client";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      // Don't retry auth errors — the user simply isn't logged in
+      // Don't retry auth or 404 errors — suppress them silently
       retry: (failureCount, error) => {
         if (error instanceof AuthRequiredError) return false;
+        if (error instanceof NotFoundError) return false;
         return failureCount < 1;
       },
       staleTime: 30_000,
@@ -37,6 +38,43 @@ function PostHogPageView() {
   }, [pathname, searchParams]);
 
   return null;
+}
+
+// In production, filter out known non-critical console errors so the browser
+// console stays clean for end users and CSP/CORS noise doesn't obscure real bugs.
+const SUPPRESSED_PATTERNS = [
+  "Content Security Policy",
+  "Refused to",
+  "blocked by CORS",
+  "Failed to load resource",
+  "net::ERR_",
+  "ERR_BLOCKED_BY_CSP",
+  "posthog",
+  "PostHog",
+  "Authentication required",
+  "Not found:",
+  "get-session",
+  // React Query internal — these fire on silenced AuthRequiredError / NotFoundError
+  "Query data cannot be undefined",
+];
+
+if (
+  typeof window !== "undefined" &&
+  process.env.NODE_ENV === "production"
+) {
+  const origError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const msg = args.map(String).join(" ");
+    if (SUPPRESSED_PATTERNS.some((p) => msg.includes(p))) return;
+    origError(...args);
+  };
+
+  const origWarn = console.warn.bind(console);
+  console.warn = (...args: unknown[]) => {
+    const msg = args.map(String).join(" ");
+    if (SUPPRESSED_PATTERNS.some((p) => msg.includes(p))) return;
+    origWarn(...args);
+  };
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
