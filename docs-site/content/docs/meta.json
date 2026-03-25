@@ -13,6 +13,7 @@
     "policy-engine",
     "wallets",
     "payments",
+    "payment-objects",
     "webhooks",
     "error-reference",
     "---Policy Features---",
