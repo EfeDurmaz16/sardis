@@ -20,6 +20,26 @@ function getSardisToken(): string | null {
   return localStorage.getItem("sardis_session");
 }
 
+/** Read the API key stored in sessionStorage (set during signup flow). */
+function getOnboardingApiKey(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem("sardis_onboarding_api_key");
+}
+
+/** Build auth headers using both JWT and API key when available. */
+function buildAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = getSardisToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const apiKey = getOnboardingApiKey();
+  if (apiKey) {
+    headers["X-API-Key"] = apiKey;
+  }
+  return headers;
+}
+
 function ProgressBar({ step, total = 5 }: { step: number; total?: number }) {
   return (
     <div className="mb-8">
@@ -180,12 +200,11 @@ function StepCreateAgent({
     setError("");
 
     try {
-      const token = getSardisToken();
       const res = await fetch(`${API_URL}/api/v2/agents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...buildAuthHeaders(),
         },
         credentials: "include",
         body: JSON.stringify({
@@ -307,12 +326,11 @@ function StepSetPolicy({
     setError("");
 
     try {
-      const token = getSardisToken();
       const res = await fetch(`${API_URL}/api/v2/policies`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...buildAuthHeaders(),
         },
         credentials: "include",
         body: JSON.stringify({
@@ -420,12 +438,11 @@ function StepTestPayment({
     setErrorMessage("");
 
     try {
-      const token = getSardisToken();
       const res = await fetch(`${API_URL}/api/v2/sandbox/payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...buildAuthHeaders(),
         },
         credentials: "include",
         body: JSON.stringify({
