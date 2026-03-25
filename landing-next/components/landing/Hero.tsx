@@ -486,7 +486,9 @@ export default function Hero() {
               Get Started Free
             </a>
             <a
-              href="mailto:contact@sardis.sh"
+              href="https://cal.com/sardis/15min"
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] whitespace-nowrap text-center inline-block hover:border-[var(--landing-text-muted)] hover:text-[var(--landing-text-primary)]"
               style={{
                 fontFamily: "'Inter', sans-serif",

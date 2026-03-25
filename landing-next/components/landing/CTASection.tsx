@@ -36,7 +36,9 @@ export default function CTASection() {
             </span>
           </a>
           <a
-            href="mailto:contact@sardis.sh"
+            href="https://cal.com/sardis/15min"
+            target="_blank"
+            rel="noopener noreferrer"
             className="rounded-lg py-3.5 px-9 transition-colors text-center inline-block hover:border-[var(--landing-text-muted)] hover:text-[var(--landing-text-primary)]"
             style={{
               border: "1px solid var(--landing-border)",

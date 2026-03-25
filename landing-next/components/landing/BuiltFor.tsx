@@ -31,7 +31,7 @@ export default function BuiltFor() {
                 className="w-1.5 h-1.5 rounded-full"
                 style={{ backgroundColor: "#22C55E" }}
               />
-              Live on Base
+              Live on Tempo
             </span>
           </div>
           <h2

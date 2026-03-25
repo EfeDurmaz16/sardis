@@ -95,7 +95,9 @@ export default function EnterprisePage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <a
-              href="mailto:contact@sardis.sh"
+              href="https://cal.com/sardis/15min"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] inline-block hover:opacity-90"
               style={{
                 fontFamily: "'Inter', sans-serif",
@@ -202,7 +204,9 @@ export default function EnterprisePage() {
             and compliance assistance.
           </p>
           <a
-            href="mailto:contact@sardis.sh"
+            href="https://cal.com/sardis/15min"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-white rounded-lg py-3.5 px-9 transition-colors font-medium text-[15px] inline-block hover:opacity-90"
             style={{
               fontFamily: "'Inter', sans-serif",

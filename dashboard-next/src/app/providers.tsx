@@ -4,13 +4,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import posthog from "posthog-js";
 import { usePathname, useSearchParams } from "next/navigation";
+import { AuthRequiredError } from "@/api/client";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      // Don't retry auth errors — the user simply isn't logged in
+      retry: (failureCount, error) => {
+        if (error instanceof AuthRequiredError) return false;
+        return failureCount < 1;
+      },
       staleTime: 30_000,
+    },
+    mutations: {
+      retry: false,
     },
   },
 });

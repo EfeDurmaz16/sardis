@@ -52,6 +52,13 @@ export const auth = betterAuth({
   }),
   baseURL: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
   secret: process.env.BETTER_AUTH_SECRET,
+  // Accept auth requests from all dashboard domains (same Vercel project)
+  trustedOrigins: [
+    "https://dashboard.sardis.sh",
+    "https://app.sardis.sh",
+    "https://sardis.sh",
+    "http://localhost:3000",
+  ],
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

@@ -160,6 +160,15 @@ export interface PolicyHistoryDetailResponse {
 }
 
 
+// Custom error class to distinguish auth failures from real errors.
+// Exported so the QueryClient can suppress these silently.
+export class AuthRequiredError extends Error {
+  constructor() {
+    super('Authentication required')
+    this.name = 'AuthRequiredError'
+  }
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -191,6 +200,10 @@ async function request<T>(
   })
 
   if (!response.ok) {
+    // Suppress noisy console errors for 401/403 when user is not authenticated
+    if ((response.status === 401 || response.status === 403) && !token) {
+      throw new AuthRequiredError()
+    }
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }))
     throw new Error(error.detail || error.message || `HTTP ${response.status}`)
   }
