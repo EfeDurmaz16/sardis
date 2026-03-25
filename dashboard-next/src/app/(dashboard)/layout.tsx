@@ -60,6 +60,7 @@ const coreNavigation: NavItem[] = [
   { name: 'Agents', href: '/agents', icon: Users, tour: 'agents' },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft, tour: 'transactions' },
   { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
+  { name: 'Wallets', href: '/wallets', icon: Wallet },
   { name: 'Merchants', href: '/merchants', icon: Store },
   { name: 'Virtual Cards', href: '/virtual-cards', icon: CreditCard },
 ]
