@@ -1,0 +1,120 @@
+---
+title: "Sardis v0.5: UCP and A2A Protocol Support"
+description: Sardis v0.5 adds full support for UCP (Universal Commerce Protocol) and A2A (Agent-to-Agent) protocol, enabling standardized checkout flows and multi-agent communication.
+date: 2026-01-24
+category: Release
+---
+
+Today we release Sardis v0.5 with full support for UCP (Universal Commerce Protocol) and A2A (Agent-to-Agent) protocol. Now your agents can participate in the broader AI agent economy with standardized checkout flows and multi-agent communication.
+
+## What's New in v0.5
+
+This release marks a significant milestone in Sardis's journey to become the universal payment layer for AI agents. We added two major protocol integrations:
+
+- **UCP (Universal Commerce Protocol):** Standardized checkout flows that work across any merchant, any platform.
+- **A2A (Agent-to-Agent):** Google's multi-agent communication protocol for coordinated transactions between AI agents.
+
+## UCP: Universal Commerce Protocol
+
+UCP solves a fundamental problem in agent commerce: every merchant has a different checkout flow. Some require clicking through modals, others need form submissions, and many still rely on legacy payment pages.
+
+With UCP, merchants expose a standardized API that agents can interact with programmatically. The protocol defines three phases:
+
+```
+DISCOVER --> CHECKOUT --> CONFIRM
+Find items    Create cart    Execute pay
+Get pricing   Apply policy   Get receipt
+```
+
+Here is how it works with Sardis:
+
+```python
+from sardis import Sardis
+from sardis.protocols import UCP
+
+client = Sardis(api_key="sk_...")
+
+# Discover products from a UCP-enabled merchant
+products = await UCP.discover(
+    merchant="https://api.example.com/ucp",
+    query="cloud compute instances"
+)
+
+# Create checkout session
+checkout = await UCP.checkout(
+    merchant="https://api.example.com/ucp",
+    items=[{"sku": "compute-m1", "qty": 1}],
+    wallet=client.wallets.get("agent-wallet")
+)
+
+# Execute payment (policy-checked automatically)
+result = await checkout.confirm()
+```
+
+## A2A: Agent-to-Agent Protocol
+
+A2A is Google's protocol for multi-agent communication. It enables complex scenarios where multiple agents need to coordinate on financial transactions.
+
+Consider a travel booking scenario: one agent finds flights, another finds hotels, and a third handles payments. A2A provides the communication layer for these agents to share context, negotiate prices, and execute coordinated purchases.
+
+```python
+from sardis.protocols import A2A
+
+# Register as an A2A-capable agent
+agent = A2A.Agent(
+    name="payment-agent",
+    capabilities=["pay", "refund", "balance"],
+    wallet=client.wallets.get("treasury")
+)
+
+# Handle payment requests from other agents
+@agent.on("payment_request")
+async def handle_payment(request):
+    # Policy check happens automatically
+    result = await request.execute()
+    return A2A.Response(
+        status="completed",
+        tx_hash=result.tx_hash
+    )
+
+# Start listening for A2A messages
+await agent.serve()
+```
+
+## Protocol Synergy
+
+The real power comes from combining these protocols. An A2A agent swarm can use UCP to interact with merchants while Sardis ensures every payment stays within policy bounds.
+
+Sardis now supports the complete agent payment stack: AP2 for payment authorization, TAP for identity verification, UCP for commerce flows, and A2A for multi-agent coordination.
+
+## Updated MCP Tools
+
+Our MCP server has been updated with new tools for both protocols:
+
+- `sardis_ucp_discover` -- Discover products from UCP merchants
+- `sardis_ucp_checkout` -- Create checkout sessions
+- `sardis_ucp_confirm` -- Execute UCP payments
+- `sardis_a2a_register` -- Register as an A2A agent
+- `sardis_a2a_discover` -- Find other A2A agents
+- `sardis_a2a_request` -- Send payment requests to agents
+
+## Migration Guide
+
+Upgrading to v0.5 is straightforward. The new protocols are additive -- existing AP2 and TAP integrations continue to work unchanged.
+
+```bash
+# Python
+pip install --upgrade sardis
+
+# TypeScript
+npm install @sardis/sdk@latest
+
+# MCP Server
+npx @sardis/mcp-server@latest start
+```
+
+## What's Next
+
+With v0.5, Sardis supports all major agent payment protocols. Our next focus is deepening compliance integrations for enterprise customers.
+
+Read the full [UCP documentation](/docs/ucp) or check out the [A2A guide](/docs/a2a) to get started.

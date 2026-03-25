@@ -1,0 +1,31 @@
+---
+title: "Sardis AI Agent Payments: What It Is and How It Works"
+description: A practical guide to Sardis AI agent payments infrastructure -- deterministic policy enforcement, approvals, cards, and on-chain rails.
+date: 2026-02-25
+category: Guide
+---
+
+Sardis is AI agent payments infrastructure. It lets autonomous agents execute real transactions without giving them unconstrained access to money.
+
+## Why Sardis exists
+
+AI agents can decide and act quickly, but raw model output is not reliable enough for direct payment execution. In finance, a small reasoning error can become a large loss. Sardis adds a deterministic control layer between intent and settlement.
+
+## How Sardis AI payments work
+
+- Agent proposes an action (for example: pay vendor invoice).
+- Sardis policy engine evaluates spend limits, merchant/category rules, and risk posture.
+- High-risk actions route to approval workflows (including 4-eyes controls where configured).
+- Execution happens on the selected rail: virtual card, fiat treasury lane, or on-chain route.
+- Decision and execution evidence is captured in an auditable trail.
+
+## What makes Sardis different
+
+- Deterministic, fail-closed policy enforcement before money moves.
+- Approval quorum controls for sensitive execution lanes.
+- Multi-rail support across card, fiat, and on-chain payment paths.
+- Operator-grade auditability for compliance and incident review.
+
+## Who should use Sardis
+
+Teams building production AI agents for purchasing, treasury operations, or machine-to-machine commerce. If you need autonomous execution with control, Sardis is built for that boundary.

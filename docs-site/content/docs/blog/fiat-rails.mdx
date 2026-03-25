@@ -1,0 +1,159 @@
+---
+title: "Fiat Rails: Bridging Traditional Banking to Agent Wallets"
+description: Fiat Rails is the Sardis design-partner lane for bank funding, card spend, and payout orchestration with policy enforcement. Stablecoins remain available as an optional settlement rail.
+date: 2026-01-24
+category: Feature
+---
+
+Most businesses run on dollars, not tokens. Fiat Rails is the Sardis design-partner lane for bank funding, card spend, and payout orchestration with policy enforcement. Stablecoins remain available as an optional settlement rail.
+
+## The Bridge Problem
+
+Until now, funding an agent wallet required crypto fluency. Users needed to:
+
+- Buy USDC on an exchange
+- Transfer to the correct chain
+- Bridge if necessary
+- Fund the agent wallet
+
+This friction blocks mainstream adoption. Enterprise finance teams do not want to manage crypto operations. They want to fund agents from existing banking workflows.
+
+## Fiat Rails in the current release
+
+Fiat Rails uses provider integrations for settlement while Sardis enforces policy, idempotency, and auditability:
+
+- **Bank to Wallet:** Fund agent workflows via ACH, wire, or card with quote-driven conversion when needed.
+- **Unified Balance:** One policy budget can power crypto payments, virtual cards, and bank payouts.
+- **Wallet to Bank:** Withdraw to USD with policy checks and compliance workflows.
+
+## The Flow
+
+Here is how funds flow through the Sardis ecosystem:
+
+```
+Bank (ACH/Wire/Card) --> Treasury (USD account) --> Sardis Wallet (MPC + Policy) --> Card / Crypto / Bank
+```
+
+## Avoiding unnecessary conversion cost
+
+We use three operating modes to avoid forced double conversion:
+
+1. **Mode A: Fiat-first card treasury** -- Keep a USD treasury for cards and only convert when crypto payout is requested.
+2. **Mode B: Stablecoin-first JIT** -- Convert USDC to USD per spend when card usage is infrequent or highly variable.
+3. **Mode C: Hybrid threshold refill** -- Maintain a USD buffer and top up in batches from stablecoins based on thresholds.
+
+## Implementation
+
+We ship both Python and TypeScript SDKs for fiat operations.
+
+### Funding a Wallet
+
+```python
+from sardis_sdk import AsyncSardisClient
+from sardis_sdk.models.treasury import TreasuryPaymentRequest
+
+async with AsyncSardisClient(api_key="sk_live_...") as client:
+    payment = await client.treasury.fund(
+        TreasuryPaymentRequest(
+            financial_account_token="fa_issuing_123",
+            external_bank_account_token="eba_123",
+            amount_minor=500000,  # $5,000.00
+            method="ACH_NEXT_DAY",
+            sec_code="CCD",
+            memo="Treasury top-up",
+        )
+    )
+
+    print(payment.payment_token, payment.status)
+```
+
+### Withdrawing to Bank
+
+```python
+withdrawal = await client.treasury.withdraw(
+    TreasuryPaymentRequest(
+        financial_account_token="fa_issuing_123",
+        external_bank_account_token="eba_123",
+        amount_minor=250000,  # $2,500.00
+        method="ACH_NEXT_DAY",
+        sec_code="CCD",
+        memo="Vendor payout",
+    )
+)
+
+print(withdrawal.payment_token, withdrawal.status)
+```
+
+### Paying Merchants Directly
+
+```typescript
+// Pay a merchant in USD from crypto wallet
+const payment = await ramp.payMerchantFiat({
+  walletId: 'wallet_abc123',
+  amountUsd: 499.99,
+  merchant: {
+    name: 'SaaS Provider Inc',
+    category: 'software',
+    bankAccount: {
+      accountHolderName: 'SaaS Provider Inc',
+      accountNumber: '...',
+      routingNumber: '...'
+    }
+  }
+})
+
+// If policy requires approval:
+// payment.status === 'pending_approval'
+
+// If approved automatically:
+// payment.status === 'completed'
+```
+
+## Pricing model
+
+Final pricing is provider and volume dependent. Sardis shows quotes before execution and applies platform spread only when policy allows it:
+
+| Route | Cost Pattern | Best Use |
+|-------|-------------|----------|
+| Fiat-first card treasury | Single rail cost, no per-swipe off-ramp | High recurring card spend |
+| Stablecoin-first JIT card funding | Conversion on each refill event | Crypto-native inflow |
+| Hybrid threshold refill | Batched conversion, lower blended fee | Most design partners |
+| Direct stablecoin merchant pay | No fiat conversion | Crypto-accepting merchants |
+
+Production contracts expose provider pass-through fee + Sardis platform fee as separate line items.
+
+## Compliance Built In
+
+All fiat operations integrate with our existing controls:
+
+- **Policy engine** for limits and merchant/category controls
+- **Webhook replay protection** for provider event ingestion
+- **Return-code controls** (R01/R09 retry, R02/R03/R29 auto-pause)
+- **Append-only Ledger** for audit trails
+
+Withdrawals to new bank accounts trigger enhanced verification. Suspicious patterns are flagged before funds leave the system.
+
+## What's Next
+
+Fiat Rails is available in sandbox and design-partner lanes. On the roadmap:
+
+- **International wires:** SWIFT and SEPA support
+- **Multi-currency:** EUR, GBP, and more stablecoins
+- **Recurring funding:** Automated wallet top-ups
+- **Instant settlements:** RTP for US payouts
+
+## Get Started
+
+```bash
+# TypeScript
+npm install @sardis/sdk
+
+# Python
+pip install sardis-sdk
+```
+
+For enterprise pilots, reach out to [efe@sardis.dev](mailto:efe@sardis.dev).
+
+---
+
+*Fiat rails use regulated partner infrastructure. Sardis handles wallet management, policy enforcement, and compliance controls. Partners handle the actual fiat movement.*

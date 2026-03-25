@@ -1,0 +1,112 @@
+---
+title: "Why Sardis: The Policy Firewall for Agent Payments"
+description: Sardis fills a critical gap in the agent payment landscape with natural language policy enforcement, non-custodial MPC security, virtual cards, and zero-config MCP server integration.
+date: 2026-01-24
+category: Technical
+---
+
+The AI agent payment infrastructure market is nascent but rapidly evolving. We have analyzed the landscape and built Sardis to fill a critical gap: natural language policy enforcement with non-custodial security.
+
+## The Market Context
+
+The agent economy is projected to reach $46 billion in agent-to-agent commerce within 3 years. Major players including Visa, Google, OpenAI, PayPal, and Mastercard are actively developing agent payment protocols (AP2, A2A, x402).
+
+This is not a question of *if* agents will transact autonomously. It is a question of *how safely* they will do it.
+
+## The Competitive Landscape
+
+Several players have emerged to solve agent payments, each with distinct approaches:
+
+| Attribute | Sardis | Locus | Payman | Skyfire |
+|-----------|--------|-------|--------|---------|
+| Primary Focus | Policy Firewall | Control Layer | Agent-to-Human | Identity + Rails |
+| NL Policies | Core Feature | Basic limits | Basic limits | Spending caps |
+| MPC Wallets | Yes (Turnkey) | Unknown | No (custodial) | Yes |
+| Chains | Base, Poly, ETH, Arb, OP | Base only | USDC + ACH | Polygon, Base |
+| Virtual Cards | Yes (Stripe Issuing) | No | No | No |
+| MCP Server | Zero-config | Demo only | No | Yes |
+
+## The Critical Gap: Policy Intelligence
+
+Here is what we discovered analyzing the competition: all competitors are building payment rails or identity layers. None are building a comprehensive policy enforcement engine with natural language interfaces. This is Sardis's primary differentiation.
+
+Competitors offer basic spending limits like "$50/day" or "$500/month." Sardis enables complex, context-aware policies in plain English:
+
+```
+"Only pay approved vendors in software category, max $100 per transaction,
+require justification for purchases over $50, never pay on weekends"
+```
+
+This matters because:
+
+- **Financial hallucinations are real:** Agents can confidently make incorrect financial decisions
+- **Enterprise compliance requires nuance:** Not just spending caps, but category restrictions, time windows, approval workflows
+- **Non-technical users need control:** Finance teams should not need to write code to set spending rules
+
+## Our Five Differentiators
+
+### 1. Natural Language Policy Engine
+
+Our policy engine parses plain English into structured rules that are cryptographically enforced. Every transaction is checked against the policy before the MPC signing ceremony begins.
+
+```python
+wallet = client.wallets.create(
+    name="procurement-agent",
+    chain="base",
+    policy="""
+        Max $500 per transaction.
+        Daily limit $2000.
+        Only approved vendors: aws.amazon.com, github.com, openai.com.
+        Require approval for any purchase over $250.
+        Block gambling, adult, and crypto exchange categories.
+    """
+)
+```
+
+### 2. Non-Custodial MPC Wallets
+
+Unlike custodial solutions, Sardis never holds your private keys. We use Turnkey's MPC infrastructure to split keys across multiple parties. No single entity, not even Sardis, can move funds unilaterally.
+
+This has regulatory advantages too: non-custodial solutions face fewer money transmitter requirements in many jurisdictions.
+
+### 3. Virtual Cards via Stripe Issuing
+
+We are the only agent payment platform offering instant virtual card issuance. This bridges crypto wallets to traditional commerce. Your agent can pay anywhere Visa is accepted.
+
+Use cases:
+- SaaS subscriptions managed by agents
+- One-time purchases on traditional e-commerce sites
+- Per-card spending limits for additional control
+
+### 4. Zero-Config MCP Server
+
+One command to add payment capabilities to Claude Desktop or Cursor:
+
+```bash
+$ npx @sardis/mcp-server start
+# That's it. 52 payment and treasury tools available.
+```
+
+No configuration files. No API key juggling. The MCP server handles authentication, policy enforcement, and transaction execution automatically.
+
+### 5. Multi-Chain Funding from Day One
+
+Sardis executes all payments on Base for optimal cost and speed, while supporting funding from Ethereum, Polygon, Arbitrum, and Optimism via Circle's CCTP v2. USDC sent on any supported chain automatically arrives on Base -- no manual bridging required.
+
+## Protocol Agnosticism
+
+Rather than building proprietary protocols that lock in users, we implement the emerging standards:
+
+- **AP2:** The Google/PayPal/Visa/Mastercard mandate chain standard
+- **TAP:** Trusted Agent Protocol for agent identity
+- **UCP:** Universal Commerce Protocol for checkout flows
+- **A2A:** Google's agent-to-agent communication protocol
+- **x402:** Coinbase's HTTP 402 micropayment protocol
+
+Sardis works as a policy layer on top of any protocol. Don't pick winners, work with everyone. Become the must-have middleware regardless of which protocol wins.
+
+## Getting Started
+
+Ready to give your agents safe financial autonomy? Start with our [quickstart guide](/docs/quickstart) or try the [MCP server](/docs/mcp-server) for zero-code integration with Claude Desktop.
+
+The agent economy needs trust infrastructure. Sardis provides that trust through policy intelligence, non-custodial security, and developer-first experience.

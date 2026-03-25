@@ -1,0 +1,129 @@
+---
+title: "MCP Server: 52 Tools for AI Payments"
+description: Our MCP server has grown from 4 tools to 52. From treasury ACH rails to virtual cards, learn how to give Claude or Cursor complete payment capabilities.
+date: 2026-01-27
+category: Tutorial
+---
+
+Our MCP server has grown from 4 tools to 52. From treasury ACH rails to virtual cards, learn how to give Claude or Cursor complete payment capabilities without writing any code.
+
+## The Evolution
+
+When we launched the Sardis MCP server, it had four basic tools: get balance, make payment, list transactions, and request approval.
+
+Today, we ship 52 tools that cover the full payment lifecycle, including the USD-first treasury lane for ACH fund/withdraw and virtual cards via Stripe Issuing. Your AI agent can now manage wallets, fund from banks, issue virtual cards, and pay anywhere Visa is accepted.
+
+## Quick Setup
+
+Add this to your Claude Desktop or Cursor MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": {
+        "SARDIS_API_KEY": "sk_..."
+      }
+    }
+  }
+}
+```
+
+Restart your app, and you now have 52 payment tools available.
+
+## Tool Categories
+
+### Wallet Management (8 tools)
+
+| Tool | Description |
+|------|-------------|
+| `sardis_create_wallet` | Create new MPC wallet with policy |
+| `sardis_list_wallets` | List all wallets |
+| `sardis_get_wallet` | Get wallet details |
+| `sardis_get_balance` | Check unified balance (USDC + USD) |
+| `sardis_get_address` | Get wallet address for a chain |
+| `sardis_update_policy` | Update spending policy |
+| `sardis_check_policy` | Check if transaction passes policy |
+| `sardis_archive_wallet` | Archive inactive wallet |
+
+### Treasury Rails (11 tools)
+
+Fund and withdraw via ACH with financial account and bank-link lifecycle support:
+
+| Tool | Description |
+|------|-------------|
+| `sardis_sync_treasury_account_holder` | Sync financial accounts from provider |
+| `sardis_list_financial_accounts` | List ISSUING/OPERATING treasury accounts |
+| `sardis_link_external_bank_account` | Link external bank account |
+| `sardis_verify_micro_deposits` | Verify ownership via micro-deposits |
+| `sardis_fund_wallet` | Create ACH collection (fund treasury) |
+| `sardis_withdraw_to_bank` | Create ACH payment (withdraw) |
+| `sardis_get_funding_status` | Get payment status by token |
+| `sardis_get_withdrawal_status` | Get withdrawal status by token |
+| `sardis_get_treasury_balances` | Get latest treasury balance snapshots |
+
+### Virtual Cards (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `sardis_create_card` | Issue a virtual card |
+| `sardis_list_cards` | List all cards |
+| `sardis_get_card` | Get card details |
+| `sardis_freeze_card` | Temporarily freeze card |
+| `sardis_cancel_card` | Permanently cancel card |
+
+### Payments (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `sardis_pay` | Make a payment |
+| `sardis_pay_invoice` | Pay a structured invoice |
+| `sardis_request_approval` | Request human approval |
+| `sardis_list_transactions` | View transaction history |
+| `sardis_get_transaction` | Get transaction details |
+| `sardis_estimate_gas` | Estimate transaction cost |
+| `sardis_get_tx_status` | Check transaction status |
+
+## Example: Full Payment Flow
+
+Here is what Claude can do with these tools. Just say: "Fund my wallet with $100 from my bank, then pay $50 for OpenAI credits using a virtual card"
+
+```
+1. sardis_list_financial_accounts --> Find ISSUING/OPERATING account
+2. sardis_fund_wallet --> Fund $100 from linked external bank account
+3. sardis_get_funding_status --> Wait for funding to complete
+4. sardis_get_treasury_balances --> Verify treasury snapshot
+5. sardis_create_card --> Issue virtual card (limit: $50)
+6. Returns: Card number, expiry, CVV for use at openai.com
+
+The agent handles the entire flow, including:
+- Replay-safe payment status tracking
+- Policy validation at each step
+- Waiting for funding confirmation
+- Card issuance with merchant lock
+```
+
+## Unified Balance
+
+Unified balance means one policy budget across USD and stablecoin rails. You can fund with fiat or USDC, and Sardis chooses the configured route. Cross-rail conversion is quote-driven and can be batched to reduce cost.
+
+**Pro Tips:**
+- Use `sardis_check_policy` before large transactions
+- Issue single-use virtual cards for one-time purchases
+- Link bank account once, fund multiple times
+- Use `sardis_request_approval` for amounts near policy limits
+
+## What's Next
+
+We are working on:
+
+- **Recurring payments:** Set up automatic subscriptions
+- **Multi-wallet transfers:** Move funds between wallets
+- **Spending reports:** Generate analytics from MCP
+- **Webhook management:** Configure notifications from MCP
+
+Have a tool you would like to see? Let us know on [GitHub](https://github.com/EfeDurmaz16/sardis/issues).
+
+Read the full [MCP Server documentation](/docs/mcp-server) for detailed usage instructions.

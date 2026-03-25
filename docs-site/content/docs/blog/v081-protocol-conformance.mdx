@@ -1,0 +1,29 @@
+---
+title: "Sardis v0.8.1: Protocol Conformance Hardening for AP2/TAP"
+description: v0.8.1 tightens AP2 payment semantics, strengthens TAP validation paths, and adds a source-mapped conformance baseline for canonical protocol references.
+date: 2026-02-06
+category: Release
+---
+
+v0.8.1 is a protocol-hardening release focused on correctness over breadth. We tightened AP2 payment semantics, strengthened TAP validation paths, and added a source-mapped conformance baseline so engineering decisions stay anchored to canonical AP2, TAP, UCP, and x402 references.
+
+## What Changed
+
+- **AP2 payment semantics hardened** -- Payment mandates now include explicit `ai_agent_presence` and `transaction_modality` signals (`human_present` or `human_not_present`) and are enforced in verification.
+- **TAP header checks tightened** -- Signature input validation now rejects unsupported message signature algorithms by default.
+- **Linked object signature hooks added** -- `agenticConsumer` and `agenticPaymentContainer` validation supports canonical signature-base building and optional verification hooks.
+- **Conformance evidence improved** -- New tests cover invalid alg, nonce mismatch, and signature-failure paths for TAP and modality guardrails for AP2.
+
+## Why This Release Matters
+
+Before scaling integrations, protocol interpretation drift is one of the highest engineering risks. v0.8.1 reduces this risk by making protocol assumptions explicit in code and test gates.
+
+- Lower interoperability risk across AP2/TAP counterparties
+- Better auditability of policy and protocol decisions
+- Stronger defaults for pre-prod design partner environments
+
+## Source Mapping and Governance
+
+We now maintain a protocol source map that links canonical references to concrete enforcement points in code and tests. This keeps conformance work reviewable and repeatable over time.
+
+See the [Changelog](/docs/changelog) and the release docs for implementation details.
