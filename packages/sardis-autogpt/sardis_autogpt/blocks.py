@@ -168,7 +168,7 @@ def _normalize_response(result, input_amount: str, merchant: str) -> dict:
         "status": _normalize_status(result),
         "tx_id": str(getattr(result, "tx_id", "") or ""),
         "message": str(getattr(result, "message", "") or ""),
-        "amount": str(getattr(result, "amount", input_amount)),
+        "amount": str(getattr(result, "amount", None) or input_amount),
         "merchant": merchant,
     }
 
