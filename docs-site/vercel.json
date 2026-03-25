@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
-  "outputDirectory": ".next"
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "npx fumadocs-mdx && NODE_OPTIONS='--max-old-space-size=8192' npx next build",
+  "framework": "nextjs"
 }
