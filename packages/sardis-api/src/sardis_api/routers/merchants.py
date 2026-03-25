@@ -1,15 +1,17 @@
 """Merchant management API router for Pay with Sardis."""
 from __future__ import annotations
 
+import hashlib
 import logging
+import secrets
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)
 
@@ -374,3 +376,145 @@ async def delete_checkout_link(
         raise HTTPException(status_code=404, detail="Checkout link not found")
 
     await deps.merchant_repo.delete_checkout_link(link_id)
+
+
+# ── Self-Registration Endpoint ───────────────────────────────────
+# POST /api/v2/merchants/register
+# Allows authenticated users to register as merchants without manual
+# intervention. Returns the created merchant + client credentials for
+# the checkout embed SDK.
+
+
+class MerchantRegisterRequest(BaseModel):
+    """Self-registration payload for new merchants."""
+    business_name: str = Field(..., min_length=1, max_length=255)
+    website: str | None = Field(default=None, max_length=500)
+    logo_url: str | None = Field(default=None, max_length=500)
+    settlement_address: str | None = Field(
+        default=None,
+        description="EVM wallet address for USDC settlement. If omitted, a Sardis wallet is auto-provisioned.",
+    )
+    webhook_url: str | None = Field(default=None, max_length=500)
+    category: str | None = Field(default=None, max_length=100)
+
+
+class MerchantCredentials(BaseModel):
+    """Client credentials returned after merchant registration."""
+    client_id: str
+    client_secret: str
+
+
+class MerchantRegisterResponse(BaseModel):
+    """Response from self-registration."""
+    merchant_id: str
+    business_name: str
+    settlement_wallet_id: str | None = None
+    settlement_address: str | None = None
+    webhook_url: str | None = None
+    credentials: MerchantCredentials
+    embed_snippet: str
+    created_at: str
+
+
+def _generate_client_id(merchant_id: str) -> str:
+    """Generate a deterministic client ID from merchant ID."""
+    return f"mch_live_{merchant_id[:16]}"
+
+
+def _generate_client_secret() -> str:
+    """Generate a cryptographically secure client secret."""
+    return f"msk_live_{secrets.token_urlsafe(32)}"
+
+
+def _generate_embed_snippet(client_id: str) -> str:
+    """Generate the HTML embed snippet for the checkout widget."""
+    return (
+        f'<script src="https://checkout.sardis.sh/sardis-checkout.js"></script>\n'
+        f'<sardis-pay\n'
+        f'  client-id="{client_id}"\n'
+        f'  amount="25.00"\n'
+        f'  currency="USDC"\n'
+        f'></sardis-pay>'
+    )
+
+
+@router.post(
+    "/register",
+    response_model=MerchantRegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Self-register as a merchant",
+    description=(
+        "Register a new merchant account for Pay with Sardis. "
+        "Returns client credentials for the checkout embed SDK."
+    ),
+)
+async def register_merchant(
+    body: MerchantRegisterRequest,
+    principal: Principal = Depends(require_principal),
+    deps: MerchantDependencies = Depends(get_deps),
+) -> MerchantRegisterResponse:
+    """Self-register a merchant — no manual approval required."""
+    from sardis_v2_core.merchant import Merchant
+
+    merchant = Merchant(
+        name=body.business_name,
+        logo_url=body.logo_url,
+        webhook_url=body.webhook_url,
+        settlement_preference="usdc",
+        category=body.category,
+    )
+
+    # Settlement: use provided address or auto-provision a Sardis wallet
+    if body.settlement_address:
+        merchant.settlement_wallet_id = body.settlement_address
+    elif deps.wallet_manager:
+        try:
+            settlement_wallet = await deps.wallet_manager.create_wallet(
+                agent_id=f"merchant_{merchant.merchant_id}",
+                label=f"Settlement wallet for {body.business_name}",
+            )
+            merchant.settlement_wallet_id = settlement_wallet.wallet_id
+        except Exception:
+            logger.exception(
+                "Failed to auto-provision settlement wallet for merchant %s",
+                merchant.merchant_id,
+            )
+
+    await deps.merchant_repo.create_merchant(merchant)
+
+    # Generate client credentials
+    client_id = _generate_client_id(merchant.merchant_id)
+    client_secret = _generate_client_secret()
+
+    # Store credentials (hashed secret) in merchant metadata
+    secret_hash = hashlib.sha256(client_secret.encode()).hexdigest()
+    try:
+        await deps.merchant_repo.update_merchant(
+            merchant.merchant_id,
+            client_id=client_id,
+            client_secret_hash=secret_hash,
+            website=body.website,
+            registered_by=principal.subject_id,
+        )
+    except Exception:
+        logger.warning(
+            "Could not persist client credentials for merchant %s — "
+            "merchant was created but credentials may need manual setup",
+            merchant.merchant_id,
+        )
+
+    embed_snippet = _generate_embed_snippet(client_id)
+
+    return MerchantRegisterResponse(
+        merchant_id=merchant.merchant_id,
+        business_name=body.business_name,
+        settlement_wallet_id=merchant.settlement_wallet_id,
+        settlement_address=body.settlement_address,
+        webhook_url=body.webhook_url,
+        credentials=MerchantCredentials(
+            client_id=client_id,
+            client_secret=client_secret,
+        ),
+        embed_snippet=embed_snippet,
+        created_at=merchant.created_at.isoformat(),
+    )
