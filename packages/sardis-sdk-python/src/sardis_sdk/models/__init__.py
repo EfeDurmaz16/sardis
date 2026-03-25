@@ -24,9 +24,12 @@ from .marketplace import OfferStatus, Service, ServiceCategory, ServiceOffer
 from .payment import (
     ExecutePaymentRequest,
     ExecutePaymentResponse,
+    FXDetails,
     Payment,
     PaymentMandate,
     PaymentStatus,
+    PayResult,
+    RouteDetails,
 )
 from .policy import (
     ApplyPolicyFromNLResponse,
@@ -84,6 +87,7 @@ __all__ = [
     "ExecutePaymentRequest",
     "ExecutePaymentResponse",
     "ExperimentalChain",
+    "FXDetails",
     "ExternalBankAccount",
     "FinancialAccount",
     "GroupBudget",
@@ -100,10 +104,12 @@ __all__ = [
     "Payment",
     "PaymentMandate",
     "PaymentStatus",
+    "PayResult",
     "PolicyCheckResponse",
     "PolicyExample",
     "PolicyPreviewResponse",
     "RateLimitError",
+    "RouteDetails",
     "SardisError",
     "SardisModel",
     "Service",

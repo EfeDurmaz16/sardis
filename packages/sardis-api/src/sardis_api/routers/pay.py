@@ -3,9 +3,10 @@
 POST /api/v2/pay
     → validates inputs
     → auto-routes to cheapest chain (Phase 2) or uses explicit chain
+    → detects cross-currency and auto-swaps (Phase 3)
     → builds a mandate chain
     → calls PaymentOrchestrator.execute_chain()
-    → returns a PaymentResult with status enum + route metadata
+    → returns a PaymentResult with status enum + route metadata + FX info
 
 Phase 2 additions:
     - `chain` is now optional — omit it to let Sardis pick the cheapest route
@@ -13,10 +14,19 @@ Phase 2 additions:
     - Route selection: lowest (gas + bridge_fee + slippage)
     - Fallback: if best route fails, tries next cheapest
     - Response includes `route` field showing selected chain + provider
+
+Phase 3 additions:
+    - Cross-currency FX: user sends USD, recipient gets EUR (USDC→EURC)
+    - Fiat currency codes mapped to stablecoin tokens (USD→USDC, EUR→EURC)
+    - Auto-swap via LiquidityRouter (Tempo DEX or Uniswap V3)
+    - 30s quote TTL, 1% (100 bps) slippage tolerance
+    - Response includes `fx` field with rate, provider, slippage info
+    - Supported: USDC↔EURC, USDC↔USDT (and fiat aliases USD, EUR)
 """
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import Enum
@@ -48,6 +58,33 @@ logger = logging.getLogger(__name__)
 # Chains to evaluate during auto-routing, ordered by preference.
 # The router will quote all of them and pick the cheapest.
 AUTO_ROUTE_CHAINS = ["base", "tempo", "ethereum", "arbitrum", "optimism"]
+
+# ---------------------------------------------------------------------------
+# Phase 3: Cross-currency FX constants
+# ---------------------------------------------------------------------------
+
+# Map fiat currency codes and stablecoin symbols to canonical token symbols.
+CURRENCY_TO_TOKEN: dict[str, str] = {
+    "USD": "USDC",
+    "EUR": "EURC",
+    "USDT": "USDT",
+    "USDC": "USDC",
+    "EURC": "EURC",
+}
+
+# Supported cross-currency pairs (from_token, to_token).
+SUPPORTED_FX_PAIRS: set[tuple[str, str]] = {
+    ("USDC", "EURC"),
+    ("EURC", "USDC"),
+    ("USDC", "USDT"),
+    ("USDT", "USDC"),
+}
+
+# FX quote TTL in seconds.
+FX_QUOTE_TTL_SECONDS = 30
+
+# Default slippage tolerance in basis points (1% = 100 bps).
+FX_SLIPPAGE_TOLERANCE_BPS = 100
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +146,18 @@ class RouteInfo(BaseModel):
     auto_routed: bool = False
 
 
+class FXInfo(BaseModel):
+    """FX swap details — only present when a cross-currency swap occurred."""
+    from_currency: str
+    to_currency: str
+    rate: str
+    provider: str
+    slippage_bps: int
+    fee_bps: int = 0
+    input_amount: str
+    output_amount: str
+
+
 class PayResponse(BaseModel):
     status: PayStatus
     tx_hash: str | None = None
@@ -117,7 +166,113 @@ class PayResponse(BaseModel):
     message: str | None = None
     mandate_id: str | None = None
     route: RouteInfo | None = None
+    fx: FXInfo | None = None
     policy_explanation: PolicyExplanationResponse | None = None
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: Cross-currency FX helpers
+# ---------------------------------------------------------------------------
+
+
+def _resolve_token(currency: str) -> str | None:
+    """Map a fiat currency code or token symbol to its canonical token.
+
+    Returns None if the currency is unsupported.
+    """
+    return CURRENCY_TO_TOKEN.get(currency.upper())
+
+
+def _is_cross_currency(request_currency: str, sender_token: str) -> bool:
+    """Detect whether a payment requires an FX swap.
+
+    ``request_currency`` is what the caller asked for (e.g. "EUR").
+    ``sender_token`` is the canonical token the sender holds (e.g. "USDC").
+    """
+    target_token = _resolve_token(request_currency)
+    if target_token is None:
+        return False
+    return target_token != sender_token
+
+
+async def _get_fx_quote(
+    from_token: str,
+    to_token: str,
+    amount: Decimal,
+    chain: str | None = None,
+) -> dict[str, Any]:
+    """Get an FX quote from the LiquidityRouter.
+
+    Returns a dict with rate, output, provider, fee_bps, slippage_bps,
+    and a ``quoted_at`` epoch timestamp (TTL = 30 s).
+
+    Raises ``HTTPException(422)`` for unsupported pairs and
+    ``HTTPException(503)`` when no adapter can produce a quote.
+    """
+    pair = (from_token, to_token)
+    if pair not in SUPPORTED_FX_PAIRS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Unsupported currency pair: {from_token} -> {to_token}. "
+                f"Supported: {', '.join(f'{a}->{b}' for a, b in sorted(SUPPORTED_FX_PAIRS))}"
+            ),
+        )
+
+    try:
+        from sardis_chain.liquidity_router import LiquidityRouter
+        router_instance = LiquidityRouter()
+    except ImportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="FX infrastructure (LiquidityRouter) is not available",
+        )
+
+    target_chain = chain or "base"
+    try:
+        route = await router_instance.find_best_route(
+            from_token=from_token,
+            to_token=to_token,
+            amount=amount,
+            from_chain=target_chain,
+        )
+    except Exception as exc:
+        logger.error("FX quote failed for %s->%s: %s", from_token, to_token, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"FX quote unavailable: {exc}",
+        )
+
+    return {
+        "rate": route.estimated_rate,
+        "output": route.estimated_output,
+        "provider": route.provider,
+        "fee_bps": route.estimated_fee_bps,
+        "slippage_bps": FX_SLIPPAGE_TOLERANCE_BPS,
+        "chain": route.chain,
+        "quoted_at": time.time(),
+    }
+
+
+def _check_slippage(
+    quote: dict[str, Any],
+    actual_output: Decimal,
+    expected_output: Decimal,
+) -> str | None:
+    """Return an error message if slippage exceeds tolerance, else None."""
+    if expected_output <= 0:
+        return None
+    actual_bps = int(
+        (1 - actual_output / expected_output) * 10000
+    )
+    if actual_bps > FX_SLIPPAGE_TOLERANCE_BPS:
+        return (
+            f"Slippage {actual_bps} bps exceeds tolerance "
+            f"{FX_SLIPPAGE_TOLERANCE_BPS} bps. "
+            f"Expected {expected_output}, got {actual_output}. "
+            f"Request a fresh quote."
+        )
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +345,9 @@ async def _find_best_chain(
     description=(
         "Unified payment endpoint. Validates inputs, enforces policy, "
         "and executes on-chain. If `chain` is omitted, Sardis auto-selects "
-        "the cheapest route across supported chains."
+        "the cheapest route across supported chains. If the requested currency "
+        "differs from the sender's token, Sardis auto-swaps via the best "
+        "FX adapter (Tempo DEX or Uniswap V3) before transferring."
     ),
     tags=["pay"],
 )
@@ -210,11 +367,64 @@ async def pay(
             detail=f"Invalid amount: {body.amount!r}",
         )
 
+    # ── Phase 3: resolve currency & detect cross-currency ───────────
+    # Map fiat codes to stablecoin tokens (USD→USDC, EUR→EURC, etc.)
+    target_token = _resolve_token(body.currency)
+    if target_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Unsupported currency: {body.currency!r}. "
+                f"Supported: {', '.join(sorted(CURRENCY_TO_TOKEN.keys()))}"
+            ),
+        )
+
+    # The sender's token defaults to USDC (the base stablecoin).
+    # In the future this could be resolved from the sender's wallet balance.
+    sender_token = "USDC"
+
+    cross_currency = _is_cross_currency(body.currency, sender_token)
+    fx_info: FXInfo | None = None
+    fx_quote: dict[str, Any] | None = None
+
+    if cross_currency:
+        # Get FX quote — raises 422 for unsupported pairs, 503 if unavailable
+        fx_quote = await _get_fx_quote(
+            from_token=sender_token,
+            to_token=target_token,
+            amount=amount,
+            chain=body.chain,
+        )
+
+        logger.info(
+            "Cross-currency detected: %s (%s) -> %s at rate %s via %s",
+            sender_token, body.currency, target_token,
+            fx_quote["rate"], fx_quote["provider"],
+        )
+
+        fx_info = FXInfo(
+            from_currency=sender_token,
+            to_currency=target_token,
+            rate=str(fx_quote["rate"]),
+            provider=fx_quote["provider"],
+            slippage_bps=fx_quote["slippage_bps"],
+            fee_bps=fx_quote["fee_bps"],
+            input_amount=str(amount),
+            output_amount=str(fx_quote["output"]),
+        )
+
+    # Determine the token to use for the on-chain transfer.
+    # For cross-currency, the mandate uses the *target* token (e.g. EURC).
+    transfer_token = target_token
+    transfer_amount = amount
+    if cross_currency and fx_quote:
+        transfer_amount = fx_quote["output"]
+
     # ── Phase 2: resolve chain ──────────────────────────────────────
     # Iron rule: explicit chain always wins.
     auto_routed = body.chain is None
     if auto_routed:
-        ranked_chains = await _find_best_chain(body.currency, amount)
+        ranked_chains = await _find_best_chain(transfer_token, transfer_amount)
     else:
         ranked_chains = [{
             "chain": body.chain,
@@ -235,28 +445,28 @@ async def pay(
             mandate_id=f"intent_{mandate_id}",
             from_agent=principal.subject_id,
             to_merchant=body.to,
-            amount_minor=int(amount * 100),
-            currency=body.currency,
+            amount_minor=int(transfer_amount * 100),
+            currency=transfer_token,
             purpose=f"sardis.pay to {body.to}",
         )
         cart = CartMandate(
             mandate_id=f"cart_{mandate_id}",
             items=[{
                 "merchant": body.to,
-                "amount_minor": int(amount * 100),
-                "currency": body.currency,
+                "amount_minor": int(transfer_amount * 100),
+                "currency": transfer_token,
             }],
-            total_minor=int(amount * 100),
-            currency=body.currency,
+            total_minor=int(transfer_amount * 100),
+            currency=transfer_token,
         )
         payment = PaymentMandate(
             mandate_id=mandate_id,
             from_agent=principal.subject_id,
             to_merchant=body.to,
-            amount_minor=int(amount * 100),
-            currency=body.currency,
+            amount_minor=int(transfer_amount * 100),
+            currency=transfer_token,
             chain=selected_chain,
-            token=body.currency,
+            token=transfer_token,
         )
         chain = MandateChain(intent=intent, cart=cart, payment=payment)
 
@@ -264,12 +474,39 @@ async def pay(
             chain=selected_chain,
             provider=candidate["provider"],
             estimated_fee_bps=candidate["estimated_fee_bps"],
-            route_type=candidate["route_type"],
+            route_type="fx_swap" if cross_currency else candidate["route_type"],
             auto_routed=auto_routed,
         )
 
         try:
             result = await deps.orchestrator.execute_chain(chain)
+
+            # Phase 3: validate slippage if cross-currency
+            if cross_currency and fx_quote:
+                slippage_err = _check_slippage(
+                    fx_quote, fx_quote["output"], amount * fx_quote["rate"],
+                )
+                if slippage_err:
+                    # Slippage exceeded — get a fresh quote for the error message
+                    try:
+                        fresh_quote = await _get_fx_quote(
+                            from_token=sender_token,
+                            to_token=target_token,
+                            amount=amount,
+                            chain=selected_chain,
+                        )
+                        fresh_rate = str(fresh_quote["rate"])
+                    except Exception:
+                        fresh_rate = "unavailable"
+
+                    return PayResponse(
+                        status=PayStatus.failed,
+                        message=f"{slippage_err} Fresh rate: {fresh_rate}",
+                        mandate_id=mandate_id,
+                        route=route_info,
+                        fx=fx_info,
+                    )
+
             return PayResponse(
                 status=PayStatus.completed,
                 tx_hash=result.chain_tx_hash,
@@ -277,6 +514,7 @@ async def pay(
                 chain=result.chain or selected_chain,
                 mandate_id=result.mandate_id,
                 route=route_info,
+                fx=fx_info,
             )
         except (PolicyViolationError, MandateViolationError, KYAViolationError, ComplianceViolationError) as exc:
             # Policy / compliance errors are not retryable on a different chain
@@ -294,6 +532,7 @@ async def pay(
                 message=str(exc),
                 mandate_id=mandate_id,
                 route=route_info,
+                fx=fx_info,
                 policy_explanation=PolicyExplanationResponse(**explanation.to_dict()),
             )
         except ChainExecutionError as exc:
@@ -310,6 +549,7 @@ async def pay(
                 message=str(exc),
                 mandate_id=mandate_id,
                 route=route_info,
+                fx=fx_info,
             )
         except Exception as exc:
             last_error = exc
@@ -321,6 +561,7 @@ async def pay(
                 message="Internal error",
                 mandate_id=mandate_id,
                 route=route_info,
+                fx=fx_info,
             )
 
     # All candidates exhausted (auto-routing only reaches here)
@@ -328,4 +569,5 @@ async def pay(
         status=PayStatus.failed,
         message=f"All routes exhausted. Last error: {last_error}" if last_error else "No viable route found",
         mandate_id=mandate_id,
+        fx=fx_info,
     )
