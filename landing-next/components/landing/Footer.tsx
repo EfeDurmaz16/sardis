@@ -7,10 +7,8 @@ const footerColumns = [
       { label: "Documentation", to: "/docs" },
       { label: "API Reference", to: "/docs/api-reference" },
       { label: "MCP Server", to: "/docs/mcp-server" },
-      { label: "Playground", to: "/playground" },
       { label: "Pricing", to: "/pricing" },
       { label: "Enterprise", to: "/enterprise" },
-      { label: "Status", to: "/status" },
     ],
   },
   {
