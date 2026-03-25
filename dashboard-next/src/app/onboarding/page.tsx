@@ -619,7 +619,11 @@ function StepDone() {
 
 export default function OnboardingPage() {
   const searchParams = useSearchParams();
-  const apiKey = searchParams.get("apiKey") || "";
+  // Read API key from sessionStorage (moved from URL params to avoid exposure)
+  const apiKey =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("sardis_onboarding_api_key") || ""
+      : "";
   const preProvisionedAgentId = searchParams.get("agentId") || "";
 
   // If agent was auto-provisioned at signup, skip the "Create Agent" step

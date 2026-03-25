@@ -89,9 +89,12 @@ export default function SignupPage() {
   };
 
   const handleContinue = () => {
-    router.push(
-      `/onboarding?apiKey=${encodeURIComponent(apiKey)}&agentId=${encodeURIComponent(agentId || "")}`
-    );
+    // Store API key in sessionStorage instead of exposing it in URL params
+    sessionStorage.setItem("sardis_onboarding_api_key", apiKey);
+    const params = new URLSearchParams();
+    if (agentId) params.set("agentId", agentId);
+    const qs = params.toString();
+    router.push(`/onboarding${qs ? `?${qs}` : ""}`);
   };
 
   // Show API key screen after successful registration
