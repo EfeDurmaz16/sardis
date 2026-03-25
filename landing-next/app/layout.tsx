@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     "spending policies",
     "AI financial infrastructure",
     "autonomous payments",
-    "Base",
+    "Tempo",
     "USDC",
     "MCP server",
     "agent commerce",
