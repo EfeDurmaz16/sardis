@@ -933,17 +933,26 @@ function OrganizationTab({ token }: { token: string | null }) {
 // ── API KEYS TAB ─────────────────────────────────────────────────────────────
 
 function ApiKeysTab({ token }: { token: string | null }) {
-  const [count, setCount] = useState<number | null>(null)
+  const [testCount, setTestCount] = useState<number>(0)
+  const [liveCount, setLiveCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchCount() {
       try {
-        const res = await fetch(`${API_BASE}/api/v2/api-keys`, { headers: authHeaders(token) })
+        const res = await fetch(`${API_BASE}/api/v2/auth/api-keys`, { headers: authHeaders(token) })
         if (res.ok) {
           const data = await res.json()
           const keys = data.keys ?? []
-          setCount(keys.filter((k: { is_active: boolean }) => k.is_active).length)
+          const active = keys.filter((k: { is_active?: boolean }) => k.is_active !== false)
+          setTestCount(active.filter((k: { mode?: string; environment?: string; key_prefix?: string }) => {
+            const m = k.mode || k.environment || (k.key_prefix?.startsWith('sk_live_') ? 'live' : 'test')
+            return m === 'test'
+          }).length)
+          setLiveCount(active.filter((k: { mode?: string; environment?: string; key_prefix?: string }) => {
+            const m = k.mode || k.environment || (k.key_prefix?.startsWith('sk_live_') ? 'live' : 'test')
+            return m === 'live'
+          }).length)
         }
       } catch {
         // silent
@@ -966,11 +975,18 @@ function ApiKeysTab({ token }: { token: string | null }) {
             <p className="text-sm text-gray-400 mt-0.5">
               Manage programmatic access keys for your agents and integrations.
             </p>
-            {!loading && count !== null && (
-              <p className="text-xs text-gray-500 mt-2">
-                <span className="text-sardis-400 font-medium">{count}</span> active{' '}
-                {count === 1 ? 'key' : 'keys'}
-              </p>
+            {!loading && (
+              <div className="flex items-center gap-3 mt-2">
+                <span className="text-xs text-gray-500">
+                  <span className="text-blue-400 font-medium">{testCount}</span> test{' '}
+                  {testCount === 1 ? 'key' : 'keys'}
+                </span>
+                <span className="text-gray-700">|</span>
+                <span className="text-xs text-gray-500">
+                  <span className="text-green-400 font-medium">{liveCount}</span> live{' '}
+                  {liveCount === 1 ? 'key' : 'keys'}
+                </span>
+              </div>
             )}
           </div>
           <Link
@@ -986,7 +1002,7 @@ function ApiKeysTab({ token }: { token: string | null }) {
       <div className="card p-5 border-dark-100/50">
         <div className="flex items-center gap-2 text-sm text-gray-400">
           <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-          Keep your API keys secret. Never expose them in client-side code or public repositories.
+          Keep your API keys secret. Never expose them in client-side code or public repositories. Test keys (sk_test_) can only access sandbox mode.
         </div>
       </div>
     </div>

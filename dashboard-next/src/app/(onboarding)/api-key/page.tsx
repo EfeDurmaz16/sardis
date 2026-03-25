@@ -14,6 +14,9 @@ import {
   Shield,
   Zap,
   Users,
+  Lock,
+  TestTube,
+  Rocket,
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -27,17 +30,45 @@ const STEPS = [
   { label: "Go Live", icon: Users, active: false },
 ];
 
+type KeyMode = "test" | "live";
+
 export default function APIKeyPage() {
   const router = useRouter();
   const [apiKey, setApiKey] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [mode, setMode] = useState<KeyMode>("test");
+  const [kybApproved, setKybApproved] = useState(false);
+  const [checkingKyb, setCheckingKyb] = useState(true);
 
   useEffect(() => {
-    generateKey();
+    checkKybStatus();
   }, []);
+
+  const checkKybStatus = async () => {
+    setCheckingKyb(true);
+    try {
+      const token = localStorage.getItem("sardis_session");
+      const res = await fetch(`${API_URL}/api/v2/kyb/status`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setKybApproved(
+          data.status === "approved" || data.status === "completed"
+        );
+      }
+    } catch {
+      // KYB status check is best-effort
+    } finally {
+      setCheckingKyb(false);
+    }
+  };
 
   const generateKey = async () => {
     setIsLoading(true);
@@ -45,14 +76,14 @@ export default function APIKeyPage() {
 
     try {
       const token = localStorage.getItem("sardis_session");
-      const res = await fetch(`${API_URL}/api/v2/api-keys`, {
+      const res = await fetch(`${API_URL}/api/v2/auth/api-keys`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({ name: "Onboarding Key" }),
+        body: JSON.stringify({ name: "Onboarding Key", mode }),
       });
 
       if (!res.ok) {
@@ -61,7 +92,7 @@ export default function APIKeyPage() {
       }
 
       const data = await res.json();
-      setApiKey(data.api_key || data.key || data.raw_key || "");
+      setApiKey(data.key || data.api_key || data.raw_key || "");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       if (
@@ -70,8 +101,10 @@ export default function APIKeyPage() {
         msg.includes("404")
       ) {
         // Demo fallback when API is unavailable
-        const prefix = ["sardis", "key", "demo"].join("_");
-        setApiKey(prefix + "_" + Math.random().toString(36).slice(2, 18));
+        const prefix = mode === "live" ? "sk_live" : "sk_test";
+        setApiKey(
+          prefix + "_demo_" + Math.random().toString(36).slice(2, 18)
+        );
       } else {
         setError(msg);
       }
@@ -90,13 +123,17 @@ export default function APIKeyPage() {
     router.push("/mandate");
   };
 
+  const liveLocked = !kybApproved && !checkingKyb;
+
   return (
     <div className="min-h-screen bg-gray-950 flex">
       {/* Left Rail */}
       <div className="hidden lg:flex w-72 bg-dark-400 border-r border-dark-100 p-8 flex-col">
         <div className="mb-10">
           <h2 className="text-lg font-bold text-white font-display">Setup</h2>
-          <p className="text-sm text-gray-500 mt-1">Complete these steps to go live</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Complete these steps to go live
+          </p>
         </div>
         <nav className="space-y-1 flex-1">
           {STEPS.map((step) => (
@@ -131,19 +168,121 @@ export default function APIKeyPage() {
                   Your API Key
                 </h1>
                 <p className="text-sm text-gray-400">
-                  Save this key securely — it will only be shown once
+                  Choose your environment and generate a key
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Mode Selector */}
+          {!apiKey && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-300 mb-3">
+                Environment
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Test Mode */}
+                <button
+                  onClick={() => setMode("test")}
+                  className={`relative p-4 rounded-lg border text-left transition-all ${
+                    mode === "test"
+                      ? "border-sardis-500/60 bg-sardis-500/5 ring-1 ring-sardis-500/30"
+                      : "border-dark-100 bg-dark-300 hover:border-dark-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <TestTube
+                      className={`w-4 h-4 ${mode === "test" ? "text-sardis-400" : "text-gray-500"}`}
+                    />
+                    <span
+                      className={`text-sm font-semibold ${mode === "test" ? "text-white" : "text-gray-300"}`}
+                    >
+                      Test Key
+                    </span>
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      Sandbox
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    sk_test_ prefix. Safe for development. No real money moves.
+                  </p>
+                </button>
+
+                {/* Live Mode */}
+                <button
+                  onClick={() => {
+                    if (!liveLocked) setMode("live");
+                  }}
+                  disabled={liveLocked}
+                  className={`relative p-4 rounded-lg border text-left transition-all ${
+                    liveLocked
+                      ? "border-dark-100 bg-dark-300/50 cursor-not-allowed opacity-60"
+                      : mode === "live"
+                        ? "border-sardis-500/60 bg-sardis-500/5 ring-1 ring-sardis-500/30"
+                        : "border-dark-100 bg-dark-300 hover:border-dark-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    {liveLocked ? (
+                      <Lock className="w-4 h-4 text-gray-600" />
+                    ) : (
+                      <Rocket
+                        className={`w-4 h-4 ${mode === "live" ? "text-sardis-400" : "text-gray-500"}`}
+                      />
+                    )}
+                    <span
+                      className={`text-sm font-semibold ${
+                        liveLocked
+                          ? "text-gray-600"
+                          : mode === "live"
+                            ? "text-white"
+                            : "text-gray-300"
+                      }`}
+                    >
+                      Live Key
+                    </span>
+                    <span
+                      className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                        liveLocked
+                          ? "bg-gray-500/20 text-gray-500 border border-gray-500/30"
+                          : "bg-green-500/20 text-green-300 border border-green-500/30"
+                      }`}
+                    >
+                      Production
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {liveLocked
+                      ? "Complete KYB verification to unlock live keys."
+                      : "sk_live_ prefix. Real transactions on mainnet."}
+                  </p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Generate Button (before key is generated) */}
+          {!apiKey && !isLoading && !error && (
+            <button
+              onClick={generateKey}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover mb-6"
+            >
+              <Key className="w-4 h-4" />
+              Generate {mode === "live" ? "Live" : "Test"} API Key
+            </button>
+          )}
+
           {/* Warning Banner */}
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-6 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-yellow-400">
-              This key cannot be recovered after you leave this page. Copy and store it in a secure location (e.g. environment variables, a secrets manager).
-            </p>
-          </div>
+          {apiKey && (
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg mb-6 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-yellow-400">
+                This key cannot be recovered after you leave this page. Copy and
+                store it in a secure location (e.g. environment variables, a
+                secrets manager).
+              </p>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -159,8 +298,26 @@ export default function APIKeyPage() {
                 Try again
               </button>
             </div>
-          ) : (
+          ) : apiKey ? (
             <>
+              {/* Mode Badge */}
+              <div className="mb-4 flex items-center gap-2">
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    mode === "live"
+                      ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                      : "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                  }`}
+                >
+                  {mode === "live" ? "Live" : "Test"}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {mode === "live"
+                    ? "Production key - real transactions"
+                    : "Sandbox key - simulated transactions only"}
+                </span>
+              </div>
+
               {/* Key Display */}
               <div className="mb-6">
                 <div className="flex items-center gap-2">
@@ -203,7 +360,7 @@ export default function APIKeyPage() {
                 <ChevronRight className="w-5 h-5" />
               </button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
