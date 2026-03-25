@@ -90,5 +90,49 @@ class ExecuteAP2Response(SardisModel):
     status: str
     compliance_provider: str | None = None
     compliance_rule: str | None = None
+class FXDetails(SardisModel):
+    """FX swap details returned when a cross-currency payment occurs.
+
+    Only present in PayResult when the requested currency differs
+    from the sender's token (e.g. sender has USDC, currency="EUR").
+    """
+
+    from_currency: str
+    to_currency: str
+    rate: str
+    provider: str
+    slippage_bps: int
+    fee_bps: int = 0
+    input_amount: str
+    output_amount: str
+
+
+class RouteDetails(SardisModel):
+    """Route metadata from sardis.pay() response."""
+
+    chain: str
+    provider: str
+    estimated_fee_bps: int = 0
+    route_type: str = "direct"
+    auto_routed: bool = False
+
+
+class PayResult(SardisModel):
+    """Result of sardis.pay() — the unified payment endpoint.
+
+    Includes chain execution details, routing metadata, and
+    optional FX swap information for cross-currency payments.
+    """
+
+    status: str
+    tx_hash: str | None = None
+    ledger_tx_id: str | None = None
+    chain: str | None = None
+    message: str | None = None
+    mandate_id: str | None = None
+    route: RouteDetails | None = None
+    fx: FXDetails | None = None
+
+
 # Aliases / Placeholders for models used in resources but not fully defined here
 PaymentMandate = dict[str, Any]  # Mandates are currently raw dicts in SDK

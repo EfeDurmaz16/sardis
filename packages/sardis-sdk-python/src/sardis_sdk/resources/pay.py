@@ -6,6 +6,11 @@ executes the payment on-chain in a single call.
 
 Phase 2: `chain` is now optional. When omitted, Sardis auto-selects
 the cheapest route across supported chains.
+
+Phase 3: Cross-currency FX. When ``currency`` differs from the sender's
+token (e.g. sender has USDC, ``currency="EUR"``), Sardis auto-swaps via
+the best FX adapter (Tempo DEX or Uniswap V3) before transferring.
+The response includes an ``fx`` field with rate, provider, and slippage.
 """
 from __future__ import annotations
 
@@ -35,6 +40,16 @@ class AsyncPayResource(AsyncBaseResource):
                 amount="25.00",
                 chain="base",
             )
+
+            # Cross-currency: send EUR (auto-swaps USDC→EURC)
+            result = await client.pay.execute(
+                to="merchant@eu",
+                amount="100.00",
+                currency="EUR",
+            )
+            print(result["fx"])
+            # {"from_currency": "USDC", "to_currency": "EURC",
+            #  "rate": "0.9215", "provider": "tempo_dex", ...}
         ```
     """
 
@@ -52,7 +67,10 @@ class AsyncPayResource(AsyncBaseResource):
         Args:
             to: Recipient address or merchant domain
             amount: Payment amount as string (e.g. "25.00")
-            currency: Token (default USDC)
+            currency: Token or fiat currency code. Supported values:
+                USDC, EURC, USDT, USD, EUR. When a fiat code is used
+                (e.g. "EUR"), Sardis auto-swaps the sender's token
+                to the corresponding stablecoin (USDC->EURC).
             chain: Target blockchain. If omitted, Sardis auto-selects
                    the cheapest route across supported chains.
             mandate_id: Optional spending mandate ID
@@ -60,7 +78,8 @@ class AsyncPayResource(AsyncBaseResource):
 
         Returns:
             Dict with status, tx_hash, ledger_tx_id, chain, message,
-            mandate_id, route (chain/provider/fee metadata)
+            mandate_id, route (chain/provider/fee metadata), and
+            fx (FX swap details, only present for cross-currency payments).
         """
         payload: dict[str, Any] = {
             "to": to,
@@ -93,6 +112,16 @@ class PayResource(SyncBaseResource):
                 amount="25.00",
                 chain="base",
             )
+
+            # Cross-currency: send EUR (auto-swaps USDC→EURC)
+            result = client.pay.execute(
+                to="merchant@eu",
+                amount="100.00",
+                currency="EUR",
+            )
+            print(result["fx"])
+            # {"from_currency": "USDC", "to_currency": "EURC",
+            #  "rate": "0.9215", "provider": "tempo_dex", ...}
         ```
     """
 
@@ -110,7 +139,10 @@ class PayResource(SyncBaseResource):
         Args:
             to: Recipient address or merchant domain
             amount: Payment amount as string (e.g. "25.00")
-            currency: Token (default USDC)
+            currency: Token or fiat currency code. Supported values:
+                USDC, EURC, USDT, USD, EUR. When a fiat code is used
+                (e.g. "EUR"), Sardis auto-swaps the sender's token
+                to the corresponding stablecoin (USDC->EURC).
             chain: Target blockchain. If omitted, Sardis auto-selects
                    the cheapest route across supported chains.
             mandate_id: Optional spending mandate ID
@@ -118,7 +150,8 @@ class PayResource(SyncBaseResource):
 
         Returns:
             Dict with status, tx_hash, ledger_tx_id, chain, message,
-            mandate_id, route (chain/provider/fee metadata)
+            mandate_id, route (chain/provider/fee metadata), and
+            fx (FX swap details, only present for cross-currency payments).
         """
         payload: dict[str, Any] = {
             "to": to,
