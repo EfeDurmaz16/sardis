@@ -1,0 +1,65 @@
+---
+title: AP2 Protocol
+description: "Agent Payment Protocol (AP2) — the Google, PayPal, Mastercard, and Visa consortium standard for secure agent payments. Sardis verifies the full Intent → Cart → Payment mandate chain with signature validation and replay protection."
+---
+
+## Mandate Chain
+
+AP2 uses a three-step mandate chain to ensure that every payment traces back to an explicit user intent:
+
+```
+IntentMandate ───▶ CartMandate ───▶ PaymentMandate
+   (User)           (Merchant)         (Signed)
+      │                  │                 │
+      │ "I want to buy"  │ "Here's cart"   │ "Approved"
+      ▼                  ▼                 ▼
+                  Sardis Verifier
+            • Chain integrity check
+            • Signature validation
+            • Policy enforcement
+```
+
+## Python
+
+```python
+from sardis import SardisClient
+
+async with SardisClient(api_key="sk_...") as client:
+    # Create intent mandate
+    intent = await client.mandates.create_intent(
+        agent_id="shopping-agent",
+        max_amount_minor=50_000_000,
+        allowed_categories=["saas"],
+    )
+
+    # Execute payment from cart
+    result = await client.payments.execute_mandate(cart.id)
+    print(f"Transaction: {result.tx_hash}")
+```
+
+## TypeScript
+
+```typescript
+import { SardisClient } from "@sardis/sdk";
+
+const client = new SardisClient({ apiKey: "sk_..." });
+
+const intent = await client.mandates.createIntent({
+  agentId: "shopping-agent",
+  maxAmountMinor: 50_000_000,
+  allowedCategories: ["saas"],
+});
+
+const result = await client.payments.executeMandate(cart.id);
+console.log("Transaction:", result.txHash);
+```
+
+## Verification
+
+Sardis validates every AP2 mandate chain before executing payment:
+
+- **Chain integrity** — Each mandate references its parent
+- **Signature validation** — All mandates cryptographically signed
+- **Amount bounds** — Cart total must not exceed intent max amount
+- **Replay protection** — Mandate cannot be executed more than once
+- **Policy enforcement** — Transaction must pass Sardis spending policies and compliance checks

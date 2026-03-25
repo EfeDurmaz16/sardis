@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   Search,
   Store,
@@ -8,10 +9,13 @@ import {
   DollarSign,
   ChevronDown,
   AlertCircle,
+  Plus,
+  Receipt,
+  TrendingUp,
 } from 'lucide-react'
 import clsx from 'clsx'
 import StatCard from '@/components/StatCard'
-import { useMerchants } from '@/hooks/useApi'
+import { useMerchants, useMerchantSessions } from '@/hooks/useApi'
 
 type TrustLevel = 'unknown' | 'low' | 'medium' | 'high' | 'verified'
 type TrustFilter = 'all' | TrustLevel
@@ -77,8 +81,10 @@ export default function MerchantsPage() {
   const [search, setSearch] = useState('')
   const [trustFilter, setTrustFilter] = useState<TrustFilter>('all')
   const [filterOpen, setFilterOpen] = useState(false)
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null)
 
   const { data: rawMerchants, isLoading, error } = useMerchants()
+  const { data: sessions, isLoading: sessionsLoading } = useMerchantSessions(selectedMerchantId)
 
   const merchants: MerchantRow[] = Array.isArray(rawMerchants)
     ? rawMerchants.map(toMerchantRow)
@@ -97,14 +103,35 @@ export default function MerchantsPage() {
       ? Math.round(merchants.reduce((sum, m) => sum + m.trust_score, 0) / merchants.length)
       : 0
 
+  // Checkout session stats
+  const sessionList = Array.isArray(sessions) ? sessions : []
+  const totalRevenue = sessionList
+    .filter(s => s.status === 'paid')
+    .reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0)
+  const conversionRate = sessionList.length > 0
+    ? (sessionList.filter(s => s.status === 'paid').length / sessionList.length * 100).toFixed(1)
+    : '0.0'
+  const avgOrderValue = sessionList.filter(s => s.status === 'paid').length > 0
+    ? (totalRevenue / sessionList.filter(s => s.status === 'paid').length).toFixed(2)
+    : '0.00'
+
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white font-display">Merchant Analytics</h1>
-        <p className="text-gray-400 mt-1">
-          Trust profiles and transaction analytics for merchant counterparties
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white font-display">Merchant Dashboard</h1>
+          <p className="text-gray-400 mt-1">
+            Manage your Pay with Sardis merchants and track checkout sessions
+          </p>
+        </div>
+        <Link
+          href="/merchants/setup"
+          className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
+        >
+          <Plus className="w-4 h-4" />
+          New Merchant
+        </Link>
       </div>
 
       {/* Summary Stats */}
@@ -237,7 +264,14 @@ export default function MerchantsPage() {
               : filtered.map((merchant) => {
                   const cfg = TRUST_LEVEL_CONFIG[merchant.trust_level]
                   return (
-                    <tr key={merchant.id} className="hover:bg-dark-200/50 transition-colors">
+                    <tr
+                      key={merchant.id}
+                      onClick={() => setSelectedMerchantId(merchant.id || null)}
+                      className={clsx(
+                        'hover:bg-dark-200/50 transition-colors cursor-pointer',
+                        selectedMerchantId === merchant.id && 'bg-sardis-500/5 border-l-2 border-l-sardis-500'
+                      )}
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-sardis-500/10 flex items-center justify-center">
@@ -331,9 +365,141 @@ export default function MerchantsPage() {
                 ? 'Try adjusting your search or filter'
                 : 'Merchant profiles will appear once transactions are processed'}
             </p>
+            <Link
+              href="/merchants/setup"
+              className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Set Up Your First Merchant
+            </Link>
           </div>
         )}
       </div>
+
+      {/* Checkout Sessions Panel */}
+      {selectedMerchantId && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Checkout Sessions</h2>
+            <p className="text-gray-400 text-sm mt-1">
+              Payment sessions for selected merchant
+            </p>
+          </div>
+
+          {/* Session Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatCard
+              title="Revenue"
+              value={sessionsLoading ? '---' : `$${totalRevenue.toFixed(2)}`}
+              icon={<DollarSign className="w-5 h-5" />}
+            />
+            <StatCard
+              title="Conversion Rate"
+              value={sessionsLoading ? '---' : `${conversionRate}%`}
+              icon={<TrendingUp className="w-5 h-5" />}
+            />
+            <StatCard
+              title="Avg Order Value"
+              value={sessionsLoading ? '---' : `$${avgOrderValue}`}
+              icon={<Receipt className="w-5 h-5" />}
+            />
+          </div>
+
+          {/* Session List */}
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-dark-300">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Session ID
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Amount
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Currency
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Settlement
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                    Created
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-dark-100">
+                {sessionsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <tr key={i} className="border-b border-dark-100">
+                      {Array.from({ length: 6 }).map((_, j) => (
+                        <td key={j} className="px-6 py-4">
+                          <div className="h-4 bg-dark-200 animate-pulse rounded w-3/4" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : sessionList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <Receipt className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                      <p className="text-gray-400">No checkout sessions yet</p>
+                    </td>
+                  </tr>
+                ) : (
+                  sessionList.map((session) => (
+                    <tr key={session.session_id} className="hover:bg-dark-200/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-300 font-mono">
+                          {session.session_id.substring(0, 12)}...
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-white mono-numbers">
+                          ${parseFloat(session.amount).toFixed(2)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-400">{session.currency}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={clsx(
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium',
+                            session.status === 'paid' && 'bg-green-500/10 text-green-400',
+                            session.status === 'pending' && 'bg-yellow-500/10 text-yellow-400',
+                            session.status === 'expired' && 'bg-red-500/10 text-red-400',
+                            !['paid', 'pending', 'expired'].includes(session.status) && 'bg-gray-500/10 text-gray-400'
+                          )}
+                        >
+                          {session.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={clsx(
+                            'text-sm',
+                            session.settlement_status === 'settled' ? 'text-green-400' : 'text-gray-500'
+                          )}
+                        >
+                          {session.settlement_status || '---'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-400">
+                          {formatDate(session.created_at)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

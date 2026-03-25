@@ -1,0 +1,77 @@
+---
+title: Protocol Stack
+description: Industry-standard protocols for secure agent payments. Sardis implements AP2, UCP, A2A, TAP, x402, and ACP for comprehensive agent-to-merchant and agent-to-agent financial operations.
+---
+
+## Overview
+
+Sardis implements six complementary protocols for agent payments. Each protocol handles a different aspect of the payment lifecycle — from identity verification to checkout to inter-agent communication.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     External Agents                          │
+└─────────────────────────────────────────────────────────────┘
+                    │   A2A     │    UCP    │   x402
+                    ▼           ▼           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Sardis Protocol Layer                       │
+│  A2A (messages)│ UCP (commerce)│ x402 (micro) │ ACP (shops) │
+│                         │                                    │
+│                    ┌────┴────┐                               │
+│                    │ AP2/TAP │  ← Verification               │
+│                    └─────────┘                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Bank Transfer │ Virtual Cards │ Stablecoins (optional)     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Protocols
+
+### AP2 (Agent Payment Protocol)
+
+Google, PayPal, Mastercard, Visa consortium standard. Mandate chain verification with full intent-to-payment traceability.
+
+[Read more →](/docs/ap2)
+
+### UCP (Universal Commerce Protocol)
+
+Standardized checkout flow for AI agents. Cart management, discount application, session tracking, and fulfillment.
+
+[Read more →](/docs/ucp)
+
+### A2A (Agent-to-Agent)
+
+Google-developed multi-agent communication protocol. Agent cards, capability discovery, and payment coordination between agents.
+
+[Read more →](/docs/a2a)
+
+### TAP (Trusted Agent Protocol)
+
+Cryptographic identity verification for agents. Ed25519/ECDSA signatures, attestations, and trust scoring.
+
+[Read more →](/docs/tap)
+
+### x402 (HTTP Payments)
+
+HTTP-native micropayments via 402 status code. Coinbase-developed standard for pay-per-request APIs. Automatically handled by the Sardis MPP client.
+
+### ACP (Agentic Commerce Protocol)
+
+OpenAI's open standard for AI agent commerce. Product feeds, agentic checkout, delegated payments for ChatGPT-native purchasing.
+
+[Read more →](/docs/acp)
+
+## Stablecoin Networks (Optional Rail)
+
+| Chain | Tokens | Status |
+| --- | --- | --- |
+| Base | USDC, EURC | Deployed |
+| Polygon | USDC, USDT, EURC | Ready |
+| Ethereum | USDC, USDT, PYUSD, EURC | Ready |
+| Arbitrum | USDC, USDT | Ready |
+| Optimism | USDC, USDT | Ready |
+
+**Deployed** = Contracts live on testnet | **Ready** = Chain integration complete, pending deployment

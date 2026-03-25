@@ -26,6 +26,7 @@ import {
   ArrowRightLeft,
   User,
   Terminal,
+  Store,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
@@ -58,6 +59,7 @@ const coreNavigation: NavItem[] = [
   { name: 'Agents', href: '/agents', icon: Users, tour: 'agents' },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft, tour: 'transactions' },
   { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
+  { name: 'Merchants', href: '/merchants', icon: Store },
 ]
 
 // Collapsible grouped sections
