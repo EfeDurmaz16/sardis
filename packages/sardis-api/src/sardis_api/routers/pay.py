@@ -434,7 +434,7 @@ async def pay(
         }]
 
     # Build a minimal mandate chain for the orchestrator
-    mandate_id = body.mandate_id or f"pay_{principal.subject_id}"
+    mandate_id = body.mandate_id or f"pay_{principal.user_id}"
 
     # Try each candidate chain in order (cheapest first).
     last_error: Exception | None = None
@@ -443,7 +443,7 @@ async def pay(
 
         intent = IntentMandate(
             mandate_id=f"intent_{mandate_id}",
-            from_agent=principal.subject_id,
+            from_agent=principal.user_id,
             to_merchant=body.to,
             amount_minor=int(transfer_amount * 100),
             currency=transfer_token,
@@ -461,7 +461,7 @@ async def pay(
         )
         payment = PaymentMandate(
             mandate_id=mandate_id,
-            from_agent=principal.subject_id,
+            from_agent=principal.user_id,
             to_merchant=body.to,
             amount_minor=int(transfer_amount * 100),
             currency=transfer_token,
