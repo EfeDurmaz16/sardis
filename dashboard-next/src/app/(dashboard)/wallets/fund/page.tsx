@@ -28,13 +28,24 @@ const PROVIDERS: {
   description: string
   recommended?: boolean
   fees: string
+  badge?: string
+  targetChain?: string
 }[] = [
+  {
+    id: 'conduit',
+    name: 'Conduit (Direct to Tempo)',
+    description: 'Native USDC on Tempo — no bridge needed. Powered by Conduit Pay.',
+    recommended: true,
+    fees: 'Low',
+    badge: 'Recommended',
+    targetChain: 'tempo',
+  },
   {
     id: 'coinbase',
     name: 'Coinbase Onramp',
-    description: 'Instant funding via Coinbase. No fees for USDC.',
-    recommended: true,
+    description: 'Instant funding via Coinbase. No fees for USDC on Base.',
     fees: 'Free',
+    targetChain: 'base',
   },
   {
     id: 'moonpay',
@@ -71,7 +82,7 @@ export default function FundWalletPage() {
 
   const [step, setStep] = useState<FundStep>('configure')
   const [amount, setAmount] = useState('')
-  const [provider, setProvider] = useState<OnrampProvider>('coinbase')
+  const [provider, setProvider] = useState<OnrampProvider>('conduit')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
   const [selectedWalletId, setSelectedWalletId] = useState(walletIdParam || '')
   const [resultData, setResultData] = useState<Record<string, unknown> | null>(null)
@@ -101,11 +112,13 @@ export default function FundWalletPage() {
     setErrorMessage('')
 
     try {
+      const selectedProvider = PROVIDERS.find((p) => p.id === provider)
       const result = await fundWallet.mutateAsync({
         walletId: selectedWalletId,
         amount: parsedAmount.toFixed(2),
         provider,
         payment_method: paymentMethod,
+        target_chain: selectedProvider?.targetChain,
       })
 
       setResultData(result)
@@ -273,13 +286,18 @@ export default function FundWalletPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white">{p.name}</span>
-                      {p.recommended && (
+                      {p.badge && (
                         <span className="text-[10px] px-1.5 py-0.5 bg-sardis-500/20 text-sardis-400 rounded font-medium uppercase tracking-wider">
-                          Recommended
+                          {p.badge}
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{p.description}</p>
+                    {p.targetChain && (
+                      <p className="text-[10px] text-gray-600 mt-0.5">
+                        Target chain: <span className="text-gray-400 capitalize">{p.targetChain}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-gray-400">Fees: {p.fees}</span>
@@ -329,7 +347,10 @@ export default function FundWalletPage() {
           <div className="card p-5 space-y-4">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Shield className="w-4 h-4" />
-              <span>Funds are converted to USDC and deposited on Base</span>
+              <span>
+                Funds are converted to USDC and deposited on{' '}
+                {provider === 'conduit' ? 'Tempo (native, no bridge)' : 'Base'}
+              </span>
             </div>
 
             {isValidAmount && (
@@ -349,12 +370,18 @@ export default function FundWalletPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Provider fees</span>
                   <span className="text-gray-300">
-                    {provider === 'coinbase' ? 'Free' : '~' + (parsedAmount * 0.03).toFixed(2) + ' USD'}
+                    {provider === 'coinbase'
+                      ? 'Free'
+                      : provider === 'conduit'
+                        ? 'Low (spread-based)'
+                        : '~' + (parsedAmount * 0.03).toFixed(2) + ' USD'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Network</span>
-                  <span className="text-gray-300">Base (L2)</span>
+                  <span className="text-gray-300">
+                    {provider === 'conduit' ? 'Tempo (native)' : 'Base (L2)'}
+                  </span>
                 </div>
               </div>
             )}
@@ -388,9 +415,11 @@ export default function FundWalletPage() {
           <Loader2 className="w-12 h-12 text-sardis-400 animate-spin mx-auto" />
           <h2 className="text-xl font-semibold text-white">Processing...</h2>
           <p className="text-gray-400 text-sm">
-            Setting up your {provider === 'coinbase' ? 'Coinbase' : 'MoonPay'} onramp session.
+            Setting up your {provider === 'conduit' ? 'Conduit' : provider === 'coinbase' ? 'Coinbase' : 'MoonPay'} onramp session.
             <br />
-            You may be redirected to complete payment.
+            {provider === 'conduit'
+              ? 'USDC will be delivered directly to your Tempo wallet.'
+              : 'You may be redirected to complete payment.'}
           </p>
         </div>
       )}

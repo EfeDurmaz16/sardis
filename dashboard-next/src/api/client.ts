@@ -1243,6 +1243,7 @@ export const walletsApi = {
     amount: string
     provider: string
     payment_method?: string
+    target_chain?: string
   }) => requestV2<JsonObject>(`/wallets/${walletId}/fund`, {
     method: 'POST',
     body: JSON.stringify(data),
