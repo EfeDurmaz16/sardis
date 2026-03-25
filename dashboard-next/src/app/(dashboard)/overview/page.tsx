@@ -18,7 +18,11 @@ import {
   X,
   Key,
   FlaskConical,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
+  Plus,
+  Bot,
+  Send
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -235,6 +239,46 @@ export default function DashboardPage() {
           </div>
           <FaucetButton />
         </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link
+          href="/wallets/fund"
+          className="card p-5 flex flex-col items-center gap-3 hover:border-sardis-500/40 transition-all group cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-xl bg-sardis-500/10 flex items-center justify-center group-hover:bg-sardis-500/20 transition-colors">
+            <DollarSign className="w-6 h-6 text-sardis-400" />
+          </div>
+          <span className="text-sm font-medium text-white">Add Funds</span>
+        </Link>
+        <Link
+          href="/agents"
+          className="card p-5 flex flex-col items-center gap-3 hover:border-blue-500/40 transition-all group cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+            <Bot className="w-6 h-6 text-blue-400" />
+          </div>
+          <span className="text-sm font-medium text-white">Create Agent</span>
+        </Link>
+        <Link
+          href="/simulation"
+          className="card p-5 flex flex-col items-center gap-3 hover:border-green-500/40 transition-all group cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+            <Send className="w-6 h-6 text-green-400" />
+          </div>
+          <span className="text-sm font-medium text-white">New Payment</span>
+        </Link>
+        <Link
+          href="/virtual-cards"
+          className="card p-5 flex flex-col items-center gap-3 hover:border-purple-500/40 transition-all group cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+            <CreditCard className="w-6 h-6 text-purple-400" />
+          </div>
+          <span className="text-sm font-medium text-white">Issue Card</span>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
