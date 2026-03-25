@@ -30,3 +30,67 @@ export function useAuth() {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Agent Auth Protocol helpers
+// ---------------------------------------------------------------------------
+
+const SARDIS_API_URL =
+  process.env.NEXT_PUBLIC_SARDIS_API_URL || "https://api.sardis.sh";
+
+/** Fetch the Agent Auth discovery document from the API. */
+export async function fetchAgentDiscovery() {
+  const resp = await fetch(
+    `${SARDIS_API_URL}/.well-known/agent-configuration`
+  );
+  if (!resp.ok) throw new Error("Failed to fetch agent discovery");
+  return resp.json();
+}
+
+/** Register an agent via the Agent Auth Protocol. */
+export async function registerAgent(
+  apiKey: string,
+  params: {
+    agent_name: string;
+    public_key: string;
+    mode?: "delegated" | "autonomous";
+    capabilities_requested?: string[];
+  }
+) {
+  const resp = await fetch(`${SARDIS_API_URL}/api/v2/agent/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error("Agent registration failed");
+  return resp.json();
+}
+
+/** Execute a capability on behalf of an agent. */
+export async function executeCapability(
+  apiKey: string,
+  agentJwt: string | null,
+  params: {
+    capability: string;
+    parameters: Record<string, unknown>;
+  }
+) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+  };
+  if (agentJwt) {
+    headers["X-Agent-JWT"] = agentJwt;
+  }
+
+  const resp = await fetch(`${SARDIS_API_URL}/api/v2/capability/execute`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(params),
+  });
+  if (!resp.ok) throw new Error("Capability execution failed");
+  return resp.json();
+}

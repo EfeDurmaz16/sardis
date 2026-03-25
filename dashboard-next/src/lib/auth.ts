@@ -4,6 +4,36 @@ import { jwt } from "better-auth/plugins";
 import { Pool } from "pg";
 
 /**
+ * Agent Auth Protocol configuration.
+ *
+ * Sardis exposes /.well-known/agent-configuration for AI agent discovery.
+ * The dashboard auth config includes agent-specific JWT claims so that
+ * dashboard users can manage their registered agents and capability grants.
+ *
+ * Agent tokens use the X-Agent-JWT header (not Authorization: Bearer)
+ * to support dual auth: API key/dashboard JWT + agent identity.
+ */
+export const AGENT_AUTH_CONFIG = {
+  discoveryUrl:
+    process.env.SARDIS_API_URL || "https://api.sardis.sh",
+  discoveryPath: "/.well-known/agent-configuration",
+  algorithms: ["Ed25519"] as const,
+  supportedModes: ["delegated", "autonomous"] as const,
+  capabilities: [
+    "payment",
+    "fx_quote",
+    "policy_check",
+    "mandate_create",
+    "balance_check",
+  ] as const,
+  /** Header used for agent JWT tokens (separate from main auth) */
+  agentTokenHeader: "X-Agent-JWT",
+} as const;
+
+export type AgentCapability = (typeof AGENT_AUTH_CONFIG.capabilities)[number];
+export type AgentMode = (typeof AGENT_AUTH_CONFIG.supportedModes)[number];
+
+/**
  * better-auth server configuration for Sardis dashboard.
  *
  * Database: Neon PostgreSQL via pg.Pool (connection-pooler compatible).
