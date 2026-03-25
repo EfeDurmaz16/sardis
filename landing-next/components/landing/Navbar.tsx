@@ -7,7 +7,7 @@ import Link from "next/link";
 
 const navLinks = [
   { label: "Docs", href: "/docs" },
-  { label: "Demo", href: "/playground" },
+  { label: "Quickstart", href: "https://docs.sardis.sh/docs/quickstart" },
   { label: "Pricing", href: "/pricing" },
   { label: "GitHub", href: "https://github.com/EfeDurmaz16/sardis" },
   { label: "Blog", href: "/docs/blog" },

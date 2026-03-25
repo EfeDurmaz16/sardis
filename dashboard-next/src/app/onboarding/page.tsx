@@ -11,9 +11,14 @@ import {
   Check,
   Terminal,
 } from "lucide-react";
-import { useSession } from "@/lib/auth-client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+/** Read the Sardis JWT stored at login/signup (not the better-auth session token). */
+function getSardisToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("sardis_session");
+}
 
 function ProgressBar({ step, total = 5 }: { step: number; total?: number }) {
   return (
@@ -162,7 +167,6 @@ function StepCreateAgent({
   onSkip: () => void;
   onAgentCreated: (agentId: string) => void;
 }) {
-  const { data: session } = useSession();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -176,13 +180,12 @@ function StepCreateAgent({
     setError("");
 
     try {
+      const token = getSardisToken();
       const res = await fetch(`${API_URL}/api/v2/agents`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(session?.session?.token
-            ? { Authorization: `Bearer ${session.session.token}` }
-            : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
         body: JSON.stringify({
@@ -292,7 +295,6 @@ function StepSetPolicy({
   onNext: () => void;
   onSkip: () => void;
 }) {
-  const { data: session } = useSession();
   const [policyText, setPolicyText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -305,13 +307,12 @@ function StepSetPolicy({
     setError("");
 
     try {
+      const token = getSardisToken();
       const res = await fetch(`${API_URL}/api/v2/policies`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(session?.session?.token
-            ? { Authorization: `Bearer ${session.session.token}` }
-            : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
         body: JSON.stringify({
@@ -409,7 +410,6 @@ function StepTestPayment({
   onNext: () => void;
   onSkip: () => void;
 }) {
-  const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -420,22 +420,21 @@ function StepTestPayment({
     setErrorMessage("");
 
     try {
-      const res = await fetch(`${API_URL}/sandbox/transactions`, {
+      const token = getSardisToken();
+      const res = await fetch(`${API_URL}/api/v2/sandbox/payment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(session?.session?.token
-            ? { Authorization: `Bearer ${session.session.token}` }
-            : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         credentials: "include",
         body: JSON.stringify({
-          agent_id: agentId,
-          amount: "1.00",
-          currency: "USD",
+          agent_id: agentId || "agent_demo_001",
+          amount: 1.0,
           merchant: "Sardis Test Merchant",
-          description: "Onboarding test payment",
-          simulate: true,
+          merchant_category: "saas",
+          chain: "base_sepolia",
+          token: "USDC",
         }),
       });
 
