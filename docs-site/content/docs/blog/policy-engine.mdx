@@ -1,0 +1,164 @@
+---
+title: "Policy Engine Deep Dive: Configuring Spending Rules"
+description: Explore the full capabilities of the Sardis policy engine. From simple spending limits to vendor allowlists, time-based rules, velocity controls, and approval workflows.
+date: 2024-12-28
+category: Technical
+---
+
+Explore the full capabilities of the Sardis policy engine. From simple spending limits to complex vendor allowlists and time-based rules, learn how to configure exactly what your agents can spend.
+
+## Why Policies Matter
+
+Without proper controls, an agent could overspend on a single transaction, make purchases from untrusted vendors, exceed your intended budget, or make purchases outside business hours. The Sardis policy engine lets you define precise rules that are enforced deterministically. Your agent literally cannot exceed these limits -- it is a cryptographic guarantee, not a suggestion.
+
+## Policy Basics
+
+```json
+{
+  "maxPerTransaction": 100
+}
+```
+
+This allows any transaction up to $100. Simple, but probably too permissive for production.
+
+## Spending Limits
+
+```json
+{
+  "maxPerTransaction": 50,
+  "dailyLimit": 500,
+  "weeklyLimit": 2000,
+  "monthlyLimit": 5000
+}
+```
+
+All limits are cumulative. A transaction that would exceed any limit is rejected.
+
+## Vendor Allowlists
+
+```json
+{
+  "maxPerTransaction": 100,
+  "allowedVendors": [
+    "github.com",
+    "aws.amazon.com",
+    "openai.com",
+    "anthropic.com"
+  ]
+}
+```
+
+With wildcards:
+
+```json
+{
+  "allowedVendors": [
+    "*.amazonaws.com",
+    "api.*.com",
+    "github.com"
+  ]
+}
+```
+
+## Category-Based Rules
+
+```json
+{
+  "allowedCategories": ["cloud_infrastructure", "developer_tools", "saas"],
+  "blockedCategories": ["gambling", "adult_content", "securities"]
+}
+```
+
+## Time-Based Rules
+
+```json
+{
+  "timeRestrictions": {
+    "allowedDays": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    "allowedHours": {
+      "start": "09:00",
+      "end": "18:00",
+      "timezone": "America/New_York"
+    }
+  }
+}
+```
+
+## Velocity Controls
+
+```json
+{
+  "velocityRules": {
+    "maxTransactionsPerHour": 10,
+    "maxTransactionsPerDay": 50,
+    "maxUniqueVendorsPerDay": 5,
+    "cooldownAfterRejection": "5m"
+  }
+}
+```
+
+## Approval Workflows
+
+```json
+{
+  "approvalRequired": {
+    "threshold": 100,
+    "vendors": ["newvendor.com"],
+    "categories": ["high_risk"],
+    "approvers": ["admin@company.com"],
+    "timeout": "24h"
+  }
+}
+```
+
+## Complete Production Example
+
+```json
+{
+  "name": "dev-team-agent-policy",
+  "version": "1.0.0",
+  "rules": [
+    {
+      "name": "aws-infrastructure",
+      "condition": { "vendor": "*.amazonaws.com" },
+      "limits": { "maxPerTransaction": 500, "dailyLimit": 2000 }
+    },
+    {
+      "name": "developer-subscriptions",
+      "condition": { "vendors": ["github.com", "jetbrains.com", "figma.com"] },
+      "limits": { "maxPerTransaction": 100, "monthlyLimit": 500 }
+    }
+  ],
+  "defaultLimits": {
+    "maxPerTransaction": 25,
+    "dailyLimit": 100,
+    "monthlyLimit": 500
+  },
+  "blockedCategories": ["gambling", "adult_content"],
+  "velocityRules": {
+    "maxTransactionsPerHour": 5,
+    "maxUniqueVendorsPerDay": 3
+  },
+  "timeRestrictions": {
+    "allowedDays": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    "allowedHours": { "start": "08:00", "end": "20:00", "timezone": "UTC" }
+  },
+  "requireReason": true,
+  "approvalRequired": {
+    "threshold": 200,
+    "approvers": ["finance@company.com"]
+  }
+}
+```
+
+## Best Practices
+
+1. **Start strict, loosen over time.** Begin with tight limits and expand as you build confidence.
+2. **Use allowlists over blocklists.** It is safer to approve specific vendors than to try blocking bad ones.
+3. **Always require reasons.** Even if you do not review them, they create an audit trail.
+4. **Set velocity limits.** Even with good per-transaction limits, runaway agents can do damage through volume.
+5. **Review and update regularly.** As your agent's use cases evolve, so should your policies.
+
+---
+
+*Written by the Sardis Platform Team*

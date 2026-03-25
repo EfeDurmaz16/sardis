@@ -1,0 +1,74 @@
+---
+title: "Introducing Sardis: Secure Payments for AI Agents"
+description: Sardis provides MPC wallets and natural language policy enforcement so AI agents can transact autonomously while preventing financial hallucination errors.
+date: 2025-01-15
+category: Announcement
+---
+
+Today we announce Sardis, a Payment OS designed specifically for AI agents. Learn how MPC wallets and policy enforcement enable autonomous financial operations while preventing hallucination-driven spending.
+
+## The Problem We're Solving
+
+AI agents are transforming how we work, but they are stuck in a "read-only" trap. They can research, plan, and recommend -- but when it comes time to actually execute a purchase, they hit a wall: 2FA codes, CAPTCHAs, and payment systems designed for humans.
+
+We have seen this firsthand. While building AI agents, every agent we built hit the same blocker: they could not complete transactions autonomously. The "last mile" of agent productivity remained locked.
+
+## What is Sardis?
+
+Sardis is a payment infrastructure layer that gives AI agents the ability to transact autonomously -- with proper guardrails. We provide:
+
+- **MPC Wallets:** Non-custodial wallets where key shares are distributed across parties. No single entity can move funds unilaterally.
+- **Policy Engine:** Natural language spending rules that agents must follow. "Max $50 per transaction, only approved vendors." 12-check pipeline, fail-closed.
+- **Virtual Cards:** Issue virtual Visa/Mastercard numbers linked to agent wallets for traditional merchant payments via Stripe Issuing.
+- **Full Auditability:** Every transaction is logged with complete context -- what the agent was trying to do, why, and whether it succeeded. Cryptographic attestation envelopes with Merkle proofs.
+
+## How It Works
+
+Getting started with Sardis takes minutes:
+
+```bash
+npx @sardis/mcp-server start
+# That's it. Your agent now has 52 payment tools.
+```
+
+For developers who want more control:
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient();
+const wallet = client.wallets.create({
+  name: 'my-agent',
+  policy: {
+    maxPerTransaction: 50,
+    dailyLimit: 500,
+    allowedVendors: ['aws.amazon.com', 'github.com']
+  }
+});
+
+// Agent can now spend within these bounds
+await sardis.pay({
+  to: 'github.com',
+  amount: 29.99,
+  purpose: 'Monthly Pro subscription'
+});
+```
+
+## What We've Shipped
+
+Since initial release, Sardis has grown to include:
+
+- 52 MCP tools for Claude Desktop and Cursor
+- 13 framework integrations (LangChain, CrewAI, AutoGPT, OpenAI Agents SDK, Vercel AI SDK, and more)
+- 5 payment protocols (AP2, UCP, A2A, TAP, x402)
+- Pay with Sardis merchant checkout (0% USDC fee)
+- USD-first treasury with ACH funding and virtual cards
+- Multi-chain support (Base execution + 4 funding chains via CCTP v2)
+
+## What's Next
+
+We are live on Base mainnet and continuing to expand. If you are building AI agents and want to give them financial autonomy, check out our [documentation](/docs/quickstart) to start building today.
+
+---
+
+*Written by the Sardis Team*

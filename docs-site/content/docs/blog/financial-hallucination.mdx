@@ -1,0 +1,80 @@
+---
+title: "Financial Hallucination Prevention: Why AI Needs Guardrails"
+description: AI agents can hallucinate financial transactions just like they hallucinate facts. How cryptographic policy enforcement prevents unauthorized spending before funds move.
+date: 2025-01-10
+category: Security
+---
+
+AI agents can hallucinate facts, and they can hallucinate financial transactions. We explore the risks of unconstrained AI spending and how cryptographic policy enforcement provides the solution.
+
+## The Hallucination Problem
+
+Everyone who has worked with large language models knows about hallucinations -- when models confidently state things that are not true. But what happens when an AI agent with financial authority hallucinates a transaction?
+
+Consider these real scenarios we have observed in testing:
+
+- An agent "remembers" a discount code that does not exist and attempts to apply it repeatedly
+- An agent misinterprets "book a flight" as "book the most expensive business class seat"
+- An agent, trying to be helpful, pre-purchases items the user mentioned they might want someday
+- An agent rounds up amounts or adds "tips" when the transaction does not require it
+
+## The Consequences Are Real
+
+Unlike factual hallucinations that can be corrected with a follow-up prompt, financial hallucinations result in real money moving. Once an unauthorized transaction completes, you are dealing with chargebacks, refund processes, and potentially damaged vendor relationships.
+
+The problem is compounded by agent autonomy. An agent running overnight might make hundreds of micro-decisions, any of which could go wrong. Without proper guardrails, you wake up to a mess.
+
+## Why Traditional Solutions Fail
+
+"Just add confirmation prompts" defeats the purpose of agent autonomy. If a human needs to approve every transaction, you have not really automated anything.
+
+"Train the model better" helps, but no model is perfect. Financial operations require a higher standard -- you need cryptographic guarantees, not probabilistic assurances.
+
+## The Sardis Approach: Policy Enforcement
+
+Sardis solves this with a 12-check policy pipeline that sits between the agent and actual fund movement. Policies are defined in natural language but enforced deterministically:
+
+```python
+# Agent attempts transaction
+await sardis.pay(to="random-store.com", amount=150)
+# -> REJECTED: exceeds maxPerTransaction
+# -> REJECTED: vendor not in allowlist
+
+# This one passes
+await sardis.pay(
+    to="approved-vendor.com",
+    amount=25,
+    purpose="Monthly subscription renewal"
+)
+# -> APPROVED
+```
+
+## Defense in Depth
+
+Our policy enforcement operates at multiple levels:
+
+### 1. Pre-Transaction Validation
+
+Before any transaction is signed, it is validated against the policy. This catches obvious violations immediately.
+
+### 2. Cryptographic Signing Requirements
+
+MPC (Multi-Party Computation) wallets require multiple key shares to sign. Sardis holds one share and will refuse to sign transactions that violate policy.
+
+### 3. Post-Transaction Monitoring
+
+Even after a transaction completes, the system monitors for patterns that might indicate policy drift or attempted circumvention.
+
+## The Balance: Autonomy with Safety
+
+The goal is not to restrict agents into uselessness -- it is to give them freedom within defined boundaries. A well-configured policy allows agents to handle routine transactions autonomously while escalating anything unusual to humans.
+
+Think of it like giving a corporate card to an employee with clear expense guidelines. They can book flights and buy supplies without asking permission every time, but a $10,000 purchase will get flagged.
+
+## Getting Started
+
+If you are building AI agents that need to handle money, start with strict policies and loosen them over time as you build confidence. Our [policy engine documentation](/docs/policy-engine) includes templates for common use cases.
+
+---
+
+*Written by the Sardis Security Team*

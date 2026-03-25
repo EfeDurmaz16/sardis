@@ -1,0 +1,89 @@
+---
+title: "MCP Integration: Zero-Code AI Payments in Claude"
+description: Add Sardis payment capabilities to Claude Desktop in under 5 minutes using the MCP server. No code required. 52 tools for payments, wallets, treasury, and checkout.
+date: 2025-01-08
+category: Tutorial
+---
+
+With our Model Context Protocol server, you can add payment capabilities to Claude Desktop without writing a single line of code. Here is how to get started in under 5 minutes.
+
+## What is MCP?
+
+Model Context Protocol (MCP) is Anthropic's standard for connecting AI assistants to external tools and data sources. Think of it as a plugin system for Claude -- you can extend its capabilities by adding MCP servers.
+
+Sardis provides an MCP server that gives Claude 52 tools including payment execution, wallet management, treasury ACH operations, merchant checkout, and agent discovery -- all within the bounds of your configured policy.
+
+## Step 1: Install the MCP Server
+
+```bash
+npx @sardis/mcp-server start
+```
+
+On first run, this will prompt you to log in to your Sardis account and configure your wallet.
+
+## Step 2: Configure Claude Desktop
+
+Open your Claude Desktop configuration file. On macOS:
+
+```
+~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+Add the Sardis server:
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"]
+    }
+  }
+}
+```
+
+## Step 3: Restart Claude Desktop
+
+After saving the configuration, restart Claude Desktop. You should see the Sardis tools available in the tools menu.
+
+## Step 4: Test It Out
+
+Try asking Claude:
+
+- "What's my Sardis wallet balance?"
+- "Show me my recent transactions"
+- "Pay $25 to OpenAI for API credits"
+- "Create a spending mandate for my procurement agent"
+
+## Available Tools
+
+The Sardis MCP server exposes 52 tools to Claude, including:
+
+- `sardis_pay` -- Initiate a payment (subject to policy approval)
+- `sardis_get_balance` -- Returns current wallet balance in USDC
+- `sardis_list_transactions` -- Lists recent transactions
+- `sardis_check_policy` -- Pre-flight policy check
+- `sardis_create_wallet` -- Create a new agent wallet
+- `sardis_fund_wallet` -- Fund wallet via treasury ACH
+- `sardis_create_checkout` -- Create merchant checkout session
+- `sardis_discover_agents` -- A2A agent discovery
+
+## Security Considerations
+
+The MCP server never has direct access to your private keys. All transactions are signed using MPC (Multi-Party Computation):
+
+- Sardis cannot move funds without your approval
+- The MCP server cannot exceed policy limits even if compromised
+- All transactions are logged in the cryptographic audit trail
+
+## Next Steps
+
+Now that you have Sardis working with Claude, check out:
+
+- [Spending Policies](/docs/policy-engine) -- configure what your agent can spend
+- [Time-Based Policies](/docs/time-based-policies) -- restrict when transactions occur
+- [Merchant Categories](/docs/merchant-categories) -- control allowed merchant types
+
+---
+
+*Written by the Sardis Developer Relations Team*
