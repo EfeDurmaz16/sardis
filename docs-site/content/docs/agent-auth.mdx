@@ -1,0 +1,293 @@
+---
+title: Agent Auth Protocol
+description: "How AI agents discover, register, authenticate, and receive spending mandates through the Sardis Agent Auth Protocol. Covers discovery endpoints, capabilities, JWT format, and mandate mapping."
+---
+
+The Sardis Agent Auth Protocol defines how AI agents discover the Sardis API, register their identity and capabilities, authenticate with JWT tokens, and receive spending mandates that govern their financial authority.
+
+## Overview
+
+Traditional auth flows assume a human at a browser. Agent auth assumes a machine that needs:
+
+1. **Discovery** -- Find the Sardis API and understand available capabilities
+2. **Registration** -- Declare identity, capabilities, and owner
+3. **Authentication** -- Obtain and refresh JWT tokens
+4. **Authorization** -- Receive spending mandates that map to AP2 intents
+
+## Discovery Endpoint
+
+Agents discover Sardis capabilities via a well-known endpoint:
+
+```
+GET https://api.sardis.sh/.well-known/sardis-agent.json
+```
+
+Response:
+
+```json
+{
+  "version": "1.0",
+  "api_base": "https://api.sardis.sh/api/v2",
+  "auth_endpoint": "https://api.sardis.sh/api/v2/auth/agent/register",
+  "token_endpoint": "https://api.sardis.sh/api/v2/auth/agent/token",
+  "capabilities": [
+    "payments",
+    "wallets",
+    "cards",
+    "holds",
+    "treasury",
+    "mandates",
+    "approvals",
+    "compliance"
+  ],
+  "protocols": ["ap2", "tap", "ucp", "a2a", "x402"],
+  "supported_chains": ["base", "ethereum", "polygon", "arbitrum", "optimism"],
+  "mcp_server": {
+    "package": "@sardis/mcp-server",
+    "tools_count": 52
+  }
+}
+```
+
+This endpoint is unauthenticated and cacheable. Agents can use it to decide whether Sardis supports the capabilities they need before attempting registration.
+
+## Agent Registration
+
+Agents register by declaring their identity, capabilities, and the human or organization that owns them:
+
+```python
+from sardis import Sardis
+
+client = Sardis(api_key="sk_live_...")
+
+agent = await client.agents.register(
+    name="procurement-agent-v2",
+    description="Handles SaaS subscription renewals and cloud compute provisioning",
+    capabilities=["payments", "cards", "holds"],
+    framework="langchain",
+    model="gpt-4-turbo",
+    owner_org_id="org_abc123",
+    metadata={
+        "version": "2.1.0",
+        "environment": "production",
+        "team": "platform-engineering"
+    }
+)
+
+print(agent.agent_id)    # "agent_xyz789"
+print(agent.api_key)     # "sk_agent_..."
+print(agent.wallet_id)   # Auto-provisioned wallet
+```
+
+### Registration Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Human-readable agent name |
+| `description` | string | No | What this agent does |
+| `capabilities` | string[] | Yes | Which Sardis capabilities the agent needs |
+| `framework` | string | No | AI framework (langchain, crewai, openai, etc.) |
+| `model` | string | No | Underlying model (gpt-4, claude-3, etc.) |
+| `owner_org_id` | string | Yes | Organization that owns this agent |
+| `metadata` | object | No | Arbitrary key-value pairs |
+
+Registration automatically:
+- Creates a scoped API key for the agent
+- Provisions an MPC wallet (unless an existing wallet is specified)
+- Generates a DID (Decentralized Identifier) for TAP identity
+- Creates a default spending mandate based on the org's policy template
+
+## JWT Token Format
+
+Agent authentication uses JWT tokens with EdDSA (Ed25519) signatures. Tokens are issued via the token endpoint and included in every API request.
+
+### Obtaining a Token
+
+```python
+# Using the agent API key
+token = await client.auth.agent_token(
+    agent_id="agent_xyz789",
+    api_key="sk_agent_...",
+)
+
+print(token.access_token)   # JWT string
+print(token.expires_in)     # 3600 (seconds)
+print(token.token_type)     # "Bearer"
+```
+
+### JWT Claims
+
+```json
+{
+  "sub": "agent_xyz789",
+  "iss": "https://api.sardis.sh",
+  "aud": "sardis-api",
+  "iat": 1711324800,
+  "exp": 1711328400,
+  "org": "org_abc123",
+  "capabilities": ["payments", "cards", "holds"],
+  "wallet_id": "wal_def456",
+  "mandate_id": "mandate_ghi789",
+  "did": "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
+  "scope": "agent:execute"
+}
+```
+
+### Key Claims
+
+| Claim | Description |
+|-------|-------------|
+| `sub` | Agent ID |
+| `org` | Owning organization ID |
+| `capabilities` | What the agent is allowed to do |
+| `wallet_id` | Default wallet for this agent |
+| `mandate_id` | Active spending mandate |
+| `did` | Decentralized identifier for TAP |
+| `scope` | Permission scope (`agent:execute`, `agent:read`, `agent:admin`) |
+
+### Using the Token
+
+```python
+# Automatically included in SDK calls
+result = await client.pay(
+    wallet_id="wal_def456",
+    to="0x...",
+    amount="29.99",
+    token="USDC",
+)
+
+# Or manually via HTTP
+import httpx
+
+response = await httpx.post(
+    "https://api.sardis.sh/api/v2/payments",
+    headers={
+        "Authorization": f"Bearer {token.access_token}",
+        "X-Agent-Id": "agent_xyz789",
+    },
+    json={
+        "wallet_id": "wal_def456",
+        "to": "0x...",
+        "amount": "29.99",
+        "token": "USDC",
+    }
+)
+```
+
+## Spending Mandate Mapping
+
+Every registered agent receives a spending mandate that defines its financial authority. The mandate maps directly to an AP2 Intent and governs what the agent can spend.
+
+### Mandate Structure
+
+```json
+{
+  "mandate_id": "mandate_ghi789",
+  "agent_id": "agent_xyz789",
+  "wallet_id": "wal_def456",
+  "status": "active",
+  "policy": {
+    "max_per_transaction": 100.00,
+    "daily_limit": 500.00,
+    "monthly_limit": 5000.00,
+    "allowed_merchants": ["aws.amazon.com", "openai.com", "github.com"],
+    "allowed_categories": ["cloud_services", "developer_tools"],
+    "blocked_categories": ["gambling", "adult", "crypto_exchange"],
+    "approval_threshold": 200.00,
+    "time_windows": [
+      {"days": ["mon", "tue", "wed", "thu", "fri"], "start": "09:00", "end": "18:00", "tz": "America/New_York"}
+    ]
+  },
+  "ap2_intent_ref": "ap2:intent:abc123",
+  "expires_at": "2026-12-31T23:59:59Z",
+  "created_by": "org_abc123"
+}
+```
+
+### Creating and Updating Mandates
+
+```python
+# Create a mandate for an agent
+mandate = await client.mandates.create(
+    agent_id="agent_xyz789",
+    wallet_id="wal_def456",
+    policy="Max $100/tx, $500/day, SaaS only, require approval above $200",
+    expires_at="2026-12-31T23:59:59Z",
+)
+
+# Update an existing mandate
+updated = await client.mandates.update(
+    mandate_id="mandate_ghi789",
+    policy="Max $200/tx, $1000/day, SaaS and cloud compute, approval above $500",
+)
+
+# Revoke a mandate
+await client.mandates.revoke("mandate_ghi789")
+```
+
+### Mandate to AP2 Intent Mapping
+
+When a mandate is created, Sardis generates a corresponding AP2 Intent Mandate:
+
+```
+Mandate (Sardis)          -->  AP2 Intent
+--------------------           --------------------
+max_per_transaction: 100  -->  constraints.max_amount: "100.00"
+allowed_categories        -->  constraints.categories
+expires_at                -->  constraints.expires_at
+agent DID                 -->  agent field
+org DID                   -->  issuer field
+```
+
+This mapping means every Sardis mandate is natively AP2-compliant. External services that verify AP2 mandate chains can validate Sardis-issued mandates without any Sardis-specific logic.
+
+## Agent Capabilities
+
+Capabilities control which Sardis APIs an agent can access:
+
+| Capability | APIs Accessible | Description |
+|-----------|----------------|-------------|
+| `payments` | `/payments`, `/transactions` | Execute and query payments |
+| `wallets` | `/wallets`, `/balances` | Manage wallets and check balances |
+| `cards` | `/cards` | Issue and manage virtual cards |
+| `holds` | `/holds` | Create and manage pre-authorization holds |
+| `treasury` | `/treasury` | ACH fund/withdraw operations |
+| `mandates` | `/mandates` | Read own mandate (cannot modify) |
+| `approvals` | `/approvals` | Submit and query approval requests |
+| `compliance` | `/compliance` | Check KYC/KYA status |
+
+An agent can only access APIs matching its declared capabilities. Attempting to call an API outside its capability set returns `403 Forbidden`.
+
+## Token Refresh
+
+Agent tokens expire after 1 hour by default. The SDK handles refresh automatically:
+
+```python
+# SDK auto-refreshes tokens before expiry
+# No manual intervention needed
+
+# Manual refresh if using raw HTTP:
+refresh_response = await httpx.post(
+    "https://api.sardis.sh/api/v2/auth/agent/token",
+    json={
+        "grant_type": "refresh_token",
+        "agent_id": "agent_xyz789",
+        "refresh_token": token.refresh_token,
+    }
+)
+```
+
+## Security Considerations
+
+- **Agent API keys are scoped** -- An agent's key can only access its own wallet and mandate. It cannot access other agents' resources.
+- **Mandates are immutable once active** -- Updating a mandate creates a new version. The old version is preserved for audit.
+- **Kill switch overrides all** -- Even with a valid token and mandate, a kill switch at any scope blocks execution.
+- **DID rotation** -- Agent DIDs can be rotated without changing the wallet address or mandate, via the `agents.rotate_did()` method.
+
+## Related
+
+- [Authentication](/docs/authentication) -- General API authentication
+- [Spending Mandates](/docs/spending-mandates) -- Mandate architecture deep dive
+- [AP2](/docs/ap2) -- Agent Payment Protocol details
+- [TAP](/docs/tap) -- Trusted Agent Protocol for identity
+- [Security](/docs/security) -- Security model overview
