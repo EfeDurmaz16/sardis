@@ -1,6 +1,7 @@
 """Sardis AutoGPT integration - payment blocks for the AutoGPT block system."""
 from sardis_autogpt.blocks import (
     BLOCKS,
+    BlockCategory,
     SardisBalanceBlock,
     SardisBalanceBlockInput,
     SardisBalanceBlockOutput,
@@ -14,6 +15,7 @@ from sardis_autogpt.blocks import (
 
 __all__ = [
     "BLOCKS",
+    "BlockCategory",
     "SardisPayBlock",
     "SardisPayBlockInput",
     "SardisPayBlockOutput",
