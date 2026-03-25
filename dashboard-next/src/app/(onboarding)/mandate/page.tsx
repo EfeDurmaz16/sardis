@@ -291,7 +291,7 @@ export default function MandatePage() {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !amount}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>

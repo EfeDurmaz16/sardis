@@ -296,7 +296,7 @@ function CounterpartyModal({ initial, onClose, onSave, saving }: CounterpartyMod
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 bg-sardis-500 text-dark-400 font-medium text-sm hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2.5 bg-sardis-500 text-white font-medium text-sm hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Counterparty'}
             </button>
@@ -711,7 +711,7 @@ export default function CounterpartiesPage() {
         </div>
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium text-sm hover:bg-sardis-400 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-medium text-sm hover:bg-sardis-400 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Counterparty
@@ -972,7 +972,7 @@ export default function CounterpartiesPage() {
             {!search && typeFilter === 'all' && statusFilter === 'all' && (
               <button
                 onClick={handleOpenAdd}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium text-sm hover:bg-sardis-400 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-medium text-sm hover:bg-sardis-400 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 Add Counterparty

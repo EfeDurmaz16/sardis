@@ -366,7 +366,7 @@ export default function MandateTreePage() {
         <button
           type="submit"
           disabled={loading || !inputValue.trim()}
-          className="px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
+          className="px-5 py-2.5 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
         >
           {loading ? (
             <Loader2 size={16} className="animate-spin" />

@@ -179,7 +179,7 @@ export default function EnterpriseSupportPage() {
             type="button"
             onClick={onCreateTicket}
             disabled={createTicket.isPending || !subject.trim() || !description.trim()}
-            className="px-4 py-2 bg-sardis-500 text-dark-400 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-sardis-500 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {createTicket.isPending ? 'Creating...' : 'Create Ticket'}
           </button>
@@ -270,7 +270,7 @@ export default function EnterpriseSupportPage() {
                         type="button"
                         onClick={() => resolveTicket.mutate({ ticketId: ticket.id })}
                         disabled={resolveTicket.isPending}
-                        className="px-3 py-1.5 text-xs bg-sardis-500 text-dark-400 font-semibold disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs bg-sardis-500 text-white font-semibold disabled:opacity-50"
                       >
                         <span className="inline-flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />

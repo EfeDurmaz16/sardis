@@ -39,7 +39,7 @@ function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
         <div><label className="block text-xs font-medium text-gray-400 mb-1">Approval Mode</label><select value={approvalMode} onChange={e => setApprovalMode(e.target.value)} className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50"><option value="auto">Auto-approve all</option><option value="threshold">Approve below threshold</option><option value="always_human">Always require human</option></select></div>
         {approvalMode === 'threshold' && <div><label className="block text-xs font-medium text-gray-400 mb-1">Approval Threshold ($)</label><input type="number" value={approvalThreshold} onChange={e => setApprovalThreshold(e.target.value)} placeholder="500" className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" /></div>}
       </div>
-      <button type="submit" disabled={isLoading} className="w-full py-2.5 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm">{isLoading ? 'Creating...' : 'Create Mandate'}</button>
+      <button type="submit" disabled={isLoading} className="w-full py-2.5 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm">{isLoading ? 'Creating...' : 'Create Mandate'}</button>
     </form>
   );
 }
@@ -68,7 +68,7 @@ export default function MandatesPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div><h1 className="text-3xl font-bold text-white font-display flex items-center gap-3"><Shield className="w-8 h-8 text-sardis-400" />Spending Mandates</h1><p className="text-gray-400 mt-1">Machine-readable payment permissions for your AI agents</p></div>
-        <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors text-sm"><Plus size={16} />New Mandate</button>
+        <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors text-sm"><Plus size={16} />New Mandate</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-4"><p className="text-sm text-gray-400">Active Mandates</p><p className="text-2xl font-bold text-green-500">{activeMandates}</p></div>

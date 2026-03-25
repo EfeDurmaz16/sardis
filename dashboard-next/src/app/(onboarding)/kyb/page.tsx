@@ -266,7 +266,7 @@ export default function KYBPage() {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
                 >
                   Submit for Verification
                   <ChevronRight className="w-5 h-5" />
@@ -342,7 +342,7 @@ export default function KYBPage() {
               <div className="space-y-3">
                 <button
                   onClick={handleRetry}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors"
                 >
                   Try Again
                 </button>

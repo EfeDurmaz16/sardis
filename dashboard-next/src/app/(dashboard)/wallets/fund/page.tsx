@@ -392,7 +392,7 @@ export default function FundWalletPage() {
               className={clsx(
                 'w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium transition-all text-base',
                 isValidAmount && selectedWalletId
-                  ? 'bg-sardis-500 text-dark-400 hover:bg-sardis-400 glow-green-hover'
+                  ? 'bg-sardis-500 text-white hover:bg-sardis-400 glow-green-hover'
                   : 'bg-dark-200 text-gray-600 cursor-not-allowed'
               )}
             >
@@ -474,7 +474,7 @@ export default function FundWalletPage() {
             </button>
             <Link
               href="/wallets"
-              className="px-4 py-2 text-sm bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors"
+              className="px-4 py-2 text-sm bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors"
             >
               View Wallets
             </Link>
@@ -495,7 +495,7 @@ export default function FundWalletPage() {
           <div className="flex gap-3 justify-center">
             <button
               onClick={handleRetry}
-              className="px-4 py-2 text-sm bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors"
+              className="px-4 py-2 text-sm bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors"
             >
               Try Again
             </button>

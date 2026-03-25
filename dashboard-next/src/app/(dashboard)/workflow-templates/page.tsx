@@ -332,7 +332,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
                         : 'border-gray-600'
                     )}
                   >
-                    {checkedSteps.has(i) && <CheckCircle2 className="w-3.5 h-3.5 text-dark-400" />}
+                    {checkedSteps.has(i) && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
                   </div>
                   <span className={clsx('text-sm', checkedSteps.has(i) && 'line-through')}>
                     <span className="text-gray-500 mr-2 font-mono text-xs">{i + 1}.</span>
@@ -395,7 +395,7 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
             </div>
             <button
               onClick={() => onApply(template.policy_text)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-sardis-500 hover:bg-sardis-600 text-dark-400 font-semibold text-sm transition-all duration-200"
+              className="flex items-center gap-2 px-4 py-2.5 bg-sardis-500 hover:bg-sardis-600 text-white font-semibold text-sm transition-all duration-200"
             >
               <ExternalLink className="w-4 h-4" />
               Apply to Policy Manager

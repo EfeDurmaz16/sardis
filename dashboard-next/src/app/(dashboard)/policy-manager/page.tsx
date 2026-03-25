@@ -77,7 +77,7 @@ export default function PolicyManagerPage() {
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-300">Natural language policy</label>
                 <textarea value={draftText} onChange={(e) => { setDraftText(e.target.value); if (parsedPolicy) setParsedPolicy(null) }} placeholder={'E.g. "Allow up to $500 per transaction and $2000 per day. Block gambling and adult content."'} rows={14} className="w-full px-4 py-3 bg-dark-200 border border-dark-100 text-sm text-white placeholder-gray-600 font-mono focus:outline-none focus:border-sardis-500/60 resize-none" />
-                <button onClick={handleParse} disabled={!draftText.trim() || parse.isPending} className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{parse.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}{parse.isPending ? 'Parsing\u2026' : 'Parse Policy'}</button>
+                <button onClick={handleParse} disabled={!draftText.trim() || parse.isPending} className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-white text-sm font-semibold hover:bg-sardis-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{parse.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}{parse.isPending ? 'Parsing\u2026' : 'Parse Policy'}</button>
                 {parse.isError && <p className="text-sm text-red-400">{(parse.error as Error)?.message ?? 'Parse failed.'}</p>}
               </div>
               <div className="space-y-3">

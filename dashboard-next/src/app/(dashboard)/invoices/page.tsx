@@ -123,7 +123,7 @@ export default function InvoicesPage() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-sardis-500 text-dark-400 rounded-lg font-medium hover:bg-sardis-400 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-sardis-500 text-white rounded-lg font-medium hover:bg-sardis-400 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Create Invoice
@@ -186,7 +186,7 @@ export default function InvoicesPage() {
               className={clsx(
                 'px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize',
                 statusFilter === status
-                  ? 'bg-sardis-500 text-dark-400'
+                  ? 'bg-sardis-500 text-white'
                   : 'bg-dark-200 text-gray-400 hover:bg-dark-100'
               )}
             >
@@ -367,7 +367,7 @@ export default function InvoicesPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 rounded-lg font-medium hover:bg-sardis-400"
+                  className="flex-1 px-4 py-2 bg-sardis-500 text-white rounded-lg font-medium hover:bg-sardis-400"
                 >
                   Create Invoice
                 </button>

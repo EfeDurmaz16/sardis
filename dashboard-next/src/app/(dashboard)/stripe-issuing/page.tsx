@@ -275,7 +275,7 @@ function IssueCardModal({
               })
             }
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm disabled:opacity-50"
           >
             {isLoading ? (
               <>
@@ -362,7 +362,7 @@ function SimulatePurchaseModal({
               <button
                 onClick={handleSimulate}
                 disabled={loading}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
                 {loading ? 'Processing...' : 'Simulate'}
@@ -616,7 +616,7 @@ export default function StripeIssuingDemo() {
         <button
           onClick={() => setShowIssue(true)}
           disabled={!walletId}
-          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-5 h-5" />
           Issue Stripe Card

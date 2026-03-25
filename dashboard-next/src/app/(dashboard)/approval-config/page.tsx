@@ -246,7 +246,7 @@ function GroupEditor({ initial, onSave, onCancel }: GroupEditorProps) {
           <button
             onClick={handleSave}
             disabled={!id.trim() || !name.trim()}
-            className="px-3 py-1.5 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save Group
           </button>
@@ -494,7 +494,7 @@ function RuleEditor({ initial, groups, onSave, onCancel }: RuleEditorProps) {
           <button
             onClick={handleSave}
             disabled={!isValid}
-            className="px-3 py-1.5 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save Rule
           </button>
@@ -605,7 +605,7 @@ function DefaultsForm({ defaults, groups, saving, onSave }: DefaultsFormProps) {
         <button
           onClick={handleSave}
           disabled={!isDirty || saving}
-          className="flex items-center gap-2 px-4 py-2 text-sm bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 text-sm bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Defaults

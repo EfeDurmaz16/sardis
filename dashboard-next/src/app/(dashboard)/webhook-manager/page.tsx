@@ -696,7 +696,7 @@ function WebhookModal({
             <button
               type="submit"
               disabled={isLoading || events.length === 0}
-              className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
+              className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
             >
               {isLoading
                 ? mode === 'create' ? 'Creating…' : 'Saving…'
@@ -756,7 +756,7 @@ export default function WebhookManagerPage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           <Plus className="w-5 h-5" />
           Add Webhook

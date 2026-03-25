@@ -186,7 +186,7 @@ export default function PlaygroundPage() {
               ))}
             </div>
           </div>
-          <button onClick={handleRun} disabled={isRunning} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm">
+          <button onClick={handleRun} disabled={isRunning} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm">
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
             {isRunning ? 'Running...' : 'Run Request'}
           </button>
@@ -204,7 +204,7 @@ export default function PlaygroundPage() {
             <select value={selectedEndpoint.id} onChange={(e) => { const ep = ENDPOINTS.find((x) => x.id === e.target.value); if (ep) handleEndpointChange(ep) }} className="w-full px-4 py-2.5 bg-dark-300 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50">
               {ENDPOINTS.map((ep) => (<option key={ep.id} value={ep.id}>{ep.method} {ep.name}</option>))}
             </select>
-            <button onClick={handleRun} disabled={isRunning} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm">
+            <button onClick={handleRun} disabled={isRunning} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm">
               {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               {isRunning ? 'Running...' : 'Run Request'}
             </button>

@@ -154,7 +154,7 @@ export default function HoldsPage() {
               className={clsx(
                 'px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize',
                 statusFilter === status
-                  ? 'bg-sardis-500 text-dark-400'
+                  ? 'bg-sardis-500 text-white'
                   : 'bg-dark-200 text-gray-400 hover:bg-dark-100'
               )}
             >

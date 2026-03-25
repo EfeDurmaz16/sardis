@@ -326,7 +326,7 @@ function RuleFormModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               {saving ? 'Saving…' : 'Save Rule'}
@@ -426,7 +426,7 @@ function FallbackRulesSection() {
             </button>
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-all duration-150"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-all duration-150"
             >
               <Plus className="w-3.5 h-3.5" />
               Add Rule
@@ -780,7 +780,7 @@ function DegradedModeCard({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-sardis-500 text-white hover:bg-sardis-400 disabled:opacity-50 transition-all duration-150"
             >
               {saving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

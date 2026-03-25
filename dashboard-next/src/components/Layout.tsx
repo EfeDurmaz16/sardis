@@ -156,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="p-6 border-b border-dark-100">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-10 h-10 bg-sardis-500 flex items-center justify-center glow-green">
-              <Wallet className="w-6 h-6 text-dark-400" />
+              <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold font-display text-gradient">Sardis</h1>

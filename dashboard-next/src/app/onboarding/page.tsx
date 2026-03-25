@@ -166,7 +166,7 @@ payment = sardis.payments.create(
       <div className="text-center">
         <button
           onClick={onNext}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+          className="inline-flex items-center gap-2 px-8 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           {apiKey ? "Set Up My Agent" : "Let's Go"}
           <ChevronRight className="w-5 h-5" />
@@ -283,7 +283,7 @@ function StepCreateAgent({
         <button
           type="submit"
           disabled={isLoading || !name.trim()}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
@@ -397,7 +397,7 @@ function StepSetPolicy({
         <button
           type="submit"
           disabled={isLoading || !policyText.trim()}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
@@ -535,7 +535,7 @@ function StepTestPayment({
         <button
           onClick={handleRunTest}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
@@ -549,7 +549,7 @@ function StepTestPayment({
       ) : (
         <button
           onClick={onNext}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           Continue
           <ChevronRight className="w-5 h-5" />
@@ -585,7 +585,7 @@ function StepDone() {
       <div className="space-y-3">
         <button
           onClick={handleGoToDashboard}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-dark-400 font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           Go to Dashboard
           <ChevronRight className="w-5 h-5" />

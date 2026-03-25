@@ -357,7 +357,7 @@ function ControlsConfigSection() {
             'flex items-center gap-2 px-5 py-2 text-sm font-medium transition-all duration-150',
             saved
               ? 'bg-green-500/20 border border-green-500/30 text-green-400'
-              : 'bg-sardis-500 text-dark-400 hover:bg-sardis-400 disabled:opacity-50'
+              : 'bg-sardis-500 text-white hover:bg-sardis-400 disabled:opacity-50'
           )}
         >
           {saving ? (

@@ -127,7 +127,7 @@ export default function MerchantsPage() {
         </div>
         <Link
           href="/merchants/setup"
-          className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm"
         >
           <Plus className="w-4 h-4" />
           New Merchant
@@ -367,7 +367,7 @@ export default function MerchantsPage() {
             </p>
             <Link
               href="/merchants/setup"
-              className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors text-sm"
+              className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
               Set Up Your First Merchant

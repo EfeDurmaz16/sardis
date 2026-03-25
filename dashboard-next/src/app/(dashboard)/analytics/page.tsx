@@ -274,7 +274,7 @@ export default function Analytics() {
                   onClick={() => setPeriod(p)}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     period === p
-                      ? 'bg-sardis-500 text-dark-400'
+                      ? 'bg-sardis-500 text-white'
                       : 'bg-dark-200 text-gray-400 hover:bg-dark-100'
                   }`}
                 >
@@ -289,7 +289,7 @@ export default function Analytics() {
               onClick={() => setSelectedAgent('')}
               className={`px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-2 ${
                 !selectedAgent
-                  ? 'bg-sardis-500 text-dark-400'
+                  ? 'bg-sardis-500 text-white'
                   : 'bg-dark-200 text-gray-400 hover:bg-dark-100'
               }`}
             >
@@ -298,7 +298,7 @@ export default function Analytics() {
             </button>
             <button
               onClick={handleExport}
-              className="px-3 py-1.5 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors flex items-center gap-2 glow-green-hover"
+              className="px-3 py-1.5 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors flex items-center gap-2 glow-green-hover"
             >
               <Download className="w-4 h-4" />
               Export CSV

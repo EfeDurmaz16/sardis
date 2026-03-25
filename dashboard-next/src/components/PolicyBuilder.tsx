@@ -268,7 +268,7 @@ export default function PolicyBuilder({ agentId, onPolicyCreated }: PolicyBuilde
               'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all',
               loading || !naturalLanguage.trim()
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-sardis-500 text-dark-400 hover:bg-sardis-400'
+                : 'bg-sardis-500 text-white hover:bg-sardis-400'
             )}
           >
             {loading ? (

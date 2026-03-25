@@ -54,7 +54,7 @@ export default function WalletsPage() {
         </div>
         <Link
           href="/wallets/fund"
-          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
         >
           <Plus className="w-5 h-5" />
           Add Funds
@@ -352,7 +352,7 @@ function WalletDetailPanel({
           {/* Fund CTA */}
           <Link
             href={`/wallets/fund?wallet=${wallet.wallet_id}`}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
           >
             <DollarSign className="w-5 h-5" />
             Add Funds

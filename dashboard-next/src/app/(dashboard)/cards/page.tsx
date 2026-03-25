@@ -149,7 +149,7 @@ export default function CardsPage() {
         <button
           onClick={() => setShowIssue(true)}
           disabled={!walletId}
-          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-5 h-5" />
           Issue Card
@@ -169,7 +169,7 @@ export default function CardsPage() {
             className={clsx(
               'px-4 py-2 rounded-md text-sm font-medium transition-colors',
               providerFilter === opt.id
-                ? 'bg-sardis-500 text-dark-400'
+                ? 'bg-sardis-500 text-white'
                 : 'text-gray-400 hover:text-white',
             )}
           >
@@ -240,7 +240,7 @@ export default function CardsPage() {
                       className={clsx(
                         'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                         currencyFilter === opt
-                          ? 'bg-sardis-500 text-dark-400'
+                          ? 'bg-sardis-500 text-white'
                           : 'bg-dark-300 text-gray-400 hover:text-white hover:bg-dark-200',
                       )}
                     >
@@ -418,7 +418,7 @@ function SardisCard({
         <div className="relative flex items-start justify-between mb-8">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-sardis-500 rounded-lg flex items-center justify-center">
-              <CreditCard className="w-4 h-4 text-dark-400" />
+              <CreditCard className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm font-bold text-sardis-400 tracking-wider">SARDIS</span>
             {card.provider_card_id?.startsWith('ic_') && (
@@ -797,7 +797,7 @@ function IssueCardModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Issuing...' : 'Issue Card'}
             </button>
@@ -885,7 +885,7 @@ function SimulatePurchaseModal({
               <button
                 type="submit"
                 disabled={simulateMutation.isPending}
-                className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
               >
                 {simulateMutation.isPending ? 'Simulating...' : 'Run Simulation'}
               </button>
@@ -950,7 +950,7 @@ function SimulatePurchaseModal({
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors"
+                className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors"
               >
                 Done
               </button>

@@ -579,7 +579,7 @@ export default function PoliciesPage() {
                     !policyText.trim() ||
                     applyMutation.isPending
                   }
-                  className="flex items-center gap-2 px-5 py-2 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                  className="flex items-center gap-2 px-5 py-2 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
                 >
                   <Send className="w-4 h-4" />
                   Apply Policy
@@ -590,7 +590,7 @@ export default function PoliciesPage() {
                   <button
                     onClick={handleApply}
                     disabled={applyMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 text-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 text-sm"
                   >
                     {applyMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -736,7 +736,7 @@ export default function PoliciesPage() {
                   !testAmount ||
                   checkMutation.isPending
                 }
-                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-sardis-500 text-dark-400 font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+                className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm"
               >
                 {checkMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

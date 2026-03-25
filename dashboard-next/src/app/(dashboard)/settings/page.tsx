@@ -386,7 +386,7 @@ function VerificationSection({ token }: { token: string | null }) {
           <button
             onClick={handleInitiate}
             disabled={initiating}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {initiating && <Loader2 className="w-4 h-4 animate-spin" />}
             {ctaLabel}
@@ -591,7 +591,7 @@ function ProfileTab({ token }: { token: string | null }) {
           <button
             onClick={saveProfile}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             Save Profile
@@ -682,7 +682,7 @@ function ProfileTab({ token }: { token: string | null }) {
               <button
                 onClick={startMfaSetup}
                 disabled={mfaLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50"
               >
                 {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Enable MFA
@@ -754,7 +754,7 @@ function ProfileTab({ token }: { token: string | null }) {
                   <button
                     onClick={verifyMfa}
                     disabled={mfaLoading || totpCode.length !== 6}
-                    className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
+                    className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed rounded"
                   >
                     {mfaLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                     Verify & Enable
@@ -888,7 +888,7 @@ function OrganizationTab({ token }: { token: string | null }) {
             <button
               onClick={saveOrg}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               Save
@@ -991,7 +991,7 @@ function ApiKeysTab({ token }: { token: string | null }) {
           </div>
           <Link
             href="/api-keys"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors shrink-0"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors shrink-0"
           >
             Manage Keys
             <ExternalLink className="w-4 h-4" />
@@ -1080,7 +1080,7 @@ function BillingTab({ token }: { token: string | null }) {
           </div>
           <Link
             href="/billing"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors shrink-0"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors shrink-0"
           >
             Manage Billing
             <ExternalLink className="w-4 h-4" />
@@ -1342,7 +1342,7 @@ function NotificationsTab({ token }: { token: string | null }) {
           <button
             onClick={handleSaveSlack}
             disabled={slackSaving}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50"
           >
             {slackSaving && <Loader2 className="w-4 h-4 animate-spin" />}
             Save Slack
@@ -1406,7 +1406,7 @@ function NotificationsTab({ token }: { token: string | null }) {
           <button
             onClick={handleSaveEmail}
             disabled={emailSaving}
-            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-dark-400 hover:bg-sardis-400 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-sardis-500 text-white hover:bg-sardis-400 transition-colors disabled:opacity-50"
           >
             {emailSaving && <Loader2 className="w-4 h-4 animate-spin" />}
             Save Email

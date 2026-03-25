@@ -453,7 +453,7 @@ function ChannelCard({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-sardis-500 text-dark-400 text-xs font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-sardis-500 text-white text-xs font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -743,7 +743,7 @@ function RuleModal({
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
+              className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -1128,7 +1128,7 @@ export default function AlertPreferencesPage() {
         {activeTab === 'rules' && (
           <button
             onClick={() => setShowCreateRule(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-dark-400 font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
+            className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
           >
             <Plus className="w-5 h-5" />
             Create Rule

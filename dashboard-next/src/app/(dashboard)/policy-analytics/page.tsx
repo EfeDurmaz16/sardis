@@ -332,7 +332,7 @@ export default function PolicyAnalyticsPage() {
               className={clsx(
                 'px-3 py-1.5 text-sm font-medium transition-colors',
                 period === value
-                  ? 'bg-sardis-500 text-dark-400'
+                  ? 'bg-sardis-500 text-white'
                   : 'bg-dark-200 text-gray-400 hover:bg-dark-100',
               )}
             >

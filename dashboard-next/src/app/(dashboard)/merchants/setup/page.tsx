@@ -487,7 +487,7 @@ export default function MerchantSetupPage() {
                     </p>
                     <button
                       onClick={handleTestPayment}
-                      className="px-6 py-3 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors"
+                      className="px-6 py-3 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors"
                     >
                       Send Test Payment
                     </button>
@@ -531,7 +531,7 @@ export default function MerchantSetupPage() {
                 <div className="flex justify-center">
                   <button
                     onClick={() => router.push('/merchants')}
-                    className="px-8 py-3 bg-sardis-500 text-dark-400 font-medium hover:bg-sardis-400 transition-colors"
+                    className="px-8 py-3 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors"
                   >
                     Go to Merchant Dashboard
                   </button>
@@ -565,7 +565,7 @@ export default function MerchantSetupPage() {
             className={clsx(
               'flex items-center gap-2 px-6 py-3 font-medium transition-colors',
               canProceed() && !registerMutation.isPending
-                ? 'bg-sardis-500 text-dark-400 hover:bg-sardis-400'
+                ? 'bg-sardis-500 text-white hover:bg-sardis-400'
                 : 'bg-dark-200 text-gray-500 cursor-not-allowed'
             )}
           >

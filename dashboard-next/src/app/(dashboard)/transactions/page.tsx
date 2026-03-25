@@ -36,7 +36,7 @@ export default function TransactionsPage() {
       </div>
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1"><Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="text" placeholder="Search by TX ID, purpose, or hash..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50" /></div>
-        <div className="flex gap-2">{(['all', 'completed', 'pending', 'failed'] as StatusFilter[]).map(status => (<button key={status} onClick={() => setStatusFilter(status)} className={clsx('px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize', statusFilter === status ? 'bg-sardis-500 text-dark-400' : 'bg-dark-200 text-gray-400 hover:bg-dark-100')}>{status}</button>))}</div>
+        <div className="flex gap-2">{(['all', 'completed', 'pending', 'failed'] as StatusFilter[]).map(status => (<button key={status} onClick={() => setStatusFilter(status)} className={clsx('px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize', statusFilter === status ? 'bg-sardis-500 text-white' : 'bg-dark-200 text-gray-400 hover:bg-dark-100')}>{status}</button>))}</div>
       </div>
       {loading && <div className="card p-12 text-center"><Loader2 className="w-8 h-8 text-sardis-500 mx-auto mb-4 animate-spin" /><p className="text-gray-400">Loading transactions...</p></div>}
       {error && <div className="card p-6 border-red-500/30"><p className="text-red-400 text-sm">{error}</p><button onClick={fetchTransactions} className="mt-2 text-sm text-sardis-500 hover:underline">Retry</button></div>}
