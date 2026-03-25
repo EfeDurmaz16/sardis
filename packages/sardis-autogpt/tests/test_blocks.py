@@ -628,6 +628,7 @@ class TestClientSingleton:
 
     def test_different_keys_create_different_clients(self):
         with patch("sardis_autogpt.blocks.SardisClient") as MockClient:
+            MockClient.side_effect = lambda **kw: MagicMock(name=f"client_{kw}")
             _get_client_fn = __import__(
                 "sardis_autogpt.blocks", fromlist=["_get_client"],
             )._get_client
