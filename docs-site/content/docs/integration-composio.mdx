@@ -1,0 +1,178 @@
+---
+title: Composio Integration
+description: Register Sardis payment tools with Composio to give any LLM agent policy-controlled payment capabilities.
+---
+
+## Installation
+
+```bash
+pip install sardis-composio
+```
+
+The Composio integration exposes three Sardis payment functions through a plain Python dict (`SARDIS_TOOLS`) that can be registered with any Composio toolset. Each function returns structured dicts for easy downstream processing.
+
+## Quick Start
+
+### SARDIS_TOOLS
+
+A dict mapping tool names to callable functions, ready to register with Composio.
+
+```python
+import os
+from composio_openai import ComposioToolSet
+from sardis_composio import SARDIS_TOOLS
+
+os.environ["SARDIS_API_KEY"] = "sk_live_..."
+os.environ["SARDIS_WALLET_ID"] = "wallet_abc123"
+
+# Register Sardis as a custom tool provider
+toolset = ComposioToolSet()
+toolset.add_tool(SARDIS_TOOLS["sardis_pay"])
+toolset.add_tool(SARDIS_TOOLS["sardis_check_balance"])
+toolset.add_tool(SARDIS_TOOLS["sardis_check_policy"])
+
+tools = toolset.get_tools()
+```
+
+## Available Tools
+
+Three functions are exported. All accept optional `api_key` and `wallet_id` parameters for per-call credential overrides, or fall back to `SARDIS_API_KEY` and `SARDIS_WALLET_ID` env vars.
+
+### sardis_pay
+
+Execute a policy-controlled payment. Returns a structured dict with status, tx_id, amount, and merchant.
+
+```python
+from sardis_composio import sardis_pay
+
+result = sardis_pay(
+    amount=50.00,
+    merchant="api.openai.com",
+    purpose="GPT-4 API credits",
+)
+
+# Return value
+{
+    "success": True,
+    "status": "APPROVED",       # or "BLOCKED"
+    "tx_id": "pay_xyz789",
+    "message": "",
+    "amount": 50.0,
+    "merchant": "api.openai.com",
+}
+```
+
+### sardis_check_balance
+
+Check wallet balance and remaining spending limit.
+
+```python
+from sardis_composio import sardis_check_balance
+
+result = sardis_check_balance(token="USDC")
+
+# Return value
+{
+    "success": True,
+    "balance": 500.0,
+    "remaining": 100.0,
+    "token": "USDC",
+}
+```
+
+### sardis_check_policy
+
+Dry-run policy check — returns whether a payment would pass, and why.
+
+```python
+from sardis_composio import sardis_check_policy
+
+result = sardis_check_policy(amount=50.00, merchant="api.openai.com")
+
+# Return value (allowed)
+{
+    "allowed": True,
+    "reason": "Allowed: $50.0 to api.openai.com",
+    "balance": 500.0,
+    "remaining": 100.0,
+}
+
+# Return value (blocked)
+{
+    "allowed": False,
+    "reason": "Would exceed limits: $200.0 to api.openai.com",
+    "balance": 500.0,
+    "remaining": 100.0,
+}
+```
+
+## Example: LangChain + Composio
+
+Using Sardis tools with a LangChain agent through Composio's toolset.
+
+```python
+import os
+from langchain_openai import ChatOpenAI
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.prompts import ChatPromptTemplate
+from composio_langchain import ComposioToolSet
+from sardis_composio import SARDIS_TOOLS
+
+os.environ["SARDIS_API_KEY"] = "sk_live_..."
+os.environ["SARDIS_WALLET_ID"] = "wallet_abc123"
+
+toolset = ComposioToolSet()
+for tool_fn in SARDIS_TOOLS.values():
+    toolset.add_tool(tool_fn)
+
+tools = toolset.get_tools()
+llm = ChatOpenAI(model="gpt-4o")
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a payment agent. Check policy before every payment."),
+    ("human", "{input}"),
+    ("placeholder", "{agent_scratchpad}"),
+])
+
+agent = create_tool_calling_agent(llm, tools, prompt)
+executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+result = executor.invoke({"input": "Check my balance and then pay $30 to Anthropic"})
+print(result["output"])
+```
+
+## Example: Direct Function Use
+
+The tools can also be called directly without any framework — useful for testing and scripts.
+
+```python
+from sardis_composio import sardis_check_policy, sardis_pay
+
+# Check policy first
+policy = sardis_check_policy(
+    amount=50.00,
+    merchant="api.openai.com",
+    api_key="sk_live_...",
+    wallet_id="wallet_abc123",
+)
+
+if policy["allowed"]:
+    result = sardis_pay(
+        amount=50.00,
+        merchant="api.openai.com",
+        purpose="API credits",
+        api_key="sk_live_...",
+        wallet_id="wallet_abc123",
+    )
+    print(f"Payment {result['status']}: tx {result['tx_id']}")
+else:
+    print(f"Payment blocked: {policy['reason']}")
+```
+
+## Best Practices
+
+- Use `SARDIS_API_KEY` and `SARDIS_WALLET_ID` env vars to avoid hardcoding credentials
+- Call `sardis_check_policy` before `sardis_pay` for safer agentic workflows
+- The `SARDIS_TOOLS` dict can be iterated to register all tools at once
+- Per-call `api_key` and `wallet_id` overrides allow multi-tenant use from one process
+- Return dicts are JSON-serializable and safe to pass between agent steps

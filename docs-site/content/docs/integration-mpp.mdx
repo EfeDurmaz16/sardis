@@ -1,0 +1,108 @@
+---
+title: MPP & Tempo Integration
+description: Connect Sardis to the Model Payment Protocol (MPP) and Tempo network for AI-native payments with policy enforcement and audit trails.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="info">
+Sardis was featured at the MPP Hackathon (March 2026) with the Guard Intelligence Plane — a financial intelligence layer for AI agents operating on the MPP network.
+</Callout>
+
+## What is MPP?
+
+The **Model Payment Protocol** is Stripe's open standard for AI-to-service payments. It enables AI agents to discover, negotiate, and pay for services programmatically. Sardis adds policy enforcement, compliance checks, and audit trails on top of MPP transactions.
+
+**Tempo** is the high-throughput L1 blockchain (100K+ TPS, EVM compatible) that MPP runs on. Sardis supports Tempo mainnet and testnet for MPP settlement.
+
+## Installation
+
+```bash
+pip install sardis-mpp
+```
+
+The `sardis-mpp` package wraps the `pympp` SDK with Sardis policy enforcement, spending mandates, and audit trail integration.
+
+## Quick Start
+
+```python
+from sardis_mpp import SardisMPPClient
+
+# Initialize with Sardis policy enforcement
+client = SardisMPPClient(
+    sardis_api_key="sk_live_...",
+    agent_id="agent_procurement",
+    tempo_rpc_url="https://rpc.tempo.xyz",  # or testnet
+)
+
+# Discover services in the MPP directory
+services = await client.discover(
+    category="compute",
+    max_price_usd=10.0,
+)
+
+# Pay for a service — policy checks run automatically
+receipt = await client.pay(
+    service_id=services[0].id,
+    amount_usd=5.00,
+    memo="GPU compute for batch inference",
+)
+
+print(f"Payment: {receipt.tx_hash}")
+print(f"Policy:  {receipt.policy_result}")  # ALLOW / BLOCK
+print(f"Audit:   {receipt.audit_id}")
+```
+
+## x402 Auto-Pay
+
+MPP supports the **x402** protocol for automatic micro-payments. When an API returns a `402 Payment Required` header, the Sardis MPP client automatically negotiates and pays — subject to your spending policy.
+
+```python
+# Enable x402 auto-pay with policy limits
+client = SardisMPPClient(
+    sardis_api_key="sk_live_...",
+    agent_id="agent_researcher",
+    x402_auto_pay=True,
+    x402_max_per_request=1.00,  # Max $1 per auto-pay
+)
+
+# This will auto-pay if the API returns 402
+response = await client.fetch(
+    "https://api.example.com/data",
+    headers={"Accept": "application/json"},
+)
+# Sardis enforces: per-request cap, daily limit, merchant whitelist
+```
+
+## Tempo Chain Config
+
+| Network | Chain ID | RPC |
+| --- | --- | --- |
+| Tempo Mainnet | 42429 | rpc.tempo.xyz |
+| Tempo Testnet (Moderato) | 42431 | rpc-testnet.tempo.xyz |
+
+## Policy Enforcement
+
+Every MPP transaction passes through the Sardis policy engine before execution. Define policies in natural language or structured rules:
+
+```python
+# Natural language policy
+policy = "Allow up to $50/day on compute services. "
+         "Block gambling and adult content. "
+         "Require approval for any single payment over $20."
+
+client.set_policy(policy)
+
+# Or structured rules
+client.set_policy_rules([
+    {"type": "daily_limit", "amount_usd": 50},
+    {"type": "category_block", "categories": ["gambling", "adult"]},
+    {"type": "approval_threshold", "amount_usd": 20},
+])
+```
+
+## Next Steps
+
+- Read the [Spending Mandates](/docs/spending-mandates) guide for delegated financial authority
+- Explore [Spending Policies](/docs/policy-engine) for fine-grained control
+- See the [Wallets](/docs/wallets) page for chain configuration

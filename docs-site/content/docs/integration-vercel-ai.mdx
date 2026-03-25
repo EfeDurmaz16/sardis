@@ -1,0 +1,111 @@
+---
+title: Vercel AI SDK Integration
+description: Add payment capabilities to your AI chatbot with the Vercel AI SDK and Sardis. Works with streamText, generateText, and useChat.
+---
+
+## Installation
+
+```bash
+npm install @sardis/ai-sdk ai @ai-sdk/openai
+```
+
+The `@sardis/ai-sdk` package provides Sardis tools as Vercel AI SDK compatible tool definitions, ready to use with `useChat`, `streamText`, and `generateText`.
+
+## Provider Setup
+
+Initialize the Sardis tool provider with your API key:
+
+```typescript
+import { sardisTools } from "@sardis/ai-sdk";
+
+const tools = sardisTools({
+  apiKey: process.env.SARDIS_API_KEY,
+  agentId: "agent_abc123",
+});
+
+// tools.pay        — Execute a payment
+// tools.getBalance — Check wallet USDC balance
+// tools.getPolicy  — View active spending policy
+// tools.listTx     — List recent transactions
+```
+
+## Server-Side: streamText
+
+Use `streamText` in a Next.js API route to stream AI responses with payment tool calls:
+
+```typescript
+// app/api/chat/route.ts
+import { streamText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { sardisTools } from "@sardis/ai-sdk";
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const tools = sardisTools({
+    apiKey: process.env.SARDIS_API_KEY!,
+    agentId: "agent_procurement",
+  });
+
+  const result = streamText({
+    model: openai("gpt-4o"),
+    messages,
+    tools: {
+      ...tools,
+    },
+    maxSteps: 5,
+  });
+
+  return result.toDataStreamResponse();
+}
+```
+
+## Client-Side: useChat
+
+On the frontend, use `useChat` to connect to the streaming endpoint:
+
+```tsx
+"use client";
+import { useChat } from "ai/react";
+
+export default function PaymentChat() {
+  const { messages, input, handleInputChange, handleSubmit } = useChat();
+
+  return (
+    <div>
+      {messages.map((m) => (
+        <div key={m.id}>
+          <strong>{m.role}:</strong> {m.content}
+          {m.toolInvocations?.map((tool) => (
+            <pre key={tool.toolCallId}>
+              {JSON.stringify(tool.result, null, 2)}
+            </pre>
+          ))}
+        </div>
+      ))}
+      <form onSubmit={handleSubmit}>
+        <input value={input} onChange={handleInputChange} />
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  );
+}
+```
+
+## Available Tools
+
+| Tool | Description |
+| --- | --- |
+| `pay` | Execute a payment to a recipient |
+| `getBalance` | Check wallet USDC balance |
+| `getPolicy` | View the active spending policy |
+| `listTx` | List recent transactions with status |
+| `holdCreate` | Create a payment hold (escrow) |
+| `holdRelease` | Release a held payment |
+| `mandateCreate` | Create a spending mandate |
+
+## Next Steps
+
+- Read the [Spending Policies](/docs/policy-engine) guide to define natural language rules
+- Set up [Agent Wallets](/docs/wallets) with MPC signing
+- Explore the [MCP Server](/docs/mcp-server) for Claude Desktop integration

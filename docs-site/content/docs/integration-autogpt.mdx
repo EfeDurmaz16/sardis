@@ -1,0 +1,162 @@
+---
+title: AutoGPT Integration
+description: Add Sardis payment blocks to AutoGPT workflows with typed Pydantic input/output schemas and policy enforcement.
+---
+
+## Installation
+
+```bash
+pip install sardis-autogpt
+```
+
+The AutoGPT integration provides three blocks that follow the AutoGPT block pattern -- Pydantic input/output schemas with a static `run()` method that yields output models.
+
+## Quick Start
+
+Import the `BLOCKS` registry to get all three Sardis blocks, or import individual block classes by name.
+
+```python
+from sardis_autogpt.blocks import BLOCKS, SardisPayBlock, SardisBalanceBlock, SardisPolicyCheckBlock
+
+# BLOCKS is a list of all three block classes
+print(BLOCKS)
+# [SardisPayBlock, SardisBalanceBlock, SardisPolicyCheckBlock]
+
+# Run a payment block directly
+for output in SardisPayBlock.run(SardisPayBlock.input_schema(
+    api_key="sk_live_...",
+    wallet_id="wallet_abc123",
+    amount=50.00,
+    merchant="api.openai.com",
+    purpose="API credits",
+    token="USDC",
+)):
+    print(output.status)   # "APPROVED" or "BLOCKED"
+    print(output.tx_id)    # Transaction ID if approved
+    print(output.message)  # Status message
+```
+
+## Available Blocks
+
+### SardisPayBlock
+
+Execute a policy-controlled payment. Block ID: `sardis-pay-block`.
+
+```
+# Input schema (SardisPayBlockInput)
+api_key: str      # Sardis API key (or SARDIS_API_KEY env var)
+wallet_id: str    # Wallet ID (or SARDIS_WALLET_ID env var)
+amount: float     # Payment amount in USD
+merchant: str     # Merchant or recipient identifier
+purpose: str      # Reason for payment (default: "Payment")
+token: str        # Token to use (default: "USDC")
+
+# Output schema (SardisPayBlockOutput)
+status: str       # "APPROVED", "BLOCKED", or "ERROR"
+tx_id: str        # Transaction ID if approved (empty if blocked)
+message: str      # Status message
+amount: float     # Payment amount
+merchant: str     # Merchant name
+```
+
+### SardisBalanceBlock
+
+Check wallet balance and spending limits. Block ID: `sardis-balance-block`.
+
+```
+# Input schema (SardisBalanceBlockInput)
+api_key: str      # Sardis API key
+wallet_id: str    # Wallet ID
+token: str        # Token to check (default: "USDC")
+
+# Output schema (SardisBalanceBlockOutput)
+balance: float    # Current wallet balance
+remaining: float  # Remaining spending limit
+token: str        # Token type
+```
+
+### SardisPolicyCheckBlock
+
+Pre-check whether a payment would pass spending policy. Block ID: `sardis-policy-check-block`.
+
+```
+# Input schema (SardisPolicyCheckBlockInput)
+api_key: str      # Sardis API key
+wallet_id: str    # Wallet ID
+amount: float     # Amount to check
+merchant: str     # Merchant to check
+
+# Output schema (SardisPolicyCheckBlockOutput)
+allowed: bool     # Whether the payment would be allowed
+reason: str       # Human-readable explanation
+```
+
+## Example: Check-Then-Pay Pattern
+
+Use SardisPolicyCheckBlock before SardisPayBlock for safe autonomous payment workflows.
+
+```python
+from sardis_autogpt.blocks import (
+    SardisPayBlock,
+    SardisPolicyCheckBlock,
+    SardisPayBlockInput,
+    SardisPolicyCheckBlockInput,
+)
+
+CREDENTIALS = dict(
+    api_key="sk_live_...",
+    wallet_id="wallet_abc123",
+)
+
+merchant = "api.anthropic.com"
+amount = 75.00
+
+# 1. Policy check
+for check in SardisPolicyCheckBlock.run(SardisPolicyCheckBlockInput(
+    **CREDENTIALS,
+    amount=amount,
+    merchant=merchant,
+)):
+    if not check.allowed:
+        print(f"Payment blocked: {check.reason}")
+        break
+    else:
+        # 2. Execute payment
+        for payment in SardisPayBlock.run(SardisPayBlockInput(
+            **CREDENTIALS,
+            amount=amount,
+            merchant=merchant,
+            purpose="Claude API credits",
+            token="USDC",
+        )):
+            print(f"Status: {payment.status}")
+            if payment.tx_id:
+                print(f"Transaction: {payment.tx_id}")
+```
+
+## Registering Blocks with AutoGPT
+
+To make the blocks available in the AutoGPT UI, register them in your AutoGPT plugin configuration.
+
+```python
+# In your AutoGPT plugin's __init__.py or block registry:
+from sardis_autogpt.blocks import BLOCKS
+
+# Register all Sardis blocks
+for block_class in BLOCKS:
+    print(f"Registering: {block_class.name} ({block_class.id})")
+    # AutoGPT.register_block(block_class)  # Follow your AutoGPT plugin API
+
+# Block IDs for reference:
+# - sardis-pay-block         (SardisPayBlock)
+# - sardis-balance-block     (SardisBalanceBlock)
+# - sardis-policy-check-block (SardisPolicyCheckBlock)
+```
+
+## Best Practices
+
+- Use `SARDIS_API_KEY` and `SARDIS_WALLET_ID` env vars to keep credentials out of block inputs
+- Chain `SardisPolicyCheckBlock` before `SardisPayBlock` in all automated workflows
+- Check `output.status == "APPROVED"` before trusting `output.tx_id`
+- The `BLOCKS` list makes it easy to register all blocks programmatically in a plugin
+- Block inputs accept empty strings for `api_key`/`wallet_id` — they fall back to env vars
