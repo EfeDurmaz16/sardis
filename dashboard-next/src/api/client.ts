@@ -784,6 +784,88 @@ export const cardsApi = {
     requestV2<JsonObject[]>(`/cards/${cardId}/transactions?limit=${limit}`),
 }
 
+// Virtual Cards APIs (Laso Finance x402)
+export const virtualCardsApi = {
+  issue: (data: {
+    amount: string
+    currency?: string
+    card_type?: string
+    mandate_id?: string
+  }) => requestV2<{
+    card_id: string
+    card_number: string
+    cvv: string
+    expiry: string
+    amount: string
+    currency: string
+    status: string
+    card_type: string
+    billing_address: Record<string, string>
+    created_at: string
+  }>('/cards/virtual/issue', {
+    method: 'POST',
+    body: JSON.stringify({
+      currency: 'USD',
+      card_type: 'single_use',
+      ...data,
+    }),
+  }),
+
+  get: (cardId: string) => requestV2<{
+    card_id: string
+    card_number: string
+    cvv: string
+    expiry: string
+    amount: string
+    currency: string
+    status: string
+    card_type: string
+    billing_address: Record<string, string>
+    created_at: string
+  }>(`/cards/virtual/${cardId}`),
+
+  useForPayment: (cardId: string, data: {
+    merchant_name: string
+    amount: string
+    currency?: string
+    mandate_id?: string
+  }) => requestV2<{
+    card_id: string
+    merchant_name: string
+    amount: string
+    currency: string
+    status: string
+  }>(`/cards/virtual/${cardId}/payment`, {
+    method: 'POST',
+    body: JSON.stringify({
+      currency: 'USD',
+      ...data,
+    }),
+  }),
+
+  sendPayment: (data: {
+    amount: string
+    method: string
+    recipient: string
+    mandate_id?: string
+  }) => requestV2<{
+    payment_id: string
+    amount: string
+    method: string
+    recipient: string
+    status: string
+  }>('/cards/virtual/send', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  getBalance: () => requestV2<{
+    available: string
+    pending: string
+    currency: string
+  }>('/cards/virtual/balance'),
+}
+
 // Treasury Ops APIs (V2 only - operator controls)
 export const treasuryOpsApi = {
   listJourneys: (params?: {
@@ -1156,6 +1238,15 @@ export const walletsApi = {
   list: () => requestV2<JsonObject[]>('/wallets'),
 
   get: (walletId: string) => requestV2<JsonObject>(`/wallets/${walletId}`),
+
+  fund: (walletId: string, data: {
+    amount: string
+    provider: string
+    payment_method?: string
+  }) => requestV2<JsonObject>(`/wallets/${walletId}/fund`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 }
 
 // Anomaly APIs (V2)

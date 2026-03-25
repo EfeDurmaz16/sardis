@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   Wallet,
+  CreditCard,
   LogOut,
   CheckSquare,
   BarChart3,
@@ -60,6 +61,7 @@ const coreNavigation: NavItem[] = [
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft, tour: 'transactions' },
   { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
   { name: 'Merchants', href: '/merchants', icon: Store },
+  { name: 'Virtual Cards', href: '/virtual-cards', icon: CreditCard },
 ]
 
 // Collapsible grouped sections
