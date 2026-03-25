@@ -1,0 +1,116 @@
+---
+title: Security Model
+description: "Sardis security architecture: non-custodial MPC wallets via Turnkey, 12-check policy pipeline, KYC via Didit, AML via Elliptic, Travel Rule compliance, and virtual card ASA real-time screening."
+---
+
+## Security Principles
+
+Sardis is designed with security as a first-class concern. Our architecture follows these core principles:
+
+- **Non-Custodial** -- Users maintain control of their keys at all times via MPC
+- **Defense in Depth** -- Multiple layers of security controls at every level
+- **Least Privilege** -- Components have minimal permissions required to function
+- **Zero Trust** -- All requests are validated, regardless of source
+- **Unified Policy** -- Same security rules apply to crypto, fiat, and card transactions
+- **Compliance First** -- Built-in KYC/AML for fiat operations via licensed providers
+
+## Threat Model
+
+### Financial Hallucination
+
+The primary threat Sardis addresses is "financial hallucination": unintended financial transactions caused by agent logic errors, retry loops, or prompt injection attacks.
+
+| Threat | Severity | Mitigation |
+|--------|----------|------------|
+| Retry Loop Attack | HIGH | Transaction deduplication, rate limiting, daily limits across all rails |
+| Decimal Precision Error | HIGH | Strict amount validation, confirmation for large amounts |
+| Prompt Injection | MEDIUM | Policy engine validates all requests, not just prompts |
+| Merchant Impersonation | MEDIUM | Merchant allowlist, domain verification, AP2 mandate chain |
+| Unauthorized Off-Ramp | HIGH | KYC verification required, bank account ownership validation |
+| Session Hijacking | LOW | Short-lived tokens, request signing, IP binding |
+
+## MPC Architecture
+
+Sardis uses Multi-Party Computation (MPC) via Turnkey to provide non-custodial wallet security. The private key is never assembled in any single location.
+
+```
+Key Distribution (3-of-3 threshold)
++-------------------------------------------------------------+
+|   +---------+     +---------+     +---------+               |
+|   | Share 1 |     | Share 2 |     | Share 3 |               |
+|   | (User)  |     |(Turnkey)|     |(Sardis) |               |
+|   +----+----+     +----+----+     +----+----+               |
+|        |               |               |                     |
+|        +---------------+---------------+                     |
+|                        |                                     |
+|                  +-----v-----+                               |
+|                  |  MPC Sign |                               |
+|                  +-----+-----+                               |
+|                        |                                     |
+|                  +-----v-----+                               |
+|                  | Signature |                               |
+|                  +-----------+                               |
+|  No single party can sign without cooperation                |
++-------------------------------------------------------------+
+```
+
+## Fiat Rails Security
+
+Fiat operations introduce additional security considerations. Sardis implements multiple layers of protection:
+
+- **KYC Verification** -- Off-ramp operations require KYC verification via Didit. Identity is verified before any fiat can leave the system.
+- **AML/Sanctions Screening** -- Real-time AML screening via Elliptic. Wallet addresses and transactions are screened against OFAC, UN, and EU sanctions lists before execution.
+- **Bank Account Ownership** -- Bank accounts must be verified as owned by the KYC'd entity before off-ramp.
+- **Transaction Limits** -- Default: $500/tx on-ramp, $200/tx off-ramp, $1000/day total fiat.
+- **Provider Security** -- All fiat operations go through licensed, regulated providers. Sardis never directly handles fiat.
+
+## Policy Engine Security
+
+The Policy Engine is the critical security component that validates every transaction across all payment rails. The same policy rules apply whether the transaction is crypto, fiat, or virtual card:
+
+- Merchant allowlist/blocklist verification (applies to all rails)
+- Transaction amount within defined limits (per-rail and total)
+- Daily/weekly/monthly spend limits (aggregated across rails)
+- Category restrictions enforcement (MCC codes for cards)
+- Rate limiting per agent/wallet (unified across rails)
+- Duplicate transaction detection (cross-rail deduplication)
+- Risk score calculation and threshold
+- Fiat-specific: KYC status verification
+- Fiat-specific: Bank account ownership check
+
+### Audit Logging
+
+Every policy decision is logged with full context including the request, policy rules evaluated, decision rationale, and cryptographic proof. Logs are immutable and stored for compliance purposes.
+
+## Travel Rule (FATF R.16)
+
+Cross-border transfers exceeding $3,000 require originator and beneficiary identification under FATF Recommendation 16. Sardis enforces this at the protocol layer before execution.
+
+- **Automatic Threshold Detection** -- Transactions are automatically screened against the $3,000 threshold.
+- **VASP-to-VASP Data Exchange** -- Travel Rule data is exchanged in a structured format compliant with the IVMS101 standard via Notabene.
+- **Fail-Closed Enforcement** -- Transfers that exceed the threshold without complete Travel Rule data are blocked. No exceptions, no manual overrides in production.
+
+## Card Authorization Safety (ASA)
+
+Virtual card transactions are screened in real-time via ASA (Authorization Stream Access) webhook before approval:
+
+- **MCC Blocking** -- 13 high-risk merchant category codes are blocked by default: gambling, cash advances, stored value cards, wire transfers, escort services, dating services, and pawn shops.
+- **Velocity Limits** -- Per-card transaction velocity is enforced in real-time.
+- **OFAC/FATF Country Screening** -- Transactions from 16 sanctioned or high-risk jurisdictions are automatically declined.
+
+## Compliance
+
+| Framework | Status | Details |
+|-----------|--------|---------|
+| KYC/AML | Integrated | Didit for identity verification, Elliptic for sanctions screening |
+| SOC 2 Type II | In Progress | Target: Q3 2026 via DSALTA |
+| GDPR | Compliant | Data export, deletion, consent management, DPA available |
+| PCI DSS | Via Partner | Card processing handled by Stripe (PCI Level 1 certified) |
+| Money Transmission | Via Partner | Fiat operations via licensed money transmitters |
+| Sanctions Screening | Integrated | OFAC + OpenSanctions + Elliptic |
+
+## Security Contact
+
+If you discover a security concern, please reach out to us directly:
+
+**Email:** [security@sardis.sh](mailto:security@sardis.sh)

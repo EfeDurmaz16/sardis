@@ -1,0 +1,143 @@
+---
+title: SDK Reference
+description: Complete API reference for Sardis Python and TypeScript SDKs. Payments, wallets, policies, and framework integrations.
+---
+
+## Python SDK
+
+### SardisClient
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(
+    api_key="your_api_key",
+    base_url="https://api.sardis.sh",  # Optional
+    timeout=30,  # Optional, seconds
+    max_retries=3  # Optional
+)
+```
+
+### Payments
+
+```python
+# Execute a payment
+result = await sardis.pay(
+    to="api.openai.com",
+    amount=20.00,
+    currency="USDC",
+    purpose="API credits"
+)
+
+result.payment_id  # str
+result.status      # "pending" | "processing" | "completed" | "failed"
+result.tx_hash     # str | None
+```
+
+### Wallets
+
+```python
+# Get wallet balance
+balance = client.wallets.get_balance(wallet_id="wallet_xxx")
+
+# Create a new wallet
+wallet = client.wallets.create(
+    agent_id="agent_xxx",
+    currency="USDC",
+    chain="base"
+)
+
+# List all wallets
+wallets = client.wallets.list(agent_id="agent_xxx")
+```
+
+### Policy
+
+```python
+from decimal import Decimal
+
+# Check if a payment would be allowed
+check = client.policies.check(
+    agent_id="agent_xxx",
+    amount=Decimal("500.00"),
+    currency="USD",
+    merchant_id="amazon.com"
+)
+
+check.allowed  # bool
+check.reason   # str (if blocked)
+```
+
+## TypeScript SDK
+
+### SardisClient
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({
+  apiKey: 'your_api_key',
+  baseUrl: 'https://api.sardis.sh', // Optional
+  timeout: 30000, // Optional, milliseconds
+  maxRetries: 3 // Optional
+});
+```
+
+### Payments
+
+```typescript
+const result = await sardis.pay({
+  to: 'api.openai.com',
+  amount: 20.00,
+  currency: 'USDC',
+  purpose: 'API credits'
+});
+
+result.payment_id    // string
+result.status        // string
+result.tx_hash       // string | undefined
+```
+
+## Framework Integrations
+
+### LangChain (Python)
+
+```python
+from sardis.integrations.langchain import SardisTool
+
+tools = [SardisTool()]
+# The tool automatically handles payments, policy validation, and card issuance
+```
+
+### Vercel AI SDK (TypeScript)
+
+```typescript
+import { createSardisTools } from '@sardis/ai-sdk';
+import { generateText } from 'ai';
+
+const tools = createSardisTools(sardisClient);
+const result = await generateText({
+  model: openai('gpt-4'),
+  tools,
+  prompt: 'Pay $20 to OpenAI for API credits'
+});
+```
+
+## Error Handling
+
+All SDK methods throw typed exceptions:
+
+```python
+from sardis import (
+    PolicyViolationError,
+    InsufficientBalanceError,
+    AuthenticationError
+)
+
+try:
+    result = await sardis.pay(...)
+except PolicyViolationError as e:
+    print(f"Blocked: {e}")
+except InsufficientBalanceError:
+    print("Not enough funds")
+```

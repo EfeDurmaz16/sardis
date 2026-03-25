@@ -1,0 +1,84 @@
+---
+title: Sardis Whitepaper
+description: "The Payment OS for the Agent Economy: Preventing Financial Hallucinations Through Programmable Trust."
+---
+
+## Abstract
+
+As AI agents evolve from conversational assistants to autonomous actors capable of executing complex workflows, they encounter a critical limitation: the inability to transact financially. Current payment infrastructure is designed to block non-human actors through mechanisms like 2FA, CAPTCHAs, and behavioral analysis.
+
+Sardis introduces a novel financial infrastructure layer that provides AI agents with non-custodial MPC wallets, natural language spending policies, and a real-time policy engine that prevents "financial hallucinations" -- the accidental over-spending or mis-spending of funds due to agent logic errors.
+
+## The Problem
+
+### The Read-Only Trap
+
+We are transitioning to an Agentic Economy where AI agents perform increasingly complex tasks on behalf of humans. Yet these agents remain fundamentally "read-only" when it comes to financial transactions. They can browse, plan, and recommend, but they cannot pay.
+
+### Financial Hallucination Risk
+
+Most discourse around AI safety focuses on text hallucinations. We argue that "financial hallucination" -- an agent accidentally spending $10,000 instead of $100 due to a retry loop, decimal error, or logic bug -- represents a more immediate and quantifiable risk.
+
+> **Example: The $10K Bug** -- An agent tasked with purchasing $100 of API credits enters a retry loop after a timeout. Without spending limits, it executes the same purchase 100 times, resulting in $10,000 in charges.
+
+## The Solution
+
+### Financial Firewall
+
+Sardis implements a "Financial Firewall" that sits between agents and payment rails. Every transaction is validated against a set of programmable policies before execution.
+
+### Natural Language Policies
+
+Unlike traditional payment systems that require complex rule configurations, Sardis accepts policies in plain English:
+
+```
+"Allow SaaS vendors up to $100 per transaction"
+"Block all retail purchases"
+"Maximum $500 daily spend"
+"Only allow payments to openai.com, github.com, vercel.com"
+```
+
+### Non-Custodial Architecture
+
+Sardis uses Multi-Party Computation (MPC) via Turnkey to ensure that agents control their own wallets without any single party having access to the complete private key.
+
+## Market Opportunity
+
+The "Machine Customer Economy" is projected to reach $30 trillion by 2030 (Gartner). As agents become capable of autonomous purchasing decisions, the need for secure, programmable payment infrastructure becomes critical.
+
+| Metric | Value |
+|--------|-------|
+| Machine Customer Economy by 2030 | $30T |
+| B2B transactions that will be automated | 85% |
+| Growth in agent-initiated payments | 10x |
+
+## Technical Architecture
+
+Sardis consists of four primary components:
+
+1. **Policy Engine** -- Real-time transaction validation with natural language rule parsing. 12-check pipeline, fail-closed.
+2. **MPC Wallets** -- Non-custodial key management via Turnkey infrastructure.
+3. **Settlement Layer** -- Multi-rail support: on-chain (Base + CCTP v2 bridging), fiat (virtual cards, ACH), and checkout (Pay with Sardis).
+4. **Integration SDKs** -- Native support for LangChain, Vercel AI, OpenAI Agents SDK, CrewAI, MCP (52 tools), and 10+ more frameworks.
+
+## Business Model
+
+Sardis follows an Open Core licensing model:
+
+**Open Source:**
+- Python SDK (`pip install sardis`)
+- TypeScript SDK (`npm install @sardis/sdk`)
+- MCP Server (52 tools)
+- Integration adapters (13 frameworks)
+
+**Proprietary:**
+- Policy Engine core
+- MPC node management
+- Compliance infrastructure
+- Enterprise features
+
+## Conclusion
+
+Sardis provides the missing financial infrastructure layer for the Agent Economy. By combining non-custodial wallets, natural language policies, and a real-time policy engine, we enable agents to transact safely while preventing the financial hallucinations that would otherwise make autonomous agent spending too risky to deploy.
+
+**Contact:** [contact@sardis.sh](mailto:contact@sardis.sh) | [GitHub](https://github.com/EfeDurmaz16/sardis)

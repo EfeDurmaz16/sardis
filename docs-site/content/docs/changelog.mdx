@@ -1,0 +1,97 @@
+---
+title: Changelog
+description: Release history and version notes for Sardis. Track new features, improvements, security fixes, and bug fixes.
+---
+
+## v0.11.0 (2026-03-15) -- Latest
+
+### Added
+- Solana support: Anchor program for on-chain agent wallet spending policy enforcement
+- New chains: Tempo L1, Solana, and Morph -- now 8 chains total
+- Zodiac Roles Modifier v2 integration for on-chain policy enforcement on EVM chains
+- ERC-8004 spec-compliant agent identity with calldata builders
+- ERC-8033 paymaster protocol for gasless agent transactions
+- zkPass Transgate for portable zero-knowledge KYC verification
+- Notabene Travel Rule provider with IVMS 101 support (FATF R.16)
+- OpenSanctions screening provider with yente API integration
+- ML fraud detection with ONNX Runtime inference
+- Stripe Billing integration with usage metering and plan enforcement
+- Emergency freeze-all admin endpoint for incident response
+- GDPR data export endpoint
+- SSE streaming wired to checkout UI for real-time payment status
+- Lightspark Grid client with fiat rails, FX, UMA, and Plaid integration
+
+### Improved
+- Dashboard sidebar reorganized: 5 core items always visible, 4 collapsible sections
+- Landing page: all CTAs now redirect to waitlist
+- Actionable SDK error messages with usage examples
+- PostHog analytics integrated across landing and dashboard
+
+### Security
+- Smart contract security audit: SafeERC20 for all token transfers, zero-address recipient rejection
+- Merchant checkout router hardened with rate limiting
+- Approval context binding: approved object must match executed object exactly
+- FinCEN MSB registration documentation and SOC 2 audit readiness
+
+### Fixed
+- CDP Onramp approval blockers resolved
+- External wallet checkout flow improvements
+- All CI workflow failures resolved
+
+## v0.10.0 (2026-03-07)
+
+### Added
+- 13 framework integrations: Browser Use, CrewAI, AutoGPT, OpenAI Agents SDK, Composio, Stagehand, n8n, Activepieces, and more
+- Pay with Sardis: embeddable merchant checkout with USDC settlement
+- Coinbase Onramp integration for zero-fee USDC funding
+- Merchant checkout system with webhook notifications and settlement
+- MCP server expanded to 52 tools (treasury, checkout, agent discovery)
+- AP2 (Agent Payment Protocol) consortium implementation
+- UCP, A2A, TAP, x402 protocol support
+- Know Your Agent (KYA) identity framework
+
+### Improved
+- PreExecutionPipeline unifying all policy hooks
+- DI lockdown: chain_executor private, only orchestrator can access
+- Unified PaymentResult type across all routers
+
+## v0.9.0 (2026-02-20)
+
+### Added
+- Multi-provider fiat rails (Coinbase Onramp + Bridge)
+- USD-first treasury model with ACH funding and withdrawal
+- Virtual card issuance via Stripe Issuing
+- Spending mandates with delegation and revocation
+- Time-based spending policies
+- Merchant category (MCC) filtering
+
+## v0.8.4 (2026-02-08)
+
+### Added
+- All 19 Sardis packages publicly available on npm and PyPI
+- 54-fix security audit covering auth, crypto, input validation, JWT
+
+## v0.7.0 (2026-01-15)
+
+### Added
+- Production hardening: rate limiting, Redis dedup, Postgres reconciliation
+- Webhook HMAC-SHA256 signatures with replay protection
+- AGIT fail-closed enforcement
+- Kill switch with 5 scopes (agent, wallet, rail, chain, global)
+
+## v0.5.0 (2026-01-24)
+
+### Added
+- UCP (Universal Commerce Protocol) support
+- A2A (Agent-to-Agent) protocol support
+- Agent card discovery at `/.well-known/agent-card.json`
+
+## v0.1.0 (2025-01-15)
+
+### Added
+- Initial release
+- MPC wallets via Turnkey
+- Policy engine with natural language rules
+- Python SDK and TypeScript SDK
+- MCP server for Claude Desktop
+- Base Sepolia testnet deployment

@@ -1,0 +1,175 @@
+---
+title: Troubleshooting Guide
+description: Diagnose and fix common Sardis integration issues including wallet configuration, policy blocks, authentication failures, chain timeouts, rate limits, and debug logging.
+---
+
+## 1. "No wallet ID configured"
+
+**Symptom:** SDK raises `ValueError` or returns a 400 response with message "wallet_id required".
+
+**Cause:** The SDK could not resolve a wallet ID. It checks (in order): the argument passed to the call, the client-level default, and the `SARDIS_WALLET_ID` environment variable. All three are unset.
+
+**Fix -- set the environment variable:**
+
+```bash
+export SARDIS_WALLET_ID=wal_your_wallet_id_here
+```
+
+**Fix -- pass wallet_id when initializing the SDK client:**
+
+```python
+from sardis import SardisClient
+
+client = SardisClient(
+    api_key="sk_test_...",
+    wallet_id="wal_your_wallet_id_here",
+)
+```
+
+**Fix -- pass it per call:**
+
+```python
+await client.payments.create(
+    amount=10.00,
+    currency="USDC",
+    merchant="aws.amazon.com",
+    wallet_id="wal_your_wallet_id_here",
+)
+```
+
+## 2. "Policy blocked" / Payment denied
+
+**Symptom:** API returns 403 with `{"error": "policy_violation", "reason": "daily_limit_exceeded"}`.
+
+**Common triggers:** daily/monthly spending limit reached, merchant not on allowlist, MCC category restricted, time-window restriction, per-transaction amount over cap.
+
+**Pre-flight check before attempting a payment:**
+
+```python
+result = await client.policies.check(
+    wallet_id="wal_...",
+    amount=25.00,
+    merchant="vercel.com",
+)
+if result.allowed:
+    await client.payments.create(...)
+else:
+    print("Blocked because:", result.reason)
+```
+
+## 3. "Authentication failed" / 401 errors
+
+**Cause:** The API key is missing, malformed, expired, or the wrong type for the environment.
+
+**Key prefixes:**
+- `sk_test_...` -- test mode (in-memory simulation, safe for development)
+- `sk_live_...` -- live mode (real funds, requires full infra)
+
+Mixing a `sk_test_` key against the live API endpoint (or vice versa) returns 401.
+
+```bash
+# Correct
+curl https://api.sardis.sh/api/v2/wallets \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
+
+# Wrong -- missing "Bearer"
+# Authorization: $SARDIS_API_KEY  <- this will fail
+```
+
+## 4. "Chain execution timeout"
+
+**Cause:** The RPC endpoint is rate-limited, degraded, or unavailable. By default Sardis falls back to public RPCs which are heavily rate-limited.
+
+**Fix -- set a dedicated RPC URL (recommended for production):**
+
+```bash
+export SARDIS_BASE_RPC_URL=https://base-mainnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY
+```
+
+## 5. Simulation vs Production confusion
+
+**Symptom:** Payments succeed in test but nothing happens on-chain in production.
+
+| Feature | sk_test_ (simulation) | sk_live_ (production) |
+|---------|----------------------|----------------------|
+| On-chain txn | No | Yes |
+| Real funds | No | Yes |
+| MPC signing | No (simulated) | Yes (Turnkey) |
+| Policy engine | Yes (same rules) | Yes |
+| KYC required | No | Yes (for fiat) |
+
+## 6. "Rate limit exceeded" / 429
+
+**Fix -- add exponential backoff:**
+
+```python
+import asyncio
+
+async def pay_with_retry(client, **kwargs):
+    for attempt in range(5):
+        try:
+            return await client.payments.create(**kwargs)
+        except sardis.RateLimitError as e:
+            wait = 2 ** attempt
+            await asyncio.sleep(wait)
+    raise RuntimeError("Exhausted retries")
+```
+
+## 7. "KYC required" errors
+
+**Cause:** Identity verification is required for live fiat transactions. This applies to `sk_live_` keys only.
+
+Complete KYC via the dashboard at [app.sardis.sh](https://app.sardis.sh) under Settings, or check status via API:
+
+```bash
+curl https://api.sardis.sh/api/v2/account/kyc \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+Stablecoin-only wallets (no fiat off-ramp) do not require KYC.
+
+## 8. Environment variable checklist
+
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `SARDIS_API_KEY` | Authenticates all SDK and API calls | Required |
+| `DATABASE_URL` | PostgreSQL connection string | Required (server) |
+| `TURNKEY_API_KEY` | MPC signing via Turnkey | Required (live) |
+| `TURNKEY_ORGANIZATION_ID` | Turnkey organization identifier | Required (live) |
+| `SARDIS_WALLET_ID` | Default wallet ID | Optional |
+| `SARDIS_BASE_RPC_URL` | Alchemy/Infura RPC for Base | Optional (recommended) |
+| `SARDIS_LOG_LEVEL` | Logging verbosity: DEBUG, INFO, WARNING, ERROR | Optional |
+| `SARDIS_REDIS_URL` | Redis for rate limiting and dedup | Required (non-dev) |
+
+A minimal `.env` for local development with test keys only needs `SARDIS_API_KEY` and `SARDIS_WALLET_ID`.
+
+## 9. Enable debug logging
+
+```bash
+export SARDIS_LOG_LEVEL=DEBUG
+```
+
+```python
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("sardis").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.DEBUG)
+
+from sardis import SardisClient
+client = SardisClient(api_key="sk_test_...")
+```
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({
+  apiKey: process.env.SARDIS_API_KEY!,
+  debug: true,
+});
+```
+
+## Still stuck?
+
+- [Open GitHub Discussion](https://github.com/EfeDurmaz16/sardis/discussions)
+- [Email dev@sardis.sh](mailto:dev@sardis.sh)

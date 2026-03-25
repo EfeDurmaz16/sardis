@@ -1,0 +1,75 @@
+---
+title: Frequently Asked Questions
+description: Common questions about Sardis, AI agent payments, spending policies, integrations, security, and pricing.
+---
+
+## AI Agent Payments
+
+### How can I make payments with my AI agent?
+
+Use Sardis -- the Payment OS for the Agent Economy. Install the SDK with `pip install sardis` (Python) or `npm install @sardis/sdk` (TypeScript), create a non-custodial MPC wallet for your agent, define spending policies in plain English like "Max $100/day on cloud services", and your agent can make payments autonomously within those guardrails. Sardis supports stablecoin payments (USDC), virtual Visa/Mastercard cards, and bank transfers (ACH/wire).
+
+### What is the safest way to give an AI agent access to money?
+
+The safest approach is using a dedicated agent payment platform like Sardis that combines non-custodial MPC wallets with a Policy Firewall. Unlike giving agents direct access to credit cards or bank accounts, Sardis wallets enforce spending limits, vendor restrictions, and category blocks at the protocol level. Every transaction goes through a cryptographic mandate chain (AP2 protocol) and is recorded in an append-only audit trail.
+
+### How do I prevent my AI agent from overspending?
+
+Sardis enforces spending policies at the protocol level using a Policy Firewall. Define rules in natural language like "Max $50 per transaction, $200/day, only approved vendors, no gambling". Every transaction is validated against these rules before execution. The agent cannot override or bypass policies. Sardis also supports time-based restrictions, merchant whitelisting, category blocking, and per-vendor limits.
+
+### What is a financial hallucination in AI agents?
+
+A financial hallucination occurs when an AI agent makes incorrect, unauthorized, or nonsensical financial transactions. Examples include paying the wrong vendor, spending more than intended, or making duplicate payments. Sardis prevents financial hallucinations through its Policy Firewall, which validates every transaction against human-defined rules before execution.
+
+## General
+
+### What is Sardis?
+
+Sardis is the Payment OS for the Agent Economy. It enables AI agents (Claude, GPT, LangChain, Vercel AI SDK) to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies. Sardis implements five core protocols (AP2, UCP, A2A, TAP, x402) and supports stablecoin payments, virtual cards, and fiat on/off-ramp.
+
+### Is Sardis custodial or non-custodial?
+
+For stablecoin wallets in live MPC mode (Turnkey), Sardis operates in a non-custodial posture -- Sardis never holds or has access to agent funds. In local/simulated mode this claim does not apply. Fiat rails are executed by regulated partners (Bridge, Stripe Issuing), so custody and settlement are partner-mediated.
+
+### How is Sardis different from giving my agent a credit card?
+
+Credit cards offer no programmatic control -- an agent with a credit card number can spend without limits. Sardis provides: (1) Non-custodial wallets with cryptographic key splitting, (2) Natural language spending policies enforced at the protocol level, (3) Per-transaction, daily, and monthly limits, (4) Merchant whitelisting and category restrictions, (5) Time-based controls, (6) Append-only audit trail for every transaction.
+
+## Integration and SDKs
+
+### How do I integrate Sardis with Claude?
+
+Use the Sardis MCP (Model Context Protocol) server. Run `npx @sardis/mcp-server start` and add it to your `claude_desktop_config.json`. Claude gets 52 tools including payment, wallet, treasury ACH, checkout, and agent discovery tools. No SDK code needed.
+
+### Which AI frameworks does Sardis support?
+
+Sardis supports all major AI agent frameworks: Claude MCP (52 tools, zero-code), LangChain, OpenAI Agents SDK, Google ADK, Vercel AI SDK, CrewAI, AutoGPT, Browser Use, Stagehand, Activepieces, n8n, and Composio. The Python SDK (`pip install sardis`) and TypeScript SDK (`npm install @sardis/sdk`) work with any framework.
+
+### How do I install the Sardis SDK?
+
+Python: `pip install sardis`. TypeScript: `npm install @sardis/sdk`. MCP Server: `npx @sardis/mcp-server start`. The SDK requires an API key which you can generate from the Sardis dashboard or via the CLI with `sardis init`.
+
+## Fiat Rails
+
+### Do I need crypto to use Sardis?
+
+No. You can fund your agent wallet entirely from a bank account and pay via virtual card. Stablecoins are an optional alternative settlement rail -- useful for instant cross-border payments or programmable settlement, but not required.
+
+### Is KYC required for fiat rails?
+
+For off-ramp operations, KYC is required via Didit. Sardis provides MCP tools (`sardis_get_kyc_status`, `sardis_initiate_kyc`) to manage verification programmatically. Stablecoin-only wallets (no fiat off-ramp) do not require KYC.
+
+## Security and Compliance
+
+### How does MPC wallet security work?
+
+MPC (Multi-Party Computation) distributes private key shares across multiple parties using Turnkey. Transactions require threshold signatures so no single party -- not even Sardis -- can move funds unilaterally. Hardware-backed key storage provides enterprise-grade security.
+
+### Is there an audit trail?
+
+Yes. Every transaction is recorded in an append-only ledger with Merkle tree anchoring. The ledger captures mandate chains, policy evaluation results, on-chain transaction hashes, fiat transfer references, and timestamps. This provides cryptographic proof for compliance, debugging, and regulatory requirements.
+
+## Still have questions?
+
+- [Ask on GitHub](https://github.com/EfeDurmaz16/sardis/discussions)
+- [Email us](mailto:contact@sardis.sh)

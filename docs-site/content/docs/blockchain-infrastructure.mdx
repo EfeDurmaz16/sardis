@@ -1,0 +1,108 @@
+---
+title: Blockchain Infrastructure
+description: How Sardis uses blockchain technology under the hood to provide secure, non-custodial payment infrastructure for AI agents.
+---
+
+## Why Blockchain?
+
+Sardis uses stablecoins (USDC) as a settlement rail, not as a product feature. Blockchain gives us three things that traditional payment rails cannot:
+
+- **Non-custodial by design**: funds live in smart contract wallets, not our bank account. No trust assumption needed.
+- **Programmable money**: spending policies are enforced on-chain. Rules cannot be bypassed, even by us.
+- **Real-time settlement**: no T+2 delays. Payments settle in seconds, not days.
+
+> **Note:** End users never interact with blockchain directly. Sardis abstracts all complexity. Your agents pay in dollars, and we handle the infrastructure.
+
+## Supported Chains
+
+Sardis executes all transactions on **Base** -- the lowest-cost, highest-throughput L2 with native USDC support. Agents can fund wallets from any supported chain via CCTP v2 cross-chain transfers, which automatically consolidate USDC to Base.
+
+> **Execution vs Funding:** All payment execution and smart contract interactions happen on Base. Multi-chain support refers to *funding* -- agents can receive USDC from Ethereum, Polygon, Arbitrum, or Optimism, and it arrives on Base automatically via Circle's CCTP v2.
+
+### Execution Chain
+
+| Chain | Type | Tokens | Avg. Cost | Settlement |
+|-------|------|--------|-----------|------------|
+| Base | L2 (Optimistic) | USDC, EURC | ~$0.001 | ~2 seconds |
+
+### Funding Chains (via CCTP v2)
+
+Send USDC from any of these chains to fund your Sardis agent wallet. Funds are automatically bridged to Base.
+
+| Chain | Type | Tokens | Bridge Time |
+|-------|------|--------|-------------|
+| Ethereum | L1 | USDC | ~15 minutes |
+| Polygon | L2 (PoS) | USDC | ~15 minutes |
+| Arbitrum | L2 (Optimistic) | USDC | ~15 minutes |
+| Optimism | L2 (Optimistic) | USDC | ~15 minutes |
+
+## MPC Custody (Turnkey)
+
+Sardis uses Multi-Party Computation (MPC) via [Turnkey](https://www.turnkey.com) for key management. This means:
+
+- **No single point of failure**: private keys are split across multiple parties. No single entity (including Sardis) can sign transactions alone.
+- **Non-custodial**: you retain full ownership. Sardis never has access to your funds.
+- **Agent-compatible**: MPC signing does not require 2FA, seed phrases, or hardware wallets. Agents can sign transactions programmatically while maintaining security.
+
+## Smart Contract Wallets
+
+Each agent wallet is backed by a Safe Smart Account (v1.4.1) deployed on Base. The wallet enforces on-chain spending policies:
+
+```solidity
+// SardisAgentWallet.sol: Key features
+contract SardisAgentWallet {
+    address public owner;
+    address public agent;
+    uint256 public dailyLimit;
+    uint256 public perTransactionLimit;
+
+    function executePayment(
+        address token,
+        address recipient,
+        uint256 amount,
+        bytes calldata purpose
+    ) external onlyAgent withinLimits(amount) { ... }
+
+    function updateLimits(uint256 daily, uint256 perTx)
+        external onlyOwner { ... }
+
+    function freeze() external onlyOwner { ... }
+}
+```
+
+## ERC-4337 Account Abstraction
+
+Sardis uses ERC-4337 (Account Abstraction) to enable gasless transactions for agents:
+
+- **No gas tokens needed**: agents do not need ETH to pay for transaction fees. Sardis sponsors gas via Circle Paymaster.
+- **Bundled transactions**: multiple operations can be batched into a single transaction for efficiency.
+- **Social recovery**: wallet recovery without seed phrases, using guardian-based recovery mechanisms.
+
+ERC-4337 account abstraction is live on Base via Circle Paymaster for gasless USDC transactions.
+
+## Stablecoins as Payment Rails
+
+Sardis uses stablecoins (primarily USDC by Circle) as the settlement layer. Stablecoins are dollar-pegged digital currencies that combine the programmability of blockchain with the stability of fiat currency.
+
+**Why USDC?**
+- Fully backed by US dollar reserves
+- Regulated by Circle (US-based)
+- $30B+ in circulation
+- Native on all supported chains
+- Instant settlement (no T+2)
+
+**Fiat On/Off Ramp**
+- Fund wallets from bank accounts (ACH/wire) via Coinbase Onramp
+- Automatic USD to USDC conversion
+- Withdraw to bank anytime
+- Users only see dollar amounts
+- No crypto knowledge required
+
+## Escrow and Settlement
+
+The escrow system provides trustless escrow for agent-to-merchant payments using Circle RefundProtocol:
+
+- **Lock funds**: when an agent initiates a payment, funds are locked in escrow
+- **Verify delivery**: the merchant confirms delivery or the service is rendered
+- **Release or refund**: funds are released to the merchant or refunded to the agent
+- **Dispute resolution**: time-locked disputes with owner arbitration

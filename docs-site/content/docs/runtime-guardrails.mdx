@@ -1,0 +1,28 @@
+---
+title: Runtime Guardrails
+description: Production runtime controls that keep agentic payments deterministic, auditable, and fail-closed.
+---
+
+## PAN Lane Quorum
+
+Sensitive card actions are protected with quorum approval. Sardis requires distinct reviewers for PAN-lane execution, and blocks execution when quorum requirements are not met.
+
+- Fail-closed when reviewer count or reviewer uniqueness is insufficient.
+- Approval evidence is stored in audit trail with actor and timestamp metadata.
+- High-risk actions can be gated behind stricter thresholds without changing agent prompts.
+
+## ASA Fail-Closed
+
+Card ASA authorization checks default to deny whenever control-plane dependencies fail (lookup, subscription matching, or policy context retrieval).
+
+- Issuer authorization stream errors return deterministic deny, not soft-allow.
+- Denied decisions are logged for post-incident forensics and replay analysis.
+- Operational posture is exposed through runtime security-policy endpoints for admins.
+
+## Wallet-Aware A2A Trust
+
+Multi-agent payment orchestration uses trust relations that are aware of wallet ownership and organization boundaries to prevent cross-tenant execution drift.
+
+- Trust graph mutations are protected by approval and audit controls.
+- Broadcast targets are derived from trusted peers and filtered by wallet visibility.
+- Untrusted or cross-organization peers are excluded from payment fan-out paths.

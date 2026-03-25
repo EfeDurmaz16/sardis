@@ -1,0 +1,105 @@
+---
+title: Trust Center
+description: How Sardis protects your agents, your money, and your data. Security architecture, compliance status, subprocessors, SLA, and data processing.
+---
+
+## Security Architecture
+
+### Non-Custodial by Design
+
+Sardis never holds your private keys. All wallet operations use **MPC (Multi-Party Computation)** via Turnkey, where key shares are distributed across multiple parties. No single entity -- including Sardis -- can unilaterally sign a transaction.
+
+### Policy-First Execution
+
+Every payment passes through a **12-check policy pipeline** before any funds move. The pipeline is fail-closed: if any check fails or the policy engine is unreachable, the payment is rejected. This includes:
+
+- Per-transaction amount limits
+- Daily, weekly, and monthly spending caps
+- Merchant allowlist/blocklist with MCC code filtering
+- Token type restrictions
+- Purpose requirement enforcement
+- Human approval threshold routing
+- Cross-rail deduplication
+- Sanctions screening (OFAC/FATF)
+
+### Authentication and Access Control
+
+- **Passwords:** Argon2id hashing (PBKDF2 fallback with 100K iterations)
+- **JWT tokens:** HS256 with JTI-based revocation via Redis blacklist
+- **API keys:** SHA-256 hashed before storage, constant-time validation
+- **MFA:** TOTP-based (compatible with Google Authenticator, Authy, 1Password)
+- **Rate limiting:** Per-IP and per-org, Redis-backed with in-memory fallback
+- **CORS:** Explicit origin allowlist (no wildcards with credentials)
+
+### Data Protection
+
+- **In transit:** TLS 1.3 with HSTS (1 year, includeSubDomains, preload)
+- **At rest:** AES-256 encryption via cloud provider (Neon PostgreSQL, GCP)
+- **Credentials:** Fernet symmetric encryption for delegated tokens
+- **Logs:** Sensitive data masked (auth headers, API keys, passwords)
+- **Headers:** CSP, X-Frame-Options DENY, X-Content-Type-Options nosniff
+
+### Infrastructure Security
+
+- **Deployment:** Cloud Run (GCP) with non-root containers, multi-stage Docker builds
+- **CI/CD:** Gitleaks secret scanning, Trivy container scanning, Bandit SAST, pip-audit dependency scanning
+- **Webhooks:** HMAC-SHA256 signatures with 5-minute replay window, SSRF prevention on URLs
+- **Kill switch:** Multi-scope emergency stop (global, org, agent, rail, chain)
+
+## Compliance Status
+
+| Framework | Status | Details |
+|-----------|--------|---------|
+| SOC 2 Type II | In Progress | Preparing with DSALTA. Target: Q3 2026. |
+| GDPR | Compliant | Data export, deletion, consent management, DPA available. |
+| CCPA | Compliant | Data access, deletion, opt-out rights supported. |
+| PCI DSS | Via Partner | Card processing handled by Stripe (PCI Level 1 certified). |
+| KYC/AML | Integrated | Didit for identity verification, Elliptic for sanctions screening. |
+| Travel Rule | Enforced | FATF R.16 compliance above $3,000 threshold (IVMS101 format). |
+
+## Subprocessors
+
+| Provider | Purpose | Data Processed | Location |
+|----------|---------|---------------|----------|
+| Turnkey | MPC wallet custody and signing | Public keys, transaction data | USA |
+| Didit | KYC identity verification | Government ID, selfie, name, DOB | EU |
+| Elliptic | AML/sanctions screening | Wallet addresses, transaction hashes | UK |
+| Stripe | Billing, virtual card issuance | Payment method, email, plan | USA |
+| Neon | PostgreSQL database hosting | All application data | USA (AWS us-east-1) |
+| Alchemy | Blockchain RPC access | Transaction data, wallet addresses | USA |
+| Google Cloud | API hosting (Cloud Run) | API requests, logs | USA (us-east1) |
+| Upstash | Redis caching | Session data, rate limits | USA |
+| PostHog | Product analytics | Usage events, anonymized behavior | EU |
+
+## Service Level Agreement
+
+**Uptime Target:** 99.9% monthly uptime for `api.sardis.sh` and `dashboard.sardis.sh`, excluding scheduled maintenance.
+
+**Maintenance Windows:** Sundays 02:00-06:00 UTC with at least 48 hours advance notice.
+
+### Incident Response
+
+| Severity | Description | Response Time | Update Cadence |
+|----------|-------------|---------------|----------------|
+| P0 -- Critical | Complete service outage or data breach | < 30 minutes | Every 30 minutes |
+| P1 -- High | Major feature unavailable, payments blocked | < 2 hours | Every 2 hours |
+| P2 -- Medium | Degraded performance, non-critical feature down | < 8 hours | Daily |
+| P3 -- Low | Minor issue, workaround available | < 24 hours | As resolved |
+
+## Data Retention
+
+| Data Type | Retention | Basis |
+|-----------|-----------|-------|
+| Account data | 3 years after deletion | Contractual |
+| Transaction records | 7 years | Regulatory (financial records) |
+| KYC documents | 5-7 years | AML/CFT regulations |
+| API logs | 90 days | Operational |
+| Analytics events | 12 months | Legitimate interest |
+
+## Security Contact
+
+- **Security issues:** [security@sardis.sh](mailto:security@sardis.sh)
+- **Legal/DPA:** [legal@sardis.sh](mailto:legal@sardis.sh)
+- **General support:** [support@sardis.sh](mailto:support@sardis.sh)
+
+We commit to acknowledging security reports within 24 hours and providing an initial assessment within 72 hours.
