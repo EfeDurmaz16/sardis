@@ -16,6 +16,7 @@ import {
   Zap,
   Users,
 } from "lucide-react";
+import SardisLogo from "@/components/SardisLogo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -112,8 +113,11 @@ export default function KYBPage() {
       {/* Left Rail - Steps */}
       <div className="hidden lg:flex w-72 bg-dark-400 border-r border-dark-100 p-8 flex-col">
         <div className="mb-10">
-          <h2 className="text-lg font-bold text-white font-display">Setup</h2>
-          <p className="text-sm text-gray-500 mt-1">Complete these steps to go live</p>
+          <div className="flex items-center gap-2.5 mb-3">
+            <SardisLogo size="default" color="#ff4f00" />
+            <span className="text-lg font-bold text-white font-display tracking-tight">Sardis</span>
+          </div>
+          <p className="text-sm text-gray-500">Complete these steps to go live</p>
         </div>
         <nav className="space-y-1 flex-1">
           {STEPS.map((step, i) => (
