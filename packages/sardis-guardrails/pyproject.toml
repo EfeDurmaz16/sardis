@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-guardrails"
-version = "1.0.0"
+version = "1.1.0"
 description = "Runtime safety guardrails for Sardis agent payments: circuit breakers, kill switches, rate limiting, and behavioral monitoring"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}

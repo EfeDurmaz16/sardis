@@ -138,7 +138,7 @@ describe('Error Classes', () => {
   describe('AuthenticationError', () => {
     it('should create with default message', () => {
       const error = new AuthenticationError();
-      expect(error.message).toBe('Invalid or missing API key');
+      expect(error.message).toBe('Invalid or missing API key. Get one at https://dashboard.sardis.sh/api-keys');
       expect(error.code).toBe('SARDIS_2000');
       expect(error.name).toBe('AuthenticationError');
     });
@@ -152,7 +152,7 @@ describe('Error Classes', () => {
   describe('RateLimitError', () => {
     it('should create with default message', () => {
       const error = new RateLimitError();
-      expect(error.message).toBe('Rate limit exceeded');
+      expect(error.message).toBe('Rate limit exceeded. Upgrade at https://sardis.sh/pricing or wait for Retry-After');
       expect(error.code).toBe('SARDIS_3429');
       expect(error.name).toBe('RateLimitError');
       expect(error.retryAfter).toBeUndefined();

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-browser-use"
-version = "1.0.0"
+version = "1.1.0"
 description = "Sardis payment tools for Browser Use - enable browser agents to make policy-controlled payments"
 readme = "README.md"
 license = {text = "MIT"}

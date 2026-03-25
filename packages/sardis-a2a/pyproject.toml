@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-a2a"
-version = "1.0.0"
+version = "1.1.0"
 description = "Agent-to-Agent (A2A) protocol integration for Sardis"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}

@@ -1,6 +1,6 @@
 {
   "name": "@sardis/spend-widget",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Embeddable React widget showing agent spending — budget bar, 7-day chart, and transaction list",
   "type": "module",
   "main": "dist/index.cjs",
