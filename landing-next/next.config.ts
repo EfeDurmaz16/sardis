@@ -9,12 +9,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/docs/:path*",
-        destination: "https://docs.sardis.sh/docs/:path*",
+        source: "/docs",
+        destination: "https://docs.sardis.sh/docs",
       },
       {
-        source: "/docs",
-        destination: "https://docs.sardis.sh/docs/",
+        source: "/docs/:path+",
+        destination: "https://docs.sardis.sh/docs/:path+",
       },
     ];
   },
