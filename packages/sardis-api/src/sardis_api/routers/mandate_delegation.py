@@ -5,6 +5,7 @@ with inherited, narrowing bounds.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -64,6 +65,25 @@ class DelegationResponse(BaseModel):
     created_at: str
 
 
+def _decode_merchant_scope(raw: object) -> dict:
+    """Safely decode ``merchant_scope`` from a DB row.
+
+    asyncpg returns JSONB columns as strings when no custom codec is
+    registered.  This helper normalises the value to a Python dict so
+    that Pydantic models / dataclasses never receive a bare string.
+    """
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -100,7 +120,7 @@ async def delegate_mandate(
         agent_id=parent_row.get("agent_id"),
         wallet_id=parent_row.get("wallet_id"),
         id=parent_row["id"],
-        merchant_scope=parent_row.get("merchant_scope") or {},
+        merchant_scope=_decode_merchant_scope(parent_row.get("merchant_scope")),
         purpose_scope=parent_row.get("purpose_scope"),
         amount_per_tx=parent_row.get("amount_per_tx"),
         amount_daily=parent_row.get("amount_daily"),
