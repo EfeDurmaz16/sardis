@@ -567,7 +567,7 @@ function StepDone() {
 
   const handleGoToDashboard = () => {
     localStorage.setItem("sardis_onboarding_complete", "true");
-    router.push("/");
+    router.push("/overview");
   };
 
   return (
