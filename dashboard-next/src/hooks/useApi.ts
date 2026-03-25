@@ -79,6 +79,25 @@ export function useCreateMerchant() {
   })
 }
 
+export function useRegisterMerchant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: merchantApi.register,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchants'] })
+    },
+  })
+}
+
+export function useMerchantSessions(merchantId: string | null) {
+  return useQuery({
+    queryKey: ['merchant-sessions', merchantId],
+    queryFn: () => merchantApi.getCheckoutSessions(merchantId!),
+    enabled: !!merchantId,
+  })
+}
+
 // Webhooks
 export function useWebhooks() {
   return useQuery({

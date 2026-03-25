@@ -265,6 +265,37 @@ export const merchantApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  register: (data: {
+    business_name: string
+    website?: string
+    logo_url?: string
+    settlement_address?: string
+    webhook_url?: string
+    category?: string
+  }) => requestV2<{
+    merchant_id: string
+    business_name: string
+    settlement_wallet_id: string | null
+    settlement_address: string | null
+    webhook_url: string | null
+    credentials: { client_id: string; client_secret: string }
+    embed_snippet: string
+    created_at: string
+  }>('/merchants/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  getCheckoutSessions: (merchantId: string) =>
+    requestV2<Array<{
+      session_id: string
+      amount: string
+      currency: string
+      status: string
+      settlement_status: string | null
+      created_at: string
+    }>>(`/merchants/${merchantId}/settlements`),
 }
 
 // Webhook APIs (V2)
