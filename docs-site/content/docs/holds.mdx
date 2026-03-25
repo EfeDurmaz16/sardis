@@ -1,0 +1,78 @@
+---
+title: Holds
+description: Pre-authorization holds for reservations and delayed capture. Reserve funds without executing a payment.
+---
+
+Pre-authorization holds for reservations and delayed capture.
+
+## Hold Lifecycle
+
+```
+Create Hold --> Capture --> Payment Executed
+     |
+     +--------> Release --> Funds Returned
+               (or Expire)
+```
+
+Holds reserve funds without executing a payment. Use cases include hotel reservations, rental deposits, and two-phase payments.
+
+## Python
+
+```python
+from sardis import SardisClient
+
+async with SardisClient(api_key="sk_...") as client:
+    # Create hold
+    hold = await client.holds.create(
+        wallet_id="wallet_abc123",
+        amount_minor=50_000_000,  # $50.00
+        token="USDC",
+        purpose="Hotel reservation",
+        expires_in_hours=72,
+    )
+    print(f"Hold: {hold.id}")
+
+    # Later: capture the hold
+    captured = await client.holds.capture(hold.id)
+    print(f"Captured: {captured.tx_hash}")
+
+    # Or: release the hold
+    released = await client.holds.release(hold.id)
+    print(f"Released: {released.released_at}")
+```
+
+## TypeScript
+
+```typescript
+import { SardisClient } from '@sardis/sdk';
+
+const client = new SardisClient({ apiKey: 'sk_...' });
+
+// Create hold
+const hold = await client.holds.create({
+  walletId: 'wallet_abc123',
+  amountMinor: 50_000_000,
+  token: 'USDC',
+  purpose: 'Hotel reservation',
+});
+
+// Capture
+const captured = await client.holds.capture(hold.id);
+
+// Or release
+const released = await client.holds.release(hold.id);
+
+// List holds
+const holds = await client.holds.list({ walletId: 'wallet_abc123' });
+```
+
+## MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `sardis_create_hold` | Create a fund hold |
+| `sardis_capture_hold` | Capture a hold |
+| `sardis_release_hold` | Release/void a hold |
+| `sardis_get_hold` | Get hold details |
+| `sardis_list_holds` | List wallet holds |
+| `sardis_extend_hold` | Extend hold expiration |
