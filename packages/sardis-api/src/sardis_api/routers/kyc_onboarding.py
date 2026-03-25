@@ -92,6 +92,7 @@ class KYCStatusResponse(BaseModel):
     verified_at: str | None = None
     expires_at: str | None = None
     reason: str | None = None
+    can_retry: bool = False
 
 
 class KYCApprovalResult(BaseModel):
@@ -177,7 +178,7 @@ async def get_kyc_status(
     row = await _get_latest_verification(principal.user_id)
 
     if row is None:
-        return KYCStatusResponse(status="not_started")
+        return KYCStatusResponse(status="not_started", can_retry=True)
 
     db_status = row["status"]
     inquiry_id = row["inquiry_id"]
@@ -216,6 +217,7 @@ async def get_kyc_status(
                     verified_at=verified_at,
                     expires_at=expires_at,
                     reason=result.reason,
+                    can_retry=new_status in ("declined", "expired"),
                 )
         except HTTPException:
             # 503 from _get_didit_provider — provider not configured, fall through to DB data
@@ -234,6 +236,7 @@ async def get_kyc_status(
         verified_at=verified_at_str,
         expires_at=expires_at_str,
         reason=row.get("reason"),
+        can_retry=db_status in ("declined", "expired", "not_started"),
     )
 
 
@@ -454,6 +457,37 @@ async def handle_kyc_webhook(request: Request) -> dict:
         "session_id": session_id,
         "kyc_status": mapped_status,
     }
+
+
+@router.post("/retry", response_model=KYCInitiateResponse)
+async def retry_kyc(
+    body: KYCInitiateRequest | None = None,
+    principal: Principal = Depends(require_principal),
+) -> KYCInitiateResponse:
+    """Retry KYC verification after a previous attempt was declined or expired.
+
+    Resets the previous verification status and creates a fresh Didit session.
+    Returns the same response as ``/initiate`` with a new ``redirect_url``.
+    """
+    # Check current status — only allow retry if declined, expired, or not_started
+    row = await _get_latest_verification(principal.user_id)
+    if row is not None:
+        current_status = row["status"]
+        if current_status in ("pending", "needs_review"):
+            raise HTTPException(
+                status_code=400,
+                detail="KYC verification is already in progress. Check /api/v2/kyc/status for updates.",
+            )
+        if current_status == "approved":
+            raise HTTPException(
+                status_code=400,
+                detail="KYC is already approved. No retry needed.",
+            )
+        # For declined/expired — mark old record so we can create a fresh one
+        logger.info("KYC retry requested for %s (previous status: %s)", principal.user_id, current_status)
+
+    # Delegate to the initiate flow which handles session creation + DB upsert
+    return await initiate_kyc(body=body, principal=principal)
 
 
 # ---------------------------------------------------------------------------
