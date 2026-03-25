@@ -3,6 +3,9 @@ Pay resource for Sardis SDK — the simplest way to execute a payment.
 
 Calls POST /api/v2/pay which validates inputs, enforces policy, and
 executes the payment on-chain in a single call.
+
+Phase 2: `chain` is now optional. When omitted, Sardis auto-selects
+the cheapest route across supported chains.
 """
 from __future__ import annotations
 
@@ -20,10 +23,16 @@ class AsyncPayResource(AsyncBaseResource):
     Example:
         ```python
         async with AsyncSardisClient(api_key="...") as client:
+            # Auto-route (cheapest chain)
             result = await client.pay.execute(
                 to="0xabc...",
                 amount="25.00",
-                currency="USDC",
+            )
+
+            # Explicit chain (iron rule — always wins)
+            result = await client.pay.execute(
+                to="0xabc...",
+                amount="25.00",
                 chain="base",
             )
         ```
@@ -34,7 +43,7 @@ class AsyncPayResource(AsyncBaseResource):
         to: str,
         amount: str,
         currency: str = "USDC",
-        chain: str = "base",
+        chain: str | None = None,
         mandate_id: str | None = None,
         timeout: float | TimeoutConfig | None = None,
     ) -> dict[str, Any]:
@@ -44,19 +53,22 @@ class AsyncPayResource(AsyncBaseResource):
             to: Recipient address or merchant domain
             amount: Payment amount as string (e.g. "25.00")
             currency: Token (default USDC)
-            chain: Target blockchain (default base)
+            chain: Target blockchain. If omitted, Sardis auto-selects
+                   the cheapest route across supported chains.
             mandate_id: Optional spending mandate ID
             timeout: Optional request timeout
 
         Returns:
-            Dict with status, tx_hash, ledger_tx_id, chain, message, mandate_id
+            Dict with status, tx_hash, ledger_tx_id, chain, message,
+            mandate_id, route (chain/provider/fee metadata)
         """
         payload: dict[str, Any] = {
             "to": to,
             "amount": amount,
             "currency": currency,
-            "chain": chain,
         }
+        if chain is not None:
+            payload["chain"] = chain
         if mandate_id is not None:
             payload["mandate_id"] = mandate_id
 
@@ -69,10 +81,16 @@ class PayResource(SyncBaseResource):
     Example:
         ```python
         with SardisClient(api_key="...") as client:
+            # Auto-route (cheapest chain)
             result = client.pay.execute(
                 to="0xabc...",
                 amount="25.00",
-                currency="USDC",
+            )
+
+            # Explicit chain (iron rule — always wins)
+            result = client.pay.execute(
+                to="0xabc...",
+                amount="25.00",
                 chain="base",
             )
         ```
@@ -83,7 +101,7 @@ class PayResource(SyncBaseResource):
         to: str,
         amount: str,
         currency: str = "USDC",
-        chain: str = "base",
+        chain: str | None = None,
         mandate_id: str | None = None,
         timeout: float | TimeoutConfig | None = None,
     ) -> dict[str, Any]:
@@ -93,19 +111,22 @@ class PayResource(SyncBaseResource):
             to: Recipient address or merchant domain
             amount: Payment amount as string (e.g. "25.00")
             currency: Token (default USDC)
-            chain: Target blockchain (default base)
+            chain: Target blockchain. If omitted, Sardis auto-selects
+                   the cheapest route across supported chains.
             mandate_id: Optional spending mandate ID
             timeout: Optional request timeout
 
         Returns:
-            Dict with status, tx_hash, ledger_tx_id, chain, message, mandate_id
+            Dict with status, tx_hash, ledger_tx_id, chain, message,
+            mandate_id, route (chain/provider/fee metadata)
         """
         payload: dict[str, Any] = {
             "to": to,
             "amount": amount,
             "currency": currency,
-            "chain": chain,
         }
+        if chain is not None:
+            payload["chain"] = chain
         if mandate_id is not None:
             payload["mandate_id"] = mandate_id
 
