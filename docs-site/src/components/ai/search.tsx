@@ -5,9 +5,12 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
+  type FormEvent,
 } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 
 interface AISearchContextType {
   isOpen: boolean;
@@ -69,10 +72,23 @@ export function AISearchTrigger({
 
 export function AISearchPanel() {
   const { isOpen, close } = useAISearch();
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat({
-      api: '/api/chat',
-    });
+  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+  });
+
+  const isLoading = status === 'streaming' || status === 'submitted';
+
+  const handleSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      if (!input.trim() || isLoading) return;
+      sendMessage({ text: input });
+      setInput('');
+    },
+    [input, isLoading, sendMessage],
+  );
 
   if (!isOpen) return null;
 
@@ -148,7 +164,11 @@ export function AISearchPanel() {
                   : 'none',
             }}
           >
-            {m.content}
+            {m.parts
+              ?.filter((p) => p.type === 'text')
+              .map((p, i) => (
+                <span key={i}>{p.text}</span>
+              )) ?? ''}
           </div>
         ))}
       </div>
@@ -164,8 +184,9 @@ export function AISearchPanel() {
         }}
       >
         <input
+          ref={inputRef}
           value={input}
-          onChange={handleInputChange}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="How do I create a wallet?"
           style={{
             flex: 1,

@@ -1,3 +1,4 @@
+// @ts-nocheck — ai@6 tool() types cause infinite depth with zod@3
 import { openai } from '@ai-sdk/openai';
 import { streamText, tool } from 'ai';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ ${pages.map((p) => `- ${p.title}: ${p.description} (${p.url})`).join('\n')}`,
     tools: {
       searchDocs: tool({
         description: 'Search Sardis documentation pages',
-        parameters: z.object({
+        inputSchema: z.object({
           query: z.string().describe('The search query'),
         }),
         execute: async ({ query }) => {
