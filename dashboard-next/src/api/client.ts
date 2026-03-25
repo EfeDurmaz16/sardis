@@ -1269,7 +1269,7 @@ export const walletsApi = {
     provider: string
     payment_method?: string
     target_chain?: string
-  }) => requestV2<JsonObject>(`/wallets/${walletId}/fund`, {
+  }) => requestV2<JsonObject>(`/wallets/${walletId}/onramp`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),
