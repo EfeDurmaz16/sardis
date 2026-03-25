@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const TRACE_STEPS = [
   { label: "sardis.pay()", detail: "Intent received", icon: "\u2192", color: "#3B82F6" },
   { label: "Policy check", detail: "12 rules evaluated", icon: "\u2713", color: "#22C55E" },
-  { label: "Route selection", detail: "Base \u2192 USDC", icon: "\u2713", color: "#22C55E" },
+  { label: "Route selection", detail: "Tempo \u2192 USDC", icon: "\u2713", color: "#22C55E" },
   { label: "On-chain execute", detail: "tx 0xa3f...c91", icon: "\u2713", color: "#22C55E" },
   { label: "Settlement", detail: "$45.00 settled", icon: "\u2713", color: "#22C55E" },
   { label: "Audit proof", detail: "Merkle anchored", icon: "\u2713", color: "#22C55E" },

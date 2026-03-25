@@ -35,7 +35,7 @@ const cards: {
   {
     Icon: Shield,
     title: "Cryptographic Evidence",
-    desc: "Signed attestation envelopes, HMAC receipts, Merkle proofs, and policy snapshots for every decision. Tamper-proof audit trail anchored to Base.",
+    desc: "Signed attestation envelopes, HMAC receipts, Merkle proofs, and policy snapshots for every decision. Tamper-proof audit trail anchored to Tempo.",
     unique: true,
   },
   {

@@ -104,7 +104,7 @@ export const wedges: WedgeData[] = [
     heroTitle: "Your agents operate globally.",
     heroHighlight: "Their payments should too.",
     heroDesc:
-      "Multi-chain USDC execution via CCTP v2, fiat on/off-ramp through Coinbase, and settlement across Ethereum, Polygon, Arbitrum, Optimism, and Base. One wallet, global reach.",
+      "Multi-chain USDC execution via CCTP v2, fiat on/off-ramp through Coinbase, and settlement across Ethereum, Polygon, Arbitrum, Optimism, and Tempo. One wallet, global reach.",
     features: [
       {
         tag: "Multi-Chain",

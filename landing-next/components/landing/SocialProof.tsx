@@ -1,6 +1,6 @@
 const partners = [
   { name: "Coinbase", text: "Coinbase", viewBox: "0 0 200 40" },
-  { name: "Base", text: "Base", viewBox: "0 0 120 40" },
+  { name: "Tempo", text: "Tempo", viewBox: "0 0 120 40" },
   { name: "Circle", text: "Circle", viewBox: "0 0 130 40" },
   { name: "Stripe", text: "Stripe", viewBox: "0 0 130 40" },
   { name: "Anthropic MCP", text: "Anthropic MCP", viewBox: "0 0 190 40" },

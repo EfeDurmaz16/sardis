@@ -17,7 +17,7 @@ const stats = [
   {
     number: "6",
     label: "Chains Supported",
-    meta: "Base, Ethereum, Polygon, Arbitrum, Optimism, and more",
+    meta: "Tempo, Ethereum, Polygon, Arbitrum, Optimism, and more",
   },
 ];
 
