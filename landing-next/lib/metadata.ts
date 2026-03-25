@@ -3,7 +3,7 @@ export const SITE_URL = "https://www.sardis.sh";
 export const DEFAULT_OG_IMAGE = "https://www.sardis.sh/og-image.png";
 export const TWITTER_HANDLE = "@sardisHQ";
 export const DEFAULT_DESCRIPTION =
-  "AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Base with multi-chain funding.";
+  "AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Tempo with multi-chain funding.";
 
 // JSON-LD Schema generators
 
@@ -64,7 +64,7 @@ export function createSoftwareAppSchema() {
     featureList: [
       "Non-custodial MPC wallets for AI agents",
       "Natural language spending policies",
-      "Execution on Base, multi-chain funding via CCTP v2 (Ethereum, Polygon, Arbitrum, Optimism)",
+      "Execution on Tempo, multi-chain funding via CCTP v2 (Ethereum, Polygon, Arbitrum, Optimism)",
       "Virtual Visa/Mastercard card issuance",
       "Fiat on/off-ramp (ACH, wire, card)",
       "AP2, TAP, UCP, A2A, x402 protocol support",

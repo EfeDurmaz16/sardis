@@ -109,7 +109,7 @@ export const wedges: WedgeData[] = [
       {
         tag: "Multi-Chain",
         title: "Execute on any EVM chain",
-        body: "Primary execution on Base with funding from Ethereum, Polygon, Arbitrum, and Optimism via CCTP v2 unified addresses.",
+        body: "Primary execution on Tempo with funding from Ethereum, Polygon, Arbitrum, and Optimism via CCTP v2 unified addresses.",
         stat: "6+ chains",
       },
       {
@@ -120,8 +120,8 @@ export const wedges: WedgeData[] = [
       },
       {
         tag: "Instant Settlement",
-        title: "Sub-second finality on Base",
-        body: "2-second block times on Base for near-instant payment confirmation. No waiting for slow L1 finality.",
+        title: "Sub-second finality on Tempo",
+        body: "Sub-second block times on Tempo for near-instant payment confirmation. No waiting for slow L1 finality.",
         stat: "<2s settlement",
       },
       {

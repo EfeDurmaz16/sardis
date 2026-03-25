@@ -245,7 +245,7 @@ export default function HeroTrace() {
               fontFamily: "'JetBrains Mono', monospace",
             }}
           >
-            Base mainnet
+            Tempo mainnet
           </span>
         </div>
       </div>

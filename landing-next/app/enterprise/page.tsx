@@ -33,7 +33,7 @@ const capabilities = [
   },
   {
     title: "Multi-Chain Treasury",
-    desc: "Execute on Base, fund from Ethereum, Polygon, Arbitrum, Optimism via CCTP v2. Unified balance across all chains.",
+    desc: "Execute on Tempo, fund from Ethereum, Polygon, Arbitrum, Optimism via CCTP v2. Unified balance across all chains.",
   },
 ];
 

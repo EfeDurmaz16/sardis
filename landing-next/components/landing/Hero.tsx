@@ -78,7 +78,7 @@ function WalletScreen() {
             fontFamily: "'JetBrains Mono', monospace",
           }}
         >
-          2,847.50 USDC on Base
+          2,847.50 USDC on Tempo
         </span>
       </div>
 

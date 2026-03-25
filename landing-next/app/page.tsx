@@ -18,7 +18,7 @@ import AnimatedSection from "@/components/landing/AnimatedSection";
 export const metadata: Metadata = {
   title: "Sardis: The Payment OS for the Agent Economy",
   description:
-    "AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Base with multi-chain funding.",
+    "AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust. Non-custodial wallets, spending policies, on-chain payments on Tempo with multi-chain funding.",
   alternates: {
     canonical: "https://www.sardis.sh",
   },
