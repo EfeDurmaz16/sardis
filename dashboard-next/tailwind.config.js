@@ -50,6 +50,13 @@ const config = {
         mono: ["var(--font-geist-mono)", "monospace"],
         display: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
       },
+      borderRadius: {
+        sm: "4px",
+        DEFAULT: "6px",
+        md: "6px",
+        lg: "8px",
+        xl: "12px",
+      },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         glow: "glow 2s ease-in-out infinite alternate",
