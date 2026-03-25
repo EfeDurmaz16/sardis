@@ -1,11 +1,17 @@
 """Sardis payment blocks for AutoGPT.
 
-Addresses PR review feedback:
-- str (not float) for all monetary amounts (IEEE 754 safety)
-- Literal types for token/chain, regex validation for wallet_id/destination
-- Block categories: Balance/PolicyCheck → BlockCategory.DATA
-- Singleton HTTP client with connection pooling and retry
-- Explicit status mapping from API responses
+Provides three blocks for the AutoGPT block system that enable AI agents
+to execute policy-controlled stablecoin payments through Sardis non-custodial
+MPC wallets:
+
+- ``SardisPayBlock`` — execute a payment (OUTPUT category)
+- ``SardisBalanceBlock`` — check wallet balance (DATA category)
+- ``SardisPolicyCheckBlock`` — pre-validate a payment (DATA category)
+
+All monetary values use ``str`` (never ``float``) to avoid IEEE 754
+rounding issues.  Token and chain fields use ``Literal`` types so the
+AutoGPT UI renders dropdowns.  Wallet IDs and destination addresses are
+regex-validated to prevent path-injection attacks.
 """
 from __future__ import annotations
 
@@ -15,7 +21,7 @@ import time
 from collections.abc import Iterator
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,14 +32,20 @@ from sardis import SardisClient
 # ---------------------------------------------------------------------------
 
 SUPPORTED_TOKENS = ("USDC", "USDT", "EURC", "PYUSD")
+"""Stablecoin tokens supported by the Sardis platform."""
+
 SUPPORTED_CHAINS = ("base", "ethereum", "polygon", "arbitrum", "optimism", "tempo")
+"""Blockchain networks supported by the Sardis platform."""
 
 _WALLET_ID_RE = re.compile(r"^wal_[a-zA-Z0-9]+$")
 _HEX_ADDRESS_RE = re.compile(r"^0x[a-fA-F0-9]{40}$")
 
 # Token/chain literal types for schema-level validation
 TokenType = Literal["USDC", "USDT", "EURC", "PYUSD"]
+"""Literal union of supported stablecoin token symbols."""
+
 ChainType = Literal["base", "ethereum", "polygon", "arbitrum", "optimism", "tempo"]
+"""Literal union of supported blockchain network identifiers."""
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +54,12 @@ ChainType = Literal["base", "ethereum", "polygon", "arbitrum", "optimism", "temp
 # ---------------------------------------------------------------------------
 
 class BlockCategory(str, Enum):
+    """AutoGPT block category labels.
+
+    Mirrors ``autogpt_libs.suites.io.BlockCategory`` so that the Sardis
+    blocks can be used both inside and outside the full AutoGPT runtime.
+    """
+
     INPUT = "input"
     OUTPUT = "output"
     DATA = "data"
@@ -50,18 +68,59 @@ class BlockCategory(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Shared HTTP headers helper
+# ---------------------------------------------------------------------------
+
+_DEFAULT_HEADERS: dict[str, str] = {
+    "Content-Type": "application/json",
+    "User-Agent": "sardis-autogpt/2.0",
+}
+
+
+def _build_headers(api_key: str) -> dict[str, str]:
+    """Build HTTP headers for Sardis API requests.
+
+    Consolidates header construction in a single place so that both the
+    primary and retry HTTP clients share the same configuration.
+
+    Args:
+        api_key: The Sardis API key to include in the ``X-API-Key`` header.
+
+    Returns:
+        A dict of HTTP headers ready for use with ``httpx`` or ``requests``.
+    """
+    headers = dict(_DEFAULT_HEADERS)
+    if api_key:
+        headers["X-API-Key"] = api_key
+    return headers
+
+
+# ---------------------------------------------------------------------------
 # Singleton client with retry
 # ---------------------------------------------------------------------------
 
 _cached_clients: dict[str, SardisClient] = {}
+"""Per-API-key cache of ``SardisClient`` instances for connection reuse."""
 
 # Retry config
 _MAX_RETRIES = 3
 _INITIAL_BACKOFF_S = 0.5
 
 
-def _get_client(api_key: str | None = None, wallet_id: str | None = None):
-    """Return (SardisClient, wallet_id), reusing clients per API key."""
+def _get_client(api_key: str | None = None, wallet_id: str | None = None) -> tuple[SardisClient, str | None]:
+    """Return a ``(SardisClient, wallet_id)`` tuple, reusing clients per API key.
+
+    Clients are cached in ``_cached_clients`` so that connection pools and
+    authentication state are shared across block invocations.
+
+    Args:
+        api_key: Sardis API key.  Falls back to ``SARDIS_API_KEY`` env var.
+        wallet_id: Wallet identifier.  Falls back to ``SARDIS_WALLET_ID`` env var.
+
+    Returns:
+        A two-tuple of ``(client, wallet_id)`` where *wallet_id* may be
+        ``None`` if neither the argument nor the environment variable is set.
+    """
     key = api_key or os.getenv("SARDIS_API_KEY") or ""
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     if key not in _cached_clients:
@@ -69,8 +128,24 @@ def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     return _cached_clients[key], wid
 
 
-def _with_retry(fn, *args, **kwargs):
-    """Execute *fn* with exponential backoff on transient errors."""
+def _with_retry(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Execute *fn* with exponential backoff on transient network errors.
+
+    Retries up to ``_MAX_RETRIES`` times (default 3) for
+    ``ConnectionError``, ``TimeoutError``, and ``OSError``.  All other
+    exceptions propagate immediately.
+
+    Args:
+        fn: The callable to execute.
+        *args: Positional arguments forwarded to *fn*.
+        **kwargs: Keyword arguments forwarded to *fn*.
+
+    Returns:
+        The return value of *fn* on success.
+
+    Raises:
+        The last transient exception if all retries are exhausted.
+    """
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES):
         try:
@@ -88,7 +163,19 @@ def _with_retry(fn, *args, **kwargs):
 # ---------------------------------------------------------------------------
 
 def _validate_wallet_id(v: str) -> str:
-    """Validate wallet_id matches ``wal_<alphanum>`` pattern."""
+    """Validate that *v* matches the ``wal_<alphanumeric>`` pattern.
+
+    An empty string is allowed (indicates the env var should be used).
+
+    Args:
+        v: The wallet ID string to validate.
+
+    Returns:
+        The validated wallet ID (unchanged).
+
+    Raises:
+        ValueError: If the format does not match ``wal_[a-zA-Z0-9]+``.
+    """
     if v and not _WALLET_ID_RE.match(v):
         raise ValueError(
             f"Invalid wallet_id '{v}': must match pattern wal_<alphanumeric>"
@@ -97,7 +184,19 @@ def _validate_wallet_id(v: str) -> str:
 
 
 def _validate_hex_address(v: str) -> str:
-    """Validate Ethereum-style hex address (0x + 40 hex chars)."""
+    """Validate an Ethereum-style hex address (``0x`` + 40 hex characters).
+
+    An empty string is allowed (destination is optional).
+
+    Args:
+        v: The address string to validate.
+
+    Returns:
+        The validated address (unchanged).
+
+    Raises:
+        ValueError: If the format does not match ``0x[a-fA-F0-9]{40}``.
+    """
     if v and not _HEX_ADDRESS_RE.match(v):
         raise ValueError(
             f"Invalid address '{v}': must be 0x followed by 40 hex characters"
@@ -106,7 +205,18 @@ def _validate_hex_address(v: str) -> str:
 
 
 def _validate_amount_str(v: str) -> str:
-    """Ensure amount is a valid positive decimal string."""
+    """Validate that *v* is a positive decimal string with at most 6 decimal places.
+
+    Args:
+        v: The amount string to validate (e.g. ``"25.00"``).
+
+    Returns:
+        The validated amount string (unchanged).
+
+    Raises:
+        ValueError: If *v* is empty, non-numeric, zero/negative, or has
+            more than 6 decimal places.
+    """
     if not v:
         raise ValueError("Amount is required")
     try:
@@ -124,17 +234,6 @@ def _validate_amount_str(v: str) -> str:
 # Status mapping
 # ---------------------------------------------------------------------------
 
-# The Sardis API returns a result object with:
-#   result.status  - canonical status string (preferred)
-#   result.success - boolean fallback
-#
-# Status values from the Sardis API:
-#   "approved"  → payment succeeded, tx on-chain
-#   "blocked"   → policy engine denied the payment
-#   "pending"   → payment submitted, awaiting confirmation
-#   "failed"    → on-chain tx failed or RPC error
-#   "error"     → internal error (should not happen in production)
-
 _STATUS_MAP: dict[str, str] = {
     "approved": "APPROVED",
     "blocked": "BLOCKED",
@@ -142,13 +241,28 @@ _STATUS_MAP: dict[str, str] = {
     "failed": "FAILED",
     "error": "ERROR",
 }
+"""Maps lowercase Sardis API status strings to uppercase block-level constants."""
 
 
-def _normalize_status(result) -> str:
-    """Derive block-level status from an API response object.
+def _normalize_status(result: Any) -> str:
+    """Derive a block-level status string from a Sardis API response object.
 
-    Prefers ``result.status`` (explicit string), falls back to
-    ``result.success`` (boolean) for backward compatibility.
+    Resolution order:
+
+    1. ``result.status`` — the canonical status string returned by the
+       Sardis API (``"approved"``, ``"blocked"``, ``"pending"``,
+       ``"failed"``, ``"error"``).  Matched case-insensitively.
+    2. ``result.success`` — boolean fallback for older API versions.
+       ``True`` → ``"APPROVED"``, ``False`` → ``"BLOCKED"``.
+    3. If neither field is present or recognised, returns ``"ERROR"``.
+
+    Args:
+        result: The API response object (any object with ``.status``
+            and/or ``.success`` attributes).
+
+    Returns:
+        One of ``"APPROVED"``, ``"BLOCKED"``, ``"PENDING"``, ``"FAILED"``,
+        or ``"ERROR"``.
     """
     raw_status = getattr(result, "status", None)
     if isinstance(raw_status, str) and raw_status.lower() in _STATUS_MAP:
@@ -162,8 +276,22 @@ def _normalize_status(result) -> str:
     return "ERROR"
 
 
-def _normalize_response(result, input_amount: str, merchant: str) -> dict:
-    """Build a normalized response dict from an API result object."""
+def _normalize_response(result: Any, input_amount: str, merchant: str) -> dict[str, str]:
+    """Build a normalized response dict from a Sardis API result object.
+
+    Extracts ``status``, ``tx_id``, ``message``, ``amount``, and
+    ``merchant`` from the result, applying safe defaults for missing or
+    ``None`` fields.  The ``amount`` falls back to *input_amount* when
+    the API response does not include one.
+
+    Args:
+        result: The API response object.
+        input_amount: The original payment amount (used as fallback).
+        merchant: The merchant identifier to include in the response.
+
+    Returns:
+        A dict suitable for unpacking into ``SardisPayBlockOutput``.
+    """
     return {
         "status": _normalize_status(result),
         "tx_id": str(getattr(result, "tx_id", "") or ""),
@@ -178,6 +306,8 @@ def _normalize_response(result, input_amount: str, merchant: str) -> dict:
 # ---------------------------------------------------------------------------
 
 class SardisPayBlockInput(BaseModel):
+    """Input schema for the Sardis Pay block."""
+
     api_key: str = Field(
         default="",
         description="Sardis API key (or use SARDIS_API_KEY env var)",
@@ -203,20 +333,25 @@ class SardisPayBlockInput(BaseModel):
     @field_validator("wallet_id")
     @classmethod
     def check_wallet_id(cls, v: str) -> str:
+        """Validate wallet_id format."""
         return _validate_wallet_id(v)
 
     @field_validator("destination")
     @classmethod
     def check_destination(cls, v: str) -> str:
+        """Validate destination address format."""
         return _validate_hex_address(v)
 
     @field_validator("amount")
     @classmethod
     def check_amount(cls, v: str) -> str:
+        """Validate amount is a positive decimal string."""
         return _validate_amount_str(v)
 
 
 class SardisPayBlockOutput(BaseModel):
+    """Output schema for the Sardis Pay block."""
+
     status: str = Field(
         description="APPROVED, BLOCKED, PENDING, FAILED, or ERROR",
     )
@@ -227,6 +362,8 @@ class SardisPayBlockOutput(BaseModel):
 
 
 class SardisBalanceBlockInput(BaseModel):
+    """Input schema for the Sardis Balance block."""
+
     api_key: str = Field(default="", description="Sardis API key")
     wallet_id: str = Field(default="", description="Wallet ID (e.g. wal_abc123)")
     token: TokenType = Field(default="USDC", description="Token to check")
@@ -234,10 +371,13 @@ class SardisBalanceBlockInput(BaseModel):
     @field_validator("wallet_id")
     @classmethod
     def check_wallet_id(cls, v: str) -> str:
+        """Validate wallet_id format."""
         return _validate_wallet_id(v)
 
 
 class SardisBalanceBlockOutput(BaseModel):
+    """Output schema for the Sardis Balance block."""
+
     balance: str = Field(default="0", description="Current balance (decimal string)")
     remaining: str = Field(
         default="0",
@@ -247,6 +387,8 @@ class SardisBalanceBlockOutput(BaseModel):
 
 
 class SardisPolicyCheckBlockInput(BaseModel):
+    """Input schema for the Sardis Policy Check block."""
+
     api_key: str = Field(default="", description="Sardis API key")
     wallet_id: str = Field(default="", description="Wallet ID (e.g. wal_abc123)")
     amount: str = Field(
@@ -257,15 +399,19 @@ class SardisPolicyCheckBlockInput(BaseModel):
     @field_validator("wallet_id")
     @classmethod
     def check_wallet_id(cls, v: str) -> str:
+        """Validate wallet_id format."""
         return _validate_wallet_id(v)
 
     @field_validator("amount")
     @classmethod
     def check_amount(cls, v: str) -> str:
+        """Validate amount is a positive decimal string."""
         return _validate_amount_str(v)
 
 
 class SardisPolicyCheckBlockOutput(BaseModel):
+    """Output schema for the Sardis Policy Check block."""
+
     allowed: bool = Field(description="Whether payment would be allowed")
     reason: str = Field(default="", description="Explanation")
 
@@ -275,7 +421,15 @@ class SardisPolicyCheckBlockOutput(BaseModel):
 # ---------------------------------------------------------------------------
 
 class SardisPayBlock:
-    """AutoGPT block for executing Sardis payments."""
+    """AutoGPT block for executing policy-controlled Sardis payments.
+
+    Sends a stablecoin payment from the configured Sardis wallet, subject
+    to the wallet's spending policy.  On success the block yields a single
+    ``SardisPayBlockOutput`` with ``status="APPROVED"`` and a transaction
+    ID; on policy denial or error it yields the appropriate status.
+
+    Category: OUTPUT (mutates external state).
+    """
 
     id = "sardis-pay-block"
     name = "Sardis Pay"
@@ -286,6 +440,14 @@ class SardisPayBlock:
 
     @staticmethod
     def run(input_data: SardisPayBlockInput) -> Iterator[SardisPayBlockOutput]:
+        """Execute a payment and yield the result.
+
+        Args:
+            input_data: Validated payment parameters.
+
+        Yields:
+            A single ``SardisPayBlockOutput`` with the payment outcome.
+        """
         client, wallet_id = _get_client(
             api_key=input_data.api_key or None,
             wallet_id=input_data.wallet_id or None,
@@ -322,7 +484,14 @@ class SardisPayBlock:
 
 
 class SardisBalanceBlock:
-    """AutoGPT block for checking Sardis wallet balance."""
+    """AutoGPT block for checking Sardis wallet balance and spending limits.
+
+    Queries the current token balance and remaining spending limit for the
+    configured wallet.  This is a read-only operation that does not move
+    funds.
+
+    Category: DATA (read-only query).
+    """
 
     id = "sardis-balance-block"
     name = "Sardis Balance"
@@ -333,6 +502,14 @@ class SardisBalanceBlock:
 
     @staticmethod
     def run(input_data: SardisBalanceBlockInput) -> Iterator[SardisBalanceBlockOutput]:
+        """Query wallet balance and yield the result.
+
+        Args:
+            input_data: Validated balance query parameters.
+
+        Yields:
+            A single ``SardisBalanceBlockOutput`` with balance details.
+        """
         client, wallet_id = _get_client(
             api_key=input_data.api_key or None,
             wallet_id=input_data.wallet_id or None,
@@ -360,7 +537,15 @@ class SardisBalanceBlock:
 
 
 class SardisPolicyCheckBlock:
-    """AutoGPT block for checking if a payment would pass policy."""
+    """AutoGPT block for pre-validating payments against spending policy.
+
+    Checks whether a hypothetical payment of the given amount to the given
+    merchant would be allowed by the wallet's spending policy and balance,
+    *without* actually moving funds.  Useful for agents that want to
+    confirm affordability before committing.
+
+    Category: DATA (read-only query).
+    """
 
     id = "sardis-policy-check-block"
     name = "Sardis Policy Check"
@@ -373,6 +558,19 @@ class SardisPolicyCheckBlock:
     def run(
         input_data: SardisPolicyCheckBlockInput,
     ) -> Iterator[SardisPolicyCheckBlockOutput]:
+        """Check policy and yield the result.
+
+        Compares the requested amount against both the remaining spending
+        limit and the current balance using ``Decimal`` arithmetic to
+        avoid IEEE 754 rounding errors.
+
+        Args:
+            input_data: Validated policy check parameters.
+
+        Yields:
+            A single ``SardisPolicyCheckBlockOutput`` indicating whether
+            the payment would be allowed.
+        """
         client, wallet_id = _get_client(
             api_key=input_data.api_key or None,
             wallet_id=input_data.wallet_id or None,
@@ -414,3 +612,4 @@ class SardisPolicyCheckBlock:
 
 # Registry of all blocks
 BLOCKS = [SardisPayBlock, SardisBalanceBlock, SardisPolicyCheckBlock]
+"""All Sardis blocks available for registration with the AutoGPT runtime."""
