@@ -808,6 +808,85 @@ async def sandbox_ledger(
     ]
 
 
+class FaucetRequest(BaseModel):
+    """Request to fund a sandbox wallet with test tokens."""
+    wallet_id: str | None = Field(default=None, description="Wallet ID to fund (funds first wallet if not specified)")
+    amount: Decimal = Field(default=Decimal("100.00"), gt=0, le=Decimal("10000.00"), description="Amount of test USDC to add")
+
+
+class FaucetResponse(BaseModel):
+    """Response from faucet drip."""
+    wallet_id: str
+    agent_id: str
+    previous_balance: str
+    new_balance: str
+    amount_added: str
+    currency: str = "USDC"
+    chain: str = "base_sepolia"
+    message: str
+
+
+@router.post("/faucet", response_model=FaucetResponse, tags=["Sandbox"])
+async def sandbox_faucet(req: FaucetRequest, request: Request):
+    """
+    Fund a sandbox wallet with test USDC.
+
+    Instantly adds test tokens to any sandbox wallet — no waiting for faucets
+    or bridging. Perfect for demo and development workflows.
+
+    If wallet_id is not specified, funds the first available wallet.
+    """
+    store = _get_store_for_request(request)
+
+    wallet: DemoWallet | None = None
+    if req.wallet_id:
+        wallet = store.wallets.get(req.wallet_id)
+        if not wallet:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Wallet {req.wallet_id} not found. Use /sandbox/demo-data to see available wallets or /sandbox/create-wallet to create one.",
+            )
+    else:
+        # Fund the first wallet
+        if store.wallets:
+            wallet = next(iter(store.wallets.values()))
+        else:
+            # Auto-create a wallet if none exist
+            agent_id = f"agent_{uuid.uuid4().hex[:8]}"
+            wallet_id = f"wallet_{uuid.uuid4().hex[:8]}"
+            store.agents[agent_id] = DemoAgent(
+                agent_id=agent_id,
+                name="Faucet Agent",
+                trust_level=TrustLevel.MEDIUM,
+                kya_level=1,
+                created_at=datetime.now(UTC),
+            )
+            wallet = DemoWallet(
+                wallet_id=wallet_id,
+                agent_id=agent_id,
+                address=f"0x{uuid.uuid4().hex[:40]}",
+                balance=Decimal("0"),
+                currency="USDC",
+                chain="base_sepolia",
+                created_at=datetime.now(UTC),
+            )
+            store.wallets[wallet_id] = wallet
+
+    previous_balance = wallet.balance
+    wallet.balance += req.amount
+
+    logger.info("Sandbox faucet: %s += %s USDC (was %s, now %s)", wallet.wallet_id, req.amount, previous_balance, wallet.balance)
+
+    return FaucetResponse(
+        wallet_id=wallet.wallet_id,
+        agent_id=wallet.agent_id,
+        previous_balance=str(previous_balance),
+        new_balance=str(wallet.balance),
+        amount_added=str(req.amount),
+        message=f"Added {req.amount} test USDC to wallet {wallet.wallet_id}",
+    )
+
+
 @router.delete("/reset", tags=["Sandbox"])
 @router.post("/reset", tags=["Sandbox"])
 async def sandbox_reset(request: Request):
