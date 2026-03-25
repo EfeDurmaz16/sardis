@@ -1941,6 +1941,25 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except ImportError:
         logger.warning("Spending mandates router not available")
 
+    # Agent Auth Protocol — makes Sardis discoverable by any AI agent
+    try:
+        from sardis_api.routers import agent_auth as agent_auth_router
+
+        # Public discovery endpoints (no auth required)
+        app.include_router(
+            agent_auth_router.discovery_router,
+            tags=["agent-auth"],
+        )
+        # Authenticated agent management + capability execution
+        app.include_router(
+            agent_auth_router.router,
+            prefix="/api/v2",
+            tags=["agent-auth"],
+        )
+        logger.info("Agent Auth Protocol enabled (discovery + capability execution)")
+    except ImportError:
+        logger.warning("Agent Auth Protocol router not available")
+
     # Polar.sh billing webhook (pre-incorporation MoR)
     try:
         from sardis_api.routers import polar_webhook as polar_webhook_router
