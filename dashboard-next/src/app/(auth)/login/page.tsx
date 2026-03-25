@@ -58,8 +58,11 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Shield className="w-8 h-8 text-sardis-400" />
+        <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4">
+          <svg width="48" height="48" viewBox="0 0 28 28" fill="none">
+            <path d="M20 5H10a7 7 0 000 14h2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M8 23h10a7 7 0 000-14h-2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
+          </svg>
         </div>
         <h1 className="text-3xl font-bold text-white font-display">Sardis Admin</h1>
         <p className="text-gray-400 mt-2">Sign in to manage your payment network</p>

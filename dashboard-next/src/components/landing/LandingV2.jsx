@@ -5,7 +5,26 @@ import Link from 'next/link';
 // Font imports (fix latent bug - these packages are installed but never imported)
 
 // Section components
-import Navbar from '@/components/landing/Navbar';
+// Navbar removed — landing page served from landing-next/
+// Minimal inline nav for dashboard root page
+function Navbar() {
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--landing-bg) 80%, transparent)', borderBottomColor: 'var(--landing-border)' }}>
+      <div className="max-w-[1440px] mx-auto px-5 md:px-12 xl:px-20">
+        <div className="flex items-center justify-between h-16">
+          <a href="/" className="flex items-center gap-2.5">
+            <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
+              <path d="M20 5H10a7 7 0 000 14h2" stroke="var(--landing-text-primary)" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <path d="M8 23h10a7 7 0 000-14h-2" stroke="var(--landing-text-primary)" strokeWidth="3" strokeLinecap="round" fill="none" />
+            </svg>
+            <span className="text-2xl font-bold leading-none" style={{ color: 'var(--landing-text-primary)' }}>Sardis</span>
+          </a>
+          <a href="/login" className="text-sm font-medium text-white rounded-lg px-4 py-2" style={{ backgroundColor: 'var(--landing-accent)' }}>Sign In</a>
+        </div>
+      </div>
+    </nav>
+  );
+}
 import Hero from '@/components/landing/Hero';
 import SocialProof from '@/components/landing/SocialProof';
 import DashboardMockup from '@/components/landing/DashboardMockup';

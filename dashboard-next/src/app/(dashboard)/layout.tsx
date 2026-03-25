@@ -174,11 +174,12 @@ export default function DashboardLayout({ children }: LayoutProps) {
         {/* Logo */}
         <div className="p-6 border-b border-dark-100">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-sardis-500 flex items-center justify-center glow-green">
-              <Wallet className="w-6 h-6 text-white" />
-            </div>
+            <svg width="36" height="36" viewBox="0 0 28 28" fill="none" className="flex-shrink-0">
+              <path d="M20 5H10a7 7 0 000 14h2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <path d="M8 23h10a7 7 0 000-14h-2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
+            </svg>
             <div>
-              <h1 className="text-xl font-bold font-display text-gradient">Sardis</h1>
+              <h1 className="text-xl font-bold font-display text-white">Sardis</h1>
               <p className="text-xs text-gray-500 tracking-wider uppercase">Control Plane</p>
             </div>
           </Link>
