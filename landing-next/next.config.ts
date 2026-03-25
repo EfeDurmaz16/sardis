@@ -5,16 +5,18 @@ const nextConfig: NextConfig = {
   // Fix workspace root detection in monorepo
   outputFileTracingRoot: path.join(__dirname),
 
-  // Rewrite /docs/* to the fumadocs site
-  async rewrites() {
+  // Redirect /docs/* to the fumadocs site (redirect, not rewrite, to avoid _next chunk conflicts)
+  async redirects() {
     return [
       {
         source: "/docs",
         destination: "https://docs.sardis.sh/docs",
+        permanent: true,
       },
       {
         source: "/docs/:path+",
         destination: "https://docs.sardis.sh/docs/:path+",
+        permanent: true,
       },
     ];
   },
