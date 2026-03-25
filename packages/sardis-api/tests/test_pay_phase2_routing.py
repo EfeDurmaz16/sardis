@@ -20,8 +20,42 @@ from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------
+# Stub mandates — the real ones require many VC/proof fields.
+# pay.py constructs them with simplified kwargs; we mock the classes
+# so they store all kwargs as attributes.
+# ---------------------------------------------------------------------------
+
+
+class StubMandate:
+    """Generic stub that accepts any kwargs and stores them as attrs."""
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+class StubMandateChain:
+    """Stub MandateChain."""
+
+    def __init__(self, intent=None, cart=None, payment=None):
+        self.intent = intent
+        self.cart = cart
+        self.payment = payment
+
+
+# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _patch_mandates():
+    """Patch mandate classes so pay.py can construct them with simplified kwargs."""
+    with patch("sardis_api.routers.pay.IntentMandate", StubMandate), \
+         patch("sardis_api.routers.pay.CartMandate", StubMandate), \
+         patch("sardis_api.routers.pay.PaymentMandate", StubMandate), \
+         patch("sardis_api.routers.pay.MandateChain", StubMandateChain):
+        yield
 
 
 @pytest.fixture
@@ -40,7 +74,7 @@ def mock_orchestrator():
 
 
 @pytest.fixture
-def app_with_pay(mock_orchestrator):
+def app_with_pay(mock_orchestrator, _patch_mandates):
     """Create a FastAPI app with the pay router wired."""
     from fastapi import FastAPI
 
