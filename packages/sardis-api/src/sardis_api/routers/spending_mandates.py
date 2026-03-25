@@ -104,7 +104,11 @@ def _row_to_response(r) -> MandateResponse:
         id=r["id"], org_id=r["org_id"], agent_id=r["agent_id"],
         wallet_id=r["wallet_id"], principal_id=r["principal_id"],
         issuer_id=r["issuer_id"], purpose_scope=r["purpose_scope"],
-        merchant_scope=r["merchant_scope"] if r["merchant_scope"] else None,
+        merchant_scope=(
+            json.loads(r["merchant_scope"])
+            if isinstance(r["merchant_scope"], str)
+            else r["merchant_scope"]
+        ) if r["merchant_scope"] else None,
         amount_per_tx=str(r["amount_per_tx"]) if r["amount_per_tx"] else None,
         amount_daily=str(r["amount_daily"]) if r["amount_daily"] else None,
         amount_weekly=str(r["amount_weekly"]) if r["amount_weekly"] else None,
@@ -176,7 +180,7 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
         version=1, policy_hash=ph, expires_at=body.expires_at,
         created_at=now.isoformat(), updated_at=now.isoformat(),
         next_steps=[
-            "POST /api/v2/agents — Create an AI agent",
+            "POST /api/v2/agents — Create an AI agent (optional — mandate works at org level without one)",
             "POST /api/v2/mpp/sessions — Start MPP payment session",
         ],
     )
@@ -184,10 +188,16 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
 
 @router.get("", response_model=list[MandateResponse])
 async def list_mandates(
-    status_filter: str | None = None, agent_id: str | None = None,
+    status_filter: str | None = None,
+    agent_id: str | None = None,
+    wallet_id: str | None = None,
     principal: Principal = Depends(require_principal),
 ):
-    """List spending mandates for the organization."""
+    """List spending mandates for the organization.
+
+    Filter by agent_id and/or wallet_id. Mandates without an agent_id are
+    org-level policies that apply across all agents.
+    """
     try:
         from sardis_v2_core.database import Database
         pool = await Database.get_pool()
@@ -200,6 +210,9 @@ async def list_mandates(
             if agent_id:
                 q += f" AND agent_id = ${len(p)+1}"
                 p.append(agent_id)
+            if wallet_id:
+                q += f" AND wallet_id = ${len(p)+1}"
+                p.append(wallet_id)
             q += " ORDER BY created_at DESC LIMIT 100"
             rows = await conn.fetch(q, *p)
     except Exception as exc:
