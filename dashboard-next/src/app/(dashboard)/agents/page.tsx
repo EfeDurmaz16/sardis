@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from 'react'
-import { Plus, Search, User, Wallet, ArrowRight, X, Calendar, Shield } from 'lucide-react'
+import { Plus, Search, User, Wallet, ArrowRight, X, Calendar, Shield, DollarSign } from 'lucide-react'
+import Link from 'next/link'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '@/hooks/useApi'
 import ChatInterface from '@/components/ChatInterface'
@@ -163,6 +164,15 @@ function AgentDetailPanel({ agent, onClose }: { agent: AgentListItem; onClose: (
                 <span className="text-sm text-gray-300">Base</span>
               </div>
             </div>
+            {agent.wallet_id && (
+              <Link
+                href={`/wallets/fund?wallet=${agent.wallet_id}`}
+                className="w-full flex items-center justify-center gap-2 mt-2 px-3 py-2 text-sm bg-sardis-500/10 text-sardis-400 rounded-lg hover:bg-sardis-500/20 transition-colors"
+              >
+                <DollarSign className="w-4 h-4" />
+                Add Funds
+              </Link>
+            )}
           </div>
 
           {/* Spending Limits */}
