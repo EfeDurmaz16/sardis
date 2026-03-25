@@ -148,7 +148,7 @@ dev = [
     "python-multipart>=0.0.9",
     "web3>=6.0",
     "prometheus-client>=0.20",
-    "PyJWT>=2.8",
+    "PyJWT>=2.12.0",
     "respx>=0.22.0",
 ]
 
