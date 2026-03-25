@@ -11,6 +11,7 @@ import {
   Check,
   Terminal,
 } from "lucide-react";
+import SardisLogo from "@/components/SardisLogo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -105,7 +106,7 @@ function StepWelcome({
     <div>
       <div className="text-center mb-6">
         <div className="w-20 h-20 bg-sardis-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl">sardis</span>
+          <SardisLogo size="large" color="#ff4f00" />
         </div>
         <h1 className="text-3xl font-bold text-white font-display mb-3">
           Welcome to Sardis
