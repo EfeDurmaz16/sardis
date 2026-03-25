@@ -21,6 +21,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-client';
+import { getAuthHeaders } from '@/api/client';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -275,9 +276,16 @@ export default function BillingPage() {
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
-  const authHeaders: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
+  /** Build auth headers fresh on each call — uses localStorage JWT (set at login)
+   *  with better-auth session token as fallback. */
+  function buildAuthHeaders(): Record<string, string> {
+    // Primary: shared client helper reads localStorage sardis_session JWT
+    const shared = getAuthHeaders();
+    if (shared.Authorization) return shared;
+    // Fallback: better-auth session token
+    if (token) return { Authorization: `Bearer ${token}` };
+    return {};
+  }
 
   useEffect(() => {
     fetchBillingData();
@@ -287,8 +295,8 @@ export default function BillingPage() {
     setLoading(true);
     try {
       const [accountRes, plansRes] = await Promise.all([
-        fetch(`${API_BASE}/api/v2/billing/account`, { headers: authHeaders }).catch(() => null),
-        fetch(`${API_BASE}/api/v2/billing/plans`, { headers: authHeaders }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/billing/account`, { headers: buildAuthHeaders() }).catch(() => null),
+        fetch(`${API_BASE}/api/v2/billing/plans`, { headers: buildAuthHeaders() }).catch(() => null),
       ]);
 
       if (accountRes && accountRes.ok) {
@@ -317,7 +325,7 @@ export default function BillingPage() {
     try {
       const res = await fetch(`${API_BASE}/api/v2/billing/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
         body: JSON.stringify({ plan }),
       });
       if (res.ok) {
@@ -339,7 +347,7 @@ export default function BillingPage() {
     try {
       const res = await fetch(`${API_BASE}/api/v2/billing/portal`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: buildAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
