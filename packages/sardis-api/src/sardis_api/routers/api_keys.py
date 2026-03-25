@@ -32,6 +32,10 @@ class CreateAPIKeyRequest(BaseModel):
         default=None,
         description="Days until expiration (None = never expires)"
     )
+    mode: str = Field(
+        default="test",
+        description="Key mode: 'test' (sandbox, sk_test_ prefix) or 'live' (production, sk_live_ prefix)"
+    )
 
 
 class APIKeyResponse(BaseModel):
@@ -45,6 +49,7 @@ class APIKeyResponse(BaseModel):
     expires_at: datetime | None
     created_at: datetime
     last_used_at: datetime | None
+    mode: str = "test"  # "test" or "live"
 
 
 class CreateAPIKeyResponse(BaseModel):
@@ -57,18 +62,20 @@ class CreateAPIKeyResponse(BaseModel):
     rate_limit: int
     expires_at: datetime | None
     created_at: datetime
+    mode: str = "test"  # "test" or "live"
 
     class Config:
         json_schema_extra = {
             "example": {
-                "key": "sk_live_abc123...",
+                "key": "sk_test_...",
                 "key_id": "key_12345678",
-                "key_prefix": "sk_live_abc1",
-                "name": "Production API Key",
+                "key_prefix": "sk_test_....",
+                "name": "Development API Key",
                 "scopes": ["read", "write"],
                 "rate_limit": 100,
                 "expires_at": None,
-                "created_at": "2025-01-01T00:00:00Z"
+                "created_at": "2025-01-01T00:00:00Z",
+                "mode": "test"
             }
         }
 
@@ -92,6 +99,9 @@ async def create_api_key(
     **Important:** The `key` field in the response is only shown once.
     Store it securely - it cannot be retrieved later.
 
+    Set ``mode`` to ``"test"`` (default) for sandbox keys or ``"live"``
+    for production keys.
+
     Requires: Valid API key with 'admin' or 'api_keys:create' scope.
     """
     # Check for admin scope
@@ -100,6 +110,15 @@ async def create_api_key(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Requires 'admin' or 'api_keys:create' scope"
         )
+
+    mode = request.mode.strip().lower()
+    if mode not in ("test", "live"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="mode must be 'test' or 'live'",
+        )
+
+    is_test = mode == "test"
 
     manager = get_api_key_manager()
 
@@ -115,6 +134,7 @@ async def create_api_key(
         scopes=request.scopes,
         rate_limit=request.rate_limit,
         expires_at=expires_at,
+        test=is_test,
     )
 
     return CreateAPIKeyResponse(
@@ -126,6 +146,7 @@ async def create_api_key(
         rate_limit=api_key.rate_limit,
         expires_at=api_key.expires_at,
         created_at=api_key.created_at,
+        mode=mode,
     )
 
 
@@ -153,6 +174,7 @@ async def list_api_keys(
                 expires_at=k.expires_at,
                 created_at=k.created_at,
                 last_used_at=k.last_used_at,
+                mode=k.environment,
             )
             for k in keys
         ],
@@ -192,6 +214,7 @@ async def get_api_key_by_id(
         expires_at=api_key.expires_at,
         created_at=api_key.created_at,
         last_used_at=api_key.last_used_at,
+        mode=api_key.environment,
     )
 
 
@@ -253,6 +276,7 @@ async def get_current_key_info(
         expires_at=current_key.expires_at,
         created_at=current_key.created_at,
         last_used_at=current_key.last_used_at,
+        mode=current_key.environment,
     )
 
 

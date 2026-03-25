@@ -61,9 +61,15 @@ def _hash_api_key(raw_key: str) -> str:
     return hashlib.sha256(raw_key.encode()).hexdigest()
 
 
-def _generate_api_key() -> tuple[str, str]:
-    """Generate a new API key. Returns (raw_key, key_prefix)."""
-    raw = f"sk_test_{secrets.token_urlsafe(32)}"
+def _generate_api_key(*, mode: str = "test") -> tuple[str, str]:
+    """Generate a new API key. Returns (raw_key, key_prefix).
+
+    Args:
+        mode: ``"test"`` (default) generates ``sk_test_`` prefixed keys;
+              ``"live"`` generates ``sk_live_`` prefixed keys.
+    """
+    prefix_str = "sk_live_" if mode == "live" else "sk_test_"
+    raw = f"{prefix_str}{secrets.token_urlsafe(32)}"
     prefix = raw[:12]
     return raw, prefix
 
@@ -220,19 +226,27 @@ class AuthService:
         )
 
     async def generate_api_key(
-        self, user_id: str, org_id: str, name: str = "default", scopes: list[str] | None = None,
+        self, user_id: str, org_id: str, name: str = "default",
+        scopes: list[str] | None = None, *, mode: str = "test",
     ) -> tuple[str, str]:
-        """Generate a new API key. Returns (raw_key, key_id)."""
-        raw_key, prefix = _generate_api_key()
+        """Generate a new API key. Returns (raw_key, key_id).
+
+        Args:
+            mode: ``"test"`` (default) or ``"live"``.  Live keys require
+                  KYB approval; callers must enforce that gate before
+                  calling this method.
+        """
+        raw_key, prefix = _generate_api_key(mode=mode)
         key_hash = _hash_api_key(raw_key)
         key_id = f"key_{secrets.token_hex(12)}"
+        environment = "live" if mode == "live" else "test"
 
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
-                """INSERT INTO user_api_keys (id, user_id, org_id, key_hash, key_prefix, name, scopes)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7)""",
-                key_id, user_id, org_id, key_hash, prefix, name, scopes or ["*"],
+                """INSERT INTO user_api_keys (id, user_id, org_id, key_hash, key_prefix, name, scopes, environment)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
+                key_id, user_id, org_id, key_hash, prefix, name, scopes or ["*"], environment,
             )
 
         return raw_key, key_id
@@ -278,7 +292,8 @@ class AuthService:
         pool = await self._get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT id, org_id, key_prefix, name, scopes, last_used_at, expires_at, created_at
+                """SELECT id, org_id, key_prefix, name, scopes, last_used_at, expires_at, created_at,
+                          COALESCE(environment, CASE WHEN key_prefix LIKE 'sk_live_%%' THEN 'live' ELSE 'test' END) AS environment
                    FROM user_api_keys WHERE user_id = $1 ORDER BY created_at DESC""",
                 user_id,
             )

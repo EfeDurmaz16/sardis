@@ -643,6 +643,10 @@ class UserLoginResponse(BaseModel):
 class APIKeyCreateRequest(BaseModel):
     name: str = "default"
     scopes: list[str] = Field(default_factory=lambda: ["*"])
+    mode: str = Field(
+        default="test",
+        description="Key mode: 'test' (sandbox, sk_test_ prefix) or 'live' (production, sk_live_ prefix). Live keys require KYB approval.",
+    )
 
 
 class APIKeyResponse(BaseModel):
@@ -652,6 +656,7 @@ class APIKeyResponse(BaseModel):
     org_id: str
     name: str
     scopes: list[str]
+    mode: str = "test"  # "test" or "live"
 
 
 class MFASetupResponse(BaseModel):
@@ -873,13 +878,78 @@ async def verify_mfa(request: Request, body: MFAVerifyRequest, user: UserInfo = 
     return {"mfa_enabled": True}
 
 
+async def _check_kyb_status(request: Request, user: UserInfo) -> bool:
+    """Check whether the user/org has completed KYB (identity verification).
+
+    Returns True if KYB is approved, False otherwise.
+    Queries the ``kyb_verifications`` table; falls back to checking
+    the organization settings ``kyb_status`` field.
+    """
+    database_url = getattr(getattr(request.app, "state", None), "database_url", None)
+    if not database_url:
+        return False
+    try:
+        from sardis_v2_core.database import Database
+        pool = await Database.get_pool()
+        async with pool.acquire() as conn:
+            # Check kyb_verifications table first
+            row = await conn.fetchrow(
+                """
+                SELECT status FROM kyb_verifications
+                WHERE org_id = (
+                    SELECT id FROM organizations WHERE external_id = $1 LIMIT 1
+                )
+                ORDER BY created_at DESC LIMIT 1
+                """,
+                user.organization_id or "org_demo",
+            )
+            if row and row["status"] in ("approved", "completed"):
+                return True
+
+            # Fallback: check organization settings
+            org_row = await conn.fetchrow(
+                "SELECT settings FROM organizations WHERE external_id = $1",
+                user.organization_id or "org_demo",
+            )
+            if org_row and org_row["settings"]:
+                import json
+                settings = org_row["settings"] if isinstance(org_row["settings"], dict) else json.loads(org_row["settings"])
+                if settings.get("kyb_status") in ("approved", "completed"):
+                    return True
+    except Exception as exc:
+        _logger.warning("KYB status check failed: %s: %s", type(exc).__name__, exc)
+    return False
+
+
 @router.post("/api-keys", response_model=APIKeyResponse, status_code=status.HTTP_201_CREATED)
 async def create_api_key(
     request: Request,
     body: APIKeyCreateRequest,
     user: UserInfo = Depends(require_auth),
 ):
-    """Generate a new API key for the authenticated user."""
+    """Generate a new API key for the authenticated user.
+
+    Set ``mode`` to ``"test"`` (default) for sandbox keys (sk_test_ prefix)
+    or ``"live"`` for production keys (sk_live_ prefix).
+
+    Live keys require completed identity verification (KYB approval).
+    """
+    mode = body.mode.strip().lower()
+    if mode not in ("test", "live"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="mode must be 'test' or 'live'",
+        )
+
+    # Live keys require KYB approval
+    if mode == "live":
+        kyb_approved = await _check_kyb_status(request, user)
+        if not kyb_approved:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Complete identity verification first. Live API keys require KYB approval.",
+            )
+
     auth_svc = _get_auth_service(request)
     org_id = user.organization_id or "org_demo"
     raw_key, key_id = await auth_svc.generate_api_key(
@@ -887,6 +957,7 @@ async def create_api_key(
         org_id=org_id,
         name=body.name,
         scopes=body.scopes,
+        mode=mode,
     )
     return APIKeyResponse(
         key=raw_key,
@@ -895,14 +966,23 @@ async def create_api_key(
         org_id=org_id,
         name=body.name,
         scopes=body.scopes,
+        mode=mode,
     )
 
 
 @router.get("/api-keys")
 async def list_api_keys(request: Request, user: UserInfo = Depends(require_auth)):
-    """List API keys for the authenticated user (prefix only)."""
+    """List API keys for the authenticated user (prefix only, with mode/environment)."""
     auth_svc = _get_auth_service(request)
     keys = await auth_svc.list_api_keys(user_id=user.username)
+    # Ensure each key has a mode field derived from environment or key_prefix
+    for k in keys:
+        if "environment" in k:
+            k["mode"] = k["environment"]
+        elif k.get("key_prefix", "").startswith("sk_live_"):
+            k["mode"] = "live"
+        else:
+            k["mode"] = "test"
     return {"keys": keys}
 
 

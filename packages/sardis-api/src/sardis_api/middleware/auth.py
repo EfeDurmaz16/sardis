@@ -540,3 +540,30 @@ def require_scope(required_scope: str):
         return api_key
 
     return check_scope
+
+
+def enforce_key_environment(api_key: APIKey, requested_mode: str | None = None) -> None:
+    """Enforce that the API key environment matches the requested chain mode.
+
+    Rules:
+    - ``sk_test_`` keys (environment="test") can only use simulated chain mode.
+      They must not execute real transactions on mainnet.
+    - ``sk_live_`` keys (environment="live") can use live chain mode.
+
+    Args:
+        api_key: The validated API key.
+        requested_mode: The chain mode requested by the caller.  If ``None``,
+            the global ``SARDIS_CHAIN_MODE`` env var is used.
+
+    Raises:
+        HTTPException 403 if a test key attempts to use live chain mode.
+    """
+    effective_mode = (requested_mode or os.getenv("SARDIS_CHAIN_MODE", "simulated")).strip().lower()
+    if api_key.environment == "test" and effective_mode == "live":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Test API keys (sk_test_) cannot execute live transactions. "
+                "Create a live API key (sk_live_) to use live chain mode."
+            ),
+        )

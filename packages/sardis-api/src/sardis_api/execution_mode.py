@@ -85,16 +85,30 @@ def enforce_staging_live_guard(
     merchant_domain: str | None,
     amount: Decimal | None,
     operation: str,
+    api_key_environment: str | None = None,
 ) -> None:
     """
     Enforce a strict pilot lane in staging_live mode.
 
     Fail-closed semantics:
+    - Test API keys (sk_test_) must NEVER reach live execution.
     - Pilot org allowlist MUST be configured.
     - Organization must be in allowlist.
     - If merchant allowlist is configured, merchant must match.
     - If max amount is configured and provided, amount must be below threshold.
     """
+    # Block test keys from live execution regardless of mode
+    if api_key_environment == "test" and policy.mode in (STAGING_LIVE_MODE, PRODUCTION_LIVE_MODE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "test API keys cannot execute live transactions",
+                "reason_code": "SARDIS.EXECUTION.TEST_KEY_LIVE_BLOCKED",
+                "hint": "Create a live API key (sk_live_) to use live chain mode.",
+                "operation": operation,
+            },
+        )
+
     if policy.mode != STAGING_LIVE_MODE:
         return
 
