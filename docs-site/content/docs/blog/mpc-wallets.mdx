@@ -1,0 +1,99 @@
+---
+title: "Understanding MPC Wallets for Agent Security"
+description: Multi-Party Computation wallets distribute key shares so no single entity can move funds. Learn how Sardis uses threshold ECDSA to provide non-custodial, policy-enforced wallets for AI agents.
+date: 2025-01-05
+category: Technical
+---
+
+Multi-Party Computation wallets distribute key shares across parties, ensuring no single entity can move funds. Learn how this technology secures AI agent transactions at the cryptographic level.
+
+## The Problem with Traditional Wallets
+
+Traditional cryptocurrency wallets rely on a single private key. If you have the key, you can move the funds. Full stop. This creates two problems for AI agents:
+
+1. **Single point of failure:** If the agent's key is compromised, all funds are at risk
+2. **No spending controls:** Whoever holds the key has unlimited authority -- there is no way to enforce policies at the cryptographic level
+
+You could try to solve this with smart contracts, but that adds complexity and gas costs to every transaction. MPC offers a cleaner solution.
+
+## What is Multi-Party Computation?
+
+Multi-Party Computation (MPC) is a cryptographic technique that allows multiple parties to jointly compute a function while keeping their inputs private. In the context of wallets, this means:
+
+- The private key is split into multiple "shares"
+- Each party holds one share
+- To sign a transaction, parties collaborate without ever revealing their shares
+- No single party ever has access to the complete private key
+
+## How Sardis Uses MPC
+
+In Sardis, every agent wallet uses a 2-of-2 MPC scheme via Turnkey. Here is how the shares are distributed:
+
+- **Share 1: Your Agent** -- Held locally by your agent or in your secure infrastructure. This share can initiate transactions but cannot complete them alone.
+- **Share 2: Sardis Policy Engine** -- Held by Sardis. Will only co-sign transactions that pass your policy checks. Acts as a programmable guardian.
+
+## The Transaction Flow
+
+When your agent wants to make a payment, here is what happens:
+
+```
+1. Agent requests payment: $50 to vendor.com
+2. Agent's share creates partial signature
+3. Request sent to Sardis Policy Engine
+4. Policy Engine checks:
+   - Amount under $100 limit
+   - Vendor in allowlist
+   - Daily limit not exceeded
+5. Policy Engine co-signs with Share 2
+6. Complete signature submitted to blockchain
+7. Transaction confirmed
+```
+
+## Security Properties
+
+### Non-Custodial
+
+Sardis never has full control over your funds. We only hold one share of the key -- we cannot move funds without your agent's participation. This is fundamentally different from custodial solutions where a third party holds your keys.
+
+### Tamper-Proof Policy Enforcement
+
+Because the policy engine controls a required key share, policies cannot be bypassed. Even if an agent is compromised or behaves unexpectedly, it cannot exceed the limits you have set.
+
+### No Single Point of Failure
+
+If Sardis is compromised, attackers only get one key share -- insufficient to move funds. If your agent is compromised, same situation. Both parties would need to be compromised simultaneously.
+
+### Audit Trail
+
+Every signing request is logged with full context: what the agent was trying to do, why it needed the funds, and whether the policy allowed it. This creates a complete audit trail for compliance and debugging.
+
+## Comparison with Alternatives
+
+| Feature | Single-Key | Multisig | MPC |
+|---------|-----------|----------|-----|
+| Non-custodial | Yes | Yes | Yes |
+| Policy enforcement | No | Limited | Yes |
+| Gas efficient | Yes | No | Yes |
+| Chain agnostic | Yes | No | Yes |
+| Key rotation | Hard | Moderate | Easy |
+
+## Technical Deep Dive: Threshold Signatures
+
+Under the hood, Sardis uses threshold ECDSA signatures based on the GG20 protocol. Here is a simplified view of the math:
+
+1. During wallet creation, a trusted dealer generates the private key and splits it into shares using Shamir's Secret Sharing
+2. Shares are distributed to parties (in our case: your agent and Sardis)
+3. During signing, parties engage in a multi-round protocol to produce a valid ECDSA signature
+4. The resulting signature is indistinguishable from a normal single-key signature -- the blockchain never knows MPC was used
+
+## Key Rotation and Recovery
+
+One advantage of MPC is easy key rotation. Without changing the wallet address, we can refresh the key shares. This allows:
+
+- Regular rotation as a security best practice
+- Rotation after suspected compromise
+- Recovery if one party loses their share (through a secure recovery process)
+
+## Getting Started
+
+Every Sardis wallet uses MPC by default -- no extra configuration needed. When you create a wallet through our SDK or dashboard, the MPC setup happens automatically. Your agent receives its key share, and you can start transacting immediately.

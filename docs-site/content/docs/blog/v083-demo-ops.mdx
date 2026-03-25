@@ -1,0 +1,32 @@
+---
+title: "Sardis v0.8.3: Demo Ops + Cloud Deployment (Cloud Run & AWS)"
+description: v0.8.3 adds deployment automation for Google Cloud Run and AWS App Runner, tightens live-mode operator UX, and documents the frontend-to-backend integration contract.
+date: 2026-02-08
+category: Release
+---
+
+v0.8.3 focuses on one thing: making demos and staging environments reliable under real operating conditions. We added deployment automation for both Google Cloud Run and AWS App Runner, tightened live-mode operator UX in `/demo`, and documented the exact frontend-to-backend integration contract.
+
+## What Shipped
+
+- **Cloud Run deploy automation** -- Staging script now handles artifact build/push, service deploy, env wiring, health checks, and post-deploy bootstrap guidance.
+- **AWS App Runner deploy automation** -- ECR build/push and service create/update flow with runtime env injection.
+- **Frontend live-mode runbook** -- Explicit mapping for `SARDIS_API_URL`, `SARDIS_API_KEY`, and `DEMO_OPERATOR_PASSWORD`.
+- **Demo reliability upgrades** -- Clearer live lock messaging and persistent transaction history across refreshes.
+
+## Why This Matters for GTM
+
+Design partners and investors do not test code in ideal conditions. They test links, flows, and operator handoffs. v0.8.3 reduces demo failure risk by making deployment and live-mode setup deterministic and repeatable.
+
+- Faster path from local staging to shared demo URL
+- Lower chance of live-mode lockouts during walkthroughs
+- Clear fallback from live mode to simulated mode without breaking the narrative
+
+## Operator Checklist (Condensed)
+
+1. Deploy API to Cloud Run (recommended) or App Runner
+2. Bootstrap API key via auth bootstrap endpoint
+3. Set landing env vars server-side only
+4. Run blocked and approved scenarios in `/demo` live mode
+
+See [Deployment Guide](/docs/deployment) and [Changelog](/docs/changelog) for full commands and environment mappings.

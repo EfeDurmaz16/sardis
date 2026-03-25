@@ -1,0 +1,124 @@
+---
+title: "How AI Agent Spending Rules Actually Work"
+description: "No jargon, no code. A practical guide to how Sardis spending policies control what AI agents can and cannot do with money."
+date: 2026-03-17
+category: Explainer
+---
+
+Your AI agent needs to pay for things. Cloud compute, SaaS subscriptions, vendor invoices. But giving an agent unrestricted access to a credit card or a crypto wallet is like giving an intern the company Amex with no spending limit. You need rules. Here is exactly how they work in Sardis.
+
+## The Core Idea: Rules Before Money Moves
+
+Every time your agent tries to spend money, Sardis runs the transaction through a **12-check enforcement pipeline** before a single dollar moves. If any check fails, the transaction is blocked. No exceptions. No overrides by the agent.
+
+You write your rules in plain English. Sardis parses them into enforceable policy. The agent never sees the raw policy -- it just gets "approved" or "denied."
+
+## What You Can Control
+
+### 1. Spending Limits
+
+Set maximum amounts per transaction, per day, per week, or per month.
+
+```
+"Max $100 per transaction"
+"Max $500 per day"
+"Max $2,000 per month"
+```
+
+If your agent tries to spend $150 on a single transaction when the limit is $100, it gets blocked instantly. The agent cannot split the transaction to get around the limit -- Sardis tracks cumulative spending across all time windows.
+
+### 2. Merchant & Category Controls
+
+Whitelist or blacklist specific merchants or entire merchant categories.
+
+```
+"Only pay AWS, Vercel, and Hetzner"
+"Block gambling, adult content, and crypto exchanges"
+"Allow SaaS and cloud compute categories only"
+```
+
+This is not just text matching. Sardis uses standardized merchant category codes (MCCs) to classify every payment destination. Even if a merchant changes their display name, the MCC stays the same.
+
+### 3. Approval Thresholds
+
+Require human approval above a certain amount or for certain types of transactions.
+
+```
+"Require approval above $200"
+"Require 2 approvals above $1,000"
+"Auto-approve known vendors under $50"
+```
+
+When approval is required, Sardis sends a notification to your Slack channel (or webhook endpoint) with the full transaction details. The transaction stays frozen until a human clicks "Approve" or "Deny." For high-value transactions, you can require multiple approvers (4-eyes principle).
+
+### 4. Time-Based Restrictions
+
+Control when your agent can spend money.
+
+```
+"Only allow payments during business hours (9am-6pm EST)"
+"No payments on weekends"
+"Pause all spending after March 31"
+```
+
+### 5. Kill Switch
+
+Instant freeze at 5 different scopes: a single agent, a wallet, a payment rail, a chain, or everything globally. One API call. Takes effect in under 100ms.
+
+## What Happens When an Agent Tries to Pay
+
+Here is the exact sequence, every single time:
+
+1. **Kill switch check** -- Is spending frozen at any scope? If yes, instant block.
+2. **Policy lookup** -- Load the active spending policy for this agent/wallet.
+3. **Amount validation** -- Is this transaction within the per-transaction limit?
+4. **Daily budget check** -- Would this push the agent over its daily spending cap?
+5. **Weekly/monthly budget** -- Same check for longer time windows.
+6. **Merchant check** -- Is this merchant on the whitelist? Not on the blacklist?
+7. **Category check** -- Is this merchant category allowed by policy?
+8. **Time window check** -- Is it within allowed spending hours?
+9. **First-seen merchant** -- Never paid this merchant before? Lower threshold applies.
+10. **Anomaly scoring** -- 6-signal risk score: does this look unusual for this agent?
+11. **Approval threshold** -- Does this amount require human approval?
+12. **Compliance check** -- Sanctions screening, KYC/KYA status, regulatory holds.
+
+All 12 checks run on every transaction. There is no "fast path" that skips checks. The agent cannot request a bypass. The policy is enforced at the infrastructure level, not at the application level.
+
+## What Makes This Different from Just Setting a Credit Card Limit
+
+- **Credit card limit:** One number. No merchant control, no time windows, no approval workflows, no audit trail.
+- **Sardis spending policy:** Composable rules across 6 dimensions. Every transaction logged with cryptographic proof. Instant kill switch.
+- **Bank transfer limits:** Per-transaction caps only. No category filtering. 3-day settlement. No agent-aware controls.
+- **Sardis spending policy:** Agent-aware. Knows which AI model is spending, why, and whether it matches historical patterns.
+
+## The Audit Trail: Proof, Not Promises
+
+Every transaction -- approved or denied -- gets a signed attestation envelope. This is a cryptographic receipt containing: the policy snapshot at the time of the transaction, the 12-check evaluation results, the agent identity, and a tamper-evident HMAC signature.
+
+These receipts are anchored in a Merkle tree. You can independently verify that no transaction record has been altered after the fact. This is the level of evidence you need for SOC 2 audits, regulatory compliance, and enterprise procurement reviews.
+
+> **For finance teams:** Sardis produces audit-ready evidence for every agent payment. No more reconstructing transaction histories from log files. Every payment has a self-contained, cryptographically signed proof of policy compliance.
+
+## Getting Started
+
+Install the SDK, create a wallet, define a policy, and make your first payment in under 5 minutes. The policy enforces from the first transaction -- there is no "grace period" or "learning mode."
+
+```python
+pip install sardis
+
+from sardis import Sardis
+
+client = Sardis(api_key="sk_...")
+wallet = client.wallets.create(
+    name="procurement-agent",
+    policy="Max $100/tx, $500/day, SaaS only, require approval above $200"
+)
+
+# Your agent can now spend within these exact guardrails
+```
+
+**Learn More:**
+- [Spending Policies Reference](/docs/policy-engine)
+- [Spending Mandates (Delegated Authority)](/docs/spending-mandates)
+- [Quickstart Guide](/docs/quickstart)
+- [Security & Audit Trail](/docs/security)

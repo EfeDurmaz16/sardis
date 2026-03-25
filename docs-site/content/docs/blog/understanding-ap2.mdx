@@ -1,0 +1,177 @@
+---
+title: "Understanding AP2: The Industry Standard for Agent Payments"
+description: AP2 (Agent Payment Protocol) is the Google, PayPal, Mastercard, and Visa consortium standard for AI agent transactions. Learn how the mandate chain provides cryptographic proof of authorization.
+date: 2026-01-20
+category: Technical
+---
+
+AP2 (Agent Payment Protocol) is the Google, PayPal, Mastercard, and Visa consortium standard for AI agent transactions. Learn how the Intent, Cart, and Payment mandate chain provides cryptographic proof of authorization for every transaction.
+
+## Why AP2 Exists
+
+When AI agents started making purchases in 2024, the payments industry faced a fundamental question: how do you authorize a transaction when there is no human clicking "Confirm"?
+
+Traditional payment flows rely on human presence -- someone enters their card, reviews the amount, and explicitly approves. But agents operate autonomously. They need a way to prove that a purchase was authorized by a human without requiring that human to be present at the moment of transaction.
+
+AP2 was developed by a consortium of Google, PayPal, Mastercard, and Visa to solve exactly this problem. It introduces a cryptographic "mandate chain" that traces authorization from human intent to executed payment.
+
+## The Mandate Chain
+
+AP2's core innovation is the mandate chain: a series of signed messages that create an unbroken trail of authorization. The chain has three components:
+
+```
+INTENT --> CART --> PAYMENT
+"Buy API    $29.99    Tx hash
+ credits    OpenAI    0xabc...
+ <$50"      Credits
+
+[Signed by     [Signed by    [Signed by
+ Human/Policy]  Agent]        Wallet]
+```
+
+### 1. Intent Mandate
+
+The Intent is where human authorization begins. It is a signed statement of what the agent is allowed to purchase. Intents can be:
+
+- **Explicit:** "Buy exactly this item for this price"
+- **Bounded:** "Spend up to $50 on cloud services"
+- **Policy-based:** "Follow spending policy XYZ" (Sardis's approach)
+
+```json
+{
+  "type": "ap2.intent",
+  "version": "1.0",
+  "issuer": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "agent": "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
+  "constraints": {
+    "max_amount": "50.00",
+    "currency": "USD",
+    "categories": ["cloud_services", "developer_tools"],
+    "expires_at": "2026-01-25T00:00:00Z"
+  },
+  "signature": "eyJhbGciOiJFZERTQSJ9..."
+}
+```
+
+### 2. Cart Mandate
+
+When the agent finds something to purchase, it creates a Cart Mandate. This specifies exactly what will be bought and must fall within the Intent's constraints.
+
+```json
+{
+  "type": "ap2.cart",
+  "version": "1.0",
+  "intent_ref": "ap2:intent:abc123",
+  "agent": "did:key:z6Mkf5rGMoatrSj1f4CyvuHBeXJELe9RPdzo2PKGNCKVtZxP",
+  "merchant": "openai.com",
+  "items": [
+    {
+      "description": "API Credits",
+      "amount": "29.99",
+      "currency": "USD",
+      "category": "cloud_services"
+    }
+  ],
+  "total": "29.99",
+  "signature": "eyJhbGciOiJFZERTQSJ9..."
+}
+```
+
+### 3. Payment Mandate
+
+The final step executes the actual transfer of funds. The Payment Mandate references the Cart and includes the cryptographic proof of execution.
+
+```json
+{
+  "type": "ap2.payment",
+  "version": "1.0",
+  "cart_ref": "ap2:cart:def456",
+  "wallet": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
+  "chain": "base",
+  "token": "USDC",
+  "amount": "29990000",
+  "tx_hash": "0xabc123...",
+  "signature": "eyJhbGciOiJFZERTQSJ9..."
+}
+```
+
+## How Sardis Implements AP2
+
+Sardis acts as the "Intent layer" in the AP2 stack. When you create a spending policy, Sardis generates and manages Intent Mandates on your behalf.
+
+> **Policy = Intent.** Your natural language policy ("Max $50/day on approved vendors") becomes a structured AP2 Intent that is cryptographically signed and verifiable by any party in the payment chain.
+
+The flow works like this:
+
+1. You create a wallet with a spending policy
+2. Sardis generates a long-lived Intent Mandate from your policy
+3. When the agent makes a purchase, Sardis creates the Cart Mandate
+4. Sardis verifies Cart against Intent constraints
+5. If valid, Sardis executes the Payment Mandate via MPC signing
+
+```python
+from sardis import Sardis
+
+client = Sardis(api_key="sk_...")
+
+# This creates an AP2 Intent Mandate under the hood
+wallet = client.wallets.create(
+    name="shopping-agent",
+    chain="base",
+    policy="Max $50/day, only openai.com and anthropic.com"
+)
+
+# This creates Cart + Payment Mandates
+result = wallet.pay(
+    to="0x...",
+    amount="29.99",
+    token="USDC",
+    merchant="openai.com",
+    memo="API credits"
+)
+
+# Access the full mandate chain
+print(result.ap2_chain)
+# {
+#   "intent": "ap2:intent:abc123",
+#   "cart": "ap2:cart:def456",
+#   "payment": "ap2:payment:ghi789"
+# }
+```
+
+## Verification and Disputes
+
+The mandate chain enables third-party verification. Merchants, payment processors, and compliance systems can independently verify that a transaction was authorized by following the chain of signatures.
+
+In case of disputes, the mandate chain provides irrefutable proof:
+
+- **Intent:** Proves human authorization existed
+- **Cart:** Proves the agent selected this specific purchase
+- **Payment:** Proves the wallet executed the transfer
+
+If any link in the chain is missing or invalid, the transaction can be flagged and reversed. This is why AP2 is becoming the standard for regulated agent transactions.
+
+## TAP Integration
+
+AP2 works hand-in-hand with TAP (Trusted Agent Protocol) for identity verification. While AP2 handles payment authorization, TAP verifies that the agent making the request is who it claims to be.
+
+```
+TAP: "Is this really Agent X?"
+  |
+  v
+AP2: "Is Agent X authorized for this?"
+  |
+  v
+Sardis: "Does this pass Agent X's policy?"
+  |
+  v
+Execute: Sign and broadcast transaction
+```
+
+## Getting Started
+
+If you are using Sardis, you are already using AP2. Every transaction through our SDK or MCP server automatically generates a compliant mandate chain.
+
+For advanced use cases where you need to inspect or manually construct mandates, check out our [AP2 documentation](/docs/ap2).
+
+The agent economy needs trust infrastructure. AP2 provides that trust through cryptographic proof, and Sardis makes it accessible through simple APIs and natural language policies.
