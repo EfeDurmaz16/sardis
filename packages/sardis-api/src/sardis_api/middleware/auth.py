@@ -214,6 +214,16 @@ class APIKeyManager:
 
         return full_key, api_key
 
+    @staticmethod
+    def _plain_sha256(key: str) -> str:
+        """Plain SHA-256 hash — used by auth_service.py when registering keys.
+
+        This fallback ensures keys created via AuthService.register() /
+        AuthService.generate_api_key() (which store plain SHA-256 hashes)
+        can still be validated here alongside HMAC-SHA256 hashes.
+        """
+        return hashlib.sha256(key.encode()).hexdigest()
+
     async def validate_key(self, key: str) -> APIKey | None:
         """
         Validate an API key.
@@ -226,10 +236,16 @@ class APIKeyManager:
 
         prefix = self.get_prefix(key)
         key_hash = self.hash_key(key)
+        # Also compute the plain SHA-256 hash as a fallback.
+        # auth_service.py stores keys with plain SHA-256 while this module
+        # uses HMAC-SHA256.  We try both so that keys from either code path
+        # can be validated.
+        plain_hash = self._plain_sha256(key)
 
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
+                # Try HMAC-SHA256 hash first (keys created by APIKeyManager)
                 row = await conn.fetchrow(
                     """
                     SELECT k.*, o.external_id AS organization_external_id
@@ -240,6 +256,18 @@ class APIKeyManager:
                     prefix,
                     key_hash,
                 )
+                # Fallback: try plain SHA-256 hash (keys created by AuthService)
+                if not row:
+                    row = await conn.fetchrow(
+                        """
+                        SELECT k.*, o.external_id AS organization_external_id
+                        FROM api_keys k
+                        JOIN organizations o ON o.id = k.organization_id
+                        WHERE k.key_prefix = $1 AND k.key_hash = $2 AND k.is_active = TRUE
+                        """,
+                        prefix,
+                        plain_hash,
+                    )
 
                 if row:
                     # Check expiration
@@ -269,6 +297,7 @@ class APIKeyManager:
                     )
 
                 # Fallback: check user_api_keys table (Phase 2 user auth)
+                # Try HMAC hash first, then plain SHA-256
                 user_row = await conn.fetchrow(
                     """
                     SELECT id, user_id, org_id, key_prefix, key_hash, name, scopes, expires_at, created_at, last_used_at
@@ -277,6 +306,15 @@ class APIKeyManager:
                     """,
                     key_hash,
                 )
+                if not user_row:
+                    user_row = await conn.fetchrow(
+                        """
+                        SELECT id, user_id, org_id, key_prefix, key_hash, name, scopes, expires_at, created_at, last_used_at
+                        FROM user_api_keys
+                        WHERE key_hash = $1
+                        """,
+                        plain_hash,
+                    )
                 if user_row:
                     if user_row["expires_at"] and user_row["expires_at"] < datetime.now(UTC):
                         return None
