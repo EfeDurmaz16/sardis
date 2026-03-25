@@ -14,6 +14,7 @@
  *   sardis policy check|set|.. Spending policies
  *   sardis agent create|list   Agent management
  *   sardis spending summary    Analytics
+ *   sardis proxy init|deploy   MPP proxy management
  *   sardis init                Interactive setup
  *   sardis demo                Guided walkthrough
  */
@@ -31,6 +32,7 @@ import { registerCardCommand } from './commands/card.js';
 import { registerHoldCommand } from './commands/hold.js';
 import { registerPolicyCommand } from './commands/policy.js';
 import { registerSpendingCommand } from './commands/spending.js';
+import { registerProxyCommand } from './commands/proxy.js';
 import { registerInitCommand } from './commands/init.js';
 import { registerDemoCommand } from './commands/demo.js';
 
@@ -52,6 +54,7 @@ registerCardCommand(program);
 registerHoldCommand(program);
 registerPolicyCommand(program);
 registerSpendingCommand(program);
+registerProxyCommand(program);
 registerInitCommand(program);
 registerDemoCommand(program);
 

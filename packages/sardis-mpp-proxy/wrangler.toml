@@ -1,0 +1,24 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "sardis-mpp-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+# Uncomment to set your origin API
+# [vars]
+# ORIGIN_URL = "https://api.example.com"
+
+# Required secrets (set via `wrangler secret put`):
+#   MPP_SECRET_KEY   - HMAC key for MPP payment verification
+#   PAY_TO           - Recipient wallet address (0x...)
+#   SARDIS_API_KEY   - Sardis API key for policy + audit
+#
+# Optional secrets:
+#   JWT_SECRET       - Key for session cookies (auto-generated if omitted)
+
+# Uncomment to bind to another Worker as origin
+# [[services]]
+# binding = "ORIGIN_SERVICE"
+# service = "your-api-worker"
+
+[observability]
+enabled = true
