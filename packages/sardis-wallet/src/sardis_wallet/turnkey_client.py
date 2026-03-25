@@ -119,14 +119,39 @@ class TurnkeyClient:
     # High-level helpers
     # ------------------------------------------------------------------
 
-    async def create_wallet(self, wallet_name: str) -> dict[str, Any]:
-        """Create a new HD wallet."""
+    async def create_wallet(
+        self,
+        wallet_name: str,
+        accounts: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """Create a new HD wallet with initial accounts.
+
+        The Turnkey ``create_wallet`` endpoint **requires** an ``accounts``
+        array inside ``parameters``.  Without it the API returns HTTP 400.
+
+        Args:
+            wallet_name: Human-readable wallet label.
+            accounts: Optional list of account descriptors.  Defaults to a
+                single Ethereum account on the BIP-32 ``m/44'/60'/0'/0/0``
+                derivation path (secp256k1).
+        """
+        if accounts is None:
+            accounts = [
+                {
+                    "curve": "CURVE_SECP256K1",
+                    "pathFormat": "PATH_FORMAT_BIP32",
+                    "path": "m/44'/60'/0'/0/0",
+                    "addressFormat": "ADDRESS_FORMAT_ETHEREUM",
+                }
+            ]
+
         body = {
             "type": "ACTIVITY_TYPE_CREATE_WALLET",
             "timestampMs": str(int(time.time() * 1000)),
             "organizationId": self._organization_id,
             "parameters": {
                 "walletName": wallet_name,
+                "accounts": accounts,
             },
         }
 

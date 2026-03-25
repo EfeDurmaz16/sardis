@@ -56,7 +56,7 @@ interface NavSection {
 
 // Core section -- always visible, no collapsing
 const coreNavigation: NavItem[] = [
-  { name: 'Overview', href: '/', icon: LayoutDashboard, tour: 'overview' },
+  { name: 'Overview', href: '/overview', icon: LayoutDashboard, tour: 'overview' },
   { name: 'Agents', href: '/agents', icon: Users, tour: 'agents' },
   { name: 'Transactions', href: '/transactions', icon: ArrowRightLeft, tour: 'transactions' },
   { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
@@ -173,7 +173,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
       <aside className="w-64 bg-dark-300 border-r border-dark-100 flex flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-dark-100">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/overview" className="flex items-center gap-3">
             <svg width="36" height="36" viewBox="0 0 28 28" fill="none" className="flex-shrink-0">
               <path d="M20 5H10a7 7 0 000 14h2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
               <path d="M8 23h10a7 7 0 000-14h-2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />

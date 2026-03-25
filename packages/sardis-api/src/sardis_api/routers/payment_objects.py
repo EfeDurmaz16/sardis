@@ -5,6 +5,7 @@ They are the core settlement primitive in the Sardis protocol.
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -18,6 +19,20 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
 
 SORTABLE_COLUMNS: frozenset[str] = frozenset({"created_at", "updated_at", "status", "amount"})
+
+
+def _decode_jsonb_dict(raw: object) -> dict:
+    """Decode a JSONB value that asyncpg may return as a string."""
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
 
 
 def _validate_sort_column(col: str) -> str:
@@ -122,7 +137,7 @@ async def mint_payment_object(
                 agent_id=row.get("agent_id"),
                 wallet_id=row.get("wallet_id"),
                 id=row["id"],
-                merchant_scope=row.get("merchant_scope") or {},
+                merchant_scope=_decode_jsonb_dict(row.get("merchant_scope")),
                 purpose_scope=row.get("purpose_scope"),
                 amount_per_tx=row.get("amount_per_tx"),
                 amount_daily=row.get("amount_daily"),

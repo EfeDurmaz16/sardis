@@ -439,13 +439,9 @@ class EnhancedWalletManager:
 
         result = await self._turnkey_client.create_wallet(wallet_name)
         wallet_id = result["walletId"]
-
-        # Create Ethereum account for the wallet
-        accounts = await self._turnkey_client.create_wallet_accounts(
-            wallet_id=wallet_id,
-            chain_type="CHAIN_TYPE_ETHEREUM",
-            count=1,
-        )
+        # Addresses are returned directly from create_wallet since the
+        # accounts array is now included in the request body.
+        addresses = result.get("addresses", [])
 
         # Audit log
         await self._audit.log(
@@ -457,13 +453,13 @@ class EnhancedWalletManager:
             resource_id=wallet_id,
             details={
                 "wallet_name": wallet_name,
-                "accounts": len(accounts.get("addresses", [])),
+                "accounts": len(addresses),
             },
         )
 
         return {
             "wallet_id": wallet_id,
-            "addresses": accounts.get("addresses", []),
+            "addresses": addresses,
             "provider": "turnkey",
         }
 
