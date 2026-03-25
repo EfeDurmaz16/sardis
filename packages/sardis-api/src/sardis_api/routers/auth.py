@@ -625,6 +625,9 @@ class RegisterResponse(BaseModel):
     agent_id: str | None = None
     wallet_id: str | None = None
     wallet_address: str | None = None
+    # Post-signup actions
+    kyc_required: bool = True
+    email_verification_sent: bool = False
 
 
 class UserLoginRequest(BaseModel):
@@ -727,6 +730,45 @@ async def register_user(request: Request, body: RegisterRequest):
 
     # Auto-provisioning deferred to first dashboard login (via onboarding flow)
 
+    # Fire-and-forget verification email — never blocks signup
+    email_verification_sent = False
+    try:
+        from sardis_api.email_templates import send_email
+
+        base_url = os.getenv("SARDIS_API_BASE_URL", "https://api.sardis.sh")
+        verification_token = secrets.token_urlsafe(32)
+        verification_link = f"{base_url}/api/v2/auth/verify-email/confirm?token={verification_token}"
+
+        # Persist token to DB (best-effort)
+        try:
+            from sardis_v2_core.database import Database
+            import hashlib
+            from datetime import timedelta
+
+            token_hash = hashlib.sha256(verification_token.encode()).hexdigest()
+            expires_at = datetime.now(UTC) + timedelta(hours=24)
+            pool = await Database.get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+                    result.user_id, token_hash, expires_at,
+                )
+        except Exception as exc:
+            _logger.debug("Could not persist verification token for %s: %s", result.user_id, exc)
+
+        html_body = (
+            f"<html><body>"
+            f"<h2>Welcome to Sardis</h2>"
+            f"<p>Please verify your email address by clicking the link below:</p>"
+            f'<p><a href="{verification_link}">Verify Email</a></p>'
+            f"<p>This link expires in 24 hours.</p>"
+            f"</body></html>"
+        )
+        await send_email(to=result.email, subject="Verify your Sardis email address", html_body=html_body)
+        email_verification_sent = True
+    except Exception:
+        pass  # Email must never block signup
+
     return RegisterResponse(
         user_id=result.user_id,
         email=result.email,
@@ -736,6 +778,8 @@ async def register_user(request: Request, body: RegisterRequest):
         agent_id=None,
         wallet_id=None,
         wallet_address=None,
+        kyc_required=True,
+        email_verification_sent=email_verification_sent,
     )
 
 
