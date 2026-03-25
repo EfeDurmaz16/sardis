@@ -37,7 +37,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
@@ -45,6 +46,13 @@ logger = logging.getLogger(__name__)
 
 LASO_MPP_BASE = "https://beta-api.paywithlocus.com/api/laso-mpp"
 LASO_AUTH_COST_USDC = Decimal("0.001")
+
+# Limits from Laso docs
+LASO_MIN_CARD_AMOUNT = Decimal("5")
+LASO_MAX_CARD_AMOUNT = Decimal("1000")
+LASO_MAX_DAILY_CARDS = 6
+LASO_MAX_DAILY_AMOUNT = Decimal("6000")
+LASO_MAX_PERSONAL_DAILY = Decimal("10000")
 
 
 @dataclass
@@ -58,6 +66,18 @@ class LasoCard:
     currency: str
     status: str
     card_type: str = "single_use"
+    billing_address: dict[str, str] = field(default_factory=dict)
+    created_at: str = ""
+
+    def masked_number(self) -> str:
+        """Return card number with only last 4 digits visible."""
+        if len(self.card_number) >= 4:
+            return "*" * (len(self.card_number) - 4) + self.card_number[-4:]
+        return self.card_number
+
+    @property
+    def is_ready(self) -> bool:
+        return self.status in ("ready", "active", "funded")
 
 
 @dataclass
@@ -70,14 +90,27 @@ class LasoPayment:
     status: str
 
 
+@dataclass
+class LasoBalance:
+    """Account balance from Laso."""
+    available: Decimal
+    pending: Decimal
+    currency: str = "USD"
+
+
 class LasoMPPService:
     """Client for Laso Finance virtual cards via MPP.
 
     Uses SardisMPPClient to automatically handle x402 challenges:
-    1. First request → Laso returns 402 Payment Required
-    2. SardisMPPClient intercepts → signs USDC payment on Tempo
-    3. Retries with payment credential → gets session token
-    4. Subsequent requests use session token
+    1. First request -> Laso returns 402 Payment Required
+    2. SardisMPPClient's SardisPolicyTransport intercepts the 402
+    3. Transport signs USDC micro-payment on Tempo via configured method
+    4. Transport retries with payment credential -> gets response
+    5. Session token extracted from response for subsequent requests
+
+    The critical detail: requests MUST go through SardisMPPClient.post() /
+    SardisMPPClient.get() (not _http directly) so the SardisPolicyTransport
+    can intercept 402 responses and fulfill x402 challenges.
 
     No API key needed — just a funded Tempo wallet.
     """
@@ -96,6 +129,26 @@ class LasoMPPService:
         self._tempo_key = tempo_private_key
         self._policy_checker = policy_checker
         self._mpp_client = None
+        self._cards_issued_today: int = 0
+        self._daily_amount: Decimal = Decimal("0")
+        self._last_reset: str = ""
+
+    def _check_daily_limits(self, amount: Decimal) -> None:
+        """Enforce Laso daily issuance limits before making API call."""
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if self._last_reset != today:
+            self._cards_issued_today = 0
+            self._daily_amount = Decimal("0")
+            self._last_reset = today
+
+        if self._cards_issued_today >= LASO_MAX_DAILY_CARDS:
+            raise LasoLimitExceeded(
+                f"Daily card limit reached ({LASO_MAX_DAILY_CARDS} cards/day)"
+            )
+        if self._daily_amount + amount > LASO_MAX_DAILY_AMOUNT:
+            raise LasoLimitExceeded(
+                f"Daily amount limit exceeded (${self._daily_amount} + ${amount} > ${LASO_MAX_DAILY_AMOUNT})"
+            )
 
     async def _get_mpp_client(self):
         """Lazy-init SardisMPPClient with Tempo payment method."""
@@ -142,28 +195,40 @@ class LasoMPPService:
     ) -> dict:
         """Make a request to Laso MPP, auto-handling x402 payment challenges.
 
-        Uses SardisMPPClient (with Tempo payment method) so 402 challenges
-        are automatically fulfilled with a USDC micro-payment.
+        Uses SardisMPPClient.post()/get() so the SardisPolicyTransport
+        intercepts 402 responses and fulfills x402 challenges automatically.
+        Going through _http directly would bypass the transport layer.
         """
         url = f"{self.base_url}{path}"
 
-        # Try with SardisMPPClient (auto-handles 402)
+        # Try with SardisMPPClient (auto-handles 402 via transport)
         mpp_client = await self._get_mpp_client()
         if mpp_client:
             headers: dict[str, str] = {}
             if self.session_token:
                 headers["Authorization"] = f"Bearer {self.session_token}"
 
+            # Use mpp_client.post()/get() — NOT mpp_client._http —
+            # so SardisPolicyTransport can intercept 402 and auto-pay.
             if method.upper() == "POST":
-                resp = await mpp_client._http.post(url, json=json_data, headers=headers)
+                resp = await mpp_client.post(url, json=json_data, headers=headers)
             else:
-                resp = await mpp_client._http.get(url, headers=headers)
+                resp = await mpp_client.get(url, headers=headers)
 
             # Extract session token from response if present
             data = resp.json()
             if "token" in data and not self.session_token:
                 self.session_token = data["token"]
                 logger.info("Laso session token acquired via x402 payment")
+
+            if resp.status_code == 402:
+                # If we still get 402 after transport handling, the payment
+                # method may not have matched the challenge. Surface clearly.
+                challenge = resp.headers.get("WWW-Authenticate", "")
+                raise LasoPaymentRequired(
+                    challenge=challenge,
+                    amount=LASO_AUTH_COST_USDC,
+                )
 
             resp.raise_for_status()
             return data
@@ -190,29 +255,38 @@ class LasoMPPService:
         self,
         amount: Decimal,
         currency: str = "USD",
+        card_type: str = "single_use",
     ) -> LasoCard:
         """Issue a virtual prepaid card via Laso Finance.
 
         The x402 authentication ($0.001 USDC) is handled automatically
-        by SardisMPPClient. The card amount ($5-$1,000) is charged
-        separately during the card creation flow.
+        by SardisMPPClient's SardisPolicyTransport. The card amount
+        ($5-$1,000) is charged separately during the card creation flow.
 
         Args:
             amount: Card amount ($5-$1,000). Must match checkout total exactly.
             currency: Card currency (USD only currently).
+            card_type: "single_use" or "multi_use".
 
         Returns:
-            LasoCard with card number, CVV, and expiry.
+            LasoCard with card number, CVV, expiry, and billing address.
         """
-        if amount < 5 or amount > 1000:
-            raise ValueError(f"Card amount must be between $5 and $1,000 (got ${amount})")
+        if amount < LASO_MIN_CARD_AMOUNT or amount > LASO_MAX_CARD_AMOUNT:
+            raise ValueError(
+                f"Card amount must be between ${LASO_MIN_CARD_AMOUNT} and "
+                f"${LASO_MAX_CARD_AMOUNT} (got ${amount})"
+            )
+        if card_type not in ("single_use", "multi_use"):
+            raise ValueError(f"card_type must be 'single_use' or 'multi_use' (got '{card_type}')")
 
-        logger.info("Laso: issuing %s %s virtual card", amount, currency)
+        self._check_daily_limits(amount)
+
+        logger.info("Laso: issuing %s %s %s virtual card", amount, currency, card_type)
 
         data = await self._request("POST", "/get-card", json_data={
             "amount": str(amount),
             "currency": currency,
-            "type": "single_use",
+            "type": card_type,
         })
 
         card_id = data.get("card_id") or data.get("id", "")
@@ -222,6 +296,10 @@ class LasoMPPService:
             logger.info("Laso: card %s is processing, polling for readiness...", card_id)
             data = await self._poll_card_ready(card_id, max_attempts=5, interval=3.0)
 
+        # Track daily limits
+        self._cards_issued_today += 1
+        self._daily_amount += amount
+
         return LasoCard(
             card_id=card_id,
             card_number=data.get("card_number", ""),
@@ -230,6 +308,9 @@ class LasoMPPService:
             amount=Decimal(str(data.get("amount", amount))),
             currency=data.get("currency", currency),
             status=data.get("status", "processing"),
+            card_type=card_type,
+            billing_address=data.get("billing_address", {}),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
         )
 
     async def _poll_card_ready(
@@ -253,15 +334,41 @@ class LasoMPPService:
         logger.warning("Laso: card %s still processing after %d polls", card_id, max_attempts)
         return data
 
-    async def get_card_data(self, card_id: str) -> dict:
-        """Get card details (free endpoint, no payment required)."""
+    async def get_card_data(self, card_id: str) -> LasoCard:
+        """Get card details (free endpoint, no payment required).
+
+        Returns a full LasoCard with number, CVV, expiry, and billing address.
+        """
+        data = await self._request("POST", "/get-card-data", json_data={
+            "card_id": card_id,
+        })
+        return LasoCard(
+            card_id=card_id,
+            card_number=data.get("card_number", ""),
+            cvv=data.get("cvv", ""),
+            expiry=data.get("expiry", ""),
+            amount=Decimal(str(data.get("amount", "0"))),
+            currency=data.get("currency", "USD"),
+            status=data.get("status", "unknown"),
+            card_type=data.get("type", "single_use"),
+            billing_address=data.get("billing_address", {}),
+            created_at=data.get("created_at", ""),
+        )
+
+    async def get_card_data_raw(self, card_id: str) -> dict:
+        """Get raw card details dict (free endpoint)."""
         return await self._request("POST", "/get-card-data", json_data={
             "card_id": card_id,
         })
 
-    async def get_balance(self) -> dict:
+    async def get_balance(self) -> LasoBalance:
         """Get account balance (free endpoint)."""
-        return await self._request("POST", "/get-account-balance")
+        data = await self._request("POST", "/get-account-balance")
+        return LasoBalance(
+            available=Decimal(str(data.get("available", data.get("balance", "0")))),
+            pending=Decimal(str(data.get("pending", "0"))),
+            currency=data.get("currency", "USD"),
+        )
 
     async def send_payment(
         self,
@@ -314,10 +421,32 @@ class LasoPaymentRequired(Exception):
     """Raised when Laso MPP endpoint returns 402 requiring x402 payment.
 
     This should NOT happen when using SardisMPPClient — it auto-handles 402.
-    Only raised in the raw httpx fallback path (when pympp is not installed).
+    Only raised when:
+    - pympp is not installed (raw httpx fallback path)
+    - The transport's payment method doesn't match the challenge
     """
 
     def __init__(self, challenge: str, amount: Decimal):
         self.challenge = challenge
         self.amount = amount
         super().__init__(f"MPP payment required: {amount} USDC (challenge: {challenge[:50]}...)")
+
+
+class LasoLimitExceeded(Exception):
+    """Raised when Laso daily issuance limits would be exceeded.
+
+    Limits:
+    - Max 6 cards per day ($6,000 total)
+    - Max $10,000 personal daily
+    """
+
+    pass
+
+
+class LasoCardNotReady(Exception):
+    """Raised when a card is still processing after max poll attempts."""
+
+    def __init__(self, card_id: str, status: str):
+        self.card_id = card_id
+        self.status = status
+        super().__init__(f"Card {card_id} still in '{status}' state after polling")
