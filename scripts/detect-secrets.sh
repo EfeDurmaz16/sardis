@@ -27,7 +27,12 @@ PATTERNS=(
 )
 
 # Files to skip
-SKIP_PATTERN='(\.lock$|\.min\.|node_modules|__pycache__|\.example$|detect-secrets\.sh$|\.pre-commit-config\.yaml$|docs/docs/)'
+SKIP_PATTERN='(\.lock$|\.min\.|node_modules|__pycache__|\.example$|detect-secrets\.sh$|\.pre-commit-config\.yaml$|docs/docs/|\.gitleaks\.toml$)'
+
+# Known safe test/placeholder values (not real secrets)
+SAFE_VALUES=(
+  'sk_test_demo123'
+)
 
 for file in $STAGED; do
   # Skip binary, lock, and minified files
@@ -42,6 +47,10 @@ for file in $STAGED; do
 
   for pattern in "${PATTERNS[@]}"; do
     MATCHES=$(grep -nE "$pattern" "$file" 2>/dev/null | grep -v 'nosecret' || true)
+    # Filter out known safe placeholder values
+    for safe in "${SAFE_VALUES[@]}"; do
+      MATCHES=$(echo "$MATCHES" | grep -v "$safe" || true)
+    done
     if [ -n "$MATCHES" ]; then
       echo "ERROR: Possible secret detected in $file"
       echo "$MATCHES" | head -3

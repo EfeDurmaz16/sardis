@@ -12,8 +12,8 @@ jobs:
   response-time:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: upptime/uptime-monitor@v1.37.0
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: upptime/uptime-monitor@2735e1b2bb69e63b987844dd8db29a0315e66b33 # v1.37.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: "response-time"

@@ -8,6 +8,9 @@ title = "Sardis Gitleaks Configuration"
     '''contracts/lib''',
     '''docs/plans''',
   ]
+  stopwords = [
+    "demo123",
+  ]
 
 [[rules]]
   id = "sardis-api-key"
