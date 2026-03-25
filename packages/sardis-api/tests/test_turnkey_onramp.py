@@ -308,12 +308,16 @@ class TestWalletFundEndpoint:
         monkeypatch.delenv("TURNKEY_API_PRIVATE_KEY", raising=False)
         monkeypatch.delenv("TURNKEY_ORGANIZATION_ID", raising=False)
 
-        app = _build_app()
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v2/wallets/wal_test_001/fund",
-            json={"amount": "100", "currency": "USD", "provider": "coinbase"},
-        )
+        with patch(
+            "sardis_api.routers.onramp._resolve_wallet_address",
+            return_value="0xabcdef1234567890abcdef1234567890abcdef12",
+        ):
+            app = _build_app()
+            client = TestClient(app)
+            resp = client.post(
+                "/api/v2/wallets/wal_test_001/fund",
+                json={"amount": "100", "currency": "USD", "provider": "coinbase"},
+            )
         assert resp.status_code == 503
         assert "Turnkey onramp not configured" in resp.json()["detail"]
 
