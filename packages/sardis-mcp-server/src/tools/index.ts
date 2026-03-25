@@ -30,6 +30,7 @@ import { mppToolDefinitions, mppToolHandlers } from './mpp.js';
 import { paymentObjectToolDefinitions, paymentObjectToolHandlers } from './payment-objects.js';
 import { fundingToolDefinitions, fundingToolHandlers } from './funding.js';
 import { escrowToolDefinitions, escrowToolHandlers } from './escrow.js';
+import { proxyToolDefinitions, proxyToolHandlers } from './proxy.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -74,6 +75,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...paymentObjectToolDefinitions,
   ...fundingToolDefinitions,
   ...escrowToolDefinitions,
+  ...proxyToolDefinitions,
 ];
 
 /**
@@ -102,6 +104,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...paymentObjectToolHandlers,
   ...fundingToolHandlers,
   ...escrowToolHandlers,
+  ...proxyToolHandlers,
 };
 
 /**
@@ -268,6 +271,10 @@ export const toolCategories = {
     'sardis_file_dispute',
     'sardis_submit_evidence',
     'sardis_resolve_dispute',
+  ],
+  proxy: [
+    'sardis_call_paid_api',
+    'sardis_preview_paid_api',
   ],
 } as const;
 
