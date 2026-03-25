@@ -77,6 +77,30 @@ Prepared answers to the hardest questions investors will ask. Practice these out
 
 ---
 
+## 11. "Are you the long-term CEO or the best CTO you've ever met?"
+
+**Answer:** I am the CEO. The product is the moat, and I am the only person who can build it at this speed. But I am not pretending I can also run enterprise sales. The raise funds a GTM lead who handles the boardroom while I handle the protocol.
+
+**Extended context (if pressed):** The best technical founders stay CEO when the product IS the moat. Sardis is not a sales-led company -- it is a protocol company with an enterprise wrapper. The CEO needs to be the person who understands the intersection of cryptography, compliance, and agent infrastructure at the deepest level. That is me. I will hire a CRO before I hire a COO.
+
+---
+
+## 12. "Can developers bypass Sardis and hit Stripe directly?"
+
+**Answer:** Yes, and that is the point. Sardis is not a payment processor. We are the governance layer that sits above Stripe, Coinbase, and every other rail. Developers can always hit Stripe directly -- but then their CFO has no audit trail, no policy enforcement, and no kill switch. We are the reason the CFO says yes to letting agents spend.
+
+**Extended context (if pressed):** We are deliberately non-custodial and rail-agnostic. The developer can always route around us for the payment itself. But the enterprise buyer cannot get compliance sign-off without us. That is the lock-in: not technical dependency, but compliance dependency. Once Sardis is in the audit trail, removing it means re-certifying with the compliance team.
+
+---
+
+## 13. "How do you manage a 45-year-old VP of Sales?"
+
+**Answer:** I do not manage their sales process -- I give them the best product to sell and stay out of their way. My job is to make sure the product is so far ahead of the market that the VP of Sales has unfair ammunition in every deal. Their job is to close. I have never managed a 45-year-old, but I have shipped more code than most 45-year-old engineering teams. I will earn their respect the same way -- by being undeniably good at my part.
+
+**Extended context (if pressed):** The hiring plan is specific: I am looking for someone who has done $100K+ ACV enterprise sales and wants to define a category, not maintain a quota. The equity and the category-defining opportunity attract the right person. I am not looking for someone I need to manage -- I am looking for a partner who runs GTM autonomously while I run product and engineering autonomously.
+
+---
+
 ## Quick Reference: Key Numbers
 
 Use these in conversation. Do not read from a slide.
