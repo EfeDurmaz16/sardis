@@ -8,6 +8,8 @@ on:
     branches:
       - main
 
+permissions: read-all
+
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"

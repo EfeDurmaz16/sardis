@@ -16,6 +16,8 @@ on:
         type: boolean
         default: true
 
+permissions: read-all
+
 env:
   PYTHON_VERSION: "3.12"
   PACKAGE_DIR: "packages/sardis-sdk-python"

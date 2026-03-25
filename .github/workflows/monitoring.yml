@@ -5,6 +5,8 @@ on:
   schedule:
     - cron: "*/10 * * * *"
 
+permissions: read-all
+
 jobs:
   health-check:
     name: API Health Check

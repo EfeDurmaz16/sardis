@@ -11,6 +11,8 @@ on:
       - 'packages/sardis-api/**'
       - 'packages/sardis-core/**'
 
+permissions: read-all
+
 env:
   PYTHON_VERSION: '3.12'
 

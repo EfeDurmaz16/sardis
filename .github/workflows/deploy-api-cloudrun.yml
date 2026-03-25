@@ -8,6 +8,8 @@ on:
       - 'packages/sardis-core/**'
       - 'packages/sardis-chain/**'
 
+permissions: read-all
+
 env:
   SERVICE_NAME: sardis-api
   REGION: us-east1

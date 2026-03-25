@@ -7,6 +7,8 @@ on:
   pull_request:
     paths: ['dashboard/**']
 
+permissions: read-all
+
 env:
   NODE_VERSION: '22'
 

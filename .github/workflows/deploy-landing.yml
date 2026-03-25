@@ -7,6 +7,8 @@ on:
   pull_request:
     paths: ['landing/**']
 
+permissions: read-all
+
 env:
   NODE_VERSION: '22'
 

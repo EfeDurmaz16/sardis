@@ -15,6 +15,8 @@ on:
           - npm-mcp-server
           - npm-ai-sdk
 
+permissions: read-all
+
 jobs:
   publish-python-core:
     name: Publish Python Core Packages

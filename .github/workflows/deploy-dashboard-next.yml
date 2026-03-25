@@ -6,6 +6,8 @@ on:
     paths:
       - 'dashboard-next/**'
 
+permissions: read-all
+
 jobs:
   deploy:
     name: Build & Deploy Dashboard
