@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/docs",
-        destination: "https://docs.sardis.sh/docs",
+        destination: "https://docs.sardis.sh/docs/",
       },
     ];
   },
