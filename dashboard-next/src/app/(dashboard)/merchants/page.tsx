@@ -12,10 +12,16 @@ import {
   Plus,
   Receipt,
   TrendingUp,
+  LinkIcon,
+  Copy,
+  Check,
+  Loader2,
+  X,
 } from 'lucide-react'
 import clsx from 'clsx'
 import StatCard from '@/components/StatCard'
 import { useMerchants, useMerchantSessions } from '@/hooks/useApi'
+import { merchantApi } from '@/api/client'
 
 type TrustLevel = 'unknown' | 'low' | 'medium' | 'high' | 'verified'
 type TrustFilter = 'all' | TrustLevel
@@ -83,8 +89,39 @@ export default function MerchantsPage() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null)
 
+  const [showCheckoutLink, setShowCheckoutLink] = useState(false)
+  const [linkForm, setLinkForm] = useState({ amount: '', slug: '', description: '' })
+  const [linkResult, setLinkResult] = useState<{ checkout_url: string; slug: string } | null>(null)
+  const [linkCreating, setLinkCreating] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+
   const { data: rawMerchants, isLoading, error } = useMerchants()
   const { data: sessions, isLoading: sessionsLoading } = useMerchantSessions(selectedMerchantId)
+
+  const handleCreateCheckoutLink = async () => {
+    if (!selectedMerchantId || !linkForm.amount || !linkForm.slug) return
+    setLinkCreating(true)
+    setLinkError(null)
+    try {
+      const res = await merchantApi.createCheckoutLink(selectedMerchantId, {
+        amount: parseFloat(linkForm.amount),
+        slug: linkForm.slug,
+        description: linkForm.description || undefined,
+      })
+      setLinkResult({ checkout_url: res.checkout_url, slug: res.slug })
+    } catch (err: any) {
+      setLinkError(err?.message || 'Failed to create checkout link')
+    } finally {
+      setLinkCreating(false)
+    }
+  }
+
+  const copyCheckoutUrl = (url: string) => {
+    navigator.clipboard.writeText(url)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   const merchants: MerchantRow[] = Array.isArray(rawMerchants)
     ? rawMerchants.map(toMerchantRow)
@@ -389,12 +426,117 @@ export default function MerchantsPage() {
       {/* Checkout Sessions Panel */}
       {selectedMerchantId && (
         <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold text-white">Checkout Sessions</h2>
-            <p className="text-gray-400 text-sm mt-1">
-              Payment sessions for selected merchant
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">Checkout Sessions</h2>
+              <p className="text-gray-400 text-sm mt-1">
+                Payment sessions for selected merchant
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowCheckoutLink(true)
+                setLinkResult(null)
+                setLinkError(null)
+                setLinkForm({ amount: '', slug: '', description: '' })
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm"
+            >
+              <LinkIcon className="w-4 h-4" />
+              Create Checkout Link
+            </button>
           </div>
+
+          {/* Create Checkout Link inline form */}
+          {showCheckoutLink && (
+            <div className="card p-6 border border-sardis-500/20 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">New Checkout Link</h3>
+                <button
+                  onClick={() => setShowCheckoutLink(false)}
+                  className="text-gray-500 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {!linkResult ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">Amount (USDC)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={linkForm.amount}
+                        onChange={(e) => setLinkForm(prev => ({ ...prev, amount: e.target.value }))}
+                        placeholder="25.00"
+                        className="w-full px-3 py-2 bg-dark-200 border border-dark-100 text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">Slug (URL path)</label>
+                      <input
+                        type="text"
+                        value={linkForm.slug}
+                        onChange={(e) => setLinkForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                        placeholder="premium-plan"
+                        className="w-full px-3 py-2 bg-dark-200 border border-dark-100 text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={linkForm.description}
+                        onChange={(e) => setLinkForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Premium Plan"
+                        className="w-full px-3 py-2 bg-dark-200 border border-dark-100 text-white placeholder-gray-500 focus:outline-none focus:border-sardis-500/50 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {linkError && (
+                    <div className="flex items-center gap-2 text-sm text-red-400">
+                      <AlertCircle className="w-4 h-4" />
+                      {linkError}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleCreateCheckoutLink}
+                      disabled={linkCreating || !linkForm.amount || !linkForm.slug}
+                      className="flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {linkCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LinkIcon className="w-4 h-4" />}
+                      {linkCreating ? 'Creating...' : 'Create Link'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                    <Check className="w-4 h-4" />
+                    Checkout link created!
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-dark-300 text-sardis-400 text-sm font-mono truncate">
+                      {linkResult.checkout_url}
+                    </code>
+                    <button
+                      onClick={() => copyCheckoutUrl(linkResult.checkout_url)}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-dark-200 text-gray-300 hover:text-white transition-colors text-sm"
+                    >
+                      {linkCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                      {linkCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Session Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
