@@ -69,8 +69,8 @@ class PolarBillingAdapter:
         self,
         org_id: str,
         plan: str,
-        success_url: str = "https://dashboard.sardis.sh/billing?success=1",
-        cancel_url: str = "https://dashboard.sardis.sh/billing?canceled=1",
+        success_url: str = "https://app.sardis.sh/billing?success=1",
+        cancel_url: str = "https://app.sardis.sh/billing?canceled=1",
     ) -> PolarCheckoutResult:
         """Create a Polar checkout session for a subscription plan.
 

@@ -22,6 +22,20 @@ logger = logging.getLogger(__name__)
 # Module-level config instance
 _billing_config = BillingConfig()
 
+# Plan display names and descriptions for inline Stripe price_data fallback
+PLAN_LABELS = {
+    "dev": "Dev",
+    "starter": "Starter",
+    "growth": "Growth",
+    "enterprise": "Enterprise",
+}
+PLAN_DESCRIPTIONS = {
+    "dev": "Testnet only, 100 tx/mo, 2 agents, no SLA",
+    "starter": "Production, unlimited tx, mainnet, 25 agents, SLA",
+    "growth": "KYB, PEP screening, advanced audit, FX, 100 agents",
+    "enterprise": "White-glove, dedicated support, unlimited",
+}
+
 router = APIRouter(
     prefix="/api/v2/billing",
     tags=["billing"],
@@ -296,13 +310,6 @@ async def create_checkout_session(
             detail=f"Plan must be one of: {sorted(_PAID_PLANS)}",
         )
 
-    _plan_to_price = {
-        "dev": _billing_config.stripe_price_dev,
-        "starter": _billing_config.stripe_price_starter,
-        "growth": _billing_config.stripe_price_growth,
-    }
-    price_id = _plan_to_price[body.plan]
-
     try:
         import stripe  # type: ignore[import]
     except ImportError as exc:
@@ -315,17 +322,73 @@ async def create_checkout_session(
     stripe.api_key = _billing_config.stripe_secret_key
 
     dashboard_billing_url = os.getenv(
-        "SARDIS_DASHBOARD_BILLING_URL", "https://dashboard.sardis.sh/billing"
+        "SARDIS_DASHBOARD_BILLING_URL", "https://app.sardis.sh/billing"
     )
 
+    # Build line_items: prefer pre-configured Stripe price IDs, fall back to
+    # inline price_data so checkout works even without dashboard-created prices.
+    _plan_to_price = {
+        "dev": _billing_config.stripe_price_dev,
+        "starter": _billing_config.stripe_price_starter,
+        "growth": _billing_config.stripe_price_growth,
+    }
+    price_id = _plan_to_price.get(body.plan, "")
+
+    def _build_inline_line_items() -> list[dict]:
+        """Inline price_data — creates an ad-hoc price so checkout works
+        without pre-created Stripe products/prices."""
+        plan_display = PLAN_LABELS.get(body.plan, body.plan.title())
+        return [
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": PLAN_PRICES_CENTS[body.plan],
+                    "recurring": {"interval": "month"},
+                    "product_data": {
+                        "name": f"Sardis {plan_display} Plan",
+                        "description": PLAN_DESCRIPTIONS.get(body.plan, ""),
+                    },
+                },
+                "quantity": 1,
+            }
+        ]
+
+    checkout_kwargs = {
+        "mode": "subscription",
+        "success_url": f"{dashboard_billing_url}?success=1",
+        "cancel_url": f"{dashboard_billing_url}?canceled=1",
+        "metadata": {"org_id": principal.organization_id, "plan": body.plan},
+    }
+
     try:
-        session = stripe.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=f"{dashboard_billing_url}?success=1",
-            cancel_url=f"{dashboard_billing_url}?canceled=1",
-            metadata={"org_id": principal.organization_id, "plan": body.plan},
-        )
+        if price_id:
+            checkout_kwargs["line_items"] = [{"price": price_id, "quantity": 1}]
+            session = stripe.checkout.Session.create(**checkout_kwargs)
+        else:
+            checkout_kwargs["line_items"] = _build_inline_line_items()
+            session = stripe.checkout.Session.create(**checkout_kwargs)
+    except stripe.InvalidRequestError as exc:
+        # Price ID doesn't exist on this Stripe account — retry with inline price_data
+        if price_id and "No such price" in str(exc):
+            logger.warning(
+                "Stripe price %s not found, falling back to inline price_data for plan %s",
+                price_id, body.plan,
+            )
+            try:
+                checkout_kwargs["line_items"] = _build_inline_line_items()
+                session = stripe.checkout.Session.create(**checkout_kwargs)
+            except Exception as inner_exc:
+                logger.error("Stripe checkout fallback failed: %s", inner_exc)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to create checkout session",
+                ) from inner_exc
+        else:
+            logger.error("Stripe checkout session creation failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to create checkout session",
+            ) from exc
     except Exception as exc:
         logger.error("Stripe checkout session creation failed: %s", exc)
         raise HTTPException(
@@ -370,7 +433,7 @@ async def create_portal_session(
 
     stripe.api_key = _billing_config.stripe_secret_key
     dashboard_billing_url = os.getenv(
-        "SARDIS_DASHBOARD_BILLING_URL", "https://dashboard.sardis.sh/billing"
+        "SARDIS_DASHBOARD_BILLING_URL", "https://app.sardis.sh/billing"
     )
 
     try:
