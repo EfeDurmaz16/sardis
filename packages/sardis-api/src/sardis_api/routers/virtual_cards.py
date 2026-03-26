@@ -5,6 +5,10 @@ policy enforcement. Cards are funded with USDC on Tempo via MPP x402.
 
 Flow: Agent -> Sardis policy check -> Laso x402 -> Visa prepaid card
 
+Sandbox mode: When SARDIS_CHAIN_MODE != "live", returns simulated card data
+so the full flow can be demonstrated without a funded Tempo wallet or Laso
+connectivity. Real cards are issued when Laso is configured and live.
+
 Endpoints:
     POST /cards/virtual/issue          — Issue a virtual card ($5-$1,000)
     GET  /cards/virtual/{card_id}      — Get card details
@@ -14,7 +18,11 @@ Endpoints:
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -24,6 +32,9 @@ from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
+
+# In-memory store for sandbox cards so GET /cards/virtual/{card_id} works
+_sandbox_cards: dict[str, dict] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -48,6 +59,7 @@ class CardResponse(BaseModel):
     card_type: str
     billing_address: dict = Field(default_factory=dict)
     created_at: str = ""
+    sandbox: bool = Field(default=False, description="True when card is simulated (non-live mode)")
 
 
 class CardSummaryResponse(BaseModel):
@@ -75,6 +87,7 @@ class CardPaymentResponse(BaseModel):
     amount: str
     currency: str
     status: str  # approved, declined, pending
+    sandbox: bool = Field(default=False, description="True when payment is simulated")
 
 
 class SendPaymentRequest(BaseModel):
@@ -90,17 +103,81 @@ class PaymentResponse(BaseModel):
     method: str
     recipient: str
     status: str
+    sandbox: bool = Field(default=False, description="True when payment is simulated")
 
 
 class BalanceResponse(BaseModel):
     available: str
     pending: str
     currency: str
+    sandbox: bool = Field(default=False, description="True when balance is simulated")
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _is_sandbox_mode() -> bool:
+    """Return True when Laso should use sandbox (simulated) card data.
+
+    Sandbox mode is active when:
+    - SARDIS_CHAIN_MODE is not "live", OR
+    - SARDIS_VIRTUAL_CARDS_SANDBOX is explicitly "true"
+
+    In sandbox mode every endpoint returns deterministic fake data so the
+    full API flow can be demonstrated without Laso connectivity or a funded
+    Tempo wallet.
+    """
+    if os.getenv("SARDIS_VIRTUAL_CARDS_SANDBOX", "").strip().lower() == "true":
+        return True
+    chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
+    return chain_mode != "live"
+
+
+def _generate_sandbox_card(
+    amount: Decimal,
+    currency: str = "USD",
+    card_type: str = "single_use",
+) -> dict:
+    """Generate a deterministic sandbox virtual card.
+
+    The card number uses the 4000-00 Visa test range so it is obviously
+    non-real.  The card_id is a stable UUID derived from a hash of the
+    request parameters so repeated identical calls get the same card.
+    """
+    card_id = f"sandbox_card_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    # Deterministic but obviously-fake card number (Visa test prefix 4000 00)
+    seed = hashlib.sha256(f"{card_id}{amount}{now.isoformat()[:10]}".encode()).hexdigest()
+    card_number = f"4000 00{seed[:2]} {seed[2:6]} {seed[6:10]}"
+    cvv = seed[10:13]  # 3-digit
+    expiry_month = str((int(seed[13:15], 16) % 12) + 1).zfill(2)
+    expiry_year = str(now.year + 2)
+    expiry = f"{expiry_month}/{expiry_year}"
+
+    card_data = {
+        "card_id": card_id,
+        "card_number": card_number,
+        "cvv": cvv,
+        "expiry": expiry,
+        "amount": str(amount),
+        "currency": currency,
+        "status": "ready",
+        "card_type": card_type,
+        "billing_address": {
+            "line1": "1111B S Governors Ave",
+            "city": "Dover",
+            "state": "DE",
+            "postal_code": "19904",
+            "country": "US",
+        },
+        "created_at": now.isoformat(),
+        "sandbox": True,
+    }
+    # Store in memory so GET can retrieve it
+    _sandbox_cards[card_id] = card_data
+    return card_data
+
 
 def _get_laso_service():
     """Import and instantiate LasoMPPService (lazy to avoid import-time failures)."""
@@ -145,11 +222,41 @@ async def issue_virtual_card(
     Laso Finance MPP service. The x402 authentication ($0.001 USDC)
     is handled automatically by the MPP transport layer.
 
-    Restrictions: US-only, $5-$1,000, non-reloadable, no 3D Secure.
+    In sandbox mode (SARDIS_CHAIN_MODE != "live"), returns a simulated
+    card with a Visa test-range number so the flow can be demonstrated
+    without Laso connectivity or a funded Tempo wallet.
+
+    Restrictions (live mode): US-only, $5-$1,000, non-reloadable, no 3D Secure.
     """
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
+    # ── Sandbox mode: return simulated card ──────────────────────────
+    if _is_sandbox_mode():
+        card_data = _generate_sandbox_card(
+            amount=req.amount,
+            currency=req.currency,
+            card_type=req.card_type,
+        )
+        logger.info(
+            "Sandbox virtual card issued: %s ($%s %s) for org %s",
+            card_data["card_id"], req.amount, req.card_type, principal.org_id,
+        )
+        return CardResponse(
+            card_id=card_data["card_id"],
+            card_number=card_data["card_number"],
+            cvv=card_data["cvv"],
+            expiry=card_data["expiry"],
+            amount=card_data["amount"],
+            currency=card_data["currency"],
+            status=card_data["status"],
+            card_type=card_data["card_type"],
+            billing_address=card_data["billing_address"],
+            created_at=card_data["created_at"],
+            sandbox=True,
+        )
+
+    # ── Live mode: issue real card via Laso ───────────────────────────
     try:
         laso = _get_laso_service()
         card = await laso.issue_card(
@@ -160,13 +267,17 @@ async def issue_virtual_card(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        from sardis_mpp.services.laso import LasoLimitExceeded, LasoPaymentRequired
+        try:
+            from sardis_mpp.services.laso import LasoLimitExceeded, LasoPaymentRequired
+        except ImportError:
+            logger.error("Laso card issuance failed (sardis_mpp not installed): %s", e)
+            raise HTTPException(status_code=502, detail=f"Card issuance failed: {e}")
         if isinstance(e, LasoLimitExceeded):
             raise HTTPException(status_code=429, detail=str(e))
         if isinstance(e, LasoPaymentRequired):
             raise HTTPException(
                 status_code=502,
-                detail="x402 payment failed — check Tempo wallet balance",
+                detail="x402 payment failed -- check Tempo wallet balance",
             )
         logger.error("Laso card issuance failed: %s", e)
         raise HTTPException(status_code=502, detail=f"Card issuance failed: {e}")
@@ -187,6 +298,7 @@ async def issue_virtual_card(
         card_type=card.card_type,
         billing_address=card.billing_address,
         created_at=card.created_at,
+        sandbox=False,
     )
 
 
@@ -199,7 +311,30 @@ async def get_virtual_card(
     card_id: str,
     principal: Principal = Depends(require_principal),
 ) -> CardResponse:
-    """Retrieve card details (number, CVV, expiry, billing address, status)."""
+    """Retrieve card details (number, CVV, expiry, billing address, status).
+
+    In sandbox mode, returns the in-memory sandbox card if it exists.
+    """
+    # ── Sandbox mode ─────────────────────────────────────────────────
+    if _is_sandbox_mode():
+        card_data = _sandbox_cards.get(card_id)
+        if not card_data:
+            raise HTTPException(status_code=404, detail=f"Sandbox card {card_id} not found")
+        return CardResponse(
+            card_id=card_data["card_id"],
+            card_number=card_data["card_number"],
+            cvv=card_data["cvv"],
+            expiry=card_data["expiry"],
+            amount=card_data["amount"],
+            currency=card_data["currency"],
+            status=card_data["status"],
+            card_type=card_data["card_type"],
+            billing_address=card_data.get("billing_address", {}),
+            created_at=card_data.get("created_at", ""),
+            sandbox=True,
+        )
+
+    # ── Live mode ────────────────────────────────────────────────────
     try:
         laso = _get_laso_service()
         card = await laso.get_card_data(card_id)
@@ -218,6 +353,7 @@ async def get_virtual_card(
         card_type=card.card_type,
         billing_address=card.billing_address,
         created_at=card.created_at,
+        sandbox=False,
     )
 
 
@@ -239,10 +375,45 @@ async def use_card_for_payment(
     match the card value exactly.
 
     With mandate_id, the payment is validated against spending policy limits.
+    In sandbox mode, validates against in-memory card data.
     """
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
+    # ── Sandbox mode ─────────────────────────────────────────────────
+    if _is_sandbox_mode():
+        card_data = _sandbox_cards.get(card_id)
+        if not card_data:
+            raise HTTPException(status_code=404, detail=f"Sandbox card {card_id} not found")
+        card_status = card_data.get("status", "unknown")
+        if card_status not in ("ready", "active", "funded"):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Card {card_id} is not ready (status: {card_status})",
+            )
+        card_amount = Decimal(card_data.get("amount", "0"))
+        if req.amount > card_amount:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Payment ${req.amount} exceeds card balance ${card_amount}",
+            )
+        # Mark sandbox card as used for single-use cards
+        if card_data.get("card_type") == "single_use":
+            card_data["status"] = "used"
+        logger.info(
+            "Sandbox card payment: %s -> %s ($%s) for org %s",
+            card_id, req.merchant_name, req.amount, principal.org_id,
+        )
+        return CardPaymentResponse(
+            card_id=card_id,
+            merchant_name=req.merchant_name,
+            amount=str(req.amount),
+            currency=req.currency,
+            status="approved",
+            sandbox=True,
+        )
+
+    # ── Live mode ────────────────────────────────────────────────────
     try:
         laso = _get_laso_service()
 
@@ -264,7 +435,7 @@ async def use_card_for_payment(
             card_id, req.merchant_name, req.amount, principal.org_id,
         )
 
-        # Card details are returned — the actual charge happens when the
+        # Card details are returned -- the actual charge happens when the
         # card number is used at the merchant. This endpoint validates
         # and logs the intent for audit purposes.
         return CardPaymentResponse(
@@ -273,6 +444,7 @@ async def use_card_for_payment(
             amount=str(req.amount),
             currency=req.currency,
             status="approved",
+            sandbox=False,
         )
 
     except HTTPException:
@@ -295,10 +467,28 @@ async def send_payment(
     """Send payment via Venmo (phone) or PayPal (email).
 
     Funded with USDC on Tempo. Requires human confirmation before processing.
+    In sandbox mode, returns a simulated pending payment.
     """
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
+    # ── Sandbox mode ─────────────────────────────────────────────────
+    if _is_sandbox_mode():
+        payment_id = f"sandbox_pay_{uuid.uuid4().hex[:12]}"
+        logger.info(
+            "Sandbox %s payment: $%s -> %s for org %s",
+            req.method, req.amount, req.recipient, principal.org_id,
+        )
+        return PaymentResponse(
+            payment_id=payment_id,
+            amount=str(req.amount),
+            method=req.method,
+            recipient=req.recipient,
+            status="pending_confirmation",
+            sandbox=True,
+        )
+
+    # ── Live mode ────────────────────────────────────────────────────
     try:
         laso = _get_laso_service()
         payment = await laso.send_payment(
@@ -318,6 +508,7 @@ async def send_payment(
         method=payment.method,
         recipient=payment.recipient,
         status=payment.status,
+        sandbox=False,
     )
 
 
@@ -329,7 +520,20 @@ async def send_payment(
 async def get_balance(
     principal: Principal = Depends(require_principal),
 ) -> BalanceResponse:
-    """Get the Laso account balance (available and pending)."""
+    """Get the Laso account balance (available and pending).
+
+    In sandbox mode, returns a simulated $1,000 available balance.
+    """
+    # ── Sandbox mode ─────────────────────────────────────────────────
+    if _is_sandbox_mode():
+        return BalanceResponse(
+            available="1000.00",
+            pending="0.00",
+            currency="USD",
+            sandbox=True,
+        )
+
+    # ── Live mode ────────────────────────────────────────────────────
     try:
         laso = _get_laso_service()
         balance = await laso.get_balance()
@@ -341,4 +545,5 @@ async def get_balance(
         available=str(balance.available),
         pending=str(balance.pending),
         currency=balance.currency,
+        sandbox=False,
     )
