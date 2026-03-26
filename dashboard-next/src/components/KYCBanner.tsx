@@ -52,8 +52,9 @@ export default function KYCBanner() {
       });
       if (!res.ok) throw new Error("Failed to initiate KYC");
       const data = await res.json();
-      if (data.verification_url) {
-        window.open(data.verification_url, "_blank", "noopener");
+      const url = data.redirect_url || data.verification_url;
+      if (url) {
+        window.open(url, "_blank", "noopener,noreferrer");
       }
       setStatus("pending");
     } catch {

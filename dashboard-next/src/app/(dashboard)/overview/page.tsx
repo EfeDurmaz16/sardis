@@ -41,7 +41,6 @@ import {
 } from 'recharts'
 import clsx from 'clsx'
 import StatCard from '@/components/StatCard'
-import KYCBanner from '@/components/KYCBanner'
 import { FaucetButton } from '@/components/FaucetButton'
 import { OnboardingChecklist } from '@/components/OnboardingChecklist'
 import { useAgents, useMerchants, useWebhooks, useHealth, useTransactions, usePendingApprovals, useKillSwitchStatus, useBillingAccount, useDashboardMetrics } from '@/hooks/useApi'
@@ -219,7 +218,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <KYCBanner />
       <OnboardingChecklist />
       <QuickStartCard transactionCount={(transactions as Transaction[]).length} />
 
