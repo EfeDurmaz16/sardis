@@ -83,7 +83,7 @@ class WalletFundRequest(BaseModel):
     network: str | None = Field(
         default=None,
         description="Target chain: 'base' (default), 'ethereum', 'solana', 'bitcoin', 'tempo'. "
-        "Defaults to 'tempo' for Conduit provider. "
+        "Defaults to 'base' for Coinbase/MoonPay, 'tempo' for Conduit. "
         "Omit to use the platform default.",
     )
     target_chain: str | None = Field(
@@ -368,13 +368,20 @@ async def fund_wallet(
     # Determine sandbox mode from environment
     sandbox = os.getenv("SARDIS_ENVIRONMENT", "dev") != "production"
 
+    # Resolve target network — default to 'base' for Turnkey providers
+    # (Tempo is not supported by Turnkey/Coinbase/MoonPay onramp)
+    resolved_network = (req.target_chain or req.network or "base").lower()
+    if resolved_network == "tempo":
+        logger.info("Turnkey onramp does not support Tempo; falling back to 'base'")
+        resolved_network = "base"
+
     try:
         session = await svc.create_onramp_session(
             wallet_address=wallet_address,
             amount_usd=req.amount,
             currency=req.currency,
             provider=req.provider,
-            network=req.network,
+            network=resolved_network,
             crypto_currency=req.crypto_currency,
             country_code=req.country_code,
             country_subdivision_code=req.country_subdivision_code,
