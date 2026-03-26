@@ -300,7 +300,27 @@ export default function BillingPage() {
       ]);
 
       if (accountRes && accountRes.ok) {
-        setAccount(await accountRes.json());
+        const raw = await accountRes.json();
+        // API returns { account: {...}, usage: {...} } — flatten to BillingAccount shape
+        if (raw.account) {
+          setAccount({
+            plan: raw.account.plan ?? 'dev',
+            status: raw.account.status ?? 'active',
+            usage: raw.usage ?? {
+              api_calls_used: 0,
+              api_calls_limit: null,
+              tx_volume_cents: 0,
+              tx_volume_limit_cents: null,
+              agents_used: 0,
+              agents_limit: null,
+            },
+            stripe_customer_id: raw.account.stripe_customer_id ?? null,
+            current_period_end: raw.account.current_period_end ?? null,
+          });
+        } else {
+          // Fallback: response is already in the expected flat shape
+          setAccount(raw);
+        }
       } else {
         setBillingError(true);
       }
