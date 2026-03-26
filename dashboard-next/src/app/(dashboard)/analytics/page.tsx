@@ -29,7 +29,7 @@ import { CategoryPie } from '@/components/charts/CategoryPie';
 import { getAuthHeaders } from '@/api/client';
 
 // API base URL
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 
 // Types matching backend response models
 interface TimeSeriesDataPoint {

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { KeyRound, ArrowLeft, CheckCircle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

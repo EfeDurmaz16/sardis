@@ -5,7 +5,7 @@ import { Droplets, Loader2 } from 'lucide-react'
 export function FaucetButton() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim()
 
   async function handleDrip() {
     setLoading(true)

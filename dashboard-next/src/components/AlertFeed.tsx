@@ -24,7 +24,7 @@ interface AlertFeedProps {
 }
 
 const AlertFeed: React.FC<AlertFeedProps> = ({
-  apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/^http/, 'ws'),
+  apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').trim().replace(/^http/, 'ws'),
   token,
   organizationId,
   enableSound = false,

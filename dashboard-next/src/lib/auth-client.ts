@@ -41,7 +41,7 @@ export function useAuth() {
 // ---------------------------------------------------------------------------
 
 const SARDIS_API_URL =
-  process.env.NEXT_PUBLIC_SARDIS_API_URL || "https://api.sardis.sh";
+  (process.env.NEXT_PUBLIC_SARDIS_API_URL || "https://api.sardis.sh").trim();
 
 /** Fetch the Agent Auth discovery document from the API. */
 export async function fetchAgentDiscovery() {

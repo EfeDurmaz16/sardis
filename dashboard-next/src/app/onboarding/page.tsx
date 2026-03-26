@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import SardisLogo from "@/components/SardisLogo";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 /** Read the Sardis JWT stored at login/signup (not the better-auth session token). */
 function getSardisToken(): string | null {

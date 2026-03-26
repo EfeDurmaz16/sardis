@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Shield, Eye, EyeOff } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");

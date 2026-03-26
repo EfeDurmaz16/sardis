@@ -81,7 +81,7 @@ export default function PlaygroundPage() {
   const [sandboxOnline, setSandboxOnline] = useState<boolean | null>(null)
 
   useState(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').trim()
     fetch(apiBase + '/api/v2/sandbox/demo-data')
       .then((r) => setSandboxOnline(r.ok))
       .catch(() => setSandboxOnline(false))
@@ -99,7 +99,7 @@ export default function PlaygroundPage() {
     setIsRunning(true)
     setResult(null)
     setError(null)
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || ''
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || '').trim()
     const url = apiBase + '/api/v2' + selectedEndpoint.path
     const steps: TraceStep[] = [
       { id: 'policy', label: 'Policy Check', status: 'pending' },

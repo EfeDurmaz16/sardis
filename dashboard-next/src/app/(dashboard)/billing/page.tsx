@@ -23,7 +23,7 @@ import {
 import { useAuth } from '@/lib/auth-client';
 import { getAuthHeaders } from '@/api/client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 
 // Types
 interface BillingPlan {

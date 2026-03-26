@@ -5,7 +5,7 @@ import { getAuthHeaders } from "../api/client";
 
 type KYCStatus = "not_started" | "pending" | "approved" | "rejected" | "expired";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 export default function KYCBanner() {
   const [status, setStatus] = useState<KYCStatus | null>(null);

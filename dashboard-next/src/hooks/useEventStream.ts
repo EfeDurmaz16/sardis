@@ -10,7 +10,7 @@ export function useEventStream(apiUrl?: string) {
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [connected, setConnected] = useState(false);
 
-  const baseUrl = apiUrl || process.env.NEXT_PUBLIC_API_URL || '';
+  const baseUrl = (apiUrl || process.env.NEXT_PUBLIC_API_URL || '').trim();
 
   useEffect(() => {
     const token = localStorage.getItem('sardis_api_key') || '';

@@ -7,7 +7,7 @@ import clsx from 'clsx'
 import { useAgents, useWebhooks, useBillingAccount, useTransactions } from '@/hooks/useApi'
 import { useQuery } from '@tanstack/react-query'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim()
 
 async function fetchKycStatus(): Promise<{ status: string } | null> {
   try { const res = await fetch(`${API_BASE}/api/v2/kyc/status`, { credentials: 'include' }); if (!res.ok) return null; return res.json() } catch { return null }

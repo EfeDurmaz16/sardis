@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Shield, Copy, Check } from "lucide-react";
 import { signIn, signUp } from "@/lib/auth-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");

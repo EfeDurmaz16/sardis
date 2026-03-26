@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import SardisLogo from "@/components/SardisLogo";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 type KYBStatus = "form" | "verifying" | "success" | "pending" | "failed";
 

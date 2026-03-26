@@ -28,7 +28,7 @@ import {
 import clsx from 'clsx'
 import { useAuth } from '@/lib/auth-client'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim()
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

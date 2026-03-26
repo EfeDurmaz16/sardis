@@ -15,7 +15,7 @@ import { Pool } from "pg";
  */
 export const AGENT_AUTH_CONFIG = {
   discoveryUrl:
-    process.env.SARDIS_API_URL || "https://api.sardis.sh",
+    (process.env.SARDIS_API_URL || "https://api.sardis.sh").trim(),
   discoveryPath: "/.well-known/agent-configuration",
   algorithms: ["Ed25519"] as const,
   supportedModes: ["delegated", "autonomous"] as const,

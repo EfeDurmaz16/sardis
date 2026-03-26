@@ -46,7 +46,7 @@ interface LedgerEntry {
   anchor_id?: string
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 
 export default function AuditAnchorsPage() {
   // Fetch anchors from API

@@ -5,7 +5,7 @@ import { Key, Plus, Trash2, Copy, Check, AlertTriangle, AlertCircle, X, Loader2,
 import { useSession } from '@/lib/auth-client';
 import { getAuthHeaders } from '@/api/client';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 
 interface ApiKey { id: string; key_prefix: string; name: string; scopes: string[]; rate_limit: number | null; is_active?: boolean; created_at: string; last_used_at: string | null; expires_at: string | null; mode?: string; environment?: string }
 interface ApiKeyListResponse { keys: ApiKey[] }

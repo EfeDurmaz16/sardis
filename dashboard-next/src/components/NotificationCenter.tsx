@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Bell, Info, AlertTriangle, AlertOctagon, X, CheckCheck, ExternalLink } from 'lucide-react'
 import clsx from 'clsx'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || ''
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || '').trim()
 const STORAGE_KEY = 'sardis_read_alerts'
 const MAX_ALERTS = 20
 const POLL_INTERVAL_MS = 30_000

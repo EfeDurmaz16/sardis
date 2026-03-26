@@ -18,7 +18,7 @@ import {
   PartyPopper,
 } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
 const STEPS = [
   { label: "KYB Verification", icon: Building2, done: true },
