@@ -1770,7 +1770,7 @@ async def get_agent_card():
         ],
         "payment": {
             "supported_tokens": ["USDC", "USDT", "EURC"],
-            "supported_chains": ["base", "polygon", "ethereum", "arbitrum", "optimism"],
+            "supported_chains": ["base", "polygon", "ethereum", "arbitrum", "optimism", "tempo"],
             "min_amount_minor": 100,
             "max_amount_minor": 10_000_000,
             "ap2_compliant": True,

@@ -146,10 +146,11 @@ class PaymentIdentityResponse(BaseModel):
 
 # Dependency
 class AgentDependencies:
-    def __init__(self, agent_repo: AgentRepository, wallet_repo: WalletRepository, kya_service=None):
+    def __init__(self, agent_repo: AgentRepository, wallet_repo: WalletRepository, kya_service=None, wallet_manager=None):
         self.agent_repo = agent_repo
         self.wallet_repo = wallet_repo
         self.kya_service = kya_service
+        self.wallet_manager = wallet_manager
 
 
 def get_deps() -> AgentDependencies:
@@ -535,12 +536,40 @@ async def create_agent(
 
     # Optionally create a wallet for the agent
     if request.create_wallet:
+        addresses: dict[str, str] | None = None
+        wallet_id_override: str | None = None
+
+        # Call Turnkey to create a real MPC wallet with an on-chain address
+        if deps.wallet_manager:
+            try:
+                provider_result = await deps.wallet_manager.create_turnkey_wallet(
+                    wallet_name=f"agent_{agent.agent_id}",
+                    agent_id=agent.agent_id,
+                )
+                wallet_id_override = provider_result.get("wallet_id")
+                addrs = provider_result.get("addresses") or []
+                first_addr = None
+                if addrs:
+                    first_addr = addrs[0].get("address") if isinstance(addrs[0], dict) else addrs[0]
+                if isinstance(first_addr, str) and first_addr:
+                    addresses = {
+                        "base_sepolia": first_addr, "base": first_addr,
+                        "ethereum": first_addr, "polygon": first_addr,
+                        "arbitrum": first_addr, "optimism": first_addr,
+                        "tempo": first_addr,
+                    }
+            except Exception as e:
+                logger.warning("Turnkey wallet creation failed for agent %s: %s", agent.agent_id, e)
+                # Fall through — wallet will be created without addresses (can be fixed later)
+
         wallet = await deps.wallet_repo.create(
             agent_id=agent.agent_id,
+            wallet_id=wallet_id_override,
             mpc_provider="turnkey",
             currency="USDC",
             limit_per_tx=spending_limits.per_transaction if spending_limits else Decimal("100.00"),
             limit_total=spending_limits.total if spending_limits else Decimal("1000.00"),
+            addresses=addresses,
         )
         await deps.agent_repo.bind_wallet(agent.agent_id, wallet.wallet_id)
         agent.wallet_id = wallet.wallet_id
@@ -677,12 +706,39 @@ async def create_payment_identity(
 
     wallet_id = agent.wallet_id
     if not wallet_id and request.ensure_wallet:
+        pi_addresses: dict[str, str] | None = None
+        pi_wallet_id_override: str | None = None
+
+        # Call Turnkey to create a real MPC wallet with an on-chain address
+        if deps.wallet_manager:
+            try:
+                pi_result = await deps.wallet_manager.create_turnkey_wallet(
+                    wallet_name=f"agent_{agent.agent_id}",
+                    agent_id=agent.agent_id,
+                )
+                pi_wallet_id_override = pi_result.get("wallet_id")
+                pi_addrs = pi_result.get("addresses") or []
+                pi_first = None
+                if pi_addrs:
+                    pi_first = pi_addrs[0].get("address") if isinstance(pi_addrs[0], dict) else pi_addrs[0]
+                if isinstance(pi_first, str) and pi_first:
+                    pi_addresses = {
+                        "base_sepolia": pi_first, "base": pi_first,
+                        "ethereum": pi_first, "polygon": pi_first,
+                        "arbitrum": pi_first, "optimism": pi_first,
+                        "tempo": pi_first,
+                    }
+            except Exception as e:
+                logger.warning("Turnkey wallet creation failed for payment identity %s: %s", agent.agent_id, e)
+
         wallet = await deps.wallet_repo.create(
             agent_id=agent.agent_id,
+            wallet_id=pi_wallet_id_override,
             mpc_provider="turnkey",
             currency="USDC",
             limit_per_tx=agent.spending_limits.per_transaction,
             limit_total=agent.spending_limits.total,
+            addresses=pi_addresses,
         )
         wallet_id = wallet.wallet_id
         await deps.agent_repo.bind_wallet(agent.agent_id, wallet_id)

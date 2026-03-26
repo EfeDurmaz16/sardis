@@ -524,7 +524,7 @@ def validate_chain_address(
     """
     chain_lower = chain.lower()
 
-    if chain_lower in ("ethereum", "polygon", "base", "arbitrum", "optimism"):
+    if chain_lower in ("ethereum", "polygon", "base", "arbitrum", "optimism", "tempo"):
         return validate_eth_address(value, field_name)
     elif chain_lower == "solana":
         return validate_solana_address(value, field_name)
@@ -558,7 +558,7 @@ def validate_tx_hash(
     """
     chain_lower = chain.lower()
 
-    if chain_lower in ("ethereum", "polygon", "base", "arbitrum", "optimism"):
+    if chain_lower in ("ethereum", "polygon", "base", "arbitrum", "optimism", "tempo"):
         return validate_string(value, field_name=field_name, pattern=ETH_TX_HASH_PATTERN)
     elif chain_lower == "solana":
         return validate_string(value, field_name=field_name, pattern=SOLANA_TX_HASH_PATTERN)

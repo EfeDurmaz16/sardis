@@ -434,7 +434,7 @@ def load_config_from_env() -> SardisConfig:
 
     # Load RPC URLs from environment
     rpc_urls = {}
-    chains = ["ethereum", "polygon", "base", "arbitrum", "optimism", "solana"]
+    chains = ["ethereum", "polygon", "base", "arbitrum", "optimism", "solana", "tempo"]
     for chain in chains:
         url = os.getenv(f"RPC_URL_{chain.upper()}")
         if url:
