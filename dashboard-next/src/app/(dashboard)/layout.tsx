@@ -28,6 +28,7 @@ import {
   User,
   Terminal,
   Store,
+  SlidersHorizontal,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
@@ -82,6 +83,7 @@ const navSections: NavSection[] = [
       { name: 'Kill Switch', href: '/kill-switch', icon: Power },
       { name: 'Approvals', href: '/approvals', icon: CheckSquare },
       { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
+      { name: 'Checkout Controls', href: '/checkout-controls', icon: SlidersHorizontal },
       { name: 'Evidence', href: '/evidence', icon: FileSearch },
     ],
   },
