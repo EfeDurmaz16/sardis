@@ -10,16 +10,18 @@ This package provides OpenClaw skill definitions for Sardis, enabling AI agents 
 
 ## Available Skills
 
-### [sardis-payment](./SKILL.md) - Core Payment Skill (Primary)
+### [sardis](./SKILL.md) - Core Payment Skill (Primary)
 
-The main skill combining all four demo capabilities:
+The main skill combining all agent payment capabilities:
 
-1. **Create Wallet** - Provision non-custodial MPC wallets for agents
+1. **Create Agent + Wallet** - Provision agent identity with MPC wallet
 2. **Send Payment** - Execute stablecoin transfers with policy enforcement
 3. **Check Balance** - Real-time multi-chain balance queries
 4. **Set Spending Policy** - Natural language spending rules
+5. **Issue Virtual Card** - Stablecoin-funded Visa cards
+6. **Spending Mandates** - Scoped, time-limited fund authority
 
-**Requirements:** `SARDIS_API_KEY`, `SARDIS_WALLET_ID`
+**Requirements:** `SARDIS_API_KEY`
 
 ---
 
@@ -103,27 +105,27 @@ npm install @sardis/sdk
 All skills work with curl-based API calls (no SDK required):
 
 ```bash
-# Create wallet
-curl -X POST https://api.sardis.sh/v2/wallets \
-  -H "Authorization: Bearer $SARDIS_API_KEY" \
+# Create agent (auto-provisions wallet)
+curl -X POST https://api.sardis.sh/api/v2/agents \
+  -H "X-API-Key: $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"agent_id": "agent_123", "provider": "turnkey", "chain": "base"}'
+  -d '{"name": "my-agent", "description": "Payment agent"}'
 
 # Check balance
-curl -X GET https://api.sardis.sh/v2/wallets/{wallet_id}/balances \
-  -H "Authorization: Bearer $SARDIS_API_KEY"
+curl -X GET "https://api.sardis.sh/api/v2/wallets/{wallet_id}/balances" \
+  -H "X-API-Key: $SARDIS_API_KEY"
 
 # Set policy (natural language)
-curl -X POST https://api.sardis.sh/v2/policies/apply \
-  -H "Authorization: Bearer $SARDIS_API_KEY" \
+curl -X POST https://api.sardis.sh/api/v2/policies/apply \
+  -H "X-API-Key: $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"agent_id": "agent_123", "natural_language": "Max $500/day, only OpenAI"}'
+  -d '{"agent_id": "agt_123", "natural_language": "Max $500/day, only OpenAI"}'
 
 # Execute payment (policy auto-enforced)
-curl -X POST https://api.sardis.sh/v2/wallets/{wallet_id}/transfer \
-  -H "Authorization: Bearer $SARDIS_API_KEY" \
+curl -X POST https://api.sardis.sh/api/v2/pay \
+  -H "X-API-Key: $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"to": "0x...", "amount": "25.00", "token": "USDC", "chain": "base"}'
+  -d '{"to": "openai.com", "amount": "25.00", "currency": "USDC", "chain": "base"}'
 ```
 
 ## Skill Server
@@ -150,8 +152,8 @@ curl -X POST http://localhost:8090/skills/create_wallet/execute \
 
 | Agent Task | Recommended Skill | Why |
 |------------|------------------|-----|
-| "Create a wallet" | `sardis-payment` | Wallet provisioning |
-| "Pay for OpenAI API" | `sardis-payment` | Execute crypto payment |
+| "Create a wallet" | `sardis` | Wallet provisioning |
+| "Pay for OpenAI API" | `sardis` | Execute crypto payment |
 | "Check my balance" | `sardis-balance` | Read-only, safe |
 | "Set spending limit" | `sardis-policy` | Policy creation |
 | "Subscribe to GitHub Copilot" | `sardis-cards` | Traditional card payment |
@@ -201,7 +203,7 @@ All skills enforce these security principles:
 
 - [Sardis Website](https://sardis.sh)
 - [Documentation](https://sardis.sh/docs)
-- [API Reference](https://api.sardis.sh/v2/docs)
+- [API Reference](https://api.sardis.sh/api/v2/docs)
 - [GitHub](https://github.com/EfeDurmaz16/sardis)
 - [OpenClaw Documentation](https://docs.openclaw.ai)
 - [ClawHub](https://clawhub.com)
