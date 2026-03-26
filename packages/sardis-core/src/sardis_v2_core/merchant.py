@@ -168,6 +168,7 @@ class MerchantRepository:
         "name", "logo_url", "webhook_url", "webhook_secret",
         "settlement_preference", "settlement_wallet_id", "bank_account",
         "mcc_code", "category", "platform_fee_bps", "is_active",
+        "client_id", "client_secret_hash", "website", "registered_by",
     })
 
     async def update_merchant(self, merchant_id: str, **kwargs: Any) -> Merchant | None:
