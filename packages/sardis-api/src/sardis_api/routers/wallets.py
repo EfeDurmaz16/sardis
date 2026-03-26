@@ -2052,6 +2052,94 @@ class OnrampResponse(BaseModel):
     asset: str = "USDC"
 
 
+def _generate_cdp_jwt(request_method: str, request_path: str) -> str:
+    """Generate a JWT for CDP API authentication (Ed25519).
+
+    CDP expects the URI claim as "METHOD host/path",
+    e.g. "POST api.developer.coinbase.com/onramp/v1/token".
+    """
+    import base64
+    import time
+    import uuid
+
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    key_id = os.getenv("CDP_API_KEY_ID", "")
+    key_secret = os.getenv("CDP_API_KEY_SECRET", "")
+
+    if not key_id or not key_secret:
+        raise ValueError("CDP_API_KEY_ID and CDP_API_KEY_SECRET must be set")
+
+    raw_key = base64.b64decode(key_secret)
+    private_key = Ed25519PrivateKey.from_private_bytes(raw_key[:32])
+
+    uri = f"{request_method} api.developer.coinbase.com{request_path}"
+    now = int(time.time())
+
+    payload = {
+        "sub": key_id,
+        "iss": "coinbase-cloud",
+        "nbf": now,
+        "exp": now + 120,
+        "uris": [uri],
+    }
+    headers = {
+        "kid": key_id,
+        "nonce": uuid.uuid4().hex,
+        "typ": "JWT",
+    }
+
+    return jwt.encode(payload, private_key, algorithm="EdDSA", headers=headers)
+
+
+async def _get_cdp_onramp_session_token(wallet_address: str, network: str) -> str:
+    """Call Coinbase CDP API to generate an onramp session token.
+
+    This is required for the Coinbase Onramp widget — raw URL params
+    (appId + destinationWallets) are no longer accepted.
+    """
+    import httpx
+
+    try:
+        cdp_jwt = _generate_cdp_jwt("POST", "/onramp/v1/token")
+    except ValueError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            "https://api.developer.coinbase.com/onramp/v1/token",
+            headers={
+                "Authorization": f"Bearer {cdp_jwt}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "addresses": [
+                    {
+                        "address": wallet_address,
+                        "blockchains": [network],
+                    }
+                ],
+                "assets": ["USDC"],
+            },
+        )
+
+    if resp.status_code != 200:
+        error_preview = resp.text[:500] if len(resp.text) > 500 else resp.text
+        logger.error("CDP onramp token error: status=%s body=%s", resp.status_code, error_preview)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Coinbase onramp API returned {resp.status_code}",
+        )
+
+    data = resp.json()
+    session_token = data.get("token", "")
+    if not session_token:
+        raise HTTPException(status_code=502, detail="Coinbase returned empty session token")
+
+    return session_token
+
+
 @router.post("/{wallet_id}/onramp", response_model=OnrampResponse)
 async def generate_onramp_url(
     wallet_id: str,
@@ -2102,10 +2190,6 @@ async def generate_onramp_url(
             detail=f"Wallet has no address on chain '{chain}'",
         )
 
-    # Build Coinbase Onramp URL (hosted mode — no API key required)
-    # https://pay.coinbase.com/buy/select-asset?...
-    import urllib.parse
-
     # Map chain names to Coinbase network identifiers
     chain_to_network = {
         "base": "base",
@@ -2116,9 +2200,13 @@ async def generate_onramp_url(
     }
     network = chain_to_network.get(chain, "base")
 
-    params = {
-        "appId": os.getenv("COINBASE_APP_ID", "sardis"),
-        "destinationWallets": f'[{{"address":"{destination_address}","assets":["USDC"],"supportedNetworks":["{network}"]}}]',
+    # Generate CDP session token (required by Coinbase Onramp)
+    session_token = await _get_cdp_onramp_session_token(destination_address, network)
+
+    import urllib.parse
+
+    params: dict[str, str] = {
+        "sessionToken": session_token,
         "defaultAsset": "USDC",
         "defaultNetwork": network,
     }
@@ -2552,3 +2640,82 @@ async def execute_offramp_send(
         amount=sell_amount,
         to_address=to_address,
     )
+
+
+# ---------------------------------------------------------------------------
+# Backfill: provision Turnkey addresses for wallets created without them
+# ---------------------------------------------------------------------------
+
+class BackfillResponse(BaseModel):
+    wallet_id: str
+    status: str
+    address: str | None = None
+    error: str | None = None
+
+
+@router.post(
+    "/{wallet_id}/backfill-address",
+    response_model=BackfillResponse,
+    summary="Backfill Turnkey address for a wallet that has no on-chain address",
+)
+async def backfill_wallet_address(
+    wallet_id: str,
+    deps: WalletDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    """Create a Turnkey MPC wallet and set its address on an existing wallet
+    that was created without one (e.g. wallets created before the Turnkey
+    integration was wired into the agent creation flow)."""
+    wallet = await _require_wallet_access(wallet_id, principal=principal, deps=deps)
+
+    # Already has addresses — nothing to do
+    if wallet.addresses:
+        return BackfillResponse(
+            wallet_id=wallet_id,
+            status="already_has_address",
+            address=next(iter(wallet.addresses.values()), None),
+        )
+
+    if not deps.wallet_manager:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Wallet manager not configured — cannot create Turnkey wallet",
+        )
+
+    try:
+        provider_result = await deps.wallet_manager.create_turnkey_wallet(
+            wallet_name=f"backfill_{wallet_id}",
+            agent_id=wallet.agent_id,
+        )
+        addrs = provider_result.get("addresses") or []
+        first_addr = None
+        if addrs:
+            first_addr = addrs[0].get("address") if isinstance(addrs[0], dict) else addrs[0]
+
+        if not (isinstance(first_addr, str) and first_addr):
+            return BackfillResponse(
+                wallet_id=wallet_id,
+                status="turnkey_no_address",
+                error="Turnkey returned no address in wallet creation result",
+            )
+
+        new_addresses = {
+            "base_sepolia": first_addr, "base": first_addr,
+            "ethereum": first_addr, "polygon": first_addr,
+            "arbitrum": first_addr, "optimism": first_addr,
+        }
+        await deps.wallet_repo.update(wallet_id, addresses=new_addresses)
+
+        logger.info("Backfilled address %s for wallet %s", first_addr, wallet_id)
+        return BackfillResponse(
+            wallet_id=wallet_id,
+            status="backfilled",
+            address=first_addr,
+        )
+    except Exception as e:
+        logger.error("Backfill failed for wallet %s: %s", wallet_id, e)
+        return BackfillResponse(
+            wallet_id=wallet_id,
+            status="error",
+            error=str(e),
+        )
