@@ -458,6 +458,7 @@ async def register_merchant(
 
     merchant = Merchant(
         name=body.business_name,
+        org_id=principal.organization_id,
         logo_url=body.logo_url,
         webhook_url=body.webhook_url,
         settlement_preference="usdc",
