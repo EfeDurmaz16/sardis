@@ -2036,6 +2036,11 @@ class OnrampRequest(BaseModel):
     """Request to generate a fiat on-ramp URL."""
     destination_chain: str = Field(default="base", description="Target chain for USDC")
     preset_amount: str | None = Field(default=None, description="Pre-filled USD amount")
+    # Accept frontend field names as aliases so both shapes work
+    amount: str | None = Field(default=None, description="Alias for preset_amount (frontend compat)")
+    provider: str | None = Field(default=None, description="Onramp provider hint (ignored, always coinbase)")
+    payment_method: str | None = Field(default=None, description="Payment method hint (informational)")
+    target_chain: str | None = Field(default=None, description="Alias for destination_chain (frontend compat)")
 
 
 class OnrampResponse(BaseModel):
@@ -2061,16 +2066,35 @@ async def generate_onramp_url(
 
     Reference: https://docs.cdp.coinbase.com/onramp/docs/overview
     """
-    row = await Database.fetchrow(
-        "SELECT w.*, a.organization_id FROM wallets w JOIN agents a ON w.agent_id = a.id WHERE w.external_id = $1",
-        wallet_id,
-    )
+    # Resolve aliased fields from frontend
+    chain = request.target_chain or request.destination_chain
+    preset_amount = request.preset_amount or request.amount
+
+    try:
+        row = await Database.fetchrow(
+            "SELECT w.*, a.organization_id FROM wallets w JOIN agents a ON w.agent_id = a.id WHERE w.external_id = $1",
+            wallet_id,
+        )
+    except Exception as exc:
+        logger.error("Database error resolving wallet %s for onramp: %s", wallet_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Onramp temporarily unavailable — database unreachable",
+        )
+
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="wallet_not_found")
 
     # Get wallet address for the target chain
-    addresses = row.get("addresses") or {}
-    chain = request.destination_chain
+    raw_addresses = row.get("addresses")
+    if isinstance(raw_addresses, str):
+        try:
+            addresses = json.loads(raw_addresses)
+        except (json.JSONDecodeError, TypeError):
+            addresses = {}
+    else:
+        addresses = raw_addresses or {}
+
     destination_address = addresses.get(chain) or row.get("chain_address")
     if not destination_address:
         raise HTTPException(
@@ -2098,8 +2122,8 @@ async def generate_onramp_url(
         "defaultAsset": "USDC",
         "defaultNetwork": network,
     }
-    if request.preset_amount:
-        params["presetFiatAmount"] = request.preset_amount
+    if preset_amount:
+        params["presetFiatAmount"] = preset_amount
 
     onramp_url = f"https://pay.coinbase.com/buy/select-asset?{urllib.parse.urlencode(params)}"
 

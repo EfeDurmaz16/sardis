@@ -204,7 +204,7 @@ async def _resolve_wallet_address(wallet_id: str) -> str:
         from sardis_v2_core import WalletRepository
         from sardis_v2_core.database import Database
 
-        db = Database.get_pool()
+        db = await Database.get_pool()
         if db is None:
             raise RuntimeError("Database pool not available")
         repo = WalletRepository(db)
