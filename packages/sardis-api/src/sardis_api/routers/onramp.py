@@ -196,6 +196,8 @@ async def _resolve_wallet_address(wallet_id: str) -> str:
     """Resolve a Sardis wallet ID to its primary EVM address.
 
     Falls back to treating ``wallet_id`` as a raw address if it looks like one.
+    For wallets with empty addresses (created before Turnkey fix), attempts
+    to provision an address on-the-fly via Turnkey.
     """
     if wallet_id.startswith("0x") and len(wallet_id) == 42:
         return wallet_id
@@ -213,18 +215,88 @@ async def _resolve_wallet_address(wallet_id: str) -> str:
             raise ValueError(f"Wallet {wallet_id} not found")
         # Prefer base address, then first available EVM address
         addresses: dict = getattr(wallet, "addresses", {}) or {}
-        for chain in ("base", "base_sepolia", "ethereum", "polygon", "arbitrum", "optimism"):
+        for chain in ("base", "base_sepolia", "ethereum", "polygon", "arbitrum", "optimism", "tempo"):
             if chain in addresses and addresses[chain]:
                 return addresses[chain]
         # Last resort: any address value
         if addresses:
-            return next(iter(addresses.values()))
+            first_val = next(iter(addresses.values()), None)
+            if first_val:
+                return first_val
+
+        # ---------------------------------------------------------------
+        # Wallet has no addresses at all (created before Turnkey fix).
+        # Try to provision an address on-the-fly via Turnkey.
+        # ---------------------------------------------------------------
+        logger.warning(
+            "Wallet %s has no stored addresses; attempting Turnkey address provision",
+            wallet_id,
+        )
+        try:
+            provisioned = await _provision_wallet_address(wallet_id, wallet, repo)
+            if provisioned:
+                return provisioned
+        except Exception as prov_exc:
+            logger.warning("On-the-fly address provision failed for %s: %s", wallet_id, prov_exc)
+
         raise ValueError(f"Wallet {wallet_id} has no EVM address")
     except ImportError:
         logger.warning("sardis_v2_core not available; treating wallet_id as address")
         return wallet_id
     except Exception:
         raise
+
+
+async def _provision_wallet_address(
+    wallet_id: str,
+    wallet: object,
+    repo: object,
+) -> str | None:
+    """Attempt to get an address from Turnkey for a wallet with no stored addresses.
+
+    Turnkey creates one Ethereum key that works on all EVM chains.
+    If successful, persists the address under 'base' and returns it.
+    """
+    api_key = os.getenv("TURNKEY_API_PUBLIC_KEY") or os.getenv("TURNKEY_API_KEY")
+    api_private = os.getenv("TURNKEY_API_PRIVATE_KEY")
+    org_id = os.getenv("TURNKEY_ORGANIZATION_ID")
+
+    if not (api_key and api_private and org_id):
+        return None
+
+    try:
+        from sardis_wallet.turnkey_client import TurnkeyClient
+
+        client = TurnkeyClient(
+            api_key=api_key,
+            api_private_key=api_private,
+            organization_id=org_id,
+        )
+
+        # Try to get wallet accounts from Turnkey using the wallet_id
+        # The wallet_id might be stored as a Turnkey wallet ID or we may
+        # need to query by sub-organization
+        tk_wallet_id = getattr(wallet, "turnkey_wallet_id", None) or wallet_id
+
+        # Attempt to get accounts for this wallet
+        accounts = await client.get_wallet_accounts(tk_wallet_id)
+        if accounts:
+            for acct in accounts:
+                addr = getattr(acct, "address", None) or acct.get("address", None) if isinstance(acct, dict) else None
+                if addr and addr.startswith("0x"):
+                    # Persist the address for future use
+                    try:
+                        if hasattr(wallet, "set_address") and hasattr(repo, "update"):
+                            wallet.set_address("base", addr)
+                            await repo.update(wallet)
+                            logger.info("Provisioned address %s for wallet %s", addr, wallet_id)
+                    except Exception as persist_exc:
+                        logger.warning("Failed to persist provisioned address: %s", persist_exc)
+                    return addr
+    except Exception as exc:
+        logger.debug("Turnkey address provision attempt failed: %s", exc)
+
+    return None
 
 
 # ---------------------------------------------------------------------------
