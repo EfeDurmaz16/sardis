@@ -5,33 +5,99 @@ import type { Agent, Merchant, Transaction, Wallet, WebhookSubscription } from '
 // RiskScore is used in client but may not be in types
 type RiskScore = { score: number; level: string; factors: string[] }
 
-// Token management — reads from sessionStorage (set by login/signup pages)
+// Token management — reads from localStorage (set by login/signup pages)
 let _cachedToken: string | null = null;
+let _refreshing: Promise<string | null> | null = null;
 
-function getCurrentToken(): string | null {
-  if (_cachedToken) return _cachedToken;
-  if (typeof window !== "undefined") {
-    _cachedToken = localStorage.getItem("sardis_session");
+/** Decode a JWT payload without verification (client-side expiry check only). */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload;
+  } catch {
+    return null;
   }
-  return _cachedToken;
 }
 
-export async function refreshToken(): Promise<string | null> {
-  // Primary: read from sessionStorage (set by login/signup)
+/** Check if a JWT is expired (with 60-second buffer). */
+function isTokenExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== "number") return true;
+  return payload.exp * 1000 < Date.now() - 60_000;
+}
+
+function getCurrentToken(): string | null {
+  if (_cachedToken && !isTokenExpired(_cachedToken)) return _cachedToken;
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem("sardis_session");
-    if (stored) {
+    if (stored && !isTokenExpired(stored)) {
       _cachedToken = stored;
       return stored;
     }
   }
-  // Fallback: try better-auth token endpoint
+  return null;
+}
+
+export async function refreshToken(): Promise<string | null> {
+  // Deduplicate concurrent refresh calls
+  if (_refreshing) return _refreshing;
+  _refreshing = _doRefresh();
+  try {
+    return await _refreshing;
+  } finally {
+    _refreshing = null;
+  }
+}
+
+async function _doRefresh(): Promise<string | null> {
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").trim();
+
+  // If we have a non-expired stored token, use it directly
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("sardis_session");
+    if (stored && !isTokenExpired(stored)) {
+      _cachedToken = stored;
+      return stored;
+    }
+
+    // Token exists but is expired — try to refresh via the API
+    if (stored) {
+      try {
+        const res = await fetch(`${API_BASE}/api/v2/auth/refresh`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${stored}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.access_token) {
+            _cachedToken = data.access_token;
+            localStorage.setItem("sardis_session", data.access_token);
+            // Update cookie too
+            document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax; domain=.sardis.sh`;
+            return data.access_token;
+          }
+        }
+      } catch {
+        // Refresh failed, fall through
+      }
+    }
+  }
+
+  // Fallback: try better-auth JWT endpoint
   try {
     const res = await fetch("/api/auth/token", { credentials: "include" });
     if (!res.ok) return null;
     const data = await res.json();
-    _cachedToken = data.token || null;
-    return _cachedToken;
+    const token = data.token || null;
+    if (token) {
+      _cachedToken = token;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sardis_session", token);
+      }
+    }
+    return token;
   } catch {
     return null;
   }
@@ -40,6 +106,18 @@ export async function refreshToken(): Promise<string | null> {
 // Export for pages that make direct fetch calls
 export function getAuthHeaders(): Record<string, string> {
   const token = getCurrentToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Get auth headers, refreshing the token if expired.
+ * Use this for important API calls (billing, mutations).
+ */
+export async function getAuthHeadersAsync(): Promise<Record<string, string>> {
+  let token = getCurrentToken();
+  if (!token) {
+    token = await refreshToken();
+  }
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

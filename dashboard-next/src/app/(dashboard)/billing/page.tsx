@@ -21,7 +21,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-client';
-import { getAuthHeaders } from '@/api/client';
+import { getAuthHeaders, getAuthHeadersAsync } from '@/api/client';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim();
 
@@ -343,9 +343,16 @@ export default function BillingPage() {
   async function handleUpgrade(plan: string) {
     setUpgrading(plan);
     try {
+      // Use async auth headers to refresh expired tokens before calling checkout
+      const headers = await getAuthHeadersAsync();
+      if (!headers.Authorization) {
+        alert('Please log in again to upgrade your plan.');
+        setUpgrading(null);
+        return;
+      }
       const res = await fetch(`${API_BASE}/api/v2/billing/checkout`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ plan }),
       });
       if (res.ok) {
@@ -365,9 +372,10 @@ export default function BillingPage() {
   async function handlePortal() {
     setPortalLoading(true);
     try {
+      const headers = await getAuthHeadersAsync();
       const res = await fetch(`${API_BASE}/api/v2/billing/portal`, {
         method: 'POST',
-        headers: buildAuthHeaders(),
+        headers,
       });
       if (res.ok) {
         const data = await res.json();
