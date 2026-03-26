@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useRegisterMerchant } from '@/hooks/useApi'
+import { merchantApi } from '@/api/client'
 
 const STEPS = [
   { title: 'Business Details', icon: Building2 },
@@ -97,12 +98,17 @@ export default function MerchantSetupPage() {
     }
   }
 
+  const [testCheckoutUrl, setTestCheckoutUrl] = useState<string | null>(null)
+
   const handleTestPayment = async () => {
     setTestStatus('sending')
-    // Simulate a test payment verification
-    setTimeout(() => {
+    try {
+      const res = await merchantApi.createTestSession()
+      setTestCheckoutUrl(res.checkout_url)
       setTestStatus('success')
-    }, 2000)
+    } catch {
+      setTestStatus('error')
+    }
   }
 
   const canProceed = () => {
@@ -506,10 +512,21 @@ export default function MerchantSetupPage() {
                     <div className="w-12 h-12 bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto">
                       <Check className="w-6 h-6 text-green-400" />
                     </div>
-                    <p className="text-green-400 font-medium">Test payment successful!</p>
+                    <p className="text-green-400 font-medium">Test session created!</p>
                     <p className="text-sm text-gray-400">
-                      Your checkout integration is working. You can now accept live payments.
+                      Open the checkout page below to test the payment flow end-to-end.
                     </p>
+                    {testCheckoutUrl && (
+                      <a
+                        href={testCheckoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-sardis-500 text-white font-medium hover:bg-sardis-400 transition-colors text-sm"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Open Checkout Page
+                      </a>
+                    )}
                   </>
                 )}
 

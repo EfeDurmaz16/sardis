@@ -321,6 +321,38 @@ export const merchantApi = {
       settlement_status: string | null
       created_at: string
     }>>(`/merchants/${merchantId}/settlements`),
+
+  createTestSession: () =>
+    requestV2<{
+      session_id: string
+      client_secret: string
+      checkout_url: string
+      settlement_address: string | null
+      expires_in_seconds: number
+    }>('/merchant-checkout/create-test-session', {
+      method: 'POST',
+    }),
+
+  createCheckoutLink: (merchantId: string, data: {
+    amount: number
+    currency?: string
+    description?: string
+    slug: string
+  }) => requestV2<{
+    link_id: string
+    merchant_id: string
+    amount: string
+    currency: string
+    description: string | null
+    slug: string
+    checkout_url: string
+    is_active: boolean
+    created_at: string
+    updated_at: string
+  }>(`/merchants/${merchantId}/links`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 }
 
 // Webhook APIs (V2)
