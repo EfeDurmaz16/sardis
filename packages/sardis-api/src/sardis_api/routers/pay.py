@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import time
+import uuid
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from enum import Enum
@@ -95,6 +96,7 @@ FX_SLIPPAGE_TOLERANCE_BPS = 100
 @dataclass
 class PayDependencies:
     orchestrator: PaymentOrchestrator
+    chain_mode: str = "live"  # "live" bypasses simulation; anything else triggers sandbox
 
 
 def get_deps() -> PayDependencies:
@@ -168,6 +170,7 @@ class PayResponse(BaseModel):
     route: RouteInfo | None = None
     fx: FXInfo | None = None
     policy_explanation: PolicyExplanationResponse | None = None
+    simulated: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -377,6 +380,40 @@ async def pay(
                 f"Unsupported currency: {body.currency!r}. "
                 f"Supported: {', '.join(sorted(CURRENCY_TO_TOKEN.keys()))}"
             ),
+        )
+
+    # ── Sandbox / simulated mode short-circuit ─────────────────────
+    # When chain_mode is not "live", return a simulated payment instead
+    # of hitting the orchestrator (which requires funded wallets and
+    # on-chain infrastructure).  All input validation above still runs,
+    # so callers see real 422 errors for bad amounts/currencies.
+    if deps.chain_mode != "live":
+        selected_chain = body.chain or "base"
+        mandate_id = body.mandate_id or f"pay_{principal.user_id}"
+        sim_tx_hash = f"0xsim_{uuid.uuid4().hex}"
+        sim_ledger_id = f"sim_ledger_{uuid.uuid4().hex[:12]}"
+
+        logger.info(
+            "Simulated payment: %s %s from %s to %s on %s (chain_mode=%s)",
+            body.amount, body.currency, principal.user_id, body.to,
+            selected_chain, deps.chain_mode,
+        )
+
+        return PayResponse(
+            status=PayStatus.completed,
+            tx_hash=sim_tx_hash,
+            ledger_tx_id=sim_ledger_id,
+            chain=selected_chain,
+            message=f"Simulated payment of {body.amount} {body.currency} to {body.to}",
+            mandate_id=mandate_id,
+            route=RouteInfo(
+                chain=selected_chain,
+                provider="simulated",
+                estimated_fee_bps=0,
+                route_type="simulated",
+                auto_routed=body.chain is None,
+            ),
+            simulated=True,
         )
 
     # The sender's token defaults to USDC (the base stablecoin).

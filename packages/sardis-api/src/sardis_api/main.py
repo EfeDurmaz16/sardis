@@ -786,6 +786,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Unified /pay endpoint
     app.dependency_overrides[pay.get_deps] = lambda: pay.PayDependencies(  # type: ignore[arg-type]
         orchestrator=orchestrator,
+        chain_mode=settings.chain_mode,
     )
     app.include_router(pay.router, prefix="/api/v2/pay", tags=["pay"])
 
