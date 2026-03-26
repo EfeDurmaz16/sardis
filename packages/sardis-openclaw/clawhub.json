@@ -1,0 +1,13 @@
+{
+  "name": "sardis",
+  "version": "1.1.0",
+  "description": "Payment OS for AI agents — wallets, payments, policies, cards",
+  "author": "sardis-labs",
+  "category": "finance",
+  "tags": ["payments", "stablecoin", "USDC", "wallet", "policy", "AI-agent", "MPC"],
+  "homepage": "https://sardis.sh",
+  "repository": "https://github.com/EfeDurmaz16/sardis",
+  "license": "MIT",
+  "env": ["SARDIS_API_KEY"],
+  "permissions": ["network"]
+}
