@@ -480,7 +480,7 @@ class AuthService:
         user_id: str,
         email: str,
         org_id: str,
-        expires_in: int = 3600,
+        expires_in: int | None = None,
         token_type: str = "access",
     ) -> str:
         import jwt as pyjwt
@@ -488,6 +488,12 @@ class AuthService:
         secret = os.getenv("JWT_SECRET_KEY", "")
         if not secret:
             raise RuntimeError("JWT_SECRET_KEY environment variable is required")
+
+        # Default access token lifetime: JWT_EXPIRATION_HOURS env var (default 24h)
+        # to match the dashboard session cookie lifecycle.
+        if expires_in is None:
+            expires_in = int(os.getenv("JWT_EXPIRATION_HOURS", "24")) * 3600
+
         now = int(time.time())
         payload = {
             "sub": user_id,
