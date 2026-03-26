@@ -1,12 +1,13 @@
 """
-Sardis OpenClaw — Open-source agent skill definitions.
+Sardis OpenClaw -- Open-source agent skill definitions.
 
-Exports structured SkillDefinition dataclasses from the package README.
+Exports structured SkillDefinition dataclasses and executable skill classes
+for the OpenClaw agent platform.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Type
 
 
 @dataclass
@@ -17,11 +18,18 @@ class SkillDefinition:
     category: str
     parameters: list[str] = field(default_factory=list)
     required_permissions: list[str] = field(default_factory=list)
-    version: str = "0.1.0"
+    version: str = "1.0.0"
 
 
 # Core skill definitions
 SKILLS: list[SkillDefinition] = [
+    SkillDefinition(
+        name="create_wallet",
+        description="Create a non-custodial MPC wallet for an AI agent",
+        category="wallet",
+        parameters=["agent_id"],
+        required_permissions=["wallet:create"],
+    ),
     SkillDefinition(
         name="balance_check",
         description="Check wallet balance across supported chains",
@@ -31,7 +39,7 @@ SKILLS: list[SkillDefinition] = [
     ),
     SkillDefinition(
         name="send_payment",
-        description="Send a stablecoin payment via mandate",
+        description="Send a stablecoin payment with automatic policy enforcement",
         category="payment",
         parameters=["recipient", "amount", "currency", "chain"],
         required_permissions=["wallet:write", "mandate:create"],
@@ -66,7 +74,7 @@ SKILLS: list[SkillDefinition] = [
     ),
     SkillDefinition(
         name="policy_update",
-        description="Update spending policy for an agent wallet",
+        description="Set or update spending policy for an agent wallet using natural language",
         category="policy",
         parameters=["agent_id", "policy_rules"],
         required_permissions=["policy:write"],
@@ -89,20 +97,20 @@ def list_skills(category: str | None = None) -> list[SkillDefinition]:
     return list(SKILLS)
 
 
-from typing import Type
-
 from sardis_openclaw.base import OpenClawSkill, SkillContext, SkillResult
 from sardis_openclaw.skills import (
     BalanceCheckSkill,
     BridgeTransferSkill,
     ComplianceCheckSkill,
     CreateInvoiceSkill,
+    CreateWalletSkill,
     PolicyUpdateSkill,
     SendPaymentSkill,
     SpendingReportSkill,
 )
 
 SKILL_REGISTRY: dict[str, type[OpenClawSkill]] = {
+    "create_wallet": CreateWalletSkill,
     "balance_check": BalanceCheckSkill,
     "send_payment": SendPaymentSkill,
     "check_compliance": ComplianceCheckSkill,
@@ -129,6 +137,7 @@ __all__ = [
     "OpenClawSkill",
     "SkillContext",
     "SkillResult",
+    "CreateWalletSkill",
     "BalanceCheckSkill",
     "SendPaymentSkill",
     "ComplianceCheckSkill",

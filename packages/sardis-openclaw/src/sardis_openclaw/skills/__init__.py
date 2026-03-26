@@ -6,8 +6,10 @@ from sardis_openclaw.skills.invoice import CreateInvoiceSkill
 from sardis_openclaw.skills.payment import SendPaymentSkill
 from sardis_openclaw.skills.policy import PolicyUpdateSkill
 from sardis_openclaw.skills.report import SpendingReportSkill
+from sardis_openclaw.skills.wallet import CreateWalletSkill
 
 ALL_SKILLS = [
+    CreateWalletSkill,
     BalanceCheckSkill,
     SendPaymentSkill,
     ComplianceCheckSkill,
@@ -18,6 +20,7 @@ ALL_SKILLS = [
 ]
 
 __all__ = [
+    "CreateWalletSkill",
     "BalanceCheckSkill",
     "SendPaymentSkill",
     "ComplianceCheckSkill",

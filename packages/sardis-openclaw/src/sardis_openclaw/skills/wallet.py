@@ -1,4 +1,4 @@
-"""Policy update skill."""
+"""Create wallet skill."""
 from __future__ import annotations
 
 from typing import Any
@@ -8,24 +8,24 @@ import httpx
 from sardis_openclaw.base import OpenClawSkill, SkillContext, SkillResult
 
 
-class PolicyUpdateSkill(OpenClawSkill):
-    """Set or update spending policy for an agent wallet using natural language."""
+class CreateWalletSkill(OpenClawSkill):
+    """Create a non-custodial MPC wallet for an AI agent."""
 
     @property
     def name(self) -> str:
-        return "policy_update"
+        return "create_wallet"
 
     @property
     def description(self) -> str:
-        return "Set or update spending policy for an agent wallet using natural language"
+        return "Create a non-custodial MPC wallet for an AI agent"
 
     @property
     def parameters(self) -> list[str]:
-        return ["agent_id", "policy_rules"]
+        return ["agent_id"]
 
     @property
     def required_permissions(self) -> list[str]:
-        return ["policy:write"]
+        return ["wallet:create"]
 
     async def execute(self, params: dict[str, Any], context: SkillContext) -> SkillResult:
         err = self.validate_params(params)
@@ -33,20 +33,20 @@ class PolicyUpdateSkill(OpenClawSkill):
             return SkillResult(success=False, error=err)
 
         agent_id = params["agent_id"]
-        policy_rules = params["policy_rules"]
-
-        # policy_rules can be a natural language string or a structured dict
-        payload: dict[str, Any] = {"agent_id": agent_id}
-        if isinstance(policy_rules, str):
-            payload["natural_language"] = policy_rules
-        else:
-            payload["policy_rules"] = policy_rules
+        provider = params.get("provider", "turnkey")
+        chain = params.get("chain", "base")
+        label = params.get("label", f"Agent wallet ({agent_id})")
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
-                f"{context.base_url}/policies/apply",
+                f"{context.base_url}/wallets",
                 headers={"Authorization": f"Bearer {context.api_key}"},
-                json=payload,
+                json={
+                    "agent_id": agent_id,
+                    "provider": provider,
+                    "chain": chain,
+                    "wallet_name": label,
+                },
                 timeout=30.0,
             )
             if resp.status_code not in (200, 201):

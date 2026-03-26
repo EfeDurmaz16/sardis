@@ -9,7 +9,7 @@ from sardis_openclaw.base import OpenClawSkill, SkillContext, SkillResult
 
 
 class SendPaymentSkill(OpenClawSkill):
-    """Send a stablecoin payment via mandate."""
+    """Send a stablecoin payment with policy enforcement."""
 
     @property
     def name(self) -> str:
@@ -17,11 +17,11 @@ class SendPaymentSkill(OpenClawSkill):
 
     @property
     def description(self) -> str:
-        return "Send a stablecoin payment via mandate"
+        return "Send a stablecoin payment with automatic policy enforcement"
 
     @property
     def parameters(self) -> list[str]:
-        return ["recipient", "amount", "currency", "chain"]
+        return ["recipient", "amount"]
 
     @property
     def required_permissions(self) -> list[str]:
@@ -32,20 +32,45 @@ class SendPaymentSkill(OpenClawSkill):
         if err:
             return SkillResult(success=False, error=err)
 
+        currency = params.get("currency", "USDC")
+        chain = params.get("chain", "base")
+
+        # Step 1: Policy dry-run check before execution
         async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{context.base_url}/payments/send",
+            check_resp = await client.post(
+                f"{context.base_url}/policies/check",
                 headers={"Authorization": f"Bearer {context.api_key}"},
                 json={
-                    "wallet_id": context.wallet_id,
                     "agent_id": context.agent_id,
-                    "recipient": params["recipient"],
                     "amount": str(params["amount"]),
-                    "currency": params["currency"],
-                    "chain": params["chain"],
+                    "recipient": params["recipient"],
+                    "token": currency,
+                    "chain": chain,
+                },
+                timeout=15.0,
+            )
+            if check_resp.status_code == 200:
+                check_data = check_resp.json()
+                if not check_data.get("allowed", True):
+                    return SkillResult(
+                        success=False,
+                        data=check_data,
+                        error=f"Policy violation: {check_data.get('reason', 'blocked by spending policy')}",
+                    )
+
+            # Step 2: Execute transfer
+            resp = await client.post(
+                f"{context.base_url}/wallets/{context.wallet_id}/transfer",
+                headers={"Authorization": f"Bearer {context.api_key}"},
+                json={
+                    "to": params["recipient"],
+                    "amount": str(params["amount"]),
+                    "token": currency,
+                    "chain": chain,
+                    "agent_id": context.agent_id,
                 },
                 timeout=30.0,
             )
-            if resp.status_code != 200:
-                return SkillResult(success=False, error=f"API error: {resp.status_code}")
+            if resp.status_code not in (200, 201):
+                return SkillResult(success=False, error=f"API error: {resp.status_code} {resp.text}")
             return SkillResult(success=True, data=resp.json())

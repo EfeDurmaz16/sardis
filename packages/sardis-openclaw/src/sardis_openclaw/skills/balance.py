@@ -34,9 +34,12 @@ class BalanceCheckSkill(OpenClawSkill):
 
         wallet_id = params["wallet_id"]
         chain = params.get("chain")
-        url = f"{context.base_url}/wallets/{wallet_id}/balance"
+
+        # Use /balances for multi-chain, /balance for single-chain
         if chain:
-            url += f"?chain={chain}"
+            url = f"{context.base_url}/wallets/{wallet_id}/balance?chain={chain}"
+        else:
+            url = f"{context.base_url}/wallets/{wallet_id}/balances"
 
         async with httpx.AsyncClient() as client:
             resp = await client.get(
@@ -45,5 +48,5 @@ class BalanceCheckSkill(OpenClawSkill):
                 timeout=30.0,
             )
             if resp.status_code != 200:
-                return SkillResult(success=False, error=f"API error: {resp.status_code}")
+                return SkillResult(success=False, error=f"API error: {resp.status_code} {resp.text}")
             return SkillResult(success=True, data=resp.json())

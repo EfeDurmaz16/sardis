@@ -1,6 +1,6 @@
 ---
 name: sardis-payment
-description: Enable AI agents to make secure, policy-controlled payments through Sardis Payment OS
+description: Enable AI agents to create wallets, make secure payments, check balances, and set spending policies through Sardis Payment OS
 version: 1.0.0
 metadata:
   openclaw:
@@ -16,25 +16,28 @@ metadata:
     emoji: "💳"
     homepage: https://sardis.sh
     install:
-      npm:
-        - "@sardis/sdk"
+      - kind: uv
+        package: sardis-openclaw
+        bins: []
     user-invocable: true
     disable-model-invocation: false
 ---
 
-# Sardis Payment - Core Payment Execution Skill
+# Sardis Payment - Payment OS for AI Agents
 
 > AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.
 
 Sardis provides complete payment infrastructure for AI agents with non-custodial MPC wallets, natural language spending policies, and compliance-first design.
 
-## Capabilities
+## Core Capabilities
 
-- **Payment Execution**: Send USDC/USDT/EURC across 5+ chains (Base, Polygon, Ethereum, Arbitrum, Optimism)
-- **Balance Checking**: Real-time wallet balance and spending analytics
-- **Policy Enforcement**: Natural language spending rules automatically enforced
-- **Card Management**: Issue and manage virtual cards for real-world purchases
-- **Audit Trail**: Complete transaction history with compliance logging
+1. **Create Wallet**: Provision non-custodial MPC wallets for agents (Turnkey-backed)
+2. **Send Payment**: Execute stablecoin transfers with automatic policy enforcement
+3. **Check Balance**: Real-time multi-chain balance and spending analytics
+4. **Set Spending Policy**: Natural language spending rules automatically enforced
+5. **Card Management**: Issue and manage virtual cards for real-world purchases
+6. **Compliance Check**: Run preflight compliance on any transaction
+7. **Audit Trail**: Complete transaction history with on-chain anchoring
 
 ## Security Requirements
 
@@ -57,89 +60,114 @@ export SARDIS_WALLET_ID=wallet_abc123
 
 All API calls use the base URL: `https://api.sardis.sh/v2`
 
-### Payment Execution
+### 1. Create Wallet
 
 ```bash
-# Execute a payment (policy automatically enforced)
-curl -X POST https://api.sardis.sh/v2/payments \
+# Create a non-custodial MPC wallet for an agent
+curl -X POST https://api.sardis.sh/v2/wallets \
   -H "Authorization: Bearer $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "wallet_id": "'$SARDIS_WALLET_ID'",
-    "to": "0xRecipientAddress",
-    "amount": "25.00",
-    "token": "USDC",
+    "agent_id": "agent_abc123",
+    "provider": "turnkey",
     "chain": "base",
-    "purpose": "OpenAI API credits"
+    "wallet_name": "My Agent Wallet"
   }'
 ```
 
-### Check Balance
+### 2. Send Payment (with policy check)
 
 ```bash
-# Get wallet balance
-curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/balance \
-  -H "Authorization: Bearer $SARDIS_API_KEY"
-```
-
-### Policy Check (Dry Run)
-
-```bash
-# Check if payment would be allowed WITHOUT executing
-curl -X POST https://api.sardis.sh/v2/policies/check \
-  -H "Authorization: Bearer $SARDIS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "wallet_id": "'$SARDIS_WALLET_ID'",
-    "amount": "50.00",
-    "vendor": "openai.com",
-    "token": "USDC"
-  }'
-```
-
-### Transaction History
-
-```bash
-# List recent transactions
-curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/transactions?limit=10 \
-  -H "Authorization: Bearer $SARDIS_API_KEY"
-```
-
-## Example Commands
-
-### Safe Payment Flow
-
-```bash
-# Step 1: Check policy FIRST
+# Step 1: Policy dry-run check
 POLICY_CHECK=$(curl -s -X POST https://api.sardis.sh/v2/policies/check \
   -H "Authorization: Bearer $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"wallet_id": "'$SARDIS_WALLET_ID'", "amount": "25.00", "vendor": "openai.com"}')
+  -d '{"agent_id": "agent_abc123", "amount": "25.00", "recipient": "0x...", "token": "USDC", "chain": "base"}')
 
 # Step 2: Only proceed if allowed
 if echo $POLICY_CHECK | grep -q '"allowed":true'; then
-  curl -X POST https://api.sardis.sh/v2/payments \
+  curl -X POST https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/transfer \
     -H "Authorization: Bearer $SARDIS_API_KEY" \
     -H "Content-Type: application/json" \
-    -d '{"wallet_id": "'$SARDIS_WALLET_ID'", "to": "0x...", "amount": "25.00", "token": "USDC", "chain": "base"}'
+    -d '{"to": "0xRecipientAddress", "amount": "25.00", "token": "USDC", "chain": "base", "agent_id": "agent_abc123"}'
 else
   echo "Payment blocked by policy: $POLICY_CHECK"
 fi
 ```
 
-### Check Spending Summary
+### 3. Check Balance
 
 ```bash
-# Get daily spending summary
-curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/spending/summary?period=day \
+# Get multi-chain wallet balances
+curl -X GET https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/balances \
   -H "Authorization: Bearer $SARDIS_API_KEY"
+
+# Get single-chain balance
+curl -X GET "https://api.sardis.sh/v2/wallets/$SARDIS_WALLET_ID/balance?chain=base" \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
+```
+
+### 4. Set Spending Policy
+
+```bash
+# Create policy with natural language
+curl -X POST https://api.sardis.sh/v2/policies/apply \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "agent_abc123",
+    "natural_language": "Max $500/day, only OpenAI and Anthropic, no weekends"
+  }'
+
+# Policy dry-run check
+curl -X POST https://api.sardis.sh/v2/policies/check \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent_abc123", "amount": "50.00", "token": "USDC"}'
+```
+
+### 5. Transaction History
+
+```bash
+curl -X GET https://api.sardis.sh/v2/transactions?wallet_id=$SARDIS_WALLET_ID&limit=10 \
+  -H "Authorization: Bearer $SARDIS_API_KEY"
+```
+
+## Example Commands
+
+### Complete Agent Onboarding Flow
+
+```bash
+# 1. Create wallet
+WALLET=$(curl -s -X POST https://api.sardis.sh/v2/wallets \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent_abc123", "provider": "turnkey", "chain": "base"}')
+WALLET_ID=$(echo $WALLET | jq -r '.wallet_id')
+echo "Wallet created: $WALLET_ID"
+
+# 2. Set spending policy
+curl -s -X POST https://api.sardis.sh/v2/policies/apply \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent_abc123", "natural_language": "Max $100 per transaction, $500/day, only OpenAI"}'
+
+# 3. Check balance
+curl -s -X GET "https://api.sardis.sh/v2/wallets/$WALLET_ID/balances" \
+  -H "Authorization: Bearer $SARDIS_API_KEY" | jq '.'
+
+# 4. Send payment (policy auto-enforced)
+curl -s -X POST "https://api.sardis.sh/v2/wallets/$WALLET_ID/transfer" \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "amount": "25.00", "token": "USDC", "chain": "base"}'
 ```
 
 ## Error Handling
 
 Always check response status codes:
 
-- `200 OK` - Request successful
+- `200 OK` / `201 Created` - Request successful
 - `400 Bad Request` - Invalid parameters (check amount, address format, token)
 - `401 Unauthorized` - Invalid or missing API key
 - `403 Forbidden` - Policy violation (payment blocked by spending rules)
@@ -172,12 +200,17 @@ Always check response status codes:
 | Ethereum | Mainnet | USDC, USDT, PYUSD, EURC |
 | Arbitrum | One | USDC, USDT |
 | Optimism | Mainnet | USDC, USDT |
+| Tempo | Mainnet | pathUSD |
 
 ## Related Skills
 
 - `sardis-balance` - Read-only balance checking and analytics
 - `sardis-policy` - Natural language spending policy management
 - `sardis-cards` - Virtual card issuance and management
+- `sardis-guardrails` - Circuit breaker and kill switch controls
+- `sardis-identity` - Agent identity with TAP verification
+- `sardis-escrow` - Smart contract escrow for agent-to-agent payments
+- `sardis-tempo-pay` - MPP-native payments on Tempo mainnet
 
 ## Links
 

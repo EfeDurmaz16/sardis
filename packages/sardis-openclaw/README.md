@@ -6,74 +6,76 @@ OpenClaw skills for Sardis - Payment OS for AI Agents.
 
 ## What is this?
 
-This package provides OpenClaw skill definitions for Sardis, enabling AI agents to execute payments, manage spending policies, check balances, and control virtual cards with natural language commands.
+This package provides OpenClaw skill definitions for Sardis, enabling AI agents to create wallets, execute payments, manage spending policies, check balances, and control virtual cards with natural language commands.
 
 ## Available Skills
 
-### 💳 [sardis-payment](./SKILL.md) - Core Payment Execution
+### [sardis-payment](./SKILL.md) - Core Payment Skill (Primary)
 
-Execute secure, policy-controlled payments across multiple blockchains.
+The main skill combining all four demo capabilities:
 
-**Capabilities:**
-- Send USDC/USDT/EURC on Base, Polygon, Ethereum, Arbitrum, Optimism
-- Policy enforcement before every transaction
-- Real-time balance checking
-- Transaction history and audit trail
+1. **Create Wallet** - Provision non-custodial MPC wallets for agents
+2. **Send Payment** - Execute stablecoin transfers with policy enforcement
+3. **Check Balance** - Real-time multi-chain balance queries
+4. **Set Spending Policy** - Natural language spending rules
 
 **Requirements:** `SARDIS_API_KEY`, `SARDIS_WALLET_ID`
 
-**Use when:** Agent needs to execute payments or manage wallets
-
 ---
 
-### 💰 [sardis-balance](./skills/sardis-balance/SKILL.md) - Read-Only Balance & Analytics
+### [sardis-balance](./skills/sardis-balance/SKILL.md) - Read-Only Balance & Analytics
 
 Safe, read-only skill for monitoring wallet balances and spending patterns.
 
-**Capabilities:**
-- Check wallet balances across chains
-- Spending summaries (daily, weekly, monthly)
-- Transaction history with filters
-- Budget remaining against policy limits
-- Multi-wallet monitoring
-
-**Requirements:** `SARDIS_API_KEY` (no wallet ID needed)
-
-**Use when:** Agent needs to check balances without payment risk
+**Requirements:** `SARDIS_API_KEY`
 
 ---
 
-### 🛡️ [sardis-policy](./skills/sardis-policy/SKILL.md) - Spending Policy Management
+### [sardis-policy](./skills/sardis-policy/SKILL.md) - Spending Policy Management
 
 Create and manage spending policies using natural language or structured rules.
 
-**Capabilities:**
-- Natural language policy creation ("Max $500/day, only Amazon")
-- Pre-built policy templates (procurement, API service, trial, employee)
-- Policy testing (dry-run transactions)
-- Multi-layer limits (per-transaction, daily, weekly, monthly)
-- Vendor and category restrictions
-
 **Requirements:** `SARDIS_API_KEY`
-
-**Use when:** Agent needs to create spending rules or test transactions
 
 ---
 
-### 💳 [sardis-cards](./skills/sardis-cards/SKILL.md) - Virtual Card Management
+### [sardis-cards](./skills/sardis-cards/SKILL.md) - Virtual Card Management
 
-Issue and manage virtual cards for real-world purchases.
-
-**Capabilities:**
-- Instant virtual card issuance
-- Spending controls (per-transaction, daily, monthly limits)
-- Merchant category restrictions
-- Freeze/unfreeze cards instantly
-- Transaction monitoring and alerts
+Issue virtual cards for AI agents to make real-world purchases.
 
 **Requirements:** `SARDIS_API_KEY`
 
-**Use when:** Agent needs to make traditional card purchases (SaaS, cloud services, etc.)
+---
+
+### [sardis-guardrails](./skills/sardis-guardrails/SKILL.md) - Security Controls
+
+Circuit breakers, kill switches, and behavioral anomaly detection.
+
+**Requirements:** `SARDIS_API_KEY`
+
+---
+
+### [sardis-identity](./skills/sardis-identity/SKILL.md) - Agent Identity
+
+TAP-verified agent identities with reputation tracking.
+
+**Requirements:** `SARDIS_API_KEY`
+
+---
+
+### [sardis-escrow](./skills/sardis-escrow/SKILL.md) - Smart Contract Escrow
+
+Milestone-based escrow for agent-to-agent payments.
+
+**Requirements:** `SARDIS_API_KEY`
+
+---
+
+### [sardis-tempo-pay](./skills/sardis-tempo-pay/SKILL.md) - MPP Payments on Tempo
+
+Machine Payments Protocol sessions with Sardis spending mandates on Tempo mainnet.
+
+**Requirements:** `SARDIS_API_KEY`, `SARDIS_WALLET_ID`, `SARDIS_TEMPO_RPC_URL`
 
 ---
 
@@ -90,7 +92,7 @@ export SARDIS_API_KEY=sk_your_key_here
 
 ```bash
 # Python
-pip install sardis
+pip install sardis-openclaw
 
 # JavaScript/TypeScript
 npm install @sardis/sdk
@@ -101,56 +103,78 @@ npm install @sardis/sdk
 All skills work with curl-based API calls (no SDK required):
 
 ```bash
-# Check balance (sardis-balance)
-curl -X GET https://api.sardis.sh/v2/wallets/{wallet_id}/balance \
+# Create wallet
+curl -X POST https://api.sardis.sh/v2/wallets \
+  -H "Authorization: Bearer $SARDIS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_id": "agent_123", "provider": "turnkey", "chain": "base"}'
+
+# Check balance
+curl -X GET https://api.sardis.sh/v2/wallets/{wallet_id}/balances \
   -H "Authorization: Bearer $SARDIS_API_KEY"
 
-# Create policy (sardis-policy)
-curl -X POST https://api.sardis.sh/v2/policies \
+# Set policy (natural language)
+curl -X POST https://api.sardis.sh/v2/policies/apply \
   -H "Authorization: Bearer $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"name": "Daily Limit", "description": "Max $500/day"}'
+  -d '{"agent_id": "agent_123", "natural_language": "Max $500/day, only OpenAI"}'
 
-# Execute payment (sardis-payment)
-curl -X POST https://api.sardis.sh/v2/payments \
+# Execute payment (policy auto-enforced)
+curl -X POST https://api.sardis.sh/v2/wallets/{wallet_id}/transfer \
   -H "Authorization: Bearer $SARDIS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"wallet_id": "wallet_123", "to": "0x...", "amount": "25.00", "token": "USDC"}'
+  -d '{"to": "0x...", "amount": "25.00", "token": "USDC", "chain": "base"}'
+```
 
-# Issue virtual card (sardis-cards)
-curl -X POST https://api.sardis.sh/v2/cards \
-  -H "Authorization: Bearer $SARDIS_API_KEY" \
+## Skill Server
+
+The package includes a FastAPI-based skill server for programmatic discovery and execution:
+
+```bash
+# Run the skill server
+uvicorn sardis_openclaw.server:app --host 0.0.0.0 --port 8090
+
+# Discover skills
+curl http://localhost:8090/skills
+
+# Execute a skill
+curl -X POST http://localhost:8090/skills/create_wallet/execute \
   -H "Content-Type: application/json" \
-  -d '{"agent_id": "agent_123", "spending_limit": {"daily": "500.00"}}'
+  -d '{
+    "params": {"agent_id": "agent_123"},
+    "context": {"api_key": "sk_...", "agent_id": "agent_123"}
+  }'
 ```
 
 ## Skill Selection Guide
 
 | Agent Task | Recommended Skill | Why |
 |------------|------------------|-----|
+| "Create a wallet" | `sardis-payment` | Wallet provisioning |
 | "Pay for OpenAI API" | `sardis-payment` | Execute crypto payment |
 | "Check my balance" | `sardis-balance` | Read-only, safe |
 | "Set spending limit" | `sardis-policy` | Policy creation |
 | "Subscribe to GitHub Copilot" | `sardis-cards` | Traditional card payment |
 | "Show spending this week" | `sardis-balance` | Analytics view |
 | "Test if payment allowed" | `sardis-policy` | Dry-run check |
+| "Emergency stop" | `sardis-guardrails` | Kill switch |
+| "Pay on Tempo" | `sardis-tempo-pay` | MPP session |
 
 ## Publishing to ClawHub
 
-To publish these skills to the OpenClaw ClawHub:
+```bash
+# Install ClawHub CLI
+npm install -g @openclaw/clawhub
 
-### Main Skill (sardis-payment)
-1. Navigate to ClawHub submission page
-2. Upload `SKILL.md`
-3. Set category: payments, fintech, infrastructure
-4. Tags: payments, crypto, USDC, spending-policy, agent-payments
-5. Submit for review
+# Publish main skill
+cd packages/sardis-openclaw
+clawhub publish .
 
-### Additional Skills
-Repeat for each skill in the `skills/` directory:
-- `skills/sardis-balance/SKILL.md`
-- `skills/sardis-policy/SKILL.md`
-- `skills/sardis-cards/SKILL.md`
+# Or publish individual sub-skills
+clawhub publish skills/sardis-balance
+clawhub publish skills/sardis-policy
+clawhub publish skills/sardis-cards
+```
 
 ## Security Best Practices
 
@@ -171,6 +195,7 @@ All skills enforce these security principles:
 | Ethereum | Mainnet | USDC, USDT, PYUSD, EURC |
 | Arbitrum | One | USDC, USDT |
 | Optimism | Mainnet | USDC, USDT |
+| Tempo | Mainnet | pathUSD |
 
 ## Links
 
@@ -179,7 +204,7 @@ All skills enforce these security principles:
 - [API Reference](https://api.sardis.sh/v2/docs)
 - [GitHub](https://github.com/EfeDurmaz16/sardis)
 - [OpenClaw Documentation](https://docs.openclaw.ai)
-- [ClawHub](https://clawhub.ai)
+- [ClawHub](https://clawhub.com)
 - [Support](mailto:support@sardis.sh)
 
 ## License
