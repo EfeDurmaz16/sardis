@@ -120,9 +120,36 @@ class Wallet(BaseModel):
             currency=currency,
         )
 
+    # EVM-compatible chains share the same address (same private key → same address)
+    _EVM_CHAINS = frozenset({
+        "base", "base_sepolia", "ethereum", "polygon", "arbitrum",
+        "optimism", "tempo", "avalanche", "bsc", "gnosis", "zksync",
+    })
+
     def get_address(self, chain: str) -> str | None:
-        """Get wallet address for a specific chain."""
-        return self.addresses.get(chain)
+        """Get wallet address for a specific chain.
+
+        For EVM-compatible chains, all addresses are derived from the same
+        key and are identical. If the requested chain has no explicit entry,
+        fall back to any other EVM address stored on this wallet.
+        """
+        addr = self.addresses.get(chain)
+        if addr:
+            return addr
+
+        # EVM fallback: all EVM chains share the same address
+        if chain.lower() in self._EVM_CHAINS or chain.startswith("0x"):
+            for fallback_chain in ("base", "base_sepolia", "ethereum", "polygon",
+                                   "arbitrum", "optimism", "tempo"):
+                fallback = self.addresses.get(fallback_chain)
+                if fallback:
+                    return fallback
+            # Last resort: return any address that looks like an EVM address
+            for addr_val in self.addresses.values():
+                if addr_val and addr_val.startswith("0x"):
+                    return addr_val
+
+        return None
 
     def set_address(self, chain: str, address: str) -> None:
         """Set wallet address for a chain."""
