@@ -622,7 +622,12 @@ async def _update_kyc_status(
 
 
 async def _get_latest_verification(user_id: str) -> dict | None:
-    """Fetch the most recent kyc_verifications row for ``user_id``."""
+    """Fetch the most recent kyc_verifications row for ``user_id``.
+
+    Falls back to checking ``users.kyc_status`` and ``ba_user.kyc_status``
+    when no ``kyc_verifications`` row exists (handles the case where the
+    webhook updated the user table but no verification row was persisted).
+    """
     try:
         from sardis_v2_core.database import Database
 
@@ -636,7 +641,50 @@ async def _get_latest_verification(user_id: str) -> dict | None:
             """,
             user_id,
         )
-        return dict(row) if row else None
+        if row:
+            return dict(row)
+
+        # Fallback: check users table (dashboard users with text IDs like usr_xxx)
+        user_row = await Database.fetchrow(
+            """
+            SELECT kyc_status FROM users
+            WHERE id = $1 OR email = $1
+            LIMIT 1
+            """,
+            user_id,
+        )
+        if user_row and user_row["kyc_status"] not in (None, "not_started"):
+            return {
+                "inquiry_id": None,
+                "provider": "didit",
+                "status": user_row["kyc_status"],
+                "verified_at": None,
+                "expires_at": None,
+                "reason": None,
+                "metadata": {},
+            }
+
+        # Fallback: check ba_user table (better-auth users)
+        ba_row = await Database.fetchrow(
+            """
+            SELECT kyc_status FROM ba_user
+            WHERE id = $1 OR email = $1 OR name = $1
+            LIMIT 1
+            """,
+            user_id,
+        )
+        if ba_row and ba_row["kyc_status"] not in (None, "not_started"):
+            return {
+                "inquiry_id": None,
+                "provider": "didit",
+                "status": ba_row["kyc_status"],
+                "verified_at": None,
+                "expires_at": None,
+                "reason": None,
+                "metadata": {},
+            }
+
+        return None
     except Exception as exc:
         logger.warning("DB lookup for KYC verification failed for %s: %s", user_id, exc)
         return None
@@ -718,13 +766,13 @@ async def _record_idempotency(session_id: str, status: str) -> None:
 async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
     """Side-effects when a user passes KYC.
 
-    1. Update ``ba_user.kyc_status`` to ``'approved'``
+    1. Update ``kyc_status`` to ``'approved'`` in all user tables
     2. Generate a production (``sk_live_``) API key for the org
     """
     try:
         from sardis_v2_core.database import Database
 
-        # 1. Update ba_user kyc_status
+        # 1a. Update ba_user kyc_status (better-auth users)
         await Database.execute(
             """
             UPDATE ba_user
@@ -737,6 +785,23 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
         logger.info("KYC approved: updated ba_user.kyc_status for %s", user_id)
     except Exception as exc:
         logger.warning("Failed to update ba_user.kyc_status for %s: %s", user_id, exc)
+
+    try:
+        from sardis_v2_core.database import Database
+
+        # 1b. Update users kyc_status (dashboard users with usr_xxx IDs)
+        await Database.execute(
+            """
+            UPDATE users
+            SET kyc_status  = 'approved',
+                updated_at  = NOW()
+            WHERE id = $1 OR email = $1
+            """,
+            user_id,
+        )
+        logger.info("KYC approved: updated users.kyc_status for %s", user_id)
+    except Exception as exc:
+        logger.warning("Failed to update users.kyc_status for %s: %s", user_id, exc)
 
     # 2. Generate sk_live_ API key
     if not organization_id:
@@ -759,6 +824,25 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
                 if isinstance(meta, str):
                     meta = json.loads(meta)
                 organization_id = meta.get("organization_id")
+        except Exception:
+            pass
+
+    if not organization_id:
+        # Fallback: resolve org from user_org_memberships (dashboard users)
+        try:
+            from sardis_v2_core.database import Database
+
+            org_row = await Database.fetchrow(
+                """
+                SELECT org_id FROM user_org_memberships
+                WHERE user_id = $1
+                ORDER BY created_at
+                LIMIT 1
+                """,
+                user_id,
+            )
+            if org_row:
+                organization_id = org_row["org_id"]
         except Exception:
             pass
 

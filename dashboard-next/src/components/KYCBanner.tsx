@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAuthHeaders } from "../api/client";
 
-type KYCStatus = "not_started" | "pending" | "approved" | "rejected" | "expired";
+type KYCStatus = "not_started" | "pending" | "approved" | "rejected" | "declined" | "needs_review" | "expired";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
@@ -78,6 +78,12 @@ export default function KYCBanner() {
       action: "",
     },
     rejected: {
+      bg: "bg-red-950/30",
+      border: "border-red-800/40",
+      text: "Identity verification was unsuccessful. Please try again or contact support.",
+      action: "Retry Verification",
+    },
+    declined: {
       bg: "bg-red-950/30",
       border: "border-red-800/40",
       text: "Identity verification was unsuccessful. Please try again or contact support.",
