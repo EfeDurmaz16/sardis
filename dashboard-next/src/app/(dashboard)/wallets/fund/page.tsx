@@ -32,20 +32,20 @@ const PROVIDERS: {
   targetChain?: string
 }[] = [
   {
-    id: 'conduit',
-    name: 'Conduit (Direct to Tempo)',
-    description: 'Native USDC on Tempo — no bridge needed. Powered by Conduit Pay.',
-    recommended: true,
-    fees: 'Low',
-    badge: 'Recommended',
-    targetChain: 'tempo',
-  },
-  {
     id: 'coinbase',
     name: 'Coinbase Onramp',
     description: 'Instant funding via Coinbase. No fees for USDC on Base.',
+    recommended: true,
     fees: 'Free',
+    badge: 'Recommended',
     targetChain: 'base',
+  },
+  {
+    id: 'conduit',
+    name: 'Conduit (Direct to Tempo)',
+    description: 'Native USDC on Tempo — no bridge needed. Powered by Conduit Pay.',
+    fees: 'Low',
+    targetChain: 'tempo',
   },
   {
     id: 'moonpay',
@@ -82,7 +82,7 @@ export default function FundWalletPage() {
 
   const [step, setStep] = useState<FundStep>('configure')
   const [amount, setAmount] = useState('')
-  const [provider, setProvider] = useState<OnrampProvider>('conduit')
+  const [provider, setProvider] = useState<OnrampProvider>('coinbase')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
   const [selectedWalletId, setSelectedWalletId] = useState(walletIdParam || '')
   const [resultData, setResultData] = useState<Record<string, unknown> | null>(null)
