@@ -70,6 +70,7 @@ node_modules/
 package-lock.json
 !dashboard/package-lock.json
 !landing/package-lock.json
+!docs-site/package-lock.json
 
 # Database
 *.db
@@ -116,6 +117,7 @@ pitch-deck/
 !/docs/audits/
 !/docs/quickstart/
 !/docs/docs/
+!/docs/cdp/
 /demos/sardis-demo-video/
 
 # Root-level internal files
