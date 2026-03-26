@@ -29,6 +29,15 @@ const DASHBOARD_PREFIXES = [
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host") || "";
+
+  // Consolidate: redirect dashboard.sardis.sh -> app.sardis.sh (same project)
+  if (hostname === "dashboard.sardis.sh") {
+    const url = new URL(request.url);
+    url.hostname = "app.sardis.sh";
+    url.host = "app.sardis.sh";
+    return NextResponse.redirect(url, 301);
+  }
 
   // Allow API routes (better-auth + Next.js internal)
   if (pathname.startsWith("/api/")) {
