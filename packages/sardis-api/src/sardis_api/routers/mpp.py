@@ -480,6 +480,7 @@ class IssueCardResponse(BaseModel):
     currency: str
     status: str
     card_type: str
+    sandbox: bool = Field(default=False, description="True when card is simulated (non-live mode)")
 
 
 @router.post("/cards/issue", response_model=IssueCardResponse, status_code=status.HTTP_201_CREATED)
@@ -516,7 +517,43 @@ async def issue_virtual_card(
                 detail=f"Card amount {req.amount} exceeds remaining session budget {session['remaining']}",
             )
 
-    # Issue card via Laso MPP service
+    # ── Sandbox mode: return simulated card when not in live mode ────
+    chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
+    sandbox_override = os.getenv("SARDIS_VIRTUAL_CARDS_SANDBOX", "").strip().lower() == "true"
+    if chain_mode != "live" or sandbox_override:
+        import hashlib
+        import uuid as _uuid
+
+        card_id = f"sandbox_card_{_uuid.uuid4().hex[:12]}"
+        now = datetime.now(UTC)
+        seed = hashlib.sha256(f"{card_id}{req.amount}{now.isoformat()[:10]}".encode()).hexdigest()
+        card_number = f"4000 00{seed[:2]} {seed[2:6]} {seed[6:10]}"
+        cvv = seed[10:13]
+        expiry_month = str((int(seed[13:15], 16) % 12) + 1).zfill(2)
+        expiry = f"{expiry_month}/{now.year + 2}"
+
+        # Deduct from session if applicable
+        if req.session_id and req.session_id in _sessions:
+            session = _sessions[req.session_id]
+            session["remaining"] = session["remaining"] - req.amount
+            session["total_spent"] = session["total_spent"] + req.amount
+            session["payment_count"] += 1
+
+        logger.info("Sandbox virtual card issued: %s amount=%s for org %s", card_id, req.amount, principal.org_id)
+
+        return IssueCardResponse(
+            card_id=card_id,
+            card_number=card_number,
+            cvv=cvv,
+            expiry=expiry,
+            amount=str(req.amount),
+            currency=req.currency,
+            status="ready",
+            card_type="single_use",
+            sandbox=True,
+        )
+
+    # ── Live mode: issue real card via Laso MPP service ───────────────
     try:
         from sardis_mpp.services.laso import LasoMPPService
 
@@ -541,10 +578,11 @@ async def issue_virtual_card(
             currency=card.currency,
             status=card.status,
             card_type=card.card_type,
+            sandbox=False,
         )
 
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="sardis_mpp package not installed",
+            detail="sardis_mpp package not installed -- set SARDIS_CHAIN_MODE=simulated for sandbox cards",
         )
