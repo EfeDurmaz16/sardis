@@ -13,7 +13,10 @@ compatibility_date = "2025-04-01"
 #   SARDIS_API_KEY   - Sardis API key for policy + audit
 #
 # Optional secrets:
-#   JWT_SECRET       - Key for session cookies (auto-generated if omitted)
+#   JWT_SECRET           - Key for session cookies (auto-generated if omitted)
+#   STRIPE_SECRET_KEY    - Stripe secret key for SPT fiat payments (enables Mppx.stripe())
+#   STRIPE_NETWORK_ID    - Stripe network ID (default: "internal")
+#   STRIPE_PAYMENT_METHOD_TYPES - JSON array of payment method types (default: ["card"])
 
 # Uncomment to bind to another Worker as origin
 # [[services]]

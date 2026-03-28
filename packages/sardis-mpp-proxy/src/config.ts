@@ -35,6 +35,12 @@ export interface ProxyConfig {
   mppSecretKey: string;
   /** USDC contract address on the payment chain */
   paymentCurrency: string;
+  /** Stripe secret key for SPT-based fiat payments */
+  stripeSecretKey: string;
+  /** Stripe network ID (e.g. "internal") */
+  stripeNetworkId: string;
+  /** Stripe payment method types (e.g. ["card"]) */
+  stripePaymentMethodTypes: string[];
 }
 
 /** Cloudflare Worker environment bindings */
@@ -50,6 +56,11 @@ export interface Env {
   PAYMENT_CURRENCY?: string;
   PROTECTED_ROUTES?: string;
   PAYMENT_METHODS?: string;
+
+  // Stripe SPT (optional — enables fiat payments alongside crypto)
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_NETWORK_ID?: string;
+  STRIPE_PAYMENT_METHOD_TYPES?: string;
 
   // Service binding (alternative to ORIGIN_URL)
   ORIGIN_SERVICE?: Fetcher;
@@ -81,13 +92,23 @@ export function buildConfig(env: Env): ProxyConfig {
     ];
   }
 
+  const defaultMethods = env.STRIPE_SECRET_KEY ? ['tempo', 'stripe'] : ['tempo'];
   let paymentMethods: string[];
   try {
     paymentMethods = env.PAYMENT_METHODS
       ? (JSON.parse(env.PAYMENT_METHODS) as string[])
-      : ['tempo'];
+      : defaultMethods;
   } catch {
-    paymentMethods = ['tempo'];
+    paymentMethods = defaultMethods;
+  }
+
+  let stripePaymentMethodTypes: string[];
+  try {
+    stripePaymentMethodTypes = env.STRIPE_PAYMENT_METHOD_TYPES
+      ? (JSON.parse(env.STRIPE_PAYMENT_METHOD_TYPES) as string[])
+      : ['card'];
+  } catch {
+    stripePaymentMethodTypes = ['card'];
   }
 
   return {
@@ -102,6 +123,9 @@ export function buildConfig(env: Env): ProxyConfig {
     recipientAddress: env.PAY_TO || '',
     mppSecretKey: env.MPP_SECRET_KEY || '',
     paymentCurrency: env.PAYMENT_CURRENCY || DEFAULT_PAYMENT_CURRENCY,
+    stripeSecretKey: env.STRIPE_SECRET_KEY || '',
+    stripeNetworkId: env.STRIPE_NETWORK_ID || 'internal',
+    stripePaymentMethodTypes,
   };
 }
 

@@ -1134,6 +1134,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(mpp_router.router, prefix="/api/v2/mpp", tags=["mpp"])
     logger.info("MPP routes enabled")
 
+    # --- MPP Demo (paid API for Stripe team demo) ---
+    from .routers import mpp_demo as mpp_demo_router
+    app.include_router(mpp_demo_router.router, prefix="/api/v2/demo", tags=["mpp-demo"])
+    logger.info("MPP demo routes enabled")
+
     # --- Testnet faucet ---
     app.include_router(faucet_router.router, prefix="/api/v2/faucet", tags=["faucet"])
 
@@ -1799,6 +1804,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
         kya_service=kya_service,
+        wallet_manager=wallet_mgr,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
 

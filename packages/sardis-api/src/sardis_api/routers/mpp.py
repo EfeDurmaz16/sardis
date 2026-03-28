@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -287,9 +287,16 @@ async def get_session(
 async def execute_payment(
     session_id: str,
     req: ExecutePaymentRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Execute a payment within an MPP session."""
+    """Execute a payment within an MPP session.
+
+    When a chain executor is available (SARDIS_CHAIN_MODE=live or simulated),
+    this endpoint builds a PaymentMandate and executes a real Tempo transfer
+    via the ChainExecutor. The resulting tx_hash is persisted to the
+    mpp_payments record.
+    """
     session = await _load_session(session_id, principal.org_id)
 
     if session["status"] != "active":
@@ -325,6 +332,79 @@ async def execute_payment(
     new_count = session["payment_count"] + 1
     new_status = "exhausted" if new_remaining <= Decimal("0") else "active"
 
+    # ── Execute on-chain payment via ChainExecutor ────────────────────
+    tx_hash: str | None = None
+    pay_status = "completed"
+    pay_error: str | None = None
+
+    chain_executor = getattr(request.app.state, "chain_executor", None)
+    if chain_executor:
+        try:
+            from sardis_v2_core.mandates import PaymentMandate, VCProof
+
+            chain = session["chain"]
+            # Map MPP chain names to executor chain names
+            chain_key = {
+                "tempo": "tempo",
+                "tempo_testnet": "tempo_testnet",
+                "tempo_moderato": "tempo_testnet",
+            }.get(chain, chain)
+
+            wallet_id = session.get("wallet_id")
+            if not wallet_id:
+                raise RuntimeError("Session has no wallet_id — cannot sign transaction")
+
+            # Convert decimal amount to minor units (6 decimals for USDC)
+            amount_minor = int(req.amount * Decimal("1000000"))
+
+            mandate = PaymentMandate(
+                mandate_id=payment_id,
+                mandate_type="payment",
+                issuer=f"sardis:mpp:{session_id}",
+                subject=principal.org_id,
+                expires_at=int(datetime.now(UTC).timestamp()) + 300,
+                nonce=uuid4().hex,
+                proof=VCProof(
+                    verification_method="sardis:mpp:internal",
+                    created=datetime.now(UTC).isoformat(),
+                    proof_value="mpp-session-authorized",
+                ),
+                domain=req.merchant,
+                purpose="checkout",
+                chain=chain_key,
+                token=session.get("currency", "USDC"),
+                amount_minor=amount_minor,
+                destination=req.merchant,
+                audit_hash=f"mpp:{session_id}:{payment_id}",
+                wallet_id=wallet_id,
+                ai_agent_presence=True,
+                transaction_modality="human_not_present",
+                merchant_domain=req.merchant_url or req.merchant,
+            )
+
+            receipt = await chain_executor.execute_payment(mandate)
+            tx_hash = receipt.tx_hash
+            logger.info(
+                "MPP on-chain payment success: %s tx=%s chain=%s",
+                payment_id, tx_hash, chain_key,
+            )
+
+        except Exception as exc:
+            pay_status = "failed"
+            pay_error = str(exc)
+            logger.error(
+                "MPP on-chain payment failed: %s error=%s",
+                payment_id, pay_error,
+            )
+            # Do NOT deduct budget on failure — raise so caller can retry
+            raise HTTPException(
+                status_code=502,
+                detail=f"On-chain payment failed: {pay_error}",
+            )
+    else:
+        logger.warning("MPP execute: no chain_executor on app.state — budget-only mode")
+
+    # ── Persist payment + update session budget ───────────────────────
     pool = await _get_db()
     if pool:
         async with pool.acquire() as conn:
@@ -338,11 +418,11 @@ async def execute_payment(
                 await conn.execute(
                     """INSERT INTO mpp_payments
                        (payment_id, session_id, amount, currency, merchant, merchant_url,
-                        status, chain, created_at, metadata)
-                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)""",
+                        status, tx_hash, chain, created_at, metadata)
+                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
                     payment_id, session_id, req.amount, session["currency"],
                     req.merchant, req.merchant_url or "",
-                    "completed", session["chain"], datetime.now(UTC),
+                    pay_status, tx_hash, session["chain"], datetime.now(UTC),
                     json_module.dumps(req.metadata or {}),
                 )
     else:
@@ -358,15 +438,15 @@ async def execute_payment(
                 "session_id": session_id,
                 "amount": req.amount,
                 "merchant": req.merchant,
-                "status": "completed",
-                "tx_hash": None,
+                "status": pay_status,
+                "tx_hash": tx_hash,
                 "chain": session["chain"],
                 "created_at": datetime.now(UTC).isoformat(),
             })
 
     logger.info(
-        "MPP payment executed: %s in session %s (amount=%s, remaining=%s)",
-        payment_id, session_id, req.amount, new_remaining,
+        "MPP payment executed: %s in session %s (amount=%s, remaining=%s, tx=%s)",
+        payment_id, session_id, req.amount, new_remaining, tx_hash,
     )
 
     return ExecutePaymentResponse(
@@ -374,8 +454,8 @@ async def execute_payment(
         session_id=session_id,
         amount=str(req.amount),
         merchant=req.merchant,
-        status="completed",
-        tx_hash=None,
+        status=pay_status,
+        tx_hash=tx_hash,
         chain=session["chain"],
         remaining=str(new_remaining),
         next_steps=[

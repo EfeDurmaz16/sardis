@@ -23,7 +23,7 @@
  */
 
 import { Hono } from 'hono';
-import * as Mppx from 'mppx/server';
+import { Mppx, tempo, stripe } from 'mppx/server';
 import type { Env } from './config.js';
 import { buildConfig, findProtectedRoute } from './config.js';
 import { checkPolicy } from './sardis-policy.js';
@@ -57,6 +57,7 @@ app.get('/__mpp/config', (c) => {
     })),
     paymentMethods: config.paymentMethods,
     sardisPolicy: config.sardisApiKey ? 'enabled' : 'disabled',
+    stripe: config.stripeSecretKey ? 'enabled' : 'disabled',
     recipientAddress: config.recipientAddress
       ? config.recipientAddress.slice(0, 6) + '...' + config.recipientAddress.slice(-4)
       : '(not set)',
@@ -95,25 +96,53 @@ app.all('*', async (c) => {
   }
 
   // ── Build the mppx payment handler ────────────────────────────────
-  const mppx = Mppx.create({
-    methods: [
-      Mppx.tempo({
-        address: config.recipientAddress as `0x${string}`,
-        asset: config.paymentCurrency as `0x${string}`,
+  // Always include Tempo (crypto via Tempo network)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const methods: any[] = [
+    tempo({
+      currency: config.paymentCurrency as `0x${string}`,
+      recipient: config.recipientAddress as `0x${string}`,
+    }),
+  ];
+
+  // Add Stripe SPT method if configured (fiat via Stripe Payment Tokens)
+  const stripeEnabled = !!config.stripeSecretKey;
+  if (stripeEnabled) {
+    methods.push(
+      stripe({
+        secretKey: config.stripeSecretKey,
+        networkId: config.stripeNetworkId,
+        paymentMethodTypes: config.stripePaymentMethodTypes,
       }),
-    ],
+    );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mppx: any = Mppx.create({
+    methods,
     secretKey: config.mppSecretKey,
     realm: url.hostname,
   });
 
-  // Create the charge handler for this route's price
-  const chargeHandler = mppx.charge({
+  // Build per-method charge handlers
+  const chargeOpts = {
     amount: routeConfig.priceUsd,
     description: routeConfig.description,
-  });
+  };
 
-  // Execute the mppx charge/verify flow against the incoming request
-  const paymentResult = await chargeHandler(c.req.raw);
+  let paymentResult: { status: 402; challenge: Response } | { status: 200; withReceipt: (res: Response) => Response };
+
+  if (stripeEnabled) {
+    // Compose both methods — 402 presents all options, credential dispatches to correct one
+    const composedHandler = Mppx.compose(
+      mppx['tempo/charge'](chargeOpts),
+      mppx['stripe/charge']({ ...chargeOpts, currency: 'usd' }),
+    );
+    paymentResult = await composedHandler(c.req.raw) as typeof paymentResult;
+  } else {
+    // Tempo-only mode
+    paymentResult = await mppx['tempo/charge'](chargeOpts)(c.req.raw) as typeof paymentResult;
+  }
 
   // ── 402: Payment required ─────────────────────────────────────────
   if (paymentResult.status === 402) {
@@ -135,10 +164,9 @@ app.all('*', async (c) => {
 
     // Merge the WWW-Authenticate headers from mppx
     const challenge = paymentResult.challenge;
-    if (challenge && typeof challenge === 'object' && 'headers' in challenge) {
-      const challengeHeaders = challenge as { headers: Headers };
-      challengeHeaders.headers.forEach((value: string, key: string) => {
-        challengeResponse.headers.set(key, value);
+    if (challenge instanceof Response) {
+      challenge.headers.forEach((value: string, key: string) => {
+        challengeResponse.headers.append(key, value);
       });
     }
 
@@ -147,15 +175,17 @@ app.all('*', async (c) => {
 
   // ── Payment verified — extract payer info ─────────────────────────
   const payerAddress = extractPayerAddress(c.req.raw) || 'unknown';
+  const paymentMethod = detectPaymentMethod(c.req.raw);
 
   // ── Sardis policy check ───────────────────────────────────────────
+  const merchantHost = config.origin ? new URL(config.origin).hostname : url.hostname;
   const policyResult = await checkPolicy(
     {
       amount: routeConfig.priceUsd,
       payerAddress,
       route: path,
-      merchant: config.origin ? new URL(config.origin).hostname : url.hostname,
-      paymentMethod: 'tempo',
+      merchant: merchantHost,
+      paymentMethod,
     },
     config.sardisApiUrl,
     config.sardisApiKey,
@@ -172,9 +202,9 @@ app.all('*', async (c) => {
             amount: routeConfig.priceUsd,
             payerAddress,
             recipientAddress: config.recipientAddress,
-            paymentMethod: 'tempo',
+            paymentMethod,
             route: path,
-            merchant: config.origin ? new URL(config.origin).hostname : url.hostname,
+            merchant: merchantHost,
             httpMethod: c.req.method,
             responseStatus: 403,
             policyReason: policyResult.reason,
@@ -229,9 +259,9 @@ app.all('*', async (c) => {
           amount: routeConfig.priceUsd,
           payerAddress,
           recipientAddress: config.recipientAddress,
-          paymentMethod: 'tempo',
+          paymentMethod,
           route: path,
-          merchant: config.origin ? new URL(config.origin).hostname : url.hostname,
+          merchant: merchantHost,
           httpMethod: c.req.method,
           responseStatus: finalResponse.status,
           policyReason: policyResult.reason,
@@ -313,6 +343,28 @@ function extractPayerAddress(request: Request): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Detect which payment method was used from the MPP credential.
+ *
+ * The Authorization: Payment header encodes the method name.
+ * Falls back to "tempo" if detection fails.
+ */
+function detectPaymentMethod(request: Request): string {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader?.startsWith('Payment ')) return 'tempo';
+
+  try {
+    const credential = authHeader.slice('Payment '.length);
+    const decoded = atob(credential);
+    if (decoded.includes('"method":"stripe"') || decoded.includes('"spt"')) {
+      return 'stripe';
+    }
+  } catch {
+    // Fall through to default
+  }
+  return 'tempo';
 }
 
 // ---------------------------------------------------------------------------
