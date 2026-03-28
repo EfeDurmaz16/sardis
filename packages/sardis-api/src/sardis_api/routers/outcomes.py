@@ -123,6 +123,7 @@ async def get_agent_risk_profile(
     principal: Principal | None = Depends(optional_principal),
 ):
     """Get the risk profile for an agent."""
+    org_id = principal.organization_id if principal else None  # noqa: F841
     tracker = _get_outcome_tracker()
     profile = await tracker.get_agent_profile(agent_id)
     if not profile:
@@ -137,6 +138,7 @@ async def get_merchant_risk_profile(
     principal: Principal | None = Depends(optional_principal),
 ):
     """Get the risk profile for a merchant."""
+    org_id = principal.organization_id if principal else None  # noqa: F841
     tracker = _get_outcome_tracker()
     profile = await tracker.get_merchant_profile(merchant_id)
     if not profile:

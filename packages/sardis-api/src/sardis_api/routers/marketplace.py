@@ -225,6 +225,8 @@ async def list_services(
     principal: Principal | None = Depends(optional_principal),
 ):
     """List active services."""
+    # org_id is available for future scoping; MPP users see all public services
+    org_id = principal.organization_id if principal else None  # noqa: F841
     cat = ServiceCategory(category) if category else None
     services = await deps.repository.list_services(
         category=cat,

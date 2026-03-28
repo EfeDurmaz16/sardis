@@ -301,11 +301,18 @@ async def get_spending_by_agent(
     principal: Principal | None = Depends(optional_principal),
 ):
     """Get spending breakdown by agent."""
+    org_id = principal.organization_id if principal else None
     start_date, end_date = await _get_date_range(period, date_from, date_to)
 
     pool = await get_db_pool()
 
-    query = """
+    org_filter = ""
+    params: list = [start_date, end_date]
+    if org_id:
+        org_filter = " AND a.owner_id = $3"
+        params.append(org_id)
+
+    query = f"""
         SELECT
             t.agent_id,
             a.name as agent_name,
@@ -315,12 +322,13 @@ async def get_spending_by_agent(
         LEFT JOIN agents a ON t.agent_id = a.id
         WHERE t.created_at >= $1 AND t.created_at <= $2
         AND t.status = 'completed'
+        {org_filter}
         GROUP BY t.agent_id, a.name
         ORDER BY total DESC
     """
 
     async with pool.acquire() as conn:
-        rows = await conn.fetch(query, start_date, end_date)
+        rows = await conn.fetch(query, *params)
 
     agents = [
         AgentSpendingItem(
@@ -347,6 +355,7 @@ async def get_spending_by_category(
     principal: Principal | None = Depends(optional_principal),
 ):
     """Get spending breakdown by category."""
+    org_id = principal.organization_id if principal else None
     start_date, end_date = await _get_date_range(period, date_from, date_to)
 
     pool = await get_db_pool()
@@ -361,11 +370,18 @@ async def get_spending_by_category(
         AND status = 'completed'
     """
 
-    params = [start_date, end_date]
+    params: list = [start_date, end_date]
+    param_idx = 3
+
+    if org_id:
+        query += f" AND agent_id IN (SELECT id FROM agents WHERE owner_id = ${param_idx})"
+        params.append(org_id)
+        param_idx += 1
 
     if agent_id:
-        query += " AND agent_id = $3"
+        query += f" AND agent_id = ${param_idx}"
         params.append(agent_id)
+        param_idx += 1
 
     query += " GROUP BY category ORDER BY amount DESC"
 
@@ -548,11 +564,19 @@ async def get_analytics_summary(
     principal: Principal | None = Depends(optional_principal),
 ):
     """Get high-level analytics summary."""
+    org_id = principal.organization_id if principal else None
     start_date, end_date = await _get_date_range(period)
 
     pool = await get_db_pool()
 
-    summary_query = """
+    # Build org-scoped or unscoped queries
+    org_filter = ""
+    params: list = [start_date, end_date]
+    if org_id:
+        org_filter = " AND agent_id IN (SELECT id FROM agents WHERE owner_id = $3)"
+        params.append(org_id)
+
+    summary_query = f"""
         SELECT
             SUM(CASE WHEN status = 'completed' THEN amount_usd ELSE 0 END) as total_spend,
             COUNT(*) as total_transactions,
@@ -562,21 +586,23 @@ async def get_analytics_summary(
             MAX(CASE WHEN status = 'completed' THEN amount_usd ELSE 0 END) as largest_transaction
         FROM transactions
         WHERE created_at >= $1 AND created_at <= $2
+        {org_filter}
     """
 
-    top_merchant_query = """
+    top_merchant_query = f"""
         SELECT merchant
         FROM transactions
         WHERE created_at >= $1 AND created_at <= $2
         AND status = 'completed'
+        {org_filter}
         GROUP BY merchant
         ORDER BY SUM(amount_usd) DESC
         LIMIT 1
     """
 
     async with pool.acquire() as conn:
-        summary_row = await conn.fetchrow(summary_query, start_date, end_date)
-        top_merchant_row = await conn.fetchrow(top_merchant_query, start_date, end_date)
+        summary_row = await conn.fetchrow(summary_query, *params)
+        top_merchant_row = await conn.fetchrow(top_merchant_query, *params)
 
     total_spend = float(summary_row["total_spend"] or 0)
     days = (end_date - start_date).days or 1

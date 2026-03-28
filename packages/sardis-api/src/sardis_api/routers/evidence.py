@@ -95,24 +95,38 @@ async def get_transaction_evidence(
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
-        org_id = principal.organization_id if principal else ""
+        org_id = principal.organization_id if principal else None
 
         async with pool.acquire() as conn:
-            # Ledger entries — scoped via wallet ownership
-            ledger_rows = await conn.fetch(
-                """
-                SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
-                       le.currency, le.chain, le.chain_tx_hash, le.status,
-                       le.created_at
-                FROM ledger_entries le
-                JOIN wallets w ON le.wallet_id = w.wallet_id
-                WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
-                  AND w.organization_id = $2
-                ORDER BY le.created_at
-                """,
-                tx_id,
-                org_id,
-            )
+            # Ledger entries — scoped via wallet ownership when authenticated, unscoped for MPP
+            if org_id:
+                ledger_rows = await conn.fetch(
+                    """
+                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                           le.currency, le.chain, le.chain_tx_hash, le.status,
+                           le.created_at
+                    FROM ledger_entries le
+                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
+                      AND w.organization_id = $2
+                    ORDER BY le.created_at
+                    """,
+                    tx_id,
+                    org_id,
+                )
+            else:
+                ledger_rows = await conn.fetch(
+                    """
+                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                           le.currency, le.chain, le.chain_tx_hash, le.status,
+                           le.created_at
+                    FROM ledger_entries le
+                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
+                    ORDER BY le.created_at
+                    """,
+                    tx_id,
+                )
             ledger_entries = [_serialize_datetimes(dict(r)) for r in ledger_rows]
 
             if not ledger_entries:

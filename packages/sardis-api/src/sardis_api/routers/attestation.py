@@ -64,26 +64,42 @@ async def get_payment_attestation(
         from sardis_v2_core.database import Database
 
         pool = await Database.get_pool()
-        org_id = principal.organization_id if principal else ""
+        org_id = principal.organization_id if principal else None
 
         async with pool.acquire() as conn:
-            # Look up payment scoped to the caller's organisation
-            row = await conn.fetchrow(
-                """
-                SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
-                       le.currency, le.chain, le.chain_tx_hash, le.status,
-                       le.created_at,
-                       w.agent_id
-                FROM ledger_entries le
-                JOIN wallets w ON le.wallet_id = w.wallet_id
-                WHERE (le.entry_id = $1 OR le.chain_tx_hash = $1)
-                  AND w.organization_id = $2
-                ORDER BY le.created_at DESC
-                LIMIT 1
-                """,
-                payment_id,
-                org_id,
-            )
+            # Look up payment — scoped to org when authenticated, unscoped for MPP
+            if org_id:
+                row = await conn.fetchrow(
+                    """
+                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                           le.currency, le.chain, le.chain_tx_hash, le.status,
+                           le.created_at,
+                           w.agent_id
+                    FROM ledger_entries le
+                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    WHERE (le.entry_id = $1 OR le.chain_tx_hash = $1)
+                      AND w.organization_id = $2
+                    ORDER BY le.created_at DESC
+                    LIMIT 1
+                    """,
+                    payment_id,
+                    org_id,
+                )
+            else:
+                row = await conn.fetchrow(
+                    """
+                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                           le.currency, le.chain, le.chain_tx_hash, le.status,
+                           le.created_at,
+                           w.agent_id
+                    FROM ledger_entries le
+                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    WHERE (le.entry_id = $1 OR le.chain_tx_hash = $1)
+                    ORDER BY le.created_at DESC
+                    LIMIT 1
+                    """,
+                    payment_id,
+                )
 
             if row is None:
                 raise HTTPException(status_code=404, detail="Payment not found")
