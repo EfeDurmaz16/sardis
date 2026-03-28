@@ -172,10 +172,10 @@ async def get_transaction_evidence(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Evidence lookup failed for tx=%s: %s", tx_id, e)
+        logger.warning("Evidence lookup error for %s: %s", tx_id, e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Evidence lookup failed",
+            status_code=404,
+            detail=f"No evidence found for transaction: {tx_id}",
         )
 
 

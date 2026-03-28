@@ -1,6 +1,7 @@
 """Marketplace API routes for A2A service discovery and offers."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -19,6 +20,8 @@ from sardis_v2_core.marketplace import (
 
 from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["marketplace"])
 
@@ -225,15 +228,19 @@ async def list_services(
     principal: Principal | None = Depends(optional_principal),
 ):
     """List active services."""
-    # org_id is available for future scoping; MPP users see all public services
-    org_id = principal.organization_id if principal else None  # noqa: F841
-    cat = ServiceCategory(category) if category else None
-    services = await deps.repository.list_services(
-        category=cat,
-        provider_id=provider_id,
-        limit=limit,
-    )
-    return [ServiceResponse.from_service(s) for s in services]
+    try:
+        # org_id is available for future scoping; MPP users see all public services
+        org_id = principal.organization_id if principal else None  # noqa: F841
+        cat = ServiceCategory(category) if category else None
+        services = await deps.repository.list_services(
+            category=cat,
+            provider_id=provider_id,
+            limit=limit,
+        )
+        return [ServiceResponse.from_service(s) for s in services]
+    except Exception as e:
+        logger.warning("Marketplace services error: %s", e)
+        return []
 
 
 @router.get("/services/{service_id}", response_model=ServiceResponse)

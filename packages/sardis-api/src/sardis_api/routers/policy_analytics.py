@@ -382,18 +382,28 @@ async def get_policy_outcomes(
 ) -> OutcomesAnalyticsResponse:
     del period  # Page receives all supported windows in a single response.
 
-    org_id = principal.organization_id if principal else "mpp"
-    decisions = await _load_recent_decisions(org_id)
-    versions = await _load_recent_versions(org_id)
-    now = datetime.now(UTC)
+    try:
+        org_id = principal.organization_id if principal else "mpp"
+        decisions = await _load_recent_decisions(org_id)
+        versions = await _load_recent_versions(org_id)
+        now = datetime.now(UTC)
 
-    return OutcomesAnalyticsResponse(
-        summary_24h=_build_summary(decisions, now - timedelta(hours=24)),
-        summary_7d=_build_summary(decisions, now - timedelta(days=7)),
-        summary_30d=_build_summary(decisions, now - timedelta(days=30)),
-        daily_outcomes=_build_daily_outcomes(decisions),
-        policy_versions=_build_policy_version_rows(versions, decisions),
-    )
+        return OutcomesAnalyticsResponse(
+            summary_24h=_build_summary(decisions, now - timedelta(hours=24)),
+            summary_7d=_build_summary(decisions, now - timedelta(days=7)),
+            summary_30d=_build_summary(decisions, now - timedelta(days=30)),
+            daily_outcomes=_build_daily_outcomes(decisions),
+            policy_versions=_build_policy_version_rows(versions, decisions),
+        )
+    except Exception as e:
+        logger.warning("policy_analytics outcomes error: %s", e)
+        return OutcomesAnalyticsResponse(
+            summary_24h=OutcomeSummaryResponse(),
+            summary_7d=OutcomeSummaryResponse(),
+            summary_30d=OutcomeSummaryResponse(),
+            daily_outcomes=[],
+            policy_versions=[],
+        )
 
 
 @router.get("/deny-reasons", response_model=list[DenyReasonResponse])
@@ -408,10 +418,24 @@ async def get_policy_deny_reasons(
 async def get_policy_tuning_suggestions(
     principal: Principal | None = Depends(optional_principal),
 ) -> list[TuningSuggestionResponse]:
-    org_id = principal.organization_id if principal else "mpp"
-    decisions = await _load_recent_decisions(org_id)
-    versions = await _load_recent_versions(org_id)
-    summary_7d = _build_summary(decisions, datetime.now(UTC) - timedelta(days=7))
-    deny_reasons = _build_deny_reason_rows(decisions)
-    version_rows = _build_policy_version_rows(versions, decisions)
-    return _build_suggestions(summary_7d, deny_reasons, version_rows)
+    try:
+        org_id = principal.organization_id if principal else "mpp"
+        decisions = await _load_recent_decisions(org_id)
+        versions = await _load_recent_versions(org_id)
+        summary_7d = _build_summary(decisions, datetime.now(UTC) - timedelta(days=7))
+        deny_reasons = _build_deny_reason_rows(decisions)
+        version_rows = _build_policy_version_rows(versions, decisions)
+        return _build_suggestions(summary_7d, deny_reasons, version_rows)
+    except Exception as e:
+        logger.warning("policy_analytics suggestions error: %s", e)
+        return [
+            TuningSuggestionResponse(
+                id="not-enough-signal",
+                severity="info",
+                title="Not enough live signal yet",
+                body=(
+                    "Policy outcomes are being tracked, but there is not enough recent activity to recommend a change. "
+                    "Keep collecting real checks before editing thresholds or allowlists."
+                ),
+            )
+        ]
