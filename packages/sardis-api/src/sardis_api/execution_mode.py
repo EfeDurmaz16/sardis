@@ -122,6 +122,10 @@ def enforce_staging_live_guard(
             },
         )
 
+    # Wildcard "*" allows all orgs (useful for dogfooding / demos)
+    if "*" in policy.allowed_orgs:
+        return
+
     org = (principal.organization_id or "").strip().lower()
     if org not in policy.allowed_orgs:
         raise HTTPException(
