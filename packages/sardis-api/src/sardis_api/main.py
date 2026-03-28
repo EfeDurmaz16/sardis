@@ -290,6 +290,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Register RFC 7807 exception handlers
     register_exception_handlers(app)
 
+    # Register MPP 402 handler (must come after RFC 7807 handlers so it takes priority)
+    from .middleware.mpp_gate import _Mpp402, _mpp_402_handler
+    app.add_exception_handler(_Mpp402, _mpp_402_handler)  # type: ignore[arg-type]
+
     # Instrument FastAPI with OpenTelemetry (after app creation)
     if settings.otel_enabled:
         try:

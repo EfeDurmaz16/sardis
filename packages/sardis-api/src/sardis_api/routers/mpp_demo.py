@@ -256,12 +256,14 @@ async def paid_data(
 @router.get("/info")
 async def demo_info():
     """Public info about the Sardis Intelligence API — no auth required."""
+    network = os.getenv("SARDIS_MPP_NETWORK", "testnet").strip().lower()
+    is_mainnet = network == "mainnet"
     return {
         "endpoint": "/api/v2/demo/paid-data",
         "price": DEMO_PRICE,
-        "currency": "PATH_USD",
-        "network": "tempo-testnet",
-        "chain_id": 42431,
+        "currency": "USDC" if is_mainnet else "PATH_USD",
+        "network": "tempo-mainnet" if is_mainnet else "tempo-testnet",
+        "chain_id": 4217 if is_mainnet else 42431,
         "method": "tempo",
         "description": "Sardis Intelligence API — real-time agent network data and policy evaluation, pay-per-request via MPP",
         "query_params": {
@@ -270,5 +272,10 @@ async def demo_info():
             "merchant": "Merchant identifier (default: demo-merchant)",
             "currency": "Currency code (default: USDC)",
         },
-        "test_command": f"npx mppx https://sardis-api-staging-482463483786.us-central1.run.app/api/v2/demo/paid-data",
+        "test_command": "npx mppx GET https://api.sardis.sh/api/v2/demo/paid-data",
+        "total_gated_endpoints": 24,
+        "access_model": {
+            "authenticated": "Free (API key or JWT)",
+            "unauthenticated": f"Pay ${DEMO_PRICE} per request via MPP on Tempo",
+        },
     }

@@ -22,6 +22,25 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response as StarletteResponse
+
+
+class _Mpp402(Exception):
+    """Raised by mpp_gate to return a 402 with WWW-Authenticate header.
+
+    We use a custom exception + handler instead of HTTPException because
+    FastAPI's default error handler can strip custom headers (and some
+    reverse proxies like Vercel do the same with problem+json).
+    """
+
+    def __init__(self, response: JSONResponse) -> None:
+        self.response = response
+
+
+async def _mpp_402_handler(_request: StarletteRequest, exc: _Mpp402) -> StarletteResponse:
+    """Global exception handler — returns the pre-built 402 response."""
+    return exc.response
 
 logger = logging.getLogger(__name__)
 
@@ -128,13 +147,33 @@ def mpp_gate(
             return  # free access for authenticated users
 
         # -----------------------------------------------------------
+        # Helper: build 402 response with WWW-Authenticate header.
+        # Uses Response directly (not HTTPException) to guarantee the
+        # header survives FastAPI error handlers and reverse proxies.
+        # -----------------------------------------------------------
+        def _challenge_response(challenge_obj: Any, msg: str) -> JSONResponse:
+            return JSONResponse(
+                status_code=402,
+                headers={
+                    "WWW-Authenticate": challenge_obj.to_www_authenticate(server.realm),
+                },
+                content={
+                    "error": "payment_required",
+                    "message": msg,
+                    "method": challenge_obj.method,
+                    "amount": price,
+                    "docs": "https://docs.sardis.sh/mpp",
+                },
+            )
+
+        server = _get_mpp_server()
+
+        # -----------------------------------------------------------
         # 2. MPP payment credential — validate
         # -----------------------------------------------------------
         if authorization.startswith("Payment "):
-            server = _get_mpp_server()
             if server is None:
-                # pympp not installed → allow through (no-op)
-                return
+                return  # pympp not installed → no-op
 
             result = await server.charge(
                 authorization=authorization,
@@ -143,20 +182,13 @@ def mpp_gate(
             )
 
             if isinstance(result, Challenge):
-                # Client sent a Payment header but it didn't resolve —
-                # re-issue challenge.
-                raise HTTPException(
-                    status_code=402,
-                    detail={
-                        "error": "payment_required",
-                        "message": f"Invalid or expired payment credential. This endpoint costs ${price} per request via MPP.",
-                        "method": result.method,
-                        "amount": price,
-                        "docs": "https://docs.sardis.sh/mpp",
-                    },
-                    headers={
-                        "WWW-Authenticate": result.to_www_authenticate(server.realm),
-                    },
+                from starlette.responses import Response as StarletteResponse
+                # Raise a special exception that carries the full Response
+                raise _Mpp402(
+                    response=_challenge_response(
+                        result,
+                        f"Invalid or expired payment credential. This endpoint costs ${price} per request via MPP.",
+                    )
                 )
 
             # Payment verified — attach receipt to request state
@@ -175,10 +207,8 @@ def mpp_gate(
         # -----------------------------------------------------------
         # 3. No auth, no payment → issue 402 challenge
         # -----------------------------------------------------------
-        server = _get_mpp_server()
         if server is None:
-            # pympp not installed → no-op passthrough
-            return
+            return  # pympp not installed → no-op passthrough
 
         result = await server.charge(
             authorization=None,
@@ -192,22 +222,14 @@ def mpp_gate(
                 price,
                 description,
             )
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "error": "payment_required",
-                    "message": f"This endpoint costs ${price} per request via MPP. Authenticate with an API key for free access.",
-                    "method": result.method,
-                    "amount": price,
-                    "docs": "https://docs.sardis.sh/mpp",
-                },
-                headers={
-                    "WWW-Authenticate": result.to_www_authenticate(server.realm),
-                },
+            raise _Mpp402(
+                response=_challenge_response(
+                    result,
+                    f"This endpoint costs ${price} per request via MPP. Authenticate with an API key for free access.",
+                )
             )
 
-        # Shouldn't happen: server.charge with no auth should always return
-        # Challenge, but handle gracefully.
+        # Shouldn't happen — handle gracefully.
         return
 
     return dependency
@@ -228,4 +250,6 @@ def add_mpp_receipt_header(request: Request, response: JSONResponse) -> None:
 __all__ = [
     "mpp_gate",
     "add_mpp_receipt_header",
+    "_Mpp402",
+    "_mpp_402_handler",
 ]
