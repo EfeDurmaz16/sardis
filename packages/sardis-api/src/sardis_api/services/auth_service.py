@@ -58,7 +58,12 @@ def _verify_password(password: str, password_hash: str) -> bool:
 
 
 def _hash_api_key(raw_key: str) -> str:
-    return hashlib.sha256(raw_key.encode()).hexdigest()
+    """Hash an API key using HMAC-SHA256 with key prefix as salt.
+
+    Consistent with APIKeyManager.hash_key() in middleware/auth.py.
+    """
+    prefix = raw_key[:12] if len(raw_key) >= 12 else raw_key
+    return hmac.new(prefix.encode(), raw_key.encode(), hashlib.sha256).hexdigest()
 
 
 def _generate_api_key(*, mode: str = "test") -> tuple[str, str]:
@@ -254,6 +259,8 @@ class AuthService:
     async def verify_api_key(self, raw_key: str) -> dict[str, Any] | None:
         """Verify an API key and return user/org info."""
         key_hash = _hash_api_key(raw_key)
+        # Fallback for keys created before HMAC migration (plain SHA-256)
+        plain_hash = hashlib.sha256(raw_key.encode()).hexdigest()
 
         pool = await self._get_pool()
         async with pool.acquire() as conn:
@@ -265,6 +272,15 @@ class AuthService:
                    WHERE k.key_hash = $1""",
                 key_hash,
             )
+            if not row:
+                row = await conn.fetchrow(
+                    """SELECT k.id, k.user_id, k.org_id, k.scopes, k.expires_at,
+                              u.email, u.display_name
+                       FROM user_api_keys k
+                       JOIN users u ON u.id = k.user_id
+                       WHERE k.key_hash = $1""",
+                    plain_hash,
+                )
             if not row:
                 return None
 

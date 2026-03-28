@@ -310,7 +310,7 @@ def create_health_router(
             components["kill_switch"] = {"status": "error", "error": str(e)}
 
         # Stripe
-        stripe_key = os.getenv("STRIPE_SECRET_KEY")
+        stripe_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
         if stripe_key:
             checks_total += 1
             stripe_start = time.time()
