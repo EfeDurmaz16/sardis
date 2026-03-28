@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ async def get_receipt(
     return _receipt_to_response(receipt)
 
 
-@router.get("/verify/{receipt_id}", response_model=VerifyResponse)
+@router.get("/verify/{receipt_id}", response_model=VerifyResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Receipt verification"))])
 async def verify_receipt(
     receipt_id: str,
     principal: Principal = Depends(require_principal),

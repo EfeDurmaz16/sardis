@@ -18,6 +18,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from sardis_api.middleware.mpp_gate import mpp_gate
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v2/audit", tags=["audit-anchors"])
@@ -312,7 +314,7 @@ async def create_anchor(
         )
 
 
-@router.get("/anchors/{anchor_id}/verify", response_model=VerifyAnchorResponse)
+@router.get("/anchors/{anchor_id}/verify", response_model=VerifyAnchorResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Merkle anchor verification"))])
 async def verify_anchor(
     anchor_id: str,
     deps: AnchorDependencies = Depends(get_anchor_deps),
@@ -440,7 +442,7 @@ async def verify_entry(
         )
 
 
-@router.get("/anchors/{anchor_id}/proof/{entry_id}", response_model=MerkleProofResponse)
+@router.get("/anchors/{anchor_id}/proof/{entry_id}", response_model=MerkleProofResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Merkle inclusion proof"))])
 async def get_merkle_proof(
     anchor_id: str,
     entry_id: str,

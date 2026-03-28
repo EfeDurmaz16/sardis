@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, s
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_admin_principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
@@ -1031,7 +1032,7 @@ async def block_address(
 # Compliance Status Endpoint
 # ============================================================================
 
-@router.get("/status")
+@router.get("/status", dependencies=[Depends(mpp_gate(price="0.10", description="Compliance screening"))])
 async def get_compliance_status(
     deps: ComplianceDependencies = Depends(get_deps),
 ):

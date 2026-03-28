@@ -14,6 +14,7 @@ from sardis_v2_core.fides_trust_adapter import FidesTrustGraphAdapter
 from sardis_v2_core.kya_trust_scoring import KYALevel, TrustScorer
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger("sardis.api.fides_identity")
 
@@ -199,7 +200,7 @@ async def get_fides_identity(
 # ============ Trust Score ============
 
 
-@router.get("/agents/{agent_id}/trust-score")
+@router.get("/agents/{agent_id}/trust-score", dependencies=[Depends(mpp_gate(price="0.05", description="Agent trust score"))])
 async def get_trust_score(
     agent_id: str,
     principal: Principal = Depends(require_principal),
@@ -306,7 +307,7 @@ async def issue_trust_attestation(
 # ============ Policy History (AGIT) ============
 
 
-@router.get("/agents/{agent_id}/policy-history")
+@router.get("/agents/{agent_id}/policy-history", dependencies=[Depends(mpp_gate(price="0.02", description="Agent policy history"))])
 async def get_policy_history(
     agent_id: str,
     limit: int = 20,

@@ -18,6 +18,7 @@ from sardis_v2_core.marketplace import (
 )
 
 from sardis_api.authz import require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["marketplace"])
 
@@ -212,7 +213,7 @@ async def create_service(
     return ServiceResponse.from_service(service)
 
 
-@router.get("/services", response_model=list[ServiceResponse])
+@router.get("/services", response_model=list[ServiceResponse], dependencies=[Depends(mpp_gate(price="0.005", description="Agent service discovery"))])
 async def list_services(
     category: str | None = None,
     provider_id: str | None = None,

@@ -24,6 +24,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 _logger = logging.getLogger("sardis.api.evidence_export")
 
@@ -294,6 +295,7 @@ async def export_evidence_bundle(
         "Content-Disposition headers set so browsers treat it as a file download. "
         "Actual PDF generation is future work — this endpoint exports JSON."
     ),
+    dependencies=[Depends(mpp_gate(price="0.10", description="Evidence export bundle"))],
 )
 async def download_evidence_bundle(
     tx_id: str,

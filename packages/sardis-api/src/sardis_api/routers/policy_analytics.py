@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -366,7 +367,7 @@ async def _load_recent_versions(org_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-@router.get("/outcomes", response_model=OutcomesAnalyticsResponse)
+@router.get("/outcomes", response_model=OutcomesAnalyticsResponse, dependencies=[Depends(mpp_gate(price="0.02", description="Policy outcome analytics"))])
 async def get_policy_outcomes(
     period: str | None = Query(default=None),
     principal: Principal = Depends(require_principal),
@@ -394,7 +395,7 @@ async def get_policy_deny_reasons(
     return _build_deny_reason_rows(decisions)
 
 
-@router.get("/suggestions", response_model=list[TuningSuggestionResponse])
+@router.get("/suggestions", response_model=list[TuningSuggestionResponse], dependencies=[Depends(mpp_gate(price="0.05", description="Policy tuning suggestions"))])
 async def get_policy_tuning_suggestions(
     principal: Principal = Depends(require_principal),
 ) -> list[TuningSuggestionResponse]:

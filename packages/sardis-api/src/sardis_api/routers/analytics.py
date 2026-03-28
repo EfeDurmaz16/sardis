@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sardis_v2_core.database import get_db_pool
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +293,7 @@ async def get_spending_over_time(
     )
 
 
-@router.get("/spending-by-agent", response_model=AgentSpendingResponse)
+@router.get("/spending-by-agent", response_model=AgentSpendingResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Per-agent spending analytics"))])
 async def get_spending_by_agent(
     period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
     date_from: str | None = Query(None, description="Start date (ISO 8601)"),
@@ -337,7 +338,7 @@ async def get_spending_by_agent(
     return AgentSpendingResponse(agents=agents, total=round(total, 2))
 
 
-@router.get("/spending-by-category", response_model=CategorySpendingResponse)
+@router.get("/spending-by-category", response_model=CategorySpendingResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Category spending analytics"))])
 async def get_spending_by_category(
     period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
     date_from: str | None = Query(None, description="Start date (ISO 8601)"),
@@ -541,7 +542,7 @@ async def get_top_merchants(
     return TopMerchantsResponse(merchants=merchants, total=round(total, 2))
 
 
-@router.get("/summary", response_model=AnalyticsSummaryResponse)
+@router.get("/summary", response_model=AnalyticsSummaryResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Spending analytics summary"))])
 async def get_analytics_summary(
     period: str | None = Query("30d", description="Period: 7d, 30d, 90d"),
     principal: Principal = Depends(require_principal),

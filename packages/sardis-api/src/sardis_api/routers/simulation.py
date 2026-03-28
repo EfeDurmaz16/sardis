@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class SimulateResponse(BaseModel):
     kill_switch_status: dict[str, Any] | None = None
 
 
-@router.post("/", response_model=SimulateResponse)
+@router.post("/", response_model=SimulateResponse, dependencies=[Depends(mpp_gate(price="0.02", description="Sardis payment simulation"))])
 async def simulate_payment(
     body: SimulateRequest,
     principal: Principal = Depends(require_principal),

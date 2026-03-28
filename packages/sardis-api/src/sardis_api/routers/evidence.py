@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ async def _verify_agent_ownership(conn: Any, agent_id: str, org_id: str) -> bool
     return owner == org_id
 
 
-@router.get("/transactions/{tx_id}", response_model=TransactionEvidenceResponse)
+@router.get("/transactions/{tx_id}", response_model=TransactionEvidenceResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Transaction evidence trace"))])
 async def get_transaction_evidence(
     request: Request,
     tx_id: str,

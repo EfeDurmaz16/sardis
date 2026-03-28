@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class AttestationEnvelopeResponse(BaseModel):
 @router.get(
     "/payments/{payment_id}/attestation",
     response_model=AttestationEnvelopeResponse,
+    dependencies=[Depends(mpp_gate(price="0.05", description="Payment attestation proof"))],
 )
 async def get_payment_attestation(
     request: Request,

@@ -61,6 +61,10 @@ from .usage_metering import (
     EXEMPT_PREFIXES,
     UsageMeteringMiddleware,
 )
+from .mpp_gate import (
+    add_mpp_receipt_header,
+    mpp_gate,
+)
 from .x402 import (
     X402MiddlewareConfig,
     X402PaymentMiddleware,
@@ -121,4 +125,7 @@ __all__ = [
     # Usage metering (plan enforcement)
     "UsageMeteringMiddleware",
     "EXEMPT_PREFIXES",
+    # MPP dual-access gate
+    "mpp_gate",
+    "add_mpp_receipt_header",
 ]

@@ -34,6 +34,7 @@ from sardis_v2_core import AgentRepository
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ def _get_policy_history_engine():
 # Endpoints
 # ============================================================================
 
-@router.post("/parse", response_model=ParsedPolicyResponse)
+@router.post("/parse", response_model=ParsedPolicyResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Sardis policy parser"))])
 async def parse_natural_language_policy(
     request: ParsePolicyRequest,
 ):
@@ -775,7 +776,7 @@ async def get_policy_history_detail(
     )
 
 
-@router.post("/check", response_model=PolicyCheckResponse)
+@router.post("/check", response_model=PolicyCheckResponse, dependencies=[Depends(mpp_gate(price="0.005", description="Sardis policy check"))])
 async def check_policy(
     request: PolicyCheckRequest,
     deps: PolicyDependencies = Depends(get_deps),

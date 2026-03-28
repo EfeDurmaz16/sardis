@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +117,7 @@ async def resolve_outcome(
     )
 
 
-@router.get("/risk/agent/{agent_id}", response_model=AgentRiskProfileResponse)
+@router.get("/risk/agent/{agent_id}", response_model=AgentRiskProfileResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Agent risk profile"))])
 async def get_agent_risk_profile(
     agent_id: str,
     principal: Principal = Depends(require_principal),
@@ -130,7 +131,7 @@ async def get_agent_risk_profile(
     return AgentRiskProfileResponse(**profile.to_dict())
 
 
-@router.get("/risk/merchant/{merchant_id}", response_model=MerchantRiskProfileResponse)
+@router.get("/risk/merchant/{merchant_id}", response_model=MerchantRiskProfileResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Merchant risk profile"))])
 async def get_merchant_risk_profile(
     merchant_id: str,
     principal: Principal = Depends(require_principal),

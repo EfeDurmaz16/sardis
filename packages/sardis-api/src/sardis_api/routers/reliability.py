@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class ProvidersListResponse(BaseModel):
 # ── Endpoints ────────────────────────────────────────────────────────
 
 
-@router.get("/providers", response_model=ProvidersListResponse)
+@router.get("/providers", response_model=ProvidersListResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Provider health scorecards"))])
 async def list_provider_scorecards(
     principal: Principal = Depends(require_principal),
 ):

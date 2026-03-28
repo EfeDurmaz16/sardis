@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.middleware.mpp_gate import mpp_gate
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ class BridgeTransferResponse(BaseModel):
     response_model=FXQuoteResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Request an FX quote for a stablecoin swap",
+    dependencies=[Depends(mpp_gate(price="0.005", description="FX quote"))],
 )
 async def create_fx_quote(
     req: FXQuoteRequest,
@@ -294,6 +296,7 @@ async def execute_fx_quote(
     "/fx/rates",
     response_model=FXRatesResponse,
     summary="Get current indicative FX rates",
+    dependencies=[Depends(mpp_gate(price="0.001", description="Stablecoin FX rates"))],
 )
 async def get_fx_rates(
     principal: Principal = Depends(require_principal),
