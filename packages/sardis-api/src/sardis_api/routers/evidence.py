@@ -74,9 +74,9 @@ def _serialize_datetimes(row_dict: dict) -> dict:
 async def _verify_agent_ownership(conn: Any, agent_id: str, org_id: str) -> bool:
     """Verify that an agent belongs to the given organization."""
     owner = await conn.fetchval(
-        "SELECT owner_id FROM agents WHERE id = $1", agent_id,
+        "SELECT organization_id FROM agents WHERE id::text = $1", agent_id,
     )
-    return owner == org_id
+    return str(owner) == str(org_id) if owner else False
 
 
 @router.get("/transactions/{tx_id}", response_model=TransactionEvidenceResponse, dependencies=[Depends(mpp_gate(price="0.05", description="Transaction evidence trace"))])
@@ -98,17 +98,19 @@ async def get_transaction_evidence(
         org_id = principal.organization_id if principal else None
 
         async with pool.acquire() as conn:
-            # Ledger entries — scoped via wallet ownership when authenticated, unscoped for MPP
+            # Ledger entries from v2 table — scoped via wallet ownership when authenticated, unscoped for MPP.
+            # ledger_entries_v2 has: entry_id, tx_id, account_id, entry_type, amount, currency, chain, chain_tx_hash, status, created_at.
+            # Join wallets on account_id = wallets.id::text; scope via wallets.org_id.
             if org_id:
                 ledger_rows = await conn.fetch(
                     """
-                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                    SELECT le.entry_id, le.account_id, le.entry_type, le.amount,
                            le.currency, le.chain, le.chain_tx_hash, le.status,
                            le.created_at
-                    FROM ledger_entries le
-                    JOIN wallets w ON le.wallet_id = w.wallet_id
-                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
-                      AND w.organization_id = $2
+                    FROM ledger_entries_v2 le
+                    LEFT JOIN wallets w ON le.account_id = w.id::text
+                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1 OR le.tx_id = $1)
+                      AND w.org_id = $2
                     ORDER BY le.created_at
                     """,
                     tx_id,
@@ -117,12 +119,11 @@ async def get_transaction_evidence(
             else:
                 ledger_rows = await conn.fetch(
                     """
-                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                    SELECT le.entry_id, le.account_id, le.entry_type, le.amount,
                            le.currency, le.chain, le.chain_tx_hash, le.status,
                            le.created_at
-                    FROM ledger_entries le
-                    JOIN wallets w ON le.wallet_id = w.wallet_id
-                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1)
+                    FROM ledger_entries_v2 le
+                    WHERE (le.chain_tx_hash = $1 OR le.entry_id = $1 OR le.tx_id = $1)
                     ORDER BY le.created_at
                     """,
                     tx_id,

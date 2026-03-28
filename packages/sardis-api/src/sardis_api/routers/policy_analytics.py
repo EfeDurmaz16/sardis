@@ -320,18 +320,22 @@ async def _load_recent_decisions(org_id: str) -> list[dict[str, Any]]:
     from sardis_v2_core.database import get_pool
 
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT pd.agent_id, pd.verdict, pd.steps_json, pd.created_at
-            FROM policy_decisions pd
-            JOIN agents a ON a.id = pd.agent_id
-            WHERE a.owner_id = $1
-              AND pd.created_at >= now() - interval '30 days'
-            ORDER BY pd.created_at ASC
-            """,
-            org_id,
-        )
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT pd.agent_id, pd.verdict, pd.steps_json, pd.created_at
+                FROM policy_decisions pd
+                JOIN agents a ON a.id::text = pd.agent_id
+                WHERE a.organization_id = $1::uuid
+                  AND pd.created_at >= now() - interval '30 days'
+                ORDER BY pd.created_at ASC
+                """,
+                org_id,
+            )
+    except Exception:
+        logger.exception("_load_recent_decisions query failed for org=%s", org_id)
+        return []
 
     decisions: list[dict[str, Any]] = []
     for row in rows:
@@ -352,18 +356,22 @@ async def _load_recent_versions(org_id: str) -> list[dict[str, Any]]:
     from sardis_v2_core.database import get_pool
 
     pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT pv.id, pv.agent_id, pv.version, pv.policy_text, pv.created_at
-            FROM policy_versions pv
-            JOIN agents a ON a.id = pv.agent_id
-            WHERE a.owner_id = $1
-            ORDER BY pv.created_at DESC
-            LIMIT 6
-            """,
-            org_id,
-        )
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT pv.id, pv.agent_id, pv.version, pv.policy_text, pv.created_at
+                FROM policy_versions pv
+                JOIN agents a ON a.id::text = pv.agent_id
+                WHERE a.organization_id = $1::uuid
+                ORDER BY pv.created_at DESC
+                LIMIT 6
+                """,
+                org_id,
+            )
+    except Exception:
+        logger.exception("_load_recent_versions query failed for org=%s", org_id)
+        return []
     return [dict(row) for row in rows]
 
 

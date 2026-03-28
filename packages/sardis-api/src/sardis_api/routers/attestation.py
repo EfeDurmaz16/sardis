@@ -67,18 +67,20 @@ async def get_payment_attestation(
         org_id = principal.organization_id if principal else None
 
         async with pool.acquire() as conn:
-            # Look up payment — scoped to org when authenticated, unscoped for MPP
+            # Look up payment in ledger_entries_v2 (has entry_id, entry_type, status).
+            # Join wallets on account_id = wallets.id::text for agent resolution.
+            # Scoped to org when authenticated, unscoped for MPP.
             if org_id:
                 row = await conn.fetchrow(
                     """
-                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                    SELECT le.entry_id, le.account_id, le.entry_type, le.amount,
                            le.currency, le.chain, le.chain_tx_hash, le.status,
                            le.created_at,
                            w.agent_id
-                    FROM ledger_entries le
-                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    FROM ledger_entries_v2 le
+                    LEFT JOIN wallets w ON le.account_id = w.id::text
                     WHERE (le.entry_id = $1 OR le.chain_tx_hash = $1)
-                      AND w.organization_id = $2
+                      AND w.org_id = $2
                     ORDER BY le.created_at DESC
                     LIMIT 1
                     """,
@@ -88,12 +90,12 @@ async def get_payment_attestation(
             else:
                 row = await conn.fetchrow(
                     """
-                    SELECT le.entry_id, le.wallet_id, le.entry_type, le.amount,
+                    SELECT le.entry_id, le.account_id, le.entry_type, le.amount,
                            le.currency, le.chain, le.chain_tx_hash, le.status,
                            le.created_at,
                            w.agent_id
-                    FROM ledger_entries le
-                    JOIN wallets w ON le.wallet_id = w.wallet_id
+                    FROM ledger_entries_v2 le
+                    LEFT JOIN wallets w ON le.account_id = w.id::text
                     WHERE (le.entry_id = $1 OR le.chain_tx_hash = $1)
                     ORDER BY le.created_at DESC
                     LIMIT 1
@@ -104,15 +106,16 @@ async def get_payment_attestation(
             if row is None:
                 raise HTTPException(status_code=404, detail="Payment not found")
 
-            agent_id = row["agent_id"] or ""
+            agent_id = str(row["agent_id"] or "")
 
-            # Load the policy decision for THIS SPECIFIC payment, not just the latest for the agent
+            # Load the policy decision for THIS SPECIFIC payment.
+            # policy_decisions has: agent_id, mandate_id (no payment_id or intent_id columns).
             decision_row = await conn.fetchrow(
                 """
                 SELECT id, verdict, steps_json, evidence_hash
                 FROM policy_decisions
                 WHERE agent_id = $1
-                  AND (mandate_id = $2 OR payment_id = $2 OR intent_id = $2)
+                  AND mandate_id = $2
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
@@ -120,7 +123,7 @@ async def get_payment_attestation(
                 payment_id,
             )
 
-            # Fallback: if no payment-specific decision found, check by ledger entry
+            # Fallback: if no payment-specific decision found, check by time proximity
             if decision_row is None:
                 decision_row = await conn.fetchrow(
                     """

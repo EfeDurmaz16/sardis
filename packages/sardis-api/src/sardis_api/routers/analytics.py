@@ -192,36 +192,48 @@ async def _query_transactions(
     end_date: datetime,
     agent_id: str | None = None,
 ):
-    """Query transactions from database."""
+    """Query transactions from database.
+
+    Joins transactions → wallets → agents to resolve agent info.
+    Column mapping:
+      - amount (not amount_usd)
+      - purpose (not merchant)
+      - error_message (not policy_block_reason)
+      - No category column — returns NULL
+    """
     pool = await get_db_pool()
 
-    # Build query
+    # Build query — join through wallets to reach agents
     query = """
         SELECT
             t.id,
-            t.agent_id,
-            t.amount_usd,
-            t.merchant,
-            t.category,
+            w.agent_id,
+            t.amount,
+            t.purpose,
             t.status,
             t.created_at,
-            t.policy_block_reason,
+            t.error_message,
             a.name as agent_name
         FROM transactions t
-        LEFT JOIN agents a ON t.agent_id = a.id
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
         WHERE t.created_at >= $1 AND t.created_at <= $2
     """
 
-    params = [start_date, end_date]
+    params: list = [start_date, end_date]
 
     if agent_id:
-        query += " AND t.agent_id = $3"
+        query += " AND w.agent_id = $3::uuid"
         params.append(agent_id)
 
     query += " ORDER BY t.created_at DESC"
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, *params)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+    except Exception:
+        logger.exception("_query_transactions failed")
+        return []
 
     return rows
 
@@ -254,24 +266,29 @@ async def get_spending_over_time(
 
     query = f"""
         SELECT
-            DATE_TRUNC('{trunc}', created_at) as date,
-            SUM(amount_usd) as amount,
+            DATE_TRUNC('{trunc}', t.created_at) as date,
+            SUM(t.amount) as amount,
             COUNT(*) as count
-        FROM transactions
-        WHERE created_at >= $1 AND created_at <= $2
-        AND status = 'completed'
+        FROM transactions t
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        WHERE t.created_at >= $1 AND t.created_at <= $2
+        AND t.status = 'completed'
     """
 
-    params = [start_date, end_date]
+    params: list = [start_date, end_date]
 
     if agent_id:
-        query += " AND agent_id = $3"
+        query += " AND w.agent_id = $3::uuid"
         params.append(agent_id)
 
-    query += f" GROUP BY DATE_TRUNC('{trunc}', created_at) ORDER BY date"
+    query += f" GROUP BY DATE_TRUNC('{trunc}', t.created_at) ORDER BY date"
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, *params)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+    except Exception:
+        logger.exception("get_spending_over_time query failed")
+        rows = []
 
     data = [
         TimeSeriesDataPoint(
@@ -309,30 +326,35 @@ async def get_spending_by_agent(
     org_filter = ""
     params: list = [start_date, end_date]
     if org_id:
-        org_filter = " AND a.owner_id = $3"
+        org_filter = " AND a.organization_id = $3::uuid"
         params.append(org_id)
 
     query = f"""
         SELECT
-            t.agent_id,
+            w.agent_id,
             a.name as agent_name,
-            SUM(t.amount_usd) as total,
+            SUM(t.amount) as total,
             COUNT(*) as transaction_count
         FROM transactions t
-        LEFT JOIN agents a ON t.agent_id = a.id
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
         WHERE t.created_at >= $1 AND t.created_at <= $2
         AND t.status = 'completed'
         {org_filter}
-        GROUP BY t.agent_id, a.name
+        GROUP BY w.agent_id, a.name
         ORDER BY total DESC
     """
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, *params)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+    except Exception:
+        logger.exception("get_spending_by_agent query failed")
+        rows = []
 
     agents = [
         AgentSpendingItem(
-            agent_id=row["agent_id"],
+            agent_id=str(row["agent_id"] or "unknown"),
             agent_name=row["agent_name"],
             total=float(row["total"] or 0),
             transaction_count=row["transaction_count"],
@@ -362,31 +384,37 @@ async def get_spending_by_category(
 
     query = """
         SELECT
-            COALESCE(category, 'uncategorized') as category,
-            SUM(amount_usd) as amount,
+            COALESCE(t.purpose, 'uncategorized') as category,
+            SUM(t.amount) as amount,
             COUNT(*) as count
-        FROM transactions
-        WHERE created_at >= $1 AND created_at <= $2
-        AND status = 'completed'
+        FROM transactions t
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
+        WHERE t.created_at >= $1 AND t.created_at <= $2
+        AND t.status = 'completed'
     """
 
     params: list = [start_date, end_date]
     param_idx = 3
 
     if org_id:
-        query += f" AND agent_id IN (SELECT id FROM agents WHERE owner_id = ${param_idx})"
+        query += f" AND a.organization_id = ${param_idx}::uuid"
         params.append(org_id)
         param_idx += 1
 
     if agent_id:
-        query += f" AND agent_id = ${param_idx}"
+        query += f" AND w.agent_id = ${param_idx}::uuid"
         params.append(agent_id)
         param_idx += 1
 
-    query += " GROUP BY category ORDER BY amount DESC"
+    query += " GROUP BY t.purpose ORDER BY amount DESC"
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, *params)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+    except Exception:
+        logger.exception("get_spending_by_category query failed")
+        rows = []
 
     total = sum(float(row["amount"] or 0) for row in rows)
 
@@ -413,32 +441,40 @@ async def get_budget_utilization(
 
     pool = await get_db_pool()
 
-    # Get spending per agent
+    # Get spending per agent.
+    # Note: agents table has no monthly_budget column; use spending_policies.limit_total
+    # as a budget proxy (or 0 if no policy exists).
     query = """
         SELECT
-            t.agent_id,
+            w.agent_id,
             a.name as agent_name,
-            SUM(t.amount_usd) as spent,
-            a.monthly_budget
+            SUM(t.amount) as spent,
+            COALESCE(sp.limit_total, 0) as budget
         FROM transactions t
-        LEFT JOIN agents a ON t.agent_id = a.id
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
+        LEFT JOIN spending_policies sp ON sp.agent_id = a.id
         WHERE t.created_at >= $1 AND t.created_at <= $2
         AND t.status = 'completed'
-        GROUP BY t.agent_id, a.name, a.monthly_budget
+        GROUP BY w.agent_id, a.name, sp.limit_total
     """
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, start_date, end_date)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, start_date, end_date)
+    except Exception:
+        logger.exception("get_budget_utilization query failed")
+        return BudgetUtilizationResponse(items=[])
 
     items = []
     for row in rows:
         spent = float(row["spent"] or 0)
-        budget = float(row["monthly_budget"] or 0)
+        budget = float(row["budget"] or 0)
         utilization = (spent / budget * 100) if budget > 0 else 0
 
         items.append(
             BudgetUtilizationItem(
-                agent_id=row["agent_id"],
+                agent_id=str(row["agent_id"] or "unknown"),
                 agent_name=row["agent_name"],
                 spent=round(spent, 2),
                 budget=round(budget, 2),
@@ -462,17 +498,20 @@ async def get_policy_blocks(
 
     pool = await get_db_pool()
 
-    # Get blocked transactions
+    # Get blocked transactions (status = 'policy_blocked')
+    # Column mapping: amount (not amount_usd), purpose (not merchant),
+    # error_message (not policy_block_reason)
     blocked_query = """
         SELECT
             t.created_at,
-            t.agent_id,
+            w.agent_id,
             a.name as agent_name,
-            t.amount_usd,
-            t.merchant,
-            t.policy_block_reason
+            t.amount,
+            t.purpose,
+            t.error_message
         FROM transactions t
-        LEFT JOIN agents a ON t.agent_id = a.id
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
         WHERE t.created_at >= $1 AND t.created_at <= $2
         AND t.status = 'policy_blocked'
         ORDER BY t.created_at DESC
@@ -485,18 +524,22 @@ async def get_policy_blocks(
         WHERE created_at >= $1 AND created_at <= $2
     """
 
-    async with pool.acquire() as conn:
-        blocked_rows = await conn.fetch(blocked_query, start_date, end_date)
-        total_row = await conn.fetchrow(total_query, start_date, end_date)
+    try:
+        async with pool.acquire() as conn:
+            blocked_rows = await conn.fetch(blocked_query, start_date, end_date)
+            total_row = await conn.fetchrow(total_query, start_date, end_date)
+    except Exception:
+        logger.exception("get_policy_blocks query failed")
+        return PolicyBlocksResponse(blocks=[], total_blocks=0, block_rate=0.0, total_transactions=0)
 
     blocks = [
         PolicyBlockItem(
             timestamp=row["created_at"].isoformat(),
-            agent_id=row["agent_id"],
+            agent_id=str(row["agent_id"] or "unknown"),
             agent_name=row["agent_name"],
-            amount=float(row["amount_usd"] or 0),
-            merchant=row["merchant"] or "unknown",
-            reason=row["policy_block_reason"] or "Policy violation",
+            amount=float(row["amount"] or 0),
+            merchant=row["purpose"] or "unknown",
+            reason=row["error_message"] or "Policy violation",
         )
         for row in blocked_rows
     ]
@@ -528,26 +571,30 @@ async def get_top_merchants(
 
     query = """
         SELECT
-            merchant,
-            SUM(amount_usd) as amount,
+            purpose as merchant,
+            SUM(amount) as amount,
             COUNT(*) as count
         FROM transactions
         WHERE created_at >= $1 AND created_at <= $2
         AND status = 'completed'
-        AND merchant IS NOT NULL
-        GROUP BY merchant
+        AND purpose IS NOT NULL
+        GROUP BY purpose
         ORDER BY amount DESC
         LIMIT $3
     """
 
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(query, start_date, end_date, limit)
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, start_date, end_date, limit)
+    except Exception:
+        logger.exception("get_top_merchants query failed")
+        return TopMerchantsResponse(merchants=[], total=0.0)
 
     total = sum(float(row["amount"] or 0) for row in rows)
 
     merchants = [
         TopMerchantItem(
-            merchant=row["merchant"],
+            merchant=row["merchant"] or "unknown",
             amount=float(row["amount"] or 0),
             count=row["count"],
             percentage=round((float(row["amount"] or 0) / total * 100) if total > 0 else 0, 1),
@@ -570,39 +617,53 @@ async def get_analytics_summary(
     pool = await get_db_pool()
 
     # Build org-scoped or unscoped queries
+    # Join transactions → wallets → agents for org scoping and agent counting
     org_filter = ""
     params: list = [start_date, end_date]
     if org_id:
-        org_filter = " AND agent_id IN (SELECT id FROM agents WHERE owner_id = $3)"
+        org_filter = " AND a.organization_id = $3::uuid"
         params.append(org_id)
 
     summary_query = f"""
         SELECT
-            SUM(CASE WHEN status = 'completed' THEN amount_usd ELSE 0 END) as total_spend,
+            SUM(CASE WHEN t.status = 'completed' THEN t.amount ELSE 0 END) as total_spend,
             COUNT(*) as total_transactions,
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful_transactions,
-            COUNT(CASE WHEN status = 'policy_blocked' THEN 1 END) as blocked_transactions,
-            COUNT(DISTINCT agent_id) as active_agents,
-            MAX(CASE WHEN status = 'completed' THEN amount_usd ELSE 0 END) as largest_transaction
-        FROM transactions
-        WHERE created_at >= $1 AND created_at <= $2
+            COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as successful_transactions,
+            COUNT(CASE WHEN t.status = 'policy_blocked' THEN 1 END) as blocked_transactions,
+            COUNT(DISTINCT w.agent_id) as active_agents,
+            MAX(CASE WHEN t.status = 'completed' THEN t.amount ELSE 0 END) as largest_transaction
+        FROM transactions t
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
+        WHERE t.created_at >= $1 AND t.created_at <= $2
         {org_filter}
     """
 
     top_merchant_query = f"""
-        SELECT merchant
-        FROM transactions
-        WHERE created_at >= $1 AND created_at <= $2
-        AND status = 'completed'
+        SELECT t.purpose as merchant
+        FROM transactions t
+        LEFT JOIN wallets w ON t.from_wallet_id = w.id
+        LEFT JOIN agents a ON w.agent_id = a.id
+        WHERE t.created_at >= $1 AND t.created_at <= $2
+        AND t.status = 'completed'
+        AND t.purpose IS NOT NULL
         {org_filter}
-        GROUP BY merchant
-        ORDER BY SUM(amount_usd) DESC
+        GROUP BY t.purpose
+        ORDER BY SUM(t.amount) DESC
         LIMIT 1
     """
 
-    async with pool.acquire() as conn:
-        summary_row = await conn.fetchrow(summary_query, *params)
-        top_merchant_row = await conn.fetchrow(top_merchant_query, *params)
+    try:
+        async with pool.acquire() as conn:
+            summary_row = await conn.fetchrow(summary_query, *params)
+            top_merchant_row = await conn.fetchrow(top_merchant_query, *params)
+    except Exception:
+        logger.exception("get_analytics_summary query failed")
+        return AnalyticsSummaryResponse(
+            total_spend=0, avg_daily_spend=0, active_agents=0,
+            total_transactions=0, successful_transactions=0,
+            blocked_transactions=0, block_rate=0, largest_transaction=0,
+        )
 
     total_spend = float(summary_row["total_spend"] or 0)
     days = (end_date - start_date).days or 1
@@ -639,10 +700,18 @@ async def export_spending_data(
     rows = await _query_transactions(start_date, end_date, agent_id)
 
     # Generate CSV
-    csv_lines = ["timestamp,agent_id,agent_name,amount,merchant,category,status,block_reason"]
+    csv_lines = ["timestamp,agent_id,agent_name,amount,purpose,status,error_message"]
 
     for row in rows:
-        line = f"{row['created_at'].isoformat()},{row['agent_id']},{row['agent_name'] or ''},{row['amount_usd']},{row['merchant'] or ''},{row['category'] or ''},{row['status']},{row['policy_block_reason'] or ''}"
+        line = (
+            f"{row['created_at'].isoformat()},"
+            f"{row['agent_id'] or ''},"
+            f"{row['agent_name'] or ''},"
+            f"{row['amount']},"
+            f"{row['purpose'] or ''},"
+            f"{row['status']},"
+            f"{row['error_message'] or ''}"
+        )
         csv_lines.append(line)
 
     csv_content = "\n".join(csv_lines)
