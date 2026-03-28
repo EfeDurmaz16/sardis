@@ -23,14 +23,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 _logger = logging.getLogger("sardis.api.evidence_export")
 
 EVIDENCE_SIGNING_KEY = os.getenv("SARDIS_EVIDENCE_SIGNING_KEY", "sardis-dev-signing-key")
 
-router = APIRouter(dependencies=[Depends(require_principal)])
+router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
@@ -299,13 +299,13 @@ async def export_evidence_bundle(
 )
 async def download_evidence_bundle(
     tx_id: str,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ) -> JSONResponse:
     """Return the evidence bundle as a downloadable JSON file."""
     _logger.info(
         "evidence download requested tx_id=%s org_id=%s",
         tx_id,
-        principal.org_id,
+        principal.org_id if principal else "mpp",
     )
     sections = await _collect_sections(tx_id)
     bundle = _build_bundle(tx_id, sections)

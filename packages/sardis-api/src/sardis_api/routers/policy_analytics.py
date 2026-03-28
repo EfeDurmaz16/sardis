@@ -9,12 +9,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_principal)])
+router = APIRouter()
 
 
 class OutcomeSummaryResponse(BaseModel):
@@ -370,12 +370,13 @@ async def _load_recent_versions(org_id: str) -> list[dict[str, Any]]:
 @router.get("/outcomes", response_model=OutcomesAnalyticsResponse, dependencies=[Depends(mpp_gate(price="0.02", description="Policy outcome analytics"))])
 async def get_policy_outcomes(
     period: str | None = Query(default=None),
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ) -> OutcomesAnalyticsResponse:
     del period  # Page receives all supported windows in a single response.
 
-    decisions = await _load_recent_decisions(principal.organization_id)
-    versions = await _load_recent_versions(principal.organization_id)
+    org_id = principal.organization_id if principal else "mpp"
+    decisions = await _load_recent_decisions(org_id)
+    versions = await _load_recent_versions(org_id)
     now = datetime.now(UTC)
 
     return OutcomesAnalyticsResponse(
@@ -397,10 +398,11 @@ async def get_policy_deny_reasons(
 
 @router.get("/suggestions", response_model=list[TuningSuggestionResponse], dependencies=[Depends(mpp_gate(price="0.05", description="Policy tuning suggestions"))])
 async def get_policy_tuning_suggestions(
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ) -> list[TuningSuggestionResponse]:
-    decisions = await _load_recent_decisions(principal.organization_id)
-    versions = await _load_recent_versions(principal.organization_id)
+    org_id = principal.organization_id if principal else "mpp"
+    decisions = await _load_recent_decisions(org_id)
+    versions = await _load_recent_versions(org_id)
     summary_7d = _build_summary(decisions, datetime.now(UTC) - timedelta(days=7))
     deny_reasons = _build_deny_reason_rows(decisions)
     version_rows = _build_policy_version_rows(versions, decisions)

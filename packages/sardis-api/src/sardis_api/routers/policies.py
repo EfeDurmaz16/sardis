@@ -32,13 +32,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sardis_v2_core import AgentRepository
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_principal)])
+router = APIRouter()
 
 
 # ============================================================================
@@ -244,6 +244,7 @@ def _get_policy_history_engine():
 @router.post("/parse", response_model=ParsedPolicyResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Sardis policy parser"))])
 async def parse_natural_language_policy(
     request: ParsePolicyRequest,
+    principal: Principal | None = Depends(optional_principal),
 ):
     """
     Parse a natural language policy into structured format.
@@ -370,6 +371,7 @@ async def parse_natural_language_policy(
 @router.post("/preview", response_model=PolicyPreviewResponse)
 async def preview_policy_from_nl(
     request: CreatePolicyFromNLRequest,
+    principal: Principal = Depends(require_principal),
 ):
     """
     Preview a policy from natural language before applying.
@@ -596,7 +598,9 @@ async def apply_policy_from_nl(
 
 
 @router.get("/templates", response_model=dict)
-async def get_policy_templates():
+async def get_policy_templates(
+    principal: Principal = Depends(require_principal),
+):
     """
     Get pre-built policy templates.
 
@@ -643,7 +647,9 @@ async def get_policy_templates():
 
 
 @router.get("/examples", response_model=list[dict])
-async def get_policy_examples():
+async def get_policy_examples(
+    principal: Principal = Depends(require_principal),
+):
     """
     Get example natural language policies.
 
@@ -780,7 +786,7 @@ async def get_policy_history_detail(
 async def check_policy(
     request: PolicyCheckRequest,
     deps: PolicyDependencies = Depends(get_deps),
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """
     Test a hypothetical payment against the agent's active policy.
@@ -819,7 +825,7 @@ async def check_policy(
     agent = await deps.agent_repo.get(request.agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
+    if principal is not None and not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     policy = await deps.policy_store.fetch_policy(request.agent_id)
@@ -840,6 +846,7 @@ async def check_policy(
 async def get_policy_recommendations(
     agent_id: str,
     deps: PolicyDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get policy recommendations based on agent's transaction history."""
     from sardis_v2_core.database import Database

@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class AttestationEnvelopeResponse(BaseModel):
 async def get_payment_attestation(
     request: Request,
     payment_id: str,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Retrieve signed attestation envelope for a payment.
 
@@ -64,7 +64,7 @@ async def get_payment_attestation(
         from sardis_v2_core.database import Database
 
         pool = await Database.get_pool()
-        org_id = principal.organization_id
+        org_id = principal.organization_id if principal else ""
 
         async with pool.acquire() as conn:
             # Look up payment scoped to the caller's organisation

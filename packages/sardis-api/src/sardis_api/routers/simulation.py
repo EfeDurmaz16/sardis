@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class SimulateResponse(BaseModel):
 @router.post("/", response_model=SimulateResponse, dependencies=[Depends(mpp_gate(price="0.02", description="Sardis payment simulation"))])
 async def simulate_payment(
     body: SimulateRequest,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Simulate a payment intent through the full pipeline without executing.
 
@@ -61,7 +61,7 @@ async def simulate_payment(
 
     intent = ExecutionIntent(
         source=source,
-        org_id=principal.organization_id,
+        org_id=principal.organization_id if principal else "",
         agent_id=body.sender_agent_id,
         amount=Decimal(body.amount),
         currency=body.currency,

@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ async def get_receipt(
 @router.get("/verify/{receipt_id}", response_model=VerifyResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Receipt verification"))])
 async def verify_receipt(
     receipt_id: str,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Verify a receipt's HMAC signature."""
     store = _get_receipt_store()
@@ -86,7 +86,7 @@ async def verify_receipt(
     if not receipt:
         raise HTTPException(status_code=404, detail=f"Receipt not found: {receipt_id}")
 
-    if receipt.org_id and receipt.org_id != principal.organization_id:
+    if principal and receipt.org_id and receipt.org_id != principal.organization_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     valid = receipt.verify()

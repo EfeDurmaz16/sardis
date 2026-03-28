@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ async def _verify_agent_ownership(conn: Any, agent_id: str, org_id: str) -> bool
 async def get_transaction_evidence(
     request: Request,
     tx_id: str,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Retrieve full execution trace for a transaction.
 
@@ -95,7 +95,7 @@ async def get_transaction_evidence(
         from sardis_v2_core.database import get_pool
 
         pool = await get_pool()
-        org_id = principal.organization_id
+        org_id = principal.organization_id if principal else ""
 
         async with pool.acquire() as conn:
             # Ledger entries — scoped via wallet ownership

@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sardis_v2_core.database import get_db_pool
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)
@@ -298,7 +298,7 @@ async def get_spending_by_agent(
     period: str | None = Query(None, description="Period: 7d, 30d, 90d"),
     date_from: str | None = Query(None, description="Start date (ISO 8601)"),
     date_to: str | None = Query(None, description="End date (ISO 8601)"),
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Get spending breakdown by agent."""
     start_date, end_date = await _get_date_range(period, date_from, date_to)
@@ -344,7 +344,7 @@ async def get_spending_by_category(
     date_from: str | None = Query(None, description="Start date (ISO 8601)"),
     date_to: str | None = Query(None, description="End date (ISO 8601)"),
     agent_id: str | None = Query(None, description="Filter by agent ID"),
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Get spending breakdown by category."""
     start_date, end_date = await _get_date_range(period, date_from, date_to)
@@ -545,7 +545,7 @@ async def get_top_merchants(
 @router.get("/summary", response_model=AnalyticsSummaryResponse, dependencies=[Depends(mpp_gate(price="0.01", description="Spending analytics summary"))])
 async def get_analytics_summary(
     period: str | None = Query("30d", description="Period: 7d, 30d, 90d"),
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """Get high-level analytics summary."""
     start_date, end_date = await _get_date_range(period)

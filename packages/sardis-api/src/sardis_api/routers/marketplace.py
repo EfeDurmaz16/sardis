@@ -17,10 +17,10 @@ from sardis_v2_core.marketplace import (
     ServiceStatus,
 )
 
-from sardis_api.authz import require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
-router = APIRouter(dependencies=[Depends(require_principal)], tags=["marketplace"])
+router = APIRouter(tags=["marketplace"])
 
 
 # Request/Response Models
@@ -169,7 +169,9 @@ def get_deps() -> MarketplaceDependencies:
 # Routes - Services
 
 @router.get("/categories")
-async def list_categories():
+async def list_categories(
+    principal: Principal = Depends(require_principal),
+):
     """List all service categories."""
     return {
         "categories": [
@@ -184,6 +186,7 @@ async def create_service(
     request: CreateServiceRequest,
     deps: MarketplaceDependencies = Depends(get_deps),
     x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
+    principal: Principal = Depends(require_principal),
 ):
     """Create a new service listing."""
     provider_agent_id = x_agent_id
@@ -219,6 +222,7 @@ async def list_services(
     provider_id: str | None = None,
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """List active services."""
     cat = ServiceCategory(category) if category else None
@@ -234,6 +238,7 @@ async def list_services(
 async def get_service(
     service_id: str,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get a service by ID."""
     service = await deps.repository.get_service(service_id)
@@ -252,6 +257,7 @@ async def update_service(
     description: str | None = None,
     status: str | None = None,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Update a service listing."""
     updates = {}
@@ -276,6 +282,7 @@ async def search_services(
     request: SearchRequest,
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Search for services."""
     cat = ServiceCategory(request.category) if request.category else None
@@ -299,6 +306,7 @@ async def create_offer(
     request: CreateOfferRequest,
     deps: MarketplaceDependencies = Depends(get_deps),
     x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
+    principal: Principal = Depends(require_principal),
 ):
     """Create a service offer."""
     consumer_agent_id = x_agent_id
@@ -339,6 +347,7 @@ async def list_offers(
     status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """List offers for an agent."""
     agent_id = x_agent_id
@@ -356,6 +365,7 @@ async def list_offers(
 async def get_offer(
     offer_id: str,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get an offer by ID."""
     offer = await deps.repository.get_offer(offer_id)
@@ -371,6 +381,7 @@ async def get_offer(
 async def accept_offer(
     offer_id: str,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Accept an offer (provider action)."""
     offer = await deps.repository.update_offer_status(offer_id, OfferStatus.ACCEPTED)
@@ -386,6 +397,7 @@ async def accept_offer(
 async def reject_offer(
     offer_id: str,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Reject an offer (provider action)."""
     offer = await deps.repository.update_offer_status(offer_id, OfferStatus.REJECTED)
@@ -401,6 +413,7 @@ async def reject_offer(
 async def complete_offer(
     offer_id: str,
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Mark an offer as completed."""
     offer = await deps.repository.update_offer_status(offer_id, OfferStatus.COMPLETED)
@@ -420,6 +433,7 @@ async def create_review(
     request: CreateReviewRequest,
     deps: MarketplaceDependencies = Depends(get_deps),
     x_agent_id: str = Header(..., alias="X-Agent-Id", description="Agent ID for this operation"),
+    principal: Principal = Depends(require_principal),
 ):
     """Create a review for a completed offer."""
     reviewer_agent_id = x_agent_id
@@ -453,6 +467,7 @@ async def list_reviews(
     service_id: str,
     limit: int = Query(default=50, ge=1, le=100),
     deps: MarketplaceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """List reviews for a service."""
     reviews = await deps.repository.list_reviews(service_id, limit=limit)

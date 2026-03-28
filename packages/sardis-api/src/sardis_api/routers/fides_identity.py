@@ -13,7 +13,7 @@ from sardis_v2_core.did_bridge import DIDBridge, DIDRegistrationError
 from sardis_v2_core.fides_trust_adapter import FidesTrustGraphAdapter
 from sardis_v2_core.kya_trust_scoring import KYALevel, TrustScorer
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger("sardis.api.fides_identity")
@@ -203,13 +203,13 @@ async def get_fides_identity(
 @router.get("/agents/{agent_id}/trust-score", dependencies=[Depends(mpp_gate(price="0.05", description="Agent trust score"))])
 async def get_trust_score(
     agent_id: str,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
 ) -> dict[str, Any]:
     """Get current trust score for an agent (calls TrustScorer with FIDES adapter)."""
     scorer = _get_trust_scorer()
     bridge = _get_did_bridge()
-    agent = await _require_agent_access(agent_id, principal, agent_repo)
+    agent = await _require_agent_access(agent_id, principal, agent_repo) if principal else None
 
     fides_did = bridge.resolve_to_fides(agent_id) or _linked_fides_did(agent)
     try:
@@ -311,11 +311,12 @@ async def issue_trust_attestation(
 async def get_policy_history(
     agent_id: str,
     limit: int = 20,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
 ) -> dict[str, Any]:
     """Get AGIT-signed policy commit log for an agent."""
-    await _require_agent_access(agent_id, principal, agent_repo)
+    if principal:
+        await _require_agent_access(agent_id, principal, agent_repo)
     engine = _get_agit_engine()
     commits = engine.get_chain_history(agent_id, limit=min(limit, 100))
 

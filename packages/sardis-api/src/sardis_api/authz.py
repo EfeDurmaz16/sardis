@@ -139,6 +139,24 @@ async def require_principal(
     )
 
 
+async def optional_principal(
+    request: Request,
+    api_key: APIKey | None = Depends(get_api_key),
+    user: UserInfo | None = Depends(get_current_user),
+) -> Principal | None:
+    """Like require_principal but returns None instead of raising 401.
+
+    Used on MPP-gated endpoints where unauthenticated users pay via
+    HTTP 402 instead of being rejected.  The mpp_gate middleware handles
+    the 402 flow; this dependency just resolves the principal if auth
+    is present.
+    """
+    try:
+        return await require_principal(request, api_key, user)
+    except HTTPException:
+        return None
+
+
 def _set_chain_state(request: Request, principal: Principal) -> None:
     """Propagate environment and default chain to ``request.state``.
 

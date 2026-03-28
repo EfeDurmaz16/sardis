@@ -12,10 +12,10 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
-router = APIRouter(dependencies=[Depends(require_principal)])
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +90,7 @@ class BridgeTransferResponse(BaseModel):
 )
 async def create_fx_quote(
     req: FXQuoteRequest,
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
 ) -> FXQuoteResponse:
     from sardis_v2_core.database import Database
 
@@ -299,7 +299,7 @@ async def execute_fx_quote(
     dependencies=[Depends(mpp_gate(price="0.001", description="Stablecoin FX rates"))],
 )
 async def get_fx_rates(
-    principal: Principal = Depends(require_principal),
+    principal: Principal | None = Depends(optional_principal),
     chain: str = Query(default="tempo"),
 ) -> FXRatesResponse:
     """Get live FX rates from on-chain adapters (cached 30s)."""

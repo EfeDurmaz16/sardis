@@ -16,13 +16,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, require_admin_principal, require_principal
+from sardis_api.authz import Principal, optional_principal, require_admin_principal, require_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(dependencies=[Depends(require_principal)])
+router = APIRouter()
 public_router = APIRouter()
 
 
@@ -622,6 +622,7 @@ def _require_kya_service(deps: ComplianceDependencies):
 async def create_kyc_verification(
     request: KYCVerificationRequest,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Create a new KYC verification inquiry for an agent.
@@ -657,6 +658,7 @@ async def get_kyc_status(
     agent_id: str,
     force_refresh: bool = False,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Get the KYC verification status for an agent.
@@ -697,6 +699,7 @@ async def check_kyc_required(
     agent_id: str,
     amount_minor: int,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Check if KYC is required for a transaction.
@@ -758,6 +761,7 @@ async def register_kya_agent(
 async def get_kya_status(
     agent_id: str,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Get current KYA status for an agent."""
     kya_service = _require_kya_service(deps)
@@ -789,6 +793,7 @@ async def check_kya_for_payment(
     agent_id: str,
     request: KYACheckRequestModel,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Evaluate KYA policy for a potential payment."""
     kya_service = _require_kya_service(deps)
@@ -874,6 +879,7 @@ async def reactivate_kya_agent(
 async def heartbeat_kya_agent(
     agent_id: str,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """Record an agent heartbeat for KYA liveness tracking."""
     kya_service = _require_kya_service(deps)
@@ -909,6 +915,7 @@ async def sweep_stale_kya_agents(
 async def screen_address(
     request: SanctionsScreenRequest,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Screen a wallet address for sanctions.
@@ -944,6 +951,7 @@ async def screen_address(
 async def screen_transaction(
     request: TransactionScreenRequest,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Screen a transaction for sanctions compliance.
@@ -986,6 +994,7 @@ async def check_address_blocked(
     address: str,
     chain: str = "ethereum",
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Quick check if an address is blocked.
@@ -1007,6 +1016,7 @@ async def block_address(
     address: str,
     reason: str,
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
 ):
     """
     Add an address to the internal blocklist.
@@ -1035,6 +1045,7 @@ async def block_address(
 @router.get("/status", dependencies=[Depends(mpp_gate(price="0.10", description="Compliance screening"))])
 async def get_compliance_status(
     deps: ComplianceDependencies = Depends(get_deps),
+    principal: Principal | None = Depends(optional_principal),
 ):
     """
     Get overall compliance system status.
