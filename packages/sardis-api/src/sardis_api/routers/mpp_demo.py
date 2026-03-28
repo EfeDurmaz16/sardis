@@ -22,8 +22,13 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from mpp import Challenge, Credential, Receipt, format_payment_receipt
-from mpp.methods.tempo import ChargeIntent, tempo
+try:
+    from mpp import Challenge, Credential, Receipt, format_payment_receipt
+    from mpp.methods.tempo import ChargeIntent, tempo
+    _HAS_MPP = True
+except ImportError:
+    _HAS_MPP = False
+    Challenge = Credential = Receipt = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +46,9 @@ def _get_mpp_server():
     global _mpp_server
     if _mpp_server is not None:
         return _mpp_server
+
+    if not _HAS_MPP:
+        return None
 
     from mpp.server import Mpp
 
@@ -109,6 +117,11 @@ async def paid_data(request: Request):
     Second request (with credential): validates payment, returns data + receipt.
     """
     server = _get_mpp_server()
+    if server is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "mpp_unavailable", "message": "pympp not installed — MPP demo endpoint is disabled"},
+        )
     authorization = request.headers.get("Authorization")
 
     result = await server.charge(

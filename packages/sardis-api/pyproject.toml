@@ -58,6 +58,7 @@ dependencies = [
     "opentelemetry-instrumentation-asyncpg>=0.41b0",
     "pyotp>=2.9",
     "resend>=2.0",
+    "pympp>=0.4.0",
 ]
 
 [project.optional-dependencies]
