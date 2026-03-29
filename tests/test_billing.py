@@ -28,26 +28,28 @@ class TestBillingPlans:
 
     def test_all_plans_defined(self):
         from sardis_api.services.stripe_billing import PLANS
-        assert "free" in PLANS
+        assert "dev" in PLANS
+        assert "starter" in PLANS
         assert "growth" in PLANS
-        assert "scale" in PLANS
         assert "enterprise" in PLANS
 
-    def test_free_plan_has_zero_price(self):
+    def test_dev_plan_pricing(self):
         from sardis_api.services.stripe_billing import PLANS
-        assert PLANS["free"].monthly_price_cents == 0
+        assert PLANS["dev"].monthly_price_cents == 4900
+        assert PLANS["dev"].tx_fee_bps == 150
+        assert PLANS["dev"].tx_limit == 100
 
     def test_growth_plan_pricing(self):
         from sardis_api.services.stripe_billing import PLANS
-        assert PLANS["growth"].monthly_price_cents == 4900
-        assert PLANS["growth"].tx_fee_bps == 50  # 0.5%
-        assert PLANS["growth"].tx_limit == 10000
+        assert PLANS["growth"].monthly_price_cents == 49900
+        assert PLANS["growth"].tx_fee_bps == 75
+        assert PLANS["growth"].tx_limit == -1  # unlimited
 
-    def test_scale_plan_pricing(self):
+    def test_starter_plan_pricing(self):
         from sardis_api.services.stripe_billing import PLANS
-        assert PLANS["scale"].monthly_price_cents == 29900
-        assert PLANS["scale"].tx_fee_bps == 30  # 0.3%
-        assert PLANS["scale"].tx_limit == 100000
+        assert PLANS["starter"].monthly_price_cents == 19900
+        assert PLANS["starter"].tx_fee_bps == 100
+        assert PLANS["starter"].tx_limit == -1  # unlimited
 
     def test_enterprise_unlimited(self):
         from sardis_api.services.stripe_billing import PLANS
@@ -80,7 +82,7 @@ class TestStripeBillingService:
         with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
             svc = StripeBillingService()
             sub = await svc.get_or_create_subscription("org_test")
-            assert sub.plan == "free"
+            assert sub.plan == "dev"
             assert sub.status == "active"
 
     def test_invalid_plan_raises(self):

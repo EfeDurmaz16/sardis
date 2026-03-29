@@ -61,7 +61,10 @@ class TestWallet:
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
 
         assert wallet.get_address("base") == "0x1234567890123456789012345678901234567890"
-        assert wallet.get_address("polygon") is None
+        # EVM-compatible chains share the same address (MPC key derivation)
+        assert wallet.get_address("polygon") == "0x1234567890123456789012345678901234567890"
+        # Non-EVM chains should return None
+        assert wallet.get_address("solana") is None
 
     def test_wallet_multiple_addresses(self):
         """Test wallet with multiple chain addresses."""

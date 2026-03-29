@@ -235,8 +235,9 @@ async def test_refund_triggers_failure_notification():
     db = FakeDB(payments={payment["payment_id"]: payment})
     notification_svc = AsyncMock()
 
-    # Mock chain executor that fails
-    chain_executor = AsyncMock(side_effect=RuntimeError("chain unavailable"))
+    # Mock chain executor whose execute method fails
+    chain_executor = AsyncMock()
+    chain_executor.execute = AsyncMock(side_effect=RuntimeError("chain unavailable"))
 
     svc = RefundService(
         database=db,

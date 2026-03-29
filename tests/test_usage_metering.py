@@ -78,22 +78,23 @@ class TestUsageMeteringService:
 class TestTierLimits:
     """Test tier limit definitions."""
 
-    def test_free_tier_limits(self):
+    def test_dev_tier_limits(self):
         from sardis_api.services.usage_metering import TIER_LIMITS
-        free = TIER_LIMITS["free"]
-        assert free["transaction"] == 100
-        assert free["card_issued"] == 1
+        dev = TIER_LIMITS["dev"]
+        assert dev["transaction"] == 100
+        assert dev["card_issued"] == 1
 
     def test_growth_tier_limits(self):
         from sardis_api.services.usage_metering import TIER_LIMITS
         growth = TIER_LIMITS["growth"]
-        assert growth["transaction"] == 10000
-        assert growth["card_issued"] == 25
+        assert growth["transaction"] == -1  # unlimited
+        assert growth["card_issued"] == -1  # unlimited
 
-    def test_scale_tier_unlimited(self):
+    def test_starter_tier_limits(self):
         from sardis_api.services.usage_metering import TIER_LIMITS
-        scale = TIER_LIMITS["scale"]
-        assert scale["card_issued"] == -1  # unlimited
+        starter = TIER_LIMITS["starter"]
+        assert starter["transaction"] == -1  # unlimited
+        assert starter["card_issued"] == 25
 
     def test_enterprise_all_unlimited(self):
         from sardis_api.services.usage_metering import TIER_LIMITS

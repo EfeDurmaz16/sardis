@@ -125,7 +125,8 @@ async def test_no_fides_did_skips_trust_gate():
 # ============ Dynamic Spending Limits Tests ============
 
 
-def test_trust_overrides_kya_when_stricter():
+@pytest.mark.asyncio
+async def test_trust_overrides_kya_when_stricter():
     """Trust score LOW overrides policy limits when stricter."""
     from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
@@ -136,22 +137,21 @@ def test_trust_overrides_kya_when_stricter():
     # effective limit should be min($500, $10) = $10
     mock_wallet = MagicMock()
 
-    result = asyncio.get_event_loop().run_until_complete(
-        policy.evaluate(
-            mock_wallet,
-            Decimal("15.00"),
-            Decimal("0"),
-            chain="base",
-            token="USDC",
-            trust_score_override=0.25,
-        )
+    result = await policy.evaluate(
+        mock_wallet,
+        Decimal("15.00"),
+        Decimal("0"),
+        chain="base",
+        token="USDC",
+        trust_score_override=0.25,
     )
 
     assert result[0] is False
     assert result[1] == "per_transaction_limit"
 
 
-def test_high_trust_gets_full_limits():
+@pytest.mark.asyncio
+async def test_high_trust_gets_full_limits():
     """SOVEREIGN trust gets configured limits (no additional restriction)."""
     from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
@@ -160,22 +160,21 @@ def test_high_trust_gets_full_limits():
     mock_wallet = MagicMock()
 
     # $4000 is within HIGH tier ($5000/tx) and SOVEREIGN trust ($50000/tx)
-    result = asyncio.get_event_loop().run_until_complete(
-        policy.evaluate(
-            mock_wallet,
-            Decimal("4000.00"),
-            Decimal("0"),
-            chain="base",
-            token="USDC",
-            trust_score_override=0.95,  # SOVEREIGN
-        )
+    result = await policy.evaluate(
+        mock_wallet,
+        Decimal("4000.00"),
+        Decimal("0"),
+        chain="base",
+        token="USDC",
+        trust_score_override=0.95,  # SOVEREIGN
     )
 
     assert result[0] is True
     assert result[1] == "OK"
 
 
-def test_trust_override_none_uses_configured():
+@pytest.mark.asyncio
+async def test_trust_override_none_uses_configured():
     """No trust_score_override uses configured policy limits only."""
     from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
 
@@ -183,15 +182,13 @@ def test_trust_override_none_uses_configured():
     mock_wallet = MagicMock()
 
     # $45 is within LOW tier ($50/tx)
-    result = asyncio.get_event_loop().run_until_complete(
-        policy.evaluate(
-            mock_wallet,
-            Decimal("45.00"),
-            Decimal("0"),
-            chain="base",
-            token="USDC",
-            trust_score_override=None,
-        )
+    result = await policy.evaluate(
+        mock_wallet,
+        Decimal("45.00"),
+        Decimal("0"),
+        chain="base",
+        token="USDC",
+        trust_score_override=None,
     )
 
     assert result[0] is True

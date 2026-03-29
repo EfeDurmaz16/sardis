@@ -112,9 +112,13 @@ class TestTransactionModes:
             assert chain in SARDIS_CONTRACTS, f"Missing testnet: {chain}"
 
         # Check each EVM chain has expected contracts (Safe + Zodiac Roles architecture)
+        # Non-EVM chains (Solana) have different contract structure
+        non_evm_chains = {"solana_devnet", "solana"}
         for chain, config in SARDIS_CONTRACTS.items():
             if config.get('experimental'):
-                continue  # Skip experimental chains (e.g. Solana)
+                continue  # Skip experimental chains
+            if chain in non_evm_chains:
+                continue  # Solana uses wallet_program/escrow_program, not policy_module
             assert 'policy_module' in config, f"{chain} missing policy_module"
             assert 'ledger_anchor' in config, f"{chain} missing ledger_anchor"
 
