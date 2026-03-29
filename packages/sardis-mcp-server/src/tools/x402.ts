@@ -173,6 +173,8 @@ export const x402ToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 response: { status_code: 200, body: '{"data": "simulated_x402_response"}' },
                 payment: {
@@ -259,6 +261,8 @@ export const x402ToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 url,
                 amount: '1000000',
                 currency: 'USDC',
@@ -330,6 +334,8 @@ export const x402ToolHandlers: Record<string, ToolHandler> = {
             text: JSON.stringify(
               [
                 {
+                  _simulated: true,
+                  _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                   payment_id: `x402_sim_${Date.now().toString(36)}`,
                   status: 'settled',
                   amount: '1000000',

@@ -134,6 +134,8 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             group_id: groupId,
             name: parsed.data.name,
             budget: {
@@ -181,6 +183,8 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             group_id: parsed.data.group_id,
             name: 'Simulated Group',
             budget: { per_transaction: '500.00', daily: '5000.00', monthly: '50000.00', total: '500000.00' },
@@ -212,7 +216,11 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify([], null, 2),
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            groups: [],
+          }, null, 2),
         }],
       };
     }
@@ -243,6 +251,8 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             group_id: parsed.data.group_id,
             agent_ids: [parsed.data.agent_id],
             message: `Agent ${parsed.data.agent_id} added to group ${parsed.data.group_id}`,
@@ -279,6 +289,8 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             group_id: parsed.data.group_id,
             agent_ids: [],
             message: `Agent ${parsed.data.agent_id} removed from group ${parsed.data.group_id}`,
@@ -313,6 +325,8 @@ export const groupToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             group_id: parsed.data.group_id,
             name: 'Simulated Group',
             budget: { per_transaction: '500.00', daily: '5000.00', monthly: '50000.00', total: '500000.00' },

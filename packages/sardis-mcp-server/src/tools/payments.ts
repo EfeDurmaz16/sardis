@@ -111,13 +111,15 @@ export async function executePayment(
     // Return simulated result with unique ID
     const uniqueId = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
     return {
+      _simulated: true,
+      _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
       payment_id: `pay_sim_${uniqueId}`,
       status: 'simulated',
       tx_hash: '0x' + Math.random().toString(16).substring(2).padEnd(64, '0'),
       chain: config.chain,
       ledger_tx_id: `ltx_sim_${uniqueId}`,
       audit_anchor: `merkle::sim::${uniqueId}`,
-    };
+    } as PaymentResult;
   }
 
   if (!vendorAddress) {
@@ -162,6 +164,8 @@ export async function getTransaction(transactionId: string): Promise<LedgerEntry
 
   if (!config.apiKey || config.mode === 'simulated') {
     return {
+      _simulated: true,
+      _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
       id: transactionId,
       payment_id: transactionId,
       status: 'completed',
@@ -173,7 +177,7 @@ export async function getTransaction(transactionId: string): Promise<LedgerEntry
       chain: config.chain,
       chain_tx_hash: '0x' + '0'.repeat(64),
       created_at: new Date().toISOString(),
-    };
+    } as LedgerEntry;
   }
 
   const entry = await apiRequest<LedgerEntry>('GET', `/api/v2/ledger/entries/${transactionId}`);
@@ -200,6 +204,8 @@ export async function listTransactions(
   if (!config.apiKey || config.mode === 'simulated') {
     return [
       {
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         id: `tx_${Date.now().toString(36)}`,
         payment_id: `tx_${Date.now().toString(36)}`,
         status: 'completed',
@@ -213,6 +219,8 @@ export async function listTransactions(
         created_at: new Date(Date.now() - 3600000).toISOString(),
       },
       {
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         id: `tx_${(Date.now() - 1000).toString(36)}`,
         payment_id: `tx_${(Date.now() - 1000).toString(36)}`,
         status: 'completed',
@@ -225,7 +233,7 @@ export async function listTransactions(
         chain_tx_hash: '0x' + '2'.repeat(64),
         created_at: new Date(Date.now() - 7200000).toISOString(),
       },
-    ];
+    ] as LedgerEntry[];
   }
 
   if (status) {

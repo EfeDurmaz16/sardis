@@ -254,6 +254,8 @@ export async function checkCompliance(
   if (!config.apiKey || config.mode === 'simulated') {
     // Simulated compliance check
     return {
+      _simulated: true,
+      _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
       status: 'pass',
       checks: [
         { type: 'sanctions', passed: true },
@@ -261,7 +263,7 @@ export async function checkCompliance(
         { type: 'aml', passed: true },
       ],
       risk_level: 'low',
-    };
+    } as ComplianceResult;
   }
 
   try {
@@ -495,6 +497,8 @@ export const policyToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             policies: [{
               id: 'policy_default',

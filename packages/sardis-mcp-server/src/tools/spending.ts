@@ -165,6 +165,8 @@ export const spendingToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             period,
             total: '450.00',
@@ -232,6 +234,8 @@ export const spendingToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             period,
             vendors: vendors.slice(0, limit),
@@ -289,6 +293,8 @@ export const spendingToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             period,
             categories,
@@ -339,10 +345,12 @@ export const spendingToolHandlers: Record<string, ToolHandler> = {
       const trends = [];
       for (let i = lookback - 1; i >= 0; i--) {
         const date = new Date(Date.now() - i * 24 * 3600000);
+        // Deterministic values — never use Math.random() for financial data
+        const dayIndex = lookback - 1 - i;
         trends.push({
           period: date.toISOString().split('T')[0],
-          total_spent: (Math.random() * 100 + 50).toFixed(2),
-          transaction_count: Math.floor(Math.random() * 5 + 1),
+          total_spent: (50 + dayIndex * 10).toFixed(2),
+          transaction_count: 1 + (dayIndex % 4),
         });
       }
 
@@ -350,6 +358,8 @@ export const spendingToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             granularity,
             lookback,

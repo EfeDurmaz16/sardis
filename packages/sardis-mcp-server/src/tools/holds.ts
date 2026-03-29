@@ -143,6 +143,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             hold_id: holdId,
             wallet_id: walletId,
             status: 'active',
@@ -187,6 +189,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             hold_id: parsed.data.hold_id,
             status: 'captured',
             captured_amount: parsed.data.amount || '100.00',
@@ -232,6 +236,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             hold_id: parsed.data.hold_id,
             status: 'voided',
             voided_at: new Date().toISOString(),
@@ -273,6 +279,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             hold_id: parsed.data.hold_id,
             status: 'released',
             released_at: new Date().toISOString(),
@@ -313,6 +321,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: parsed.data.hold_id,
             wallet_id: 'wallet_simulated',
             amount: '100.00',
@@ -411,6 +421,8 @@ export const holdToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             hold_id: parsed.data.hold_id,
             status: 'active',
             expires_at: new Date(Date.now() + (168 + (parsed.data.additional_hours || 0)) * 3600000).toISOString(),

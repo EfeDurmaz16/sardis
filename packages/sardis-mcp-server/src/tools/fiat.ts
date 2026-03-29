@@ -137,6 +137,13 @@ function serialize(result: unknown): ToolResult {
   return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
+function serializeSimulated(result: unknown): ToolResult {
+  const data = typeof result === 'object' && result !== null
+    ? { _simulated: true, _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.', ...result as Record<string, unknown> }
+    : { _simulated: true, _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.', data: result };
+  return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+}
+
 function validateLiveTreasuryArgs(
   financialAccountToken: string | undefined,
   externalBankAccountToken: string | undefined,
@@ -417,7 +424,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize([
+      return serializeSimulated([
         {
           organization_id: 'org_simulated',
           financial_account_token: 'fa_simulated',
@@ -440,7 +447,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize([
+      return serializeSimulated([
         {
           organization_id: 'org_simulated',
           financial_account_token: 'fa_simulated',
@@ -466,7 +473,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({
+      return serializeSimulated({
         organization_id: 'org_simulated',
         external_bank_account_token: 'eba_simulated',
         financial_account_token: parsed.data.financial_account_token,
@@ -492,7 +499,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!parsed.success) return { content: [{ type: 'text', text: `Invalid request: ${parsed.error.message}` }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({
+      return serializeSimulated({
         external_bank_account_token: parsed.data.token,
         verification_state: 'ENABLED',
         state: 'ENABLED',
@@ -522,7 +529,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       const simulated = buildSimulatedPayment('fund', 'DEBIT', amountMinor || 10000);
-      return serialize({
+      return serializeSimulated({
         ...simulated,
         wallet_id: parsed.data.wallet_id || config.walletId || 'wallet_default',
         source_type: parsed.data.source || 'ach',
@@ -566,7 +573,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       const simulated = buildSimulatedPayment('wd', 'CREDIT', amountMinor || 10000);
-      return serialize({
+      return serializeSimulated({
         ...simulated,
         wallet_id: parsed.data.wallet_id || config.walletId || 'wallet_default',
         destination_bank: externalBankAccountToken || 'eba_simulated',
@@ -605,7 +612,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!token) return { content: [{ type: 'text', text: 'Invalid request: payment_token or transfer_id is required' }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({ payment_token: token, funding_id: token, status: 'SETTLED', type: 'funding' });
+      return serializeSimulated({ payment_token: token, funding_id: token, status: 'SETTLED', type: 'funding' });
     }
     try {
       const result = await apiRequest<TreasuryPaymentResult>('GET', `/api/v2/treasury/payments/${token}`);
@@ -622,7 +629,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!token) return { content: [{ type: 'text', text: 'Invalid request: payment_token or transfer_id is required' }], isError: true };
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({ payment_token: token, withdrawal_id: token, status: 'PROCESSING', type: 'withdrawal' });
+      return serializeSimulated({ payment_token: token, withdrawal_id: token, status: 'PROCESSING', type: 'withdrawal' });
     }
     try {
       const result = await apiRequest<TreasuryPaymentResult>('GET', `/api/v2/treasury/payments/${token}`);
@@ -635,7 +642,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
   sardis_get_treasury_balances: async (): Promise<ToolResult> => {
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize([
+      return serializeSimulated([
         {
           organization_id: 'org_simulated',
           financial_account_token: 'fa_simulated',
@@ -674,7 +681,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
         { id: 'wd_001', type: 'withdrawal', amount_minor: 25000, status: 'PENDING' },
       ];
       const filtered = typeFilter === 'all' ? mockTransactions : mockTransactions.filter((tx) => tx.type === typeFilter);
-      return serialize(filtered.slice(0, limit));
+      return serializeSimulated(filtered.slice(0, limit));
     }
 
     return {
@@ -682,6 +689,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
         type: 'text',
         text: JSON.stringify(
           {
+            error: 'NOT_IMPLEMENTED',
             message: 'List endpoint is not exposed yet. Use sardis_get_funding_status/sardis_get_withdrawal_status per payment token.',
             supported_paths: ['/api/v2/treasury/payments/{payment_token}', '/api/v2/treasury/balances'],
           },
@@ -689,6 +697,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
           2
         ),
       }],
+      isError: true,
     };
   },
 
@@ -701,7 +710,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({
+      return serializeSimulated({
         wallet_id: parsed.data.wallet_id || config.walletId || 'wallet_default',
         agent_id: parsed.data.agent_id || 'agent_default',
         crypto: {
@@ -747,7 +756,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({
+      return serializeSimulated({
         offramp_id: `offramp_${Date.now().toString(36)}`,
         status: 'PENDING',
         source_chain: parsed.data.source_chain || 'base',
@@ -792,7 +801,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
-      return serialize({
+      return serializeSimulated({
         onramp_id: `onramp_${Date.now().toString(36)}`,
         status: 'PENDING',
         source_currency: parsed.data.source_currency || 'USD',
@@ -831,7 +840,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
         ? '0x99085505f506576c5C5342cAFEf14d6be43e0E9C'
         : '0x' + '1'.repeat(40);
       const tokens = chain === 'tempo' ? ['pathUSD', 'USDC.e'] : ['USDC'];
-      return serialize({
+      return serializeSimulated({
         address: simAddress,
         chain,
         tokens,
@@ -864,7 +873,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
         url = `https://buy.onramper.com?defaultCrypto=usdc&wallets=USDC:${address}`;
         if (parsed.data.amount_usd) url += `&defaultAmount=${parsed.data.amount_usd}`;
       }
-      return serialize({
+      return serializeSimulated({
         url,
         address,
         chain,
@@ -901,7 +910,7 @@ export const fiatToolHandlers: Record<string, ToolHandler> = {
     if (!config.apiKey || config.mode === 'simulated') {
       const direction = parsed.data.direction || 'offramp';
       const fee = direction === 'offramp' ? 0.002 : 0.003;
-      return serialize({
+      return serializeSimulated({
         quotes: [
           {
             provider: 'bridge-xyz',

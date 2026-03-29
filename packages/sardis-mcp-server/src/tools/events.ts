@@ -202,6 +202,8 @@ export const eventToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             subscription_id: `sub_${Date.now().toString(36)}`,
             event_pattern: pattern,
             webhook_url: parsed.data.webhook_url,
@@ -321,6 +323,8 @@ export const eventToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             events: filteredEvents.slice(offset, offset + limit),
             total: filteredEvents.length,
             limit,
@@ -380,6 +384,8 @@ export const eventToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             subscription_id: subscriptionId,
             url: parsed.data.url,
             events: parsed.data.events || [],

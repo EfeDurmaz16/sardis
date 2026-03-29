@@ -127,7 +127,15 @@ async function handleCreateMandate(args: Record<string, unknown>): Promise<ToolR
       content: [
         {
           type: 'text',
-          text: `✅ Spending mandate created (simulated)\n\nID: ${id}\nPurpose: ${args.purpose}\nPer-tx limit: $${args.amount_per_tx}\nStatus: active\n\nNote: This is simulated. Connect an API key for real mandates.`,
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            id,
+            purpose: args.purpose,
+            amount_per_tx: args.amount_per_tx,
+            status: 'active',
+            message: `Spending mandate created (simulated). Connect an API key for real mandates.`,
+          }, null, 2),
         },
       ],
     };
@@ -152,7 +160,12 @@ async function handleListMandates(args: Record<string, unknown>): Promise<ToolRe
       content: [
         {
           type: 'text',
-          text: '📋 No mandates (simulated mode). Connect an API key to manage real mandates.',
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            mandates: [],
+            message: 'No mandates (simulated mode). Connect an API key to manage real mandates.',
+          }, null, 2),
         },
       ],
     };
@@ -185,7 +198,16 @@ async function handleRevokeMandate(args: Record<string, unknown>): Promise<ToolR
 
   if (!config.apiKey) {
     return {
-      content: [{ type: 'text', text: `🚫 Mandate ${args.mandate_id} revoked (simulated).` }],
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          _simulated: true,
+          _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+          mandate_id: args.mandate_id,
+          status: 'revoked',
+          message: `Mandate ${args.mandate_id} revoked (simulated).`,
+        }, null, 2),
+      }],
     };
   }
 
@@ -211,7 +233,13 @@ async function handleCheckMandate(args: Record<string, unknown>): Promise<ToolRe
       content: [
         {
           type: 'text',
-          text: `✅ Payment of $${args.amount} would be authorized (simulated).\n\nConnect an API key for real mandate validation.`,
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            amount: args.amount,
+            authorized: true,
+            message: `Payment of $${args.amount} would be authorized (simulated). Connect an API key for real mandate validation.`,
+          }, null, 2),
         },
       ],
     };

@@ -21,12 +21,14 @@ export async function getWalletInfo(): Promise<WalletInfo> {
 
   if (!config.apiKey || !config.walletId) {
     return {
+      _simulated: true,
+      _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
       id: config.walletId || 'wallet_simulated',
       limit_per_tx: '100.00',
       limit_total: '500.00',
       is_active: true,
       currency: 'USDC',
-    };
+    } as WalletInfo;
   }
 
   return apiRequest<WalletInfo>('GET', `/api/v2/wallets/${config.walletId}`);
@@ -44,12 +46,14 @@ export async function getWalletBalance(
 
   if (!config.apiKey || !config.walletId) {
     return {
+      _simulated: true,
+      _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
       wallet_id: config.walletId || 'wallet_simulated',
       balance: '1000.00',
       token,
       chain: effectiveChain,
       address: '0x' + '0'.repeat(40),
-    };
+    } as WalletBalance;
   }
 
   return apiRequest<WalletBalance>(

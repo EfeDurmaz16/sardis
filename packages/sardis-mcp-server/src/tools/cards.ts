@@ -153,6 +153,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             card_id: cardId,
             wallet_id: config.walletId || 'wallet_simulated',
             last_four: '4242',
@@ -207,6 +209,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: cardId,
             wallet_id: parsed.data.wallet_id,
             last_four: '4242',
@@ -253,6 +257,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             card_id: parsed.data.card_id,
             id: parsed.data.card_id,
             wallet_id: 'wallet_simulated',
@@ -342,6 +348,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: parsed.data.card_id,
             status: 'frozen',
             frozen_at: new Date().toISOString(),
@@ -382,6 +390,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: parsed.data.card_id,
             status: 'active',
             unfrozen_at: new Date().toISOString(),
@@ -422,6 +432,8 @@ export const cardToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: parsed.data.card_id,
             status: 'cancelled',
             cancelled_at: new Date().toISOString(),

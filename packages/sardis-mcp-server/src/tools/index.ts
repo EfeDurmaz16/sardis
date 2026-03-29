@@ -31,6 +31,7 @@ import { paymentObjectToolDefinitions, paymentObjectToolHandlers } from './payme
 import { fundingToolDefinitions, fundingToolHandlers } from './funding.js';
 import { escrowToolDefinitions, escrowToolHandlers } from './escrow.js';
 import { proxyToolDefinitions, proxyToolHandlers } from './proxy.js';
+import { projectToolDefinitions, projectToolHandlers } from './projects.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -76,6 +77,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...fundingToolDefinitions,
   ...escrowToolDefinitions,
   ...proxyToolDefinitions,
+  ...projectToolDefinitions,
 ];
 
 /**
@@ -105,6 +107,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...fundingToolHandlers,
   ...escrowToolHandlers,
   ...proxyToolHandlers,
+  ...projectToolHandlers,
 };
 
 /**
@@ -276,6 +279,7 @@ export const toolCategories = {
     'sardis_call_paid_api',
     'sardis_preview_paid_api',
   ],
+  projects: ['sardis_discover_services', 'sardis_provision_service', 'sardis_list_provisioned'],
 } as const;
 
 /**

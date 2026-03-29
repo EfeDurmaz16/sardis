@@ -147,6 +147,8 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             id: walletId,
             name: parsed.data.name || 'Sardis Wallet',
@@ -196,21 +198,23 @@ export const walletManagementToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
 
     if (!config.apiKey || config.mode === 'simulated') {
-      const wallets = [{
-        id: 'wallet_simulated',
-        name: 'Default Wallet',
-        address: '0x' + '0'.repeat(40),
-        chain: 'base',
-        is_active: true,
-        balance: '1000.00',
-        policy: { max_per_tx: '100.00', max_daily: '500.00' },
-        created_at: new Date().toISOString(),
-      }];
-
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(wallets, null, 2),
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            wallets: [{
+              id: 'wallet_simulated',
+              name: 'Default Wallet',
+              address: '0x' + '0'.repeat(40),
+              chain: 'base',
+              is_active: true,
+              balance: '1000.00',
+              policy: { max_per_tx: '100.00', max_daily: '500.00' },
+              created_at: new Date().toISOString(),
+            }],
+          }, null, 2),
         }],
       };
     }

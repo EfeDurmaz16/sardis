@@ -87,6 +87,8 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id: agentId,
             name: parsed.data.name,
             description: parsed.data.description,
@@ -128,6 +130,8 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             agent_id: agentId,
             id: agentId,
             name: 'Simulated Agent',
@@ -163,18 +167,20 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      const agents = [{
-        id: 'agent_simulated',
-        agent_id: 'agent_simulated',
-        name: 'Simulated Agent',
-        is_active: true,
-        created_at: new Date().toISOString(),
-      }];
-
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(agents, null, 2),
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            agents: [{
+              id: 'agent_simulated',
+              agent_id: 'agent_simulated',
+              name: 'Simulated Agent',
+              is_active: true,
+              created_at: new Date().toISOString(),
+            }],
+          }, null, 2),
         }],
       };
     }
@@ -213,6 +219,8 @@ export const agentToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             agent_id: parsed.data.agent_id,
             id: parsed.data.agent_id,
             name: parsed.data.name || 'Updated Agent',

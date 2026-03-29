@@ -140,6 +140,8 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             approval_id: approvalId,
             action: parsed.data.action,
             vendor: parsed.data.vendor,
@@ -186,26 +188,25 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
-      // Simulate random status for demo
-      const statuses: ApprovalRequest['status'][] = ['pending', 'approved', 'denied'];
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      // Deterministic status for simulated mode — never use Math.random() for financial state
+      const status: ApprovalRequest['status'] = 'pending';
 
       return {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             approval_id: parsed.data.approval_id,
             action: 'payment',
             vendor: 'Example Vendor',
             amount: 500,
             purpose: 'Service payment',
-            status,
+            status: 'simulated_pending',
             urgency: 'medium',
             requested_by: 'agent_simulated',
-            reviewed_by: status !== 'pending' ? 'admin@example.com' : undefined,
             created_at: new Date(Date.now() - 3600000).toISOString(),
             expires_at: new Date(Date.now() + 20 * 3600000).toISOString(),
-            reviewed_at: status !== 'pending' ? new Date().toISOString() : undefined,
           }, null, 2),
         }],
       };
@@ -273,7 +274,11 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
       return {
         content: [{
           type: 'text',
-          text: JSON.stringify(filtered, null, 2),
+          text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
+            approvals: filtered,
+          }, null, 2),
         }],
       };
     }
@@ -316,6 +321,8 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             approval_id: parsed.data.approval_id,
             status: 'cancelled',
             reason,

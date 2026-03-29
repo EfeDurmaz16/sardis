@@ -200,3 +200,20 @@ export const ConfigureWebhookSchema = z.object({
   events: z.array(z.string()).optional().describe('List of event types to subscribe to. Empty = all events'),
   is_active: z.boolean().optional().default(true).describe('Enable or disable the webhook'),
 });
+
+// --- Projects Schemas ---
+
+export const DiscoverServicesSchema = z.object({
+  category: z.string().optional().describe('Filter by category (e.g., "database", "hosting")'),
+});
+
+export const ProvisionServiceSchema = z.object({
+  service: z.string().describe('Service ID (e.g., "supabase/postgres")'),
+  tier: z.string().describe('Tier ID (e.g., "free", "pro")'),
+  project_name: z.string().describe('Project name for this resource'),
+  region: z.string().optional().describe('Preferred region'),
+});
+
+export const ListProvisionedSchema = z.object({
+  project_name: z.string().optional().describe('Filter by project name'),
+});

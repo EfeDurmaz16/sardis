@@ -223,6 +223,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
     if (!config.apiKey || config.mode === 'simulated') {
       const sessionId = `mpp_sess_sim_${Date.now().toString(36)}`;
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         session_id: sessionId,
         mandate_id: parsed.data.mandate_id || null,
         wallet_id: parsed.data.wallet_id || config.walletId || null,
@@ -267,6 +269,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
       const paymentId = `mpp_pay_sim_${Date.now().toString(36)}`;
       const remaining = Math.max(0, 100 - parsed.data.amount); // simulated
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         payment_id: paymentId,
         session_id: parsed.data.session_id,
         amount: parsed.data.amount.toFixed(2),
@@ -309,6 +313,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         session_id: parsed.data.session_id,
         status: 'closed',
         total_spent: '50.00',
@@ -334,6 +340,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         session_id: parsed.data.session_id,
         status: 'active',
         method: 'tempo',
@@ -365,6 +373,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
     if (!config.apiKey || config.mode === 'simulated') {
       const cardId = `card_sim_${Date.now().toString(36)}`;
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         card_id: cardId,
         card_number: '4111XXXXXXXX' + Math.floor(1000 + Math.random() * 9000),
         cvv: '***',
@@ -398,6 +408,8 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         allowed: true,
         reason: 'ALLOWED by default policy (simulated)',
         checks_passed: 12,

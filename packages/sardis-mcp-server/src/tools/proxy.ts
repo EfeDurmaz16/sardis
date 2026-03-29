@@ -240,6 +240,8 @@ export const proxyToolHandlers: Record<string, ToolHandler> = {
     if (!config.apiKey || config.mode === 'simulated') {
       // Simulated mode — show what would happen
       return serialize({
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         status: 402,
         payment_required: true,
         simulated: true,

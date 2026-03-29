@@ -241,6 +241,8 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 escrow_id: simId,
                 amount,
@@ -313,6 +315,8 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 escrow_id,
                 status: 'settled',
@@ -377,6 +381,8 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 escrow_id,
                 dispute_id: disputeId,
@@ -442,6 +448,8 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 escrow_id,
                 evidence_id: evidenceId,
@@ -511,6 +519,8 @@ export const escrowToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 escrow_id,
                 resolution,

@@ -202,6 +202,8 @@ export const fundingToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 commitment_id: simId,
                 amount,
@@ -271,6 +273,8 @@ export const fundingToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 cells: [
                   {
                     id: `cell_sim_${Date.now().toString(36)}`,
@@ -344,6 +348,8 @@ export const fundingToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 original_cell_id: cell_id,
                 new_cells: newCells,
@@ -406,6 +412,8 @@ export const fundingToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 merged_cell_id: mergedId,
                 source_cell_ids: cell_ids,

@@ -191,7 +191,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       // Simulated response
-      const mockStatus: GuardrailsStatus = {
+      const mockStatus: GuardrailsStatus & { _simulated: boolean; _warning: string } = {
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         wallet_id: walletId,
         circuit_breaker: {
           active: false,
@@ -273,6 +275,8 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             kill_switch_active: true,
             activated_by: 'simulated_user',
@@ -327,6 +331,8 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
         content: [{
           type: 'text',
           text: JSON.stringify({
+            _simulated: true,
+            _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             wallet_id: walletId,
             kill_switch_active: false,
             deactivated_at: new Date().toISOString(),
@@ -372,6 +378,8 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
     if (!config.apiKey || config.mode === 'simulated') {
       // Simulated response
       const mockLimits = {
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         wallet_id: walletId,
         limits: {
           tx_per_minute: {
@@ -439,7 +447,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
 
     if (!config.apiKey || config.mode === 'simulated') {
       // Simulated response
-      const mockAlerts: BehavioralAlertsResponse = {
+      const mockAlerts: BehavioralAlertsResponse & { _simulated: boolean; _warning: string } = {
+        _simulated: true,
+        _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         wallet_id: walletId,
         alerts: [
           {

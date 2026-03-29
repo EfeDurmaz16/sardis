@@ -262,6 +262,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 job_id: simId,
                 state: 'open',
@@ -337,6 +339,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 job_id,
                 state: 'funded',
@@ -399,6 +403,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 job_id,
                 state: 'submitted',
@@ -464,6 +470,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 job_id,
                 state,
@@ -531,6 +539,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 id: job_id,
                 client_agent_id: config.agentId || 'agent_sim_client',
                 provider_agent_id: 'agent_sim_provider',
@@ -586,6 +596,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 jobs: [
                   {
                     id: `job_sim_${Date.now().toString(36)}`,
@@ -656,6 +668,8 @@ export const jobToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 job_id,
                 state: 'disputed',

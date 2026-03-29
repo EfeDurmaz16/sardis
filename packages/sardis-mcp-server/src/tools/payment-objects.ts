@@ -216,6 +216,8 @@ export const paymentObjectToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 payment_object_id: simId,
                 mandate_id,
@@ -288,6 +290,8 @@ export const paymentObjectToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 payment_object_id,
                 merchant,
@@ -351,6 +355,8 @@ export const paymentObjectToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 success: true,
                 payment_object_id,
                 valid: true,
@@ -426,6 +432,8 @@ export const paymentObjectToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 id: payment_object_id,
                 mandate_id: 'mandate_sim_example',
                 amount: '25.00',
@@ -480,6 +488,8 @@ export const paymentObjectToolHandlers: Record<string, ToolHandler> = {
             type: 'text',
             text: JSON.stringify(
               {
+                _simulated: true,
+                _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
                 payment_objects: [
                   {
                     id: `po_sim_${Date.now().toString(36)}`,
