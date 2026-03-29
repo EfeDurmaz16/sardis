@@ -368,6 +368,27 @@ async def execute_payment(
             # Convert decimal amount to minor units (6 decimals for USDC)
             amount_minor = int(req.amount * Decimal("1000000"))
 
+            # Resolve the wallet's on-chain address from DB so we don't
+            # need to call Turnkey's list_wallet_accounts (which expects
+            # the Turnkey wallet ID, not Sardis's internal wallet_id).
+            from_address = None
+            if wallet_id:
+                try:
+                    pool = await _get_db()
+                    if pool:
+                        async with pool.acquire() as conn:
+                            addr_row = await conn.fetchrow(
+                                "SELECT addresses FROM wallets_v2 WHERE external_id = $1",
+                                wallet_id,
+                            )
+                            if addr_row and addr_row["addresses"]:
+                                import json as _json
+                                addrs = addr_row["addresses"] if isinstance(addr_row["addresses"], dict) else _json.loads(addr_row["addresses"])
+                                # Try tempo, then base_sepolia, then any address
+                                from_address = addrs.get("tempo") or addrs.get("base_sepolia") or addrs.get("base") or next(iter(addrs.values()), None)
+                except Exception as addr_err:
+                    logger.warning("Could not resolve wallet address from DB: %s", addr_err)
+
             mandate = PaymentMandate(
                 mandate_id=payment_id,
                 mandate_type="payment",
@@ -385,13 +406,16 @@ async def execute_payment(
                 chain=chain_key,
                 token=session.get("currency", "USDC"),
                 amount_minor=amount_minor,
-                destination=req.merchant,
+                destination=req.destination or req.merchant,
                 audit_hash=f"mpp:{session_id}:{payment_id}",
                 wallet_id=wallet_id,
                 ai_agent_presence=True,
                 transaction_modality="human_not_present",
                 merchant_domain=req.merchant_url or req.merchant,
             )
+            # Attach from_address so ChainExecutor skips Turnkey lookup
+            if from_address:
+                mandate.from_address = from_address  # type: ignore[attr-defined]
 
             receipt = await chain_executor.dispatch_payment(mandate)
             tx_hash = receipt.tx_hash

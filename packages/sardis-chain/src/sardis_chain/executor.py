@@ -1989,8 +1989,10 @@ class ChainExecutor:
         # Ensure RPC is connected with chain ID validation
         await rpc.connect()
 
-        from_address = None
-        if not self._simulated and self._mpc_signer:
+        # Prefer pre-resolved from_address on the mandate (avoids Turnkey lookup
+        # which expects the Turnkey wallet ID, not Sardis's internal wallet_id).
+        from_address = getattr(mandate, "from_address", None)
+        if not from_address and not self._simulated and self._mpc_signer:
             try:
                 wallet_id = getattr(mandate, "wallet_id", None)
                 if wallet_id:
