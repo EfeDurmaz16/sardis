@@ -305,8 +305,19 @@ async def execute_payment(
     # Check expiration
     expires_at = session.get("expires_at")
     if expires_at:
-        exp_str = str(expires_at)
-        if datetime.now(UTC).isoformat() > exp_str:
+        try:
+            if isinstance(expires_at, datetime):
+                exp_dt = expires_at
+            elif isinstance(expires_at, str):
+                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+            else:
+                exp_dt = datetime.fromisoformat(str(expires_at).replace(" ", "T").replace("Z", "+00:00"))
+            if exp_dt.tzinfo is None:
+                exp_dt = exp_dt.replace(tzinfo=UTC)
+            is_expired = datetime.now(UTC) > exp_dt
+        except Exception:
+            is_expired = False
+        if is_expired:
             # Mark expired
             pool = await _get_db()
             if pool:
