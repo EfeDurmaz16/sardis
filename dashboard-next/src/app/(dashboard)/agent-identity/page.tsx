@@ -15,6 +15,8 @@ import {
 import clsx from 'clsx'
 import StatCard from '@/components/StatCard'
 import { useAgents } from '@/hooks/useApi'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 interface AgentIdentity {
   id: string
@@ -145,11 +147,12 @@ export default function AgentIdentityPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowRegisterForm(true)}
-            className="px-4 py-2 bg-sardis-500 text-white hover:bg-sardis-600 transition-colors font-medium flex items-center gap-2"
+            disabled
+            className="px-4 py-2 bg-gray-600 text-gray-400 cursor-not-allowed font-medium flex items-center gap-2 opacity-50"
+            title="Agent registration via dashboard is not yet available. Use the API instead."
           >
             <Plus className="w-4 h-4" />
-            Register Agent
+            Register Agent (API Only)
           </button>
         </div>
       </div>
@@ -464,40 +467,44 @@ export default function AgentIdentityPage() {
       )}
 
       {/* Register Form Modal */}
-      {showRegisterForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-white mb-4">Register New Agent</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              Agent registration via the API is available now. Dashboard form launching next sprint.
-            </p>
-            <button
+      <Dialog open={showRegisterForm} onOpenChange={setShowRegisterForm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Register New Agent</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-400 mb-4">
+            Agent registration via the API is available now. Dashboard form launching next sprint.
+          </p>
+          <DialogFooter>
+            <Button
               onClick={() => setShowRegisterForm(false)}
-              className="w-full px-4 py-2 bg-sardis-500 text-white hover:bg-sardis-600 transition-colors"
+              className="w-full bg-sardis-500 text-white hover:bg-sardis-600 transition-colors"
             >
               Close
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reputation Form Modal */}
-      {showReputationForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-white mb-4">Submit Reputation Event</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              Reputation events can be submitted via the API. Dashboard form launching next sprint.
-            </p>
-            <button
+      <Dialog open={showReputationForm} onOpenChange={setShowReputationForm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Reputation Event</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-400 mb-4">
+            Reputation events can be submitted via the API. Dashboard form launching next sprint.
+          </p>
+          <DialogFooter>
+            <Button
               onClick={() => setShowReputationForm(false)}
-              className="w-full px-4 py-2 bg-sardis-500 text-white hover:bg-sardis-600 transition-colors"
+              className="w-full bg-sardis-500 text-white hover:bg-sardis-600 transition-colors"
             >
               Close
-            </button>
-          </div>
-        </div>
-      )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

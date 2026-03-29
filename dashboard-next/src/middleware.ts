@@ -23,7 +23,7 @@ const DASHBOARD_PREFIXES = [
   "/policy-playground", "/policy-management", "/checkout-controls",
   "/provider-health", "/counterparties", "/fallback-rules",
   "/live-events", "/approval-config", "/exceptions",
-  "/webhook-manager",
+  "/webhook-manager", "/templates",
   "/kyb", "/terms", "/api-key", "/mandate", "/first-payment",
 ];
 
@@ -59,16 +59,19 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Dashboard pages — require auth
+  // Dashboard pages — require auth (bypassed in local dev)
   if (DASHBOARD_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    const sessionToken =
-      request.cookies.get("better-auth.session_token")?.value ||
-      request.cookies.get("__Secure-better-auth.session_token")?.value;
+    const isDev = process.env.NODE_ENV === "development";
+    if (!isDev) {
+      const sessionToken =
+        request.cookies.get("better-auth.session_token")?.value ||
+        request.cookies.get("__Secure-better-auth.session_token")?.value;
 
-    if (!sessionToken) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+      if (!sessionToken) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Target, Activity, Zap, AlertTriangle, ArrowRight } from 'lucide-react'
+import { Target, Activity, Zap, AlertTriangle } from 'lucide-react'
 
 export default function GoalDriftPage() {
   return (
@@ -13,14 +13,25 @@ export default function GoalDriftPage() {
         </p>
       </div>
 
-      {/* Coming Soon Card */}
-      <div className="card p-16 text-center">
+      {/* Under Development Banner */}
+      <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-yellow-400">This feature is under development</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Goal drift detection is not yet functional. The planned capabilities below are for reference only and do not reflect live functionality.
+          </p>
+        </div>
+      </div>
+
+      {/* Planned Capabilities (informational only) */}
+      <div className="card p-16 text-center opacity-60">
         <div className="w-16 h-16 rounded-2xl bg-sardis-500/10 flex items-center justify-center mx-auto mb-6">
           <Target className="w-8 h-8 text-sardis-400" />
         </div>
 
         <h2 className="text-xl font-semibold text-white mb-3">
-          Goal Drift Monitoring — Coming Soon
+          Planned: Goal Drift Monitoring
         </h2>
 
         <p className="text-gray-400 max-w-lg mx-auto mb-8 leading-relaxed">
@@ -47,12 +58,6 @@ export default function GoalDriftPage() {
               <p className="text-xs text-gray-500">{item.desc}</p>
             </div>
           ))}
-        </div>
-
-        <div className="flex items-center justify-center gap-2 text-sm text-sardis-400">
-          <span>Anomaly detection engine is live</span>
-          <ArrowRight className="w-4 h-4" />
-          <span>Drift UI launching next sprint</span>
         </div>
       </div>
     </div>

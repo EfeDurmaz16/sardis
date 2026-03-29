@@ -170,7 +170,7 @@ function QuickStartCard({ transactionCount }: { transactionCount: number }) {
   const handleDismiss = () => { setDismissed(true); localStorage.setItem('sardis_quickstart_dismissed', '1'); };
   const steps = [
     { label: 'Create your first wallet', href: '/agents', icon: Wallet, color: '#818CF8' },
-    { label: 'Set a spending policy', href: '/policy-management', icon: Shield, color: '#22C55E' },
+    { label: 'Set a spending policy', href: '/policy-manager', icon: Shield, color: '#22C55E' },
     { label: 'Make a test payment', href: '/simulation', icon: FlaskConical, color: '#F59E0B' },
     { label: 'View your API keys', href: '/api-keys', icon: Key, color: '#60A5FA' },
   ];

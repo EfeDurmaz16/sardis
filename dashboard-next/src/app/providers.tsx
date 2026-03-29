@@ -10,18 +10,44 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      // Don't retry auth or 404 errors — suppress them silently
+      // Don't retry auth or 404 errors — but DO surface them as error states
       retry: (failureCount, error) => {
         if (error instanceof AuthRequiredError) return false;
         if (error instanceof NotFoundError) return false;
         return failureCount < 1;
       },
       staleTime: 30_000,
+      // Global error callback: redirect to login on auth failure
+      meta: {
+        // Used by individual queries to opt out if needed
+      },
     },
     mutations: {
       retry: false,
+      onError: (error) => {
+        if (error instanceof AuthRequiredError && typeof window !== "undefined") {
+          const current = window.location.pathname;
+          window.location.href = `/login?redirect=${encodeURIComponent(current)}`;
+        }
+      },
     },
   },
+});
+
+// Global query cache listener: redirect on AuthRequiredError
+queryClient.getQueryCache().subscribe((event) => {
+  if (
+    event.type === "updated" &&
+    event.query.state.status === "error" &&
+    event.query.state.error instanceof AuthRequiredError &&
+    typeof window !== "undefined"
+  ) {
+    const current = window.location.pathname;
+    // Avoid redirect loops
+    if (!current.startsWith("/login")) {
+      window.location.href = `/login?redirect=${encodeURIComponent(current)}`;
+    }
+  }
 });
 
 function PostHogPageView() {
@@ -51,8 +77,9 @@ const SUPPRESSED_PATTERNS = [
   "ERR_BLOCKED_BY_CSP",
   "posthog",
   "PostHog",
-  "Authentication required",
-  "Not found:",
+  // Auth and 404 errors are now handled via redirect / error state — keep in dev console
+  // "Authentication required",
+  // "Not found:",
   "get-session",
   // React Query internal — these fire on silenced AuthRequiredError / NotFoundError
   "Query data cannot be undefined",

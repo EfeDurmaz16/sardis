@@ -238,21 +238,31 @@ export interface PolicyHistoryDetailResponse {
 }
 
 
-// Custom error class to distinguish auth failures from real errors.
-// Exported so the QueryClient can suppress these silently.
+// Custom error classes to distinguish API failures from empty data.
+// Each carries an `isApiError` flag so consumers can tell "no data" from "error".
 export class AuthRequiredError extends Error {
+  readonly isApiError = true as const
+  readonly statusCode = 401
   constructor() {
     super('Authentication required')
     this.name = 'AuthRequiredError'
   }
 }
 
-// Silently swallowed — endpoint doesn't exist yet or was removed.
 export class NotFoundError extends Error {
+  readonly isApiError = true as const
+  readonly statusCode = 404
+  readonly endpoint: string
   constructor(endpoint: string) {
     super(`Not found: ${endpoint}`)
     this.name = 'NotFoundError'
+    this.endpoint = endpoint
   }
+}
+
+/** Type guard: returns true when the error came from an API response (not empty data). */
+export function isApiError(error: unknown): error is AuthRequiredError | NotFoundError {
+  return error instanceof AuthRequiredError || error instanceof NotFoundError
 }
 
 async function request<T>(
@@ -286,11 +296,11 @@ async function request<T>(
   })
 
   if (!response.ok) {
-    // Suppress ALL 401/403 — whether token is missing or expired
+    // 401/403 — throw typed error so consumers can redirect to login or show "Unauthorized"
     if (response.status === 401 || response.status === 403) {
       throw new AuthRequiredError()
     }
-    // Suppress 404 — endpoint may not exist yet
+    // 404 — throw typed error so consumers can show "Resource not found" (not empty state)
     if (response.status === 404) {
       throw new NotFoundError(endpoint)
     }

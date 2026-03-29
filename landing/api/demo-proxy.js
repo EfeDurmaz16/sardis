@@ -300,7 +300,9 @@ export default async function handler(req, res) {
     });
   }
 
-  // Policy passed — return approved result with wallet/chain info
+  // Policy passed — return simulated approved result with wallet/chain info.
+  // NOTE: The transaction below is fabricated for demo purposes; no on-chain
+  // execution actually occurs. The `_demo` and `_warning` fields make this explicit.
   const walletAddress = '0x99085505f506576c5C5342cAFEf14d6be43e0E9C';
   const demoTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('');
 
@@ -310,13 +312,15 @@ export default async function handler(req, res) {
     status: 200,
     durationMs: Math.floor(Math.random() * 200) + 100,
     error: null,
-    detail: 'USDC transfer on Base Sepolia via Turnkey MPC',
+    detail: 'Simulated USDC transfer on Base Sepolia (demo only — no on-chain tx)',
   });
 
   return json(res, 200, {
     ok: true,
     mode: 'live',
     scenario,
+    _demo: true,
+    _warning: 'This is a simulated demo transaction. No real on-chain execution occurred.',
     steps,
     result: {
       outcome: 'approved',
@@ -326,6 +330,8 @@ export default async function handler(req, res) {
         policyId: policy.data?.policy_id || null,
       },
       transaction: {
+        _demo: true,
+        _warning: 'This is a simulated demo transaction. The hash and block number are fabricated.',
         hash: demoTxHash.slice(0, 12) + '...' + demoTxHash.slice(-8),
         hashFull: demoTxHash,
         amount: Number(amount).toFixed(2),

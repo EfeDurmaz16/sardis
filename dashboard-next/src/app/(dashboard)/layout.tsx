@@ -29,6 +29,21 @@ import {
   Terminal,
   Store,
   SlidersHorizontal,
+  Zap,
+  TerminalSquare,
+  FileText,
+  Activity,
+  PauseCircle,
+  Eye,
+  AlertTriangle,
+  Anchor,
+  OctagonAlert,
+  Heart,
+  Bell,
+  Headphones,
+  Layers,
+  Menu,
+  X,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useHealth } from '@/hooks/useApi'
@@ -41,21 +56,21 @@ interface LayoutProps {
   children: ReactNode
 }
 
-// --- Sidebar navigation structure ---
-
 interface NavItem {
   name: string
   href: string
   icon: typeof LayoutDashboard
   tour?: string
+  badge?: string
 }
 
 interface NavSection {
   label: string
   items: NavItem[]
+  defaultOpen?: boolean
 }
 
-// Core section -- always visible, no collapsing
+// Core — always visible
 const coreNavigation: NavItem[] = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard, tour: 'overview' },
   { name: 'Agents', href: '/agents', icon: Users, tour: 'agents' },
@@ -63,53 +78,100 @@ const coreNavigation: NavItem[] = [
   { name: 'Mandates', href: '/mandates', icon: Shield, tour: 'mandates' },
   { name: 'Wallets', href: '/wallets', icon: Wallet },
   { name: 'Merchants', href: '/merchants', icon: Store },
-  { name: 'Virtual Cards', href: '/virtual-cards', icon: CreditCard },
 ]
 
-// Collapsible grouped sections
+// Static sections with labels
+const paymentsNavigation: NavItem[] = [
+  { name: 'Virtual Cards', href: '/virtual-cards', icon: CreditCard },
+  { name: 'Holds', href: '/holds', icon: PauseCircle },
+  { name: 'Invoices', href: '/invoices', icon: FileText },
+  { name: 'Reconciliation', href: '/reconciliation', icon: Activity },
+]
+
+const monitoringNavigation: NavItem[] = [
+  { name: 'Live Events', href: '/events', icon: Zap },
+  { name: 'MPP Sessions', href: '/mpp-sessions', icon: TerminalSquare },
+]
+
+// Collapsible sections
 const navSections: NavSection[] = [
   {
     label: 'Policies',
     items: [
       { name: 'Policy Manager', href: '/policy-manager', icon: GitBranch },
       { name: 'Simulation', href: '/simulation', icon: Beaker },
-      { name: 'API Playground', href: '/playground', icon: Terminal },
       { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+      { name: 'API Playground', href: '/playground', icon: Terminal },
     ],
   },
   {
     label: 'Security',
     items: [
       { name: 'Kill Switch', href: '/kill-switch', icon: Power },
-      { name: 'Approvals', href: '/approvals', icon: CheckSquare },
       { name: 'Control Center', href: '/control-center', icon: LayoutGrid },
+      { name: 'Approvals', href: '/approvals', icon: CheckSquare },
       { name: 'Checkout Controls', href: '/checkout-controls', icon: SlidersHorizontal },
       { name: 'Evidence', href: '/evidence', icon: FileSearch },
+      { name: 'Observability', href: '/agent-observability', icon: Eye },
+      { name: 'Anomaly Detection', href: '/anomaly', icon: AlertTriangle },
+      { name: 'Audit Anchors', href: '/audit-anchors', icon: Anchor },
+      { name: 'Exceptions', href: '/exceptions', icon: OctagonAlert },
+      { name: 'Guardrails', href: '/guardrails', icon: Shield },
+      { name: 'Provider Health', href: '/provider-health', icon: Heart },
     ],
   },
   {
     label: 'Settings',
+    defaultOpen: false,
     items: [
+      { name: 'Settings', href: '/settings', icon: Settings },
       { name: 'API Keys', href: '/api-keys', icon: Key, tour: 'api-keys' },
       { name: 'Webhooks', href: '/webhooks', icon: Webhook },
-      { name: 'Go Live', href: '/go-live', icon: Rocket, tour: 'go-live' },
-      { name: 'Settings', href: '/settings', icon: Settings },
       { name: 'Billing', href: '/billing', icon: Receipt },
+      { name: 'Go Live', href: '/go-live', icon: Rocket, tour: 'go-live' },
+      { name: 'Alerts', href: '/alert-preferences', icon: Bell },
+      { name: 'Support', href: '/enterprise-support', icon: Headphones },
+      { name: 'Environments', href: '/environment-templates', icon: Layers },
     ],
   },
 ]
 
-// Helper: decode JWT payload from a raw token string
+// Decode JWT payload
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
-    const payload = parts[1]
-    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    const decoded = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
     return JSON.parse(decoded)
   } catch {
     return null
   }
+}
+
+// Nav item component
+function NavLink({ item, pathname, onClick }: { item: NavItem; pathname: string; onClick?: () => void }) {
+  const isActive = pathname === item.href
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      {...(item.tour ? { 'data-tour': item.tour } : {})}
+      className={clsx(
+        'flex items-center gap-[9px] px-[10px] py-[6px] rounded-[6px] text-[12.5px] transition-all duration-100',
+        isActive
+          ? 'bg-[#ebebeb] text-[#111] font-medium'
+          : 'text-[#666] hover:text-[#111] hover:bg-[#f2f2f2]'
+      )}
+    >
+      <item.icon className="w-[15px] h-[15px] flex-shrink-0" strokeWidth={1.6} />
+      <span className="flex-1">{item.name}</span>
+      {item.badge && (
+        <span className="text-[10px] font-mono text-[#888] bg-[#f7f7f7] border border-[#eaeaea] rounded-[3px] px-[4px]">
+          {item.badge}
+        </span>
+      )}
+    </Link>
+  )
 }
 
 export default function DashboardLayout({ children }: LayoutProps) {
@@ -118,40 +180,32 @@ export default function DashboardLayout({ children }: LayoutProps) {
   const { data: health, isError } = useHealth()
   const { data: session } = useSession()
 
-  // Resolve user email: try better-auth session first, fall back to JWT in localStorage
   const userEmail = useMemo(() => {
-    // 1. From better-auth session object
     if (session?.user?.email) return session.user.email as string
-
-    // 2. Decode JWT stored in localStorage
     if (typeof window === 'undefined') return null
     try {
       const raw = localStorage.getItem('sardis_session')
       if (!raw) return null
       const payload = decodeJwtPayload(raw)
       if (payload && typeof payload.email === 'string') return payload.email
-    } catch {
-      // ignore decode errors
-    }
+    } catch { /* ignore */ }
     return null
   }, [session])
 
-  // Auto-expand sections that contain the active page
   const getInitialOpenSections = () => {
     const open: Record<string, boolean> = {}
     navSections.forEach((section) => {
-      open[section.label] = section.items.some((item) => item.href === pathname)
+      const hasActive = section.items.some((item) => item.href === pathname)
+      open[section.label] = hasActive || (section.defaultOpen !== false)
     })
     return open
   }
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(getInitialOpenSections)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Tour trigger
   useEffect(() => {
-    if (shouldShowTour()) {
-      startDashboardTour()
-    }
+    if (shouldShowTour()) startDashboardTour()
   }, [])
 
   const toggleSection = (label: string) => {
@@ -159,153 +213,182 @@ export default function DashboardLayout({ children }: LayoutProps) {
   }
 
   const handleLogout = async () => {
-    // Clear better-auth session via SDK
     await signOut()
-    // Clear localStorage session / JWT
     localStorage.removeItem('sardis_session')
-    // Clear the session cookie
     document.cookie = 'better-auth.session_token=; path=/; max-age=0; domain=.sardis.sh'
-    // Redirect to login
     router.push('/login')
   }
 
-  return (
-    <div className="min-h-screen flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-dark-300 border-r border-dark-100 flex flex-col">
-        {/* Logo */}
-        <div className="p-6 border-b border-dark-100">
-          <Link href="/overview" className="flex items-center gap-3">
-            <svg width="36" height="36" viewBox="0 0 28 28" fill="none" className="flex-shrink-0">
-              <path d="M20 5H10a7 7 0 000 14h2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
-              <path d="M8 23h10a7 7 0 000-14h-2" stroke="#ff4f00" strokeWidth="3" strokeLinecap="round" fill="none" />
-            </svg>
-            <div>
-              <h1 className="text-xl font-bold font-display text-white">Sardis</h1>
-              <p className="text-xs text-gray-500 tracking-wider uppercase">Control Plane</p>
-            </div>
-          </Link>
+  const closeSidebar = () => setSidebarOpen(false)
+
+  const sidebarContent = (
+    <>
+      {/* Context Switcher */}
+      <div className="flex items-center gap-[10px] px-[16px] py-[12px] border-b border-[#eaeaea]">
+        <Link href="/overview" className="flex items-center gap-[10px] flex-1 min-w-0" onClick={closeSidebar}>
+          <svg width="24" height="24" viewBox="0 0 28 28" fill="none" className="flex-shrink-0">
+            <path d="M20 5H10a7 7 0 000 14h2" stroke="#111" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M8 23h10a7 7 0 000-14h-2" stroke="#111" strokeWidth="3" strokeLinecap="round" fill="none" />
+          </svg>
+          <span className="text-[13px] font-semibold text-[#111] flex items-center gap-[6px]">
+            Sardis
+            <span className="text-[9px] font-medium text-[#888] bg-[#f7f7f7] border border-[#eaeaea] rounded-[3px] px-[5px] uppercase tracking-[0.04em]">
+              Pro
+            </span>
+          </span>
+        </Link>
+        {/* Close button — mobile only */}
+        <button
+          onClick={closeSidebar}
+          className="lg:hidden p-1 text-[#888] hover:text-[#111]"
+          aria-label="Close sidebar"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-[8px] overflow-y-auto">
+        {/* Core */}
+        <div className="space-y-[1px]">
+          {coreNavigation.map((item) => (
+            <NavLink key={item.name} item={item} pathname={pathname} onClick={closeSidebar} />
+          ))}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {/* Section header: Core */}
-          <div className="px-4 pt-1 pb-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Core</span>
+        {/* Payments */}
+        <div className="mt-[10px]">
+          <div className="px-[10px] py-[3px]">
+            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#888]">Payments</span>
           </div>
+          <div className="space-y-[1px]">
+            {paymentsNavigation.map((item) => (
+              <NavLink key={item.name} item={item} pathname={pathname} onClick={closeSidebar} />
+            ))}
+          </div>
+        </div>
 
-          {/* Core -- always visible */}
-          {coreNavigation.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                {...(item.tour ? { 'data-tour': item.tour } : {})}
-                className={clsx(
-                  'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200',
-                  isActive
-                    ? 'bg-sardis-500/10 text-sardis-400 border border-sardis-500/30'
-                    : 'text-gray-400 hover:text-white hover:bg-dark-200'
-                )}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.name}
-              </Link>
-            )
-          })}
+        {/* Monitoring */}
+        <div className="mt-[10px]">
+          <div className="px-[10px] py-[3px]">
+            <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#888]">Monitoring</span>
+          </div>
+          <div className="space-y-[1px]">
+            {monitoringNavigation.map((item) => (
+              <NavLink key={item.name} item={item} pathname={pathname} onClick={closeSidebar} />
+            ))}
+          </div>
+        </div>
 
-          {/* Collapsible sections */}
-          {navSections.map((section) => (
-            <div key={section.label} className="pt-2 mt-2 border-t border-dark-100/40">
-              <button
-                onClick={() => toggleSection(section.label)}
-                className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
-              >
-                <span className="flex-1 text-left">{section.label}</span>
-                {openSections[section.label] ? (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5" />
-                )}
-              </button>
-              {openSections[section.label] && (
-                <div className="mt-1 space-y-0.5">
-                  {section.items.map((item) => {
-                    const isActive = pathname === item.href
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        {...(item.tour ? { 'data-tour': item.tour } : {})}
-                        className={clsx(
-                          'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all duration-200',
-                          isActive
-                            ? 'bg-sardis-500/10 text-sardis-400 border border-sardis-500/30'
-                            : 'text-gray-400 hover:text-white hover:bg-dark-200'
-                        )}
-                      >
-                        <item.icon className="w-4 h-4" />
-                        {item.name}
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-        </nav>
-
-        {/* Sidebar footer: user email + sign out + status */}
-        <div className="border-t border-dark-100">
-          {/* User info */}
-          {userEmail && (
-            <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-500 flex-shrink-0" />
-              <span className="text-xs text-gray-400 truncate" title={userEmail}>
-                {userEmail}
-              </span>
-            </div>
-          )}
-
-          {/* Sign out */}
-          <div className="px-4 pb-2">
+        {/* Collapsible sections */}
+        {navSections.map((section) => (
+          <div key={section.label} className="mt-[8px]">
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-500 hover:text-white hover:bg-dark-200 transition-all duration-200"
+              onClick={() => toggleSection(section.label)}
+              className="w-full flex items-center justify-between px-[10px] py-[3px] group"
             >
-              <LogOut className="w-5 h-5" />
-              Sign Out
-            </button>
-          </div>
-
-          {/* API status */}
-          <div className="p-4 border-t border-dark-100">
-            <div className="flex items-center gap-2 text-sm">
-              <div className={clsx(
-                'status-dot',
-                isError ? 'error' : 'success'
-              )} />
-              <span className="text-gray-400">
-                {isError ? 'API Offline' : 'API Connected'}
+              <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#888] group-hover:text-[#666] transition-colors">
+                {section.label}
               </span>
-            </div>
-            {health && (
-              <p className="text-xs text-gray-500 mt-1 font-mono">
-                v{health.version}
-              </p>
+              {openSections[section.label] ? (
+                <ChevronDown className="w-[11px] h-[11px] text-[#888] transition-transform" strokeWidth={2} />
+              ) : (
+                <ChevronRight className="w-[11px] h-[11px] text-[#888] transition-transform" strokeWidth={2} />
+              )}
+            </button>
+            {openSections[section.label] && (
+              <div className="mt-[1px] space-y-[1px]">
+                {section.items.map((item) => (
+                  <NavLink key={item.name} item={item} pathname={pathname} onClick={closeSidebar} />
+                ))}
+              </div>
             )}
           </div>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="border-t border-[#eaeaea]">
+        {userEmail && (
+          <div className="px-[16px] pt-[12px] pb-[4px] flex items-center gap-[8px]">
+            <User className="w-[14px] h-[14px] text-[#888] flex-shrink-0" strokeWidth={1.6} />
+            <span className="text-[11px] text-[#666] truncate" title={userEmail}>
+              {userEmail}
+            </span>
+          </div>
+        )}
+        <div className="px-[12px] pb-[4px]">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-[9px] px-[10px] py-[6px] rounded-[6px] text-[12.5px] text-[#888] hover:text-[#111] hover:bg-[#f2f2f2] transition-all"
+          >
+            <LogOut className="w-[15px] h-[15px]" strokeWidth={1.6} />
+            Sign Out
+          </button>
         </div>
+        <div className="px-[16px] py-[10px] border-t border-[#eaeaea]">
+          <div className="flex items-center gap-[7px] text-[12px]">
+            <div className={clsx(
+              'w-[6px] h-[6px] rounded-full',
+              isError ? 'bg-[#ef4444]' : 'bg-[#22c55e]'
+            )} />
+            <span className="text-[#888]">
+              {isError ? 'API Offline' : 'API Connected'}
+            </span>
+          </div>
+          {health && (
+            <p className="text-[11px] text-[#bbb] mt-[2px] font-mono">
+              v{health.version}
+            </p>
+          )}
+        </div>
+      </div>
+    </>
+  )
+
+  return (
+    <div className="light-dash min-h-screen flex bg-[#fafafa]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-black focus:rounded">
+        Skip to content
+      </a>
+
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/20 lg:hidden"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={clsx(
+          'w-[228px] bg-white border-r border-[#eaeaea] flex flex-col',
+          'fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:relative lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        aria-label="Main navigation"
+      >
+        {sidebarContent}
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto flex flex-col">
-        {/* Top header bar */}
-        <header className="flex items-center justify-end px-8 py-3 border-b border-dark-100 bg-dark-300/50 flex-shrink-0">
+      {/* Main */}
+      <main id="main-content" className="flex-1 overflow-auto flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="flex items-center justify-between px-[20px] py-[10px] border-b border-[#eaeaea] bg-white flex-shrink-0 min-h-[48px]">
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 text-[#666] hover:text-[#111]"
+            aria-label="Open sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="lg:hidden" />
           <NotificationCenter />
         </header>
-        <div className="p-8 flex-1">
+        <div className="p-[20px] lg:p-[24px] flex-1">
           <KYCBanner />
           {children}
         </div>
