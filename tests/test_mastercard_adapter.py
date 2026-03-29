@@ -122,22 +122,17 @@ class TestMockMastercardAgentPayAdapter:
 
     @pytest.mark.asyncio
     async def test_provision_credential(self):
+        """Provisioning with encryption raises NotImplementedError because
+        REHYDRATABLE credential class requires envelope encryption (KMS/HSM)."""
         adapter = MockMastercardAgentPayAdapter()
         enc = _make_encryption()
-        cred = await adapter.provision_credential(
-            org_id="org_1",
-            agent_id="agent_1",
-            scope=CredentialScope(max_per_tx=Decimal("300")),
-            encryption=enc,
-        )
-        assert cred.network == CredentialNetwork.MASTERCARD_AGENT_PAY
-        assert cred.status == CredentialStatus.ACTIVE
-        assert cred.credential_class == CredentialClass.REHYDRATABLE_EXECUTION_TOKEN
-        assert cred.scope.max_per_tx == Decimal("300")
-        assert cred.token_encrypted != b"mock_encrypted"  # was actually encrypted
-        assert "token_unique_reference" in cred.provider_metadata
-        assert "payment_account_reference" in cred.provider_metadata
-        assert cred.provider_metadata["mock"] is True
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            await adapter.provision_credential(
+                org_id="org_1",
+                agent_id="agent_1",
+                scope=CredentialScope(max_per_tx=Decimal("300")),
+                encryption=enc,
+            )
 
     @pytest.mark.asyncio
     async def test_provision_credential_without_encryption(self):
@@ -226,16 +221,17 @@ class TestMastercardAgentPayAdapter:
 
     @pytest.mark.asyncio
     async def test_execute_raises_not_implemented_after_decrypt(self):
-        """execute() raises NotImplementedError when credential decrypts successfully."""
+        """execute() raises NotImplementedError when credential decrypts successfully.
+        Uses OPAQUE class since REHYDRATABLE requires KMS/HSM envelope encryption."""
         enc = _make_encryption()
         token = b"mc_tur_test_token"
-        encrypted = enc.encrypt_with_envelope(token)
+        encrypted = enc.encrypt(token)  # Standard Fernet encryption
         cred = DelegatedCredential(
             org_id="org_1",
             agent_id="agent_1",
             network=CredentialNetwork.MASTERCARD_AGENT_PAY,
             status=CredentialStatus.ACTIVE,
-            credential_class=CredentialClass.REHYDRATABLE_EXECUTION_TOKEN,
+            credential_class=CredentialClass.OPAQUE_DELEGATED_TOKEN,
             token_reference="mc_tok_ref_test",
             token_encrypted=encrypted,
             consent_id="dcns_test",

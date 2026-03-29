@@ -233,12 +233,14 @@ class TestCredentialEncryption:
         decrypted = enc.decrypt(encrypted)
         assert decrypted == plaintext
 
-    def test_envelope_encrypt_roundtrip(self):
+    def test_envelope_encrypt_raises_not_implemented(self):
+        """Envelope encryption requires KMS/HSM integration."""
         enc = _make_encryption()
         plaintext = b"super-secret"
-        encrypted = enc.encrypt_with_envelope(plaintext)
-        decrypted = enc.decrypt_with_envelope(encrypted)
-        assert decrypted == plaintext
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            enc.encrypt_with_envelope(plaintext)
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            enc.decrypt_with_envelope(b"ciphertext")
 
     def test_encrypt_for_reference_only_class(self):
         enc = _make_encryption()
@@ -255,20 +257,18 @@ class TestCredentialEncryption:
         assert decrypted == plaintext
 
     def test_encrypt_for_rehydratable_class(self):
+        """REHYDRATABLE requires envelope encryption which needs KMS/HSM."""
         enc = _make_encryption()
         plaintext = b"exec-token"
-        result = enc.encrypt_for_class(plaintext, CredentialClass.REHYDRATABLE_EXECUTION_TOKEN)
-        assert result != plaintext
-        decrypted = enc.decrypt_for_class(result, CredentialClass.REHYDRATABLE_EXECUTION_TOKEN)
-        assert decrypted == plaintext
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            enc.encrypt_for_class(plaintext, CredentialClass.REHYDRATABLE_EXECUTION_TOKEN)
 
     def test_encrypt_for_sensitive_class(self):
+        """SENSITIVE requires envelope encryption which needs KMS/HSM."""
         enc = _make_encryption()
         plaintext = b"payment-secret"
-        result = enc.encrypt_for_class(plaintext, CredentialClass.SENSITIVE_PAYMENT_SECRET)
-        assert result != plaintext
-        decrypted = enc.decrypt_for_class(result, CredentialClass.SENSITIVE_PAYMENT_SECRET)
-        assert decrypted == plaintext
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            enc.encrypt_for_class(plaintext, CredentialClass.SENSITIVE_PAYMENT_SECRET)
 
 
 # ---------------------------------------------------------------------------

@@ -164,57 +164,27 @@ class StripeTreasuryProvider:
 
         Returns:
             Created FinancialAccount
+
+        Raises:
+            NotImplementedError: Stripe Treasury integration pending.
         """
-        if features is None:
-            features = [
-                "inbound_transfers.ach",
-                "outbound_payments.ach",
-                "outbound_payments.us_domestic_wire",
-                "financial_addresses.aba",
-            ]
-
-        logger.info("Creating Treasury Financial Account with features: %s", features)
-
-        # In production, this calls Stripe API:
-        # stripe.treasury.FinancialAccount.create(
-        #     supported_currencies=["usd"],
-        #     features={feat: {"requested": True} for feat in features},
-        #     metadata=metadata or {},
-        # )
-
-        account = FinancialAccount(
-            id=self._financial_account_id or "fa_simulated",
-            status=TreasuryAccountStatus.OPEN,
-            balance=TreasuryBalance(
-                available=Decimal("0"),
-                pending_inbound=Decimal("0"),
-                pending_outbound=Decimal("0"),
-            ),
-            features=features,
-            created_at=datetime.utcnow(),
-            metadata=metadata or {},
+        raise NotImplementedError(
+            "Stripe Treasury integration pending. "
+            "Only fund_issuing_balance is available."
         )
-
-        self._financial_account_id = account.id
-        self._initialized = True
-        return account
 
     async def get_balance(self) -> TreasuryBalance:
         """Get current Treasury account balance.
 
         Returns:
             TreasuryBalance with available, pending_inbound, pending_outbound
+
+        Raises:
+            NotImplementedError: Stripe Treasury integration pending.
         """
-        self._ensure_initialized()
-
-        # In production: stripe.treasury.FinancialAccount.retrieve(self._financial_account_id)
-        logger.debug("Fetching Treasury balance for %s", self._financial_account_id)
-
-        return TreasuryBalance(
-            available=Decimal("0"),
-            pending_inbound=Decimal("0"),
-            pending_outbound=Decimal("0"),
-            currency="usd",
+        raise NotImplementedError(
+            "Stripe Treasury integration pending. "
+            "Only fund_issuing_balance is available."
         )
 
     async def create_outbound_payment(
@@ -236,23 +206,13 @@ class StripeTreasuryProvider:
 
         Returns:
             OutboundPayment record
-        """
-        self._ensure_initialized()
-        logger.info(
-            "Creating outbound payment: $%s via %s to %s",
-            amount, destination_type, destination_account,
-        )
 
-        return OutboundPayment(
-            id=f"obp_sim_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-            amount=amount,
-            currency="usd",
-            status=TransferStatus.PROCESSING,
-            destination_type=destination_type,
-            destination_id=destination_account,
-            description=description,
-            created_at=datetime.utcnow(),
-            metadata=metadata or {},
+        Raises:
+            NotImplementedError: Stripe Treasury integration pending.
+        """
+        raise NotImplementedError(
+            "Stripe Treasury integration pending. "
+            "Only fund_issuing_balance is available."
         )
 
     async def fund_issuing_balance(
@@ -351,10 +311,14 @@ class StripeTreasuryProvider:
 
         Returns:
             List of InboundTransfer records
+
+        Raises:
+            NotImplementedError: Stripe Treasury integration pending.
         """
-        self._ensure_initialized()
-        logger.debug("Listing inbound transfers (limit=%d, status=%s)", limit, status)
-        return []
+        raise NotImplementedError(
+            "Stripe Treasury integration pending. "
+            "Only fund_issuing_balance is available."
+        )
 
     async def get_outbound_payments(
         self,
@@ -370,9 +334,10 @@ class StripeTreasuryProvider:
         Returns:
             List of OutboundPayment records
         """
-        self._ensure_initialized()
-        logger.debug("Listing outbound payments (limit=%d, status=%s)", limit, status)
-        return []
+        raise NotImplementedError(
+            "Stripe Treasury integration pending. "
+            "Only fund_issuing_balance is available."
+        )
 
     async def handle_webhook(self, event_type: str, event_data: dict) -> None:
         """Handle Stripe Treasury webhook events.

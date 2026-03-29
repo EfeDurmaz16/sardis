@@ -344,10 +344,11 @@ class GasOptimizer:
 
     async def _fetch_gas_price(self, chain: str) -> Decimal:
         """
-        Fetch current gas price from chain (or use estimates).
+        Fetch current gas price from chain RPC.
 
-        In production, this would query the actual chain RPC.
-        For now, we use realistic estimates with some randomization.
+        Queries eth_gasPrice via the configured RPC URL. Falls back to
+        static average estimates only if no RPC URL is configured for
+        the chain.
 
         Args:
             chain: Chain name
@@ -355,23 +356,39 @@ class GasOptimizer:
         Returns:
             Gas price in gwei
         """
-        # Get estimates for this chain
+        rpc_url = self.rpc_urls.get(chain)
+        if rpc_url:
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    resp = await client.post(
+                        rpc_url,
+                        json={
+                            "jsonrpc": "2.0",
+                            "method": "eth_gasPrice",
+                            "params": [],
+                            "id": 1,
+                        },
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    hex_price = data.get("result", "0x0")
+                    wei_price = int(hex_price, 16)
+                    gwei_price = Decimal(wei_price) / Decimal("1000000000")
+
+                    # Clamp to sane bounds
+                    estimates = self.GAS_PRICE_ESTIMATES.get(chain, self.GAS_PRICE_ESTIMATES["ethereum"])
+                    gwei_price = max(estimates["min"], min(estimates["max"] * 3, gwei_price))
+
+                    logger.debug("RPC gas price for %s: %s gwei", chain, gwei_price)
+                    return gwei_price
+            except Exception as e:
+                logger.warning("RPC gas price fetch failed for %s: %s, using static estimate", chain, e)
+
+        # Fallback: static average estimate (no randomization)
         estimates = self.GAS_PRICE_ESTIMATES.get(chain, self.GAS_PRICE_ESTIMATES["ethereum"])
-
-        # Use average with small random variation
-        # In production, query: eth_gasPrice or eth_feeHistory
-        avg_price = estimates["avg"]
-
-        # Add ±20% variation for realism
-        import random
-        variation = Decimal(str(random.uniform(0.8, 1.2)))
-        price = avg_price * variation
-
-        # Clamp to min/max
-        price = max(estimates["min"], min(estimates["max"], price))
-
-        logger.debug(f"Fetched gas price for {chain}: {price} gwei")
-
+        price = estimates["avg"]
+        logger.debug("Static gas price estimate for %s: %s gwei", chain, price)
         return price
 
 

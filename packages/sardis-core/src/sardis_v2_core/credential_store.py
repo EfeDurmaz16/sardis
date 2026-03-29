@@ -65,19 +65,26 @@ class CredentialEncryption:
         return f.decrypt(ciphertext)
 
     def encrypt_with_envelope(self, plaintext: bytes) -> bytes:
-        """Placeholder for envelope encryption (DEK wrapped by KEK via KMS/HSM).
+        """Envelope encryption (DEK wrapped by KEK via KMS/HSM).
 
-        Currently double-encrypts with the same Fernet key as a structural
-        placeholder.  Production must replace with real envelope encryption
-        using a separate DEK per credential, wrapped by a KEK from KMS/HSM.
+        Raises:
+            NotImplementedError: Requires KMS/HSM integration.
         """
-        inner = self.encrypt(plaintext)
-        return self.encrypt(inner)
+        raise NotImplementedError(
+            "Envelope encryption requires KMS/HSM integration. "
+            "Use standard encrypt()/decrypt() for basic Fernet encryption."
+        )
 
     def decrypt_with_envelope(self, ciphertext: bytes) -> bytes:
-        """Placeholder — see encrypt_with_envelope docstring."""
-        outer = self.decrypt(ciphertext)
-        return self.decrypt(outer)
+        """Envelope decryption (DEK unwrapped by KEK via KMS/HSM).
+
+        Raises:
+            NotImplementedError: Requires KMS/HSM integration.
+        """
+        raise NotImplementedError(
+            "Envelope encryption requires KMS/HSM integration. "
+            "Use standard encrypt()/decrypt() for basic Fernet encryption."
+        )
 
     def encrypt_for_class(self, plaintext: bytes, cred_class: CredentialClass) -> bytes:
         handling = CREDENTIAL_HANDLING[cred_class]

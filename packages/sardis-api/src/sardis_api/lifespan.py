@@ -564,7 +564,6 @@ async def lifespan(app: FastAPI):
         if settings.delegated.visa_tap_enabled:
             try:
                 from sardis_v2_core.delegated_adapters.visa_tap import (
-                    MockVisaTAPAdapter,
                     VisaTAPAdapter,
                 )
 
@@ -578,10 +577,19 @@ async def lifespan(app: FastAPI):
                         base_url=settings.visa_tap.base_url,
                         encryption=CredentialEncryption(),
                     )
+                    delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
                 else:
-                    adapter = MockVisaTAPAdapter()
-                    logger.info("Visa TAP: using mock adapter (no API key/cert)")
-                delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
+                    _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+                    if _env in ("dev", "test", "development"):
+                        from sardis_v2_core.delegated_adapters.visa_tap import MockVisaTAPAdapter
+                        adapter = MockVisaTAPAdapter()
+                        delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
+                        logger.info("Visa TAP: using mock adapter (dev/test only)")
+                    else:
+                        logger.warning(
+                            "Visa TAP: skipping registration — no API key/cert configured "
+                            "and mock adapters are not allowed in %s", _env,
+                        )
             except Exception as e:
                 logger.warning("Visa TAP adapter init failed: %s", e)
 
@@ -589,7 +597,6 @@ async def lifespan(app: FastAPI):
             try:
                 from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
                     MastercardAgentPayAdapter,
-                    MockMastercardAgentPayAdapter,
                 )
 
                 if settings.mastercard.consumer_key and settings.mastercard.p12_certificate_path:
@@ -603,10 +610,19 @@ async def lifespan(app: FastAPI):
                         base_url=settings.mastercard.base_url,
                         encryption=CredentialEncryption(),
                     )
+                    delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
                 else:
-                    adapter = MockMastercardAgentPayAdapter()
-                    logger.info("Mastercard: using mock adapter (no consumer key/cert)")
-                delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
+                    _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+                    if _env in ("dev", "test", "development"):
+                        from sardis_v2_core.delegated_adapters.mastercard_agent_pay import MockMastercardAgentPayAdapter
+                        adapter = MockMastercardAgentPayAdapter()
+                        delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
+                        logger.info("Mastercard: using mock adapter (dev/test only)")
+                    else:
+                        logger.warning(
+                            "Mastercard: skipping registration — no consumer key/cert configured "
+                            "and mock adapters are not allowed in %s", _env,
+                        )
             except Exception as e:
                 logger.warning("Mastercard adapter init failed: %s", e)
 

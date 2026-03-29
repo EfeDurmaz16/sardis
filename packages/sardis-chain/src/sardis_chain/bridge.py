@@ -174,32 +174,13 @@ class CrossChainBridge:
     async def execute(self, quote: BridgeQuote) -> BridgeResult:
         """Execute a bridge transfer using the quote's provider.
 
-        Note: In production, this would sign and submit the transaction
-        via the Sardis MPC wallet (Turnkey). For now, it returns the
-        prepared transaction data for the caller to submit.
+        Raises:
+            NotImplementedError: Bridge execution requires MPC signing
+                integration via Turnkey. Use quote() for fee estimation.
         """
-        import uuid
-        bridge_id = f"bridge_{uuid.uuid4().hex[:16]}"
-
-        logger.info(
-            "Bridge execute: %s %s→%s amount=%d provider=%s",
-            bridge_id,
-            CHAIN_NAMES.get(quote.source_chain_id, str(quote.source_chain_id)),
-            CHAIN_NAMES.get(quote.destination_chain_id, str(quote.destination_chain_id)),
-            quote.input_amount,
-            quote.provider.value,
-        )
-
-        # In production: sign tx_data with MPC wallet and broadcast
-        # For demo: return pending status with tx data ready for submission
-        return BridgeResult(
-            bridge_id=bridge_id,
-            provider=quote.provider,
-            status="pending_signature",
-            source_chain_id=quote.source_chain_id,
-            destination_chain_id=quote.destination_chain_id,
-            input_amount=quote.input_amount,
-            output_amount=quote.output_amount,
+        raise NotImplementedError(
+            "Bridge execution requires MPC signing integration. "
+            "Use get_quote() or get_best_quote() for fee estimation."
         )
 
     async def poll_relay_status(

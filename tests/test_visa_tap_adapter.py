@@ -154,25 +154,17 @@ class TestMockVisaTAPAdapter:
 
     @pytest.mark.asyncio
     async def test_provision_credential(self):
+        """Provisioning with encryption raises NotImplementedError because
+        REHYDRATABLE credential class requires envelope encryption (KMS/HSM)."""
         adapter = MockVisaTAPAdapter()
         enc = _make_encryption()
-        cred = await adapter.provision_credential(
-            org_id="org_1",
-            agent_id="agent_1",
-            scope=CredentialScope(max_per_tx=Decimal("300")),
-            encryption=enc,
-        )
-        assert cred.network == CredentialNetwork.VISA_TAP
-        assert cred.status == CredentialStatus.ACTIVE
-        assert cred.credential_class == CredentialClass.REHYDRATABLE_EXECUTION_TOKEN
-        assert cred.scope.max_per_tx == Decimal("300")
-        # Was actually encrypted (not the placeholder)
-        assert cred.token_encrypted != b"mock_encrypted"
-        # Provider metadata must contain PAR and TRID
-        assert "par" in cred.provider_metadata
-        assert "trid" in cred.provider_metadata
-        assert "dpan_ref" in cred.provider_metadata
-        assert cred.provider_metadata.get("mock") is True
+        with pytest.raises(NotImplementedError, match="KMS/HSM"):
+            await adapter.provision_credential(
+                org_id="org_1",
+                agent_id="agent_1",
+                scope=CredentialScope(max_per_tx=Decimal("300")),
+                encryption=enc,
+            )
 
     @pytest.mark.asyncio
     async def test_provision_credential_without_encryption(self):
@@ -242,7 +234,9 @@ class TestVisaTAPAdapter:
 
     @pytest.mark.asyncio
     async def test_execute_raises_not_implemented_on_decrypt_success(self):
-        """Real adapter raises NotImplementedError once decryption succeeds."""
+        """Real adapter: REHYDRATABLE encryption requires KMS/HSM, so
+        encrypt_for_class raises NotImplementedError. Test uses OPAQUE class
+        (standard Fernet) to test the actual execution path."""
         enc = _make_encryption()
         adapter = VisaTAPAdapter(
             api_key="test_key",
@@ -251,15 +245,16 @@ class TestVisaTAPAdapter:
             encryption=enc,
         )
         token_bytes = b"dpan_test_value"
+        # Use OPAQUE class (standard Fernet) since REHYDRATABLE requires KMS/HSM
         encrypted = enc.encrypt_for_class(
-            token_bytes, CredentialClass.REHYDRATABLE_EXECUTION_TOKEN,
+            token_bytes, CredentialClass.OPAQUE_DELEGATED_TOKEN,
         )
         cred = DelegatedCredential(
             org_id="org_1",
             agent_id="agent_1",
             network=CredentialNetwork.VISA_TAP,
             status=CredentialStatus.ACTIVE,
-            credential_class=CredentialClass.REHYDRATABLE_EXECUTION_TOKEN,
+            credential_class=CredentialClass.OPAQUE_DELEGATED_TOKEN,
             token_reference="tok_ref_real",
             token_encrypted=encrypted,
             consent_id="dcns_real",
