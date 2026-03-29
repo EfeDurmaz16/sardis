@@ -6,12 +6,15 @@ This keeps the demo/production API behavior identical.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 
 from .policy_store import AsyncPolicyStore
 from .spending_policy import SpendingPolicy, create_default_policy
 from .spending_policy_json import spending_policy_from_json, spending_policy_to_json
+
+logger = logging.getLogger(__name__)
 
 
 class PostgresPolicyStore(AsyncPolicyStore):
@@ -82,9 +85,9 @@ class PostgresPolicyStore(AsyncPolicyStore):
                 policy_text=policy_text,
                 created_by=created_by,
             )
-        except Exception:
+        except Exception as e:
             # Version tracking is best-effort; don't fail the primary write
-            pass
+            logger.error("Failed to persist policy version for agent %s: %s", agent_id, e)
 
     async def delete_policy(self, agent_id: str) -> bool:
         pool = await self._get_pool()
@@ -159,8 +162,11 @@ class PostgresPolicyStore(AsyncPolicyStore):
                         agent_id,
                         float(amount),
                     )
-                except Exception:
-                    pass  # Table may not exist yet (pre-migration 009)
+                except Exception as e:
+                    logger.error(
+                        "Failed to record spending velocity for agent %s: %s",
+                        agent_id, e,
+                    )  # Table may not exist yet (pre-migration 009)
 
                 return policy
 

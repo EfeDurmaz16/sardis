@@ -249,6 +249,20 @@ async def cmd_status(update, context):
 
 def main():
     """Start the Telegram bot."""
+    # ── Security: single API key for all users ──────────────────────────
+    logger.critical(
+        "SECURITY: This bot uses a single API key for ALL users. "
+        "Do not deploy publicly without per-user authentication."
+    )
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+    if env in ("production", "prod", "staging"):
+        if os.getenv("SARDIS_TELEGRAM_AUTH_REQUIRED", "").strip().lower() != "true":
+            logger.critical(
+                "REFUSING TO START: Production deployment requires per-user auth. "
+                "Set SARDIS_TELEGRAM_AUTH_REQUIRED=true to acknowledge and override."
+            )
+            return
+
     if not BOT_TOKEN:
         print("Error: TELEGRAM_BOT_TOKEN not set")
         print("Create a bot via @BotFather on Telegram and set the token.")

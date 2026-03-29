@@ -116,6 +116,17 @@ _tracker_instance = None
 def _get_provider_tracker():
     global _tracker_instance
     if _tracker_instance is None:
+        import os
+        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "Provider tracker requires persistent backend. "
+                "Configure via set_provider_tracker() in lifespan."
+            )
+        logger.warning(
+            "Using in-memory ProviderTracker — data will be lost on restart. "
+            "Not suitable for production."
+        )
         from sardis_chain.provider_tracker import ProviderTracker
         _tracker_instance = ProviderTracker()
     return _tracker_instance

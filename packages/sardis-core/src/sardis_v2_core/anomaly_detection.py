@@ -221,7 +221,8 @@ class AnomalyDetector:
                 elif isinstance(ts, str):
                     try:
                         parsed_timestamps.append(datetime.fromisoformat(ts.replace('Z', '+00:00')))
-                    except:
+                    except Exception as e:
+                        logger.debug("Failed to parse timestamp %r: %s", ts, e)
                         continue
 
             if len(parsed_timestamps) >= 2:

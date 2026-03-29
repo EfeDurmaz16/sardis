@@ -400,12 +400,17 @@ class InMemoryReconciliationQueue:
 
     def __init__(self):
         import os
-        if os.getenv("SARDIS_ENV", "development") == "production":
-            logger.critical(
-                "InMemoryReconciliationQueue is NOT suitable for production! "
+        env = os.getenv("SARDIS_ENVIRONMENT", os.getenv("SARDIS_ENV", "development")).strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "InMemoryReconciliationQueue is NOT suitable for production. "
                 "Pending reconciliation entries WILL BE LOST on restart. "
                 "Set reconciliation_queue= to a persistent implementation."
             )
+        logger.warning(
+            "Using InMemoryReconciliationQueue — data will be lost on restart. "
+            "Not suitable for production."
+        )
         self._queue: dict[str, ReconciliationEntry] = {}
 
     def enqueue(self, entry: ReconciliationEntry) -> str:
@@ -499,6 +504,16 @@ class PaymentOrchestrator:
         self._spending_mandate_lookup = spending_mandate_lookup
         self._settlement_lock = settlement_lock
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
+
+        # Warn when using in-memory audit log in production
+        import os as _os
+        _env = _os.getenv("SARDIS_ENVIRONMENT", _os.getenv("SARDIS_ENV", "dev")).strip().lower()
+        if _env in ("production", "prod", "staging"):
+            logger.warning(
+                "PaymentOrchestrator audit_log is an in-memory deque (maxlen=10000). "
+                "Audit entries will be lost on restart and are limited to 10K entries. "
+                "Wire a persistent audit store for production durability."
+            )
 
     def _audit(
         self,

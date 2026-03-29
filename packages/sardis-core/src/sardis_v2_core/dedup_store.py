@@ -98,12 +98,17 @@ class InMemoryDedupStore:
     def __init__(self) -> None:
         import os
 
-        if os.getenv("SARDIS_ENV", "development") == "production":
-            logger.critical(
-                "InMemoryDedupStore is NOT suitable for production! "
+        env = os.getenv("SARDIS_ENVIRONMENT", os.getenv("SARDIS_ENV", "development")).strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "InMemoryDedupStore is NOT suitable for production. "
                 "Duplicate mandates across instances WILL cause double-payments. "
                 "Set dedup_store= to a RedisDedupStore."
             )
+        logger.warning(
+            "Using InMemoryDedupStore — duplicates across instances will not be caught. "
+            "Not suitable for production."
+        )
         self._store: dict[str, Any] = {}
 
     async def check(self, mandate_id: str) -> Any | None:

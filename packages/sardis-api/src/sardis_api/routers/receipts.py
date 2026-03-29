@@ -132,6 +132,17 @@ def _get_receipt_store():
     """Get the receipt store singleton."""
     global _store_instance
     if _store_instance is None:
+        import os
+        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "Receipt store requires persistent backend. "
+                "Configure via set_receipt_store() in lifespan."
+            )
+        logger.warning(
+            "Using InMemoryReceiptStore — data will be lost on restart. "
+            "Not suitable for production."
+        )
         from sardis_v2_core.receipt_store import InMemoryReceiptStore
         _store_instance = InMemoryReceiptStore()
     return _store_instance

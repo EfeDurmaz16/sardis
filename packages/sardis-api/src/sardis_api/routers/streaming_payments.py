@@ -27,6 +27,16 @@ import os as _os
 
 _active_streams: dict[str, dict] = {}  # process-local cache (always kept for channel_mgr)
 
+# Warn at import time if production without Redis
+_env = _os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+_redis_url = _os.getenv("SARDIS_REDIS_URL", "")
+if _env in ("production", "prod", "staging") and not _redis_url:
+    logger.warning(
+        "Streaming payments uses a process-local dict for active streams. "
+        "Without Redis (SARDIS_REDIS_URL), streams are limited to a single "
+        "instance and will be lost on restart."
+    )
+
 
 async def _persist_stream_meta(stream_id: str, data: dict) -> None:
     """Write serializable stream metadata to Redis when available."""

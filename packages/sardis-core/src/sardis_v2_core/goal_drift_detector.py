@@ -39,11 +39,14 @@ Key Concepts:
 from __future__ import annotations
 
 import hashlib
+import logging
 import statistics
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class DriftType(str, Enum):
@@ -711,7 +714,8 @@ class GoalDriftDetector:
         elif isinstance(ts, str):
             try:
                 return datetime.fromisoformat(ts.replace('Z', '+00:00'))
-            except:
+            except Exception as e:
+                logger.debug("Failed to parse timestamp %r: %s", ts, e)
                 return None
         return None
 

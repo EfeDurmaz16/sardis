@@ -156,6 +156,17 @@ _tracker_instance = None
 def _get_outcome_tracker():
     global _tracker_instance
     if _tracker_instance is None:
+        import os
+        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "Outcome tracker requires persistent backend. "
+                "Configure via set_outcome_tracker() in lifespan."
+            )
+        logger.warning(
+            "Using in-memory OutcomeTracker — data will be lost on restart. "
+            "Not suitable for production."
+        )
         from sardis_v2_core.outcome_tracker import OutcomeTracker
         _tracker_instance = OutcomeTracker()
     return _tracker_instance

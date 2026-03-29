@@ -1,26 +1,20 @@
-"""Test that InMemoryReconciliationQueue warns in production."""
+"""Test that InMemoryReconciliationQueue is blocked in production."""
 import logging
 import os
 from unittest.mock import patch
 
+import pytest
+
 from sardis_v2_core.orchestrator import InMemoryReconciliationQueue
 
 
-def test_production_warning_logged(caplog):
-    """Test that critical warning is logged when SARDIS_ENV=production."""
-    with patch.dict(os.environ, {"SARDIS_ENV": "production"}):
-        with caplog.at_level(logging.CRITICAL):
+def test_production_raises_runtime_error():
+    """Test that RuntimeError is raised when SARDIS_ENVIRONMENT=production."""
+    env = {"SARDIS_ENVIRONMENT": "production"}
+    with patch.dict(os.environ, env, clear=False):
+        os.environ.pop("SARDIS_ENV", None)  # ensure fallback doesn't interfere
+        with pytest.raises(RuntimeError, match="InMemoryReconciliationQueue"):
             InMemoryReconciliationQueue()
-
-        # Verify critical log was emitted
-        assert any(
-            "InMemoryReconciliationQueue is NOT suitable for production" in record.message
-            for record in caplog.records
-        )
-        assert any(
-            "WILL BE LOST on restart" in record.message
-            for record in caplog.records
-        )
 
 
 def test_development_no_warning(caplog):
@@ -52,14 +46,10 @@ def test_default_env_no_warning(caplog):
         )
 
 
-def test_staging_no_warning(caplog):
-    """Test that no warning is logged in staging (only production triggers it)."""
-    with patch.dict(os.environ, {"SARDIS_ENV": "staging"}):
-        with caplog.at_level(logging.CRITICAL):
+def test_staging_raises_runtime_error():
+    """Test that RuntimeError is raised in staging too."""
+    env = {"SARDIS_ENVIRONMENT": "staging"}
+    with patch.dict(os.environ, env, clear=False):
+        os.environ.pop("SARDIS_ENV", None)
+        with pytest.raises(RuntimeError, match="InMemoryReconciliationQueue"):
             InMemoryReconciliationQueue()
-
-        # Verify no critical logs
-        assert not any(
-            "InMemoryReconciliationQueue is NOT suitable for production" in record.message
-            for record in caplog.records
-        )

@@ -1,21 +1,43 @@
 """Compliance Report API routes."""
 from __future__ import annotations
 
+import logging
+import os
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 # Lazy init
 _generator = None
+
+
 def _get_generator():
     global _generator
     if _generator is None:
+        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
+        if env in ("production", "prod", "staging"):
+            raise RuntimeError(
+                "Report generator requires persistent backend. "
+                "Configure via set_report_generator() in lifespan."
+            )
+        logger.warning(
+            "Using in-memory ComplianceReportGenerator — data will be lost on restart. "
+            "Not suitable for production."
+        )
         from sardis_v2_core.compliance_reports import ComplianceReportGenerator
         _generator = ComplianceReportGenerator()
     return _generator
+
+
+def set_report_generator(generator) -> None:
+    """Override the report generator (for production wiring)."""
+    global _generator
+    _generator = generator
 
 class GenerateReportRequest(BaseModel):
     report_type: str  # monthly_spending, policy_compliance, kya_verification, audit_trail, tax_report

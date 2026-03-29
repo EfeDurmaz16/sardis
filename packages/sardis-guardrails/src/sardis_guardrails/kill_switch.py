@@ -234,6 +234,13 @@ class KillSwitch:
 
     def __init__(self, backend: KillSwitchBackend | None = None) -> None:
         """Initialize kill switch manager."""
+        if backend is not None and isinstance(backend, InMemoryBackend):
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+            if env in ("prod", "production", "staging"):
+                raise RuntimeError(
+                    "Kill switch requires persistent backend (Redis/PostgreSQL) "
+                    "for production. Configure via KillSwitch(backend=RedisBackend(...))"
+                )
         self._backend = backend or _create_backend()
 
     async def _fire_on_activate(self, scope: str, target: str, reason: str, activated_by: str | None) -> None:

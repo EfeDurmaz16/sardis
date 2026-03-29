@@ -131,7 +131,11 @@ class TransactionCapEngine:
         )
 
     async def _get_daily_spend(self, scope: str, scope_id: str) -> Decimal:
-        """Get today's total spend for a scope."""
+        """Get today's total spend for a scope.
+
+        Fail-closed: if Redis is unreachable, return the cap value so the
+        transaction is denied rather than silently allowed.
+        """
         redis = self._get_redis()
         key = f"sardis:spend:{scope}:{scope_id}:{self._date_key()}"
 
@@ -139,8 +143,17 @@ class TransactionCapEngine:
             try:
                 total = await redis.get(f"{key}:total")
                 return Decimal(total) if total else Decimal("0")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(
+                    "Redis spend tracking read failed (fail-closed, returning max): %s", e
+                )
+                # Fail-closed: assume maximum spend so the cap check denies
+                if scope == "global":
+                    return DEFAULT_GLOBAL_DAILY_CAP
+                elif scope == "org":
+                    return DEFAULT_ORG_DAILY_CAP
+                else:
+                    return DEFAULT_AGENT_TX_CAP * Decimal("10")
 
         return self._mem_spend.get(key, Decimal("0"))
 
@@ -172,8 +185,8 @@ class TransactionCapEngine:
             try:
                 val = await redis.get(f"sardis:cap:{scope}:{scope_id}:{cap_type}")
                 return Decimal(val) if val else None
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error("Redis cap read failed for %s:%s:%s: %s", scope, scope_id, cap_type, e)
         return None
 
     async def set_cap(self, scope: str, scope_id: str, cap_type: str, limit: Decimal) -> None:
