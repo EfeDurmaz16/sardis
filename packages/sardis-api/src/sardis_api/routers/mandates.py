@@ -431,7 +431,8 @@ async def execute_stored_mandate(
     _created_ts = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
     _vm = f"mandate:{_mandate.mandate_id}#key-1"
     _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{_mandate.mandate_id}".encode()).hexdigest()
-    _stub_proof = VCProof(
+    # Internal system proof for orchestrator routing. Not a cryptographic proof.
+    _internal_system_proof = VCProof(
         verification_method=_vm,
         created=_created_ts,
         proof_purpose="internal_system_execution",
@@ -445,7 +446,7 @@ async def execute_stored_mandate(
             subject=_mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"intent_{_mandate.nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=_mandate.domain,
             purpose="intent",
             requested_amount=_mandate.amount_minor,
@@ -457,7 +458,7 @@ async def execute_stored_mandate(
             subject=_mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"cart_{_mandate.nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=_mandate.domain,
             purpose="cart",
             line_items=[{"description": "mandate_payment", "amount_minor": _mandate.amount_minor}],
@@ -606,7 +607,8 @@ async def execute_payment_mandate(
         _created_ts = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
         _vm = f"mandate:{mandate.mandate_id}#key-1"
         _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{mandate.mandate_id}".encode()).hexdigest()
-        _stub_proof = VCProof(
+        # Internal system proof for orchestrator routing. Not a cryptographic proof.
+        _internal_system_proof = VCProof(
             verification_method=_vm,
             created=_created_ts,
             proof_purpose="internal_system_execution",
@@ -620,7 +622,7 @@ async def execute_payment_mandate(
                 subject=mandate.subject,
                 expires_at=_now_ts + 300,
                 nonce=f"intent_{mandate.nonce}",
-                proof=_stub_proof,
+                proof=_internal_system_proof,
                 domain=mandate.domain,
                 purpose="intent",
                 requested_amount=mandate.amount_minor,
@@ -632,7 +634,7 @@ async def execute_payment_mandate(
                 subject=mandate.subject,
                 expires_at=_now_ts + 300,
                 nonce=f"cart_{mandate.nonce}",
-                proof=_stub_proof,
+                proof=_internal_system_proof,
                 domain=mandate.domain,
                 purpose="cart",
                 line_items=[{"description": "mandate_payment", "amount_minor": mandate.amount_minor}],

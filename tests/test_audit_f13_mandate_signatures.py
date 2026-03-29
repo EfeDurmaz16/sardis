@@ -28,10 +28,13 @@ def test_intent_signature_verified():
     purpose = "intent"
     expires_at = int(time.time()) + 3600
 
-    # Build intent canonical payload
+    # Build intent canonical payload matching verifier._canonical_intent_payload:
+    # mandate_id|subject|mandate_type|sorted_scope|requested_amount|expires_at|
+    # natural_language_description|action_description_hash|origin_hash
     payload = "|".join([
         mandate_id, agent_id, "intent",
         "payments,transfers", "1000000", str(expires_at),
+        "", "", "",  # natural_language_description, action_description_hash, origin_hash
     ]).encode()
 
     full_payload = b"|".join([domain.encode(), nonce.encode(), purpose.encode(), payload])
@@ -114,9 +117,11 @@ def test_cart_signature_verified():
         f"{it.get('item_id', '')}:{it.get('name', '')}:{it.get('quantity', 0)}:{it.get('price_minor', 0)}"
         for it in sorted_items
     )
+    # Canonical cart payload includes cart_hash at the end (default: "")
     payload = "|".join([
         mandate_id, agent_id, items_str,
         "13000", "1000", "USD", merchant_domain, str(expires_at),
+        "",  # cart_hash
     ]).encode()
 
     full_payload = b"|".join([domain.encode(), nonce.encode(), purpose.encode(), payload])

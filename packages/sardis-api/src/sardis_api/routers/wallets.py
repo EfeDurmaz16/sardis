@@ -802,7 +802,8 @@ async def transfer_crypto(
         _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         _vm = f"wallet:{wallet_id}#key-1"
         _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{digest}".encode()).hexdigest()
-        _stub_proof = VCProof(
+        # Internal system proof for orchestrator routing. Not a cryptographic proof.
+        _internal_system_proof = VCProof(
             verification_method=_vm,
             created=_created_ts,
             proof_purpose="internal_system_execution",
@@ -816,7 +817,7 @@ async def transfer_crypto(
                 subject=mandate.subject,
                 expires_at=_now_ts + 300,
                 nonce=f"intent_{digest}",
-                proof=_stub_proof,
+                proof=_internal_system_proof,
                 domain=mandate.domain,
                 purpose="intent",
                 requested_amount=mandate.amount_minor,
@@ -828,7 +829,7 @@ async def transfer_crypto(
                 subject=mandate.subject,
                 expires_at=_now_ts + 300,
                 nonce=f"cart_{digest}",
-                proof=_stub_proof,
+                proof=_internal_system_proof,
                 domain=mandate.domain,
                 purpose="cart",
                 line_items=[{"description": "transfer", "amount_minor": mandate.amount_minor}],
@@ -2541,7 +2542,8 @@ async def execute_offramp_send(
     _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     _vm = f"wallet:{wallet_id}#key-1"
     _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:offramp_{offramp_id}".encode()).hexdigest()
-    _stub_proof = VCProof(
+    # Internal system proof for orchestrator routing. Not a cryptographic proof.
+    _internal_system_proof = VCProof(
         verification_method=_vm,
         created=_created_ts,
         proof_purpose="internal_system_execution",
@@ -2557,7 +2559,7 @@ async def execute_offramp_send(
         subject=_agent_subject,
         expires_at=_now_ts + 300,
         nonce=f"offramp_{offramp_id}",
-        proof=_stub_proof,
+        proof=_internal_system_proof,
         domain="sardis.sh",
         purpose="checkout",
         chain=chain,
@@ -2575,7 +2577,7 @@ async def execute_offramp_send(
             subject=_agent_subject,
             expires_at=_now_ts + 300,
             nonce=f"intent_offramp_{offramp_id}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain="sardis.sh",
             purpose="intent",
             requested_amount=_amount_minor,
@@ -2587,7 +2589,7 @@ async def execute_offramp_send(
             subject=_agent_subject,
             expires_at=_now_ts + 300,
             nonce=f"cart_offramp_{offramp_id}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain="sardis.sh",
             purpose="cart",
             line_items=[{"description": f"Coinbase Offramp {offramp_id}", "amount_minor": _amount_minor}],

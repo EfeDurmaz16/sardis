@@ -281,7 +281,8 @@ async def execute_payment(
     _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     _vm = f"did:sardis:{mandate.subject}#key-1"
     _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{mandate.mandate_id}".encode()).hexdigest()
-    _stub_proof = VCProof(
+    # Internal system proof for orchestrator routing. Not a cryptographic proof.
+    _internal_system_proof = VCProof(
         verification_method=_vm,
         created=_created_ts,
         proof_purpose="internal_system_execution",
@@ -295,7 +296,7 @@ async def execute_payment(
             subject=mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"intent_{mandate.nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=mandate.domain,
             purpose="intent",
             requested_amount=mandate.amount_minor,
@@ -307,7 +308,7 @@ async def execute_payment(
             subject=mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"cart_{mandate.nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=mandate.domain,
             purpose="cart",
             line_items=[{"description": "payment", "amount_minor": mandate.amount_minor}],

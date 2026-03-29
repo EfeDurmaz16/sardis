@@ -1058,7 +1058,8 @@ async def pay_onchain(
     _created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     _vm = f"wallet:{wallet_id}#key-1"
     _attestation_hash = hashlib.sha256(f"{_vm}:{_created_ts}:{nonce}".encode()).hexdigest()
-    _stub_proof = VCProof(
+    # Internal system proof for orchestrator routing. Not a cryptographic proof.
+    _internal_system_proof = VCProof(
         verification_method=_vm,
         created=_created_ts,
         proof_purpose="internal_system_execution",
@@ -1072,7 +1073,7 @@ async def pay_onchain(
             subject=mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"intent_{nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=mandate.domain,
             purpose="intent",
             requested_amount=mandate.amount_minor,
@@ -1084,7 +1085,7 @@ async def pay_onchain(
             subject=mandate.subject,
             expires_at=_now_ts + 300,
             nonce=f"cart_{nonce}",
-            proof=_stub_proof,
+            proof=_internal_system_proof,
             domain=mandate.domain,
             purpose="cart",
             line_items=[{"description": "onchain_payment", "amount_minor": mandate.amount_minor}],
@@ -1143,7 +1144,8 @@ async def pay_onchain(
                 _fee_created_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 _fee_vm = f"wallet:{wallet_id}#key-1"
                 _fee_attestation = hashlib.sha256(f"{_fee_vm}:{_fee_created_ts}:fee_{nonce}".encode()).hexdigest()
-                _fee_stub_proof = VCProof(
+                # Internal system proof for orchestrator routing. Not a cryptographic proof.
+                _fee_internal_system_proof = VCProof(
                     verification_method=_fee_vm,
                     created=_fee_created_ts,
                     proof_purpose="internal_system_execution",
@@ -1157,7 +1159,7 @@ async def pay_onchain(
                         subject=fee_mandate.subject,
                         expires_at=_fee_now_ts + 300,
                         nonce=f"intent_fee_{nonce}",
-                        proof=_fee_stub_proof,
+                        proof=_fee_internal_system_proof,
                         domain=fee_mandate.domain,
                         purpose="intent",
                         requested_amount=fee_mandate.amount_minor,
@@ -1169,7 +1171,7 @@ async def pay_onchain(
                         subject=fee_mandate.subject,
                         expires_at=_fee_now_ts + 300,
                         nonce=f"cart_fee_{nonce}",
-                        proof=_fee_stub_proof,
+                        proof=_fee_internal_system_proof,
                         domain=fee_mandate.domain,
                         purpose="cart",
                         line_items=[{"description": "platform_fee", "amount_minor": fee_mandate.amount_minor}],

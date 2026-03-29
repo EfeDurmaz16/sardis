@@ -383,14 +383,20 @@ class SAMLHandler:
         """Validate a SAML Response and extract user info.
 
         SECURITY: SAML XML signature verification is NOT yet implemented.
-        This method raises NotImplementedError to prevent deployment without
-        proper signature verification, which would allow SAML response forgery.
+        This method raises HTTPException(501) to return a proper error
+        instead of crashing with an unhandled 500 error.
+
+        Raises:
+            HTTPException: Always, with status_code=501.
         """
-        raise NotImplementedError(
-            "SAML response signature verification is not yet implemented. "
-            "Integrate a library such as python3-saml or signxml to verify "
-            "the XML signature against the IdP certificate before enabling "
-            "SAML SSO in production."
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=(
+                "SAML response signature verification is not yet implemented. "
+                "Integrate a library such as python3-saml or signxml to verify "
+                "the XML signature against the IdP certificate before enabling "
+                "SAML SSO in production."
+            ),
         )
 
 
@@ -463,6 +469,44 @@ async def oidc_callback(req: OIDCCallbackRequest, request: Request):
     handler = OIDCHandler(config)
     user_info = await handler.exchange_code(req.code)
     return await _provision_sso_user(pool, config, user_info)
+
+
+class SAMLCallbackRequest(BaseModel):
+    SAMLResponse: str
+    RelayState: str = ""
+
+
+@router.post("/saml/acs")
+async def saml_acs(req: SAMLCallbackRequest, request: Request):
+    """Handle SAML Assertion Consumer Service callback.
+
+    Returns HTTP 501 because SAML XML signature verification is not
+    yet implemented. Without signature verification, accepting SAML
+    responses would allow response forgery attacks.
+    """
+    # Validate state token if present
+    if req.RelayState:
+        state_data = _validate_sso_state(req.RelayState)
+        if state_data is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired SSO state token",
+            )
+
+    pool = getattr(request.app.state, "db_pool", None)
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    # SAMLHandler.validate_response raises HTTPException(501)
+    # This is intentional — SAML signature verification is not implemented
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail=(
+            "SAML SSO is not yet available. SAML XML signature verification "
+            "must be implemented before this endpoint can process responses. "
+            "See: python3-saml or signxml for implementation guidance."
+        ),
+    )
 
 
 async def _provision_sso_user(

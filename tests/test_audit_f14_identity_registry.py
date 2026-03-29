@@ -27,10 +27,13 @@ def _create_mandate():
     nonce = "test-nonce"
     purpose = "checkout"
 
-    # Build canonical payment payload
+    # Build canonical payment payload matching verifier._canonical_payment_payload:
+    # mandate_id|subject|amount_minor|token|chain|destination|merchant_domain|
+    # audit_hash|ai_agent_presence|transaction_modality|cart_mandate_hash|approval_context_hash
     canonical = "|".join([
         mandate_id, agent_id, "1000000", "USDC", "base",
         destination, merchant_domain, audit_hash, "1", "human_present",
+        "", "",  # cart_mandate_hash, approval_context_hash
     ]).encode()
 
     # AgentIdentity.verify wraps: domain|nonce|purpose|canonical
