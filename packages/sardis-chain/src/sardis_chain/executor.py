@@ -2333,11 +2333,19 @@ class ChainExecutor:
             estimated_cost_usd=gas_estimation.estimated_cost_usd,
         )
 
-        # Gas price protection (Tempo-specific limits)
-        is_acceptable, warning = await self._gas_protection.check_gas_price(gas_estimate, chain)
-        if warning:
-            logger.warning(f"Tempo gas warning for {mandate.mandate_id}: {warning}")
-        gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+        # Skip gas price protection for Tempo — gas is stablecoin-denominated
+        # (attodollars, 10^-18 USD) so the ETH-based USD cost estimator produces
+        # wildly inflated numbers ($65 for a sub-cent transaction). Tempo fees
+        # are always sub-cent by design; the amount cap on the mandate is the
+        # real spending protection.
+        # For non-Tempo chains, we still check gas prices.
+        if not chain.startswith("tempo"):
+            is_acceptable, warning = await self._gas_protection.check_gas_price(gas_estimate, chain)
+            if warning:
+                logger.warning(f"Gas warning for {mandate.mandate_id}: {warning}")
+            gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+        else:
+            logger.info(f"Skipping gas protection for Tempo chain (stablecoin gas model)")
 
         # Nonce management
         nonce = await self._nonce_manager.reserve_nonce(sender_address, rpc)
@@ -2696,17 +2704,18 @@ class ChainExecutor:
         )
 
         # === GAS PRICE SPIKE PROTECTION ===
-        is_acceptable, warning = await self._gas_protection.check_gas_price(
-            gas_estimate, chain
-        )
-
-        if warning:
-            logger.warning(
-                f"Gas price warning for mandate {mandate.mandate_id} on {chain}: {warning}"
+        # Skip for Tempo — stablecoin gas model makes ETH-based cost calc invalid
+        if not chain.startswith("tempo"):
+            is_acceptable, warning = await self._gas_protection.check_gas_price(
+                gas_estimate, chain
             )
-
-        # Cap gas price to maximum allowed values (safety net)
-        gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+            if warning:
+                logger.warning(
+                    f"Gas price warning for mandate {mandate.mandate_id} on {chain}: {warning}"
+                )
+            gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
+        else:
+            logger.info(f"Skipping gas protection for Tempo (stablecoin gas)")
 
         # Log gas estimation
         self._chain_logger.log_gas_estimation(
