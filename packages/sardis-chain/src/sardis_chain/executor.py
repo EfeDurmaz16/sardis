@@ -2270,7 +2270,10 @@ class ChainExecutor:
         if not wallet_id:
             raise RuntimeError("PaymentMandate.wallet_id is required for Tempo payment.")
 
-        sender_address = await self._mpc_signer.get_address(wallet_id, chain)
+        # Prefer pre-resolved from_address (avoids Turnkey lookup with wrong ID)
+        sender_address = getattr(mandate, "from_address", None)
+        if not sender_address:
+            sender_address = await self._mpc_signer.get_address(wallet_id, chain)
 
         # Always use TIP-20 transferWithMemo on Tempo for audit trail
         # Encode using the ABI already defined at module level (TIP20_TRANSFER_WITH_MEMO_ABI)
@@ -2637,14 +2640,16 @@ class ChainExecutor:
         amount_minor = int(mandate.amount_minor)
         transfer_data = encode_erc20_transfer(mandate.destination, amount_minor)
 
-        # Get sender address
+        # Get sender address — prefer pre-resolved from mandate
         wallet_id = getattr(mandate, "wallet_id", None)
         if not wallet_id:
             raise RuntimeError(
                 "PaymentMandate.wallet_id is required for live signing. "
                 "Use mandate.subject for agent identity and set wallet_id as the execution hint."
             )
-        sender_address = await self._mpc_signer.get_address(wallet_id, chain)
+        sender_address = getattr(mandate, "from_address", None)
+        if not sender_address:
+            sender_address = await self._mpc_signer.get_address(wallet_id, chain)
 
         # Build transaction params for simulation
         tx_params = {
