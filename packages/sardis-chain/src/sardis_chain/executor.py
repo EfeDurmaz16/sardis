@@ -2363,8 +2363,9 @@ class ChainExecutor:
                 nonce=nonce,
             )
 
-            # Sign via MPC
-            signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+            # Sign via MPC — use Turnkey wallet ID (not Sardis internal ID)
+            turnkey_wallet_id = os.getenv("SARDIS_TURNKEY_WALLET_ID", wallet_id)
+            signed_tx = await self._mpc_signer.sign_transaction(turnkey_wallet_id, tx_request)
 
             # Broadcast
             logger.info(f"Broadcasting Tempo tx for mandate {mandate.mandate_id}")
@@ -2754,9 +2755,10 @@ class ChainExecutor:
                 nonce=nonce,
             )
 
-            # Sign transaction via MPC
+            # Sign transaction via MPC — use Turnkey wallet ID
+            turnkey_wallet_id = os.getenv("SARDIS_TURNKEY_WALLET_ID", wallet_id)
             logger.info(f"Signing transaction for mandate {mandate.mandate_id}")
-            signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+            signed_tx = await self._mpc_signer.sign_transaction(turnkey_wallet_id, tx_request)
 
             # Broadcast transaction
             logger.info(f"Broadcasting transaction for mandate {mandate.mandate_id}")
@@ -3071,9 +3073,9 @@ class ChainExecutor:
             nonce=pending.nonce,
         )
 
-        # Sign and broadcast replacement
-        wallet_id = pending.address  # best available identifier
-        signed_tx = await self._mpc_signer.sign_transaction(wallet_id, tx_request)
+        # Sign and broadcast replacement — use Turnkey wallet ID
+        turnkey_wallet_id = os.getenv("SARDIS_TURNKEY_WALLET_ID", pending.address)
+        signed_tx = await self._mpc_signer.sign_transaction(turnkey_wallet_id, tx_request)
         new_tx_hash = await rpc.send_raw_transaction(signed_tx)
 
         logger.info(
