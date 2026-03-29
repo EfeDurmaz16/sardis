@@ -2120,6 +2120,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(acp_router.router, prefix="/api/v2", tags=["acp"])
     app.include_router(offramp_router.router, prefix="/api/v2", tags=["offramp"])
     app.include_router(onramp_router.router, prefix="/api/v2", tags=["onramp"])
+    app.include_router(onramp_router.webhook_router, prefix="/api/v2", tags=["stripe-onramp-webhooks"])
     app.include_router(virtual_cards_router.router, prefix="/api/v2", tags=["virtual-cards"])
 
     # A2A discovery: /.well-known/agent-card.json

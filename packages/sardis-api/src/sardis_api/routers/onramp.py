@@ -8,6 +8,11 @@ Provides endpoints for:
   3. Conduit Pay onramp (fiat → USDC direct to Tempo, no bridge):
      - ``POST /wallets/{wallet_id}/fund`` with ``provider="conduit"``
      - ``GET  /wallets/{wallet_id}/fund/status/{session_id}`` — check status
+  4. Stripe Crypto Onramp — dedicated session + hosted-link endpoints:
+     - ``POST /onramp/stripe/session``          — create Stripe onramp session
+     - ``GET  /onramp/stripe/link/{wallet_id}`` — hosted redirect link
+  5. Stripe Crypto Onramp webhook:
+     - ``POST /webhooks/stripe-onramp``          — handle status updates
 
 Turnkey onramp supports Coinbase and MoonPay as providers with no redirects
 (embedded in-app).  Provider API keys must be pre-uploaded to the Turnkey
@@ -20,22 +25,41 @@ Tempo — no bridge required.  Requires ``CONDUIT_API_KEY`` and
 References:
   - https://docs.turnkey.com/api-reference/activities/init-fiat-on-ramp
   - https://docs.stripe.com/crypto/onramp
+  - https://docs.stripe.com/api/crypto/onramp_sessions/create
   - https://docs.conduit.financial/api-reference/introduction
 """
 from __future__ import annotations
 
+import hashlib
+import hmac as hmac_mod
+import json
 import logging
 import os
 from datetime import UTC, datetime
 from typing import Literal
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
 
 router = APIRouter(dependencies=[Depends(require_principal)])
+# Separate router for webhook (no auth — Stripe signs the payload)
+webhook_router = APIRouter(tags=["stripe-onramp-webhooks"])
 logger = logging.getLogger(__name__)
+
+# Chain name → Stripe network name mapping
+_CHAIN_TO_STRIPE_NETWORK: dict[str, str] = {
+    "base": "base",
+    "base_sepolia": "base",
+    "ethereum": "ethereum",
+    "polygon": "polygon",
+    "arbitrum": "arbitrum",
+    "optimism": "optimism",
+    "solana": "solana",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -661,3 +685,528 @@ async def fund_wallet_status(
         status=tx_status.status,
         wallet_id=wallet_id,
     )
+
+
+# ===========================================================================
+# Stripe Crypto Onramp — dedicated endpoints
+# ===========================================================================
+
+
+class StripeOnrampSessionRequest(BaseModel):
+    """Request body for ``POST /onramp/stripe/session``."""
+
+    wallet_id: str = Field(
+        ...,
+        description="Sardis wallet ID (wal_...) or raw 0x address.",
+    )
+    amount: str | None = Field(
+        default=None,
+        description="Fiat amount in decimal (e.g. '50.00'). "
+        "If omitted, user chooses the amount in the Stripe UI.",
+    )
+    chain: str | None = Field(
+        default=None,
+        description="Target chain: 'base' (default), 'ethereum', 'polygon', etc.",
+    )
+    destination_currency: str = Field(
+        default="usdc",
+        description="Crypto currency to purchase (usdc, eth, btc, etc.).",
+    )
+    source_currency: str = Field(
+        default="usd",
+        description="Fiat currency code (usd, eur, gbp).",
+    )
+    lock_wallet_address: bool = Field(
+        default=True,
+        description="Lock the wallet address so the user cannot change it.",
+    )
+
+
+class StripeOnrampSessionResponse(BaseModel):
+    """Response for ``POST /onramp/stripe/session``."""
+
+    session_id: str = Field(description="Stripe CryptoOnrampSession ID")
+    client_secret: str = Field(description="Client secret for embedded onramp widget")
+    redirect_url: str = Field(description="Stripe-hosted onramp URL")
+    status: str = Field(description="Session status (initialized, etc.)")
+    wallet_address: str = Field(description="Resolved wallet address")
+    destination_network: str = Field(description="Resolved Stripe network name")
+    created_at: str
+
+
+class StripeOnrampLinkResponse(BaseModel):
+    """Response for ``GET /onramp/stripe/link/{wallet_id}``."""
+
+    url: str = Field(description="Stripe-hosted onramp redirect URL")
+    wallet_address: str
+    destination_network: str
+
+
+class StripeOnrampWebhookEvent(BaseModel):
+    """Parsed Stripe Crypto Onramp webhook event."""
+
+    session_id: str
+    status: str
+    wallet_address: str | None = None
+    destination_currency: str | None = None
+    destination_network: str | None = None
+    source_amount: str | None = None
+    destination_amount: str | None = None
+    transaction_id: str | None = None
+    received_at: str
+
+
+# ---------------------------------------------------------------------------
+# Stripe Crypto Onramp — helpers
+# ---------------------------------------------------------------------------
+
+
+async def _create_stripe_onramp_session(
+    *,
+    wallet_address: str,
+    chain: str,
+    amount: str | None,
+    destination_currency: str,
+    source_currency: str,
+    lock_wallet_address: bool,
+    customer_ip: str | None,
+) -> dict:
+    """Call Stripe API to create a CryptoOnrampSession.
+
+    Uses httpx directly — avoids hard dependency on the ``stripe`` SDK.
+
+    Raises:
+        HTTPException on Stripe API errors.
+    """
+    stripe_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
+    if not stripe_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe API key not configured (set STRIPE_SECRET_KEY).",
+        )
+
+    stripe_network = _CHAIN_TO_STRIPE_NETWORK.get(chain.lower(), chain.lower())
+
+    # Build form-encoded body per Stripe API convention
+    form_data: dict[str, str] = {
+        f"wallet_addresses[{stripe_network}]": wallet_address,
+        "destination_currencies[0]": destination_currency.lower(),
+        "destination_networks[0]": stripe_network,
+        "destination_currency": destination_currency.lower(),
+        "destination_network": stripe_network,
+        "source_currency": source_currency.lower(),
+    }
+    if lock_wallet_address:
+        form_data["lock_wallet_address"] = "true"
+    if amount:
+        form_data["source_amount"] = amount
+    if customer_ip:
+        form_data["customer_ip_address"] = customer_ip
+
+    # Same EVM address works on all EVM chains — populate common ones
+    for evm_chain in ("base", "ethereum", "polygon", "arbitrum", "optimism"):
+        network_key = f"wallet_addresses[{evm_chain}]"
+        if network_key not in form_data:
+            form_data[network_key] = wallet_address
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.post(
+            "https://api.stripe.com/v1/crypto/onramp_sessions",
+            auth=(stripe_key, ""),
+            data=form_data,
+        )
+
+    if resp.status_code != 200:
+        detail = resp.text
+        try:
+            err = resp.json()
+            detail = err.get("error", {}).get("message", resp.text)
+        except Exception:
+            pass
+        logger.error(
+            "Stripe onramp session creation failed (%d): %s",
+            resp.status_code,
+            detail,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe Crypto Onramp error: {detail}",
+        )
+
+    return resp.json()
+
+
+def _get_client_ip(request: Request) -> str | None:
+    """Best-effort extraction of the client IP from the request."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return None
+
+
+# ---------------------------------------------------------------------------
+# POST /onramp/stripe/session — Create a Stripe Crypto Onramp session
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/onramp/stripe/session",
+    response_model=StripeOnrampSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a Stripe Crypto Onramp session",
+    tags=["onramp", "stripe"],
+)
+async def create_stripe_onramp_session(
+    req: StripeOnrampSessionRequest,
+    request: Request,
+    principal: Principal = Depends(require_principal),
+) -> StripeOnrampSessionResponse:
+    """Create a Stripe Crypto Onramp session for a Sardis wallet.
+
+    The returned ``client_secret`` can be used with the embedded Stripe
+    Onramp widget, and the ``redirect_url`` points to the Stripe-hosted
+    onramp page.
+
+    Requires ``STRIPE_SECRET_KEY`` (or ``STRIPE_API_KEY``) env var.
+    """
+    # Resolve wallet address
+    try:
+        wallet_address = await _resolve_wallet_address(req.wallet_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        logger.error("Failed to resolve wallet for Stripe onramp: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resolve wallet address",
+        )
+
+    chain = (req.chain or "base").lower()
+    customer_ip = _get_client_ip(request)
+
+    data = await _create_stripe_onramp_session(
+        wallet_address=wallet_address,
+        chain=chain,
+        amount=req.amount,
+        destination_currency=req.destination_currency,
+        source_currency=req.source_currency,
+        lock_wallet_address=req.lock_wallet_address,
+        customer_ip=customer_ip,
+    )
+
+    stripe_network = _CHAIN_TO_STRIPE_NETWORK.get(chain, chain)
+
+    return StripeOnrampSessionResponse(
+        session_id=data.get("id", ""),
+        client_secret=data.get("client_secret", ""),
+        redirect_url=data.get("redirect_url", ""),
+        status=data.get("status", "initialized"),
+        wallet_address=wallet_address,
+        destination_network=stripe_network,
+        created_at=datetime.now(UTC).isoformat(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /onramp/stripe/link/{wallet_id} — Stripe-hosted onramp link
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/onramp/stripe/link/{wallet_id}",
+    response_model=StripeOnrampLinkResponse,
+    summary="Get a Stripe-hosted onramp link for a wallet",
+    tags=["onramp", "stripe"],
+)
+async def get_stripe_onramp_link(
+    wallet_id: str,
+    chain: str = "base",
+    destination_currency: str = "usdc",
+    source_currency: str = "usd",
+    amount: str | None = None,
+    principal: Principal = Depends(require_principal),
+) -> StripeOnrampLinkResponse:
+    """Return a Stripe-hosted onramp URL (``crypto.link.com``) for a wallet.
+
+    This constructs the URL with query parameters — no backend session is
+    created.  For full control (locked wallet, embedded widget), use
+    ``POST /onramp/stripe/session`` instead.
+
+    The URL opens a Stripe-hosted page where the user can purchase crypto
+    with a credit/debit card and have it delivered to their Sardis wallet.
+    """
+    try:
+        wallet_address = await _resolve_wallet_address(wallet_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        logger.error("Failed to resolve wallet for Stripe link: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resolve wallet address",
+        )
+
+    stripe_network = _CHAIN_TO_STRIPE_NETWORK.get(chain.lower(), chain.lower())
+
+    # Build the crypto.link.com hosted URL with pre-filled params
+    params: dict[str, str] = {
+        "destination_currency": destination_currency.lower(),
+        "destination_network": stripe_network,
+        "source_currency": source_currency.lower(),
+        f"wallet_addresses[{stripe_network}]": wallet_address,
+    }
+    if amount:
+        params["source_amount"] = amount
+
+    # Populate same EVM address for common chains
+    for evm_chain in ("base", "ethereum", "polygon", "arbitrum", "optimism"):
+        key = f"wallet_addresses[{evm_chain}]"
+        if key not in params:
+            params[key] = wallet_address
+
+    url = f"https://crypto.link.com?{urlencode(params)}"
+
+    return StripeOnrampLinkResponse(
+        url=url,
+        wallet_address=wallet_address,
+        destination_network=stripe_network,
+    )
+
+
+# ===========================================================================
+# Stripe Crypto Onramp — Webhook handler
+# ===========================================================================
+
+
+def _verify_stripe_onramp_signature(
+    payload: bytes,
+    signature: str,
+    webhook_secret: str,
+) -> bool:
+    """Verify a Stripe webhook signature (HMAC-SHA256).
+
+    The Stripe-Signature header has the format ``t=<timestamp>,v1=<sig>``.
+    """
+    try:
+        sig_parts: dict[str, str] = {}
+        for part in signature.split(","):
+            key, value = part.split("=", 1)
+            sig_parts[key] = value
+
+        timestamp = sig_parts.get("t")
+        expected_sig = sig_parts.get("v1")
+        if not timestamp or not expected_sig:
+            return False
+
+        signed_payload = f"{timestamp}.{payload.decode('utf-8')}"
+        computed = hmac_mod.new(
+            webhook_secret.encode("utf-8"),
+            signed_payload.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac_mod.compare_digest(computed, expected_sig)
+    except Exception as exc:
+        logger.warning("Stripe onramp signature verification error: %s", exc)
+        return False
+
+
+@webhook_router.post(
+    "/webhooks/stripe-onramp",
+    status_code=status.HTTP_200_OK,
+    summary="Handle Stripe Crypto Onramp webhook events",
+    tags=["webhooks", "stripe-onramp"],
+)
+async def handle_stripe_onramp_webhook(
+    request: Request,
+    stripe_signature: str | None = Header(None, alias="Stripe-Signature"),
+) -> dict:
+    """Receive ``crypto.onramp_session.updated`` events from Stripe.
+
+    Stripe sends this event every time the status of an onramp session
+    changes.  Statuses include:
+
+    - ``initialized`` — session created, user hasn't started yet
+    - ``rejected``    — Stripe KYC / fraud rejection
+    - ``payment``     — user is on the payment page
+    - ``processing``  — payment succeeded, crypto delivery in progress
+    - ``fulfillment_complete`` — crypto delivered to wallet
+
+    The webhook secret is read from ``STRIPE_ONRAMP_WEBHOOK_SECRET``.
+    Falls back to ``STRIPE_WEBHOOK_SECRET`` if the onramp-specific one
+    is not set.
+
+    Returns 200 OK in all cases to prevent Stripe retries.  Errors are
+    logged but do not surface to Stripe.
+    """
+    webhook_secret = (
+        os.getenv("STRIPE_ONRAMP_WEBHOOK_SECRET")
+        or os.getenv("STRIPE_WEBHOOK_SECRET")
+    )
+
+    payload = await request.body()
+
+    # --- Signature verification ----------------------------------------
+    if webhook_secret:
+        if not stripe_signature:
+            logger.warning("Stripe onramp webhook missing Stripe-Signature header")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing Stripe-Signature header",
+            )
+
+        # Prefer Stripe SDK if available
+        verified_event: dict | None = None
+        try:
+            import stripe
+
+            try:
+                verified_event = stripe.Webhook.construct_event(
+                    payload, stripe_signature, webhook_secret,
+                )
+            except stripe.error.SignatureVerificationError:
+                logger.warning("Stripe onramp webhook: SDK signature verification failed")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid signature",
+                )
+        except ImportError:
+            # Fallback: manual HMAC verification
+            if not _verify_stripe_onramp_signature(payload, stripe_signature, webhook_secret):
+                logger.warning("Stripe onramp webhook: manual signature verification failed")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid signature",
+                )
+
+        if verified_event is not None:
+            event = verified_event
+        else:
+            event = json.loads(payload)
+    else:
+        # No webhook secret configured — accept in dev, warn loudly
+        env = os.getenv("SARDIS_ENVIRONMENT", "dev").lower()
+        if env not in ("dev", "development", "test"):
+            logger.error(
+                "STRIPE_ONRAMP_WEBHOOK_SECRET not set in %s environment — "
+                "rejecting webhook",
+                env,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Webhook secret not configured",
+            )
+        logger.warning("Stripe onramp webhook: no secret configured (dev mode)")
+        event = json.loads(payload)
+
+    # --- Process the event ---------------------------------------------
+    event_type = event.get("type", "")
+    event_id = event.get("id", "")
+    session_obj = event.get("data", {}).get("object", {})
+    session_id = session_obj.get("id", "")
+    session_status = session_obj.get("status", "")
+
+    logger.info(
+        "Stripe onramp webhook: type=%s event_id=%s session=%s status=%s",
+        event_type,
+        event_id,
+        session_id,
+        session_status,
+    )
+
+    if event_type not in (
+        "crypto.onramp_session.updated",
+        "crypto.onramp_session.completed",
+    ):
+        logger.debug("Ignoring non-onramp event type: %s", event_type)
+        return {"received": True, "processed": False}
+
+    # Extract transaction details
+    tx_details = session_obj.get("transaction_details") or {}
+    wallet_address = None
+    wallet_addresses = tx_details.get("wallet_address") or tx_details.get("wallet_addresses") or {}
+    if isinstance(wallet_addresses, dict):
+        wallet_address = next(iter(wallet_addresses.values()), None)
+    elif isinstance(wallet_addresses, str):
+        wallet_address = wallet_addresses
+
+    parsed = StripeOnrampWebhookEvent(
+        session_id=session_id,
+        status=session_status,
+        wallet_address=wallet_address,
+        destination_currency=tx_details.get("destination_currency"),
+        destination_network=tx_details.get("destination_network"),
+        source_amount=tx_details.get("source_amount"),
+        destination_amount=tx_details.get("destination_amount"),
+        transaction_id=tx_details.get("transaction_id"),
+        received_at=datetime.now(UTC).isoformat(),
+    )
+
+    # Persist to database if available
+    try:
+        await _persist_onramp_event(parsed, event_id)
+    except Exception as exc:
+        # Never fail the webhook response due to persistence errors
+        logger.error("Failed to persist onramp event %s: %s", event_id, exc)
+
+    # Log fulfillment for operational visibility
+    if session_status in ("fulfillment_complete", "processing"):
+        logger.info(
+            "Stripe onramp %s: session=%s wallet=%s amount=%s %s → %s %s tx=%s",
+            session_status,
+            session_id,
+            wallet_address,
+            parsed.source_amount,
+            "fiat",
+            parsed.destination_amount,
+            parsed.destination_currency,
+            parsed.transaction_id,
+        )
+
+    return {"received": True, "processed": True, "session_id": session_id, "status": session_status}
+
+
+async def _persist_onramp_event(event: StripeOnrampWebhookEvent, event_id: str) -> None:
+    """Best-effort persistence of onramp webhook events to the database.
+
+    Inserts into ``onramp_events`` table if it exists.  Silently skips
+    if the table or database is unavailable.
+    """
+    try:
+        from sardis_v2_core.database import Database
+
+        pool = await Database.get_pool()
+        if pool is None:
+            return
+
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO onramp_events
+                   (event_id, session_id, status, wallet_address,
+                    destination_currency, destination_network,
+                    source_amount, destination_amount,
+                    transaction_id, provider, received_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                   ON CONFLICT (event_id) DO NOTHING""",
+                event_id,
+                event.session_id,
+                event.status,
+                event.wallet_address,
+                event.destination_currency,
+                event.destination_network,
+                event.source_amount,
+                event.destination_amount,
+                event.transaction_id,
+                "stripe",
+                datetime.now(UTC),
+            )
+    except Exception as exc:
+        # Table may not exist yet — that is fine
+        logger.debug("onramp_events persistence skipped: %s", exc)
