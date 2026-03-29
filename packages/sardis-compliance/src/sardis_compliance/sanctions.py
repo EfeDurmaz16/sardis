@@ -758,7 +758,7 @@ def create_sanctions_service(
 
         key = circle_api_key or os.getenv("CIRCLE_API_KEY", "")
         if not key:
-            if env in ("prod", "production"):
+            if env in ("prod", "production", "staging"):
                 raise RuntimeError(
                     "Production requires CIRCLE_API_KEY for Circle Compliance Engine."
                 )
@@ -779,7 +779,7 @@ def create_sanctions_service(
     # Elliptic (legacy default)
     if provider_name == "elliptic" or (api_key and api_secret):
         if not (api_key and api_secret):
-            if env in ("prod", "production"):
+            if env in ("prod", "production", "staging"):
                 raise RuntimeError(
                     "Production requires Elliptic sanctions screening provider. "
                     "Set ELLIPTIC_API_KEY and ELLIPTIC_API_SECRET environment variables."
@@ -843,7 +843,7 @@ def create_sanctions_service(
         return SanctionsService(provider=OpenSanctionsProvider())
 
     # No provider configured
-    if env in ("prod", "production"):
+    if env in ("prod", "production", "staging"):
         raise RuntimeError(
             "Production requires a sanctions screening provider. "
             "Set SARDIS_COMPLIANCE_SCREENING_PROVIDER to 'circle', 'elliptic', "

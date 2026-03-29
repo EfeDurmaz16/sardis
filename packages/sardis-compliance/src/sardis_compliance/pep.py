@@ -16,6 +16,7 @@ Integration with external PEP databases:
 from __future__ import annotations
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -575,14 +576,26 @@ def create_pep_service(
     Returns:
         Configured PEPService instance
     """
+    env = os.environ.get("SARDIS_ENVIRONMENT", "dev")
+
     if api_key:
         if provider_name == "complyadvantage":
             provider = ComplyAdvantagePEPProvider(api_key=api_key)
         else:
+            if env in ("prod", "production", "staging"):
+                raise RuntimeError(
+                    f"Unknown PEP provider '{provider_name}' in production. "
+                    "Supported providers: 'complyadvantage'."
+                )
             logger.warning(f"Unknown PEP provider: {provider_name}, using mock")
             provider = MockPEPProvider()
     else:
-        logger.warning("No PEP API key provided, using mock provider")
+        if env in ("prod", "production", "staging"):
+            raise RuntimeError(
+                "PEP screening provider not configured. "
+                "Set SARDIS_PEP_API_KEY for production use."
+            )
+        logger.warning("No PEP API key provided, using mock provider (dev/test only)")
         provider = MockPEPProvider()
 
     return PEPService(provider=provider)

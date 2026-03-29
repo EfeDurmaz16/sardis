@@ -492,7 +492,7 @@ def create_kyb_service(
         )
     else:
         env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-        if env in ("prod", "production"):
+        if env in ("prod", "production", "staging"):
             raise RuntimeError(
                 "Production requires Persona KYB provider. "
                 "Set PERSONA_API_KEY and PERSONA_KYB_TEMPLATE_ID."

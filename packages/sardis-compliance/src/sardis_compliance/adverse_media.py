@@ -16,6 +16,7 @@ Integration with external media screening providers:
 from __future__ import annotations
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -698,6 +699,8 @@ def create_adverse_media_service(
     Returns:
         Configured AdverseMediaService instance
     """
+    env = os.environ.get("SARDIS_ENVIRONMENT", "dev")
+
     if api_key and account_id:
         if provider_name == "dowjones":
             provider = DowJonesMediaProvider(
@@ -705,10 +708,21 @@ def create_adverse_media_service(
                 account_id=account_id,
             )
         else:
+            if env in ("prod", "production", "staging"):
+                raise RuntimeError(
+                    f"Unknown adverse media provider '{provider_name}' in production. "
+                    "Supported providers: 'dowjones'."
+                )
             logger.warning(f"Unknown media provider: {provider_name}, using mock")
             provider = MockAdverseMediaProvider()
     else:
-        logger.warning("No adverse media API credentials provided, using mock provider")
+        if env in ("prod", "production", "staging"):
+            raise RuntimeError(
+                "Adverse media provider not configured. "
+                "Set SARDIS_ADVERSE_MEDIA_API_KEY and SARDIS_ADVERSE_MEDIA_ACCOUNT_ID "
+                "for production use."
+            )
+        logger.warning("No adverse media API credentials provided, using mock provider (dev/test only)")
         provider = MockAdverseMediaProvider()
 
     return AdverseMediaService(provider=provider)

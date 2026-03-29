@@ -837,7 +837,7 @@ def create_kyc_service(
         )
     else:
         env = os.getenv("SARDIS_ENVIRONMENT", "dev")
-        if env in ("prod", "production"):
+        if env in ("prod", "production", "staging"):
             raise RuntimeError(
                 "Production requires Persona KYC provider. "
                 "Set PERSONA_API_KEY and PERSONA_TEMPLATE_ID environment variables."
