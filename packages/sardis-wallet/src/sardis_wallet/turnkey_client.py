@@ -71,7 +71,11 @@ class TurnkeyClient:
     def _create_stamp(self, body: str) -> str:
         """Create an official Turnkey API stamp (base64url JSON envelope).
 
-        Matches the format from https://github.com/tkhq/python-sdk
+        Matches the format from https://github.com/tkhq/python-sdk:
+        - Sign body with ECDSA-P256-SHA256 (DER-encoded)
+        - Hex-encode the DER signature
+        - Bundle with publicKey and scheme
+        - base64url encode (no padding)
         """
         from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import ec
