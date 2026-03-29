@@ -1239,24 +1239,52 @@ class TurnkeyMPCSigner(MPCSignerPort):
             # Fall back to the wallet_id if address lookup fails
             pass
 
-        # Create sign transaction activity
-        activity_body = {
-            "type": "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
-            "organizationId": self._org_id,
-            "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
-            "parameters": {
-                "signWith": sign_with,
-                "type": "TRANSACTION_TYPE_ETHEREUM",
-                "unsignedTransaction": unsigned_tx_hex,
-            },
-        }
+        # Determine signing path based on chain type.
+        # Tempo (type 0x76) uses sign_raw_payload with keccak256 hash;
+        # standard EVM chains use sign_transaction with full tx parsing.
+        is_tempo = getattr(tx, "chain", "").startswith("tempo")
 
-        logger.info(f"Submitting sign transaction activity for wallet {wallet_id}")
+        if is_tempo:
+            # Tempo: hash the unsigned tx and sign the hash via sign_raw_payload
+            import hashlib
+            tx_bytes = bytes.fromhex(unsigned_tx_hex)
+            try:
+                from eth_hash.auto import keccak
+                tx_hash = keccak(tx_bytes).hex()
+            except ImportError:
+                tx_hash = hashlib.sha256(tx_bytes).hexdigest()
+
+            activity_body = {
+                "type": "ACTIVITY_TYPE_SIGN_RAW_PAYLOAD_V2",
+                "organizationId": self._org_id,
+                "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
+                "parameters": {
+                    "signWith": sign_with,
+                    "payload": tx_hash,
+                    "encoding": "PAYLOAD_ENCODING_HEXADECIMAL",
+                    "hashFunction": "HASH_FUNCTION_NO_OP",
+                },
+            }
+            sign_endpoint = "/public/v1/submit/sign_raw_payload"
+        else:
+            activity_body = {
+                "type": "ACTIVITY_TYPE_SIGN_TRANSACTION_V2",
+                "organizationId": self._org_id,
+                "timestampMs": str(int(datetime.now(UTC).timestamp() * 1000)),
+                "parameters": {
+                    "signWith": sign_with,
+                    "type": "TRANSACTION_TYPE_ETHEREUM",
+                    "unsignedTransaction": unsigned_tx_hex,
+                },
+            }
+            sign_endpoint = "/public/v1/submit/sign_transaction"
+
+        logger.info(f"Submitting {sign_endpoint} for wallet {wallet_id} (tempo={is_tempo})")
 
         # Submit the activity
         result = await self._make_request(
             "POST",
-            "/public/v1/submit/sign_transaction",
+            sign_endpoint,
             activity_body,
         )
 
@@ -1269,13 +1297,32 @@ class TurnkeyMPCSigner(MPCSignerPort):
             logger.info(f"Polling for activity {activity_id} completion")
             activity = await self._poll_activity(activity_id)
 
-        # Extract signed transaction (Turnkey returns in signTransactionResult)
-        sign_result = activity.get("result", {}).get("signTransactionResult", {})
-        signed_tx = sign_result.get("signedTransaction", "")
-
-        if not signed_tx:
-            # Fallback to old path
-            signed_tx = activity.get("result", {}).get("signedTransaction", "")
+        # Extract signed transaction
+        if is_tempo:
+            # sign_raw_payload returns r, s, v separately — reconstruct signed tx
+            raw_result = activity.get("result", {}).get("signRawPayloadResult", {})
+            r = raw_result.get("r", "")
+            s = raw_result.get("s", "")
+            v = raw_result.get("v", "")
+            if not r or not s:
+                raise Exception("No raw signature returned from Turnkey for Tempo tx")
+            # Reconstruct: unsigned tx bytes + signature (v, r, s) via RLP
+            # For EIP-1559: type || rlp([..., v, r, s])
+            v_int = int(v, 16) if v.startswith("0") else int(v)
+            import rlp as _rlp
+            tx_fields = _rlp.decode(bytes.fromhex(unsigned_tx_hex[2:]))  # strip 0x02 prefix
+            tx_fields.extend([
+                v_int.to_bytes(1, "big") if v_int else b"",
+                bytes.fromhex(r),
+                bytes.fromhex(s),
+            ])
+            signed_tx = "0x02" + _rlp.encode(tx_fields).hex()
+            logger.info(f"Tempo raw signature assembled: r={r[:8]}... v={v}")
+        else:
+            sign_result = activity.get("result", {}).get("signTransactionResult", {})
+            signed_tx = sign_result.get("signedTransaction", "")
+            if not signed_tx:
+                signed_tx = activity.get("result", {}).get("signedTransaction", "")
 
         if not signed_tx:
             raise Exception("No signed transaction returned from Turnkey")
