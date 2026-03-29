@@ -38,13 +38,25 @@ Fiat onramp deposits go to the user's wallet first. Users then spend from their 
 
 All environments are live and available for testing.
 
+## Demo & Testing
+
+- **Checkout demo:** https://checkout.sardis.sh/demo (creates test sessions, shows full onramp flow)
+- **API Health:** https://api.sardis.sh/health (7/7 checks passing, v2.0.0)
+- **API Docs:** https://api.sardis.sh/api/v2/docs (Swagger UI)
+- **CDP API Key ID:** a4031ceb-814b-45e7-aee3-3c737b191c95
+
+## CDP Embedded Wallets + Tempo
+
+We noticed CDP Embedded Wallets now supports Tempo natively. We are very interested in integrating CDP Embedded Wallets alongside our existing Turnkey MPC infrastructure for a fully Coinbase-native experience on Tempo. This would give our users seamless fiat onramp directly to Tempo without bridging.
+
 ## Request
 
-1. Please approve our application for **mainnet Coinbase Onramp** on Base.
-2. We can share our CDP API Key ID for allowlisting — please let us know where to send it.
-3. If there are additional integration requirements or a review call needed, we are happy to schedule.
+1. Please approve our application for **mainnet Coinbase Onramp** on Base (and Tempo if supported).
+2. Our CDP API Key ID for allowlisting: `a4031ceb-814b-45e7-aee3-3c737b191c95`
+3. We would also love to discuss CDP Embedded Wallets integration for Tempo-native wallets.
+4. Happy to schedule a review call if needed.
 
 Best regards,
 Efe Baran Durmaz
-Founder, Sardis Labs
-contact@sardis.sh
+Founder & CEO, Sardis Labs, Inc.
+efe@sardis.sh | sardis.sh
