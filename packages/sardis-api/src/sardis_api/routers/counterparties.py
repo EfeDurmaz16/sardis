@@ -169,53 +169,25 @@ async def update_counterparty(cpty_id: str, body: CounterpartyUpdate):
     return CounterpartyResponse(**record)
 
 
-@router.get("/{cpty_id}/trust-profile", response_model=TrustProfileResponse)
+@router.get("/{cpty_id}/trust-profile")
 async def get_trust_profile(cpty_id: str):
-    """Get trust profile for a counterparty including reliability and policy compatibility."""
+    """Get trust profile for a counterparty including reliability and policy compatibility.
+
+    Trust scoring requires transaction history analysis which is not yet implemented.
+    Returns 501 until real trust scoring is available.
+    """
     cpty = await _load_counterparty(cpty_id)
     if cpty is None:
         raise HTTPException(status_code=404, detail=f"Counterparty {cpty_id} not found")
-    trust_status = cpty.get("trust_status", "pending")
 
-    # Derive mock trust score from trust_status
-    if trust_status == "approved":
-        trust_score = 0.85
-        policy_compatible = True
-        proof_status = "verified"
-        flags: list[str] = []
-    elif trust_status == "blocked":
-        trust_score = 0.10
-        policy_compatible = False
-        proof_status = "none"
-        flags = ["blocked"]
-    else:
-        trust_score = 0.50
-        policy_compatible = True
-        proof_status = "partial"
-        flags = ["new_merchant"]
-
-    # Derive settlement preference from category
-    category = (cpty.get("category") or "").lower()
-    if category in ("cloud", "api", "saas"):
-        settlement_preference = "usdc"
-    elif category in ("travel", "retail"):
-        settlement_preference = "card"
-    else:
-        settlement_preference = "usdc"
-
-    return TrustProfileResponse(
-        counterparty_id=cpty_id,
-        name=cpty["name"],
-        trust_score=trust_score,
-        policy_compatible=policy_compatible,
-        proof_status=proof_status,
-        settlement_preference=settlement_preference,
-        total_transactions=0,
-        total_volume="$0.00",
-        success_rate=1.0 if trust_status == "approved" else 0.0,
-        avg_settlement_time="< 1 min",
-        last_transaction=None,
-        flags=flags,
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "error": "not_implemented",
+            "message": "Trust scoring is not yet available. Transaction history analysis required to compute real trust profiles.",
+            "counterparty_id": cpty_id,
+            "counterparty_name": cpty["name"],
+        },
     )
 
 

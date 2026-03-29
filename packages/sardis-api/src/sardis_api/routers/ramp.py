@@ -423,21 +423,16 @@ async def bridge_cross_chain(
             estimated_time=f"{quote.estimated_time_seconds}s",
         )
     except ImportError:
-        # sardis_chain.bridge not available — return stub
-        import uuid
-        bridge_id = f"bridge_{uuid.uuid4().hex[:16]}"
-        logger.info(
-            "Bridge request queued (stub): %s %s %s from %s to %s",
-            req.amount, req.token, bridge_id, req.source_chain, req.destination_chain,
+        logger.error(
+            "Bridge module (sardis_chain.bridge) not available for request: %s %s from %s to %s",
+            req.amount, req.token, req.source_chain, req.destination_chain,
         )
-        return BridgeResponse(
-            bridge_id=bridge_id,
-            status="queued",
-            source_chain=req.source_chain,
-            destination_chain=req.destination_chain,
-            amount=str(req.amount),
-            token=req.token,
-            estimated_time="30-120s",
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "service_unavailable",
+                "message": "Cross-chain bridge module (sardis_chain.bridge) is not installed or available. Cannot process bridge requests.",
+            },
         )
 
 
@@ -501,14 +496,13 @@ async def withdraw_crypto(
             logger.exception("Crypto withdrawal failed: %s", e)
             raise HTTPException(status_code=502, detail=f"Withdrawal failed: {e}")
 
-    # Non-live mode: return pending stub
-    return WithdrawCryptoResponse(
-        tx_hash=None,
-        status="pending",
-        amount=str(req.amount),
-        chain=req.chain,
-        token=req.token,
-        destination=req.destination_address,
+    # Non-live mode: reject — cannot execute real withdrawals in simulated mode
+    raise HTTPException(
+        status_code=422,
+        detail={
+            "error": "chain_mode_not_live",
+            "message": "Crypto withdrawals require SARDIS_CHAIN_MODE=live. Current mode is simulated.",
+        },
     )
 
 

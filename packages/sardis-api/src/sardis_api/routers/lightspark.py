@@ -44,82 +44,53 @@ class PlaidLinkRequest(BaseModel):
     redirect_uri: str | None = None
 
 
+def _not_implemented() -> HTTPException:
+    return HTTPException(
+        status_code=501,
+        detail={
+            "error": "not_implemented",
+            "message": "Lightspark Grid integration is not yet available. Configure SARDIS_LIGHTSPARK_API_KEY when the integration is ready.",
+        },
+    )
+
+
 @router.post("/uma/create")
 async def create_uma_address(req: CreateUMARequest):
     """Create a UMA address ($agent@sardis.sh)."""
-    return {
-        "status": "created",
-        "address": f"${req.agent_id}@sardis.sh",
-        "wallet_id": req.wallet_id,
-        "currency": req.currency,
-        "message": "Grid UMA creation requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.get("/uma/{wallet_id}")
 async def get_uma_address(wallet_id: str):
     """Get UMA address for a wallet."""
-    return {
-        "wallet_id": wallet_id,
-        "message": "Grid UMA lookup requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.post("/uma/send")
 async def send_uma_payment(req: SendUMAPaymentRequest):
     """Send payment to a UMA address."""
-    return {
-        "status": "processing",
-        "from_wallet_id": req.from_wallet_id,
-        "to_address": req.to_address,
-        "amount_cents": req.amount_cents,
-        "currency": req.currency,
-        "message": "Grid UMA send requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.post("/payouts")
 async def create_payout(req: CreatePayoutRequest):
     """Create a fiat payout (ACH/RTP/FedNow/Wire)."""
-    return {
-        "status": "processing",
-        "wallet_id": req.wallet_id,
-        "amount_cents": req.amount_cents,
-        "currency": req.currency,
-        "rail": req.rail,
-        "message": "Grid payout requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.post("/fx/quote")
 async def get_fx_quote(req: FXQuoteRequest):
     """Get an FX quote."""
-    return {
-        "from_currency": req.from_currency,
-        "to_currency": req.to_currency,
-        "amount_cents": req.amount_cents,
-        "message": "Grid FX requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.post("/plaid/link-token")
 async def create_plaid_link_token(req: PlaidLinkRequest):
     """Create a Plaid Link token for bank account linking."""
-    return {
-        "customer_id": req.customer_id,
-        "message": "Grid Plaid integration requires SARDIS_LIGHTSPARK_API_KEY",
-    }
+    raise _not_implemented()
 
 
 @router.post("/webhooks")
 async def grid_webhook(request: Request):
     """Handle Grid webhook events."""
-    payload = await request.body()
-    signature = request.headers.get("X-Grid-Signature", "")
-
-    if not signature:
-        raise HTTPException(status_code=401, detail="Missing webhook signature")
-
-    logger.info(f"Received Grid webhook, payload size: {len(payload)}")
-
-    return {"status": "received"}
+    raise _not_implemented()
