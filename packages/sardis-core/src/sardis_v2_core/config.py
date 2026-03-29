@@ -517,7 +517,7 @@ class SardisSettings(BaseSettings):
     circle_compliance_api_key: str = ""  # Falls back to CIRCLE_API_KEY if empty
 
     # Compliance provider routing
-    compliance_screening_provider: Literal["circle", "elliptic", "mock"] = "mock"
+    compliance_screening_provider: Literal["circle", "elliptic", "chainalysis", "scorechain", "ofac", "watchman", "layered", "mock"] = "mock"
 
     # OpenTelemetry
     otel_enabled: bool = False
