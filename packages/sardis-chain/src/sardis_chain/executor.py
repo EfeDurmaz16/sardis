@@ -284,8 +284,9 @@ STABLECOIN_ADDRESSES = {
         "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Moderato testnet
     },
     "tempo": {
-        "USDC": "0x20c0000000000000000000000000000000000000",  # pathUSD on Presto mainnet
-        "USDC.e": "0x20C000000000000000000000b9537d11c60E8b50",  # Bridged USDC.e on Tempo
+        "USDC": "0x20C000000000000000000000b9537d11c60E8b50",  # Bridged USDC on Tempo mainnet
+        "PATH_USD": "0x20c0000000000000000000000000000000000000",  # Native pathUSD
+        "USDC.e": "0x20C000000000000000000000b9537d11c60E8b50",  # Alias for bridged USDC
     },
     # Morph (EVM L2 — Circle native USDC + CCTP)
     "morph": {
