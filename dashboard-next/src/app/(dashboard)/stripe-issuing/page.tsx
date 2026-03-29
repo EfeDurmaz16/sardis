@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react'
 import { CreditCard, Plus, Eye, EyeOff, Snowflake, Sun, ShoppingCart, Check, Copy, Loader2, User, Mail, Phone, AlertCircle } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '@/api/client'
@@ -154,12 +156,12 @@ function IssueCardModal({
   const [limitMonthly, setLimitMonthly] = useState('2000.00')
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-dark-200 border border-dark-100 w-full max-w-lg p-6 space-y-6" onClick={(e) => e.stopPropagation()}>
-        <div>
-          <h2 className="text-xl font-display font-bold text-white">Issue Stripe Card</h2>
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Issue Stripe Card</DialogTitle>
           <p className="text-sm text-gray-400 mt-1">Create a virtual card for your agent via Stripe Issuing</p>
-        </div>
+        </DialogHeader>
 
         {/* Cardholder Info */}
         <div className="space-y-4">
@@ -290,8 +292,8 @@ function IssueCardModal({
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -326,9 +328,9 @@ function SimulatePurchaseModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-dark-200 border border-dark-100 w-full max-w-md p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-lg font-display font-bold text-white">Simulate Purchase</h2>
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Simulate Purchase</DialogTitle></DialogHeader>
 
         {!result ? (
           <>
@@ -392,8 +394,8 @@ function SimulatePurchaseModal({
             </button>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -639,18 +641,18 @@ export default function StripeIssuingDemo() {
       {/* Agent selector */}
       <div className="bg-dark-200 border border-dark-100 p-4">
         <label className="block text-sm font-medium text-gray-400 mb-2">Select Agent</label>
-        <select
-          value={selectedAgentId}
-          onChange={(e) => setSelectedAgentId(e.target.value)}
-          className="w-full px-4 py-3 bg-dark-300 border border-dark-100 text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-        >
-          <option value="">Select an agent...</option>
-          {agents.filter((a) => a.wallet_id).map((a) => (
-            <option key={a.agent_id} value={a.agent_id}>
-              {a.name} ({a.agent_id})
-            </option>
-          ))}
-        </select>
+        <Select value={selectedAgentId} onValueChange={(v) => setSelectedAgentId(v)}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select an agent..." />
+          </SelectTrigger>
+          <SelectContent>
+            {agents.filter((a) => a.wallet_id).map((a) => (
+              <SelectItem key={a.agent_id} value={a.agent_id}>
+                {a.name} ({a.agent_id})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Cards */}

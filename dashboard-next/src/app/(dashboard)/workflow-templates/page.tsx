@@ -29,6 +29,7 @@ import clsx from 'clsx'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { templatesApi } from '@/api/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,8 +198,6 @@ function CopyButton({ text }: { text: string }) {
 
 // ── Detail Panel ──────────────────────────────────────────────────────────────
 
-type DetailTab = 'setup' | 'policy' | 'approval' | 'evidence'
-
 interface DetailPanelProps {
   template: WorkflowTemplate
   onBack: () => void
@@ -206,7 +205,6 @@ interface DetailPanelProps {
 }
 
 function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
-  const [activeTab, setActiveTab] = useState<DetailTab>('setup')
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set())
   const meta = categoryMeta(template.category)
   const Icon = meta.icon
@@ -223,14 +221,6 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
       return next
     })
   }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tabs: { id: DetailTab; label: string; icon: any }[] = [
-    { id: 'setup', label: 'Setup Steps', icon: ListChecks },
-    { id: 'policy', label: 'Policy Text', icon: Shield },
-    { id: 'approval', label: 'Approval Config', icon: ClipboardList },
-    { id: 'evidence', label: 'Evidence', icon: CheckCircle2 },
-  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -281,33 +271,27 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
         ))}
       </div>
 
-      {/* Tab navigation */}
-      <div className="border-b border-dark-100">
-        <div className="flex gap-1">
-          {tabs.map((tab) => {
-            const TabIcon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={clsx(
-                  'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200',
-                  activeTab === tab.id
-                    ? 'border-sardis-500 text-sardis-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                )}
-              >
-                <TabIcon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <Tabs defaultValue="setup">
+        <TabsList variant="line">
+          <TabsTrigger value="setup">
+            <ListChecks className="w-4 h-4" />
+            Setup Steps
+          </TabsTrigger>
+          <TabsTrigger value="policy">
+            <Shield className="w-4 h-4" />
+            Policy Text
+          </TabsTrigger>
+          <TabsTrigger value="approval">
+            <ClipboardList className="w-4 h-4" />
+            Approval Config
+          </TabsTrigger>
+          <TabsTrigger value="evidence">
+            <CheckCircle2 className="w-4 h-4" />
+            Evidence
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Tab content */}
-      <div>
-        {activeTab === 'setup' && (
+        <TabsContent value="setup">
           <div className="space-y-3">
             <p className="text-sm text-gray-400">
               Check off each step as you complete setup. Progress is tracked locally.
@@ -378,9 +362,9 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
               </ul>
             </div>
           </div>
-        )}
+        </TabsContent>
 
-        {activeTab === 'policy' && (
+        <TabsContent value="policy">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-400">
@@ -401,9 +385,9 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
               Apply to Policy Manager
             </button>
           </div>
-        )}
+        </TabsContent>
 
-        {activeTab === 'approval' && (
+        <TabsContent value="approval">
           <div className="space-y-4">
             <p className="text-sm text-gray-400">
               Default approval workflow configuration shipped with this template.
@@ -419,9 +403,9 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
               ))}
             </div>
           </div>
-        )}
+        </TabsContent>
 
-        {activeTab === 'evidence' && (
+        <TabsContent value="evidence">
           <div className="space-y-4">
             <p className="text-sm text-gray-400">
               Evidence artefacts collected automatically for every transaction using this template.
@@ -438,8 +422,8 @@ function DetailPanel({ template, onBack, onApply }: DetailPanelProps) {
               ))}
             </ul>
           </div>
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

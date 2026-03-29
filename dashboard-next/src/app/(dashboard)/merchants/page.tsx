@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   BarChart3,
   DollarSign,
-  ChevronDown,
   AlertCircle,
   Plus,
   Receipt,
@@ -19,6 +18,8 @@ import {
   X,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 import StatCard from '@/components/StatCard'
 import { useMerchants, useMerchantSessions } from '@/hooks/useApi'
 import { merchantApi } from '@/api/client'
@@ -86,7 +87,6 @@ function SkeletonRow() {
 export default function MerchantsPage() {
   const [search, setSearch] = useState('')
   const [trustFilter, setTrustFilter] = useState<TrustFilter>('all')
-  const [filterOpen, setFilterOpen] = useState(false)
   const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null)
 
   const [showCheckoutLink, setShowCheckoutLink] = useState(false)
@@ -238,40 +238,19 @@ export default function MerchantsPage() {
         </div>
 
         {/* Trust Level Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setFilterOpen(!filterOpen)}
-            className="flex items-center gap-2 px-4 py-3 bg-dark-200 border border-dark-100 text-gray-300 hover:border-sardis-500/50 transition-colors min-w-[180px] justify-between"
-          >
-            <span className="text-sm">
-              {trustFilter === 'all'
-                ? 'All Trust Levels'
-                : TRUST_LEVEL_CONFIG[trustFilter].label}
-            </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', filterOpen && 'rotate-180')} />
-          </button>
-          {filterOpen && (
-            <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
-              {(['all', 'unknown', 'low', 'medium', 'high', 'verified'] as TrustFilter[]).map(
-                (level) => (
-                  <button
-                    key={level}
-                    onClick={() => {
-                      setTrustFilter(level)
-                      setFilterOpen(false)
-                    }}
-                    className={clsx(
-                      'w-full text-left px-4 py-2.5 text-sm hover:bg-dark-200 transition-colors',
-                      trustFilter === level ? 'text-sardis-400' : 'text-gray-300'
-                    )}
-                  >
-                    {level === 'all' ? 'All Trust Levels' : TRUST_LEVEL_CONFIG[level].label}
-                  </button>
-                )
-              )}
-            </div>
-          )}
-        </div>
+        <Select value={trustFilter} onValueChange={(v) => setTrustFilter(v as TrustFilter)}>
+          <SelectTrigger className="min-w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Trust Levels</SelectItem>
+            <SelectItem value="unknown">Unknown</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Merchants Table */}
@@ -311,8 +290,9 @@ export default function MerchantsPage() {
               : filtered.map((merchant) => {
                   const cfg = TRUST_LEVEL_CONFIG[merchant.trust_level]
                   return (
+                    <ContextMenu key={merchant.id}>
+                    <ContextMenuTrigger asChild>
                     <tr
-                      key={merchant.id}
                       onClick={() => setSelectedMerchantId(merchant.id || null)}
                       className={clsx(
                         'hover:bg-dark-200/50 transition-colors cursor-pointer',
@@ -398,6 +378,15 @@ export default function MerchantsPage() {
                         <span className="text-sm text-gray-400">{formatDate(merchant.first_seen)}</span>
                       </td>
                     </tr>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem onClick={() => navigator.clipboard.writeText(merchant.id)}>Copy Merchant ID</ContextMenuItem>
+                      <ContextMenuItem onClick={() => setSelectedMerchantId(merchant.id || null)}>View Details</ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={() => { setSelectedMerchantId(merchant.id || null); setShowCheckoutLink(true); setLinkResult(null); setLinkError(null); setLinkForm({ amount: '', slug: '', description: '' }); }}>Create Checkout Link</ContextMenuItem>
+                      <ContextMenuItem onClick={() => setSelectedMerchantId(merchant.id || null)}>View Settlements</ContextMenuItem>
+                    </ContextMenuContent>
+                    </ContextMenu>
                   )
                 })}
           </tbody>

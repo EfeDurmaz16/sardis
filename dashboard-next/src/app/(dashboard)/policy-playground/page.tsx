@@ -18,6 +18,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   AreaChart,
   Area,
@@ -618,15 +619,16 @@ export default function PolicyPlaygroundPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Token</label>
-                  <select
-                    value={simToken}
-                    onChange={(e) => setSimToken(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-                  >
-                    {TOKEN_OPTIONS.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+                  <Select value={simToken} onValueChange={(v) => setSimToken(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TOKEN_OPTIONS.map(t => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>

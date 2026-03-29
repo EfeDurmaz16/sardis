@@ -11,11 +11,16 @@ import {
   AlertCircle,
   Users,
   X,
-  ChevronDown,
   BarChart2,
   type LucideIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import {
   counterpartiesApi,
   type Counterparty,
@@ -169,20 +174,16 @@ function CounterpartyModal({ initial, onClose, onSave, saving }: CounterpartyMod
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-dark-300 border border-dark-100 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-100">
-          <h2 className="text-lg font-semibold text-white">
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {isEdit ? 'Edit Counterparty' : 'Add Counterparty'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
@@ -204,34 +205,36 @@ function CounterpartyModal({ initial, onClose, onSave, saving }: CounterpartyMod
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Type
               </label>
-              <select
-                value={form.type}
-                onChange={(e) => set('type', e.target.value as CounterpartyType)}
-                className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50 text-sm"
-              >
-                {COUNTERPARTY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {TYPE_CONFIG[t].label}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.type} onValueChange={(v) => set('type', v as CounterpartyType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTERPARTY_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {TYPE_CONFIG[t].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Trust Status
               </label>
-              <select
-                value={form.trust_status}
-                onChange={(e) => set('trust_status', e.target.value as TrustStatus)}
-                className="w-full px-4 py-2.5 bg-dark-200 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50 text-sm"
-              >
-                {TRUST_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {TRUST_STATUS_CONFIG[s].label}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.trust_status} onValueChange={(v) => set('trust_status', v as TrustStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRUST_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {TRUST_STATUS_CONFIG[s].label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -266,22 +269,12 @@ function CounterpartyModal({ initial, onClose, onSave, saving }: CounterpartyMod
 
           {/* Approval Required toggle */}
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => set('approval_required', !form.approval_required)}
-              className={clsx(
-                'relative w-10 h-5 rounded-full transition-colors',
-                form.approval_required ? 'bg-sardis-500' : 'bg-dark-100'
-              )}
-            >
-              <span
-                className={clsx(
-                  'absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform',
-                  form.approval_required ? 'translate-x-5' : 'translate-x-0.5'
-                )}
-              />
-            </button>
-            <span className="text-sm text-gray-300">Require approval for payments</span>
+            <Switch
+              id="approval-required"
+              checked={form.approval_required}
+              onCheckedChange={(checked) => set('approval_required', checked)}
+            />
+            <Label htmlFor="approval-required" className="text-sm text-gray-300">Require approval for payments</Label>
           </div>
 
           {/* Actions */}
@@ -302,8 +295,8 @@ function CounterpartyModal({ initial, onClose, onSave, saving }: CounterpartyMod
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -318,27 +311,27 @@ interface ConfirmDeleteProps {
 
 function ConfirmDelete({ name, onConfirm, onCancel, deleting }: ConfirmDeleteProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-dark-300 border border-dark-100 shadow-2xl p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-white">Delete Counterparty</h2>
-        <p className="text-sm text-gray-400">
-          Are you sure you want to remove <span className="text-white font-medium">{name}</span>?
-          This action cannot be undone.
-        </p>
-        <div className="flex items-center justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2.5 text-sm text-gray-400 hover:text-white transition-colors">
-            Cancel
-          </button>
-          <button
+    <AlertDialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Counterparty</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove <span className="text-white font-medium">{name}</span>?
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
             onClick={onConfirm}
             disabled={deleting}
-            className="px-6 py-2.5 bg-red-500 text-white font-medium text-sm hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-red-500 text-white hover:bg-red-400"
           >
             {deleting ? 'Deleting...' : 'Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -433,21 +426,17 @@ function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) 
     : null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg bg-dark-300 border border-dark-100 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-100">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <BarChart2 className="w-5 h-5 text-sardis-400" />
             Trust Profile
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Body */}
-        <div className="p-6">
+        <div>
           {loading && (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -530,16 +519,16 @@ function TrustProfileModal({ counterpartyId, onClose }: TrustProfileModalProps) 
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end px-6 py-4 border-t border-dark-100">
+        <DialogFooter>
           <button
             onClick={onClose}
             className="px-4 py-2.5 text-sm text-gray-400 hover:text-white transition-colors"
           >
             Close
           </button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -554,8 +543,6 @@ export default function CounterpartiesPage() {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<CounterpartyType | 'all'>('all')
   const [statusFilter, setStatusFilter] = useState<TrustStatus | 'all'>('all')
-  const [typeOpen, setTypeOpen] = useState(false)
-  const [statusOpen, setStatusOpen] = useState(false)
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false)
@@ -761,68 +748,34 @@ export default function CounterpartiesPage() {
         </div>
 
         {/* Type filter */}
-        <div className="relative">
-          <button
-            onClick={() => { setTypeOpen(!typeOpen); setStatusOpen(false) }}
-            className="flex items-center gap-2 px-4 py-3 bg-dark-200 border border-dark-100 text-gray-300 hover:border-sardis-500/50 transition-colors min-w-[160px] justify-between"
-          >
-            <span className="text-sm">
-              {typeFilter === 'all' ? 'All Types' : TYPE_CONFIG[typeFilter].label}
-            </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', typeOpen && 'rotate-180')} />
-          </button>
-          {typeOpen && (
-            <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
-              <button
-                onClick={() => { setTypeFilter('all'); setTypeOpen(false) }}
-                className={clsx('w-full text-left px-4 py-2.5 text-sm hover:bg-dark-200', typeFilter === 'all' ? 'text-sardis-400' : 'text-gray-300')}
-              >
-                All Types
-              </button>
-              {COUNTERPARTY_TYPES.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { setTypeFilter(t); setTypeOpen(false) }}
-                  className={clsx('w-full text-left px-4 py-2.5 text-sm hover:bg-dark-200', typeFilter === t ? 'text-sardis-400' : 'text-gray-300')}
-                >
-                  {TYPE_CONFIG[t].label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as CounterpartyType | 'all')}>
+          <SelectTrigger className="min-w-[160px]">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {COUNTERPARTY_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {TYPE_CONFIG[t].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Status filter */}
-        <div className="relative">
-          <button
-            onClick={() => { setStatusOpen(!statusOpen); setTypeOpen(false) }}
-            className="flex items-center gap-2 px-4 py-3 bg-dark-200 border border-dark-100 text-gray-300 hover:border-sardis-500/50 transition-colors min-w-[160px] justify-between"
-          >
-            <span className="text-sm">
-              {statusFilter === 'all' ? 'All Statuses' : TRUST_STATUS_CONFIG[statusFilter].label}
-            </span>
-            <ChevronDown className={clsx('w-4 h-4 transition-transform', statusOpen && 'rotate-180')} />
-          </button>
-          {statusOpen && (
-            <div className="absolute right-0 mt-1 w-full bg-dark-300 border border-dark-100 z-10 shadow-lg">
-              <button
-                onClick={() => { setStatusFilter('all'); setStatusOpen(false) }}
-                className={clsx('w-full text-left px-4 py-2.5 text-sm hover:bg-dark-200', statusFilter === 'all' ? 'text-sardis-400' : 'text-gray-300')}
-              >
-                All Statuses
-              </button>
-              {TRUST_STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => { setStatusFilter(s); setStatusOpen(false) }}
-                  className={clsx('w-full text-left px-4 py-2.5 text-sm hover:bg-dark-200', statusFilter === s ? 'text-sardis-400' : 'text-gray-300')}
-                >
-                  {TRUST_STATUS_CONFIG[s].label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TrustStatus | 'all')}>
+          <SelectTrigger className="min-w-[160px]">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {TRUST_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {TRUST_STATUS_CONFIG[s].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -864,7 +817,8 @@ export default function CounterpartiesPage() {
                   const ct = safeType(c.type)
                   const isToggling = togglingId === c.id
                   return (
-                    <tr key={c.id} className="hover:bg-dark-200/50 transition-colors">
+                    <ContextMenu key={c.id}>
+                      <ContextMenuTrigger render={<tr />} className="hover:bg-dark-200/50 transition-colors">
                       {/* Name */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -953,7 +907,15 @@ export default function CounterpartiesPage() {
                           </button>
                         </div>
                       </td>
-                    </tr>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem onClick={() => navigator.clipboard.writeText(c.id)}>Copy Counterparty ID</ContextMenuItem>
+                        <ContextMenuItem onClick={() => handleOpenEdit(c)}>Edit</ContextMenuItem>
+                        <ContextMenuItem onClick={() => setTrustProfileTarget(c.id)}>View Trust Profile</ContextMenuItem>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onClick={() => setDeleteTarget(c)} className="text-red-400">Delete</ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   )
                 })}
           </tbody>

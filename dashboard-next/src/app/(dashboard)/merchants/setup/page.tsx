@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Building2,
   Wallet,
@@ -239,20 +240,20 @@ export default function MerchantSetupPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Category
                 </label>
-                <select
-                  value={form.category}
-                  onChange={(e) => updateField('category', e.target.value)}
-                  className="w-full px-4 py-3 bg-dark-200 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50"
-                >
-                  <option value="">Select a category...</option>
-                  <option value="saas">SaaS</option>
-                  <option value="ecommerce">E-Commerce</option>
-                  <option value="marketplace">Marketplace</option>
-                  <option value="ai_services">AI Services</option>
-                  <option value="defi">DeFi</option>
-                  <option value="gaming">Gaming</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select value={form.category} onValueChange={(v) => updateField('category', v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a category..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="saas">SaaS</SelectItem>
+                    <SelectItem value="ecommerce">E-Commerce</SelectItem>
+                    <SelectItem value="marketplace">Marketplace</SelectItem>
+                    <SelectItem value="ai_services">AI Services</SelectItem>
+                    <SelectItem value="defi">DeFi</SelectItem>
+                    <SelectItem value="gaming">Gaming</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </>

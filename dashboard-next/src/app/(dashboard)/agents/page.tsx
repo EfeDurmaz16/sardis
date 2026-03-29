@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from 'react'
-import { Plus, Search, User, Wallet, ArrowRight, X, Calendar, Shield, DollarSign } from 'lucide-react'
+import { Plus, Search, User, Wallet, ArrowRight, Calendar, Shield, DollarSign } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { useAgents, useCreateAgent } from '@/hooks/useApi'
 import ChatInterface from '@/components/ChatInterface'
 import type { Agent } from '@/types'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
 
 type AgentListItem = Omit<Agent, 'created_at'> & {
   created_at?: string
@@ -50,41 +54,53 @@ export default function AgentsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">{filteredAgents.map((agent) => (<AgentCard key={agent.agent_id} agent={agent} onChat={() => setActiveChatAgent(agent)} onView={() => setSelectedAgent(agent)} />))}</div>
       )}
-      {showCreate && <CreateAgentModal onClose={() => setShowCreate(false)} onSubmit={async (data) => { await createAgent.mutateAsync(data); setShowCreate(false) }} isLoading={createAgent.isPending} />}
+      <CreateAgentModal open={showCreate} onOpenChange={setShowCreate} onSubmit={async (data) => { await createAgent.mutateAsync(data); setShowCreate(false) }} isLoading={createAgent.isPending} />
       {activeChatAgent && <ChatInterface agentId={activeChatAgent.agent_id} agentName={activeChatAgent.name} onClose={() => setActiveChatAgent(null)} />}
-      {selectedAgent && <AgentDetailPanel agent={selectedAgent} onClose={() => setSelectedAgent(null)} />}
+      <AgentDetailPanel agent={selectedAgent} open={!!selectedAgent} onOpenChange={(open) => { if (!open) setSelectedAgent(null) }} />
     </div>
   )
 }
 
 function AgentCard({ agent, onChat, onView }: { agent: AgentListItem; onChat: () => void; onView: () => void }) {
   return (
-    <div className="card card-hover p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center"><User className="w-5 h-5 text-sardis-400" /></div>
-          <div><h3 className="font-medium text-white">{agent.name}</h3><p className="text-xs text-gray-500 font-mono">{agent.agent_id}</p></div>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="card card-hover p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center"><User className="w-5 h-5 text-sardis-400" /></div>
+              <div><h3 className="font-medium text-white">{agent.name}</h3><p className="text-xs text-gray-500 font-mono">{agent.agent_id}</p></div>
+            </div>
+            <div className={clsx('status-dot', agent.is_active ? 'success' : 'error')} />
+          </div>
+          {agent.description && <p className="text-sm text-gray-400 mb-4 line-clamp-2">{agent.description}</p>}
+          <div className="flex items-center justify-between pt-4 border-t border-dark-100">
+            <div className="flex items-center gap-2 text-gray-400"><Wallet className="w-4 h-4" /><span className="text-sm">Wallet</span></div>
+            <div className="flex gap-2">
+              <button onClick={onChat} className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20">Chat</button>
+              <button onClick={onView} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">View <ArrowRight className="w-4 h-4" /></button>
+            </div>
+          </div>
         </div>
-        <div className={clsx('status-dot', agent.is_active ? 'success' : 'error')} />
-      </div>
-      {agent.description && <p className="text-sm text-gray-400 mb-4 line-clamp-2">{agent.description}</p>}
-      <div className="flex items-center justify-between pt-4 border-t border-dark-100">
-        <div className="flex items-center gap-2 text-gray-400"><Wallet className="w-4 h-4" /><span className="text-sm">Wallet</span></div>
-        <div className="flex gap-2">
-          <button onClick={onChat} className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20">Chat</button>
-          <button onClick={onView} className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg">View <ArrowRight className="w-4 h-4" /></button>
-        </div>
-      </div>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => navigator.clipboard.writeText(agent.agent_id)}>Copy Agent ID</ContextMenuItem>
+        <ContextMenuItem onClick={onView}>View Details</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={onChat}>Chat with Agent</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
-function CreateAgentModal({ onClose, onSubmit, isLoading }: { onClose: () => void; onSubmit: (data: CreateAgentInput) => Promise<void>; isLoading: boolean }) {
+function CreateAgentModal({ open, onOpenChange, onSubmit, isLoading }: { open: boolean; onOpenChange: (open: boolean) => void; onSubmit: (data: CreateAgentInput) => Promise<void>; isLoading: boolean }) {
   const [formData, setFormData] = useState({ name: '', description: '', limit_per_tx: '50.00', limit_total: '100.00' })
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-md w-full mx-4 p-6">
-        <h2 className="text-xl font-bold text-white mb-6">Create New Agent</h2>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create New Agent</DialogTitle>
+        </DialogHeader>
         <form onSubmit={async (e) => { e.preventDefault(); await onSubmit({ name: formData.name, description: formData.description || undefined, spending_limits: { per_transaction: formData.limit_per_tx, total: formData.limit_total }, create_wallet: true }) }} className="space-y-4">
           <div><label className="block text-sm font-medium text-gray-400 mb-1">Agent Name</label><input type="text" required value={formData.name} onChange={(e) => setFormData(d => ({ ...d, name: e.target.value }))} className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50" placeholder="shopping_agent_001" /></div>
           <div><label className="block text-sm font-medium text-gray-400 mb-1">Description</label><textarea value={formData.description} onChange={(e) => setFormData(d => ({ ...d, description: e.target.value }))} className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50 resize-none" rows={2} placeholder="Optional description..." /></div>
@@ -92,31 +108,25 @@ function CreateAgentModal({ onClose, onSubmit, isLoading }: { onClose: () => voi
             <div><label className="block text-sm font-medium text-gray-400 mb-1">Per TX</label><input type="text" required value={formData.limit_per_tx} onChange={(e) => setFormData(d => ({ ...d, limit_per_tx: e.target.value }))} className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50" /></div>
             <div><label className="block text-sm font-medium text-gray-400 mb-1">Total</label><input type="text" required value={formData.limit_total} onChange={(e) => setFormData(d => ({ ...d, limit_total: e.target.value }))} className="w-full px-4 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white focus:outline-none focus:border-sardis-500/50" /></div>
           </div>
-          <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-dark-100 text-gray-400 rounded-lg hover:bg-dark-200 transition-colors">Cancel</button>
+          <DialogFooter className="flex gap-4 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancel</Button>
             <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50">{isLoading ? 'Creating...' : 'Create Agent'}</button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
-function AgentDetailPanel({ agent, onClose }: { agent: AgentListItem; onClose: () => void }) {
+function AgentDetailPanel({ agent, open, onOpenChange }: { agent: AgentListItem | null; open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      {/* Slide-over panel */}
-      <div className="absolute top-0 right-0 h-full w-full max-w-md bg-dark-300 border-l border-dark-100 shadow-2xl overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-dark-100">
-          <h2 className="text-xl font-bold text-white font-display">Agent Details</h2>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-dark-200 rounded-lg transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Agent Details</SheetTitle>
+        </SheetHeader>
 
+        {agent && (
         <div className="p-6 space-y-6">
           {/* Name + ID */}
           <div>
@@ -219,7 +229,8 @@ function AgentDetailPanel({ agent, onClose }: { agent: AgentListItem; onClose: (
             <span className="ml-auto text-sm text-gray-300 font-mono">{agent.owner_id}</span>
           </div>
         </div>
-      </div>
-    </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }

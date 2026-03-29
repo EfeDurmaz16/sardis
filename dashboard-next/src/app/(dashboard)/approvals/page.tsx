@@ -12,6 +12,8 @@ import {
   Calendar,
   Filter,
 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import clsx from 'clsx'
 import { usePendingApprovals, useApprovals, useApproveApproval, useDenyApproval } from '@/hooks/useApi'
 import type { ApprovalRecord } from '@/api/client'
@@ -280,16 +282,17 @@ export default function ApprovalsPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-500" />
-              <select
-                value={filterRisk}
-                onChange={(e) => setFilterRisk(e.target.value as typeof filterRisk)}
-                className="px-3 py-1.5 bg-dark-400 border border-dark-100 text-white text-sm focus:outline-none focus:border-sardis-500/30"
-              >
-                <option value="all">All Risk Levels</option>
-                <option value="low">Low Risk</option>
-                <option value="medium">Medium Risk</option>
-                <option value="high">High Risk</option>
-              </select>
+              <Select value={filterRisk} onValueChange={(v) => setFilterRisk(v as typeof filterRisk)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Risk Levels" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Risk Levels</SelectItem>
+                  <SelectItem value="low">Low Risk</SelectItem>
+                  <SelectItem value="medium">Medium Risk</SelectItem>
+                  <SelectItem value="high">High Risk</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {selectedItems.size > 0 && (
               <div className="flex items-center gap-2">
@@ -350,8 +353,9 @@ export default function ApprovalsPage() {
               const amountNum = parseFloat(approvalAmount(item))
 
               return (
+                <ContextMenu key={item.id}>
+                  <ContextMenuTrigger className="block">
                 <div
-                  key={item.id}
                   className={clsx(
                     'border transition-all',
                     isSelected
@@ -451,6 +455,15 @@ export default function ApprovalsPage() {
                     </div>
                   )}
                 </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => navigator.clipboard.writeText(item.id)}>Copy Approval ID</ContextMenuItem>
+                    <ContextMenuItem onClick={() => toggleExpanded(item.id)}>View Details</ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => handleApprove(item.id)} disabled={isActioning}>Approve</ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleReject(item.id)} disabled={isActioning} className="text-red-400">Reject</ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               )
             })}
           </div>

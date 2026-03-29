@@ -28,6 +28,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Switch } from "@/components/ui/switch"
 import {
   checkoutControlsApi,
   type CheckoutControlConfig,
@@ -295,10 +296,8 @@ function ControlsConfigSection() {
             icon: Zap,
           },
         ].map(({ key, label, description, icon: Icon }) => (
-          <button
+          <div
             key={key}
-            type="button"
-            onClick={() => setConfig((c) => ({ ...c, [key]: !c[key] }))}
             className={clsx(
               'flex flex-col gap-2 p-4 border text-left transition-all duration-150',
               config[key]
@@ -313,30 +312,23 @@ function ControlsConfigSection() {
                   config[key] ? 'text-sardis-400' : 'text-gray-500'
                 )}
               />
-              <div
-                className={clsx(
-                  'w-8 h-4 relative transition-colors duration-150',
-                  config[key] ? 'bg-sardis-500' : 'bg-dark-100'
-                )}
-              >
-                <div
-                  className={clsx(
-                    'absolute top-0.5 w-3 h-3 bg-white transition-transform duration-150',
-                    config[key] ? 'translate-x-4' : 'translate-x-0.5'
-                  )}
-                />
-              </div>
+              <Switch
+                id={`toggle-${key}`}
+                checked={config[key]}
+                onCheckedChange={(checked) => setConfig((c) => ({ ...c, [key]: checked }))}
+              />
             </div>
-            <span
+            <label
+              htmlFor={`toggle-${key}`}
               className={clsx(
-                'text-sm font-medium',
+                'text-sm font-medium cursor-pointer',
                 config[key] ? 'text-white' : 'text-gray-400'
               )}
             >
               {label}
-            </span>
+            </label>
             <span className="text-xs text-gray-500 leading-snug">{description}</span>
-          </button>
+          </div>
         ))}
       </div>
 

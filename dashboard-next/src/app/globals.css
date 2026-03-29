@@ -67,218 +67,315 @@
   --landing-marquee-text: #3A3A4A;
 }
 
-/* ── Monokrom Dashboard Theme ─────────────────────── */
-/* Used by dashboard pages — near-black bg, subtle borders, green accent only */
+/* ── Dashboard Theme — Light, minimal, Vercel-inspired ── */
 
 .dashboard-mono {
-  --mono-bg: #0a0a0f;
-  --mono-surface: #141419;
-  --mono-surface-elevated: #1c1c24;
-  --mono-border: #1f1f28;
-  --mono-border-hover: #2a2a36;
-  --mono-text: #e4e4e7;
-  --mono-text-muted: #71717a;
-  --mono-text-ghost: #52525b;
-  --mono-accent: #ff4f00;
+  --mono-bg: #fafafa;
+  --mono-surface: #ffffff;
+  --mono-surface-elevated: #f7f7f7;
+  --mono-border: #eaeaea;
+  --mono-border-hover: #d0d0d0;
+  --mono-text: #111111;
+  --mono-text-muted: #888888;
+  --mono-text-ghost: #bbbbbb;
+  --mono-accent: #111111;
 }
 
-/* ── Base styles (premium monokrom) ────────────────── */
-/* Inspired by Linear, Vercel Geist, Stripe, Mercury */
+/* ── Base styles — Light theme ────────────────────── */
 
 body {
-  background-color: #09090b;
-  color: #ececee;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-/* ── Card (depth through border, not shadow) ──────── */
+/* ── Card (1px border, no shadow — flat design) ───── */
 
 .card {
-  background-color: #131316;
-  border: 1px solid #1f1f28;
-  border-radius: 8px;
+  background-color: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 7px;
   transition: border-color 150ms;
 }
-.card:hover { border-color: #2a2a36; }
+.card:hover { border-color: #d0d0d0; }
 
 /* ── Buttons ──────────────────────────────────────── */
 
 .btn-primary {
-  background-color: #ff4f00;
+  background-color: #111111;
   color: #ffffff;
-  font-weight: 600;
-  font-size: 14px;
-  padding: 8px 16px;
-  border-radius: 6px;
-  transition: background-color 150ms;
+  font-weight: 500;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  transition: opacity 150ms;
 }
-.btn-primary:hover { background-color: #ff6a2a; }
-.btn-primary:active { background-color: #dd3e00; }
+.btn-primary:hover { opacity: 0.88; }
+.btn-primary:active { opacity: 0.8; }
 
 .btn-ghost {
   background: transparent;
-  color: #a0a0aa;
-  border: 1px solid #1f1f28;
-  font-size: 14px;
-  padding: 8px 16px;
-  border-radius: 6px;
+  color: #666666;
+  border: 1px solid #eaeaea;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: 7px;
   transition: all 150ms;
 }
 .btn-ghost:hover {
-  color: #ececee;
-  border-color: #2a2a36;
-  background-color: rgba(255, 255, 255, 0.03);
+  color: #111111;
+  border-color: #d0d0d0;
+  background-color: #f7f7f7;
 }
 
-/* ── Badges (10% opacity bg, 20% border — Linear pattern) */
+/* ── Badges — status-colored with subtle tints ────── */
 
 .badge-active {
   display: inline-flex; align-items: center;
-  background: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
+  background: rgba(34, 197, 94, 0.08);
+  color: #16a34a;
   border: 1px solid rgba(34, 197, 94, 0.2);
-  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500;
 }
 .badge-inactive {
   display: inline-flex; align-items: center;
-  background: rgba(113, 113, 122, 0.1);
-  color: #71717a;
-  border: 1px solid rgba(113, 113, 122, 0.2);
-  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  background: #f7f7f7;
+  color: #888888;
+  border: 1px solid #eaeaea;
+  font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500;
 }
 .badge-warning {
   display: inline-flex; align-items: center;
-  background: rgba(234, 179, 8, 0.1);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.2);
-  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500;
 }
 .badge-error {
   display: inline-flex; align-items: center;
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.2);
-  font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  font-size: 11px; padding: 2px 8px; border-radius: 100px; font-weight: 500;
 }
 
-/* ── Inputs (green focus ring) ────────────────────── */
+/* ── Inputs — light theme ─────────────────────────── */
 
 input[type="text"], input[type="email"], input[type="password"], textarea, select {
-  background-color: #09090b;
-  border: 1px solid #1f1f28;
-  color: #ececee;
-  border-radius: 6px;
+  background-color: #f7f7f7;
+  border: 1px solid #eaeaea;
+  color: #111111;
+  border-radius: 7px;
   transition: border-color 150ms;
 }
-input::placeholder, textarea::placeholder { color: #52525b; }
+input::placeholder, textarea::placeholder { color: #888888; }
 input:focus, textarea:focus, select:focus {
-  border-color: #ff4f00;
+  border-color: #111111;
   outline: none;
-  box-shadow: 0 0 0 1px rgba(255, 79, 0, 0.2);
+  box-shadow: none;
 }
 
-/* ── Tables (subtle, tight) ───────────────────────── */
+/* ── Tables — clean, light ────────────────────────── */
 
 table { border-collapse: collapse; width: 100%; }
 th {
-  color: #52525b;
+  color: #888888;
   font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-align: left;
 }
-td { color: #ececee; font-size: 14px; }
-tr + tr { border-top: 1px solid #1f1f28; }
-tr:hover { background-color: rgba(255, 255, 255, 0.02); }
+td { color: #111111; font-size: 13px; }
+tr + tr { border-top: 1px solid #eaeaea; }
+tr:hover { background-color: #f7f7f7; }
 
 /* ── Scrollbar ────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1f1f28; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2a2a36; }
+::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #bbbbbb; }
 
-/* ── Subtle hover glow ────────────────────────────── */
-
-.glow-green-hover:hover {
-  box-shadow: 0 0 8px rgba(255, 79, 0, 0.12);
-}
-
-/* ── Section labels (uppercase, tracked) ──────────── */
+/* ── Section labels ───────────────────────────────── */
 
 .section-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
-  color: #52525b;
+  color: #888888;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
-/* ── Monospace data (hashes, IDs, amounts) ─────────── */
+/* ── Monospace data ───────────────────────────────── */
 
 .mono-data {
   font-family: var(--font-geist-mono), monospace;
   font-size: 12px;
-  color: #71717a;
+  color: #888888;
   font-variant-numeric: tabular-nums;
 }
 
-/* ── driver.js product tour (dark theme) ──────────── */
+/* ── Status dots — small colored indicators ────────── */
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+}
+.status-dot.success { background: #22c55e; }
+.status-dot.error { background: #ef4444; }
+.status-dot.pending {
+  background: #f59e0b;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ── Dashboard text color overrides ───────────────── */
+/* Remap dark-theme text utilities to light-theme values */
+/* Scoped to .light-dash to avoid breaking landing pages */
+
+.light-dash .text-white { color: #111111; }
+.light-dash .text-gray-300 { color: #333333; }
+.light-dash .text-gray-400 { color: #666666; }
+.light-dash .text-gray-500 { color: #888888; }
+.light-dash .hover\:text-white:hover { color: #111111; }
+.light-dash .hover\:text-gray-300:hover { color: #333333; }
+.light-dash .hover\:text-gray-400:hover { color: #555555; }
+.light-dash .bg-black\/60 { background: rgba(0,0,0,0.15); }
+
+/* ── driver.js product tour (light theme) ──────────── */
 
 .sardis-tour {
-  background: rgb(21 29 41) !important;
-  color: #e0e0e0 !important;
-  border: 1px solid rgb(30 41 59) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5) !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid #eaeaea !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
 }
 
 .sardis-tour .driver-popover-title {
-  color: #fff !important;
+  color: #111111 !important;
   font-family: var(--font-geist-sans), system-ui, sans-serif !important;
   font-weight: 600 !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
 }
 
 .sardis-tour .driver-popover-description {
-  color: #a0a0aa !important;
+  color: #666666 !important;
   font-family: var(--font-geist-sans), system-ui, sans-serif !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
   line-height: 1.5 !important;
 }
 
 .sardis-tour .driver-popover-progress-text {
-  color: #606070 !important;
+  color: #888888 !important;
 }
 
 .sardis-tour .driver-popover-next-btn {
-  background: rgb(255 79 0) !important;
-  color: rgb(255 255 255) !important;
+  background: #111111 !important;
+  color: #ffffff !important;
   border: none !important;
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  padding: 8px 16px !important;
+  border-radius: 7px !important;
+  font-weight: 500 !important;
+  padding: 7px 14px !important;
 }
 
 .sardis-tour .driver-popover-next-btn:hover {
-  background: rgb(255 106 42) !important;
+  opacity: 0.88 !important;
 }
 
 .sardis-tour .driver-popover-prev-btn {
   background: transparent !important;
-  color: #a0a0aa !important;
-  border: 1px solid rgb(30 41 59) !important;
-  border-radius: 8px !important;
-  padding: 8px 16px !important;
+  color: #666666 !important;
+  border: 1px solid #eaeaea !important;
+  border-radius: 7px !important;
+  padding: 7px 14px !important;
 }
 
 .sardis-tour .driver-popover-close-btn {
-  color: #606070 !important;
+  color: #888888 !important;
 }
 
 .driver-overlay {
-  background: rgba(0, 0, 0, 0.7) !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+}
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+  }
+  :root {
+    --background: #fafafa;
+    --foreground: #111111;
+    --card: #ffffff;
+    --card-foreground: #111111;
+    --popover: #ffffff;
+    --popover-foreground: #111111;
+    --primary: #111111;
+    --primary-foreground: #ffffff;
+    --secondary: #f7f7f7;
+    --secondary-foreground: #111111;
+    --muted: #f7f7f7;
+    --muted-foreground: #666666;
+    --accent: #f7f7f7;
+    --accent-foreground: #111111;
+    --destructive: #ef4444;
+    --border: #eaeaea;
+    --input: #eaeaea;
+    --ring: #d0d0d0;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #111111;
+    --sidebar-primary: #111111;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f2f2f2;
+    --sidebar-accent-foreground: #111111;
+    --sidebar-border: #eaeaea;
+    --sidebar-ring: #d0d0d0;
+  }
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }

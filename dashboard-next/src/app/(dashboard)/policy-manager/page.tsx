@@ -6,6 +6,7 @@ import clsx from 'clsx'
 import { usePathname } from 'next/navigation'
 import { useAgents, usePolicy, usePolicyHistory, useParsePolicy, useApplyPolicy, usePolicyTestDraft, useWallets } from '@/hooks/useApi'
 import { policiesApi, type ActivePolicyRecord, type PolicyHistoryCommit } from '@/api/client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type TabId = 'author' | 'test' | 'deploy' | 'history'
 
@@ -57,7 +58,7 @@ export default function PolicyManagerPage() {
   const [parsedPolicy, setParsedPolicy] = useState<ParsedPolicy | null>(null)
   const parse = useParsePolicy()
 
-  const switchTab = useCallback((id: TabId) => { setActiveTab(id); window.location.hash = id }, [])
+  const switchTab = useCallback((value: TabId) => { setActiveTab(value); window.location.hash = value }, [])
 
   async function handleParse() { if (!draftText.trim()) return; try { const result = await parse.mutateAsync(draftText); setParsedPolicy(result as ParsedPolicy) } catch {} }
 
@@ -68,9 +69,17 @@ export default function PolicyManagerPage() {
         <div className={clsx('flex items-center gap-1.5 px-3 py-1.5 border text-xs font-medium', draftText.trim() ? 'bg-sardis-500/10 border-sardis-500/30 text-sardis-400' : 'bg-dark-200 border-dark-100 text-gray-500')}><FileText className="w-3.5 h-3.5" />{draftText.trim() ? `Draft: ${draftText.trim().slice(0, 60)}${draftText.length > 60 ? '\u2026' : ''}` : 'No draft'}</div>
         {parsedPolicy && <Badge variant="success"><CheckCircle2 className="w-3 h-3" />Parsed</Badge>}
       </div>
-      <div className="border-b border-dark-100"><nav className="-mb-px flex gap-1">{TABS.map((tab) => (<button key={tab.id} onClick={() => switchTab(tab.id)} className={clsx('flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap', activeTab === tab.id ? 'border-sardis-500 text-sardis-400' : 'border-transparent text-gray-400 hover:text-white hover:border-dark-100')}>{tab.icon}{tab.label}</button>))}</nav></div>
-      <div>
-        {activeTab === 'author' && (
+      <Tabs value={activeTab} onValueChange={(v) => switchTab(v as TabId)}>
+        <TabsList variant="line">
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              {tab.icon}
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value="author">
           <div className="space-y-6">
             <div className="flex items-start gap-2 text-sm text-gray-400 bg-dark-200 border border-dark-100 p-3"><Info className="w-4 h-4 text-sardis-400 flex-shrink-0 mt-0.5" />Write a spending policy in plain English. Sardis will parse it into structured rules that govern agent payments.</div>
             <div className="grid grid-cols-2 gap-6">
@@ -86,11 +95,11 @@ export default function PolicyManagerPage() {
               </div>
             </div>
           </div>
-        )}
-        {activeTab === 'test' && <div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><FlaskConical className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Write a draft policy in the Author tab, then test scenarios here.</p></div>}
-        {activeTab === 'deploy' && <div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><Send className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Parse a draft policy, then deploy it to an agent.</p></div>}
-        {activeTab === 'history' && <div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><Clock className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Select an agent to view real policy history.</p></div>}
-      </div>
+        </TabsContent>
+        <TabsContent value="test"><div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><FlaskConical className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Write a draft policy in the Author tab, then test scenarios here.</p></div></TabsContent>
+        <TabsContent value="deploy"><div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><Send className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Parse a draft policy, then deploy it to an agent.</p></div></TabsContent>
+        <TabsContent value="history"><div className="bg-dark-200 border border-dark-100 p-8 text-center text-gray-500"><Clock className="w-8 h-8 mx-auto mb-2 opacity-40" /><p className="text-sm">Select an agent to view real policy history.</p></div></TabsContent>
+      </Tabs>
     </div>
   )
 }

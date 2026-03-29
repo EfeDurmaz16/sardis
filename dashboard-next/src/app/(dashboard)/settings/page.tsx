@@ -34,6 +34,7 @@ import {
 import clsx from 'clsx'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-client'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || '').trim()
 
@@ -1436,9 +1437,9 @@ export default function SettingsPage() {
   const { token } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>(getInitialTab)
 
-  function switchTab(id: TabId) {
-    setActiveTab(id)
-    window.location.hash = id
+  function switchTab(value: TabId) {
+    setActiveTab(value)
+    window.location.hash = value
   }
 
   return (
@@ -1449,35 +1450,22 @@ export default function SettingsPage() {
         <p className="text-gray-400 mt-1">Configure your Sardis account and integrations</p>
       </div>
 
-      {/* Tab bar */}
-      <div className="border-b border-dark-100">
-        <nav className="-mb-px flex gap-1 overflow-x-auto">
+      <Tabs value={activeTab} onValueChange={(v) => switchTab(v as TabId)}>
+        <TabsList variant="line" className="overflow-x-auto">
           {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => switchTab(tab.id)}
-              className={clsx(
-                'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                activeTab === tab.id
-                  ? 'border-sardis-500 text-sardis-400'
-                  : 'border-transparent text-gray-400 hover:text-white hover:border-dark-100'
-              )}
-            >
+            <TabsTrigger key={tab.id} value={tab.id}>
               {tab.icon}
               {tab.label}
-            </button>
+            </TabsTrigger>
           ))}
-        </nav>
-      </div>
+        </TabsList>
 
-      {/* Tab content */}
-      <div>
-        {activeTab === 'profile' && <ProfileTab token={token} />}
-        {activeTab === 'organization' && <OrganizationTab token={token} />}
-        {activeTab === 'api-keys' && <ApiKeysTab token={token} />}
-        {activeTab === 'billing' && <BillingTab token={token} />}
-        {activeTab === 'notifications' && <NotificationsTab token={token} />}
-      </div>
+        <TabsContent value="profile"><ProfileTab token={token} /></TabsContent>
+        <TabsContent value="organization"><OrganizationTab token={token} /></TabsContent>
+        <TabsContent value="api-keys"><ApiKeysTab token={token} /></TabsContent>
+        <TabsContent value="billing"><BillingTab token={token} /></TabsContent>
+        <TabsContent value="notifications"><NotificationsTab token={token} /></TabsContent>
+      </Tabs>
     </div>
   )
 }

@@ -20,6 +20,7 @@ import {
   Search,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   useAgents,
   usePolicy,
@@ -456,31 +457,29 @@ export default function PoliciesPage() {
             {/* Agent selector */}
             <div className="mb-5">
               <SectionLabel>Agent</SectionLabel>
-              <div className="relative">
-                <select
-                  value={selectedAgentId}
-                  onChange={(e) => {
-                    setSelectedAgentId(e.target.value)
-                    setParsedResult(null)
-                    setPreviewResult(null)
-                    setApplySuccess(false)
-                    setConfirmApply(false)
-                    setCheckResult(null)
-                  }}
-                  className="w-full appearance-none px-4 py-2.5 bg-dark-300 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50 pr-10"
-                >
-                  <option value="" disabled>
-                    {agentsLoading ? 'Loading agents…' : 'Select an agent'}
-                  </option>
+              <Select
+                value={selectedAgentId}
+                onValueChange={(v) => {
+                  setSelectedAgentId(v)
+                  setParsedResult(null)
+                  setPreviewResult(null)
+                  setApplySuccess(false)
+                  setConfirmApply(false)
+                  setCheckResult(null)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={agentsLoading ? 'Loading agents…' : 'Select an agent'} />
+                </SelectTrigger>
+                <SelectContent>
                   {agents.map((agent) => (
-                    <option key={agentId(agent)} value={agentId(agent)}>
+                    <SelectItem key={agentId(agent)} value={agentId(agent)}>
                       {agent.name}
                       {!agent.is_active ? ' (inactive)' : ''}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              </div>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Current policy summary */}

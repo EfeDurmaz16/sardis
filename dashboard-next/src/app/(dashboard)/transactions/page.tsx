@@ -5,6 +5,7 @@ import { Search, ArrowUpRight, ArrowDownLeft, ExternalLink, Loader2, Copy, Check
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { ledgerApi } from '@/api/client'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 
 const CHAIN_EXPLORERS: Record<string, string> = { base: 'https://basescan.org', base_sepolia: 'https://sepolia.basescan.org', polygon: 'https://polygonscan.com', arbitrum: 'https://arbiscan.io', optimism: 'https://optimistic.etherscan.io', ethereum: 'https://etherscan.io' }
 function getExplorerTxUrl(chain: string | undefined, txHash: string | undefined): string | null { if (!chain || !txHash) return null; const base = CHAIN_EXPLORERS[chain]; return base ? `${base}/tx/${txHash}` : null }
@@ -44,8 +45,10 @@ export default function TransactionsPage() {
         <table className="w-full">
           <thead className="bg-dark-300"><tr><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-8" /><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Transaction</th><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Chain</th><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Amount</th><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Purpose</th><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th><th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Time</th><th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Explorer</th></tr></thead>
           <tbody className="divide-y divide-dark-100">
-            {filteredTransactions.map((tx) => { const txHash = tx.chain_tx_hash || tx.tx_hash; const explorerUrl = getExplorerTxUrl(tx.chain, txHash); const isExpanded = expandedTxId === tx.tx_id; return (
-              <> <tr key={tx.tx_id} className={clsx('hover:bg-dark-200/50 transition-colors cursor-pointer', isExpanded && 'bg-dark-200/30')} onClick={() => toggleExpand(tx.tx_id)}>
+            {filteredTransactions.map((tx) => { const txHash = tx.chain_tx_hash || tx.tx_hash; const explorerUrl = getExplorerTxUrl(tx.chain, txHash); const isExpanded = expandedTxId === tx.tx_id; return (<>
+              <ContextMenu key={tx.tx_id}>
+              <ContextMenuTrigger asChild>
+              <tr className={clsx('hover:bg-dark-200/50 transition-colors cursor-pointer', isExpanded && 'bg-dark-200/30')} onClick={() => toggleExpand(tx.tx_id)}>
                 <td className="px-4 py-4">{isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}</td>
                 <td className="px-4 py-4"><div className="flex items-center gap-3"><div className={clsx('w-8 h-8 rounded-full flex items-center justify-center', tx.from_wallet.includes('agent') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500')}>{tx.from_wallet.includes('agent') ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}</div><div><div className="flex items-center gap-1"><p className="text-sm font-mono text-white">{tx.tx_id}</p><CopyButton text={tx.tx_id} size={12} /></div>{txHash && <div className="flex items-center gap-1"><p className="text-xs font-mono text-gray-500">{truncateHash(txHash)}</p><CopyButton text={txHash} size={10} /></div>}</div></div></td>
                 <td className="px-4 py-4"><ChainBadge chain={tx.chain} /></td>
@@ -55,13 +58,21 @@ export default function TransactionsPage() {
                 <td className="px-4 py-4"><p className="text-sm text-gray-400">{format(new Date(tx.created_at), 'MMM d, HH:mm')}</p></td>
                 <td className="px-4 py-4 text-right" onClick={e => e.stopPropagation()}>{explorerUrl ? <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="p-2 text-sardis-400 hover:text-white transition-colors inline-flex" title="View on explorer"><ExternalLink className="w-4 h-4" /></a> : <span className="p-2 text-gray-600 inline-flex" title="No on-chain data"><ExternalLink className="w-4 h-4" /></span>}</td>
               </tr>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => navigator.clipboard.writeText(tx.tx_id)}>Copy TX ID</ContextMenuItem>
+                {txHash && <ContextMenuItem onClick={() => navigator.clipboard.writeText(txHash)}>Copy Chain TX Hash</ContextMenuItem>}
+                {explorerUrl && <ContextMenuItem onClick={() => window.open(explorerUrl, '_blank')}>View on Explorer</ContextMenuItem>}
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => toggleExpand(tx.tx_id)}>{isExpanded ? 'Collapse Details' : 'Expand Details'}</ContextMenuItem>
+              </ContextMenuContent>
+              </ContextMenu>
               {isExpanded && <tr key={`${tx.tx_id}-detail`}><td colSpan={8} className="px-6 py-4 bg-dark-300/50"><div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div><h4 className="text-xs font-medium text-gray-400 uppercase mb-2">Transaction Details</h4><div className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-gray-500">TX ID</span><div className="flex items-center gap-1"><span className="font-mono text-white">{tx.tx_id}</span><CopyButton text={tx.tx_id} size={12} /></div></div><div className="flex justify-between"><span className="text-gray-500">From</span><span className="font-mono text-gray-300 text-xs">{tx.from_wallet}</span></div><div className="flex justify-between"><span className="text-gray-500">To</span><span className="font-mono text-gray-300 text-xs">{tx.to_wallet || '-'}</span></div><div className="flex justify-between"><span className="text-gray-500">Amount</span><span className="text-white">${tx.amount} {tx.currency}</span></div>{tx.fee && tx.fee !== '0' && <div className="flex justify-between"><span className="text-gray-500">Fee</span><span className="text-gray-300">${tx.fee}</span></div>}</div></div>
                 <div><h4 className="text-xs font-medium text-gray-400 uppercase mb-2">Chain Details</h4><div className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-gray-500">Chain</span><ChainBadge chain={tx.chain} /></div>{txHash && <div className="flex justify-between"><span className="text-gray-500">TX Hash</span><div className="flex items-center gap-1"><span className="font-mono text-xs text-gray-300">{truncateHash(txHash, 8)}</span><CopyButton text={txHash} size={12} /></div></div>}{tx.block_number && <div className="flex justify-between"><span className="text-gray-500">Block</span><span className="font-mono text-gray-300">#{tx.block_number}</span></div>}{tx.gas_used && <div className="flex justify-between"><span className="text-gray-500">Gas Used</span><span className="font-mono text-gray-300">{tx.gas_used}</span></div>}{explorerUrl && <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="text-sardis-400 hover:text-sardis-300 text-xs flex items-center gap-1">View on block explorer <ExternalLink size={12} /></a>}</div></div>
                 <div><h4 className="text-xs font-medium text-gray-400 uppercase mb-2">Lifecycle</h4><div className="space-y-3">{[{ label: 'Created', done: true }, { label: 'Policy Check', done: tx.status !== 'failed' || true }, { label: 'Submitted', done: tx.status === 'completed' || tx.status === 'pending' }, { label: 'Confirmed', done: tx.status === 'completed' }].map((step, i) => (<div key={step.label} className="flex items-center gap-2"><div className={clsx('w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold', step.done ? 'bg-green-500/20 text-green-500' : 'bg-dark-100 text-gray-600')}>{step.done ? '\u2713' : i + 1}</div><span className={clsx('text-sm', step.done ? 'text-gray-300' : 'text-gray-600')}>{step.label}</span></div>))}</div></div>
               </div></td></tr>}
-              </>
-            ) })}
+            </>) })}
           </tbody>
         </table>
         {filteredTransactions.length === 0 && <div className="p-12 text-center"><p className="text-gray-400">No transactions found</p></div>}

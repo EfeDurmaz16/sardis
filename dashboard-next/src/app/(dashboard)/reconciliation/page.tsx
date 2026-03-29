@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, Download, RefreshCw, ShieldAlert } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 
 import { treasuryOpsApi } from '@/api/client'
 
@@ -148,33 +150,33 @@ export default function ReconciliationPage() {
         <div className="flex flex-wrap gap-3 items-end">
           <label className="text-sm text-gray-400">
             Journey state
-            <select
-              value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value)}
-              className="ml-2 px-2 py-1 bg-dark-300 border border-dark-100 rounded text-sm text-white"
-            >
-              <option value="">all</option>
-              <option value="created">created</option>
-              <option value="authorized">authorized</option>
-              <option value="processing">processing</option>
-              <option value="settled">settled</option>
-              <option value="returned">returned</option>
-              <option value="failed">failed</option>
-            </select>
+            <Select value={stateFilter} onValueChange={(v) => setStateFilter(v)}>
+              <SelectTrigger className="ml-2 inline-flex w-auto">
+                <SelectValue placeholder="all" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created">created</SelectItem>
+                <SelectItem value="authorized">authorized</SelectItem>
+                <SelectItem value="processing">processing</SelectItem>
+                <SelectItem value="settled">settled</SelectItem>
+                <SelectItem value="returned">returned</SelectItem>
+                <SelectItem value="failed">failed</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
           <label className="text-sm text-gray-400">
             Break status
-            <select
-              value={breakFilter}
-              onChange={(e) => setBreakFilter(e.target.value)}
-              className="ml-2 px-2 py-1 bg-dark-300 border border-dark-100 rounded text-sm text-white"
-            >
-              <option value="">all</option>
-              <option value="ok">ok</option>
-              <option value="drift_open">drift_open</option>
-              <option value="review_open">review_open</option>
-              <option value="resolved">resolved</option>
-            </select>
+            <Select value={breakFilter} onValueChange={(v) => setBreakFilter(v)}>
+              <SelectTrigger className="ml-2 inline-flex w-auto">
+                <SelectValue placeholder="all" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ok">ok</SelectItem>
+                <SelectItem value="drift_open">drift_open</SelectItem>
+                <SelectItem value="review_open">review_open</SelectItem>
+                <SelectItem value="resolved">resolved</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
           <label className="text-sm text-gray-400">
             Export journey id
@@ -191,16 +193,17 @@ export default function ReconciliationPage() {
       <div className="card p-4">
         <h2 className="text-lg font-semibold text-white mb-3">Manual Review Queue</h2>
         <div className="mb-3">
-          <select
-            value={reviewFilter}
-            onChange={(e) => setReviewFilter(e.target.value)}
-            className="px-2 py-1 bg-dark-300 border border-dark-100 rounded text-sm text-white"
-          >
-            <option value="queued">queued</option>
-            <option value="in_review">in_review</option>
-            <option value="resolved">resolved</option>
-            <option value="dismissed">dismissed</option>
-          </select>
+          <Select value={reviewFilter} onValueChange={(v) => setReviewFilter(v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="queued">queued</SelectItem>
+              <SelectItem value="in_review">in_review</SelectItem>
+              <SelectItem value="resolved">resolved</SelectItem>
+              <SelectItem value="dismissed">dismissed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           {manualReviews.length === 0 ? (
@@ -253,11 +256,30 @@ export default function ReconciliationPage() {
               <p className="text-sm text-gray-400">No open drift breaks.</p>
             ) : (
               driftItems.map((item) => (
-                <div key={asText(item.break_id)} className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
+                <ContextMenu key={asText(item.break_id)}>
+                <ContextMenuTrigger asChild>
+                <div className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
                   <p className="text-sm text-white">{asText(item.break_type)} · {asText(item.severity)}</p>
                   <p className="text-xs text-gray-400">journey: {asText(item.journey_id)}</p>
                   <p className="text-xs text-gray-400">delta_minor: {asText(item.delta_minor)}</p>
                 </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(asText(item.journey_id))}>
+                    Copy Journey ID
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setJourneyIdForExport(asText(item.journey_id))}>
+                    View Details (expand)
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['ops-journeys'] })
+                    queryClient.invalidateQueries({ queryKey: ['ops-drift'] })
+                  }}>
+                    Force Reconcile
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               ))
             )}
           </div>
@@ -273,13 +295,32 @@ export default function ReconciliationPage() {
               <p className="text-sm text-gray-400">No return-code journeys.</p>
             ) : (
               returnItems.map((item) => (
-                <div key={asText(item.journey_id)} className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
+                <ContextMenu key={asText(item.journey_id)}>
+                <ContextMenuTrigger asChild>
+                <div className="p-3 bg-dark-200 border border-dark-100 rounded-lg">
                   <p className="text-sm text-white">
                     {asText(item.last_return_code)} · {asText(item.canonical_state)}
                   </p>
                   <p className="text-xs text-gray-400">journey: {asText(item.journey_id)}</p>
                   <p className="text-xs text-gray-400">reference: {asText(item.external_reference)}</p>
                 </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(asText(item.journey_id))}>
+                    Copy Journey ID
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setJourneyIdForExport(asText(item.journey_id))}>
+                    View Details (expand)
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => {
+                    queryClient.invalidateQueries({ queryKey: ['ops-journeys'] })
+                    queryClient.invalidateQueries({ queryKey: ['ops-returns'] })
+                  }}>
+                    Force Reconcile
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               ))
             )}
           </div>

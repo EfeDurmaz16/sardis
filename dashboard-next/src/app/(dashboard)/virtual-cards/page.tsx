@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react'
 import { CreditCard, Plus, Eye, EyeOff, Copy, Check, Loader2, DollarSign, Send, AlertCircle } from 'lucide-react'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import clsx from 'clsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { virtualCardsApi } from '@/api/client'
@@ -253,8 +254,9 @@ export default function VirtualCardsPage() {
             {issuedCards.map((card) => {
               const revealed = revealedCards.has(card.card_id)
               return (
+                <ContextMenu key={card.card_id}>
+                  <ContextMenuTrigger className="block">
                 <div
-                  key={card.card_id}
                   className="rounded-xl border border-neutral-800 bg-neutral-900 p-6"
                 >
                   <div className="flex items-start justify-between">
@@ -408,6 +410,14 @@ export default function VirtualCardsPage() {
                     </div>
                   )}
                 </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => navigator.clipboard.writeText(card.card_id)}>Copy Card ID</ContextMenuItem>
+                    <ContextMenuItem onClick={() => toggleReveal(card.card_id)}>Reveal Card Details</ContextMenuItem>
+                    <ContextMenuSeparator />
+                    <ContextMenuItem onClick={() => setShowPayment(showPayment === card.card_id ? null : card.card_id)}>Make Payment</ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               )
             })}
           </div>

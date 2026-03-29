@@ -28,6 +28,8 @@ import {
   ArrowUp,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { toast } from "sonner"
 import {
   approvalConfigApi,
   type ApproverGroup,
@@ -79,39 +81,7 @@ function SectionHeader({
   )
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
-
-function Toast({
-  message,
-  type,
-  onDismiss,
-}: {
-  message: string
-  type: 'success' | 'error'
-  onDismiss: () => void
-}) {
-  useEffect(() => {
-    const t = setTimeout(onDismiss, 3500)
-    return () => clearTimeout(t)
-  }, [onDismiss])
-
-  return (
-    <div
-      className={clsx(
-        'fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 border text-sm font-medium shadow-lg',
-        type === 'success'
-          ? 'bg-sardis-500/10 border-sardis-500/40 text-sardis-300'
-          : 'bg-red-500/10 border-red-500/40 text-red-300'
-      )}
-    >
-      {type === 'success' ? <Check className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
-      {message}
-      <button onClick={onDismiss} className="ml-2 opacity-60 hover:opacity-100">
-        <X className="w-3.5 h-3.5" />
-      </button>
-    </div>
-  )
-}
+// Toast: using sonner (see import above)
 
 // ── Approver Groups section ───────────────────────────────────────────────────
 
@@ -411,15 +381,16 @@ function RuleEditor({ initial, groups, onSave, onCancel }: RuleEditorProps) {
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Approver Group</label>
-          <select
-            value={approverGroup}
-            onChange={(e) => setApproverGroup(e.target.value)}
-            className="w-full bg-dark-300 border border-dark-100 text-white text-sm px-3 py-2 focus:outline-none focus:border-sardis-500/50"
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+          <Select value={approverGroup} onValueChange={(v) => setApproverGroup(v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">Quorum</label>
@@ -461,16 +432,16 @@ function RuleEditor({ initial, groups, onSave, onCancel }: RuleEditorProps) {
           <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">
             Escalation Group (optional)
           </label>
-          <select
-            value={escalationGroup}
-            onChange={(e) => setEscalationGroup(e.target.value)}
-            className="w-full bg-dark-300 border border-dark-100 text-white text-sm px-3 py-2 focus:outline-none focus:border-sardis-500/50"
-          >
-            <option value="">None</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+          <Select value={escalationGroup} onValueChange={(v) => setEscalationGroup(v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -544,15 +515,16 @@ function DefaultsForm({ defaults, groups, saving, onSave }: DefaultsFormProps) {
           <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">
             Default Approver Group
           </label>
-          <select
-            value={defaultGroup}
-            onChange={(e) => setDefaultGroup(e.target.value)}
-            className="w-full bg-dark-300 border border-dark-100 text-white text-sm px-3 py-2 focus:outline-none focus:border-sardis-500/50"
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
+          <Select value={defaultGroup} onValueChange={(v) => setDefaultGroup(v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wide">
@@ -631,11 +603,9 @@ export default function ApprovalConfigPage() {
   const [savingRules, setSavingRules] = useState(false)
   const [savingDefaults, setSavingDefaults] = useState(false)
 
-  // toast
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type })
+    if (type === 'success') toast.success(message)
+    else toast.error(message)
   }, [])
 
   // load
@@ -934,14 +904,7 @@ export default function ApprovalConfigPage() {
         </div>
       </section>
 
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onDismiss={() => setToast(null)}
-        />
-      )}
+      {/* Toast notifications handled by sonner Toaster */}
     </div>
   )
 }

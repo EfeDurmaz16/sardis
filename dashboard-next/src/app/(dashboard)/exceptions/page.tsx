@@ -18,6 +18,10 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import {
   useExceptions,
   useResolveException,
@@ -245,16 +249,13 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
   const labelCls = 'block text-xs text-gray-400 mb-1'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-dark-300 border border-dark-100 w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
             {initial ? 'Edit Retry Policy' : 'New Retry Policy'}
-          </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
-            <XCircle className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-3">
           <div>
@@ -270,28 +271,30 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Exception Type</label>
-              <select
-                className={inputCls}
-                value={form.exception_type}
-                onChange={e => set('exception_type', e.target.value)}
-              >
-                {EXCEPTION_TYPES.map(t => (
-                  <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
+              <Select value={form.exception_type} onValueChange={(v) => set('exception_type', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXCEPTION_TYPES.map(t => (
+                    <SelectItem key={t} value={t}>{t.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <label className={labelCls}>Fallback Action</label>
-              <select
-                className={inputCls}
-                value={form.fallback_action}
-                onChange={e => set('fallback_action', e.target.value)}
-              >
-                {FALLBACK_ACTIONS.map(a => (
-                  <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
+              <Select value={form.fallback_action} onValueChange={(v) => set('fallback_action', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FALLBACK_ACTIONS.map(a => (
+                    <SelectItem key={a} value={a}>{a.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -363,14 +366,12 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
               />
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="accent-sardis-500"
+              <Checkbox
                 checked={form.safeguards.require_approval_on_fallback}
-                onChange={e =>
+                onCheckedChange={(c) =>
                   set('safeguards', {
                     ...form.safeguards,
-                    require_approval_on_fallback: e.target.checked,
+                    require_approval_on_fallback: c === true,
                   })
                 }
               />
@@ -380,20 +381,16 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
 
           <div className="flex gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="accent-sardis-500"
+              <Checkbox
                 checked={form.enabled}
-                onChange={e => set('enabled', e.target.checked)}
+                onCheckedChange={(c) => set('enabled', c === true)}
               />
               <span className="text-sm text-gray-300">Enabled</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                className="accent-sardis-500"
+              <Checkbox
                 checked={form.audit_trail}
-                onChange={e => set('audit_trail', e.target.checked)}
+                onCheckedChange={(c) => set('audit_trail', c === true)}
               />
               <span className="text-sm text-gray-300">Audit trail</span>
             </label>
@@ -419,8 +416,8 @@ function PolicyModal({ initial, onClose, onSave, saving }: PolicyModalProps) {
             Cancel
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -783,36 +780,38 @@ export default function ExceptionsPage() {
         {/* Status filter */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-500 shrink-0" />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-            className="px-3 py-2.5 bg-dark-300 border border-dark-100 text-white text-sm focus:outline-none focus:border-sardis-500/30"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="ESCALATED">Escalated</option>
-            <option value="ABANDONED">Abandoned</option>
-          </select>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="OPEN">Open</SelectItem>
+              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+              <SelectItem value="RESOLVED">Resolved</SelectItem>
+              <SelectItem value="ESCALATED">Escalated</SelectItem>
+              <SelectItem value="ABANDONED">Abandoned</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Type filter */}
         <div>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
-            className="px-3 py-2.5 bg-dark-300 border border-dark-100 text-white text-sm focus:outline-none focus:border-sardis-500/30"
-          >
-            <option value="ALL">All Types</option>
-            <option value="POLICY_BLOCKED">Policy Blocked</option>
-            <option value="CHAIN_FAILURE">Chain Failure</option>
-            <option value="INSUFFICIENT_FUNDS">Insufficient Funds</option>
-            <option value="COMPLIANCE_HOLD">Compliance Hold</option>
-            <option value="TIMEOUT">Timeout</option>
-            <option value="MERCHANT_REJECTED">Merchant Rejected</option>
-            <option value="KILL_SWITCH_ACTIVE">Kill Switch Active</option>
-          </select>
+          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as typeof typeFilter)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="POLICY_BLOCKED">Policy Blocked</SelectItem>
+              <SelectItem value="CHAIN_FAILURE">Chain Failure</SelectItem>
+              <SelectItem value="INSUFFICIENT_FUNDS">Insufficient Funds</SelectItem>
+              <SelectItem value="COMPLIANCE_HOLD">Compliance Hold</SelectItem>
+              <SelectItem value="TIMEOUT">Timeout</SelectItem>
+              <SelectItem value="MERCHANT_REJECTED">Merchant Rejected</SelectItem>
+              <SelectItem value="KILL_SWITCH_ACTIVE">Kill Switch Active</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -852,8 +851,9 @@ export default function ExceptionsPage() {
               const isResolvingThis = resolvingId === exc.id
 
               return (
+                <ContextMenu key={exc.id}>
+                <ContextMenuTrigger asChild>
                 <div
-                  key={exc.id}
                   className={clsx(
                     'border transition-all',
                     isExpanded
@@ -1056,6 +1056,29 @@ export default function ExceptionsPage() {
                     </div>
                   )}
                 </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(exc.id)}>
+                    Copy Exception ID
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => { toggleExpanded(exc.id); /* scroll to retry policies section */ }}>
+                    Edit Retry Policy
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    disabled={isActioning || exc.retry_count >= exc.max_retries || terminal}
+                    onClick={() => handleRetry(exc.id)}
+                  >
+                    Retry Now
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={isActioning || terminal}
+                    onClick={() => { setResolvingId(exc.id); setResolveNotes(''); if (!expandedIds.has(exc.id)) toggleExpanded(exc.id) }}
+                  >
+                    Mark Resolved
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               )
             })
           )}

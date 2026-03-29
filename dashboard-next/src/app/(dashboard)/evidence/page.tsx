@@ -22,6 +22,7 @@ import {
   Package,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import { useQuery } from '@tanstack/react-query'
 import { useTransactionEvidence, usePolicyDecisions, useAgents } from '@/hooks/useApi'
 import { evidenceApi } from '@/api/client'
@@ -330,7 +331,7 @@ function PolicyDecisionRow({
 
 /* ─── Transaction Evidence View ─── */
 
-function TransactionEvidenceView({ txId }: { txId: string }) {
+function TransactionEvidenceView({ txId, onExport }: { txId: string; onExport?: (txId: string) => void }) {
   const { data, isLoading, isError, error } = useTransactionEvidence(txId)
 
   if (isLoading) {
@@ -360,6 +361,8 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
   const { receipt, ledger_entries, compliance_result, policy_evaluation } = ev
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger className="block">
     <div className="space-y-6">
       {/* Execution Receipt */}
       <div className="card p-6">
@@ -605,6 +608,21 @@ function TransactionEvidenceView({ txId }: { txId: string }) {
         </div>
       )}
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {receipt?.tx_hash && (
+          <ContextMenuItem onClick={() => navigator.clipboard.writeText(receipt.tx_hash)}>Copy TX Hash</ContextMenuItem>
+        )}
+        {receipt?.signature && (
+          <ContextMenuItem onClick={() => navigator.clipboard.writeText(receipt.signature!)}>Copy Signature</ContextMenuItem>
+        )}
+        {receipt?.tx_hash && (
+          <ContextMenuItem onClick={() => window.open(getExplorerUrl(receipt.chain, receipt.tx_hash), '_blank')}>View on Explorer</ContextMenuItem>
+        )}
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => onExport?.(txId)}>Export Evidence</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
@@ -893,7 +911,7 @@ export default function EvidencePage() {
 
       {/* Results */}
       {searchMode === 'idle' && <EmptyState />}
-      {searchMode === 'transaction' && <TransactionEvidenceView txId={searchedValue} />}
+      {searchMode === 'transaction' && <TransactionEvidenceView txId={searchedValue} onExport={setExportModalTxId} />}
       {searchMode === 'agent' && <AgentDecisionsView agentId={searchedValue} />}
     </div>
   )

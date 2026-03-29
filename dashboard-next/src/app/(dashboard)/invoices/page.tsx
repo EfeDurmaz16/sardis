@@ -4,6 +4,9 @@ import { Search, FileText, Plus, CheckCircle, Clock, XCircle, AlertTriangle, Ext
 import clsx from 'clsx'
 import { format } from 'date-fns'
 import { invoicesApi } from '@/api/client'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 // Inline error helper
 function getErrorMessage(err: unknown): string { return err instanceof Error ? err.message : 'Unknown error' }
 
@@ -207,8 +210,9 @@ export default function InvoicesPage() {
       {!loading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {filteredInvoices.map((invoice) => (
+            <ContextMenu key={invoice.invoice_id}>
+            <ContextMenuTrigger asChild>
             <div
-              key={invoice.invoice_id}
               className={clsx(
                 'card p-6 hover:border-sardis-500/30 transition-colors',
                 invoice.status === 'overdue' && 'border-red-500/30'
@@ -311,6 +315,27 @@ export default function InvoicesPage() {
                 )}
               </div>
             </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={() => copyToClipboard(invoice.invoice_id)}>
+                Copy Invoice ID
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem>
+                View Details
+              </ContextMenuItem>
+              {invoice.status === 'pending' && (
+                <ContextMenuItem onClick={async () => {
+                  try {
+                    await invoicesApi.updateStatus(invoice.invoice_id, 'paid')
+                    fetchInvoices()
+                  } catch { /* handled by UI */ }
+                }}>
+                  Mark as Paid
+                </ContextMenuItem>
+              )}
+            </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
       )}
@@ -323,59 +348,60 @@ export default function InvoicesPage() {
       )}
 
       {/* Create Invoice Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="card p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-white mb-4">Create Invoice</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Amount (USDC)</label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
-                  placeholder="0.00"
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Description</label>
-                <textarea
-                  className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
-                  rows={3}
-                  placeholder="Invoice description..."
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Request from Agent (optional)</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
-                  placeholder="agent_id"
-                  value={newAgentId}
-                  onChange={(e) => setNewAgentId(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1 px-4 py-2 bg-dark-200 text-gray-400 rounded-lg font-medium hover:bg-dark-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreate}
-                  className="flex-1 px-4 py-2 bg-sardis-500 text-white rounded-lg font-medium hover:bg-sardis-400"
-                >
-                  Create Invoice
-                </button>
-              </div>
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Amount (USDC)</label>
+              <input
+                type="number"
+                className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
+                placeholder="0.00"
+                value={newAmount}
+                onChange={(e) => setNewAmount(e.target.value)}
+              />
             </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Description</label>
+              <textarea
+                className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
+                rows={3}
+                placeholder="Invoice description..."
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Request from Agent (optional)</label>
+              <input
+                type="text"
+                className="w-full px-4 py-2 bg-dark-200 border border-dark-100 rounded-lg text-white"
+                placeholder="agent_id"
+                value={newAgentId}
+                onChange={(e) => setNewAgentId(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <button
+                onClick={handleCreate}
+                className="flex-1 px-4 py-2 bg-sardis-500 text-white rounded-lg font-medium hover:bg-sardis-400"
+              >
+                Create Invoice
+              </button>
+            </DialogFooter>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

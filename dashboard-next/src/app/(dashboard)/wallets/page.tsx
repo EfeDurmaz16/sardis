@@ -11,12 +11,13 @@ import {
   ExternalLink,
   Shield,
   DollarSign,
-  X,
   Activity,
 } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { useWallets } from '@/hooks/useApi'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 
 type WalletItem = {
   wallet_id: string
@@ -118,12 +119,11 @@ export default function WalletsPage() {
       )}
 
       {/* Detail panel */}
-      {selectedWallet && (
-        <WalletDetailPanel
-          wallet={selectedWallet}
-          onClose={() => setSelectedWallet(null)}
-        />
-      )}
+      <WalletDetailPanel
+        wallet={selectedWallet}
+        open={!!selectedWallet}
+        onOpenChange={(open) => { if (!open) setSelectedWallet(null) }}
+      />
     </div>
   )
 }
@@ -146,94 +146,100 @@ function WalletCard({
   }
 
   return (
-    <div className="card card-hover p-6">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-sardis-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-mono text-white truncate max-w-[140px]">
-                {wallet.wallet_id}
-              </p>
-              <button
-                onClick={handleCopy}
-                className="text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                {copied ? (
-                  <Check className="w-3.5 h-3.5 text-sardis-400" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="card card-hover p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-sardis-500/10 rounded-lg flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-sardis-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-mono text-white truncate max-w-[140px]">
+                    {wallet.wallet_id}
+                  </p>
+                  <button
+                    onClick={handleCopy}
+                    className="text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-sardis-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+                {wallet.agent_id && (
+                  <p className="text-xs text-gray-500">Agent: {wallet.agent_id}</p>
                 )}
-              </button>
+              </div>
             </div>
-            {wallet.agent_id && (
-              <p className="text-xs text-gray-500">Agent: {wallet.agent_id}</p>
-            )}
+            <div className={clsx('status-dot', wallet.is_active ? 'success' : 'error')} />
+          </div>
+
+          {/* Balance */}
+          <div className="bg-dark-200 rounded-lg p-3 mb-4">
+            <p className="text-xs text-gray-500 mb-0.5">Balance</p>
+            <p className="text-xl font-bold text-white mono-numbers">
+              ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <span className="text-sm text-gray-500 font-normal ml-1">{wallet.currency || 'USDC'}</span>
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-3 border-t border-dark-100">
+            <Link
+              href={`/wallets/fund?wallet=${wallet.wallet_id}`}
+              className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20"
+            >
+              <DollarSign className="w-4 h-4" />
+              Add Funds
+            </Link>
+            <button
+              onClick={onView}
+              className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
+            >
+              Details
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
         </div>
-        <div className={clsx('status-dot', wallet.is_active ? 'success' : 'error')} />
-      </div>
-
-      {/* Balance */}
-      <div className="bg-dark-200 rounded-lg p-3 mb-4">
-        <p className="text-xs text-gray-500 mb-0.5">Balance</p>
-        <p className="text-xl font-bold text-white mono-numbers">
-          ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          <span className="text-sm text-gray-500 font-normal ml-1">{wallet.currency || 'USDC'}</span>
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-dark-100">
-        <Link
-          href={`/wallets/fund?wallet=${wallet.wallet_id}`}
-          className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20"
-        >
-          <DollarSign className="w-4 h-4" />
-          Add Funds
-        </Link>
-        <button
-          onClick={onView}
-          className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
-        >
-          Details
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => navigator.clipboard.writeText(wallet.wallet_id)}>Copy Wallet ID</ContextMenuItem>
+        {wallet.chain_address && <ContextMenuItem onClick={() => navigator.clipboard.writeText(wallet.chain_address!)}>Copy Chain Address</ContextMenuItem>}
+        <ContextMenuItem onClick={onView}>View Details</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={() => window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`}>Fund Wallet</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
 function WalletDetailPanel({
   wallet,
-  onClose,
+  open,
+  onOpenChange,
 }: {
-  wallet: WalletItem
-  onClose: () => void
+  wallet: WalletItem | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }) {
-  const balance = parseFloat(wallet.balance || '0')
-  const spent = parseFloat(wallet.spent_total || '0')
-  const limitTotal = parseFloat(wallet.limit_total || '0')
-  const remaining = parseFloat(wallet.remaining_limit || '0')
+  const balance = parseFloat(wallet?.balance || '0')
+  const spent = parseFloat(wallet?.spent_total || '0')
+  const limitTotal = parseFloat(wallet?.limit_total || '0')
+  const remaining = parseFloat(wallet?.remaining_limit || '0')
   const usagePercent = limitTotal > 0 ? Math.min((spent / limitTotal) * 100, 100) : 0
 
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute top-0 right-0 h-full w-full max-w-md bg-dark-300 border-l border-dark-100 shadow-2xl overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-dark-100">
-          <h2 className="text-xl font-bold text-white font-display">Wallet Details</h2>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white hover:bg-dark-200 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Wallet Details</SheetTitle>
+        </SheetHeader>
 
+        {wallet && (
         <div className="p-6 space-y-6">
           {/* Wallet ID */}
           <div className="flex items-center gap-3">
@@ -358,7 +364,8 @@ function WalletDetailPanel({
             Add Funds
           </Link>
         </div>
-      </div>
-    </div>
+        )}
+      </SheetContent>
+    </Sheet>
   )
 }

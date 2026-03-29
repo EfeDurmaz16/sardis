@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Clock, Headset, LifeBuoy, ShieldCheck } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 
 import {
   useAcknowledgeSupportTicket,
@@ -154,27 +156,29 @@ export default function EnterpriseSupportPage() {
             placeholder="Subject"
             className="w-full bg-dark-200 border border-dark-100 px-3 py-2 text-white focus:outline-none focus:border-sardis-500"
           />
-          <select
-            value={priority}
-            onChange={(event) => setPriority(event.target.value as TicketPriority)}
-            className="w-full bg-dark-200 border border-dark-100 px-3 py-2 text-white focus:outline-none focus:border-sardis-500"
-          >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value as TicketCategory)}
-            className="w-full bg-dark-200 border border-dark-100 px-3 py-2 text-white focus:outline-none focus:border-sardis-500"
-          >
-            <option value="payments">Payments</option>
-            <option value="compliance">Compliance</option>
-            <option value="infrastructure">Infrastructure</option>
-            <option value="cards">Cards</option>
-            <option value="other">Other</option>
-          </select>
+          <Select value={priority} onValueChange={(v) => setPriority(v as TicketPriority)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={category} onValueChange={(v) => setCategory(v as TicketCategory)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="payments">Payments</SelectItem>
+              <SelectItem value="compliance">Compliance</SelectItem>
+              <SelectItem value="infrastructure">Infrastructure</SelectItem>
+              <SelectItem value="cards">Cards</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
           <button
             type="button"
             onClick={onCreateTicket}
@@ -197,28 +201,30 @@ export default function EnterpriseSupportPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h2 className="text-lg text-white font-semibold">Tickets</h2>
           <div className="flex items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as TicketStatus | 'all')}
-              className="bg-dark-200 border border-dark-100 px-3 py-2 text-sm text-white"
-            >
-              <option value="all">All statuses</option>
-              <option value="open">Open</option>
-              <option value="acknowledged">Acknowledged</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
-            </select>
-            <select
-              value={priorityFilter}
-              onChange={(event) => setPriorityFilter(event.target.value as TicketPriority | 'all')}
-              className="bg-dark-200 border border-dark-100 px-3 py-2 text-sm text-white"
-            >
-              <option value="all">All priorities</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as TicketStatus | 'all')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as TicketPriority | 'all')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All priorities</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -229,7 +235,9 @@ export default function EnterpriseSupportPage() {
         ) : (
           <div className="space-y-3">
             {tickets.map((ticket) => (
-              <div key={ticket.id} className="bg-dark-200 border border-dark-100 p-4">
+              <ContextMenu key={ticket.id}>
+              <ContextMenuTrigger asChild>
+              <div className="bg-dark-200 border border-dark-100 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
@@ -281,6 +289,23 @@ export default function EnterpriseSupportPage() {
                   </div>
                 </div>
               </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem onClick={() => navigator.clipboard.writeText(ticket.id)}>
+                  Copy Ticket ID
+                </ContextMenuItem>
+                <ContextMenuItem>
+                  View Details
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  disabled={ticket.status === 'closed' || ticket.status === 'resolved'}
+                  onClick={() => resolveTicket.mutate({ ticketId: ticket.id })}
+                >
+                  Close Ticket
+                </ContextMenuItem>
+              </ContextMenuContent>
+              </ContextMenu>
             ))}
           </div>
         )}

@@ -18,6 +18,7 @@ import {
   TestTube,
   Rocket,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
@@ -339,17 +340,20 @@ export default function APIKeyPage() {
               </div>
 
               {/* Confirmation Checkbox */}
-              <label className="flex items-start gap-3 mb-6 cursor-pointer group">
-                <input
-                  type="checkbox"
+              <div className="flex items-start gap-3 mb-6">
+                <Checkbox
+                  id="confirm-key-saved"
                   checked={confirmed}
-                  onChange={(e) => setConfirmed(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-dark-100 bg-dark-300 text-sardis-500 focus:ring-sardis-500/50 focus:ring-offset-0"
+                  onCheckedChange={(checked) => setConfirmed(checked === true)}
+                  className="mt-1"
                 />
-                <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
+                <label
+                  htmlFor="confirm-key-saved"
+                  className="text-sm text-gray-300 hover:text-white transition-colors cursor-pointer"
+                >
                   I&apos;ve saved my API key in a secure location
-                </span>
-              </label>
+                </label>
+              </div>
 
               <button
                 onClick={handleContinue}

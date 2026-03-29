@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { FileJson, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import clsx from 'clsx'
 import type { EndpointDef } from '../page'
 
@@ -76,9 +77,14 @@ export function RequestEditor({ endpoint, body, onBodyChange }: RequestEditorPro
               <div key={field.key}>
                 <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">{field.label}</label>
                 {field.type === 'select' ? (
-                  <select value={String(value)} onChange={(e) => updateField(field.key, e.target.value, 'text')} className="w-full px-3 py-2 bg-dark-300 border border-dark-100 text-white text-sm focus:outline-none focus:border-sardis-500/50">
-                    {field.options?.map((opt) => (<option key={opt} value={opt}>{opt}</option>))}
-                  </select>
+                  <Select value={String(value)} onValueChange={(v) => updateField(field.key, v, 'text')}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((opt) => (<SelectItem key={opt} value={opt}>{opt}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <input type={field.type} value={String(value)} onChange={(e) => updateField(field.key, e.target.value, field.type)} placeholder={field.placeholder} step={field.type === 'number' ? '0.01' : undefined} className="w-full px-3 py-2 bg-dark-300 border border-dark-100 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-sardis-500/50" />
                 )}

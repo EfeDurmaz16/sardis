@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react'
 import { CreditCard, Plus, ShoppingCart, Snowflake, Sun, Trash2, RefreshCw, ChevronDown, Copy, Check, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import clsx from 'clsx'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { agentApi, cardsApi } from '@/api/client'
@@ -208,18 +211,18 @@ export default function CardsPage() {
           <div className="card p-4">
             <label className="block text-sm font-medium text-gray-400 mb-2">Select Agent</label>
             <div className="relative">
-              <select
-                value={selectedAgentId}
-                onChange={(e) => setSelectedAgentId(e.target.value)}
-                className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-              >
-                <option value="">Select an agent...</option>
-                {agents.filter((agent) => agent.wallet_id).map((agent) => (
-                  <option key={agent.agent_id} value={agent.agent_id}>
-                    {agent.name} ({agent.agent_id})
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedAgentId} onValueChange={(v) => setSelectedAgentId(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {agents.filter((agent) => agent.wallet_id).map((agent) => (
+                    <SelectItem key={agent.agent_id} value={agent.agent_id}>
+                      {agent.name} ({agent.agent_id})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
             </div>
             {selectedAgent && !selectedAgent.wallet_id && (
@@ -296,7 +299,9 @@ export default function CardsPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {filteredCards.map((card) => (
-                <div key={card.card_id} className="space-y-4">
+                <ContextMenu key={card.card_id}>
+                <ContextMenuTrigger asChild>
+                <div className="space-y-4">
                   <SardisCard
                     card={card}
                     agentName={selectedAgent?.name}
@@ -308,6 +313,20 @@ export default function CardsPage() {
                     onToggleExpand={() => setExpandedCard(expandedCard === card.card_id ? null : card.card_id)}
                   />
                 </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(card.card_id)}>
+                    Copy Card ID
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => { if (expandedCard !== card.card_id) setExpandedCard(card.card_id) }}>
+                    Reveal Card Details
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => setShowPurchase(card.card_id)}>
+                    Simulate Purchase
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               ))}
             </div>
           )}
@@ -740,9 +759,9 @@ function IssueCardModal({
   })
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-md w-full mx-4 p-6">
-        <h2 className="text-xl font-bold text-white mb-6">Issue Virtual Card</h2>
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Issue Virtual Card</DialogTitle></DialogHeader>
         <form
           onSubmit={async (e) => {
             e.preventDefault()
@@ -803,8 +822,8 @@ function IssueCardModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -837,9 +856,9 @@ function SimulatePurchaseModal({
   })
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-lg w-full mx-4 p-6">
-        <h2 className="text-xl font-bold text-white mb-6">Simulate Purchase</h2>
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Simulate Purchase</DialogTitle></DialogHeader>
 
         {!result ? (
           <form
@@ -957,7 +976,7 @@ function SimulatePurchaseModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   ArrowLeft,
   Wallet,
@@ -181,17 +182,18 @@ export default function FundWalletPage() {
               </div>
               <div className="flex-1 min-w-0">
                 {(wallets as any[]).length > 1 ? (
-                  <select
-                    value={selectedWalletId}
-                    onChange={(e) => setSelectedWalletId(e.target.value)}
-                    className="w-full bg-transparent text-white text-sm font-mono focus:outline-none cursor-pointer"
-                  >
-                    {(wallets as any[]).map((w: any) => (
-                      <option key={w.wallet_id} value={w.wallet_id} className="bg-dark-300">
-                        {w.wallet_id}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={selectedWalletId} onValueChange={(v) => setSelectedWalletId(v)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a wallet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(wallets as any[]).map((w: any) => (
+                        <SelectItem key={w.wallet_id} value={w.wallet_id}>
+                          {w.wallet_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="text-sm text-white font-mono truncate">{walletDisplayName}</p>
                 )}

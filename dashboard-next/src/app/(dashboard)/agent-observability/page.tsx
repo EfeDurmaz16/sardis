@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Activity,
   TrendingUp,
@@ -211,22 +212,18 @@ export default function AgentObservability() {
 
         {/* Agent Selector */}
         {agents.length > 0 && (
-          <select
-            value={effectiveAgent}
-            onChange={(e) => setSelectedAgent(e.target.value)}
-            className="rounded-lg px-4 py-2 text-sm"
-            style={{
-              background: '#0A0B0D',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: '#E0E0E0',
-            }}
-          >
-            {agents.map((a) => (
-              <option key={a.agent_id} value={a.agent_id}>
-                {a.name || a.agent_id} {!a.is_active ? '(inactive)' : ''}
-              </option>
-            ))}
-          </select>
+          <Select value={effectiveAgent} onValueChange={(v) => setSelectedAgent(v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select an agent..." />
+            </SelectTrigger>
+            <SelectContent>
+              {agents.map((a) => (
+                <SelectItem key={a.agent_id} value={a.agent_id}>
+                  {a.name || a.agent_id} {!a.is_active ? '(inactive)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react'
 import Link from 'next/link'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   FlaskConical,
   CheckCircle2,
@@ -165,15 +166,16 @@ function FieldSelect({
   options: readonly string[]
 }) {
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="w-full px-3 py-2.5 bg-dark-200 border border-dark-100 text-white text-sm appearance-none focus:outline-none focus:border-sardis-500/60 transition-colors"
-    >
-      {options.map(o => (
-        <option key={o} value={o}>{o}</option>
-      ))}
-    </select>
+    <Select value={value} onValueChange={(v) => onChange(v)}>
+      <SelectTrigger className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map(o => (
+          <SelectItem key={o} value={o}>{o}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -504,22 +506,21 @@ export default function SimulationPage() {
                   No agents found
                 </div>
               ) : (
-                <select
-                  value={agentId}
-                  onChange={e => setAgentId(e.target.value)}
-                  required
-                  className="w-full px-3 py-2.5 bg-dark-200 border border-dark-100 text-white text-sm appearance-none focus:outline-none focus:border-sardis-500/60 transition-colors"
-                >
-                  <option value="" disabled>Select an agent...</option>
-                  {agents.map(a => {
-                    const id = a.agent_id ?? a.id ?? ''
-                    return (
-                      <option key={id} value={id}>
-                        {a.name ? `${a.name} (${id})` : id}
-                      </option>
-                    )
-                  })}
-                </select>
+                <Select value={agentId} onValueChange={(v) => setAgentId(v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an agent..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map(a => {
+                      const id = a.agent_id ?? a.id ?? ''
+                      return (
+                        <SelectItem key={id} value={id}>
+                          {a.name ? `${a.name} (${id})` : id}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 

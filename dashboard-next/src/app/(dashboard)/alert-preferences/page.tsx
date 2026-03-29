@@ -25,6 +25,9 @@ import {
   Loader2,
   MessageSquare,
 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import clsx from 'clsx'
 import { useAuth } from '@/lib/auth-client'
 
@@ -170,26 +173,23 @@ function ConfirmDialog({
   onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-sm w-full mx-4 p-6">
-        <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-        <p className="text-sm text-gray-400 mb-6">{message}</p>
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-dark-100 text-gray-400 rounded-lg hover:bg-dark-200 transition-colors text-sm"
-          >
-            Cancel
-          </button>
-          <button
+    <AlertDialog open={true} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <AlertDialogContent className="max-w-sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
             onClick={onConfirm}
-            className={clsx('flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors', confirmClass)}
+            className={confirmClass}
           >
             {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -612,19 +612,13 @@ function RuleModal({
     'w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50'
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
             {mode === 'create' ? 'Create Alert Rule' : 'Edit Alert Rule'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Name */}
@@ -647,17 +641,18 @@ function RuleModal({
             <label className="block text-sm font-medium text-gray-400 mb-1.5">
               Condition Type <span className="text-red-500">*</span>
             </label>
-            <select
-              value={conditionType}
-              onChange={(e) => setConditionType(e.target.value as ConditionType)}
-              className={inputCls}
-            >
-              {CONDITION_TYPES.map((ct) => (
-                <option key={ct} value={ct}>
-                  {CONDITION_LABELS[ct]}
-                </option>
-              ))}
-            </select>
+            <Select value={conditionType} onValueChange={(v) => setConditionType(v as ConditionType)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select condition type" />
+              </SelectTrigger>
+              <SelectContent>
+                {CONDITION_TYPES.map((ct) => (
+                  <SelectItem key={ct} value={ct}>
+                    {CONDITION_LABELS[ct]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Threshold */}
@@ -758,8 +753,8 @@ function RuleModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

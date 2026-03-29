@@ -5,6 +5,59 @@ const config = {
   theme: {
     extend: {
       colors: {
+        /* shadcn/ui CSS variable colors */
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground, #ffffff)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        sidebar: {
+          DEFAULT: "var(--sidebar)",
+          foreground: "var(--sidebar-foreground)",
+          primary: "var(--sidebar-primary)",
+          "primary-foreground": "var(--sidebar-primary-foreground)",
+          accent: "var(--sidebar-accent)",
+          "accent-foreground": "var(--sidebar-accent-foreground)",
+          border: "var(--sidebar-border)",
+          ring: "var(--sidebar-ring)",
+        },
+        chart: {
+          1: "var(--chart-1)",
+          2: "var(--chart-2)",
+          3: "var(--chart-3)",
+          4: "var(--chart-4)",
+          5: "var(--chart-5)",
+        },
+
+        /* Sardis brand */
         sardis: {
           50: "rgb(255 247 237 / <alpha-value>)",
           100: "rgb(255 237 213 / <alpha-value>)",
@@ -18,31 +71,33 @@ const config = {
           900: "rgb(112 32 0 / <alpha-value>)",
           950: "rgb(64 16 0 / <alpha-value>)",
         },
+        /* Remapped dark scale → light values */
         dark: {
-          100: "#1f1f28",
-          200: "#1c1c24",
-          300: "#141419",
-          400: "#0a0a0f",
-          500: "#080810",
-          600: "#060608",
-          700: "#040406",
-          800: "#020204",
-          900: "#010102",
+          100: "#eaeaea",
+          200: "#f2f2f2",
+          300: "#ffffff",
+          400: "#fafafa",
+          500: "#fafafa",
+          600: "#f7f7f7",
+          700: "#f2f2f2",
+          800: "#ebebeb",
+          900: "#e0e0e0",
         },
+        /* Mono palette → light equivalents */
         mono: {
-          bg: "#09090b",
-          surface: "#131316",
-          elevated: "#1a1a1f",
-          highest: "#222228",
-          border: "#1f1f28",
-          "border-hover": "#2a2a36",
-          "border-strong": "#3a3a48",
-          text: "#ececee",
-          secondary: "#a0a0aa",
-          muted: "#71717a",
-          ghost: "#52525b",
-          faint: "#3a3a44",
-          accent: "#ff4f00",
+          bg: "#fafafa",
+          surface: "#ffffff",
+          elevated: "#f7f7f7",
+          highest: "#f2f2f2",
+          border: "#eaeaea",
+          "border-hover": "#d0d0d0",
+          "border-strong": "#bbbbbb",
+          text: "#111111",
+          secondary: "#666666",
+          muted: "#888888",
+          ghost: "#bbbbbb",
+          faint: "#d0d0d0",
+          accent: "#111111",
         },
       },
       fontFamily: {
@@ -52,29 +107,17 @@ const config = {
       },
       borderRadius: {
         sm: "4px",
-        DEFAULT: "6px",
-        md: "6px",
-        lg: "8px",
+        DEFAULT: "7px",
+        md: "7px",
+        lg: "var(--radius)",
         xl: "12px",
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        glow: "glow 2s ease-in-out infinite alternate",
-      },
-      keyframes: {
-        glow: {
-          "0%": {
-            boxShadow: "0 0 5px #ff4f00, 0 0 10px #ff4f00, 0 0 15px #ff4f00",
-          },
-          "100%": {
-            boxShadow:
-              "0 0 10px #ff4f00, 0 0 20px #ff4f00, 0 0 30px #ff4f00",
-          },
-        },
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 module.exports = config;

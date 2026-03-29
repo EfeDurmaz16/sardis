@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import SardisLogo from "@/components/SardisLogo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
@@ -177,35 +178,37 @@ export default function KYBPage() {
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">
                       Business Type <span className="text-red-400">*</span>
                     </label>
-                    <select
-                      value={businessType}
-                      onChange={(e) => setBusinessType(e.target.value)}
-                      className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-                    >
-                      <option value="llc">LLC</option>
-                      <option value="c_corp">C-Corp</option>
-                      <option value="s_corp">S-Corp</option>
-                      <option value="sole_proprietorship">Sole Proprietorship</option>
-                      <option value="partnership">Partnership</option>
-                    </select>
+                    <Select value={businessType} onValueChange={(v) => setBusinessType(v)}>
+                      <SelectTrigger className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="llc">LLC</SelectItem>
+                        <SelectItem value="c_corp">C-Corp</SelectItem>
+                        <SelectItem value="s_corp">S-Corp</SelectItem>
+                        <SelectItem value="sole_proprietorship">Sole Proprietorship</SelectItem>
+                        <SelectItem value="partnership">Partnership</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">
                       Country <span className="text-red-400">*</span>
                     </label>
-                    <select
-                      value={incorporationCountry}
-                      onChange={(e) => setIncorporationCountry(e.target.value)}
-                      className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-                    >
-                      <option value="US">United States</option>
-                      <option value="GB">United Kingdom</option>
-                      <option value="DE">Germany</option>
-                      <option value="FR">France</option>
-                      <option value="CA">Canada</option>
-                      <option value="SG">Singapore</option>
-                      <option value="TR">Turkey</option>
-                    </select>
+                    <Select value={incorporationCountry} onValueChange={(v) => setIncorporationCountry(v)}>
+                      <SelectTrigger className="w-full px-4 py-3 bg-dark-300 border border-dark-100 rounded-lg text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="GB">United Kingdom</SelectItem>
+                        <SelectItem value="DE">Germany</SelectItem>
+                        <SelectItem value="FR">France</SelectItem>
+                        <SelectItem value="CA">Canada</SelectItem>
+                        <SelectItem value="SG">Singapore</SelectItem>
+                        <SelectItem value="TR">Turkey</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

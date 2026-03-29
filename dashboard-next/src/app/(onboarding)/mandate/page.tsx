@@ -13,6 +13,7 @@ import {
   Users,
   Star,
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim();
 
@@ -244,16 +245,17 @@ export default function MandatePage() {
                   <label className="block text-sm font-medium text-gray-400 mb-1.5">
                     Period
                   </label>
-                  <select
-                    value={customPeriod}
-                    onChange={(e) => setCustomPeriod(e.target.value)}
-                    className="w-full px-4 py-3 bg-dark-400 border border-dark-100 rounded-lg text-white appearance-none focus:outline-none focus:border-sardis-500/50"
-                  >
-                    <option value="transaction">Per Transaction</option>
-                    <option value="day">Per Day</option>
-                    <option value="week">Per Week</option>
-                    <option value="month">Per Month</option>
-                  </select>
+                  <Select value={customPeriod} onValueChange={(v) => setCustomPeriod(v)}>
+                    <SelectTrigger className="w-full px-4 py-3 bg-dark-400 border border-dark-100 rounded-lg text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transaction">Per Transaction</SelectItem>
+                      <SelectItem value="day">Per Day</SelectItem>
+                      <SelectItem value="week">Per Week</SelectItem>
+                      <SelectItem value="month">Per Month</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div>

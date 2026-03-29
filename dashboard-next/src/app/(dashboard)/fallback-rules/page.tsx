@@ -25,6 +25,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import clsx from 'clsx'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 import {
   fallbackPoliciesApi,
   type FallbackRule,
@@ -148,23 +151,14 @@ function RuleFormModal({
 
   const inputCls =
     'w-full bg-dark-200 border border-dark-100 text-white text-sm px-3 py-2 focus:outline-none focus:border-sardis-500'
-  const selectCls =
-    'w-full bg-dark-200 border border-dark-100 text-white text-sm px-3 py-2 focus:outline-none focus:border-sardis-500'
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-dark-300 border border-dark-100 w-full max-w-lg p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-white">
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {initial.name ? 'Edit Fallback Rule' : 'New Fallback Rule'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
@@ -187,33 +181,35 @@ function RuleFormModal({
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Primary Rail
               </label>
-              <select
-                value={form.primary_rail}
-                onChange={(e) => set('primary_rail', e.target.value)}
-                className={selectCls}
-              >
-                {RAILS.map((r) => (
-                  <option key={r} value={r}>
-                    {RAIL_LABELS[r]}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.primary_rail} onValueChange={(v) => set('primary_rail', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RAILS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {RAIL_LABELS[r]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Fallback Rail
               </label>
-              <select
-                value={form.fallback_rail}
-                onChange={(e) => set('fallback_rail', e.target.value)}
-                className={selectCls}
-              >
-                {RAILS.map((r) => (
-                  <option key={r} value={r}>
-                    {RAIL_LABELS[r]}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.fallback_rail} onValueChange={(v) => set('fallback_rail', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RAILS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {RAIL_LABELS[r]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -223,33 +219,35 @@ function RuleFormModal({
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Trigger
               </label>
-              <select
-                value={form.trigger}
-                onChange={(e) => set('trigger', e.target.value)}
-                className={selectCls}
-              >
-                {TRIGGERS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.trigger} onValueChange={(v) => set('trigger', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRIGGERS.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
                 Behavior
               </label>
-              <select
-                value={form.behavior}
-                onChange={(e) => set('behavior', e.target.value)}
-                className={selectCls}
-              >
-                {BEHAVIORS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
+              <Select value={form.behavior} onValueChange={(v) => set('behavior', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BEHAVIORS.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -340,8 +338,8 @@ function RuleFormModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -475,7 +473,9 @@ function FallbackRulesSection() {
             </thead>
             <tbody className="divide-y divide-dark-100">
               {rules.map((rule) => (
-                <tr key={rule.id} className="hover:bg-dark-200/50 transition-colors">
+                <ContextMenu key={rule.id}>
+                <ContextMenuTrigger asChild>
+                <tr className="hover:bg-dark-200/50 transition-colors">
                   <td className="py-3 pr-4 text-white font-medium">{rule.name}</td>
                   <td className="py-3 pr-4">
                     <span className="font-mono text-xs text-sardis-400">
@@ -543,6 +543,20 @@ function FallbackRulesSection() {
                     </div>
                   </td>
                 </tr>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem onClick={() => navigator.clipboard.writeText(rule.id)}>
+                    Copy Rule ID
+                  </ContextMenuItem>
+                  <ContextMenuItem onClick={() => setEditing(rule)}>
+                    Edit Rule
+                  </ContextMenuItem>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem onClick={() => handleDelete(rule.id)}>
+                    Delete Rule
+                  </ContextMenuItem>
+                </ContextMenuContent>
+                </ContextMenu>
               ))}
             </tbody>
           </table>
@@ -697,17 +711,18 @@ function DegradedModeCard({
             <label className="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider">
               Mode
             </label>
-            <select
-              value={form.mode}
-              onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
-              className={inputCls}
-            >
-              {DEGRADED_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            <Select value={form.mode} onValueChange={(v) => setForm((f) => ({ ...f, mode: v }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DEGRADED_MODES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

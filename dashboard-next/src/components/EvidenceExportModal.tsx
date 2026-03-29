@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import {
-  X,
   Download,
   Copy,
   CheckCircle2,
@@ -13,6 +12,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { evidenceApi } from '@/api/client'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 /* ─── Types ─── */
 
@@ -179,36 +179,24 @@ export default function EvidenceExportModal({
   ).length
 
   return (
-    /* Backdrop */
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div className="w-full max-w-lg bg-dark-400 border border-dark-100 flex flex-col max-h-[90vh]">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[90vh] p-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-dark-100 flex-shrink-0">
+        <DialogHeader className="px-5 py-4 border-b border-dark-100 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-1.5 bg-sardis-500/10 border border-sardis-500/20">
               <Package className="w-4 h-4 text-sardis-400" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-white">
+              <DialogTitle className="text-sm font-semibold text-white">
                 Export Evidence Bundle
-              </h2>
+              </DialogTitle>
               <p className="text-xs text-gray-500 font-mono mt-0.5 truncate max-w-xs">
                 {txId}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
@@ -403,7 +391,7 @@ export default function EvidenceExportModal({
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

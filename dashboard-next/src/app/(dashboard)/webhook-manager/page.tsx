@@ -20,6 +20,10 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { webhooksApiV2 } from '@/api/client'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -463,28 +467,26 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
       )}
 
       {/* Confirm delete dialog */}
-      {showConfirmDelete && (
-        <ConfirmDialog
-          title="Delete webhook?"
-          message={`This will permanently delete the webhook for ${truncateUrl(webhook.url, 45)} and stop all event deliveries.`}
-          confirmLabel="Delete"
-          confirmClass="bg-red-600 hover:bg-red-500 text-white"
-          onConfirm={handleDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />
-      )}
+      <ConfirmDialog
+        open={showConfirmDelete}
+        onOpenChange={setShowConfirmDelete}
+        title="Delete webhook?"
+        message={`This will permanently delete the webhook for ${truncateUrl(webhook.url, 45)} and stop all event deliveries.`}
+        confirmLabel="Delete"
+        confirmClass="bg-red-600 hover:bg-red-500 text-white"
+        onConfirm={handleDelete}
+      />
 
       {/* Confirm rotate secret dialog */}
-      {showConfirmRotate && (
-        <ConfirmDialog
-          title="Rotate signing secret?"
-          message="The existing secret will be invalidated immediately. Update your receiver before confirming."
-          confirmLabel="Rotate"
-          confirmClass="bg-yellow-600 hover:bg-yellow-500 text-white"
-          onConfirm={handleRotate}
-          onCancel={() => setShowConfirmRotate(false)}
-        />
-      )}
+      <ConfirmDialog
+        open={showConfirmRotate}
+        onOpenChange={setShowConfirmRotate}
+        title="Rotate signing secret?"
+        message="The existing secret will be invalidated immediately. Update your receiver before confirming."
+        confirmLabel="Rotate"
+        confirmClass="bg-yellow-600 hover:bg-yellow-500 text-white"
+        onConfirm={handleRotate}
+      />
     </div>
   )
 }
@@ -492,41 +494,40 @@ function WebhookCard({ webhook, onEdit }: WebhookCardProps) {
 // ─── Confirm Dialog ──────────────────────────────────────────────────────────
 
 function ConfirmDialog({
+  open,
+  onOpenChange,
   title,
   message,
   confirmLabel,
   confirmClass,
   onConfirm,
-  onCancel,
 }: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   title: string
   message: string
   confirmLabel: string
   confirmClass: string
   onConfirm: () => void
-  onCancel: () => void
 }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-sm w-full mx-4 p-6">
-        <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-        <p className="text-sm text-gray-400 mb-6">{message}</p>
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 border border-dark-100 text-gray-400 rounded-lg hover:bg-dark-200 transition-colors text-sm"
-          >
-            Cancel
-          </button>
-          <button
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
             onClick={onConfirm}
-            className={clsx('flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors', confirmClass)}
+            className={clsx('text-sm font-medium transition-colors', confirmClass)}
           >
             {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -539,7 +540,8 @@ interface WebhookFormData {
 }
 
 interface WebhookModalProps {
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSubmit: (data: WebhookFormData) => Promise<void>
   isLoading: boolean
   eventTypes: string[]
@@ -548,7 +550,8 @@ interface WebhookModalProps {
 }
 
 function WebhookModal({
-  onClose,
+  open,
+  onOpenChange,
   onSubmit,
   isLoading,
   eventTypes,
@@ -589,19 +592,13 @@ function WebhookModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
             {mode === 'create' ? 'Create Webhook' : 'Edit Webhook'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-500 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* URL */}
@@ -685,14 +682,15 @@ function WebhookModal({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
+          <DialogFooter className="flex gap-3 pt-2">
+            <Button
               type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-dark-100 text-gray-400 rounded-lg hover:bg-dark-200 transition-colors text-sm"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
             <button
               type="submit"
               disabled={isLoading || events.length === 0}
@@ -702,10 +700,10 @@ function WebhookModal({
                 ? mode === 'create' ? 'Creating…' : 'Saving…'
                 : mode === 'create' ? 'Create Webhook' : 'Save Changes'}
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -716,6 +714,8 @@ export default function WebhookManagerPage() {
   const { data: eventTypesData } = useEventTypes()
   const createWebhook = useCreateWebhook()
   const updateWebhook = useUpdateWebhook()
+  const deleteWebhookCtx = useDeleteWebhook()
+  const rotateSecretCtx = useRotateSecret()
 
   const [showCreate, setShowCreate] = useState(false)
   const [editingWebhook, setEditingWebhook] = useState<WebhookSubscription | null>(null)
@@ -818,41 +818,62 @@ export default function WebhookManagerPage() {
       ) : (
         <div className="space-y-4">
           {webhooks.map((webhook) => (
-            <WebhookCard
-              key={webhook.subscription_id}
-              webhook={webhook}
-              onEdit={setEditingWebhook}
-            />
+            <ContextMenu key={webhook.subscription_id}>
+            <ContextMenuTrigger asChild>
+              <div>
+                <WebhookCard
+                  webhook={webhook}
+                  onEdit={setEditingWebhook}
+                />
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem onClick={() => navigator.clipboard.writeText(webhook.subscription_id)}>
+                Copy Webhook ID
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => navigator.clipboard.writeText(webhook.url)}>
+                Copy URL
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => setEditingWebhook(webhook)}>
+                Edit Webhook
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => rotateSecretCtx.mutate(webhook.subscription_id)}>
+                Rotate Secret
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => deleteWebhookCtx.mutate(webhook.subscription_id)}>
+                Delete Webhook
+              </ContextMenuItem>
+            </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
       )}
 
       {/* Create modal */}
-      {showCreate && (
-        <WebhookModal
-          mode="create"
-          eventTypes={eventTypes}
-          isLoading={createWebhook.isPending}
-          onClose={() => setShowCreate(false)}
-          onSubmit={handleCreate}
-        />
-      )}
+      <WebhookModal
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        mode="create"
+        eventTypes={eventTypes}
+        isLoading={createWebhook.isPending}
+        onSubmit={handleCreate}
+      />
 
       {/* Edit modal */}
-      {editingWebhook && (
-        <WebhookModal
-          mode="edit"
-          eventTypes={eventTypes}
-          isLoading={updateWebhook.isPending}
-          onClose={() => setEditingWebhook(null)}
-          onSubmit={handleEdit}
-          initialValues={{
-            url: editingWebhook.url,
-            events: editingWebhook.events,
-            description: editingWebhook.description ?? '',
-          }}
-        />
-      )}
+      <WebhookModal
+        open={!!editingWebhook}
+        onOpenChange={(open) => { if (!open) setEditingWebhook(null) }}
+        mode="edit"
+        eventTypes={eventTypes}
+        isLoading={updateWebhook.isPending}
+        onSubmit={handleEdit}
+        initialValues={editingWebhook ? {
+          url: editingWebhook.url,
+          events: editingWebhook.events,
+          description: editingWebhook.description ?? '',
+        } : undefined}
+      />
     </div>
   )
 }

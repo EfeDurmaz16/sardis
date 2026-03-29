@@ -5,6 +5,9 @@ import clsx from 'clsx'
 import { format } from 'date-fns'
 import { useWebhooks, useCreateWebhook, useDeleteWebhook } from '@/hooks/useApi'
 import type { WebhookSubscription } from '@/types'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/components/ui/context-menu"
 
 const availableEvents = [
   'payment.completed',
@@ -79,28 +82,29 @@ export default function WebhooksPage() {
       )}
       
       {/* Create Modal */}
-      {showCreate && (
-        <CreateWebhookModal
-          onClose={() => setShowCreate(false)}
-          onSubmit={async (data) => {
-            await createWebhook.mutateAsync(data)
-            setShowCreate(false)
-          }}
-          isLoading={createWebhook.isPending}
-        />
-      )}
+      <CreateWebhookModal
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        onSubmit={async (data) => {
+          await createWebhook.mutateAsync(data)
+          setShowCreate(false)
+        }}
+        isLoading={createWebhook.isPending}
+      />
     </div>
   )
 }
 
-function WebhookCard({ 
-  webhook, 
-  onDelete 
-}: { 
+function WebhookCard({
+  webhook,
+  onDelete
+}: {
   webhook: WebhookSubscription
-  onDelete: () => void 
+  onDelete: () => void
 }) {
   return (
+    <ContextMenu>
+      <ContextMenuTrigger className="block">
     <div className="card p-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -177,21 +181,31 @@ function WebhookCard({
         </div>
       </div>
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem onClick={() => navigator.clipboard.writeText(webhook.subscription_id)}>Copy Webhook ID</ContextMenuItem>
+        <ContextMenuItem onClick={() => navigator.clipboard.writeText(webhook.url)}>Copy URL</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={onDelete} className="text-red-400">Delete Webhook</ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
 function CreateWebhookModal({
-  onClose,
+  open,
+  onOpenChange,
   onSubmit,
   isLoading
 }: {
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onSubmit: (data: { url: string; events: string[] }) => Promise<void>
   isLoading: boolean
 }) {
   const [url, setUrl] = useState('')
   const [events, setEvents] = useState<string[]>(['payment.completed'])
-  
+
   const toggleEvent = (event: string) => {
     if (events.includes(event)) {
       setEvents(events.filter(e => e !== event))
@@ -199,12 +213,14 @@ function CreateWebhookModal({
       setEvents([...events, event])
     }
   }
-  
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card max-w-lg w-full mx-4 p-6">
-        <h2 className="text-xl font-bold text-white mb-6">Add Webhook</h2>
-        
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add Webhook</DialogTitle>
+        </DialogHeader>
+
         <form
           onSubmit={async (e) => {
             e.preventDefault()
@@ -225,7 +241,7 @@ function CreateWebhookModal({
               placeholder="https://your-app.com/webhook"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-2">
               Events to Subscribe
@@ -248,15 +264,16 @@ function CreateWebhookModal({
               ))}
             </div>
           </div>
-          
-          <div className="flex gap-4 pt-4">
-            <button
+
+          <DialogFooter className="flex gap-4 pt-4">
+            <Button
               type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-dark-100 text-gray-400 rounded-lg hover:bg-dark-200 transition-colors"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
             >
               Cancel
-            </button>
+            </Button>
             <button
               type="submit"
               disabled={isLoading || events.length === 0}
@@ -264,9 +281,9 @@ function CreateWebhookModal({
             >
               {isLoading ? 'Creating...' : 'Create Webhook'}
             </button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

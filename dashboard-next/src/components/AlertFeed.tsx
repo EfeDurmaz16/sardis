@@ -2,6 +2,7 @@
  * AlertFeed - Real-time alert feed component with WebSocket support
  */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Alert {
   id: string;
@@ -242,21 +243,25 @@ const AlertFeed: React.FC<AlertFeedProps> = ({
 
         {/* Filters */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <select
-            className="text-sm border border-gray-300 rounded-md px-2 py-1"
+          <Select
             value={filter.severity || ''}
-            onChange={(e) =>
+            onValueChange={(v) =>
               setFilter((prev) => ({
                 ...prev,
-                severity: e.target.value as any,
+                severity: (v || undefined) as any,
               }))
             }
           >
-            <option value="">All Severities</option>
-            <option value="info">Info</option>
-            <option value="warning">Warning</option>
-            <option value="critical">Critical</option>
-          </select>
+            <SelectTrigger className="text-sm">
+              <SelectValue placeholder="All Severities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Severities</SelectItem>
+              <SelectItem value="info">Info</SelectItem>
+              <SelectItem value="warning">Warning</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+            </SelectContent>
+          </Select>
 
           <button
             className="text-sm text-blue-600 hover:text-blue-800"

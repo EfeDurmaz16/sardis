@@ -21,6 +21,8 @@ import {
   useActivateKillSwitchChain,
   useDeactivateKillSwitchChain,
 } from '@/hooks/useApi'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog'
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu"
 
 /* ─── Constants ─── */
 
@@ -97,31 +99,26 @@ function ActivateModal({ target, onConfirm, onCancel, isLoading }: ActivateModal
     : `Chain: ${target.name.charAt(0).toUpperCase() + target.name.slice(1)}`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80"
-        onClick={onCancel}
-      />
-
-      {/* Panel */}
-      <div className="relative z-10 w-full max-w-lg bg-dark-300 border border-red-500/40 p-6 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-red-500/10 border border-red-500/30">
-            <Power className="w-5 h-5 text-red-500" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">Activate Kill Switch</h2>
-            <p className="text-sm text-red-400">{label}</p>
-          </div>
-        </div>
-
-        <div className="bg-red-500/5 border border-red-500/20 p-3 mb-5">
-          <p className="text-xs text-red-300">
-            This will immediately halt all payments on this {target.type}. This action is logged and audited.
-          </p>
-        </div>
+    <AlertDialog open={true} onOpenChange={(open) => { if (!open) onCancel() }}>
+      <AlertDialogContent className="sm:max-w-lg border-red-500/40">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-3">
+            <div className="p-2 bg-red-500/10 border border-red-500/30">
+              <Power className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <div className="text-lg font-bold text-white">Activate Kill Switch</div>
+              <p className="text-sm text-red-400 font-normal">{label}</p>
+            </div>
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="bg-red-500/5 border border-red-500/20 p-3">
+              <p className="text-xs text-red-300">
+                This will immediately halt all payments on this {target.type}. This action is logged and audited.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -166,15 +163,13 @@ function ActivateModal({ target, onConfirm, onCancel, isLoading }: ActivateModal
             />
           </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onCancel}
+          <AlertDialogFooter className="flex items-center gap-3 pt-2">
+            <AlertDialogCancel
               disabled={isLoading}
-              className="flex-1 px-4 py-2 bg-dark-400 border border-dark-100 text-gray-400 text-sm font-medium hover:border-gray-500 transition-all disabled:opacity-50"
+              className="flex-1"
             >
               Cancel
-            </button>
+            </AlertDialogCancel>
             <button
               type="submit"
               disabled={isLoading || !form.reason.trim()}
@@ -192,10 +187,10 @@ function ActivateModal({ target, onConfirm, onCancel, isLoading }: ActivateModal
                 </>
               )}
             </button>
-          </div>
+          </AlertDialogFooter>
         </form>
-      </div>
-    </div>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -223,6 +218,8 @@ function SwitchCard({
   const isActive = activeSwitch !== null
 
   return (
+    <ContextMenu>
+      <ContextMenuTrigger className="block">
     <div
       className={clsx(
         'border transition-all p-4',
@@ -320,6 +317,16 @@ function SwitchCard({
         </div>
       )}
     </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {!isActive && (
+          <ContextMenuItem onClick={onActivate} className="text-red-400">Activate Kill Switch</ContextMenuItem>
+        )}
+        {isActive && (
+          <ContextMenuItem onClick={onDeactivate} disabled={isDeactivating}>Deactivate Kill Switch</ContextMenuItem>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 

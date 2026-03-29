@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Play, Terminal, Loader2 } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import clsx from 'clsx'
 import { RequestEditor } from './components/RequestEditor'
 import { ExecutionTrace, type TraceStep } from './components/ExecutionTrace'
@@ -201,9 +202,14 @@ export default function PlaygroundPage() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="lg:hidden mb-4 space-y-3">
-            <select value={selectedEndpoint.id} onChange={(e) => { const ep = ENDPOINTS.find((x) => x.id === e.target.value); if (ep) handleEndpointChange(ep) }} className="w-full px-4 py-2.5 bg-dark-300 border border-dark-100 text-white focus:outline-none focus:border-sardis-500/50">
-              {ENDPOINTS.map((ep) => (<option key={ep.id} value={ep.id}>{ep.method} {ep.name}</option>))}
-            </select>
+            <Select value={selectedEndpoint.id} onValueChange={(v) => { const ep = ENDPOINTS.find((x) => x.id === v); if (ep) handleEndpointChange(ep) }}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an endpoint" />
+              </SelectTrigger>
+              <SelectContent>
+                {ENDPOINTS.map((ep) => (<SelectItem key={ep.id} value={ep.id}>{ep.method} {ep.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
             <button onClick={handleRun} disabled={isRunning} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-sardis-500 text-white font-semibold hover:bg-sardis-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm">
               {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               {isRunning ? 'Running...' : 'Run Request'}

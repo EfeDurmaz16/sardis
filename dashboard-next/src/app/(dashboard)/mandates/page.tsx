@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Shield, Plus, Loader2, CheckCircle, XCircle, PauseCircle, Clock, DollarSign, ChevronDown, ChevronRight, Ban, Play, Pause } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import clsx from 'clsx';
 import { useMandates, useMandateTransitions, useCreateMandate, useMandateAction } from '@/hooks/useApi';
 
@@ -36,7 +38,7 @@ function CreateMandateForm({ onCreated }: { onCreated: () => void }) {
       </div>
       <div><label className="block text-xs font-medium text-gray-400 mb-1">Allowed Merchants (comma-separated, empty = all)</label><input value={merchants} onChange={e => setMerchants(e.target.value)} placeholder="openai.com, anthropic.com, aws.amazon.com" className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" /></div>
       <div className="grid grid-cols-2 gap-3">
-        <div><label className="block text-xs font-medium text-gray-400 mb-1">Approval Mode</label><select value={approvalMode} onChange={e => setApprovalMode(e.target.value)} className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50"><option value="auto">Auto-approve all</option><option value="threshold">Approve below threshold</option><option value="always_human">Always require human</option></select></div>
+        <div><label className="block text-xs font-medium text-gray-400 mb-1">Approval Mode</label><Select value={approvalMode} onValueChange={(v) => setApprovalMode(v)}><SelectTrigger className="w-full"><SelectValue placeholder="Select approval mode" /></SelectTrigger><SelectContent><SelectItem value="auto">Auto-approve all</SelectItem><SelectItem value="threshold">Approve below threshold</SelectItem><SelectItem value="always_human">Always require human</SelectItem></SelectContent></Select></div>
         {approvalMode === 'threshold' && <div><label className="block text-xs font-medium text-gray-400 mb-1">Approval Threshold ($)</label><input type="number" value={approvalThreshold} onChange={e => setApprovalThreshold(e.target.value)} placeholder="500" className="w-full px-3 py-2 bg-dark-300 border border-dark-100 rounded-lg text-white text-sm focus:outline-none focus:border-sardis-500/50" /></div>}
       </div>
       <button type="submit" disabled={isLoading} className="w-full py-2.5 bg-sardis-500 text-white font-bold rounded-lg hover:bg-sardis-400 transition-colors disabled:opacity-50 text-sm">{isLoading ? 'Creating...' : 'Create Mandate'}</button>
@@ -81,7 +83,9 @@ export default function MandatesPage() {
       {!loading && !isError && mandatesList.length === 0 && <div className="card p-12 text-center"><Shield className="w-12 h-12 text-gray-600 mx-auto mb-4" /><p className="text-gray-400 mb-2">No spending mandates yet</p><p className="text-sm text-gray-500">Create your first mandate to control how your AI agents spend money.</p></div>}
       {!loading && mandatesList.length > 0 && (
         <div className="space-y-3">{mandatesList.map((m) => (
-          <div key={m.id} className="card overflow-hidden">
+          <ContextMenu key={m.id}>
+          <ContextMenuTrigger asChild>
+          <div className="card overflow-hidden">
             <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-dark-200/30 transition-colors" onClick={() => toggleExpand(m.id)}>
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 {expandedId === m.id ? <ChevronDown size={16} className="text-gray-500 shrink-0" /> : <ChevronRight size={16} className="text-gray-500 shrink-0" />}
@@ -106,6 +110,18 @@ export default function MandatesPage() {
               </div>
             )}
           </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => navigator.clipboard.writeText(m.id)}>Copy Mandate ID</ContextMenuItem>
+            <ContextMenuSeparator />
+            {m.status === 'draft' && <ContextMenuItem onClick={() => handleAction(m.id, 'activate')}>Activate</ContextMenuItem>}
+            {m.status === 'active' && <ContextMenuItem onClick={() => handleAction(m.id, 'suspend')}>Suspend</ContextMenuItem>}
+            {m.status === 'suspended' && <ContextMenuItem onClick={() => handleAction(m.id, 'resume')}>Resume</ContextMenuItem>}
+            <ContextMenuItem className="text-red-400 focus:text-red-400" onClick={() => handleAction(m.id, 'revoke', 'Revoked from dashboard')}>Revoke</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => toggleExpand(m.id)}>{expandedId === m.id ? 'Collapse' : 'Expand'}</ContextMenuItem>
+          </ContextMenuContent>
+          </ContextMenu>
         ))}</div>
       )}
     </div>
