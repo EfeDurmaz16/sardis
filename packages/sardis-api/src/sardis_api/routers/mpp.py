@@ -393,7 +393,7 @@ async def execute_payment(
                 merchant_domain=req.merchant_url or req.merchant,
             )
 
-            receipt = await chain_executor.execute_payment(mandate)
+            receipt = await chain_executor.dispatch_payment(mandate)
             tx_hash = receipt.tx_hash
             logger.info(
                 "MPP on-chain payment success: %s tx=%s chain=%s",
