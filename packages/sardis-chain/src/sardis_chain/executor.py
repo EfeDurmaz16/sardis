@@ -1938,18 +1938,26 @@ class ChainExecutor:
                     # binding is requested, to avoid accidental raw tx dispatch in dev.
                     self._mpc_signer = SimulatedMPCSigner()
                     logger.warning(
-                        "Circle MPC provider initialized in non-live mode with simulated signer. "
-                        "Enable SARDIS_CIRCLE_LIVE_SIGNER_ENABLED only for controlled live execution."
+                        "SECURITY: Circle MPC provider initialized in NON-LIVE mode with "
+                        "SimulatedMPCSigner — all transactions will be SIMULATED, not real. "
+                        "To enable real signing, set SARDIS_CIRCLE_LIVE_SIGNER_ENABLED=true "
+                        "and configure SARDIS_CIRCLE_DEFAULT_WALLET_ID/SARDIS_CIRCLE_DEFAULT_ADDRESS."
                     )
             except ImportError as exc:
                 if self._settings.chain_mode == "live":
                     raise RuntimeError("sardis_wallet package is required for Circle live signer") from exc
-                logger.warning("sardis_wallet not available, falling back to simulated signer")
+                logger.warning(
+                    "SECURITY: sardis_wallet not available — falling back to SimulatedMPCSigner. "
+                    "All Circle transactions will be SIMULATED."
+                )
                 self._mpc_signer = SimulatedMPCSigner()
             except Exception as e:
                 if self._settings.chain_mode == "live":
                     raise RuntimeError(f"Circle MPC init failed: {e}") from e
-                logger.error("Circle MPC init failed: %s, falling back to simulated", e)
+                logger.warning(
+                    "SECURITY: Circle MPC init failed: %s — falling back to SimulatedMPCSigner. "
+                    "All Circle transactions will be SIMULATED.", e
+                )
                 self._mpc_signer = SimulatedMPCSigner()
         elif mpc_config.name == "lit":
             from .lit_signer import LitProtocolSigner
@@ -1958,7 +1966,18 @@ class ChainExecutor:
             from .fireblocks_signer import FireblocksSigner
             self._mpc_signer = FireblocksSigner()
         else:
-            self._mpc_signer = SimulatedMPCSigner()
+            raise ValueError(
+                f"Unknown MPC provider: {mpc_config.name}. "
+                f"Supported providers: turnkey, circle, fireblocks, lit, local"
+            )
+
+        # Production guard: SimulatedMPCSigner must NEVER be active in production.
+        if self._settings.is_production and isinstance(self._mpc_signer, SimulatedMPCSigner):
+            raise RuntimeError(
+                "SimulatedMPCSigner is active but SARDIS_ENVIRONMENT=prod. "
+                "Production requires a real MPC provider (turnkey, circle, fireblocks). "
+                "Fix your MPC configuration or set SARDIS_ENVIRONMENT to dev/staging."
+            )
 
     def _get_rpc_client(self, chain: str) -> ProductionRPCClient:
         """
