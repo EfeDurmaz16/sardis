@@ -358,31 +358,28 @@ class TestZKPassVerifier:
         assert len(proofs) == 2
 
     def test_get_valid_proofs_for_address(self):
+        """verify_proof now raises NotImplementedError (requires TransGate SDK).
+        Without verification, no proofs are valid."""
         verifier = ZKPassVerifier()
-        # Submit and verify one proof
         proof1 = verifier.submit_proof(
             schema_id="coinbase_kyc",
             prover_address="0xAA",
             proof_data=b"\x01",
             public_inputs={"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        verifier.verify_proof(proof1.proof_id)
 
-        # Submit but don't verify another
-        verifier.submit_proof(
-            schema_id="binance_kyc",
-            prover_address="0xAA",
-            proof_data=b"\x02",
-            public_inputs={"kyc_level": "2", "verification_date": "2026-01-01"},
-        )
+        # verify_proof now raises NotImplementedError
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
+            verifier.verify_proof(proof1.proof_id)
 
+        # Without verification, no proofs are valid
         valid = verifier.get_valid_proofs_for_address("0xAA")
-        assert len(valid) == 1
-        assert valid[0].proof_id == proof1.proof_id
+        assert len(valid) == 0
 
     # ---- Verification ----
 
     def test_verify_successful(self):
+        """verify_proof now raises NotImplementedError (requires TransGate SDK)."""
         verifier = ZKPassVerifier()
         proof = verifier.submit_proof(
             schema_id="coinbase_kyc",
@@ -390,32 +387,23 @@ class TestZKPassVerifier:
             proof_data=b"\x01\x02",
             public_inputs={"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        result = verifier.verify_proof(proof.proof_id)
-        assert result.success is True
-        assert result.method == VerificationMethod.ZKPASS
-        assert result.issuer == TransgateIssuer.COINBASE
-        assert result.proof_type == TransgateProofType.KYC_VERIFIED
-
-        # Proof should be marked verified
-        updated = verifier.get_proof(proof.proof_id)
-        assert updated is not None
-        assert updated.status == ProofStatus.VERIFIED
-        assert updated.verified_at is not None
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
+            verifier.verify_proof(proof.proof_id)
 
     def test_verify_missing_fields_fails(self):
+        """verify_proof now raises NotImplementedError regardless of inputs."""
         verifier = ZKPassVerifier()
-        # coinbase_kyc requires kyc_status and verification_date
         proof = verifier.submit_proof(
             schema_id="coinbase_kyc",
             prover_address="0x1",
             proof_data=b"\x01",
             public_inputs={"kyc_status": "verified"},  # missing verification_date
         )
-        result = verifier.verify_proof(proof.proof_id)
-        assert result.success is False
-        assert "Missing required field" in result.details.get("reason", "")
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
+            verifier.verify_proof(proof.proof_id)
 
     def test_verify_empty_proof_data_fails(self):
+        """verify_proof now raises NotImplementedError regardless of proof data."""
         verifier = ZKPassVerifier()
         proof = verifier.submit_proof(
             schema_id="coinbase_kyc",
@@ -423,13 +411,13 @@ class TestZKPassVerifier:
             proof_data=b"",
             public_inputs={"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        result = verifier.verify_proof(proof.proof_id)
-        assert result.success is False
-        assert "Empty proof data" in result.details.get("reason", "")
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
+            verifier.verify_proof(proof.proof_id)
 
     def test_verify_not_found_raises(self):
+        """verify_proof raises NotImplementedError before checking proof existence."""
         verifier = ZKPassVerifier()
-        with pytest.raises(ValueError, match="Proof not found"):
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
             verifier.verify_proof("nonexistent")
 
     # ---- Reject ----
@@ -452,63 +440,65 @@ class TestZKPassVerifier:
 
     # ---- Portable KYC ----
 
-    def _submit_and_verify(
+    def _submit_proof(
         self,
         verifier: ZKPassVerifier,
         schema_id: str,
         address: str,
         public_inputs: dict[str, str],
     ) -> ZKProof:
-        """Helper: submit and verify a proof."""
+        """Helper: submit a proof (verification requires TransGate SDK)."""
         proof = verifier.submit_proof(
             schema_id=schema_id,
             prover_address=address,
             proof_data=b"\x01\x02\x03",
             public_inputs=public_inputs,
         )
-        verifier.verify_proof(proof.proof_id)
         return proof
 
     def test_portable_kyc_basic(self):
+        """Without TransGate SDK verification, portable KYC returns no level."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "coinbase_kyc", "0xA",
             {"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
         result = verifier.check_portable_kyc("0xA")
-        assert result.kyc_level == "basic"
-        assert result.verification_result.success is True
-        assert result.cost_savings_usd == 0.55
+        # Without verification, no valid proofs exist
+        assert result.kyc_level == ""
+        assert result.verification_result.success is False
 
     def test_portable_kyc_enhanced(self):
+        """Without TransGate SDK verification, portable KYC returns no level."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "coinbase_kyc", "0xA",
             {"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "country_check", "0xA",
             {"country_code": "US"},
         )
         result = verifier.check_portable_kyc("0xA")
-        assert result.kyc_level == "enhanced"
+        assert result.kyc_level == ""
 
     def test_portable_kyc_full(self):
+        """Without TransGate SDK verification, portable KYC returns no level."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "coinbase_kyc", "0xA",
             {"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "country_check", "0xA",
             {"country_code": "US"},
         )
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "sanctions_screen", "0xA",
             {"screening_date": "2026-01-01", "result": "clear"},
         )
         result = verifier.check_portable_kyc("0xA")
-        assert result.kyc_level == "full"
+        assert result.kyc_level == ""
 
     def test_portable_kyc_no_proofs(self):
         verifier = ZKPassVerifier()
@@ -518,37 +508,38 @@ class TestZKPassVerifier:
         assert result.cost_savings_usd == 0.0
 
     def test_portable_kyc_enhanced_with_sanctions_only(self):
-        """KYC + SANCTIONS (no country) should be enhanced."""
+        """Without TransGate SDK verification, portable KYC returns no level."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "coinbase_kyc", "0xA",
             {"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "sanctions_screen", "0xA",
             {"screening_date": "2026-01-01", "result": "clear"},
         )
         result = verifier.check_portable_kyc("0xA")
-        assert result.kyc_level == "enhanced"
+        assert result.kyc_level == ""
 
     # ---- has_valid_kyc ----
 
     def test_has_valid_kyc_true(self):
+        """Without TransGate SDK, no proofs can be verified, so has_valid_kyc is False."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "coinbase_kyc", "0xA",
             {"kyc_status": "verified", "verification_date": "2026-01-01"},
         )
-        assert verifier.has_valid_kyc("0xA") is True
+        assert verifier.has_valid_kyc("0xA") is False
 
     def test_has_valid_kyc_false(self):
         verifier = ZKPassVerifier()
         assert verifier.has_valid_kyc("0xNOBODY") is False
 
     def test_has_valid_kyc_false_not_kyc_type(self):
-        """Age verification alone does not count as KYC."""
+        """Age verification alone does not count as KYC (and unverified either way)."""
         verifier = ZKPassVerifier()
-        self._submit_and_verify(
+        self._submit_proof(
             verifier, "age_verification", "0xA",
             {"is_over_18": "true"},
         )
@@ -568,6 +559,7 @@ class TestZKPassVerifier:
         assert verifier.total_proofs == 1
 
     def test_verified_proofs(self):
+        """verify_proof raises NotImplementedError, so verified_proofs stays 0."""
         verifier = ZKPassVerifier()
         proof = verifier.submit_proof(
             schema_id="coinbase_kyc",
@@ -576,8 +568,9 @@ class TestZKPassVerifier:
             public_inputs={"kyc_status": "ok", "verification_date": "2026-01-01"},
         )
         assert verifier.verified_proofs == 0
-        verifier.verify_proof(proof.proof_id)
-        assert verifier.verified_proofs == 1
+        with pytest.raises(NotImplementedError, match="TransGate SDK"):
+            verifier.verify_proof(proof.proof_id)
+        assert verifier.verified_proofs == 0
 
     def test_schema_count(self):
         verifier = ZKPassVerifier()

@@ -305,82 +305,25 @@ class ZKPassVerifier:
         return proof
 
     def verify_proof(self, proof_id: str) -> VerificationResult:
-        """Verify a submitted proof.
+        """Verify a submitted proof using the zkPass TransGate SDK.
 
-        Checks that the proof exists, has valid proof data, and that
-        public inputs match the schema's required fields.
+        SECURITY: Real ZK proof verification requires the TransGate SDK
+        integration. This method raises NotImplementedError to prevent
+        accepting unverified proofs as valid.
 
         Args:
             proof_id: ID of the proof to verify.
 
-        Returns:
-            VerificationResult indicating success or failure.
-
         Raises:
-            ValueError: If proof not found.
+            NotImplementedError: Always. zkPass proof verification requires
+                TransGate SDK integration.
+
+        See Also:
+            https://zkpass.org/docs for TransGate SDK documentation.
         """
-        proof = self._proofs.get(proof_id)
-        if not proof:
-            raise ValueError(f"Proof not found: {proof_id}")
-
-        schema = self._schemas.get(proof.schema_id)
-        if not schema:
-            proof.status = ProofStatus.REJECTED
-            return VerificationResult(
-                proof_id=proof_id,
-                success=False,
-                method=VerificationMethod.ZKPASS,
-                issuer=proof.issuer,
-                proof_type=proof.proof_type,
-                verified_at=datetime.now(UTC),
-                details={"reason": "Schema not found"},
-            )
-
-        # Check proof_data is not empty
-        if not proof.proof_data:
-            proof.status = ProofStatus.REJECTED
-            return VerificationResult(
-                proof_id=proof_id,
-                success=False,
-                method=VerificationMethod.ZKPASS,
-                issuer=proof.issuer,
-                proof_type=proof.proof_type,
-                verified_at=datetime.now(UTC),
-                details={"reason": "Empty proof data"},
-            )
-
-        # Check public inputs match schema required fields
-        for required_field in schema.required_fields:
-            if required_field not in proof.public_inputs:
-                proof.status = ProofStatus.REJECTED
-                return VerificationResult(
-                    proof_id=proof_id,
-                    success=False,
-                    method=VerificationMethod.ZKPASS,
-                    issuer=proof.issuer,
-                    proof_type=proof.proof_type,
-                    verified_at=datetime.now(UTC),
-                    details={"reason": f"Missing required field: {required_field}"},
-                )
-
-        # All checks passed — mark as verified
-        now = datetime.now(UTC)
-        proof.status = ProofStatus.VERIFIED
-        proof.verified_at = now
-
-        logger.info(
-            "zkPass proof verified: id=%s type=%s issuer=%s",
-            proof_id, proof.proof_type.value, proof.issuer.value,
-        )
-
-        return VerificationResult(
-            proof_id=proof_id,
-            success=True,
-            method=VerificationMethod.ZKPASS,
-            issuer=proof.issuer,
-            proof_type=proof.proof_type,
-            verified_at=now,
-            details={"schema_id": proof.schema_id},
+        raise NotImplementedError(
+            "zkPass proof verification requires TransGate SDK integration. "
+            "See https://zkpass.org/docs"
         )
 
     def reject_proof(self, proof_id: str, reason: str = "") -> ZKProof:

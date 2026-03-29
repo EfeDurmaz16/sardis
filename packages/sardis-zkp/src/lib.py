@@ -92,7 +92,9 @@ def _scale_amount(amount: Decimal) -> int:
 def _poseidon_hash_mock(*values: int) -> str:
     """Mock Poseidon hash for development (SHA-256 placeholder).
 
-    In production, this uses the actual Poseidon hash from the Noir circuit.
+    WARNING: This is NOT a real Poseidon hash. It uses SHA-256 as a
+    stand-in for local development and testing only. Real Poseidon
+    hashing requires the Noir circuit runtime.
     """
     data = json.dumps(list(values), sort_keys=True).encode()
     return hashlib.sha256(data).hexdigest()
@@ -254,23 +256,28 @@ class ZKProver:
         return proof
 
     async def verify(self, proof: ZKProof) -> VerificationResult:
-        """Verify a zero-knowledge proof."""
+        """Verify a zero-knowledge proof.
+
+        SECURITY: Real ZK proof verification requires compiled Noir circuits
+        and the nargo runtime. This method raises NotImplementedError in
+        non-production mode to prevent mock verification from being mistaken
+        for real cryptographic verification. In production mode, it delegates
+        to the Noir verifier CLI.
+
+        Raises:
+            NotImplementedError: In non-production mode. Mock verification
+                is disabled to prevent false security assumptions.
+        """
+        if not self._production:
+            raise NotImplementedError(
+                "ZK proof verification requires compiled Noir circuits. "
+                "Set production=True and ensure nargo is installed, or "
+                "use the Python circuit simulator in sardis-zk-policy for testing."
+            )
+
         import time
         start = time.monotonic()
-
-        if self._production:
-            valid = await self._run_noir_verifier(proof)
-        else:
-            # Mock verification: check proof structure
-            try:
-                data = json.loads(proof.proof_bytes)
-                valid = (
-                    data.get("circuit") == proof.circuit.value
-                    and data.get("public") == proof.public_inputs
-                )
-            except (json.JSONDecodeError, KeyError):
-                valid = False
-
+        valid = await self._run_noir_verifier(proof)
         elapsed = (time.monotonic() - start) * 1000
 
         result = VerificationResult(

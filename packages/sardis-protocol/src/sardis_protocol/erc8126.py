@@ -186,20 +186,22 @@ def compute_composite_score(
 
 # ============ ZK Proof Builders ============
 
-def create_proof_commitment(
+def create_hash_commitment(
     verification_type: VerificationType,
     data: bytes,
     public_inputs: list[int] | None = None,
 ) -> ZKProofCommitment:
-    """Create a ZK proof commitment for verification data.
+    """Hash-based commitment scheme. NOT a zero-knowledge proof.
 
-    Generates a commitment hash H(data || nonce) that can be
-    verified later without revealing the original data.
+    Generates a commitment hash H(data || nonce) using SHA-256.
+    This is a standard cryptographic commitment, not a ZK proof.
+    It provides hiding and binding properties but does NOT provide
+    zero-knowledge guarantees.
 
     Args:
-        verification_type: Which verification layer this proves.
+        verification_type: Which verification layer this commits to.
         data: The private verification data to commit to.
-        public_inputs: Optional public ZK circuit inputs.
+        public_inputs: Optional public inputs (not ZK circuit inputs).
 
     Returns:
         ZKProofCommitment with binding commitment hash.
@@ -214,6 +216,27 @@ def create_proof_commitment(
         timestamp=int(datetime.now(UTC).timestamp()),
         public_inputs=public_inputs or [],
     )
+
+
+def create_proof_commitment(
+    verification_type: VerificationType,
+    data: bytes,
+    public_inputs: list[int] | None = None,
+) -> ZKProofCommitment:
+    """Deprecated: Use create_hash_commitment instead.
+
+    This function is a hash-based commitment, NOT a zero-knowledge proof.
+    Retained for backward compatibility.
+    """
+    import warnings
+    warnings.warn(
+        "create_proof_commitment is misleadingly named. "
+        "Use create_hash_commitment instead. This is a SHA-256 hash commitment, "
+        "not a zero-knowledge proof.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return create_hash_commitment(verification_type, data, public_inputs)
 
 
 def build_verification_calldata(
@@ -233,9 +256,11 @@ def build_verification_calldata(
         proof_commitment: 32-byte proof commitment hash.
     """
     # Function selector: submitVerification(uint256,uint8,uint8,bytes32)
-    selector = hashlib.sha256(
+    # Uses keccak256 for EVM-compatible function selectors (not sha256)
+    from eth_hash.auto import keccak
+    selector = keccak(
         b"submitVerification(uint256,uint8,uint8,bytes32)"
-    ).digest()[:4]
+    )[:4]
 
     vtype_map = {
         VerificationType.ETV: 0,
@@ -260,9 +285,11 @@ def build_risk_score_query_calldata(agent_id: int) -> bytes:
 
     Encodes: getRiskScore(uint256 agentId) → (uint8 score, uint8 band)
     """
-    selector = hashlib.sha256(
+    # Uses keccak256 for EVM-compatible function selectors (not sha256)
+    from eth_hash.auto import keccak
+    selector = keccak(
         b"getRiskScore(uint256)"
-    ).digest()[:4]
+    )[:4]
 
     encoded = encode(["uint256"], [agent_id])
     return selector + encoded
@@ -542,45 +569,45 @@ def verify_agent(
         result = evaluate_etv(**etv_params)
         results[VerificationType.ETV] = result
         if result.is_valid:
-            proof = create_proof_commitment(
+            commitment = create_hash_commitment(
                 VerificationType.ETV,
                 str(etv_params).encode(),
                 [result.score],
             )
-            proofs.append(proof)
+            proofs.append(commitment)
 
     if scv_params is not None:
         result = evaluate_scv(**scv_params)
         results[VerificationType.SCV] = result
         if result.is_valid:
-            proof = create_proof_commitment(
+            commitment = create_hash_commitment(
                 VerificationType.SCV,
                 str(scv_params).encode(),
                 [result.score],
             )
-            proofs.append(proof)
+            proofs.append(commitment)
 
     if wav_params is not None:
         result = evaluate_wav(**wav_params)
         results[VerificationType.WAV] = result
         if result.is_valid:
-            proof = create_proof_commitment(
+            commitment = create_hash_commitment(
                 VerificationType.WAV,
                 str(wav_params).encode(),
                 [result.score],
             )
-            proofs.append(proof)
+            proofs.append(commitment)
 
     if wv_params is not None:
         result = evaluate_wv(**wv_params)
         results[VerificationType.WV] = result
         if result.is_valid:
-            proof = create_proof_commitment(
+            commitment = create_hash_commitment(
                 VerificationType.WV,
                 str(wv_params).encode(),
                 [result.score],
             )
-            proofs.append(proof)
+            proofs.append(commitment)
 
     composite = compute_composite_score(results, weights)
 

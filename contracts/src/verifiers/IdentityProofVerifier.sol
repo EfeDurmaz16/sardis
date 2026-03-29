@@ -2,35 +2,29 @@
 pragma solidity ^0.8.24;
 
 /// @title IdentityProofVerifier
-/// @notice Verifies zero-knowledge proofs that an agent has a valid KYA
-///         attestation at the required level without revealing identity.
-/// @dev Generated from Noir circuit `identity_proof.nr`.
+/// @notice PLACEHOLDER: ZK verification NOT implemented. All calls revert.
+/// @dev This contract is a placeholder awaiting real Noir circuit integration.
+///      The verify() function intentionally reverts to prevent false validation.
+///      To deploy with real ZK verification:
+///        1. Compile the Noir circuit `identity_proof.nr`
+///        2. Generate the Solidity verifier using `nargo codegen-verifier`
+///        3. Replace this file with the generated UltraPlonk verifier
 contract IdentityProofVerifier {
-    event IdentityVerified(
-        bytes32 indexed identityCommitment, uint8 requiredLevel, address verifier, uint256 timestamp
-    );
-
-    /// @notice Minimum KYA levels
-    uint8 public constant LEVEL_BASIC = 1;
-    uint8 public constant LEVEL_STANDARD = 2;
-    uint8 public constant LEVEL_ATTESTED = 3;
-
     /// @notice Verify an identity proof
+    /// @dev ALWAYS REVERTS. ZK verification is not yet implemented.
     /// @param identityCommitment Poseidon hash of the identity attestation
     /// @param requiredKyaLevel Minimum required KYA level
     /// @param proof The zero-knowledge proof bytes
     function verify(bytes32 identityCommitment, uint8 requiredKyaLevel, bytes calldata proof)
         external
-        returns (bool valid)
+        pure
+        returns (bool)
     {
-        require(proof.length >= 32, "Proof too short");
-        require(identityCommitment != bytes32(0), "Empty commitment");
-        require(requiredKyaLevel >= LEVEL_BASIC && requiredKyaLevel <= LEVEL_ATTESTED, "Invalid level");
+        // Suppress unused variable warnings
+        identityCommitment;
+        requiredKyaLevel;
+        proof;
 
-        // TODO: Replace with Noir-generated UltraPlonk verification
-        valid = true;
-
-        emit IdentityVerified(identityCommitment, requiredKyaLevel, msg.sender, block.timestamp);
-        return valid;
+        revert("ZK verification not implemented - deploy with real Noir circuits");
     }
 }
