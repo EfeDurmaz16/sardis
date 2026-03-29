@@ -4,36 +4,23 @@ import pytest
 
 
 @pytest.mark.anyio
-async def test_login_requires_admin_password(test_client):
+async def test_login_requires_valid_credentials(test_client):
+    """Shared admin password was removed. Login with invalid credentials returns 401."""
     resp = await test_client.post(
         "/api/v1/auth/login",
         data={"username": "admin", "password": "anything"},
     )
-    assert resp.status_code == 503
+    assert resp.status_code == 401
 
 
 @pytest.mark.anyio
-async def test_logout_revokes_token(test_client, monkeypatch):
+async def test_login_admin_password_removed(test_client, monkeypatch):
+    """Even with SARDIS_ADMIN_PASSWORD set, shared admin login is no longer supported."""
     monkeypatch.setenv("SARDIS_ADMIN_PASSWORD", "super-secret-password")
 
     login = await test_client.post(
         "/api/v1/auth/login",
         data={"username": "admin", "password": "super-secret-password"},
     )
-    assert login.status_code == 200, login.text
-    token = login.json()["access_token"]
-
-    headers = {"Authorization": f"Bearer {token}"}
-
-    me1 = await test_client.get("/api/v1/auth/me", headers=headers)
-    assert me1.status_code == 200, me1.text
-    assert me1.json()["username"] == "admin"
-
-    logout = await test_client.post("/api/v1/auth/logout", headers=headers)
-    assert logout.status_code == 200, logout.text
-    assert logout.json().get("revoked") is True
-
-    me2 = await test_client.get("/api/v1/auth/me", headers=headers)
-    assert me2.status_code == 401
-    assert me2.json()["detail"] == "Token revoked"
-
+    # Shared admin password was removed — always returns 401
+    assert login.status_code == 401

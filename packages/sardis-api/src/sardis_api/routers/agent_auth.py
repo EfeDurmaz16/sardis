@@ -14,6 +14,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import logging
@@ -25,6 +26,11 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+
+# Fail-closed: Ed25519 verification is MANDATORY. If PyNaCl is missing,
+# the module refuses to load — no agent auth without crypto verification.
+from nacl.exceptions import BadSignatureError
+from nacl.signing import VerifyKey
 
 from sardis_api.authz import Principal, require_principal
 
@@ -460,9 +466,12 @@ def _verify_agent_jwt(request: Request) -> dict | None:
     Uses a dedicated header to avoid conflicts with the main
     Authorization: Bearer header used by API key / dashboard JWT auth.
 
-    In production this performs Ed25519 signature verification against
-    the agent's registered public key. For the MVP this validates structure
-    and checks the agent exists.
+    Performs MANDATORY Ed25519 signature verification against the agent's
+    registered public key. No bypass, no skip, no fallback to unverified.
+
+    JWT format: <header>.<payload>.<signature>
+      - header and payload are base64url-encoded JSON
+      - signature is base64url-encoded Ed25519 signature over "<header>.<payload>"
 
     Returns decoded payload dict or None on failure.
     """
@@ -472,47 +481,73 @@ def _verify_agent_jwt(request: Request) -> dict | None:
 
     parts = token.split(".")
     if len(parts) != 3:
+        logger.warning("Agent JWT rejected: invalid structure (expected 3 parts, got %d)", len(parts))
         return None
 
-    # Decode payload (base64url)
-    import base64
+    header_b64, payload_b64, signature_b64 = parts
+
+    # Decode payload
     try:
-        payload_b64 = parts[1]
-        # Add padding
-        padding = 4 - len(payload_b64) % 4
-        if padding != 4:
-            payload_b64 += "=" * padding
-        payload_bytes = base64.urlsafe_b64decode(payload_b64)
+        padded_payload = payload_b64 + "=" * (4 - len(payload_b64) % 4) if len(payload_b64) % 4 else payload_b64
+        payload_bytes = base64.urlsafe_b64decode(padded_payload)
         payload = json.loads(payload_bytes)
     except Exception:
+        logger.warning("Agent JWT rejected: malformed payload")
         return None
 
     # Validate required claims
     if "sub" not in payload:
+        logger.warning("Agent JWT rejected: missing 'sub' claim")
         return None
 
     # Check expiration
     if "exp" in payload and payload["exp"] < time.time():
+        logger.warning("Agent JWT rejected: token expired")
         return None
 
-    # Look up agent
+    # Look up agent — agent MUST be registered
     agent_id = payload.get("sub")
-    if agent_id and agent_id in _agent_registry:
-        agent = _agent_registry[agent_id]
-        if agent["status"] != "active":
-            return None
+    if not agent_id or agent_id not in _agent_registry:
+        logger.warning("Agent JWT rejected: agent '%s' not registered", agent_id)
+        return None
 
-        # In production: verify Ed25519 signature using agent's public key.
-        # The fides project at ~/fides/packages/sdk/src/identity/keypair.ts
-        # has a reference implementation for Ed25519 sign/verify that this
-        # mirrors on the Python side.
-        #
-        # For MVP we trust the JWT structure if the agent is registered and active.
-        # TODO: Add PyNaCl Ed25519 verification:
-        #   from nacl.signing import VerifyKey
-        #   verify_key = VerifyKey(bytes.fromhex(agent["public_key"]))
-        #   verify_key.verify(signature_base, signature_bytes)
+    agent = _agent_registry[agent_id]
+    if agent["status"] != "active":
+        logger.warning("Agent JWT rejected: agent '%s' status is '%s'", agent_id, agent["status"])
+        return None
 
+    # ----- MANDATORY Ed25519 signature verification -----
+    # Decode the signature from the JWT
+    try:
+        padded_sig = signature_b64 + "=" * (4 - len(signature_b64) % 4) if len(signature_b64) % 4 else signature_b64
+        signature_bytes = base64.urlsafe_b64decode(padded_sig)
+    except Exception:
+        logger.warning("Agent JWT rejected: malformed signature encoding")
+        return None
+
+    # The signature base is the standard JWT signing input: "<header>.<payload>"
+    # (the raw base64url strings, NOT decoded bytes)
+    signature_base = f"{header_b64}.{payload_b64}".encode("ascii")
+
+    # Reconstruct the VerifyKey from the agent's registered hex-encoded public key
+    try:
+        public_key_bytes = bytes.fromhex(agent["public_key"])
+        verify_key = VerifyKey(public_key_bytes)
+    except Exception:
+        logger.error("Agent JWT rejected: invalid public key for agent '%s'", agent_id)
+        return None
+
+    # Verify the signature — this is the cryptographic gate
+    try:
+        verify_key.verify(signature_base, signature_bytes)
+    except BadSignatureError:
+        logger.warning("Agent JWT rejected: Ed25519 signature verification FAILED for agent '%s'", agent_id)
+        return None
+    except Exception:
+        logger.error("Agent JWT rejected: unexpected error during signature verification for agent '%s'", agent_id)
+        return None
+
+    logger.debug("Agent JWT verified: agent '%s' signature valid", agent_id)
     return payload
 
 

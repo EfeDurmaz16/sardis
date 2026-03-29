@@ -7498,6 +7498,7 @@ dev = [
     { name = "mypy" },
     { name = "prometheus-client" },
     { name = "pyjwt" },
+    { name = "pynacl" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -7527,7 +7528,7 @@ requires-dist = [
     { name = "sardis-cards", marker = "extra == 'cards'", specifier = ">=1.0.0" },
     { name = "sardis-chain", marker = "extra == 'chain'", specifier = ">=1.0.0" },
     { name = "sardis-checkout", marker = "extra == 'checkout'", specifier = ">=1.0.0" },
-    { name = "sardis-cli", specifier = ">=1.0.0" },
+    { name = "sardis-cli", editable = "packages/sardis-cli" },
     { name = "sardis-compliance", marker = "extra == 'compliance'", specifier = ">=1.0.0" },
     { name = "sardis-composio", marker = "extra == 'composio'", specifier = ">=1.0.0" },
     { name = "sardis-core", specifier = ">=1.0.0" },
@@ -7551,6 +7552,7 @@ dev = [
     { name = "mypy", specifier = ">=1.8" },
     { name = "prometheus-client", specifier = ">=0.20" },
     { name = "pyjwt", specifier = ">=2.12.0" },
+    { name = "pynacl", specifier = ">=1.5" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pytest-cov", specifier = ">=4.1" },
@@ -7694,7 +7696,7 @@ wheels = [
 [[package]]
 name = "sardis-cli"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-cli" }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
@@ -7703,10 +7705,19 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/2a/ae4e1be6a7f00d4d473c658dc654ffa199192504b6cf3dfb8929ec359014/sardis_cli-1.0.0.tar.gz", hash = "sha256:36991eea9db33e20a8b76dec1a993063f6c5b2b7c39734e9087cdea0b79d6c66", size = 52294, upload-time = "2026-03-08T12:08:49.377Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/1a/8bed5d65c99376bab0b99cd7d185007287f7b53fd8e97e9e04e81609b762/sardis_cli-1.0.0-py3-none-any.whl", hash = "sha256:3d77d5b5963a4dc4694768a967b9adf1bec95e2318ff31f93213dfb8a053f5cc", size = 26491, upload-time = "2026-03-08T12:08:48.014Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = ">=8.1.0" },
+    { name = "httpx", specifier = ">=0.24.0" },
+    { name = "keyring", specifier = ">=24.0.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "rich", specifier = ">=13.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-compliance"
