@@ -187,14 +187,53 @@ class StripeConnector(PSPConnector):
         self,
         payload: dict[str, Any],
         headers: dict[str, str],
+        raw_payload: bytes | None = None,
     ) -> dict[str, Any]:
-        """Handle Stripe webhook."""
-        # Verify signature
+        """Handle Stripe webhook with proper signature verification.
+
+        Args:
+            payload: Parsed JSON payload.
+            headers: HTTP headers from the request.
+            raw_payload: Raw request body bytes (required for signature verification).
+
+        Raises:
+            RuntimeError: If webhook secret is not configured in production.
+            ValueError: If signature is present but invalid.
+        """
+        import logging
+
+        logger = logging.getLogger("sardis.checkout.stripe")
         signature = headers.get("stripe-signature", "")
-        if signature:
-            # For full verification, we'd need the raw payload bytes
-            # For now, we'll trust the signature if present
-            pass
+        is_production = os.getenv("SARDIS_ENV", "dev") in ("production", "prod", "staging")
+        webhook_secret = self.webhook_secret or os.getenv("SARDIS_STRIPE_WEBHOOK_SECRET")
+
+        if not webhook_secret:
+            if is_production:
+                raise RuntimeError(
+                    "SARDIS_STRIPE_WEBHOOK_SECRET is not configured. "
+                    "Webhook signature verification is required in production."
+                )
+            logger.warning(
+                "SARDIS_STRIPE_WEBHOOK_SECRET not configured — skipping signature "
+                "verification. This is only acceptable in dev/test environments."
+            )
+        elif signature and raw_payload is not None:
+            # Verify the Stripe webhook signature
+            is_valid = await self._verify_stripe_signature(raw_payload, signature, webhook_secret)
+            if not is_valid:
+                raise ValueError(
+                    "Invalid Stripe webhook signature. The request may have been "
+                    "tampered with or the webhook secret is incorrect."
+                )
+        elif signature and raw_payload is None:
+            logger.warning(
+                "Stripe signature present but raw_payload not provided — "
+                "cannot verify signature. Pass raw request body bytes."
+            )
+            if is_production:
+                raise ValueError(
+                    "raw_payload is required for webhook signature verification in production."
+                )
 
         # Parse event
         event_type = payload.get("type", "")
@@ -212,6 +251,62 @@ class StripeConnector(PSPConnector):
         }
 
         return normalized
+
+    async def _verify_stripe_signature(
+        self,
+        raw_payload: bytes,
+        signature: str,
+        webhook_secret: str,
+        tolerance: int = 300,
+    ) -> bool:
+        """Verify Stripe webhook signature using HMAC-SHA256.
+
+        Implements the same algorithm as stripe.Webhook.construct_event():
+        1. Extract timestamp and signature from header
+        2. Compute expected signature: HMAC-SHA256(secret, "{timestamp}.{payload}")
+        3. Compare signatures using constant-time comparison
+        4. Verify timestamp is within tolerance window
+
+        Args:
+            raw_payload: Raw request body bytes.
+            signature: Stripe-Signature header value.
+            webhook_secret: Webhook endpoint secret (whsec_...).
+            tolerance: Maximum age of the event in seconds (default: 300).
+
+        Returns:
+            True if the signature is valid.
+        """
+        import time
+
+        try:
+            sig_parts = signature.split(",")
+            sig_dict: dict[str, str] = {}
+            for part in sig_parts:
+                key, value = part.strip().split("=", 1)
+                sig_dict[key] = value
+
+            timestamp_str = sig_dict.get("t", "")
+            signature_v1 = sig_dict.get("v1", "")
+
+            if not timestamp_str or not signature_v1:
+                return False
+
+            # Check timestamp tolerance to prevent replay attacks
+            timestamp = int(timestamp_str)
+            if abs(time.time() - timestamp) > tolerance:
+                return False
+
+            # Compute expected signature
+            signed_payload = f"{timestamp_str}.{raw_payload.decode('utf-8')}"
+            expected_sig = hmac.new(
+                webhook_secret.encode("utf-8"),
+                signed_payload.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+
+            return hmac.compare_digest(expected_sig, signature_v1)
+        except Exception:
+            return False
 
     async def parse_webhook_event(
         self,

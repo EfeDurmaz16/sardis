@@ -361,17 +361,17 @@ class SettlementService:
                 logger.info("Tempo TIP-20 settlement completed for session %s", session_id)
                 return
 
-            # Cross-chain: Tempo → Base/Ethereum via CCTP bridge, then settle
+            # Cross-chain: Tempo → Base/Ethereum via CCTP bridge
             logger.warning(
                 "Cross-chain Tempo settlement not yet implemented for session %s, "
-                "falling back to USDC settlement",
+                "marking for manual review",
                 session_id,
             )
             await self._merchant_repo.update_session(
                 session_id,
-                status="settled",
-                settlement_status="completed",
-                settlement_method="tempo_usdc_fallback",
+                status="pending_review",
+                settlement_status="pending_manual_review",
+                settlement_method="tempo_cross_chain_pending",
             )
         except Exception:
             logger.exception("Tempo settlement failed for session %s", session_id)
