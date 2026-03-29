@@ -378,15 +378,16 @@ async def execute_payment(
                     pool = await _get_db()
                     if pool:
                         async with pool.acquire() as conn:
+                            # wallets table: external_id = "wallet_xxx", addresses = JSONB
                             addr_row = await conn.fetchrow(
-                                "SELECT addresses FROM wallets_v2 WHERE external_id = $1",
+                                "SELECT addresses FROM wallets WHERE external_id = $1",
                                 wallet_id,
                             )
                             if addr_row and addr_row["addresses"]:
                                 import json as _json
                                 addrs = addr_row["addresses"] if isinstance(addr_row["addresses"], dict) else _json.loads(addr_row["addresses"])
-                                # Try tempo, then base_sepolia, then any address
                                 from_address = addrs.get("tempo") or addrs.get("base_sepolia") or addrs.get("base") or next(iter(addrs.values()), None)
+                                logger.info("Resolved wallet address from DB: %s -> %s", wallet_id, from_address)
                 except Exception as addr_err:
                     logger.warning("Could not resolve wallet address from DB: %s", addr_err)
 
