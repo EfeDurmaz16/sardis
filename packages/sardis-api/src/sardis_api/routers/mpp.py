@@ -411,13 +411,11 @@ async def execute_payment(
                 destination=req.destination or req.merchant,
                 audit_hash=f"mpp:{session_id}:{payment_id}",
                 wallet_id=wallet_id,
+                from_address=from_address,
                 ai_agent_presence=True,
                 transaction_modality="human_not_present",
                 merchant_domain=req.merchant_url or req.merchant,
             )
-            # Attach from_address so ChainExecutor skips Turnkey lookup
-            if from_address:
-                mandate.from_address = from_address  # type: ignore[attr-defined]
 
             receipt = await chain_executor.dispatch_payment(mandate)
             tx_hash = receipt.tx_hash

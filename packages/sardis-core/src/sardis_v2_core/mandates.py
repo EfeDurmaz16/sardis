@@ -74,6 +74,8 @@ class PaymentMandate(MandateBase):
     # Execution-only hint (not part of AP2 signature payload).
     # When present, chain executors should use this to select the signing wallet.
     wallet_id: str | None = None
+    # Pre-resolved on-chain address (skips MPC provider lookup when set).
+    from_address: str | None = None
     # Wallet execution path selector.
     account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
     smart_account_address: str | None = None
