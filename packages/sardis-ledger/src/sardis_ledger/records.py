@@ -868,7 +868,7 @@ class LedgerStore:
                 chain_receipt.audit_anchor,
                 from_wallet_id,
                 payment_mandate.destination,
-                float(payment_mandate.amount_minor),
+                str(payment_mandate.amount_minor),
                 payment_mandate.token,
                 error,
                 json.dumps(metadata),
