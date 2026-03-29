@@ -665,8 +665,9 @@ class GasPriceProtectionConfig:
         # No native gas token; fees deducted from TIP-20 transfer amount.
         # Contract creation costs 5-10x Ethereum (1000 gas/byte vs 200).
         "tempo": {
-            "max_gas_price_gwei": Decimal("100"),  # Tempo gas in stablecoin attodollars — higher than EVM Gwei norms
-            "max_transaction_cost_usd": Decimal("5"),  # Tempo fees are sub-cent
+            "max_gas_price_gwei": Decimal("200"),  # Tempo gas in stablecoin attodollars — different from EVM norms
+            "max_priority_fee_gwei": Decimal("200"),
+            "max_transaction_cost_usd": Decimal("100"),  # Tempo cost calc inflated due to stablecoin gas model
         },
         # Testnets - more lenient
         "base_sepolia": {
