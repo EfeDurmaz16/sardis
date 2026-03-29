@@ -37,7 +37,8 @@ class TestCircleWalletClient:
 
     @pytest.mark.asyncio
     async def test_create_wallet_set(self, mock_client):
-        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req:
+        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req, \
+             patch.object(mock_client, "_build_entity_secret_cipher", return_value="mock_cipher"):
             mock_req.return_value = {"walletSet": {"id": "ws_123"}}
             ws_id = await mock_client.create_wallet_set("test-set")
             assert ws_id == "ws_123"
@@ -45,7 +46,8 @@ class TestCircleWalletClient:
 
     @pytest.mark.asyncio
     async def test_create_wallet(self, mock_client):
-        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req:
+        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req, \
+             patch.object(mock_client, "_build_entity_secret_cipher", return_value="mock_cipher"):
             mock_req.return_value = {
                 "wallets": [{
                     "id": "cw_456",
@@ -75,7 +77,8 @@ class TestCircleWalletClient:
 
     @pytest.mark.asyncio
     async def test_sign_transaction(self, mock_client):
-        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req:
+        with patch.object(mock_client, "_request", new_callable=AsyncMock) as mock_req, \
+             patch.object(mock_client, "_build_entity_secret_cipher", return_value="mock_cipher"):
             mock_req.return_value = {
                 "id": "tx_789",
                 "state": "INITIATED",
@@ -153,7 +156,7 @@ class TestCircleWalletClient:
             mock_client._client, "request",
             new_callable=AsyncMock,
             side_effect=httpx.HTTPStatusError("Unauthorized", request=MagicMock(), response=mock_resp),
-        ):
+        ), patch.object(mock_client, "_build_entity_secret_cipher", return_value="mock_cipher"):
             with pytest.raises(CircleAPIError, match="401"):
                 await mock_client.create_wallet_set("test")
 

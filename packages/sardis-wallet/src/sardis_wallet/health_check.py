@@ -279,9 +279,18 @@ class HealthChecker:
             if self._mpc_checker:
                 success, latency = await self._mpc_checker.check_connectivity()
             else:
-                # Mock check
-                await asyncio.sleep(0.1)
-                success, latency = True, 100.0
+                # No MPC checker configured — report honest unknown status
+                # instead of faking a healthy result
+                return HealthCheckResult(
+                    check_id=f"mpc_connectivity_{wallet_id[:8]}",
+                    check_name="MPC Provider Connectivity",
+                    category=CheckCategory.CONNECTIVITY,
+                    status=HealthStatus.UNKNOWN,
+                    message="MPC provider checker not configured — status unavailable",
+                    details={"configured": False},
+                    duration_ms=(time.time() - start_time) * 1000,
+                    remediation="Configure an MPCProviderChecker to enable MPC health monitoring",
+                )
 
             duration = (time.time() - start_time) * 1000
 

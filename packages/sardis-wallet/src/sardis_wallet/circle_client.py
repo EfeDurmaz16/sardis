@@ -140,10 +140,41 @@ class CircleWalletClient:
         """Build entity secret ciphertext for Circle API.
 
         Circle requires the entity secret to be RSA-encrypted with their
-        public key. For simplicity, we pass it hex-encoded — the actual
-        encryption should be done via Circle's SDK in production.
+        public key before sending to the API.
+
+        Reference: https://developers.circle.com/w3s/docs/entity-secret-management
+
+        If SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY is set (PEM-encoded RSA
+        public key), we perform RSA-OAEP encryption. Otherwise, this method
+        raises NotImplementedError to prevent silently sending unencrypted
+        secrets to Circle's API.
         """
-        return self._entity_secret
+        import base64
+        import os
+
+        rsa_pub_key_pem = os.getenv("SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY")
+        if not rsa_pub_key_pem:
+            raise NotImplementedError(
+                "Circle entity secret RSA encryption required. "
+                "Set SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY env var with Circle's RSA public key (PEM). "
+                "See https://developers.circle.com/w3s/docs/entity-secret-management"
+            )
+
+        # RSA-OAEP encrypt the entity secret with Circle's public key
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import padding
+
+        public_key = serialization.load_pem_public_key(rsa_pub_key_pem.encode())
+        entity_secret_bytes = bytes.fromhex(self._entity_secret)
+        ciphertext = public_key.encrypt(  # type: ignore[union-attr]
+            entity_secret_bytes,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+        return base64.b64encode(ciphertext).decode()
 
     async def create_wallet_set(self, name: str) -> str:
         """Create a new wallet set.

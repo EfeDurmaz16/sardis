@@ -8,7 +8,7 @@ def test_social_recovery_share_generation_disabled_in_production(monkeypatch) ->
     monkeypatch.setenv("SARDIS_ENVIRONMENT", "prod")
     manager = SocialRecoveryManager()
 
-    with pytest.raises(RuntimeError, match="Secure SSS backend is required in production"):
+    with pytest.raises(RuntimeError, match="Social recovery is disabled"):
         manager._generate_sss_shares(b"secret", num_shares=3, threshold=2)
 
 
@@ -17,5 +17,5 @@ def test_social_recovery_reconstruction_disabled_in_production(monkeypatch) -> N
     manager = SocialRecoveryManager()
     shares = [(1, b"a" * 32), (2, b"b" * 32)]
 
-    with pytest.raises(RuntimeError, match="Secure SSS backend is required in production"):
+    with pytest.raises(RuntimeError, match="Social recovery is disabled"):
         manager._reconstruct_secret(shares, threshold=2)

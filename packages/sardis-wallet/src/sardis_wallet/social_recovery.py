@@ -324,35 +324,18 @@ class SocialRecoveryManager:
         """
         Generate Shamir's Secret Sharing shares.
 
-        In production, use a proper SSS library like `secretsharing` or `ssss`.
-        This is a simplified implementation for illustration.
+        DISABLED: The previous implementation used HMAC-based pseudo-shares
+        that are cryptographically broken — any single share could reconstruct
+        the secret. This feature is disabled until a proper Shamir's Secret
+        Sharing library (e.g. PyCryptodome's Crypto.Protocol.SecretSharing)
+        is integrated and audited.
         """
-        # For production, use: from Crypto.Protocol.SecretSharing import Shamir
-        # shares = Shamir.split(threshold, num_shares, secret)
-        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env in {"prod", "production"}:
-            raise RuntimeError(
-                "Secure SSS backend is required in production. "
-                "Insecure placeholder share generation is disabled."
-            )
-
-        # Simplified placeholder - in production use proper SSS
-        logger.warning(
-            "Using insecure social-recovery placeholder shares in %s environment. "
-            "Do not use this mode for production secrets.",
-            env or "unknown",
+        raise RuntimeError(
+            "Social recovery is disabled. "
+            "Shamir's Secret Sharing implementation required before enabling. "
+            "The previous HMAC-based share generation was insecure — "
+            "any single share could reconstruct the secret."
         )
-        shares = []
-        for i in range(num_shares):
-            # Create pseudo-share (NOT SECURE - use proper SSS in production)
-            share_data = hmac.new(
-                secret,
-                f"share_{i}".encode(),
-                hashlib.sha256
-            ).digest()
-            shares.append((i + 1, share_data))
-
-        return shares
 
     def _reconstruct_secret(
         self,
@@ -362,24 +345,13 @@ class SocialRecoveryManager:
         """
         Reconstruct secret from SSS shares.
 
-        In production, use a proper SSS library.
+        DISABLED: See _generate_sss_shares for rationale.
         """
-        # For production, use: from Crypto.Protocol.SecretSharing import Shamir
-        # secret = Shamir.combine(shares)
-        env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env in {"prod", "production"}:
-            raise RuntimeError(
-                "Secure SSS backend is required in production. "
-                "Insecure placeholder reconstruction is disabled."
-            )
-
-        # Simplified placeholder - combine shares (NOT SECURE)
-        if len(shares) < threshold:
-            raise ValueError("Insufficient shares for reconstruction")
-
-        # Placeholder reconstruction
-        combined = b"".join(s[1] for s in sorted(shares)[:threshold])
-        return hashlib.sha256(combined).digest()
+        raise RuntimeError(
+            "Social recovery is disabled. "
+            "Shamir's Secret Sharing implementation required before enabling. "
+            "The previous HMAC-based share reconstruction was insecure."
+        )
 
     async def setup_recovery(
         self,
@@ -391,101 +363,14 @@ class SocialRecoveryManager:
         """
         Set up social recovery for a wallet.
 
-        Args:
-            wallet_id: Wallet identifier
-            recovery_secret: Secret to be split among guardians
-            guardians: List of guardian configurations
-            threshold: Optional custom threshold
-
-        Returns:
-            Setup result with guardian details
+        DISABLED: Social recovery is disabled until a proper Shamir's Secret
+        Sharing implementation is integrated. All operations will raise
+        RuntimeError.
         """
-        num_guardians = len(guardians)
-
-        # Validate
-        if num_guardians < self._config.min_guardians:
-            raise ValueError(
-                f"Minimum {self._config.min_guardians} guardians required"
-            )
-        if num_guardians > self._config.max_guardians:
-            raise ValueError(
-                f"Maximum {self._config.max_guardians} guardians allowed"
-            )
-
-        # Calculate threshold
-        if threshold is None:
-            threshold = self._config.calculate_threshold(num_guardians)
-
-        if threshold < 2:
-            raise ValueError("Threshold must be at least 2")
-        if threshold > num_guardians:
-            raise ValueError("Threshold cannot exceed number of guardians")
-
-        # Generate SSS shares
-        shares = self._generate_sss_shares(recovery_secret, num_guardians, threshold)
-
-        # Create guardians
-        if wallet_id not in self._guardians:
-            self._guardians[wallet_id] = {}
-
-        created_guardians = []
-        for i, guardian_config in enumerate(guardians):
-            guardian_id = f"guardian_{secrets.token_hex(8)}"
-
-            # Hash identifier for privacy
-            identifier_hash = hashlib.sha256(
-                guardian_config["identifier"].encode()
-            ).hexdigest()
-
-            # Encrypt share if encryption service available
-            share_index, share_data = shares[i]
-            if self._encryption:
-                encrypted_share = await self._encryption.encrypt_share(
-                    share_data, guardian_id
-                )
-            else:
-                encrypted_share = share_data
-
-            guardian = Guardian(
-                guardian_id=guardian_id,
-                wallet_id=wallet_id,
-                guardian_type=guardian_config.get("type", "email"),
-                guardian_identifier=identifier_hash,
-                guardian_name=guardian_config.get("name", f"Guardian {i + 1}"),
-                share_index=share_index,
-                encrypted_share=encrypted_share,
-                verification_method=guardian_config.get("verification", "email_otp"),
-            )
-
-            self._guardians[wallet_id][guardian_id] = guardian
-            created_guardians.append(guardian.to_dict())
-
-            # Send invitation
-            if self._notifications:
-                await self._notifications.notify_guardian(
-                    guardian,
-                    "guardian_invitation",
-                    {"wallet_id": wallet_id},
-                )
-
-        # Store config
-        self._wallet_configs[wallet_id] = {
-            "threshold": threshold,
-            "num_guardians": num_guardians,
-            "setup_at": datetime.now(UTC).isoformat(),
-        }
-
-        logger.info(
-            f"Social recovery setup for wallet {wallet_id}: "
-            f"{threshold}-of-{num_guardians} threshold"
+        raise RuntimeError(
+            "Social recovery is disabled. "
+            "Shamir's Secret Sharing implementation required before enabling."
         )
-
-        return {
-            "wallet_id": wallet_id,
-            "threshold": threshold,
-            "num_guardians": num_guardians,
-            "guardians": created_guardians,
-        }
 
     async def accept_guardian_role(
         self,
@@ -532,78 +417,13 @@ class SocialRecoveryManager:
         """
         Initiate a recovery request.
 
-        Args:
-            wallet_id: Wallet to recover
-            requester_proof: Proof of identity from requester
-            new_key_reference: New key to transfer wallet to
-
-        Returns:
-            RecoveryRequest object
+        DISABLED: Social recovery is disabled until a proper Shamir's Secret
+        Sharing implementation is integrated.
         """
-        async with self._recovery_lock:
-            # Check for existing recovery
-            if wallet_id in self._wallet_recoveries:
-                existing_id = self._wallet_recoveries[wallet_id]
-                existing = self._recovery_requests.get(existing_id)
-                if existing and not existing.is_expired():
-                    raise ValueError("Recovery already in progress for this wallet")
-
-            # Get wallet config
-            config = self._wallet_configs.get(wallet_id)
-            if not config:
-                raise ValueError("Social recovery not set up for this wallet")
-
-            # Get active guardians
-            wallet_guardians = self._guardians.get(wallet_id, {})
-            active_guardians = [
-                g for g in wallet_guardians.values()
-                if g.is_active() and g.can_participate()
-            ]
-
-            if len(active_guardians) < config["threshold"]:
-                raise ValueError("Insufficient active guardians for recovery")
-
-            # Create recovery request
-            recovery_id = f"recovery_{secrets.token_hex(12)}"
-            recovery = RecoveryRequest(
-                recovery_id=recovery_id,
-                wallet_id=wallet_id,
-                requester_proof=requester_proof,
-                new_key_reference=new_key_reference,
-                required_threshold=config["threshold"],
-                time_lock_hours=self._config.time_lock_hours,
-                status=RecoveryStatus.COLLECTING_SHARES,
-                expires_at=datetime.now(UTC) + timedelta(
-                    days=self._config.recovery_expiry_days
-                ),
-            )
-
-            # Store
-            self._recovery_requests[recovery_id] = recovery
-            self._wallet_recoveries[wallet_id] = recovery_id
-
-            # Notify guardians
-            if self._notifications and self._config.notify_all_guardians_on_recovery:
-                for guardian in active_guardians:
-                    await self._notifications.notify_guardian(
-                        guardian,
-                        "recovery_initiated",
-                        {
-                            "recovery_id": recovery_id,
-                            "wallet_id": wallet_id,
-                        },
-                    )
-                    recovery.guardians_contacted.append(guardian.guardian_id)
-
-            recovery.log_activity("recovery_initiated", {
-                "guardians_contacted": len(recovery.guardians_contacted),
-            })
-
-            logger.info(
-                f"Recovery initiated for wallet {wallet_id}: {recovery_id}"
-            )
-
-            return recovery
+        raise RuntimeError(
+            "Social recovery is disabled. "
+            "Shamir's Secret Sharing implementation required before enabling."
+        )
 
     async def create_guardian_challenge(
         self,
@@ -736,77 +556,13 @@ class SocialRecoveryManager:
         """
         Execute the recovery after threshold is met and time lock expired.
 
-        Args:
-            recovery_id: Recovery request ID
-
-        Returns:
-            Recovery result with new key information
+        DISABLED: Social recovery is disabled until a proper Shamir's Secret
+        Sharing implementation is integrated.
         """
-        recovery = self._recovery_requests.get(recovery_id)
-        if not recovery:
-            raise ValueError("Recovery request not found")
-
-        if recovery.status == RecoveryStatus.COMPLETED:
-            raise ValueError("Recovery already completed")
-
-        if not recovery.is_threshold_met():
-            raise ValueError("Threshold not met - more guardian approvals needed")
-
-        if not recovery.is_time_lock_expired():
-            time_remaining = (
-                recovery.time_lock_expires_at - datetime.now(UTC)
-            )
-            raise ValueError(
-                f"Time lock not expired - {time_remaining.total_seconds() / 3600:.1f} hours remaining"
-            )
-
-        recovery.status = RecoveryStatus.EXECUTING
-        recovery.log_activity("execution_started", {})
-
-        try:
-            # Reconstruct secret from shares
-            shares = [
-                (
-                    self._guardians[recovery.wallet_id][gid].share_index,
-                    share_data,
-                )
-                for gid, share_data in recovery.shares_collected.items()
-            ]
-
-            self._reconstruct_secret(
-                shares,
-                recovery.required_threshold,
-            )
-
-            # In production, use recovered_secret to:
-            # 1. Decrypt the wallet's master key
-            # 2. Transfer control to new_key_reference
-            # 3. Update MPC configuration
-
-            recovery.status = RecoveryStatus.COMPLETED
-            recovery.completed_at = datetime.now(UTC)
-            recovery.log_activity("recovery_completed", {
-                "new_key_reference": recovery.new_key_reference,
-            })
-
-            # Cleanup
-            del self._wallet_recoveries[recovery.wallet_id]
-
-            logger.info(f"Recovery {recovery_id} completed successfully")
-
-            return {
-                "recovery_id": recovery_id,
-                "wallet_id": recovery.wallet_id,
-                "status": "completed",
-                "new_key_reference": recovery.new_key_reference,
-                "completed_at": recovery.completed_at.isoformat(),
-            }
-
-        except Exception as e:
-            recovery.status = RecoveryStatus.PENDING
-            recovery.log_activity("execution_failed", {"error": str(e)})
-            logger.error(f"Recovery {recovery_id} execution failed: {e}")
-            raise
+        raise RuntimeError(
+            "Social recovery is disabled. "
+            "Shamir's Secret Sharing implementation required before enabling."
+        )
 
     async def cancel_recovery(
         self,
