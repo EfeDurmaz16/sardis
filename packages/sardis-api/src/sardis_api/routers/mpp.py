@@ -89,6 +89,7 @@ class MPPSessionResponse(BaseModel):
 class ExecutePaymentRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Payment amount")
     merchant: str = Field(..., description="Merchant identifier or URL")
+    destination: str | None = Field(None, description="Destination wallet address (0x...)")
     merchant_url: str | None = None
     memo: str | None = None
     metadata: dict | None = None
