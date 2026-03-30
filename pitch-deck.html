@@ -673,7 +673,7 @@
       <div class="metric-label">API endpoints</div>
     </div>
     <div class="metric metric-sm col">
-      <div class="metric-value">21</div>
+      <div class="metric-value">48</div>
       <div class="metric-label">Published packages</div>
     </div>
     <div class="metric metric-sm col">
@@ -738,7 +738,7 @@
       <div class="metric-sub">npm + PyPI, $0 marketing</div>
     </div>
     <div class="metric">
-      <div class="metric-value" style="font-size: 36px;">21</div>
+      <div class="metric-value" style="font-size: 36px;">48</div>
       <div class="metric-label">published packages</div>
       <div class="metric-sub">v1.1.0, tested, versioned</div>
     </div>
@@ -785,7 +785,7 @@
     <div class="col">
       <div class="t-caption mb-8">Ecosystem Access</div>
       <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-        <span class="tag">Stripe <span style="font-size:10px; color:var(--text-3);">(MPP early access)</span></span>
+        <span class="tag">Stripe <span style="font-size:10px; color:var(--text-3);">(MPP production access granted)</span></span>
         <span class="tag">Coinbase <span style="font-size:10px; color:var(--text-3);">(x402 support)</span></span>
         <span class="tag">Base <span style="font-size:10px; color:var(--text-3);">(primary chain)</span></span>
       </div>
@@ -807,9 +807,9 @@
     </div>
   </div>
 
-  <div class="card card-tight" style="background: var(--elevated); border-color: rgba(234,179,8,0.25);">
+  <div class="card card-tight" style="background: var(--elevated); border-color: rgba(34,197,94,0.25);">
     <span style="font-size: 12px; color: var(--text-2); line-height: 1.55;">
-      <strong style="color: var(--amber);">No paying production customers yet.</strong> What we do have is strong developer pull: 50K+ organic installs, zero paid acquisition, and early evidence that integrations can become a pipeline for design partners. Listed on mpp.dev/services.
+      <strong style="color: var(--green);">First mainnet payment executed. 24 API endpoints earning per-request revenue via MPP.</strong> Strong developer pull: 50K+ organic installs, zero paid acquisition, and integrations becoming a pipeline for design partners. Listed on mpp.dev/services.
     </span>
   </div>
 
@@ -837,20 +837,26 @@
         <tr>
           <td style="padding: 8px 12px;"><span style="color: var(--green); font-weight: 600;">Dev</span></td>
           <td style="padding: 8px 12px;">Developers building with agents</td>
-          <td style="padding: 8px 12px; font-family: var(--mono);">Free</td>
+          <td style="padding: 8px 12px; font-family: var(--mono);">$49/mo</td>
           <td style="padding: 8px 12px;">Open source SDK, testnet access, all framework integrations, community support</td>
         </tr>
         <tr>
-          <td style="padding: 8px 12px;"><span style="color: var(--amber); font-weight: 600;">Business</span></td>
-          <td style="padding: 8px 12px;">Production teams + CFOs</td>
-          <td style="padding: 8px 12px; font-family: var(--mono);">$199/seat/mo</td>
-          <td style="padding: 8px 12px;">Mandate management, compliance dashboard, full audit trail, SSO, priority support</td>
+          <td style="padding: 8px 12px;"><span style="color: var(--text-2); font-weight: 600;">Starter</span></td>
+          <td style="padding: 8px 12px;">Production teams shipping agents</td>
+          <td style="padding: 8px 12px; font-family: var(--mono);">$199/mo</td>
+          <td style="padding: 8px 12px;">Mandate management, compliance dashboard, full audit trail, priority support</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 12px;"><span style="color: var(--amber); font-weight: 600;">Growth</span></td>
+          <td style="padding: 8px 12px;">Scaling teams + CFOs</td>
+          <td style="padding: 8px 12px; font-family: var(--mono);">$499/mo</td>
+          <td style="padding: 8px 12px;">SSO, advanced policies, volume discounts, dedicated support, SLA</td>
         </tr>
         <tr>
           <td style="padding: 8px 12px;"><span style="color: var(--text-1); font-weight: 600;">Enterprise</span></td>
           <td style="padding: 8px 12px;">Large orgs at scale</td>
-          <td style="padding: 8px 12px; font-family: var(--mono);">BPS on volume</td>
-          <td style="padding: 8px 12px;">Custom policies, dedicated support, SLA, on-prem option. Revenue aligned with value delivered.</td>
+          <td style="padding: 8px 12px; font-family: var(--mono);">Custom</td>
+          <td style="padding: 8px 12px;">Custom policies, dedicated support, on-prem option. Revenue aligned with value delivered.</td>
         </tr>
       </tbody>
     </table>
@@ -858,7 +864,7 @@
 
   <div class="card card-tight" style="background: var(--elevated); border-color: rgba(34,197,94,0.15); margin-bottom: 12px; padding: 10px 16px;">
     <span style="font-size: 12px; color: var(--text-2); line-height: 1.6;">
-      <strong style="color: var(--green);">Why this works:</strong> Dev tier creates developer pull (50K+ installs prove it). Business tier captures the CFO who needs approvals and audit trails. Enterprise BPS aligns revenue with value: the more agent spend we govern, the more we earn. <strong style="color: var(--text-1);">No custody. No MTL required. 93% gross margin per $100 tx.</strong>
+      <strong style="color: var(--green);">Why this works:</strong> Dev tier creates developer pull (50K+ installs prove it). Growth tier captures the CFO who needs approvals and audit trails. Enterprise pricing aligns revenue with value: the more agent spend we govern, the more we earn. <strong style="color: var(--text-1);">No custody. No MTL required. 93% gross margin per $100 tx.</strong>
     </span>
   </div>
 
@@ -868,7 +874,7 @@
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border);">
           <span style="color: var(--text-2);">Policy engine subscription</span>
-          <span class="t-mono" style="color: var(--text-1); font-size: 11px;">$29&ndash;$499/mo</span>
+          <span class="t-mono" style="color: var(--text-1); font-size: 11px;">$49&ndash;$499/mo</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border);">
           <span style="color: var(--text-2);">Transaction fees</span>
@@ -1003,6 +1009,13 @@
         Startups give agents $500-limit virtual cards. But cards settle post-transaction. They cannot read prompt context, enforce allow-listed endpoints, or fail cryptographically at the intent layer. <strong style="color: var(--text-1);">Corporate cards manage employees. Sardis manages code.</strong>
       </span>
     </div>
+
+    <div class="card card-tight" style="border-color: rgba(34,197,94,0.2); background: var(--elevated); padding: 12px 20px;">
+      <div style="font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 4px;">Named Competitors</div>
+      <span style="font-size: 13px; color: var(--text-2); line-height: 1.6;">
+        Skyfire ($8.5M), PaymanAI ($3M), Agentic ($3.3M) &mdash; all focused on payment access. Sardis is the only compliance-grade policy layer.
+      </span>
+    </div>
   </div>
 
   <div class="slide-rule"></div>
@@ -1035,12 +1048,12 @@
         </div>
         <div class="row items-center gap-sm">
           <div class="t-mono" style="font-size: 16px; min-width: 80px; font-weight: 600;">1,800+</div>
-          <div class="t-body" style="font-size: 12px;">Commits in ~20 weeks, 21 packages, 47+ endpoints</div>
+          <div class="t-body" style="font-size: 12px;">Commits in ~20 weeks, 48 packages, 47+ endpoints</div>
         </div>
       </div>
 
       <div style="font-size: 12px; color: var(--text-4);">
-        The proof: 21 published packages, 50K+ installs, 15 framework integrations, 7 protocol implementations, sardis.pay() Phase 1-3 shipped. $0 marketing spend.
+        The proof: 48 published packages, 50K+ installs, 15 framework integrations, 7 protocol implementations, sardis.pay() Phase 1-3 shipped. $0 marketing spend.
       </div>
       <div style="font-size: 11px; color: var(--text-3); margin-top: 6px; font-style: italic;">
         <strong style="color: var(--text-2);">What I know I need:</strong> Enterprise GTM. Someone who has sold $100K+ annual contracts to CFOs.
@@ -1173,7 +1186,7 @@
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <div class="card card-tight" style="border-color: rgba(34,197,94,0.2);">
           <div class="t-caption mb-4" style="color: var(--green);">Now</div>
-          <div style="font-size: 12px; color: var(--text-2); line-height: 1.5;">21-package platform live on Base. 50K+ SDK installs. 15 framework integrations. 7 protocol impls. Stripe MPP early access. sardis.pay() Phase 1-3 shipped.</div>
+          <div style="font-size: 12px; color: var(--text-2); line-height: 1.5;">48-package platform live on Base. 50K+ SDK installs. 15 framework integrations. 7 protocol impls. Stripe MPP production access granted. sardis.pay() Phase 1-3 shipped.</div>
         </div>
         <div class="card card-tight">
           <div class="t-caption mb-4">Month 6</div>

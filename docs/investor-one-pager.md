@@ -22,22 +22,20 @@ Sardis works across Stripe, Base, Tempo, and Visa simultaneously. Incumbents onl
 
 ## Proof of Build
 
-47+ API endpoints and 21 published packages at v1.1.0, all built solo. We have the foundational control plane shipped while competitors are still writing whitepapers.
+48 packages, 50K+ installs, first mainnet payment executed on Tempo ($1 USDC, Turnkey MPC signed). 24 pay-per-request API endpoints live via Stripe MPP — earning machine-to-machine revenue today. All built solo.
 
 ## Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| SDK installs | 50,000+ (PyPI + npm) |
-| Marketing spend | $0 -- all organic |
-| Published packages | 21 at v1.1.0 |
-| Production API endpoints | 47+ |
-| Framework integrations | 15 (CrewAI, AutoGPT, LangChain, OpenAI Agents, Google ADK, Vercel AI SDK, etc.) |
-| Agent Auth Protocol | Supported |
-| sardis.pay() | Phase 1-3 shipped |
-| Listed on mpp.dev/services | Yes |
-| Commits | 1,800+ |
-| Policy engine checks | 12-check pipeline per transaction |
+| SDK installs | 50,000+ (PyPI + npm), $0 marketing |
+| Published packages | 48 |
+| Mainnet | First payment executed on Tempo (chain 4217) |
+| Paid API endpoints | 24 MPP-gated, earning per-request revenue |
+| Framework integrations | 18+ (CrewAI, AutoGPT, OpenAI Agents, Google ADK, Vercel AI SDK, etc.) |
+| Stripe MPP | Production access granted |
+| Wallet funding | 3 channels active (Coinbase, Stripe Crypto, Relay bridge) |
+| Policy engine | 12-check pipeline per transaction |
 
 ## Design Partners
 
@@ -46,7 +44,8 @@ Sardis works across Stripe, Base, Tempo, and Visa simultaneously. Incumbents onl
 | Activepieces (workflow automation) | Distribution through automation users | LIVE, fully integrated |
 | AutoGPT (180K GitHub stars) | Largest open-source agent framework | In talks with founding engineer |
 | CrewAI | Multi-agent developer base | PR submitted |
-| Stripe MPP | Agent payment protocol | Early access granted |
+| Stripe MPP | Agent payment protocol | Production access granted |
+| OpenClaw | Claude Code skill marketplace | 8 skills published |
 
 ## Pricing
 
@@ -54,9 +53,12 @@ Open source to developers, SaaS seat licenses for the CFO who manages approvals,
 
 | Tier | Price |
 |------|-------|
-| Dev | Free (open source SDK, testnet) |
-| Business | $199/seat/mo (mandate management, compliance dashboard, audit trail) |
-| Enterprise | BPS on total payment volume governed (alignment with value delivered) |
+| Dev | $49/mo (SDK, testnet + mainnet, 2 agents) |
+| Starter | $199/mo (25 agents, compliance dashboard, audit trail) |
+| Growth | $499/mo (100 agents, priority support, custom policies) |
+| Enterprise | Custom (unlimited + BPS on volume) |
+
+Additionally, 24 API endpoints earn per-request revenue via MPP ($0.001-$0.10/call) from unauthenticated agents — zero-friction acquisition that converts to subscriptions.
 
 ## "What You Need to Believe"
 
@@ -65,14 +67,15 @@ AI agents will become the primary economic actors of the next decade, and existi
 ## Tech Stack
 
 - **Wallets:** Safe Smart Accounts v1.4.1 + Turnkey MPC (non-custodial)
-- **Chains:** Base, Ethereum, Polygon, Arbitrum, Optimism, Arc (Circle L1)
+- **Chains:** Tempo (mainnet), Base, Ethereum, Polygon, Arbitrum, Optimism, Arc (Circle L1)
 - **Tokens:** USDC, USDT, EURC, PYUSD
-- **Protocols:** AP2, TAP, x402, UCP, MPP, A2A, FIDES
+- **Protocols:** AP2, TAP, x402, UCP, MPP, A2A, FIDES, OSP
+- **Trust Stack:** FIDES (agent identity) + AGIT (policy versioning) + OSP (service provisioning) + Sardis (policy enforcement)
 - **Stack:** Python 3.12, FastAPI, PostgreSQL, Solidity, React, TypeScript
 
 ## Team
 
-**Efe Baran Durmaz** -- Solo founder, age 20. Built the entire stack: 1,800+ commits, 21 published packages, 47+ API endpoints, 15 framework integrations, 7 protocol implementations. Bilkent University (full merit scholarship, top 0.04% national exam). Nokia AI Engineer.
+**Efe Baran Durmaz** -- Solo founder, age 20. Built the entire stack: 48 packages, 18+ framework integrations, 8 protocol implementations, first mainnet payment on Tempo. Also built: OSP (open alternative to Stripe Projects, 10K-line spec), a Rust package manager (23x faster than npm), and AgentGit (version control for AI agent state). Bilkent University (full merit scholarship, top 0.04% national exam). Nokia AI Engineer.
 
 ## The Ask
 
