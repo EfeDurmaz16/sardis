@@ -6,7 +6,7 @@
 <title>Sardis — Payment OS for the Agent Economy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -28,7 +28,7 @@
     --amber: #EAB308;
     --amber-dim: rgba(234,179,8,0.08);
     --sans: 'Space Grotesk', system-ui, sans-serif;
-    --mono: 'JetBrains Mono', monospace;
+    --mono: 'Space Mono', monospace;
   }
 
   body {
@@ -93,9 +93,9 @@
 
   /* ── Metric ── */
   .metric { display: flex; flex-direction: column; gap: 4px; }
-  .metric-value { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-  .metric-label { font-size: 13px; color: var(--text-3); font-weight: 500; }
-  .metric-sub { font-size: 11px; color: var(--text-4); font-family: var(--mono); }
+  .metric-value { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; font-family: var(--sans); font-variant-numeric: tabular-nums; }
+  .metric-label { font-size: 13px; color: var(--text-3); font-weight: 500; font-family: var(--sans); }
+  .metric-sub { font-size: 11px; color: var(--text-4); font-family: var(--sans); }
 
   .metric-sm .metric-value { font-size: 28px; }
 
@@ -394,7 +394,7 @@
   <div class="card card-tight" style="background: var(--elevated);">
     <span style="font-size: 14px; color: var(--text-2);">
       No credential is ever reused. Each payment mints a fresh, cryptographically signed object. Processors and wallets move the money. Sardis decides whether a payment is allowed before it reaches a rail. <strong style="color: var(--text-1);">We fit above processors, wallets, and agent-payment protocols rather than replacing them.</strong>
-      <span style="color: var(--text-1); display: block; margin-top: 8px; font-weight: 500;">Every new protocol that launches &mdash; x402, MPP, ACP, TAP &mdash; increases the need for one consistent policy layer. More rails means more complexity for the customer, which is exactly the problem we solve.</span>
+      <span style="color: var(--text-1); display: block; margin-top: 8px; font-weight: 500;">Every new protocol that launches - x402, MPP, ACP, TAP - increases the need for one consistent policy layer. More rails means more complexity for the customer, which is exactly the problem we solve.</span>
       <span style="color: var(--text-4); display: block; margin-top: 4px;">Protocol depth: UTXO cells, 22-state lifecycle, privacy (roadmap), mandate trees (see appendix)</span>
     </span>
   </div>
@@ -503,7 +503,7 @@
 
   <div class="card card-tight mt-auto" style="background: var(--elevated);">
     <span style="font-size: 13px; color: var(--text-2);">
-      AP2-like flows and identity layers handle intent and verification. Processors and crypto rails handle settlement. <strong style="color: var(--text-1);">Sardis is the authorization and lifecycle layer that connects them</strong> &mdash; the missing piece that decides whether a payment is allowed to happen before a single cent moves.
+      AP2-like flows and identity layers handle intent and verification. Processors and crypto rails handle settlement. <strong style="color: var(--text-1);">Sardis is the authorization and lifecycle layer that connects them</strong> - the missing piece that decides whether a payment is allowed to happen before a single cent moves.
     </span>
   </div>
 
@@ -641,8 +641,8 @@
       <span style="font-size: 10px; color: var(--text-4); margin-left: 8px;">sardis policy-engine</span>
     </div>
     <div style="color: var(--text-3);">&gt; agent requests: <span style="color: var(--text-1);">$50,000</span> to <span style="color: var(--text-2);">unknown-vendor.xyz</span></div>
-    <div style="color: var(--text-3); padding-left: 16px;">&#9500;&#9472; Gate 3: <span style="color: #EF4444; font-weight: 600;">FAIL</span> &mdash; merchant not in allowlist</div>
-    <div style="color: var(--text-3); padding-left: 16px;">&#9500;&#9472; Gate 5: <span style="color: #EF4444; font-weight: 600;">FAIL</span> &mdash; exceeds daily limit ($500)</div>
+    <div style="color: var(--text-3); padding-left: 16px;">&#9500;&#9472; Gate 3: <span style="color: #EF4444; font-weight: 600;">FAIL</span> - merchant not in allowlist</div>
+    <div style="color: var(--text-3); padding-left: 16px;">&#9500;&#9472; Gate 5: <span style="color: #EF4444; font-weight: 600;">FAIL</span> - exceeds daily limit ($500)</div>
     <div style="color: var(--text-3); padding-left: 16px;">&#9492;&#9472; <span style="color: #EF4444; font-weight: 700;">DENIED</span> in <span style="color: var(--text-1);">12ms</span>. Zero funds moved. Audit hash: <span style="color: var(--text-3);">0x7a3f...c891</span></div>
   </div>
 
@@ -709,9 +709,9 @@
     <div class="col">
       <div class="t-h3 mb-12">Capabilities Already Built</div>
       <ul class="check-list">
-        <li><strong style="color: var(--text-1);">Policy from plain English</strong> &mdash; human rules become deterministic machine enforcement.</li>
-        <li><strong style="color: var(--text-1);">One control plane across rails</strong> &mdash; the same policy model governs stablecoins, cards, and agent-payment protocols.</li>
-        <li><strong style="color: var(--text-1);">Merkle audit proofs</strong> &mdash; tamper-evident history without trusting Sardis.</li>
+        <li><strong style="color: var(--text-1);">Policy from plain English</strong> - human rules become deterministic machine enforcement.</li>
+        <li><strong style="color: var(--text-1);">One control plane across rails</strong> - the same policy model governs stablecoins, cards, and agent-payment protocols.</li>
+        <li><strong style="color: var(--text-1);">Merkle audit proofs</strong> - tamper-evident history without trusting Sardis.</li>
       </ul>
     </div>
   </div>
@@ -732,8 +732,8 @@
   <div class="t-caption mb-24">Traction</div>
   <div class="t-h1 mb-20">50K+ organic installs. $0 marketing spend. Zero paid acquisition.</div>
 
-  <div class="row gap-xl mb-16">
-    <div class="metric" style="margin-left: auto;">
+  <div style="display: flex; justify-content: center; gap: 48px; margin-top: 12px; margin-bottom: 16px;">
+    <div class="metric">
       <div class="metric-value" style="font-size: 48px; color: var(--green);">50K+</div>
       <div class="metric-label">organic SDK installs</div>
       <div class="metric-sub">npm + PyPI, $0 marketing</div>
@@ -748,18 +748,18 @@
       <div class="metric-label">commits</div>
       <div class="metric-sub">solo founder velocity</div>
     </div>
-    <div class="metric" style="margin-left: 0;">
+    <div class="metric">
       <div class="metric-value" style="font-size: 36px;">15</div>
       <div class="metric-label">integrations shipped</div>
     </div>
   </div>
 
-  <div style="border-left: 3px solid var(--green); padding: 10px 16px; margin-bottom: 12px; background: rgba(34,197,94,0.04); border-radius: 0 6px 6px 0;">
-    <div style="font-size: 14px; font-style: italic; color: var(--text-2); line-height: 1.6;">"Before Sardis, we hard-coded $50 limits into our prompts and prayed. Now our agents handle real payments and I can actually sleep."</div>
-    <div style="font-size: 11px; color: var(--text-4); margin-top: 4px;">&mdash; Early SDK adopter</div>
+  <div style="border-left: 3px solid var(--green); padding: 6px 14px; margin-bottom: 8px; background: rgba(34,197,94,0.04); border-radius: 0 6px 6px 0;">
+    <div style="font-size: 13px; font-style: italic; color: var(--text-2); line-height: 1.5;">"Before Sardis, we hard-coded $50 limits into our prompts and prayed. Now our agents handle real payments and I can actually sleep."</div>
+    <div style="font-size: 10px; color: var(--text-4); margin-top: 2px;">- Early SDK adopter</div>
   </div>
 
-  <div class="row gap-lg mb-16">
+  <div class="row gap-lg mb-12">
     <div class="col">
       <div class="t-caption mb-8" style="color: var(--green);">LIVE</div>
       <div style="display: flex; flex-wrap: wrap; gap: 6px;">
@@ -782,38 +782,29 @@
     </div>
   </div>
 
-  <div class="row gap-lg mb-16">
+  <div class="row gap-lg mb-8">
     <div class="col">
-      <div class="t-caption mb-8">Ecosystem Access</div>
+      <div class="t-caption mb-6">Ecosystem Access</div>
       <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-        <span class="tag">Stripe <span style="font-size:10px; color:var(--text-3);">(MPP production access granted)</span></span>
-        <span class="tag">Stripe ACP <span style="font-size:10px; color:var(--text-3);">(Agentic Commerce Protocol seller)</span></span>
-        <span class="tag">Stripe Crypto Onramp <span style="font-size:10px; color:var(--text-3);">(fiat-to-USDC funding, live)</span></span>
-        <span class="tag">Coinbase <span style="font-size:10px; color:var(--text-3);">(x402 support)</span></span>
-        <span class="tag">Base <span style="font-size:10px; color:var(--text-3);">(primary chain)</span></span>
-        <span class="tag">Chainalysis + Scorechain <span style="font-size:10px; color:var(--text-3);">(sanctions screening)</span></span>
+        <span class="tag">Stripe MPP <span class="badge badge-green" style="margin-left:4px;">PRODUCTION</span></span>
+        <span class="tag">Stripe ACP <span class="badge badge-green" style="margin-left:4px;">IMPLEMENTED</span></span>
+        <span class="tag">Stripe Onramp <span class="badge badge-green" style="margin-left:4px;">LIVE</span></span>
+        <span class="tag">Chainalysis <span class="badge badge-green" style="margin-left:4px;">LIVE</span></span>
+        <span class="tag">Coinbase x402</span>
+        <span class="tag">Base</span>
       </div>
     </div>
     <div class="col">
       <div class="t-caption mb-8">Design Partners</div>
       <div style="font-size: 13px; color: var(--text-2); line-height: 1.6;">
-        AutoGPT &mdash; integration package shipped and active discussion on distribution
+        AutoGPT - integration package shipped and active discussion on distribution
       </div>
     </div>
   </div>
 
-  <div class="row gap-lg" style="margin-bottom: 10px;">
-    <div class="card card-tight" style="flex: 1; background: var(--elevated); border-color: rgba(34,197,94,0.15);">
-      <div style="font-size: 11px; color: var(--text-4); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px;">Developer Platform Reach</div>
-      <span style="font-size: 12px; color: var(--text-2); line-height: 1.6;">
-        50K+ organic installs across 15 integrations with <strong style="color: var(--green);">$0 marketing spend</strong>. Activepieces is already live; the rest create top-of-funnel distribution before monetization. This is developer pull, not revenue.
-      </span>
-    </div>
-  </div>
-
   <div class="card card-tight" style="background: var(--elevated); border-color: rgba(34,197,94,0.25);">
-    <span style="font-size: 12px; color: var(--text-2); line-height: 1.55;">
-      <strong style="color: var(--green);">First mainnet payment executed. 24 API endpoints earning per-request revenue via MPP.</strong> Strong developer pull: 50K+ organic installs, zero paid acquisition, and integrations becoming a pipeline for design partners. Listed on mpp.dev/services.
+    <span style="font-size: 12px; color: var(--text-2); line-height: 1.5;">
+      <strong style="color: var(--green);">First mainnet payment executed. 24 API endpoints earning per-request revenue via MPP.</strong> 50K+ organic installs across 15 integrations with $0 marketing spend. Listed on mpp.dev/services.
     </span>
   </div>
 
@@ -1023,7 +1014,7 @@
     <div class="card card-tight" style="border-color: rgba(34,197,94,0.2); background: var(--elevated); padding: 12px 20px;">
       <div style="font-size: 13px; font-weight: 600; color: var(--green); margin-bottom: 4px;">Named Competitors</div>
       <span style="font-size: 13px; color: var(--text-2); line-height: 1.6;">
-        Skyfire ($8.5M), PaymanAI ($3M), Agentic ($3.3M) &mdash; all focused on payment access. Sardis is the only compliance-grade policy layer.
+        Skyfire ($8.5M), PaymanAI ($3M), Agentic ($3.3M) - all focused on payment access. Sardis is the only compliance-grade policy layer.
       </span>
     </div>
   </div>

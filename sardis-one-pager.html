@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=794">
-<title>Sardis — One Pager</title>
+<title>Sardis One Pager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
@@ -16,7 +16,7 @@
     --green: #22C55E; --green-dim: rgba(34,197,94,0.12);
     --red: #EF4444; --red-dim: rgba(239,68,68,0.10);
     --sans: 'Space Grotesk', system-ui, sans-serif;
-    --mono: 'JetBrains Mono', monospace;
+    --mono: 'Space Mono', monospace;
   }
   body { font-family: var(--sans); background: var(--bg); color: var(--text-1); -webkit-font-smoothing: antialiased; }
 
@@ -32,12 +32,12 @@
   .footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 6px; border-top: 1px solid var(--border); font-size: 9px; color: var(--text-4); flex-shrink: 0; }
 
   h1 { font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
-  h2 { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
+  h2 { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3); margin-bottom: 3px; }
   p { font-size: 11px; color: var(--text-2); line-height: 1.52; }
 
   .row { display: flex; gap: 20px; flex: 1; min-height: 0; }
   .col { flex: 1; }
-  .section { margin-bottom: 8px; }
+  .section { margin-bottom: 5px; }
   .divider { height: 1px; background: var(--border); margin: 10px 0; }
   .lead { font-size: 12px; color: var(--text-1); line-height: 1.48; }
 
@@ -131,7 +131,7 @@
           </div>
         </div>
         <p style="font-size: 9px; margin-top: 6px; color: var(--text-3);"><strong style="color: var(--green);">Cross-Rail Moat:</strong> Sardis works across Stripe, Base mainnet, Tempo mainnet, and Visa simultaneously. Incumbents only control their own walled gardens. <strong style="color: var(--text-2);">The CFO wants one policy layer, not four.</strong></p>
-        <p style="font-size: 8px; margin-top: 4px; color: var(--text-3);"><strong style="color: var(--text-2);">Structural moat:</strong> Stripe won&rsquo;t build cross-rail governance because it commoditizes their own lock-in. Coinbase won&rsquo;t govern Stripe payments. Nobody is structurally incentivized to build neutral &mdash; except us.</p>
+        <p style="font-size: 8px; margin-top: 4px; color: var(--text-3);"><strong style="color: var(--text-2);">Structural moat:</strong> Stripe won't build cross-rail governance because it commoditizes their own lock-in. Coinbase won't govern Stripe payments. Nobody is structurally incentivized to build neutral : except us.</p>
         <div class="mini-grid">
           <div class="mini-card">
             <div class="mini-title">Fail-closed</div>
@@ -176,10 +176,11 @@
 
       <div class="section">
         <h2>Ask</h2>
-        <p><strong style="color: var(--text-1);">Raising a $1.5-2M Seed</strong> (18 months runway, Series A milestones by Month 12 with 6-month buffer). I&rsquo;m looking for a lead who knows how to recruit killer Enterprise GTM talent and navigate SOC2/regulatory compliance. I will handle the code; I need a partner for the boardroom.</p>
+        <p><strong style="color: var(--text-1);">Raising a $1.5-2M Seed</strong> (18 months runway, Series A milestones by Month 12 with 6-month buffer). I'm looking for a lead who knows how to recruit killer Enterprise GTM talent and navigate SOC2/regulatory compliance. I will handle the code; I need a partner for the boardroom.</p>
         <p style="font-size: 8px; margin-top: 4px; color: var(--text-4);">Use of funds: Forward Deployed Engineer, Enterprise GTM Lead, Tier-1 Security Audits (SOC2 + code audit).</p>
         <p style="font-size: 8px; margin-top: 2px; color: var(--text-3);"><strong style="color: var(--text-2);">Series A readiness:</strong> $50-75K MRR + governing $10M+ in monthly agent spend (TPV).</p>
       </div>
+
     </div>
 
     <!-- Right Column -->
@@ -249,49 +250,41 @@
 
       <div class="section">
         <h2>Founder</h2>
-        <p><strong style="color: var(--text-1);">Efe Baran Durmaz</strong>, 20. Top 0.04% nationally, Bilkent full merit scholarship, Nokia AI Engineer. Polyglot (Python, TS, Rust, Go, Solidity, Java, C++) who ships faster than Series A engineering teams. 49 public repos because I build obsessively. Sardis is my life&rsquo;s work.</p>
+        <p><strong style="color: var(--text-1);">Efe Baran Durmaz</strong>, 20. Top 0.04% nationally, Bilkent full merit scholarship, Nokia AI Engineer. Polyglot (Python, TS, Rust, Go, Solidity, Java, C++) who ships faster than Series A engineering teams. 49 public repos because I build obsessively. Sardis is my life's work.</p>
       </div>
 
-      <div class="section">
+      <div class="section" style="margin-bottom: 3px;">
         <h2>"What You Need to Believe"</h2>
-        <p style="font-size: 10px; color: var(--text-1); line-height: 1.5; margin-bottom: 4px;">AI agents will become the primary economic actors of the next decade, and existing payment rails will never build cross-platform deterministic controls for them.</p>
-        <p style="font-size: 8px; color: var(--text-3); font-style: italic;">If you do not believe that, save us both the Zoom.</p>
+        <p style="font-size: 9.5px; color: var(--text-1); line-height: 1.45;">AI agents will become the primary economic actors of the next decade, and existing payment rails will never build cross-platform deterministic controls for them.</p>
       </div>
 
-      <div class="section">
-        <h2>Reasons NOT to Invest</h2>
-        <div style="font-size: 9px; color: var(--text-2); line-height: 1.55;">
+      <div class="section" style="margin-bottom: 3px;">
+        <h2 style="margin-bottom: 1px;">Reasons NOT to Invest</h2>
+        <div style="font-size: 8.5px; color: var(--text-2); line-height: 1.35;">
           <strong style="color: var(--text-1);">1)</strong> Solo 20-year-old, single point of failure.
-          <strong style="color: var(--text-1);">2)</strong> Early revenue &mdash; machine-to-machine micropayments via Stripe MPP on Tempo mainnet.
-          <strong style="color: var(--text-1);">3)</strong> Platform dependency &mdash; we sit on top of Stripe, Coinbase, and Visa.
+          <strong style="color: var(--text-1);">2)</strong> Early revenue: micropayments via Stripe MPP.
+          <strong style="color: var(--text-1);">3)</strong> Platform dependency: we sit on top of Stripe, Coinbase, and Visa.
         </div>
       </div>
 
-      <div class="section">
-        <h2>Ecosystem Engagement</h2>
-        <div style="margin-bottom: 2px;">
-          <span class="cat-label">Live:</span><span class="tag tag-green">Activepieces</span><span class="tag tag-green">MCP Server</span><span class="tag tag-green">Stripe Crypto Onramp</span><span class="tag tag-green">Chainalysis</span><span class="tag tag-green">Scorechain</span>
+      <div class="section" style="margin-bottom: 2px;">
+        <h2 style="margin-bottom: 1px;">Ecosystem</h2>
+        <div style="line-height: 1.25; margin-bottom: 1px;">
+          <span class="cat-label">Live:</span><span class="tag tag-green">Activepieces</span><span class="tag tag-green">MCP Server</span><span class="tag tag-green">Stripe Onramp</span><span class="tag tag-green">Chainalysis</span><span class="tag tag-green">Scorechain</span>
         </div>
-        <div style="margin-bottom: 2px;">
-          <span class="cat-label">Integrating:</span><span class="tag">Stripe ACP</span><span class="tag">Coinbase x402</span><span class="tag">Base mainnet</span><span class="tag">Tempo mainnet</span><span class="tag">OpenClaw</span>
-        </div>
-        <div style="margin-bottom: 2px;">
-          <span class="cat-label">Awaiting review:</span><span class="tag" style="color: var(--text-4);">Composio</span>
-        </div>
-        <div style="margin-bottom: 4px;">
-          <span class="cat-label">Access:</span><span class="tag">Stripe MPP production access</span>
+        <div style="line-height: 1.25;">
+          <span class="cat-label">Building:</span><span class="tag">Stripe ACP</span><span class="tag">Coinbase x402</span><span class="tag">Base</span><span class="tag">Tempo</span><span class="tag">OpenClaw</span>
         </div>
       </div>
 
-      <div class="section">
-        <h2>Milestones</h2>
-        <div style="font-size: 10px; color: var(--text-2); line-height: 1.55;">
-          <strong style="color: var(--text-3);">M3:</strong> First paid enterprise pilot. FDE + GTM Lead hired. SOC2 started.<br>
-          <strong style="color: var(--text-3);">M6:</strong> 5+ design partners converted. SOC2 Type II certified. $10-15K MRR.<br>
-          <strong style="color: var(--text-3);">M12:</strong> <strong style="color: var(--green);">$10M+ monthly agent TPV governed.</strong> 50+ paying customers.<br>
-          <strong style="color: var(--text-3);">M18:</strong> Series A ready. $50-75K MRR. Full compliance stack.
+      <div class="section" style="margin-bottom: 0;">
+        <h2 style="margin-bottom: 1px;">Milestones</h2>
+        <div style="font-size: 8.5px; color: var(--text-2); line-height: 1.35;">
+          <strong style="color: var(--text-3);">M3:</strong> First paid pilot. FDE + GTM hired.
+          <strong style="color: var(--text-3);">M6:</strong> 5+ partners. SOC2. $10-15K MRR.
+          <strong style="color: var(--text-3);">M12:</strong> <strong style="color: var(--green);">$10M+ agent TPV.</strong> 50+ customers.
+          <strong style="color: var(--text-3);">M18:</strong> Series A. $50-75K MRR.
         </div>
-        <p style="font-size: 8px; margin-top: 4px; color: var(--text-3);"><strong style="color: var(--text-2);">Wedge:</strong> developers adopt free tooling first; production deployment pulls in compliance buyers later.</p>
       </div>
     </div>
   </div>
