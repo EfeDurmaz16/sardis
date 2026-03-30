@@ -65,7 +65,8 @@ export function middleware(request: NextRequest) {
     if (!isDev) {
       const sessionToken =
         request.cookies.get("better-auth.session_token")?.value ||
-        request.cookies.get("__Secure-better-auth.session_token")?.value;
+        request.cookies.get("__Secure-better-auth.session_token")?.value ||
+        request.cookies.get("sardis_session")?.value;
 
       if (!sessionToken) {
         const loginUrl = new URL("/login", request.url);
