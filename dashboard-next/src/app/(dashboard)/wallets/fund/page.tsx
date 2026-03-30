@@ -21,10 +21,13 @@ import Link from 'next/link'
 import clsx from 'clsx'
 import { useFundWallet } from '@/hooks/useOnramp'
 import { useWallets, useWallet } from '@/hooks/useApi'
+import { walletsApi } from '@/api/client'
 import type { OnrampProvider, PaymentMethod } from '@/hooks/useOnramp'
 
+type ProviderOption = OnrampProvider | 'stripe'
+
 const PROVIDERS: {
-  id: OnrampProvider
+  id: ProviderOption
   name: string
   description: string
   recommended?: boolean
@@ -33,12 +36,19 @@ const PROVIDERS: {
   targetChain?: string
 }[] = [
   {
+    id: 'stripe',
+    name: 'Stripe Onramp',
+    description: 'Buy USDC with card via Stripe. Opens a hosted checkout page.',
+    recommended: true,
+    fees: 'Low',
+    badge: 'Recommended',
+    targetChain: 'base',
+  },
+  {
     id: 'coinbase',
     name: 'Coinbase Onramp',
     description: 'Instant funding via Coinbase. No fees for USDC on Base.',
-    recommended: true,
     fees: 'Free',
-    badge: 'Recommended',
     targetChain: 'base',
   },
   {
@@ -83,7 +93,7 @@ export default function FundWalletPage() {
 
   const [step, setStep] = useState<FundStep>('configure')
   const [amount, setAmount] = useState('')
-  const [provider, setProvider] = useState<OnrampProvider>('coinbase')
+  const [provider, setProvider] = useState<ProviderOption>('stripe')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
   const [selectedWalletId, setSelectedWalletId] = useState(walletIdParam || '')
   const [resultData, setResultData] = useState<Record<string, unknown> | null>(null)
@@ -113,11 +123,24 @@ export default function FundWalletPage() {
     setErrorMessage('')
 
     try {
+      // Stripe uses a different endpoint — GET link, open in new tab
+      if (provider === 'stripe') {
+        const result = await walletsApi.getStripeOnrampLink(selectedWalletId, {
+          amount: parsedAmount.toFixed(2),
+        })
+        if (result?.url) {
+          window.open(result.url, '_blank', 'noopener,noreferrer')
+        }
+        setResultData({ onramp_url: result.url } as Record<string, unknown>)
+        setStep('success')
+        return
+      }
+
       const selectedProvider = PROVIDERS.find((p) => p.id === provider)
       const result = await fundWallet.mutateAsync({
         walletId: selectedWalletId,
         amount: parsedAmount.toFixed(2),
-        provider,
+        provider: provider as OnrampProvider,
         payment_method: paymentMethod,
         target_chain: selectedProvider?.targetChain,
       })
@@ -352,6 +375,7 @@ export default function FundWalletPage() {
               <span>
                 Funds are converted to USDC and deposited on{' '}
                 {provider === 'conduit' ? 'Tempo (native, no bridge)' : 'Base'}
+                {provider === 'stripe' && ' via Stripe hosted checkout'}
               </span>
             </div>
 
@@ -374,9 +398,11 @@ export default function FundWalletPage() {
                   <span className="text-gray-300">
                     {provider === 'coinbase'
                       ? 'Free'
-                      : provider === 'conduit'
-                        ? 'Low (spread-based)'
-                        : '~' + (parsedAmount * 0.03).toFixed(2) + ' USD'}
+                      : provider === 'stripe'
+                        ? 'Low (Stripe pricing)'
+                        : provider === 'conduit'
+                          ? 'Low (spread-based)'
+                          : '~' + (parsedAmount * 0.03).toFixed(2) + ' USD'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -417,7 +443,7 @@ export default function FundWalletPage() {
           <Loader2 className="w-12 h-12 text-sardis-400 animate-spin mx-auto" />
           <h2 className="text-xl font-semibold text-white">Processing...</h2>
           <p className="text-gray-400 text-sm">
-            Setting up your {provider === 'conduit' ? 'Conduit' : provider === 'coinbase' ? 'Coinbase' : 'MoonPay'} onramp session.
+            Setting up your {provider === 'stripe' ? 'Stripe' : provider === 'conduit' ? 'Conduit' : provider === 'coinbase' ? 'Coinbase' : 'MoonPay'} onramp session.
             <br />
             {provider === 'conduit'
               ? 'USDC will be delivered directly to your Tempo wallet.'

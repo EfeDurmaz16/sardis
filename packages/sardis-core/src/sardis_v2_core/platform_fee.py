@@ -183,12 +183,37 @@ def calculate_fee_for_plan(
     )
 
 
-def get_treasury_address() -> str | None:
+def get_treasury_address(*, require: bool = False) -> str | None:
     """Get the Sardis treasury address for fee collection.
 
-    Returns None if not configured (fees will be skipped).
+    Args:
+        require: If True, raise ValueError when the address is missing or
+            invalid instead of returning None.  Callers in the payment
+            execution path should pass ``require=True`` so that a
+            misconfigured deployment surfaces immediately rather than
+            silently skipping fee collection.
+
+    Returns:
+        The checksummed treasury address, or None if not configured and
+        *require* is False.
+
+    Raises:
+        ValueError: If *require* is True and SARDIS_TREASURY_ADDRESS is
+            missing or malformed.
     """
     addr = os.getenv("SARDIS_TREASURY_ADDRESS", "").strip()
+
     if not addr or not addr.startswith("0x") or len(addr) != 42:
+        if require:
+            raise ValueError(
+                "SARDIS_TREASURY_ADDRESS is not set or invalid. "
+                "Set it to a valid EVM address (0x + 40 hex chars) to enable "
+                "platform fee collection. Current value: "
+                f"{addr!r}"
+            )
+        logger.warning(
+            "SARDIS_TREASURY_ADDRESS not configured — platform fees will be skipped"
+        )
         return None
+
     return addr

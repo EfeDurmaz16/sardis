@@ -1393,6 +1393,20 @@ export const walletsApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+
+  /** Get a Stripe-hosted onramp link for a wallet (opens in new tab). */
+  getStripeOnrampLink: (walletId: string, params?: {
+    chain?: string
+    amount?: string
+  }) => {
+    const search = new URLSearchParams()
+    if (params?.chain) search.set('chain', params.chain)
+    if (params?.amount) search.set('amount', params.amount)
+    const q = search.toString()
+    return requestV2<{ url: string; wallet_address: string; destination_network: string }>(
+      `/onramp/stripe/link/${walletId}${q ? `?${q}` : ''}`
+    )
+  },
 }
 
 // Anomaly APIs (V2)

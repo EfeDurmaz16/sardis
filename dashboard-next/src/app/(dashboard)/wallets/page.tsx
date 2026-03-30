@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   Wallet,
   Search,
@@ -12,10 +12,13 @@ import {
   Shield,
   DollarSign,
   Activity,
+  Loader2,
+  CreditCard,
 } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { useWallets } from '@/hooks/useApi'
+import { walletsApi } from '@/api/client'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 
@@ -137,6 +140,7 @@ function WalletCard({
 }) {
   const balance = parseFloat(wallet.balance || '0')
   const [copied, setCopied] = useState(false)
+  const [fundingWallet, setFundingWallet] = useState(false)
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -144,6 +148,25 @@ function WalletCard({
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
+
+  const handleStripeFund = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (fundingWallet) return
+    setFundingWallet(true)
+    try {
+      const result = await walletsApi.getStripeOnrampLink(wallet.wallet_id)
+      if (result?.url) {
+        window.open(result.url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      console.error('Failed to get Stripe onramp link:', err)
+      // Fallback to the fund page
+      window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`
+    } finally {
+      setFundingWallet(false)
+    }
+  }, [wallet.wallet_id, fundingWallet])
 
   return (
     <ContextMenu>
@@ -189,13 +212,29 @@ function WalletCard({
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-3 border-t border-dark-100">
-            <Link
-              href={`/wallets/fund?wallet=${wallet.wallet_id}`}
-              className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20"
-            >
-              <DollarSign className="w-4 h-4" />
-              Add Funds
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleStripeFund}
+                disabled={fundingWallet}
+                className="flex items-center gap-1 text-sm text-sardis-400 hover:text-sardis-300 transition-colors px-3 py-1.5 bg-sardis-500/10 rounded-lg hover:bg-sardis-500/20 disabled:opacity-50"
+                title="Buy USDC via Stripe (opens in new tab)"
+              >
+                {fundingWallet ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4" />
+                )}
+                Fund
+              </button>
+              <Link
+                href={`/wallets/fund?wallet=${wallet.wallet_id}`}
+                className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
+                title="Fund via Coinbase, MoonPay, or Conduit"
+              >
+                <DollarSign className="w-4 h-4" />
+                More
+              </Link>
+            </div>
             <button
               onClick={onView}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
@@ -211,7 +250,8 @@ function WalletCard({
         {wallet.chain_address && <ContextMenuItem onClick={() => navigator.clipboard.writeText(wallet.chain_address!)}>Copy Chain Address</ContextMenuItem>}
         <ContextMenuItem onClick={onView}>View Details</ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`}>Fund Wallet</ContextMenuItem>
+        <ContextMenuItem onClick={(e) => handleStripeFund(e as unknown as React.MouseEvent)}>Fund via Stripe</ContextMenuItem>
+        <ContextMenuItem onClick={() => window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`}>Fund via Other Provider</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -231,6 +271,23 @@ function WalletDetailPanel({
   const limitTotal = parseFloat(wallet?.limit_total || '0')
   const remaining = parseFloat(wallet?.remaining_limit || '0')
   const usagePercent = limitTotal > 0 ? Math.min((spent / limitTotal) * 100, 100) : 0
+  const [fundingViaStripe, setFundingViaStripe] = useState(false)
+
+  const handleStripeFund = useCallback(async () => {
+    if (!wallet || fundingViaStripe) return
+    setFundingViaStripe(true)
+    try {
+      const result = await walletsApi.getStripeOnrampLink(wallet.wallet_id)
+      if (result?.url) {
+        window.open(result.url, '_blank', 'noopener,noreferrer')
+      }
+    } catch (err) {
+      console.error('Failed to get Stripe onramp link:', err)
+      window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`
+    } finally {
+      setFundingViaStripe(false)
+    }
+  }, [wallet, fundingViaStripe])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -355,14 +412,28 @@ function WalletDetailPanel({
             </div>
           )}
 
-          {/* Fund CTA */}
-          <Link
-            href={`/wallets/fund?wallet=${wallet.wallet_id}`}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover"
-          >
-            <DollarSign className="w-5 h-5" />
-            Add Funds
-          </Link>
+          {/* Fund CTAs */}
+          <div className="space-y-2">
+            <button
+              onClick={handleStripeFund}
+              disabled={fundingViaStripe}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-sardis-500 text-white font-medium rounded-lg hover:bg-sardis-400 transition-colors glow-green-hover disabled:opacity-50"
+            >
+              {fundingViaStripe ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <CreditCard className="w-5 h-5" />
+              )}
+              Fund via Stripe
+            </button>
+            <Link
+              href={`/wallets/fund?wallet=${wallet.wallet_id}`}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-dark-100 text-gray-400 font-medium rounded-lg hover:bg-dark-200 hover:text-white transition-colors"
+            >
+              <DollarSign className="w-4 h-4" />
+              More Funding Options
+            </Link>
+          </div>
         </div>
         )}
       </SheetContent>
