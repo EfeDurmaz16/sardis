@@ -395,7 +395,7 @@
     <span style="font-size: 14px; color: var(--text-2);">
       No credential is ever reused. Each payment mints a fresh, cryptographically signed object. Processors and wallets move the money. Sardis decides whether a payment is allowed before it reaches a rail. <strong style="color: var(--text-1);">We fit above processors, wallets, and agent-payment protocols rather than replacing them.</strong>
       <span style="color: var(--text-1); display: block; margin-top: 8px; font-weight: 500;">Every new protocol that launches &mdash; x402, MPP, ACP, TAP &mdash; increases the need for one consistent policy layer. More rails means more complexity for the customer, which is exactly the problem we solve.</span>
-      <span style="color: var(--text-4); display: block; margin-top: 4px;">Protocol depth: UTXO cells, 22-state lifecycle, ZKP privacy, mandate trees (see appendix)</span>
+      <span style="color: var(--text-4); display: block; margin-top: 4px;">Protocol depth: UTXO cells, 22-state lifecycle, privacy (roadmap), mandate trees (see appendix)</span>
     </span>
   </div>
 
@@ -484,7 +484,7 @@
       <div class="card card-tight" style="padding: 14px 20px; border-color: rgba(234,179,8,0.3);">
         <div style="font-size: 15px; font-weight: 600; color: #FDE68A; margin-bottom: 4px;">Settlement</div>
         <div style="font-size: 13px; color: var(--text-2);">Processors and crypto rails actually move the money</div>
-        <div style="font-size: 11px; color: var(--text-4); margin-top: 4px;">Stripe MPP, Coinbase x402, MC Agent Pay</div>
+        <div style="font-size: 11px; color: var(--text-4); margin-top: 4px;">Stripe MPP, Stripe ACP, Coinbase x402, MC Agent Pay</div>
       </div>
     </div>
 
@@ -533,9 +533,10 @@
       <div class="arch-label">Settlement</div>
       <div class="arch-items">
         <span class="tag">MPC Wallets</span>
-        <span class="tag">4 Chains (Base + Tempo)</span>
+        <span class="tag">Tempo (primary) + Base + 4 EVM chains</span>
         <span class="tag">Virtual Cards</span>
         <span class="tag">MPP (Tempo)</span>
+        <span class="tag">Stripe ACP</span>
         <span class="tag">Fiat Rails</span>
       </div>
     </div>
@@ -677,7 +678,7 @@
       <div class="metric-label">Published packages</div>
     </div>
     <div class="metric metric-sm col">
-      <div class="metric-value">1,800+</div>
+      <div class="metric-value">2,000+</div>
       <div class="metric-label">Commits</div>
     </div>
     <div class="metric metric-sm col">
@@ -743,7 +744,7 @@
       <div class="metric-sub">v1.1.0, tested, versioned</div>
     </div>
     <div class="metric">
-      <div class="metric-value" style="font-size: 36px;">1,800+</div>
+      <div class="metric-value" style="font-size: 36px;">2,000+</div>
       <div class="metric-label">commits</div>
       <div class="metric-sub">solo founder velocity</div>
     </div>
@@ -771,7 +772,7 @@
       <div style="display: flex; flex-wrap: wrap; gap: 6px;">
         <span class="tag">AutoGPT <span class="badge badge-amber" style="margin-left:4px;">IN TALKS</span></span>
         <span class="tag">CrewAI <span class="badge badge-amber" style="margin-left:4px;">PR SUBMITTED</span></span>
-        <span class="tag">Composio <span class="badge badge-amber" style="margin-left:4px;">TOOL SUBMITTED</span></span>
+        <span class="tag">Composio <span class="badge badge-amber" style="margin-left:4px;">AWAITING REVIEW</span></span>
         <span class="tag">OpenClaw</span>
         <span class="tag">Browser Use</span>
         <span class="tag">Vercel AI SDK</span>
@@ -786,8 +787,11 @@
       <div class="t-caption mb-8">Ecosystem Access</div>
       <div style="display: flex; flex-wrap: wrap; gap: 6px;">
         <span class="tag">Stripe <span style="font-size:10px; color:var(--text-3);">(MPP production access granted)</span></span>
+        <span class="tag">Stripe ACP <span style="font-size:10px; color:var(--text-3);">(Agentic Commerce Protocol seller)</span></span>
+        <span class="tag">Stripe Crypto Onramp <span style="font-size:10px; color:var(--text-3);">(fiat-to-USDC funding, live)</span></span>
         <span class="tag">Coinbase <span style="font-size:10px; color:var(--text-3);">(x402 support)</span></span>
         <span class="tag">Base <span style="font-size:10px; color:var(--text-3);">(primary chain)</span></span>
+        <span class="tag">Chainalysis + Scorechain <span style="font-size:10px; color:var(--text-3);">(sanctions screening)</span></span>
       </div>
     </div>
     <div class="col">
@@ -870,7 +874,7 @@
 
   <div class="card card-tight" style="background: var(--elevated); border-color: rgba(34,197,94,0.15); margin-bottom: 12px; padding: 10px 16px;">
     <span style="font-size: 12px; color: var(--text-2); line-height: 1.6;">
-      <strong style="color: var(--green);">Why this works:</strong> Dev tier creates developer pull (50K+ installs prove it). Growth tier captures the CFO who needs approvals and audit trails. Enterprise pricing aligns revenue with value: the more agent spend we govern, the more we earn. <strong style="color: var(--text-1);">No custody. No MTL required. 93% gross margin per $100 tx.</strong>
+      <strong style="color: var(--green);">Why this works:</strong> Dev tier creates developer pull (50K+ installs prove it). Growth tier captures the CFO who needs approvals and audit trails. Enterprise pricing aligns revenue with value: the more agent spend we govern, the more we earn. <strong style="color: var(--text-1);">No custody. No MTL required. 90%+ gross margin on governed volume.</strong>
     </span>
   </div>
 
@@ -884,7 +888,7 @@
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border);">
           <span style="color: var(--text-2);">Transaction fees</span>
-          <span class="t-mono" style="color: var(--text-1); font-size: 11px;">0.1&ndash;0.5% per payment</span>
+          <span class="t-mono" style="color: var(--text-1); font-size: 11px;">0.5&ndash;1.5% external, 0.1&ndash;0.3% internal</span>
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border);">
           <span style="color: var(--text-2);">Compliance-as-a-service</span>
@@ -1053,7 +1057,7 @@
           <div class="t-body" style="font-size: 12px;">Full merit scholarship, 3.53 GPA</div>
         </div>
         <div class="row items-center gap-sm">
-          <div class="t-mono" style="font-size: 16px; min-width: 80px; font-weight: 600;">1,800+</div>
+          <div class="t-mono" style="font-size: 16px; min-width: 80px; font-weight: 600;">2,000+</div>
           <div class="t-body" style="font-size: 12px;">Commits in ~20 weeks, 48 packages, 47+ endpoints</div>
         </div>
       </div>
@@ -1150,8 +1154,8 @@
 <!-- ═══════════════════ SLIDE 13: ASK ═══════════════════ -->
 <div class="slide">
   <div class="t-caption mb-24">The Ask</div>
-  <div class="t-h1 mb-16">Raising a $3M Seed.</div>
-  <div style="font-size: 16px; color: var(--text-2); margin-bottom: 20px; max-width: 800px; line-height: 1.6;">I have out-shipped entire engineering teams solo to build the core infrastructure. This capital buys the one thing I cannot code: <strong style="color: var(--text-1);">enterprise GTM and compliance credibility.</strong></div>
+  <div class="t-h1 mb-16">Raising a $1.5&ndash;2M Seed.</div>
+  <div style="font-size: 16px; color: var(--text-2); margin-bottom: 20px; max-width: 800px; line-height: 1.6;">I have out-shipped entire engineering teams solo to build the core infrastructure. This capital buys the one thing I cannot code: <strong style="color: var(--text-1);">enterprise GTM and compliance credibility.</strong> 18 months runway.</div>
 
   <div class="row gap-lg flex-1">
     <div class="col">
@@ -1172,7 +1176,7 @@
               <div style="font-size: 14px; font-weight: 500; margin-bottom: 2px;">Enterprise GTM Lead</div>
               <div style="font-size: 11px; color: var(--text-3);">Enterprise sales motion, CFO-level relationships, pipeline</div>
             </div>
-            <span class="badge badge-amber">HIRE #2</span>
+            <span class="badge badge-green">HIRE #2</span>
           </div>
         </div>
         <div class="card card-tight" style="padding: 12px 16px;">
@@ -1203,8 +1207,8 @@
           <div style="font-size: 12px; color: var(--text-2);">5-10 enterprise design partners in paid production. 50+ paying customers across Dev/Business/Enterprise.</div>
         </div>
         <div class="card card-tight" style="border-color: rgba(34,197,94,0.2);">
-          <div class="t-caption mb-4" style="color: var(--green);">Month 18</div>
-          <div style="font-size: 12px; color: var(--text-2); line-height: 1.45;">Series A ready. $50-75K MRR. Governing <strong style="color: var(--text-1);">$10M+ monthly agent spend (TPV)</strong>.</div>
+          <div class="t-caption mb-4" style="color: var(--green);">Month 18 (runway)</div>
+          <div style="font-size: 12px; color: var(--text-2); line-height: 1.45;">Series A ready. $30-50K MRR. Governing <strong style="color: var(--text-1);">$5M+ monthly agent spend (TPV)</strong>.</div>
         </div>
       </div>
     </div>
@@ -1232,7 +1236,7 @@
 
   <div class="row gap-lg mb-32" style="max-width: 700px;">
     <div class="metric metric-sm">
-      <div class="metric-value" style="color: var(--green);">$3M</div>
+      <div class="metric-value" style="color: var(--green);">$1.5&ndash;2M</div>
       <div class="metric-label">Seed raise</div>
     </div>
     <div class="metric metric-sm">

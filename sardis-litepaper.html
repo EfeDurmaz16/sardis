@@ -104,7 +104,7 @@
     </div>
     <div class="layer">
       <div class="layer-label">Privacy</div>
-      <div><span class="tag">3 ZKP tiers</span><span class="tag">Groth16 circuits</span><span class="tag">Provable claims</span></div>
+      <div><span class="tag">Hash commitments</span><span class="tag">Privacy roadmap</span><span class="tag">Provable claims</span></div>
     </div>
     <div class="layer">
       <div class="layer-label">Escrow</div>
@@ -112,7 +112,7 @@
     </div>
     <div class="layer" style="border-color: rgba(234,179,8,0.3);">
       <div class="layer-label" style="color: var(--yellow);">Settlement</div>
-      <div><span class="tag">x402 stablecoin</span><span class="tag">Card (Stripe/MPP)</span><span class="tag">Bank (ACH/RTP)</span><span class="tag">FX bridge</span><span class="tag">Internal ledger</span></div>
+      <div><span class="tag">x402 stablecoin</span><span class="tag">Card (Stripe/MPP)</span><span class="tag">Stripe ACP</span><span class="tag">Bank (ACH/RTP)</span><span class="tag">FX bridge</span><span class="tag">Internal ledger</span></div>
     </div>
   </div>
 
@@ -130,7 +130,8 @@
     </div>
     <div class="col">
       <div class="std-row"><div class="std-name" style="color: var(--yellow);">Stripe MPP</div><div class="std-desc">Stripe is a settlement surface. Sardis decides whether the payment is allowed before it reaches that surface.</div></div>
-      <div class="std-row"><div class="std-name" style="color: var(--text-3);">MC Agent Pay</div><div class="std-desc">Agentic Tokens as a funding source type</div></div>
+      <div class="std-row"><div class="std-name" style="color: var(--text-3);">MC Agent Pay</div><div class="std-desc">Planned integration</div></div>
+      <div class="std-row"><div class="std-name" style="color: var(--yellow);">Stripe ACP</div><div class="std-desc">Agentic Commerce Protocol seller implementation</div></div>
       <div class="std-row"><div class="std-name" style="color: var(--text-3);">A2A / MCP</div><div class="std-desc">Transport layers for mandate/payment messages</div></div>
     </div>
   </div>
@@ -591,7 +592,7 @@ function verifyProof(<br>
       <div style="display: flex; flex-wrap: wrap; gap: 3px;">
         <span class="tag">ERC-8128 Signed HTTP</span>
         <span class="tag">ERC-8021 Tx Attribution</span>
-        <span class="tag">ERC-8126 ZK Risk Scoring</span>
+        <span class="tag">ERC-8126 Risk Scoring (hash-based)</span>
         <span class="tag">ERC-8001 Agent Coordination</span>
         <span class="tag">ERC-8122 Agent Registry</span>
         <span class="tag">ERC-8033 Paymaster</span>
@@ -624,8 +625,8 @@ function verifyProof(<br>
         <p style="font-size: 9px;">Subscription mandates, delegated mandate trees, usage billing with merchant countersignature, and amendment rules that prevent silent price creep.</p>
       </div>
       <div class="card" style="margin-bottom: 8px;">
-        <h3 style="font-size: 12px;">Privacy (Zero-Knowledge Proofs)</h3>
-        <p style="font-size: 9px;">Three tiers: transparent, hybrid, and full ZK. Proofs cover mandate compliance, funding sufficiency, and identity claims without exposing unnecessary metadata.</p>
+        <h3 style="font-size: 12px;">Privacy (Roadmap)</h3>
+        <p style="font-size: 9px;">Planned: hash-based commitments shipped, ZK circuit integration on roadmap.</p>
       </div>
       <div class="card">
         <h3 style="font-size: 12px;">FX Bridge + Liquidity Routing</h3>
@@ -667,7 +668,7 @@ function verifyProof(<br>
         <strong style="color: var(--text-1);">T7</strong> Stale mandate replay (mitigated: nonce + expiry + revocation)<br>
         <strong style="color: var(--text-1);">T8</strong> Cell fragmentation attack (mitigated: merge defragmentation)<br>
         <strong style="color: var(--text-1);">T9</strong> Settlement race (mitigated: clearance lock)<br>
-        <strong style="color: var(--text-1);">T10</strong> Privacy metadata leak (mitigated: ZKP tiers)<br>
+        <strong style="color: var(--text-1);">T10</strong> Privacy metadata leak (mitigated: hash commitments)<br>
         <strong style="color: var(--text-1);">T11</strong> Paid-but-not-delivered (mitigated: fulfillment_status + auto-dispute)
       </p>
     </div>
@@ -685,7 +686,7 @@ function verifyProof(<br>
         Signing: Ed25519 (agent/principal), ECDSA P-256 (merchant)<br>
         MPC: Turnkey, Fireblocks, or Lit Protocol<br>
         Wallets: Safe Smart Accounts v1.4.1 (EVM)<br>
-        ZKP: Groth16 (snarkjs / circom)
+        Privacy: Hash commitments (ZK circuits on roadmap)
       </p>
     </div>
     <div class="col">
@@ -694,7 +695,7 @@ function verifyProof(<br>
         Payment object mint: &lt;200ms (internal), &lt;2s (on-chain)<br>
         Cell claim: &lt;50ms (PostgreSQL SKIP LOCKED)<br>
         Mandate verification: &lt;10ms<br>
-        ZKP generation: &lt;5s (Groth16)<br>
+        Hash commitment: &lt;1ms<br>
         Concurrent payments per mandate: limited by cell count<br>
         Internal ledger transfer: ~1ms
       </p>
@@ -764,8 +765,8 @@ function verifyProof(<br>
           <tr><td style="padding: 2px 4px;">Redis (dedup, rate-limit)</td><td style="padding: 2px 4px; color: var(--green);">Deployed</td><td style="padding: 2px 4px;">Upstash</td></tr>
           <tr><td style="padding: 2px 4px;">MPC signing (Turnkey)</td><td style="padding: 2px 4px; color: var(--green);">Deployed</td><td style="padding: 2px 4px;">Production</td></tr>
           <tr><td style="padding: 2px 4px;">Tempo L1 contracts</td><td style="padding: 2px 4px; color: var(--green);">Mainnet deployed</td><td style="padding: 2px 4px;">Tempo (42431)</td></tr>
-          <tr><td style="padding: 2px 4px;">Base Sepolia contracts</td><td style="padding: 2px 4px; color: var(--blue);">Testnet</td><td style="padding: 2px 4px;">Base Sepolia</td></tr>
-          <tr><td style="padding: 2px 4px;">Mainnet contracts</td><td style="padding: 2px 4px; color: var(--text-3);">Pending</td><td style="padding: 2px 4px;">Base L2</td></tr>
+          <tr><td style="padding: 2px 4px;">Base contracts</td><td style="padding: 2px 4px; color: var(--green);">Mainnet</td><td style="padding: 2px 4px;">Base L2</td></tr>
+          <tr><td style="padding: 2px 4px;">Base mainnet</td><td style="padding: 2px 4px; color: var(--green);">Deployed</td><td style="padding: 2px 4px;">Base L2</td></tr>
           <tr><td style="padding: 2px 4px;">Additional chains (6)</td><td style="padding: 2px 4px; color: var(--text-3);">In dev</td><td style="padding: 2px 4px;">Polygon, Arb, OP, Eth</td></tr>
         </tbody>
       </table>
@@ -786,10 +787,12 @@ function verifyProof(<br>
           <tr><td style="padding: 2px 4px;">Vercel AI SDK</td><td style="padding: 2px 4px; color: var(--green);">Shipped</td></tr>
           <tr><td style="padding: 2px 4px;">Browser Use</td><td style="padding: 2px 4px; color: var(--green);">Shipped</td></tr>
           <tr><td style="padding: 2px 4px;">CrewAI</td><td style="padding: 2px 4px; color: var(--yellow);">PR submitted</td></tr>
-          <tr><td style="padding: 2px 4px;">Composio</td><td style="padding: 2px 4px; color: var(--yellow);">PR submitted</td></tr>
+          <tr><td style="padding: 2px 4px;">Composio</td><td style="padding: 2px 4px; color: var(--yellow);">Awaiting review</td></tr>
           <tr><td style="padding: 2px 4px;">AutoGPT (180K stars)</td><td style="padding: 2px 4px; color: var(--blue);">Package shipped, in talks</td></tr>
           <tr><td style="padding: 2px 4px;">Google ADK / LangChain</td><td style="padding: 2px 4px; color: var(--green);">Shipped</td></tr>
           <tr><td style="padding: 2px 4px;">Stagehand / E2B</td><td style="padding: 2px 4px; color: var(--green);">Shipped</td></tr>
+          <tr><td style="padding: 2px 4px;">Stripe ACP</td><td style="padding: 2px 4px; color: var(--green);">Implemented</td></tr>
+          <tr><td style="padding: 2px 4px;">Stripe Crypto Onramp</td><td style="padding: 2px 4px; color: var(--green);">Live</td></tr>
           <tr><td style="padding: 2px 4px;">n8n</td><td style="padding: 2px 4px; color: var(--text-3);">Paused</td></tr>
         </tbody>
       </table>
