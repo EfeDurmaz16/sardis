@@ -123,15 +123,26 @@ export default function FundWalletPage() {
     setErrorMessage('')
 
     try {
-      // Stripe uses a different endpoint — GET link, open in new tab
+      // Stripe — build crypto.link.com URL directly (no API call needed)
       if (provider === 'stripe') {
-        const result = await walletsApi.getStripeOnrampLink(selectedWalletId, {
-          amount: parsedAmount.toFixed(2),
-        })
-        if (result?.url) {
-          window.open(result.url, '_blank', 'noopener,noreferrer')
+        // Find the wallet's on-chain address from the wallets list
+        const wallet = wallets?.find((w: { wallet_id: string }) => w.wallet_id === selectedWalletId)
+        const address = wallet?.chain_address || wallet?.addresses?.base || wallet?.addresses?.ethereum
+        if (!address) {
+          setErrorMessage('Wallet has no on-chain address. Create an agent first.')
+          setStep('form')
+          return
         }
-        setResultData({ onramp_url: result.url } as Record<string, unknown>)
+        const params = new URLSearchParams({
+          destination_currency: 'usdc',
+          destination_network: 'base',
+          source_currency: 'usd',
+          source_amount: parsedAmount.toFixed(2),
+          'wallet_addresses[ethereum]': address,
+        })
+        const url = `https://crypto.link.com?${params.toString()}`
+        window.open(url, '_blank', 'noopener,noreferrer')
+        setResultData({ onramp_url: url } as Record<string, unknown>)
         setStep('success')
         return
       }

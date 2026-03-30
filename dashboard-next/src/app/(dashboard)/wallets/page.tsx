@@ -149,24 +149,23 @@ function WalletCard({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleStripeFund = useCallback(async (e: React.MouseEvent) => {
+  const handleStripeFund = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
-    if (fundingWallet) return
-    setFundingWallet(true)
-    try {
-      const result = await walletsApi.getStripeOnrampLink(wallet.wallet_id)
-      if (result?.url) {
-        window.open(result.url, '_blank', 'noopener,noreferrer')
-      }
-    } catch (err) {
-      console.error('Failed to get Stripe onramp link:', err)
-      // Fallback to the fund page
+    const address = wallet.chain_address
+    if (!address) {
       window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`
-    } finally {
-      setFundingWallet(false)
+      return
     }
-  }, [wallet.wallet_id, fundingWallet])
+    // Build Stripe hosted onramp URL directly — no API call needed
+    const params = new URLSearchParams({
+      destination_currency: 'usdc',
+      destination_network: 'base',
+      source_currency: 'usd',
+      'wallet_addresses[ethereum]': address,
+    })
+    window.open(`https://crypto.link.com?${params.toString()}`, '_blank', 'noopener,noreferrer')
+  }, [wallet.wallet_id, wallet.chain_address])
 
   return (
     <ContextMenu>
@@ -273,21 +272,21 @@ function WalletDetailPanel({
   const usagePercent = limitTotal > 0 ? Math.min((spent / limitTotal) * 100, 100) : 0
   const [fundingViaStripe, setFundingViaStripe] = useState(false)
 
-  const handleStripeFund = useCallback(async () => {
-    if (!wallet || fundingViaStripe) return
-    setFundingViaStripe(true)
-    try {
-      const result = await walletsApi.getStripeOnrampLink(wallet.wallet_id)
-      if (result?.url) {
-        window.open(result.url, '_blank', 'noopener,noreferrer')
-      }
-    } catch (err) {
-      console.error('Failed to get Stripe onramp link:', err)
+  const handleStripeFund = useCallback(() => {
+    if (!wallet) return
+    const address = wallet.chain_address
+    if (!address) {
       window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`
-    } finally {
-      setFundingViaStripe(false)
+      return
     }
-  }, [wallet, fundingViaStripe])
+    const params = new URLSearchParams({
+      destination_currency: 'usdc',
+      destination_network: 'base',
+      source_currency: 'usd',
+      'wallet_addresses[ethereum]': address,
+    })
+    window.open(`https://crypto.link.com?${params.toString()}`, '_blank', 'noopener,noreferrer')
+  }, [wallet])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
