@@ -442,9 +442,10 @@ class TestCreateStripeOnrampSession:
         call_args = mock_client.post.call_args
         assert call_args[0][0] == "https://api.stripe.com/v1/crypto/onramp_sessions"
         form_data = call_args[1]["data"]
-        assert form_data["wallet_addresses[base]"] == "0x1234567890abcdef1234567890abcdef12345678"
+        assert form_data["wallet_addresses[ethereum]"] == "0x1234567890abcdef1234567890abcdef12345678"
         assert form_data["destination_currencies[0]"] == "usdc"
-        assert form_data["destination_networks[0]"] == "base"
+        # base + ethereum both included (sorted)
+        assert "base" in [form_data.get(f"destination_networks[{i}]") for i in range(3)]
         assert form_data["source_amount"] == "50.00"
         assert form_data["source_currency"] == "usd"
         assert form_data["lock_wallet_address"] == "true"
@@ -533,8 +534,8 @@ class TestCreateStripeOnrampSession:
             )
 
         form_data = mock_client.post.call_args[1]["data"]
-        for chain in ("base", "ethereum", "polygon", "arbitrum", "optimism"):
-            assert form_data[f"wallet_addresses[{chain}]"] == wallet
+        # Stripe uses "ethereum" key for all EVM chains (Base, Polygon, etc.)
+        assert form_data["wallet_addresses[ethereum]"] == wallet
 
     @pytest.mark.asyncio
     async def test_no_amount_omits_source_amount(self):

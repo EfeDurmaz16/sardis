@@ -56,9 +56,20 @@ _CHAIN_TO_STRIPE_NETWORK: dict[str, str] = {
     "base_sepolia": "base",
     "ethereum": "ethereum",
     "polygon": "polygon",
-    "arbitrum": "arbitrum",
-    "optimism": "optimism",
+    "arbitrum": "ethereum",  # Stripe doesn't have separate arbitrum network
+    "optimism": "ethereum",  # Stripe doesn't have separate optimism network
     "solana": "solana",
+}
+
+# Stripe wallet_addresses keys differ from network names
+_STRIPE_WALLET_ADDRESS_KEYS: dict[str, str] = {
+    "base": "ethereum",       # Base uses ethereum wallet key (same EVM address)
+    "ethereum": "ethereum",
+    "polygon": "polygon",
+    "solana": "solana",
+    "stellar": "stellar",
+    "bitcoin": "bitcoin",
+    "avalanche": "avalanche",
 }
 
 
@@ -787,27 +798,29 @@ async def _create_stripe_onramp_session(
 
     stripe_network = _CHAIN_TO_STRIPE_NETWORK.get(chain.lower(), chain.lower())
 
+    # Stripe wallet_addresses uses "ethereum" key for all EVM chains (Base, Polygon, etc.)
+    wallet_key = _STRIPE_WALLET_ADDRESS_KEYS.get(stripe_network, "ethereum")
+
     # Build form-encoded body per Stripe API convention
     form_data: dict[str, str] = {
-        f"wallet_addresses[{stripe_network}]": wallet_address,
+        f"wallet_addresses[{wallet_key}]": wallet_address,
         "destination_currencies[0]": destination_currency.lower(),
-        "destination_networks[0]": stripe_network,
         "destination_currency": destination_currency.lower(),
         "destination_network": stripe_network,
         "source_currency": source_currency.lower(),
     }
+
+    # Include the wallet's network AND ethereum (required for wallet_addresses[ethereum])
+    networks = {stripe_network, "ethereum"} if wallet_key == "ethereum" else {stripe_network}
+    for i, net in enumerate(sorted(networks)):
+        form_data[f"destination_networks[{i}]"] = net
+
     if lock_wallet_address:
         form_data["lock_wallet_address"] = "true"
     if amount:
         form_data["source_amount"] = amount
     if customer_ip:
         form_data["customer_ip_address"] = customer_ip
-
-    # Same EVM address works on all EVM chains — populate common ones
-    for evm_chain in ("base", "ethereum", "polygon", "arbitrum", "optimism"):
-        network_key = f"wallet_addresses[{evm_chain}]"
-        if network_key not in form_data:
-            form_data[network_key] = wallet_address
 
     async with httpx.AsyncClient(timeout=20) as client:
         resp = await client.post(
@@ -957,18 +970,21 @@ async def get_stripe_onramp_link(
     stripe_network = _CHAIN_TO_STRIPE_NETWORK.get(chain.lower(), chain.lower())
 
     # Build the crypto.link.com hosted URL with pre-filled params
+    wallet_key = _STRIPE_WALLET_ADDRESS_KEYS.get(stripe_network, "ethereum")
     params: dict[str, str] = {
         "destination_currency": destination_currency.lower(),
         "destination_network": stripe_network,
         "source_currency": source_currency.lower(),
-        f"wallet_addresses[{stripe_network}]": wallet_address,
+        f"wallet_addresses[{wallet_key}]": wallet_address,
     }
     if amount:
         params["source_amount"] = amount
 
-    # Populate same EVM address for common chains
-    for evm_chain in ("base", "ethereum", "polygon", "arbitrum", "optimism"):
-        key = f"wallet_addresses[{evm_chain}]"
+    # For EVM chains, also add ethereum key if not already there
+    if wallet_key == "ethereum":
+        pass  # already set
+    else:
+        key = f"wallet_addresses[{wallet_key}]"
         if key not in params:
             params[key] = wallet_address
 
