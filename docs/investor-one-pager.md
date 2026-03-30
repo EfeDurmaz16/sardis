@@ -53,7 +53,8 @@ Open source to developers, SaaS seat licenses for the CFO who manages approvals,
 
 | Tier | Price |
 |------|-------|
-| Dev | $49/mo (SDK, testnet + mainnet, 2 agents) |
+| Free | $0 (open source SDK, testnet, 1 agent, community support) |
+| Dev | $49/mo (mainnet access, 2 agents, basic dashboard) |
 | Starter | $199/mo (25 agents, compliance dashboard, audit trail) |
 | Growth | $499/mo (100 agents, priority support, custom policies) |
 | Enterprise | Custom (unlimited + BPS on volume) |
