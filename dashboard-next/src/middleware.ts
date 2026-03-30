@@ -8,25 +8,6 @@ const PUBLIC_PREFIXES = [
   "/status", "/solutions",
 ];
 
-// Dashboard pages — require auth
-const DASHBOARD_PREFIXES = [
-  "/overview", "/agents", "/mandates", "/transactions", "/policies",
-  "/policy-manager", "/api-keys", "/go-live", "/cards", "/analytics",
-  "/settings", "/billing", "/webhooks", "/onboarding",
-  "/control-center", "/approvals", "/kill-switch", "/evidence",
-  "/anomaly", "/simulation", "/reconciliation", "/merchants",
-  "/mpp-sessions", "/stripe-issuing", "/enterprise-support",
-  "/environment-templates", "/workflow-templates", "/holds",
-  "/invoices", "/alert-preferences", "/agent-identity",
-  "/agent-observability", "/guardrails", "/confidence-router",
-  "/audit-anchors", "/goal-drift", "/policy-analytics",
-  "/policy-playground", "/policy-management", "/checkout-controls",
-  "/provider-health", "/counterparties", "/fallback-rules",
-  "/live-events", "/approval-config", "/exceptions",
-  "/webhook-manager", "/templates",
-  "/kyb", "/terms", "/api-key", "/mandate", "/first-payment",
-];
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
@@ -59,21 +40,30 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Dashboard pages — require auth (bypassed in local dev)
-  if (DASHBOARD_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    const isDev = process.env.NODE_ENV === "development";
-    if (!isDev) {
-      const sessionToken =
-        request.cookies.get("better-auth.session_token")?.value ||
-        request.cookies.get("__Secure-better-auth.session_token")?.value ||
-        request.cookies.get("sardis_session")?.value;
+  // Skip auth check in local dev
+  if (process.env.NODE_ENV === "development") {
+    return NextResponse.next();
+  }
 
-      if (!sessionToken) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
+  // Check for any auth cookie
+  const sessionToken =
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("__Secure-better-auth.session_token")?.value ||
+    request.cookies.get("sardis_session")?.value;
+
+  if (!sessionToken) {
+    // RSC prefetch requests — don't redirect, just pass through
+    // (the page component will handle auth state client-side)
+    const isRSC = request.headers.get("rsc") === "1" ||
+      request.nextUrl.searchParams.has("_rsc");
+    if (isRSC) {
+      return NextResponse.next();
     }
+
+    // Full page navigation without auth — redirect to login
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
