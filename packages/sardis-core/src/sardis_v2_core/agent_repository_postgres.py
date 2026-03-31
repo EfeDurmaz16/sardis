@@ -80,6 +80,10 @@ class PostgresAgentRepository:
             metadata=meta,
             fides_did=meta.get("fides_did"),
             agit_repo_hash=meta.get("agit_repo_hash"),
+            last_seen_at=row.get("last_seen_at"),
+            session_id=row.get("session_id"),
+            framework=row.get("framework"),
+            sdk_version=row.get("sdk_version"),
             created_at=row.get("created_at") or datetime.now(UTC),
             updated_at=row.get("updated_at") or datetime.now(UTC),
         )
@@ -139,6 +143,7 @@ class PostgresAgentRepository:
             row = await conn.fetchrow(
                 """
                 SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
+                       a.last_seen_at, a.session_id, a.framework, a.sdk_version,
                        o.external_id AS organization_external_id,
                        w.external_id AS wallet_external_id
                 FROM agents a
@@ -186,6 +191,7 @@ class PostgresAgentRepository:
             rows = await conn.fetch(
                 f"""
                 SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
+                       a.last_seen_at, a.session_id, a.framework, a.sdk_version,
                        o.external_id AS organization_external_id,
                        w.external_id AS wallet_external_id
                 FROM agents a
@@ -224,6 +230,7 @@ class PostgresAgentRepository:
             rows = await conn.fetch(
                 """
                 SELECT a.external_id, a.name, a.description, a.is_active, a.created_at, a.updated_at, a.metadata,
+                       a.last_seen_at, a.session_id, a.framework, a.sdk_version,
                        o.external_id AS organization_external_id,
                        w.external_id AS wallet_external_id
                 FROM agents a

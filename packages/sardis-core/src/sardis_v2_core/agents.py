@@ -44,6 +44,10 @@ class Agent(BaseModel):
     metadata: dict = Field(default_factory=dict)
     fides_did: str | None = None
     agit_repo_hash: str | None = None
+    last_seen_at: datetime | None = None
+    session_id: str | None = None
+    framework: str | None = None
+    sdk_version: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

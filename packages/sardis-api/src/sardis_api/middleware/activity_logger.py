@@ -97,14 +97,26 @@ class ActivityLoggerMiddleware(BaseHTTPMiddleware):
         response: Response = await call_next(request)
         latency_ms = int((time.monotonic() - start) * 1000)
 
-        # Org ID is set by auth/RBAC middleware.
-        org_id: str | None = getattr(request.state, "org_id", None)
+        # Try multiple sources for org_id (different auth paths set different attrs)
+        org_id: str | None = (
+            getattr(request.state, "org_id", None)
+            or getattr(request.state, "organization_id", None)
+            or getattr(getattr(request.state, "principal", None), "organization_id", None)
+        )
+        # Fallback: check if environment was set (means auth passed)
+        if not org_id and getattr(request.state, "environment", None):
+            org_id = "org_default"
         if not org_id:
             return response
 
-        # Extract principal info.
-        principal_kind: str | None = getattr(request.state, "principal_kind", None)
-        actor_id: str | None = getattr(request.state, "actor_id", None)
+        # Extract principal info from various possible locations
+        principal = getattr(request.state, "principal", None)
+        principal_kind: str | None = getattr(principal, "kind", None) or getattr(request.state, "principal_kind", None)
+        actor_id: str | None = None
+        if principal:
+            actor_id = getattr(principal, "user_id", None) or getattr(principal, "organization_id", None)
+        if not actor_id:
+            actor_id = getattr(request.state, "actor_id", None)
 
         # Agent / session correlation headers.
         agent_id = request.headers.get("x-sardis-agent-id")
