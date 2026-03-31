@@ -7,6 +7,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -113,19 +114,25 @@ async def get_provider_scorecard(
 _tracker_instance = None
 
 
+def _reliability_sandbox_enabled() -> bool:
+    return os.environ.get("SARDIS_RELIABILITY_SANDBOX", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_provider_tracker():
     global _tracker_instance
     if _tracker_instance is None:
-        import os
-        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env in ("production", "prod", "staging"):
-            raise RuntimeError(
-                "Provider tracker requires persistent backend. "
-                "Configure via set_provider_tracker() in lifespan."
+        if not _reliability_sandbox_enabled():
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Reliability scorecards require a persistent backend. Configure via "
+                    "set_provider_tracker() or enable SARDIS_RELIABILITY_SANDBOX=true "
+                    "for explicit ephemeral sandbox mode."
+                ),
             )
         logger.warning(
             "Using in-memory ProviderTracker — data will be lost on restart. "
-            "Not suitable for production."
+            "Explicit sandbox mode only; not suitable for live deployments."
         )
         from sardis_chain.provider_tracker import ProviderTracker
         _tracker_instance = ProviderTracker()

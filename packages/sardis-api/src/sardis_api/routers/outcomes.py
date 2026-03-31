@@ -8,6 +8,7 @@ Endpoints:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -153,19 +154,25 @@ async def get_merchant_risk_profile(
 _tracker_instance = None
 
 
+def _outcomes_sandbox_enabled() -> bool:
+    return os.environ.get("SARDIS_OUTCOMES_SANDBOX", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_outcome_tracker():
     global _tracker_instance
     if _tracker_instance is None:
-        import os
-        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env in ("production", "prod", "staging"):
-            raise RuntimeError(
-                "Outcome tracker requires persistent backend. "
-                "Configure via set_outcome_tracker() in lifespan."
+        if not _outcomes_sandbox_enabled():
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Outcomes require a persistent backend. Configure via "
+                    "set_outcome_tracker() or enable SARDIS_OUTCOMES_SANDBOX=true "
+                    "for explicit ephemeral sandbox mode."
+                ),
             )
         logger.warning(
             "Using in-memory OutcomeTracker — data will be lost on restart. "
-            "Not suitable for production."
+            "Explicit sandbox mode only; not suitable for live deployments."
         )
         from sardis_v2_core.outcome_tracker import OutcomeTracker
         _tracker_instance = OutcomeTracker()
