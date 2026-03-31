@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -30,8 +30,11 @@ import {
   CheckCircle,
   Clock,
   ChartBar,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type EvidenceItem = {
   id: string
@@ -43,24 +46,6 @@ type EvidenceItem = {
   status: "Verified" | "Pending"
 }
 
-const evidenceItems: EvidenceItem[] = [
-  { id: "EV-001847", type: "Transaction Proof", description: "Payment authorization for vendor invoice #4821", relatedEntity: "Payment Router Alpha", hash: "0x8a3f...7d2b", created: "2 min ago", status: "Verified" },
-  { id: "EV-001846", type: "Policy Log", description: "Spending limit override approved by admin", relatedEntity: "Treasury Sweep Bot", hash: "0x5c1e...9f4a", created: "8 min ago", status: "Verified" },
-  { id: "EV-001845", type: "Access Record", description: "API key rotation completed for production env", relatedEntity: "System Admin", hash: "0x2d6c...8e5a", created: "15 min ago", status: "Verified" },
-  { id: "EV-001844", type: "Transaction Proof", description: "Cross-chain bridge transfer confirmation", relatedEntity: "Cross-chain Bridge", hash: "0x9f1b...4d7e", created: "22 min ago", status: "Pending" },
-  { id: "EV-001843", type: "Policy Log", description: "New counterparty whitelist rule activated", relatedEntity: "Policy Manager", hash: "0x7e5a...6b3c", created: "35 min ago", status: "Verified" },
-  { id: "EV-001842", type: "Access Record", description: "Multi-sig wallet access granted to new signer", relatedEntity: "Wallet 0x4c7D", hash: "0x1a2b...3c4d", created: "1 hr ago", status: "Pending" },
-  { id: "EV-001841", type: "Transaction Proof", description: "Batch payroll distribution to 42 recipients", relatedEntity: "Payroll Distributor", hash: "0xd1f9...a4e6", created: "1.5 hrs ago", status: "Verified" },
-  { id: "EV-001840", type: "Policy Log", description: "Guardrail trigger threshold updated for max amount", relatedEntity: "Control Center", hash: "0x6e2a...3b1c", created: "2 hrs ago", status: "Verified" },
-]
-
-const stats = [
-  { label: "Evidence Items", value: "234", icon: Lock },
-  { label: "Verified", value: "228", icon: CheckCircle },
-  { label: "Pending", value: "6", icon: Clock },
-  { label: "Compliance Score", value: "97.4%", icon: ChartBar },
-]
-
 const typeFilter: Record<string, string> = {
   all: "All",
   "Transaction Proof": "Transaction Proofs",
@@ -69,11 +54,28 @@ const typeFilter: Record<string, string> = {
 }
 
 export default function EvidencePage() {
+  const { data: evidenceData, loading } = useSardis<EvidenceItem[]>("api/v2/evidence")
+  const evidenceItems = evidenceData ?? []
+
   const [tab, setTab] = useState("all")
 
   const filtered = tab === "all"
     ? evidenceItems
     : evidenceItems.filter((e) => e.type === tab)
+
+  const stats = useMemo(() => {
+    const total = evidenceItems.length
+    const verified = evidenceItems.filter((e) => e.status === "Verified").length
+    const pending = evidenceItems.filter((e) => e.status === "Pending").length
+    const score = total > 0 ? ((verified / total) * 100).toFixed(1) : "0.0"
+
+    return [
+      { label: "Evidence Items", value: String(total), icon: Lock },
+      { label: "Verified", value: String(verified), icon: CheckCircle },
+      { label: "Pending", value: String(pending), icon: Clock },
+      { label: "Compliance Score", value: `${score}%`, icon: ChartBar },
+    ]
+  }, [evidenceItems])
 
   return (
     <div className="space-y-6">
@@ -115,6 +117,17 @@ export default function EvidencePage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : evidenceItems.length === 0 ? (
+            <EmptyState
+              icon={Lock}
+              title="No evidence records"
+              description="Evidence records will appear here as transactions and policy actions are recorded"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -164,6 +177,7 @@ export default function EvidencePage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

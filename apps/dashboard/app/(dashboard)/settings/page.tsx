@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,13 +13,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Gear } from "@phosphor-icons/react"
+import { Gear, Spinner } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { useSardis } from "@/hooks/use-sardis"
+
+type OrgSettings = {
+  orgName: string
+  timezone: string
+  emailNotifications: boolean
+  slackNotifications: boolean
+  webhookNotifications: boolean
+  twoFactorAuth: boolean
+  sessionTimeout: string
+  ipAllowlist: boolean
+}
 
 export default function SettingsPage() {
+  const { data: settings, loading } = useSardis<OrgSettings>("api/v2/organizations/settings")
+
   // Organization
-  const [orgName, setOrgName] = useState("Sardis")
-  const [savedOrgName, setSavedOrgName] = useState("Sardis")
+  const [orgName, setOrgName] = useState("")
+  const [savedOrgName, setSavedOrgName] = useState("")
   const [timezone, setTimezone] = useState("utc")
   const [savedTimezone, setSavedTimezone] = useState("utc")
 
@@ -38,6 +52,28 @@ export default function SettingsPage() {
   const [savedSessionTimeout, setSavedSessionTimeout] = useState("30")
   const [ipAllowlist, setIpAllowlist] = useState(false)
   const [savedIpAllowlist, setSavedIpAllowlist] = useState(false)
+
+  // Hydrate from API data
+  useEffect(() => {
+    if (settings) {
+      setOrgName(settings.orgName ?? "")
+      setSavedOrgName(settings.orgName ?? "")
+      setTimezone(settings.timezone ?? "utc")
+      setSavedTimezone(settings.timezone ?? "utc")
+      setEmailNotif(settings.emailNotifications ?? true)
+      setSavedEmailNotif(settings.emailNotifications ?? true)
+      setSlackNotif(settings.slackNotifications ?? true)
+      setSavedSlackNotif(settings.slackNotifications ?? true)
+      setWebhookNotif(settings.webhookNotifications ?? false)
+      setSavedWebhookNotif(settings.webhookNotifications ?? false)
+      setTwoFa(settings.twoFactorAuth ?? true)
+      setSavedTwoFa(settings.twoFactorAuth ?? true)
+      setSessionTimeout(settings.sessionTimeout ?? "30")
+      setSavedSessionTimeout(settings.sessionTimeout ?? "30")
+      setIpAllowlist(settings.ipAllowlist ?? false)
+      setSavedIpAllowlist(settings.ipAllowlist ?? false)
+    }
+  }, [settings])
 
   const hasChanges =
     orgName !== savedOrgName ||
@@ -59,6 +95,20 @@ export default function SettingsPage() {
     setSavedSessionTimeout(sessionTimeout)
     setSavedIpAllowlist(ipAllowlist)
     toast.success("Settings saved successfully")
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground">Manage your organization settings and preferences</p>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
   }
 
   return (

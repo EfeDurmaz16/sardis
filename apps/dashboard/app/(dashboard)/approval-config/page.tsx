@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -21,7 +22,10 @@ import {
   Clock,
   CheckCircle,
   ChartBar,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type ApprovalRule = {
   name: string
@@ -32,21 +36,11 @@ type ApprovalRule = {
   status: "Active" | "Disabled"
 }
 
-const approvalRules: ApprovalRule[] = [
-  { name: "High Value Transaction", condition: "Amount > $5,000", approvers: 2, timeout: "30m", autoApprove: false, status: "Active" },
-  { name: "New Merchant First Pay", condition: "First transaction to merchant", approvers: 1, timeout: "15m", autoApprove: false, status: "Active" },
-  { name: "Cross-chain Transfer", condition: "Source chain ≠ Target chain", approvers: 2, timeout: "1h", autoApprove: false, status: "Active" },
-  { name: "Low Value Recurring", condition: "Amount < $500 & recurring", approvers: 0, timeout: "N/A", autoApprove: true, status: "Active" },
-  { name: "Whitelisted Vendor Pay", condition: "Merchant in whitelist", approvers: 0, timeout: "N/A", autoApprove: true, status: "Active" },
-  { name: "Suspicious Activity", condition: "Risk score > 0.8", approvers: 3, timeout: "2h", autoApprove: false, status: "Disabled" },
-]
-
-const stats = [
-  { label: "Approval Rules", value: "8", icon: UserCheck },
-  { label: "Pending Approvals", value: "3", icon: Clock },
-  { label: "Avg Approval Time", value: "12m", icon: CheckCircle },
-  { label: "Auto-Approved", value: "67%", icon: ChartBar },
-]
+type ApprovalConfig = {
+  rules: ApprovalRule[]
+  pendingApprovals?: number
+  avgApprovalTime?: string
+}
 
 const statusConfig: Record<ApprovalRule["status"], { color: string }> = {
   Active: { color: "bg-success" },
@@ -54,6 +48,26 @@ const statusConfig: Record<ApprovalRule["status"], { color: string }> = {
 }
 
 export default function ApprovalConfigPage() {
+  const { data: config, loading } = useSardis<ApprovalConfig>("api/v2/approval-config")
+  const rules = config?.rules ?? []
+
+  const stats = useMemo(() => {
+    const totalRules = rules.length
+    const pending = config?.pendingApprovals ?? 0
+    const avgTime = config?.avgApprovalTime ?? "N/A"
+    const autoApproveCount = rules.filter((r) => r.autoApprove).length
+    const autoApproveRate = totalRules > 0
+      ? Math.round((autoApproveCount / totalRules) * 100)
+      : 0
+
+    return [
+      { label: "Approval Rules", value: String(totalRules), icon: UserCheck },
+      { label: "Pending Approvals", value: String(pending), icon: Clock },
+      { label: "Avg Approval Time", value: avgTime, icon: CheckCircle },
+      { label: "Auto-Approved", value: `${autoApproveRate}%`, icon: ChartBar },
+    ]
+  }, [rules, config])
+
   return (
     <div className="space-y-6">
       <div>
@@ -85,6 +99,17 @@ export default function ApprovalConfigPage() {
           <CardTitle>Approval Rules</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : rules.length === 0 ? (
+            <EmptyState
+              icon={UserCheck}
+              title="No approval rules"
+              description="Configure approval workflows to require sign-offs on high-value or sensitive transactions"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -97,7 +122,7 @@ export default function ApprovalConfigPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {approvalRules.map((rule) => {
+              {rules.map((rule) => {
                 const st = statusConfig[rule.status]
                 return (
                   <TableRow key={rule.name}>
@@ -123,6 +148,7 @@ export default function ApprovalConfigPage() {
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

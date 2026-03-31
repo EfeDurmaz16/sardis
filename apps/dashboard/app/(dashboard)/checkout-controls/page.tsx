@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -29,8 +29,11 @@ import {
   Prohibit,
   ArrowsClockwise,
   ShieldCheck,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type CheckoutRule = {
   name: string
@@ -41,23 +44,10 @@ type CheckoutRule = {
   enabled: boolean
 }
 
-const rules: CheckoutRule[] = [
-  { name: "Max single transaction", condition: "Amount > $10,000", action: "Block", scope: "All", triggers24h: 3, enabled: true },
-  { name: "Blocked merchant categories", condition: "MCC in restricted list", action: "Block", scope: "All", triggers24h: 1, enabled: true },
-  { name: "Velocity check", condition: "> 5 transactions in 10 min", action: "Flag", scope: "All", triggers24h: 4, enabled: true },
-  { name: "New merchant threshold", condition: "First-time merchant > $1,000", action: "Warn", scope: "Specific", triggers24h: 2, enabled: true },
-  { name: "International transaction limit", condition: "Cross-border amount > $5,000", action: "Warn", scope: "All", triggers24h: 5, enabled: true },
-  { name: "After-hours restriction", condition: "Transaction outside 6AM-10PM local", action: "Flag", scope: "Specific", triggers24h: 3, enabled: false },
-  { name: "Duplicate detection", condition: "Same amount + merchant within 5 min", action: "Block", scope: "All", triggers24h: 2, enabled: true },
-  { name: "Cumulative daily limit", condition: "Agent daily total > $25,000", action: "Block", scope: "All", triggers24h: 3, enabled: true },
-]
-
-const stats = [
-  { label: "Active Rules", value: "8", icon: ListChecks },
-  { label: "Blocked Checkouts", value: "23", icon: Prohibit },
-  { label: "Override Requests", value: "4", icon: ArrowsClockwise },
-  { label: "Compliance Score", value: "97%", icon: ShieldCheck },
-]
+type CheckoutConfig = {
+  rules: CheckoutRule[]
+  complianceScore?: number
+}
 
 const actionVariant: Record<CheckoutRule["action"], "destructive" | "warning" | "outline"> = {
   Block: "destructive",
@@ -66,11 +56,28 @@ const actionVariant: Record<CheckoutRule["action"], "destructive" | "warning" | 
 }
 
 export default function CheckoutControlsPage() {
-  const [toggles, setToggles] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {}
-    rules.forEach((r) => { init[r.name] = r.enabled })
-    return init
-  })
+  const { data: config, loading } = useSardis<CheckoutConfig>("api/v2/checkout/controls")
+  const rules = config?.rules ?? []
+
+  const [toggles, setToggles] = useState<Record<string, boolean>>({})
+
+  function isEnabled(rule: CheckoutRule): boolean {
+    return toggles[rule.name] ?? rule.enabled
+  }
+
+  const stats = useMemo(() => {
+    const activeCount = rules.filter((r) => isEnabled(r)).length
+    const blockedCount = rules.filter((r) => r.action === "Block").reduce((sum, r) => sum + r.triggers24h, 0)
+    const overrideCount = rules.filter((r) => r.action === "Warn").reduce((sum, r) => sum + r.triggers24h, 0)
+    const score = config?.complianceScore ?? (rules.length > 0 ? 97 : 0)
+
+    return [
+      { label: "Active Rules", value: String(activeCount), icon: ListChecks },
+      { label: "Blocked Checkouts", value: String(blockedCount), icon: Prohibit },
+      { label: "Override Requests", value: String(overrideCount), icon: ArrowsClockwise },
+      { label: "Compliance Score", value: `${score}%`, icon: ShieldCheck },
+    ]
+  }, [rules, toggles, config])
 
   return (
     <div className="space-y-6">
@@ -105,6 +112,17 @@ export default function CheckoutControlsPage() {
           <CardTitle>Checkout Rules</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : rules.length === 0 ? (
+            <EmptyState
+              icon={ListChecks}
+              title="No checkout rules"
+              description="Configure checkout restrictions and compliance rules to control payment flows"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -131,7 +149,7 @@ export default function CheckoutControlsPage() {
                       <TableCell className="text-right tabular-nums font-mono text-muted-foreground">{rule.triggers24h}</TableCell>
                       <TableCell>
                         <Switch
-                          checked={toggles[rule.name] ?? false}
+                          checked={isEnabled(rule)}
                           onCheckedChange={(checked: boolean) =>
                             setToggles((prev) => ({ ...prev, [rule.name]: checked }))
                           }
@@ -143,7 +161,7 @@ export default function CheckoutControlsPage() {
                       Copy
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => setToggles((prev) => ({ ...prev, [rule.name]: !(prev[rule.name] ?? rule.enabled) }))}>
+                    <ContextMenuItem onClick={() => setToggles((prev) => ({ ...prev, [rule.name]: !isEnabled(rule) }))}>
                       Toggle
                     </ContextMenuItem>
                   </ContextMenuContent>
@@ -151,6 +169,7 @@ export default function CheckoutControlsPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

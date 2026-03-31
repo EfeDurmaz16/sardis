@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -43,74 +43,99 @@ import {
   FileText,
   CheckCircle,
   Plus,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Policy = {
+  id: string
   name: string
-  type: "Spending" | "Routing" | "Access" | "Compliance"
-  rules: number
-  agents: number
-  status: "Active" | "Draft" | "Disabled"
+  type: string
+  rules_count: number
+  agents_count: number
+  status: string
   priority: string
-  lastModified: string
+  last_modified: string | null
 }
 
-const initialPolicies: Policy[] = [
-  { name: "Default Spending Limit", type: "Spending", rules: 5, agents: 18, status: "Active", priority: "High", lastModified: "2 hrs ago" },
-  { name: "Cross-chain Routing Policy", type: "Routing", rules: 8, agents: 12, status: "Active", priority: "Critical", lastModified: "4 hrs ago" },
-  { name: "API Key Access Control", type: "Access", rules: 3, agents: 24, status: "Active", priority: "High", lastModified: "1 day ago" },
-  { name: "AML Compliance Check", type: "Compliance", rules: 12, agents: 24, status: "Active", priority: "Critical", lastModified: "6 hrs ago" },
-  { name: "Vendor Payment Limits", type: "Spending", rules: 4, agents: 6, status: "Active", priority: "Medium", lastModified: "2 days ago" },
-  { name: "Multi-sig Routing", type: "Routing", rules: 6, agents: 8, status: "Active", priority: "High", lastModified: "12 hrs ago" },
-  { name: "New Employee Access", type: "Access", rules: 2, agents: 3, status: "Draft", priority: "Low", lastModified: "3 days ago" },
-  { name: "GDPR Data Handling", type: "Compliance", rules: 7, agents: 14, status: "Draft", priority: "Medium", lastModified: "5 days ago" },
-]
-
-const stats = [
-  { label: "Total Policies", value: "14", icon: Shield },
-  { label: "Active", value: "12", icon: CheckCircle },
-  { label: "Draft", value: "2", icon: FileText },
-  { label: "Last Updated", value: "2h ago", icon: ClockCounterClockwise },
-]
-
-const typeVariant: Record<Policy["type"], "outline"> = {
+const typeVariant: Record<string, "outline"> = {
   Spending: "outline",
+  spending: "outline",
   Routing: "outline",
+  routing: "outline",
   Access: "outline",
+  access: "outline",
   Compliance: "outline",
+  compliance: "outline",
 }
 
-const statusConfig: Record<Policy["status"], { color: string }> = {
+const statusConfig: Record<string, { color: string }> = {
+  active: { color: "bg-success" },
   Active: { color: "bg-success" },
+  draft: { color: "bg-warning" },
   Draft: { color: "bg-warning" },
+  disabled: { color: "bg-destructive" },
   Disabled: { color: "bg-destructive" },
 }
 
-const typeMap: Record<string, Policy["type"]> = {
+const typeMap: Record<string, string> = {
   spending: "Spending",
   access: "Access",
   compliance: "Compliance",
 }
 
+function formatLastModified(val: string | null): string {
+  if (!val) return "Never"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "Just now"
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHrs = Math.floor(diffMin / 60)
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  return `${diffDays}d ago`
+}
+
+function capitalize(val: string): string {
+  if (!val) return val
+  return val.charAt(0).toUpperCase() + val.slice(1)
+}
+
 export default function PolicyManagerPage() {
-  const [policies, setPolicies] = useState<Policy[]>(initialPolicies)
+  const { data: policyData, loading } = useSardis<Policy[]>("api/v2/policies")
+  const policies = policyData ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newDescription, setNewDescription] = useState("")
   const [newType, setNewType] = useState("spending")
 
+  const stats = useMemo(() => {
+    const total = policies.length
+    const active = policies.filter((p) => p.status.toLowerCase() === "active").length
+    const draft = policies.filter((p) => p.status.toLowerCase() === "draft").length
+
+    const lastModified = policies.reduce<string | null>((latest, p) => {
+      if (!p.last_modified) return latest
+      if (!latest) return p.last_modified
+      return new Date(p.last_modified) > new Date(latest) ? p.last_modified : latest
+    }, null)
+
+    return [
+      { label: "Total Policies", value: String(total), icon: Shield },
+      { label: "Active", value: String(active), icon: CheckCircle },
+      { label: "Draft", value: String(draft), icon: FileText },
+      { label: "Last Updated", value: formatLastModified(lastModified), icon: ClockCounterClockwise },
+    ]
+  }, [policies])
+
   function handleCreate() {
     if (!newName.trim()) return
-    const policy: Policy = {
-      name: newName.trim(),
-      type: typeMap[newType] ?? "Spending",
-      rules: 0,
-      agents: 0,
-      status: "Draft",
-      priority: "Medium",
-      lastModified: "Just now",
-    }
-    setPolicies((prev) => [policy, ...prev])
+    // TODO: POST to API to create policy
     setNewName("")
     setNewDescription("")
     setNewType("spending")
@@ -213,6 +238,17 @@ export default function PolicyManagerPage() {
           <CardTitle>All Policies</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : policies.length === 0 ? (
+            <EmptyState
+              icon={Shield}
+              title="No policies"
+              description="Policies will appear here once you create spending, routing, or compliance rules for your agents"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -227,28 +263,29 @@ export default function PolicyManagerPage() {
             </TableHeader>
             <TableBody>
               {policies.map((policy) => {
-                const st = statusConfig[policy.status]
+                const st = statusConfig[policy.status] ?? { color: "bg-muted" }
                 return (
-                  <TableRow key={policy.name}>
+                  <TableRow key={policy.id ?? policy.name}>
                     <TableCell className="pl-4 font-medium">{policy.name}</TableCell>
                     <TableCell>
-                      <Badge variant={typeVariant[policy.type]}>{policy.type}</Badge>
+                      <Badge variant={typeVariant[policy.type] ?? "outline"}>{capitalize(policy.type)}</Badge>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{policy.rules}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{policy.agents}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{policy.rules_count}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{policy.agents_count}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center gap-1.5">
                         <span className={`h-1.5 w-1.5 rounded-full ${st.color}`} />
-                        {policy.status}
+                        {capitalize(policy.status)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{policy.priority}</TableCell>
-                    <TableCell className="text-muted-foreground">{policy.lastModified}</TableCell>
+                    <TableCell className="text-muted-foreground">{capitalize(policy.priority)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatLastModified(policy.last_modified)}</TableCell>
                   </TableRow>
                 )
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

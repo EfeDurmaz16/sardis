@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -13,7 +14,10 @@ import {
   Lightning,
   ArrowsClockwise,
   ShieldCheck,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Guardrail = {
   name: string
@@ -24,23 +28,10 @@ type Guardrail = {
   triggers: number
 }
 
-const guardrails: Guardrail[] = [
-  { name: "Max Transaction Amount", description: "Blocks transactions exceeding the per-agent maximum single transfer limit", triggerCondition: "Amount > $50,000", action: "Block", overrideAllowed: false, triggers: 4 },
-  { name: "Daily Spending Limit", description: "Enforces cumulative daily spending caps for each agent", triggerCondition: "Daily total > configured limit", action: "Block", overrideAllowed: true, triggers: 7 },
-  { name: "New Merchant Cooldown", description: "Requires 24-hour waiting period before transacting with newly added merchants", triggerCondition: "Merchant age < 24h", action: "Warn", overrideAllowed: true, triggers: 2 },
-  { name: "Cross-chain Transfer Limit", description: "Limits volume of cross-chain transfers within a rolling 24-hour window", triggerCondition: "Cross-chain volume > $100,000/day", action: "Limit", overrideAllowed: true, triggers: 3 },
-  { name: "Velocity Throttle", description: "Rate-limits rapid successive transactions to prevent automated attacks", triggerCondition: "Transactions > 30/min", action: "Block", overrideAllowed: false, triggers: 1 },
-  { name: "Balance Reserve", description: "Prevents transactions that would reduce wallet balance below the minimum reserve", triggerCondition: "Post-txn balance < $1,000", action: "Block", overrideAllowed: true, triggers: 2 },
-  { name: "Duplicate Payment Detection", description: "Warns when a similar payment to the same recipient is detected within 1 hour", triggerCondition: "Same amount + recipient in 1h", action: "Warn", overrideAllowed: true, triggers: 3 },
-  { name: "Off-hours Transaction Block", description: "Blocks high-value transactions outside business hours unless pre-approved", triggerCondition: "Amount > $10,000 outside 9am-6pm", action: "Block", overrideAllowed: true, triggers: 1 },
-]
-
-const stats = [
-  { label: "Active Guardrails", value: "15", icon: ShieldWarning },
-  { label: "Triggers Today", value: "23", icon: Lightning },
-  { label: "Override Rate", value: "4.2%", icon: ArrowsClockwise },
-  { label: "Coverage", value: "100%", icon: ShieldCheck },
-]
+type GuardrailConfig = {
+  guardrails: Guardrail[]
+  overrideRate?: number
+}
 
 const actionVariant: Record<Guardrail["action"], "destructive" | "warning" | "info"> = {
   Block: "destructive",
@@ -49,6 +40,58 @@ const actionVariant: Record<Guardrail["action"], "destructive" | "warning" | "in
 }
 
 export default function GuardrailsPage() {
+  const { data: config, loading } = useSardis<GuardrailConfig>("api/v2/guardrails/config")
+  const guardrails = config?.guardrails ?? []
+
+  const stats = useMemo(() => {
+    const totalTriggers = guardrails.reduce((sum, g) => sum + g.triggers, 0)
+    const overridable = guardrails.filter((g) => g.overrideAllowed).length
+    const overrideRate = guardrails.length > 0
+      ? ((overridable / guardrails.length) * 100).toFixed(1)
+      : "0.0"
+
+    return [
+      { label: "Active Guardrails", value: String(guardrails.length), icon: ShieldWarning },
+      { label: "Triggers Today", value: String(totalTriggers), icon: Lightning },
+      { label: "Override Rate", value: `${overrideRate}%`, icon: ArrowsClockwise },
+      { label: "Coverage", value: guardrails.length > 0 ? "100%" : "0%", icon: ShieldCheck },
+    ]
+  }, [guardrails])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Guardrails</h1>
+          <p className="text-sm text-muted-foreground">Safety guardrails and automated protection rules</p>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
+
+  if (guardrails.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Guardrails</h1>
+          <p className="text-sm text-muted-foreground">Safety guardrails and automated protection rules</p>
+        </div>
+        <Card>
+          <CardContent className="px-0">
+            <EmptyState
+              icon={ShieldWarning}
+              title="No guardrails configured"
+              description="Configure safety guardrails to automatically protect your agents from unauthorized or risky transactions"
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>

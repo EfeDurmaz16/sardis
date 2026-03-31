@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ import {
   ShieldWarning,
   Eye,
   ChartBar,
+  Spinner,
 } from "@phosphor-icons/react"
 import {
   AreaChart,
@@ -31,16 +33,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
-
-const trendData = [
-  { day: "Mon", normal: 482, anomalous: 1 },
-  { day: "Tue", normal: 510, anomalous: 3 },
-  { day: "Wed", normal: 498, anomalous: 0 },
-  { day: "Thu", normal: 523, anomalous: 2 },
-  { day: "Fri", normal: 541, anomalous: 4 },
-  { day: "Sat", normal: 389, anomalous: 1 },
-  { day: "Sun", normal: 412, anomalous: 1 },
-]
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Anomaly = {
   id: string
@@ -51,25 +45,8 @@ type Anomaly = {
   amount: string
   detected: string
   status: "Critical" | "Under Review" | "Resolved" | "Dismissed"
+  trend?: { day: string; normal: number; anomalous: number }[]
 }
-
-const anomalies: Anomaly[] = [
-  { id: "AN-0412", type: "Amount", description: "Transaction 8.2x above agent daily average", riskScore: 94, agent: "Payment Router Alpha", amount: "$84,200", detected: "3 min ago", status: "Critical" },
-  { id: "AN-0411", type: "Velocity", description: "47 transactions in 2-minute window", riskScore: 88, agent: "Gas Optimizer v3", amount: "$12,400", detected: "12 min ago", status: "Critical" },
-  { id: "AN-0410", type: "Pattern", description: "Unusual round-number transfer sequence detected", riskScore: 72, agent: "Treasury Sweep Bot", amount: "$50,000", detected: "28 min ago", status: "Under Review" },
-  { id: "AN-0409", type: "Location", description: "Transaction origin from new geographic region", riskScore: 65, agent: "Cross-chain Bridge", amount: "$31,600", detected: "45 min ago", status: "Under Review" },
-  { id: "AN-0408", type: "Amount", description: "Single transfer exceeds 60% of wallet balance", riskScore: 78, agent: "Vendor Pay Agent", amount: "$7,800", detected: "1 hr ago", status: "Under Review" },
-  { id: "AN-0407", type: "Velocity", description: "Spike in API calls from agent endpoint", riskScore: 55, agent: "Expense Tracker v2", amount: "$2,100", detected: "2 hrs ago", status: "Resolved" },
-  { id: "AN-0406", type: "Pattern", description: "Repeated failed transactions followed by success", riskScore: 61, agent: "Invoice Settler", amount: "$15,300", detected: "3 hrs ago", status: "Under Review" },
-  { id: "AN-0405", type: "Location", description: "Cross-chain hop through unvetted bridge", riskScore: 48, agent: "Yield Harvester", amount: "$5,600", detected: "5 hrs ago", status: "Under Review" },
-]
-
-const stats = [
-  { label: "Anomalies Detected", value: "12", icon: Warning },
-  { label: "Critical", value: "2", icon: ShieldWarning, color: "text-destructive" },
-  { label: "Under Review", value: "5", icon: Eye },
-  { label: "Model Accuracy", value: "96.8%", icon: ChartBar },
-]
 
 const typeVariant: Record<Anomaly["type"], "default" | "secondary" | "outline" | "destructive"> = {
   Amount: "destructive",
@@ -92,6 +69,34 @@ const statusVariant: Record<Anomaly["status"], "destructive" | "warning" | "succ
 }
 
 export default function AnomalyDetectionPage() {
+  const { data: anomalyData, loading } = useSardis<Anomaly[]>("api/v2/anomaly/recent")
+  const anomalies = anomalyData ?? []
+
+  const stats = useMemo(() => {
+    const total = anomalies.length
+    const critical = anomalies.filter((a) => a.status === "Critical").length
+    const underReview = anomalies.filter((a) => a.status === "Under Review").length
+    const resolved = anomalies.filter((a) => a.status === "Resolved").length
+    const accuracy = total > 0
+      ? (((total - anomalies.filter((a) => a.status === "Dismissed").length) / total) * 100).toFixed(1)
+      : "0.0"
+
+    return [
+      { label: "Anomalies Detected", value: String(total), icon: Warning },
+      { label: "Critical", value: String(critical), icon: ShieldWarning, color: "text-destructive" },
+      { label: "Under Review", value: String(underReview), icon: Eye },
+      { label: "Model Accuracy", value: `${accuracy}%`, icon: ChartBar },
+    ]
+  }, [anomalies])
+
+  // Build trend data from anomalies if available, otherwise empty
+  const trendData = useMemo(() => {
+    if (anomalies.length > 0 && anomalies[0]?.trend) {
+      return anomalies[0].trend
+    }
+    return []
+  }, [anomalies])
+
   return (
     <div className="space-y-6">
       <div>
@@ -118,49 +123,62 @@ export default function AnomalyDetectionPage() {
         })}
       </div>
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>Anomaly Trend (7-Day)</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="normalGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="anomalyGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="day" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
-                <Legend />
-                <Area type="monotone" dataKey="normal" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#normalGrad)" name="Normal Transactions" />
-                <Area type="monotone" dataKey="anomalous" stroke="#ef4444" fillOpacity={1} fill="url(#anomalyGrad)" name="Anomalous" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {trendData.length > 0 && (
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Anomaly Trend (7-Day)</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="normalGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="anomalyGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="day" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="normal" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#normalGrad)" name="Normal Transactions" />
+                  <Area type="monotone" dataKey="anomalous" stroke="#ef4444" fillOpacity={1} fill="url(#anomalyGrad)" name="Anomalous" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="border-b">
           <CardTitle>Recent Anomalies</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : anomalies.length === 0 ? (
+            <EmptyState
+              icon={Warning}
+              title="No anomalies detected"
+              description="The ML anomaly detection engine has not flagged any suspicious activity yet"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -195,6 +213,7 @@ export default function AnomalyDetectionPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

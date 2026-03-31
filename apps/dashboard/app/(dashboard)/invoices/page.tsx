@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -41,38 +41,20 @@ import {
   CurrencyDollar,
   CheckCircle,
   Warning,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Invoice = {
   id: string
   merchant: string
   amount: string
-  issueDate: string
-  dueDate: string
+  issue_date: string
+  due_date: string
   status: "outstanding" | "paid" | "overdue"
 }
-
-const initialInvoices: Invoice[] = [
-  { id: "INV-1042", merchant: "AWS", amount: "$8,400", issueDate: "Mar 01, 2026", dueDate: "Mar 31, 2026", status: "outstanding" },
-  { id: "INV-1041", merchant: "Google Cloud", amount: "$5,200", issueDate: "Mar 01, 2026", dueDate: "Mar 31, 2026", status: "outstanding" },
-  { id: "INV-1040", merchant: "Vercel", amount: "$1,890", issueDate: "Feb 28, 2026", dueDate: "Mar 28, 2026", status: "outstanding" },
-  { id: "INV-1039", merchant: "OpenAI", amount: "$12,600", issueDate: "Feb 15, 2026", dueDate: "Mar 15, 2026", status: "overdue" },
-  { id: "INV-1038", merchant: "Datadog", amount: "$3,400", issueDate: "Feb 10, 2026", dueDate: "Mar 10, 2026", status: "overdue" },
-  { id: "INV-1037", merchant: "Notion", amount: "$890", issueDate: "Feb 01, 2026", dueDate: "Mar 01, 2026", status: "paid" },
-  { id: "INV-1036", merchant: "JetBrains", amount: "$2,100", issueDate: "Feb 01, 2026", dueDate: "Mar 01, 2026", status: "paid" },
-  { id: "INV-1035", merchant: "Figma", amount: "$1,440", issueDate: "Jan 15, 2026", dueDate: "Feb 15, 2026", status: "paid" },
-  { id: "INV-1034", merchant: "Slack", amount: "$760", issueDate: "Jan 10, 2026", dueDate: "Feb 10, 2026", status: "paid" },
-  { id: "INV-1033", merchant: "Linear", amount: "$2,510", issueDate: "Feb 05, 2026", dueDate: "Mar 05, 2026", status: "overdue" },
-]
-
-const stats = [
-  { label: "Total Invoices", value: "156", icon: FileText },
-  { label: "Outstanding", value: "$23,400", icon: CurrencyDollar },
-  { label: "Paid This Month", value: "$67,200", icon: CheckCircle },
-  { label: "Overdue", value: "3", icon: Warning },
-]
 
 const statusConfig: Record<Invoice["status"], { variant: "warning" | "success" | "destructive"; label: string }> = {
   outstanding: { variant: "warning", label: "Outstanding" },
@@ -80,11 +62,58 @@ const statusConfig: Record<Invoice["status"], { variant: "warning" | "success" |
   overdue: { variant: "destructive", label: "Overdue" },
 }
 
+function formatMoney(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "$0"
+  const amount = typeof value === "number" ? value : parseFloat(value.replace(/[^0-9.-]/g, ""))
+  if (isNaN(amount)) return "$0"
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+function parseMoney(value: string | null | undefined): number {
+  if (!value) return 0
+  const parsed = parseFloat(value.replace(/[^0-9.-]/g, ""))
+  return isNaN(parsed) ? 0 : parsed
+}
+
+function formatDate(val: string | null): string {
+  if (!val) return "—"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(d)
+}
+
 export default function InvoicesPage() {
+  const { data: invoiceData, loading } = useSardis<Invoice[]>("api/v2/invoices")
+  const invoices = invoiceData ?? []
+
   const [tab, setTab] = useState("all")
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+
+  const stats = useMemo(() => {
+    const total = invoices.length
+    const outstanding = invoices.filter((i) => i.status === "outstanding")
+    const paid = invoices.filter((i) => i.status === "paid")
+    const overdue = invoices.filter((i) => i.status === "overdue")
+    const outstandingTotal = outstanding.reduce((sum, i) => sum + parseMoney(i.amount), 0)
+    const paidTotal = paid.reduce((sum, i) => sum + parseMoney(i.amount), 0)
+
+    return [
+      { label: "Total Invoices", value: String(total), icon: FileText },
+      { label: "Outstanding", value: formatMoney(outstandingTotal), icon: CurrencyDollar },
+      { label: "Paid This Month", value: formatMoney(paidTotal), icon: CheckCircle },
+      { label: "Overdue", value: String(overdue.length), icon: Warning },
+    ]
+  }, [invoices])
 
   const filtered = tab === "all"
     ? invoices
@@ -96,9 +125,7 @@ export default function InvoicesPage() {
   }
 
   function handleMarkPaid(id: string) {
-    setInvoices((prev) => prev.map((inv) =>
-      inv.id === id ? { ...inv, status: "paid" as const } : inv
-    ))
+    // TODO: POST to API to mark paid
     toast.success(`Invoice ${id} marked as paid`)
   }
 
@@ -143,7 +170,11 @@ export default function InvoicesPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
             <EmptyState
               icon={FileText}
               title="No invoices"
@@ -164,15 +195,15 @@ export default function InvoicesPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((inv) => {
-                const st = statusConfig[inv.status]
+                const st = statusConfig[inv.status] ?? { variant: "warning" as const, label: inv.status }
                 return (
                   <ContextMenu key={inv.id}>
                     <ContextMenuTrigger render={<TableRow />}>
                         <TableCell className="pl-4 font-mono text-xs">{inv.id}</TableCell>
                         <TableCell className="font-medium">{inv.merchant}</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{inv.amount}</TableCell>
-                        <TableCell className="text-muted-foreground">{inv.issueDate}</TableCell>
-                        <TableCell className="text-muted-foreground">{inv.dueDate}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(inv.issue_date)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(inv.due_date)}</TableCell>
                         <TableCell>
                           <Badge variant={st.variant}>{st.label}</Badge>
                         </TableCell>
@@ -228,17 +259,17 @@ export default function InvoicesPage() {
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Issue Date</span>
-                  <span>{selectedInvoice.issueDate}</span>
+                  <span>{formatDate(selectedInvoice.issue_date)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Due Date</span>
-                  <span>{selectedInvoice.dueDate}</span>
+                  <span>{formatDate(selectedInvoice.due_date)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Status</span>
-                  <Badge variant={statusConfig[selectedInvoice.status].variant}>{statusConfig[selectedInvoice.status].label}</Badge>
+                  <Badge variant={statusConfig[selectedInvoice.status]?.variant ?? "warning"}>{statusConfig[selectedInvoice.status]?.label ?? selectedInvoice.status}</Badge>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm">

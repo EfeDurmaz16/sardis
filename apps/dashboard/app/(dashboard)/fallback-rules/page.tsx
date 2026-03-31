@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -42,89 +42,22 @@ import {
   CheckCircle,
   Plus,
   ArrowRight,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type FallbackRule = {
   id: string
   name: string
   priority: number
   condition: string
-  primaryChain: string
-  fallbackChains: string[]
+  primary_chain: string
+  fallback_chains: string[]
   triggers: number
   enabled: boolean
 }
-
-const initialRules: FallbackRule[] = [
-  {
-    id: "1",
-    name: "Ethereum Gas Spike Fallback",
-    priority: 1,
-    condition: "When Ethereum gas exceeds 100 gwei for more than 2 minutes",
-    primaryChain: "Ethereum",
-    fallbackChains: ["Arbitrum", "Optimism"],
-    triggers: 5,
-    enabled: true,
-  },
-  {
-    id: "2",
-    name: "Polygon RPC Timeout",
-    priority: 2,
-    condition: "When Polygon RPC response time exceeds 3 seconds",
-    primaryChain: "Polygon",
-    fallbackChains: ["Ethereum"],
-    triggers: 2,
-    enabled: true,
-  },
-  {
-    id: "3",
-    name: "Bridge Congestion Reroute",
-    priority: 3,
-    condition: "When cross-chain bridge queue exceeds 50 pending transactions",
-    primaryChain: "Arbitrum",
-    fallbackChains: ["Optimism", "Base"],
-    triggers: 3,
-    enabled: true,
-  },
-  {
-    id: "4",
-    name: "Low Liquidity Swap Redirect",
-    priority: 4,
-    condition: "When DEX liquidity pool depth falls below $100k for target pair",
-    primaryChain: "Optimism",
-    fallbackChains: ["Ethereum", "Arbitrum"],
-    triggers: 1,
-    enabled: true,
-  },
-  {
-    id: "5",
-    name: "Settlement Delay Override",
-    priority: 5,
-    condition: "When settlement confirmation exceeds 5 minutes on primary chain",
-    primaryChain: "Ethereum",
-    fallbackChains: ["Polygon"],
-    triggers: 3,
-    enabled: false,
-  },
-  {
-    id: "6",
-    name: "Emergency All-Chain Failover",
-    priority: 6,
-    condition: "When primary chain experiences block production halt or >30s block time",
-    primaryChain: "Any",
-    fallbackChains: ["Ethereum", "Polygon", "Arbitrum"],
-    triggers: 0,
-    enabled: true,
-  },
-]
-
-const stats = [
-  { label: "Active Rules", value: "6", icon: GitBranch },
-  { label: "Triggers Last 24h", value: "14", icon: Lightning },
-  { label: "Avg Fallback Time", value: "230ms", icon: Timer },
-  { label: "Success Rate", value: "96%", icon: CheckCircle },
-]
 
 const priorityVariant: Record<number, "outline"> = {
   1: "outline",
@@ -136,7 +69,9 @@ const priorityVariant: Record<number, "outline"> = {
 }
 
 export default function FallbackRulesPage() {
-  const [rules, setRules] = useState<FallbackRule[]>(initialRules)
+  const { data: ruleData, loading } = useSardis<FallbackRule[]>("api/v2/fallback-policies")
+  const rules = ruleData ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -144,6 +79,21 @@ export default function FallbackRulesPage() {
   const [primaryRail, setPrimaryRail] = useState("")
   const [fallbackRail, setFallbackRail] = useState("")
   const [trigger, setTrigger] = useState<string>("gas-spike")
+
+  const stats = useMemo(() => {
+    const activeCount = rules.filter((r) => r.enabled).length
+    const totalTriggers = rules.reduce((sum, r) => sum + r.triggers, 0)
+    const successRate = rules.length > 0
+      ? Math.round((rules.filter((r) => r.enabled).length / rules.length) * 100)
+      : 0
+
+    return [
+      { label: "Active Rules", value: String(activeCount), icon: GitBranch },
+      { label: "Triggers Last 24h", value: String(totalTriggers), icon: Lightning },
+      { label: "Avg Fallback Time", value: "—", icon: Timer },
+      { label: "Success Rate", value: rules.length > 0 ? `${successRate}%` : "—", icon: CheckCircle },
+    ]
+  }, [rules])
 
   function resetForm() {
     setPrimaryRail("")
@@ -158,8 +108,8 @@ export default function FallbackRulesPage() {
   }
 
   function openEditDialog(rule: FallbackRule) {
-    setPrimaryRail(rule.primaryChain)
-    setFallbackRail(rule.fallbackChains.join(", "))
+    setPrimaryRail(rule.primary_chain)
+    setFallbackRail(rule.fallback_chains.join(", "))
     setTrigger("gas-spike")
     setEditingId(rule.id)
     setDialogOpen(true)
@@ -175,34 +125,10 @@ export default function FallbackRulesPage() {
 
   function handleSubmit() {
     if (!primaryRail.trim() || !fallbackRail.trim()) return
-
+    // TODO: POST/PUT to API to create/update fallback rule
     if (editingId) {
-      setRules((prev) =>
-        prev.map((r) =>
-          r.id === editingId
-            ? {
-                ...r,
-                primaryChain: primaryRail.trim(),
-                fallbackChains: fallbackRail.split(",").map((s) => s.trim()).filter(Boolean),
-                condition: `When ${triggerLabels[trigger] || trigger} detected on ${primaryRail.trim()}`,
-              }
-            : r
-        )
-      )
       toast.success("Rule updated")
     } else {
-      const nextPriority = Math.max(...rules.map((r) => r.priority), 0) + 1
-      const newRule: FallbackRule = {
-        id: crypto.randomUUID(),
-        name: `${primaryRail.trim()} to ${fallbackRail.trim()} Fallback`,
-        priority: nextPriority,
-        condition: `When ${triggerLabels[trigger] || trigger} detected on ${primaryRail.trim()}`,
-        primaryChain: primaryRail.trim(),
-        fallbackChains: fallbackRail.split(",").map((s) => s.trim()).filter(Boolean),
-        triggers: 0,
-        enabled: true,
-      }
-      setRules((prev) => [...prev, newRule])
       toast.success("Rule created")
     }
     setDialogOpen(false)
@@ -210,7 +136,7 @@ export default function FallbackRulesPage() {
   }
 
   function handleDelete(id: string) {
-    setRules((prev) => prev.filter((r) => r.id !== id))
+    // TODO: DELETE to API
     toast.success("Rule deleted")
   }
 
@@ -246,6 +172,19 @@ export default function FallbackRulesPage() {
         })}
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : rules.length === 0 ? (
+        <EmptyState
+          icon={GitBranch}
+          title="No fallback rules"
+          description="Fallback rules will appear here once you configure automatic routing fallbacks for chain failures"
+          action={openCreateDialog}
+          actionLabel="Create Rule"
+        />
+      ) : (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {rules.map((rule) => (
           <ContextMenu key={rule.id}>
@@ -265,9 +204,9 @@ export default function FallbackRulesPage() {
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground">{rule.condition}</p>
                   <div className="flex items-center gap-2 text-sm">
-                    <Badge variant="outline">{rule.primaryChain}</Badge>
+                    <Badge variant="outline">{rule.primary_chain}</Badge>
                     <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                    {rule.fallbackChains.map((chain) => (
+                    {rule.fallback_chains.map((chain) => (
                       <Badge key={chain} variant="secondary">{chain}</Badge>
                     ))}
                   </div>
@@ -295,6 +234,7 @@ export default function FallbackRulesPage() {
           </ContextMenu>
         ))}
       </div>
+      )}
 
       {/* Create / Edit Rule Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

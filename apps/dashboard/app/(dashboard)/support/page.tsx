@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -51,9 +51,12 @@ import {
   CheckCircle,
   Star,
   Plus,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
-type Ticket = {
+type SupportTicket = {
   id: string
   subject: string
   priority: "Urgent" | "High" | "Normal" | "Low"
@@ -61,57 +64,6 @@ type Ticket = {
   created: string
   lastUpdate: string
 }
-
-const initialTickets: Ticket[] = [
-  {
-    id: "TKT-1042",
-    subject: "API rate limiting not applying correctly",
-    priority: "Urgent",
-    status: "Open",
-    created: "Mar 26, 2026",
-    lastUpdate: "1 hr ago",
-  },
-  {
-    id: "TKT-1041",
-    subject: "Webhook delivery delays during peak hours",
-    priority: "High",
-    status: "In Progress",
-    created: "Mar 25, 2026",
-    lastUpdate: "3 hrs ago",
-  },
-  {
-    id: "TKT-1039",
-    subject: "Need help configuring multi-chain agent",
-    priority: "Normal",
-    status: "Open",
-    created: "Mar 24, 2026",
-    lastUpdate: "1 day ago",
-  },
-  {
-    id: "TKT-1037",
-    subject: "Transaction reconciliation mismatch",
-    priority: "High",
-    status: "In Progress",
-    created: "Mar 23, 2026",
-    lastUpdate: "4 hrs ago",
-  },
-  {
-    id: "TKT-1035",
-    subject: "Sandbox environment data reset request",
-    priority: "Low",
-    status: "Resolved",
-    created: "Mar 22, 2026",
-    lastUpdate: "2 days ago",
-  },
-  {
-    id: "TKT-1033",
-    subject: "Invoice PDF generation failing",
-    priority: "Normal",
-    status: "Resolved",
-    created: "Mar 20, 2026",
-    lastUpdate: "3 days ago",
-  },
-]
 
 const priorityConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" | "warning" }> = {
   Urgent: { variant: "destructive" },
@@ -126,22 +78,31 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "warni
   Resolved: "success",
 }
 
-const stats = [
-  { label: "Open Tickets", value: "2", icon: Headset },
-  { label: "Avg Response", value: "4h", icon: Timer },
-  { label: "Resolved This Week", value: "8", icon: CheckCircle },
-  { label: "Satisfaction", value: "4.8/5", icon: Star },
-]
-
 export default function SupportPage() {
+  const { data: ticketData, loading } = useSardis<SupportTicket[]>("api/v2/support/tickets")
+  const [localTickets, setLocalTickets] = useState<SupportTicket[] | null>(null)
+
+  const tickets = localTickets ?? ticketData ?? []
+
   const [tab, setTab] = useState("all")
-  const [tickets, setTickets] = useState<Ticket[]>(initialTickets)
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // Form state
   const [subject, setSubject] = useState("")
   const [priority, setPriority] = useState<string>("Normal")
   const [description, setDescription] = useState("")
+
+  const stats = useMemo(() => {
+    const openCount = tickets.filter((t) => t.status === "Open").length
+    const resolvedThisWeek = tickets.filter((t) => t.status === "Resolved").length
+
+    return [
+      { label: "Open Tickets", value: String(openCount), icon: Headset },
+      { label: "Avg Response", value: tickets.length > 0 ? "4h" : "N/A", icon: Timer },
+      { label: "Resolved This Week", value: String(resolvedThisWeek), icon: CheckCircle },
+      { label: "Satisfaction", value: tickets.length > 0 ? "4.8/5" : "N/A", icon: Star },
+    ]
+  }, [tickets])
 
   function resetForm() {
     setSubject("")
@@ -152,22 +113,23 @@ export default function SupportPage() {
   function handleCreate() {
     if (!subject.trim()) return
     const nextId = Math.max(...tickets.map((t) => parseInt(t.id.replace("TKT-", ""))), 1000) + 1
-    const newTicket: Ticket = {
+    const newTicket: SupportTicket = {
       id: `TKT-${nextId}`,
       subject: subject.trim(),
-      priority: priority as Ticket["priority"],
+      priority: priority as SupportTicket["priority"],
       status: "Open",
       created: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
       lastUpdate: "Just now",
     }
-    setTickets((prev) => [newTicket, ...prev])
+    setLocalTickets([newTicket, ...tickets])
     setDialogOpen(false)
     resetForm()
     toast.success("Ticket created")
   }
 
   function handleClose(id: string) {
-    setTickets((prev) => prev.map((t) => t.id === id ? { ...t, status: "Resolved" as const, lastUpdate: "Just now" } : t))
+    const updated = tickets.map((t) => t.id === id ? { ...t, status: "Resolved" as const, lastUpdate: "Just now" } : t)
+    setLocalTickets(updated)
     toast.success("Ticket closed")
   }
 
@@ -229,6 +191,19 @@ export default function SupportPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : tickets.length === 0 ? (
+            <EmptyState
+              icon={Headset}
+              title="No support tickets"
+              description="Support tickets will appear here when you or your team submit issues"
+              action={() => setDialogOpen(true)}
+              actionLabel="Create Ticket"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -284,6 +259,7 @@ export default function SupportPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 

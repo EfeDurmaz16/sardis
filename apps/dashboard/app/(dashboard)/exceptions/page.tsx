@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -48,63 +48,104 @@ import {
   CheckCircle,
   ListBullets,
   Clock,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
-type ExceptionStatus = "Active" | "Resolved" | "Escalated" | "Retrying"
+type ExceptionStatus = "active" | "resolved" | "escalated" | "retrying"
 
-type ExceptionItem = {
+type ExceptionEntry = {
   id: string
   rule: string
   description: string
-  severity: "Critical" | "High" | "Medium" | "Low"
+  severity: string
   agent: string
-  created: string
+  created_at: string | null
   status: ExceptionStatus
 }
 
-const initialExceptions: ExceptionItem[] = [
-  { id: "EXC-0089", rule: "Max Single Transaction", description: "Transaction exceeded $50,000 single-transfer limit", severity: "Critical", agent: "Payment Router Alpha", created: "5 min ago", status: "Active" },
-  { id: "EXC-0088", rule: "Velocity Check", description: "Agent exceeded 30 transactions per minute threshold", severity: "High", agent: "Gas Optimizer v3", created: "18 min ago", status: "Active" },
-  { id: "EXC-0087", rule: "New Merchant Cooldown", description: "Transfer to merchant added less than 24 hours ago", severity: "Medium", agent: "Vendor Pay Agent", created: "42 min ago", status: "Active" },
-  { id: "EXC-0086", rule: "Cross-chain Limit", description: "Daily cross-chain transfer volume exceeded", severity: "High", agent: "Cross-chain Bridge", created: "1 hr ago", status: "Active" },
-  { id: "EXC-0085", rule: "Balance Threshold", description: "Wallet balance dropped below minimum reserve", severity: "Medium", agent: "Yield Harvester", created: "2 hrs ago", status: "Resolved" },
-  { id: "EXC-0084", rule: "Max Single Transaction", description: "Large transfer flagged for manual review", severity: "Critical", agent: "Treasury Sweep Bot", created: "3 hrs ago", status: "Resolved" },
-  { id: "EXC-0083", rule: "API Rate Limit", description: "Provider API rate limit exceeded temporarily", severity: "Low", agent: "Expense Tracker v2", created: "4 hrs ago", status: "Resolved" },
-  { id: "EXC-0082", rule: "Duplicate Detection", description: "Potential duplicate invoice payment detected", severity: "Medium", agent: "Invoice Settler", created: "5 hrs ago", status: "Resolved" },
-]
-
-const stats = [
-  { label: "Active Exceptions", value: "4", icon: Prohibit },
-  { label: "Resolved Today", value: "8", icon: CheckCircle },
-  { label: "Total Rules", value: "12", icon: ListBullets },
-  { label: "Avg Resolution", value: "2.4h", icon: Clock },
-]
-
-const severityVariant: Record<ExceptionItem["severity"], "destructive" | "warning" | "info" | "secondary"> = {
+const severityVariant: Record<string, "destructive" | "warning" | "info" | "secondary"> = {
+  critical: "destructive",
   Critical: "destructive",
+  high: "warning",
   High: "warning",
+  medium: "info",
   Medium: "info",
+  low: "secondary",
   Low: "secondary",
 }
 
-const statusVariant: Record<ExceptionStatus, "warning" | "success" | "destructive" | "info"> = {
+const statusVariant: Record<string, "warning" | "success" | "destructive" | "info"> = {
+  active: "warning",
   Active: "warning",
+  resolved: "success",
   Resolved: "success",
+  escalated: "destructive",
   Escalated: "destructive",
+  retrying: "info",
   Retrying: "info",
 }
 
+function capitalize(val: string): string {
+  if (!val) return val
+  return val.charAt(0).toUpperCase() + val.slice(1)
+}
+
+function formatCreated(val: string | null): string {
+  if (!val) return "—"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "Just now"
+  if (diffMin < 60) return `${diffMin} min ago`
+  const diffHrs = Math.floor(diffMin / 60)
+  if (diffHrs < 24) return `${diffHrs} hr${diffHrs > 1 ? "s" : ""} ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
+}
+
 export default function ExceptionsPage() {
+  const { data: exceptionData, loading } = useSardis<ExceptionEntry[]>("api/v2/exceptions")
+  const exceptions = exceptionData ?? []
+
   const [tab, setTab] = useState("all")
-  const [exceptions, setExceptions] = useState<ExceptionItem[]>(initialExceptions)
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false)
-  const [editItem, setEditItem] = useState<ExceptionItem | null>(null)
+  const [editItem, setEditItem] = useState<ExceptionEntry | null>(null)
   const [editRule, setEditRule] = useState("")
   const [editDescription, setEditDescription] = useState("")
-  const [editSeverity, setEditSeverity] = useState<ExceptionItem["severity"]>("Medium")
+  const [editSeverity, setEditSeverity] = useState<string>("Medium")
+
+  const stats = useMemo(() => {
+    const activeCount = exceptions.filter((e) => e.status.toLowerCase() === "active").length
+    const resolvedToday = exceptions.filter((e) => {
+      if (e.status.toLowerCase() !== "resolved") return false
+      if (!e.created_at) return false
+      const d = new Date(e.created_at)
+      const now = new Date()
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      )
+    }).length
+    const uniqueRules = new Set(exceptions.map((e) => e.rule)).size
+
+    const resolvedExceptions = exceptions.filter((e) => e.status.toLowerCase() === "resolved" && e.created_at)
+    const avgResolution = resolvedExceptions.length > 0 ? "—" : "—"
+
+    return [
+      { label: "Active Exceptions", value: String(activeCount), icon: Prohibit },
+      { label: "Resolved Today", value: String(resolvedToday), icon: CheckCircle },
+      { label: "Total Rules", value: String(uniqueRules), icon: ListBullets },
+      { label: "Avg Resolution", value: avgResolution, icon: Clock },
+    ]
+  }, [exceptions])
 
   const filtered = tab === "all"
     ? exceptions
@@ -112,36 +153,28 @@ export default function ExceptionsPage() {
       ? exceptions
       : exceptions.filter((e) => e.status.toLowerCase() === tab)
 
-  function handleEdit(item: ExceptionItem) {
+  function handleEdit(item: ExceptionEntry) {
     setEditItem(item)
     setEditRule(item.rule)
     setEditDescription(item.description)
-    setEditSeverity(item.severity)
+    setEditSeverity(capitalize(item.severity))
     setEditOpen(true)
   }
 
   function handleEditSave() {
     if (!editItem) return
-    setExceptions((prev) => prev.map((e) =>
-      e.id === editItem.id
-        ? { ...e, rule: editRule, description: editDescription, severity: editSeverity }
-        : e
-    ))
+    // TODO: PUT to API to update exception
     setEditOpen(false)
     toast.success(`Exception ${editItem.id} updated`)
   }
 
   function handleRetry(id: string) {
-    setExceptions((prev) => prev.map((e) =>
-      e.id === id ? { ...e, status: "Retrying" as ExceptionStatus } : e
-    ))
+    // TODO: POST to API to retry exception
     toast.info(`Retrying ${id}...`)
   }
 
   function handleResolve(id: string) {
-    setExceptions((prev) => prev.map((e) =>
-      e.id === id ? { ...e, status: "Resolved" as ExceptionStatus } : e
-    ))
+    // TODO: POST to API to resolve exception
     toast.success(`Exception ${id} resolved`)
   }
 
@@ -186,6 +219,17 @@ export default function ExceptionsPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={Prohibit}
+              title="No exceptions"
+              description="Exceptions will appear here when policy rules are violated by agents"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -206,12 +250,12 @@ export default function ExceptionsPage() {
                       <TableCell className="font-medium">{item.rule}</TableCell>
                       <TableCell className="max-w-[260px] truncate">{item.description}</TableCell>
                       <TableCell>
-                        <Badge variant={severityVariant[item.severity]}>{item.severity}</Badge>
+                        <Badge variant={severityVariant[item.severity] ?? "secondary"}>{capitalize(item.severity)}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.agent}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.created}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatCreated(item.created_at)}</TableCell>
                       <TableCell>
-                        <Badge variant={statusVariant[item.status]}>{item.status}</Badge>
+                        <Badge variant={statusVariant[item.status] ?? "warning"}>{capitalize(item.status)}</Badge>
                       </TableCell>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
@@ -233,6 +277,7 @@ export default function ExceptionsPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -256,7 +301,7 @@ export default function ExceptionsPage() {
               <label className="text-sm font-medium">Severity</label>
               <Select
                 value={editSeverity}
-                onValueChange={(v) => { if (v) setEditSeverity(v as ExceptionItem["severity"]) }}
+                onValueChange={(v) => { if (v) setEditSeverity(v) }}
                 items={{ Critical: "Critical", High: "High", Medium: "Medium", Low: "Low" }}
               >
                 <SelectTrigger className="w-full">

@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -21,78 +22,35 @@ import {
   Bell,
   Terminal,
   Eye,
+  Spinner,
 } from "@phosphor-icons/react"
 import { type Icon } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type ChecklistItem = {
   title: string
   description: string
   status: "Complete" | "Pending" | "Required"
-  icon: Icon
+  icon?: string
 }
 
-const checklist: ChecklistItem[] = [
-  {
-    title: "API Integration",
-    description: "Connect your application to the Sardis API with valid credentials",
-    status: "Complete",
-    icon: Code,
-  },
-  {
-    title: "Webhook Setup",
-    description: "Configure at least one webhook endpoint for event notifications",
-    status: "Complete",
-    icon: PaperPlaneTilt,
-  },
-  {
-    title: "KYC Verification",
-    description: "Complete identity verification for your organization",
-    status: "Complete",
-    icon: UserCheck,
-  },
-  {
-    title: "Fund Initial Wallet",
-    description: "Deposit funds into your primary wallet to enable transactions",
-    status: "Complete",
-    icon: Wallet,
-  },
-  {
-    title: "Set Spending Limits",
-    description: "Configure daily, weekly, and monthly spending limits for agents",
-    status: "Complete",
-    icon: Gauge,
-  },
-  {
-    title: "Configure Policies",
-    description: "Set up transaction policies and approval rules",
-    status: "Complete",
-    icon: Shield,
-  },
-  {
-    title: "Enable 2FA",
-    description: "Require two-factor authentication for all team members",
-    status: "Pending",
-    icon: Lock,
-  },
-  {
-    title: "Set Up Alerts",
-    description: "Configure alerts for critical events and threshold breaches",
-    status: "Pending",
-    icon: Bell,
-  },
-  {
-    title: "Test Transactions",
-    description: "Run at least 3 test transactions in sandbox environment",
-    status: "Required",
-    icon: Terminal,
-  },
-  {
-    title: "Review Security",
-    description: "Complete a security review and sign off on the configuration",
-    status: "Required",
-    icon: Eye,
-  },
-]
+type GoLiveChecklist = {
+  items: ChecklistItem[]
+}
+
+const iconMap: Record<string, Icon> = {
+  Code,
+  PaperPlaneTilt,
+  UserCheck,
+  Wallet,
+  Gauge,
+  Shield,
+  Lock,
+  Bell,
+  Terminal,
+  Eye,
+}
 
 const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning"; dotColor: string }> = {
   Complete: { variant: "success", dotColor: "text-success" },
@@ -100,9 +58,48 @@ const statusConfig: Record<string, { variant: "default" | "secondary" | "destruc
   Required: { variant: "destructive", dotColor: "text-destructive" },
 }
 
-const completedCount = checklist.filter((c) => c.status === "Complete").length
-
 export default function GoLivePage() {
+  const { data: checklist, loading } = useSardis<GoLiveChecklist>("api/v2/go-live/status")
+  const items = checklist?.items ?? []
+
+  const completedCount = useMemo(() => items.filter((c) => c.status === "Complete").length, [items])
+  const totalCount = items.length
+  const progressPct = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Go Live</h1>
+          <p className="text-sm text-muted-foreground">Complete the checklist to launch your production environment</p>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Go Live</h1>
+          <p className="text-sm text-muted-foreground">Complete the checklist to launch your production environment</p>
+        </div>
+        <Card>
+          <CardContent className="px-0">
+            <EmptyState
+              icon={CheckCircle}
+              title="No checklist available"
+              description="The go-live checklist will appear here once your environment is configured"
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -118,21 +115,21 @@ export default function GoLivePage() {
             <div>
               <p className="text-sm font-medium">Production Readiness</p>
               <p className="text-xs text-muted-foreground">
-                {completedCount}/{checklist.length} complete
+                {completedCount}/{totalCount} complete
               </p>
             </div>
             <span className="text-2xl font-bold tracking-tight tabular-nums">
-              {Math.round((completedCount / checklist.length) * 100)}%
+              {Math.round(progressPct)}%
             </span>
           </div>
-          <Progress value={(completedCount / checklist.length) * 100} />
+          <Progress value={progressPct} />
         </CardContent>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {checklist.map((item) => {
-          const Ico = item.icon
-          const cfg = statusConfig[item.status]
+        {items.map((item) => {
+          const Ico = (item.icon && iconMap[item.icon]) ? iconMap[item.icon] : Code
+          const cfg = statusConfig[item.status] ?? statusConfig.Pending
           const isComplete = item.status === "Complete"
           return (
             <Card key={item.title} size="sm">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -40,8 +40,11 @@ import {
   CheckCircle,
   Warning,
   XCircle,
+  Spinner,
 } from "@phosphor-icons/react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Discrepancy = {
   txId: string
@@ -53,27 +56,13 @@ type Discrepancy = {
   detected: string
 }
 
-const initialDiscrepancies: Discrepancy[] = [
-  { txId: "TX-90821", expectedAmount: "$1,200.00", actualAmount: "$1,187.50", difference: "-$12.50", chain: "Ethereum", status: "unresolved", detected: "Mar 27, 2026" },
-  { txId: "TX-90734", expectedAmount: "$450.00", actualAmount: "$450.89", difference: "+$0.89", chain: "Polygon", status: "investigating", detected: "Mar 26, 2026" },
-  { txId: "TX-90698", expectedAmount: "$3,800.00", actualAmount: "$3,762.00", difference: "-$38.00", chain: "Arbitrum", status: "unresolved", detected: "Mar 26, 2026" },
-  { txId: "TX-90612", expectedAmount: "$890.00", actualAmount: "$890.00", difference: "$0.00", chain: "Ethereum", status: "resolved", detected: "Mar 25, 2026" },
-  { txId: "TX-90587", expectedAmount: "$2,100.00", actualAmount: "$2,094.75", difference: "-$5.25", chain: "Optimism", status: "investigating", detected: "Mar 25, 2026" },
-  { txId: "TX-90543", expectedAmount: "$670.00", actualAmount: "$685.00", difference: "+$15.00", chain: "Polygon", status: "unresolved", detected: "Mar 24, 2026" },
-]
-
-const stats = [
-  { label: "Total Transactions", value: "1,247", icon: ArrowsClockwise },
-  { label: "Matched", value: "1,198", icon: CheckCircle },
-  { label: "Unmatched", value: "49", icon: Warning },
-  { label: "Discrepancies", value: "12", icon: XCircle },
-]
-
-const pieData = [
-  { name: "Matched", value: 1198, color: "#10b981" },
-  { name: "Unmatched", value: 49, color: "#f59e0b" },
-  { name: "Discrepancy", value: 12, color: "#ef4444" },
-]
+type ReconciliationEntry = {
+  totalTransactions: number
+  matched: number
+  unmatched: number
+  discrepancyCount: number
+  discrepancies: Discrepancy[]
+}
 
 const statusConfig: Record<Discrepancy["status"], { variant: "destructive" | "warning" | "success" | "info"; label: string }> = {
   unresolved: { variant: "destructive", label: "Unresolved" },
@@ -83,7 +72,14 @@ const statusConfig: Record<Discrepancy["status"], { variant: "destructive" | "wa
 }
 
 export default function ReconciliationPage() {
-  const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>(initialDiscrepancies)
+  const { data: reconData, loading } = useSardis<ReconciliationEntry[]>("api/v2/admin/reconciliation")
+
+  // Flatten all entries into a single reconciliation view
+  const entry = reconData?.[0] ?? null
+  const [localDiscrepancies, setLocalDiscrepancies] = useState<Discrepancy[] | null>(null)
+
+  const discrepancies = localDiscrepancies ?? entry?.discrepancies ?? []
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Discrepancy | null>(null)
 
@@ -93,11 +89,38 @@ export default function ReconciliationPage() {
   }
 
   function handleForceReconcile(txId: string) {
-    setDiscrepancies((prev) => prev.map((d) =>
+    const updated = discrepancies.map((d) =>
       d.txId === txId ? { ...d, status: "reconciled" as const } : d
-    ))
+    )
+    setLocalDiscrepancies(updated)
     toast.success(`${txId} force reconciled`)
   }
+
+  const stats = useMemo(() => {
+    const totalTransactions = entry?.totalTransactions ?? 0
+    const matched = entry?.matched ?? 0
+    const unmatched = entry?.unmatched ?? 0
+    const discrepancyCount = entry?.discrepancyCount ?? discrepancies.length
+
+    return [
+      { label: "Total Transactions", value: totalTransactions.toLocaleString(), icon: ArrowsClockwise },
+      { label: "Matched", value: matched.toLocaleString(), icon: CheckCircle },
+      { label: "Unmatched", value: unmatched.toLocaleString(), icon: Warning },
+      { label: "Discrepancies", value: String(discrepancyCount), icon: XCircle },
+    ]
+  }, [entry, discrepancies])
+
+  const pieData = useMemo(() => {
+    const matched = entry?.matched ?? 0
+    const unmatched = entry?.unmatched ?? 0
+    const disc = entry?.discrepancyCount ?? discrepancies.length
+    if (matched === 0 && unmatched === 0 && disc === 0) return []
+    return [
+      { name: "Matched", value: matched, color: "#10b981" },
+      { name: "Unmatched", value: unmatched, color: "#f59e0b" },
+      { name: "Discrepancy", value: disc, color: "#ef4444" },
+    ]
+  }, [entry, discrepancies])
 
   function renderDiscrepancyTable(items: Discrepancy[], showChain: boolean, showDetected: boolean) {
     return (
@@ -153,6 +176,20 @@ export default function ReconciliationPage() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Reconciliation</h1>
+          <p className="text-sm text-muted-foreground">Transaction reconciliation and discrepancy tracking</p>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -179,67 +216,83 @@ export default function ReconciliationPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {discrepancies.length === 0 ? (
         <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Reconciliation Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value: string) => (
-                      <span className="text-xs text-muted-foreground">{value}</span>
-                    )}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Recent Discrepancies</CardTitle>
-          </CardHeader>
           <CardContent className="px-0">
-            {renderDiscrepancyTable(discrepancies.slice(0, 5), false, false)}
+            <EmptyState
+              icon={ArrowsClockwise}
+              title="No reconciliation data"
+              description="Transaction reconciliation data will appear here once transactions are processed"
+            />
           </CardContent>
         </Card>
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {pieData.length > 0 && (
+              <Card>
+                <CardHeader className="border-b">
+                  <CardTitle>Reconciliation Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry) => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          formatter={(value: string) => (
+                            <span className="text-xs text-muted-foreground">{value}</span>
+                          )}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle>All Discrepancies</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          {renderDiscrepancyTable(discrepancies, true, true)}
-        </CardContent>
-      </Card>
+            <Card>
+              <CardHeader className="border-b">
+                <CardTitle>Recent Discrepancies</CardTitle>
+              </CardHeader>
+              <CardContent className="px-0">
+                {renderDiscrepancyTable(discrepancies.slice(0, 5), false, false)}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="border-b">
+              <CardTitle>All Discrepancies</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0">
+              {renderDiscrepancyTable(discrepancies, true, true)}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Reconciliation Detail Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>

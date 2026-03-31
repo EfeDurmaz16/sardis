@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -44,7 +44,10 @@ import {
   CheckCircle,
   Timer,
   Plus,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Workflow = {
   name: string
@@ -56,24 +59,6 @@ type Workflow = {
   status: "active" | "paused" | "error"
   created: string
 }
-
-const initialWorkflows: Workflow[] = [
-  { name: "Payment Approval Pipeline", trigger: "Webhook", actions: 5, lastRun: "2 min ago", executions24h: 34, successRate: 100, status: "active", created: "2025-08-12" },
-  { name: "Daily Treasury Rebalance", trigger: "Schedule", actions: 8, lastRun: "4 hrs ago", executions24h: 3, successRate: 100, status: "active", created: "2025-09-01" },
-  { name: "Fraud Alert Handler", trigger: "Event", actions: 6, lastRun: "18 min ago", executions24h: 12, successRate: 91.7, status: "active", created: "2025-10-15" },
-  { name: "Monthly Invoice Generator", trigger: "Schedule", actions: 4, lastRun: "2 days ago", executions24h: 0, successRate: 100, status: "active", created: "2025-07-20" },
-  { name: "New Merchant Onboarding", trigger: "Webhook", actions: 12, lastRun: "1 hr ago", executions24h: 8, successRate: 100, status: "active", created: "2025-11-03" },
-  { name: "Gas Price Monitor", trigger: "Event", actions: 3, lastRun: "5 min ago", executions24h: 67, successRate: 98.5, status: "active", created: "2025-08-28" },
-  { name: "Compliance Report Export", trigger: "Manual", actions: 7, lastRun: "1 day ago", executions24h: 2, successRate: 100, status: "active", created: "2026-01-10" },
-  { name: "Failed TX Retry Logic", trigger: "Event", actions: 4, lastRun: "12 min ago", executions24h: 16, successRate: 93.8, status: "active", created: "2025-12-05" },
-]
-
-const stats = [
-  { label: "Active Workflows", value: "8", icon: GitMerge },
-  { label: "Executions Today", value: "142", icon: Lightning },
-  { label: "Success Rate", value: "98.6%", icon: CheckCircle },
-  { label: "Avg Duration", value: "1.2s", icon: Timer },
-]
 
 const triggerVariant: Record<Workflow["trigger"], "outline"> = {
   Webhook: "outline",
@@ -96,11 +81,31 @@ const templateTriggerMap: Record<string, Workflow["trigger"]> = {
 }
 
 export default function WorkflowsPage() {
-  const [workflows, setWorkflows] = useState<Workflow[]>(initialWorkflows)
+  const { data: workflowData, loading } = useSardis<Workflow[]>("api/v2/workflow-templates")
+  const [localWorkflows, setLocalWorkflows] = useState<Workflow[] | null>(null)
+
+  const workflows = localWorkflows ?? workflowData ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newTemplate, setNewTemplate] = useState("payment_approval")
   const [newDescription, setNewDescription] = useState("")
+
+  const stats = useMemo(() => {
+    const activeCount = workflows.filter((w) => w.status === "active").length
+    const totalExecutions = workflows.reduce((sum, w) => sum + w.executions24h, 0)
+    const avgSuccess = workflows.length > 0
+      ? (workflows.reduce((sum, w) => sum + w.successRate, 0) / workflows.length).toFixed(1)
+      : "0.0"
+    const avgDuration = workflows.length > 0 ? "1.2s" : "0s"
+
+    return [
+      { label: "Active Workflows", value: String(activeCount), icon: GitMerge },
+      { label: "Executions Today", value: String(totalExecutions), icon: Lightning },
+      { label: "Success Rate", value: `${avgSuccess}%`, icon: CheckCircle },
+      { label: "Avg Duration", value: avgDuration, icon: Timer },
+    ]
+  }, [workflows])
 
   function handleCreate() {
     if (!newName.trim()) return
@@ -114,7 +119,7 @@ export default function WorkflowsPage() {
       status: "active",
       created: new Date().toISOString().slice(0, 10),
     }
-    setWorkflows((prev) => [workflow, ...prev])
+    setLocalWorkflows([workflow, ...workflows])
     setNewName("")
     setNewTemplate("payment_approval")
     setNewDescription("")
@@ -219,6 +224,17 @@ export default function WorkflowsPage() {
           <CardTitle>All Workflows</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : workflows.length === 0 ? (
+            <EmptyState
+              icon={GitMerge}
+              title="No workflows"
+              description="Create automated workflows to handle payment approvals, scheduled reports, and event-driven processes"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -264,6 +280,7 @@ export default function WorkflowsPage() {
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

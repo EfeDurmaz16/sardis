@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -18,13 +18,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-  ContextMenuSeparator,
 } from "@/components/ui/context-menu"
 import {
   Power,
@@ -37,8 +35,10 @@ import {
   Prohibit,
   Wallet,
   Key,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { useSardis } from "@/hooks/use-sardis"
 
 type HistoryEntry = {
   activatedBy: string
@@ -48,45 +48,73 @@ type HistoryEntry = {
   activatedAt: string
 }
 
-const history: HistoryEntry[] = []
+type KillSwitchStatus = {
+  active: boolean
+  lastActivated: string | null
+  totalActivations: number
+  protectedVolume: string
+  history: HistoryEntry[]
+  quickActions?: { label: string; description: string; icon: string; active: boolean }[]
+}
 
-const stats = [
-  { label: "Last Activated", value: "Never", icon: Clock },
-  { label: "Total Activations", value: "0", icon: Lightning },
-  { label: "Protected Volume", value: "$284k", icon: CurrencyDollar },
-  { label: "Coverage", value: "100%", icon: Target },
-]
-
-const quickActions = [
+const quickActionDefs = [
   {
     label: "Pause All Payments",
     description: "Immediately halt all outgoing payment processing",
     icon: Pause,
-    defaultChecked: false,
   },
   {
     label: "Block New Agents",
     description: "Prevent new agent registrations and activations",
     icon: Prohibit,
-    defaultChecked: false,
   },
   {
     label: "Freeze Wallets",
     description: "Lock all wallet balances and prevent transfers",
     icon: Wallet,
-    defaultChecked: false,
   },
   {
     label: "Disable API Access",
     description: "Revoke all active API keys and block new requests",
     icon: Key,
-    defaultChecked: false,
   },
 ]
 
 export default function KillSwitchPage() {
-  const [active, setActive] = useState(false)
+  const { data: status, loading } = useSardis<KillSwitchStatus>("api/v2/guardrails/kill-switch/status")
+
+  const [active, setActive] = useState<boolean | null>(null)
   const [toggles, setToggles] = useState<Record<string, boolean>>({})
+
+  const isActive = active ?? status?.active ?? false
+  const history = status?.history ?? []
+
+  const stats = useMemo(() => {
+    const lastActivated = status?.lastActivated ?? "Never"
+    const totalActivations = status?.totalActivations ?? 0
+    const protectedVolume = status?.protectedVolume ?? "$0"
+
+    return [
+      { label: "Last Activated", value: lastActivated, icon: Clock },
+      { label: "Total Activations", value: String(totalActivations), icon: Lightning },
+      { label: "Protected Volume", value: protectedVolume, icon: CurrencyDollar },
+      { label: "Coverage", value: "100%", icon: Target },
+    ]
+  }, [status])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Kill Switch</h1>
+          <p className="text-sm text-muted-foreground">Emergency controls to halt all system operations</p>
+        </div>
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -98,27 +126,27 @@ export default function KillSwitchPage() {
       {/* Status Card */}
       <Card>
         <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${active ? "bg-destructive/10" : "bg-success/10"}`}>
-            <Power className={`h-8 w-8 ${active ? "text-destructive" : "text-success"}`} weight="bold" />
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full ${isActive ? "bg-destructive/10" : "bg-success/10"}`}>
+            <Power className={`h-8 w-8 ${isActive ? "text-destructive" : "text-success"}`} weight="bold" />
           </div>
           <div>
             <div className="flex items-center justify-center gap-2 mb-1">
               <h2 className="text-lg font-semibold">Kill Switch Status</h2>
-              <Badge variant={active ? "destructive" : "success"}>
-                {active ? "ACTIVE" : "INACTIVE"}
+              <Badge variant={isActive ? "destructive" : "success"}>
+                {isActive ? "ACTIVE" : "INACTIVE"}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {active ? "Emergency shutdown is active -- all operations halted" : "All systems operational"}
+              {isActive ? "Emergency shutdown is active -- all operations halted" : "All systems operational"}
             </p>
           </div>
           <Button
-            variant={active ? "outline" : "destructive"}
+            variant={isActive ? "outline" : "destructive"}
             size="lg"
-            onClick={() => { setActive(!active); toast.success(active ? "Deactivated" : "Activated") }}
+            onClick={() => { setActive(!isActive); toast.success(isActive ? "Deactivated" : "Activated") }}
           >
             <Power className="h-4 w-4" weight="bold" />
-            {active ? "Deactivate Kill Switch" : "Activate Kill Switch"}
+            {isActive ? "Deactivate Kill Switch" : "Activate Kill Switch"}
           </Button>
         </CardContent>
       </Card>
@@ -189,9 +217,9 @@ export default function KillSwitchPage() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="divide-y">
-            {quickActions.map((action) => {
+            {quickActionDefs.map((action) => {
               const Ico = action.icon
-              const isActive = toggles[action.label] ?? false
+              const actionActive = toggles[action.label] ?? false
               return (
                 <ContextMenu key={action.label}>
                   <ContextMenuTrigger>
@@ -206,7 +234,7 @@ export default function KillSwitchPage() {
                         </div>
                       </div>
                       <Switch
-                        checked={isActive}
+                        checked={actionActive}
                         onCheckedChange={(checked: boolean) =>
                           setToggles((prev) => ({ ...prev, [action.label]: checked }))
                         }
