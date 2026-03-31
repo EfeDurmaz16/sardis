@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Card,
   CardContent,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -38,8 +37,8 @@ import {
 } from "@/components/ui/select"
 import {
   Key,
-  Lightning,
-  Gauge,
+  ShieldCheck,
+  FloppyDisk,
   Plus,
   ArrowUp,
   ArrowDown,
@@ -53,98 +52,146 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { dashboardApiFetch } from "@/utils/dashboard-client"
 
-type ApiKey = {
+type RemoteApiKey = {
+  key_id: string
+  key_prefix: string
+  name: string
+  scopes: string[]
+  rate_limit: number
+  is_active: boolean
+  expires_at: string | null
+  created_at: string
+  last_used_at: string | null
+  mode: "test" | "live"
+}
+
+type ApiKeysResponse = {
+  keys: RemoteApiKey[]
+  total: number
+}
+
+type CreateApiKeyResponse = RemoteApiKey & {
+  key: string
+}
+
+type ApiKeyRow = {
   id: string
   name: string
-  key: string
+  keyPrefix: string
   permissions: "Full Access" | "Read Only" | "Read/Write"
   created: string
   lastUsed: string
   active: boolean
+  mode: "test" | "live"
+  rateLimit: number
+  scopes: string[]
 }
 
-const initialApiKeys: ApiKey[] = [
-  {
-    id: "1",
-    name: "Production API",
-    key: "demo_live_redacted_abc...x9z",
-    permissions: "Full Access",
-    created: "Jan 15, 2026",
-    lastUsed: "2 min ago",
-    active: true,
-  },
-  {
-    id: "2",
-    name: "Analytics Service",
-    key: "demo_live_redacted_def...w8y",
-    permissions: "Read Only",
-    created: "Feb 3, 2026",
-    lastUsed: "1 hr ago",
-    active: true,
-  },
-  {
-    id: "3",
-    name: "Webhook Handler",
-    key: "demo_live_redacted_ghi...v7x",
-    permissions: "Read/Write",
-    created: "Feb 20, 2026",
-    lastUsed: "15 min ago",
-    active: true,
-  },
-  {
-    id: "4",
-    name: "Staging Integration",
-    key: "demo_test_redacted_jkl...u6w",
-    permissions: "Full Access",
-    created: "Mar 1, 2026",
-    lastUsed: "3 days ago",
-    active: false,
-  },
-]
-
-const permissionVariant: Record<string, "default" | "secondary" | "outline"> = {
-  "Full Access": "outline",
-  "Read Only": "outline",
+const permissionVariant: Record<ApiKeyRow["permissions"], "default" | "secondary" | "outline"> = {
+  "Full Access": "default",
+  "Read Only": "secondary",
   "Read/Write": "outline",
 }
 
-const stats = [
-  { label: "Active Keys", value: "4", icon: Key },
-  { label: "Total Requests (24h)", value: "12,847", icon: Lightning },
-  { label: "Rate Limit", value: "1,000/min", icon: Gauge },
-]
-
-function parseLastUsed(val: string): number {
-  const match = val.match(/(\d+)\s*(min|hr|hrs|day|days|sec)/)
+function parseLastUsed(value: string): number {
+  if (value === "Never") return Number.MAX_SAFE_INTEGER
+  const match = value.match(/(\d+)\s*(second|minute|hour|day)/)
   if (!match) return 0
-  const num = parseInt(match[1])
+  const amount = Number.parseInt(match[1], 10)
   const unit = match[2]
-  if (unit === "sec") return num
-  if (unit === "min") return num * 60
-  if (unit === "hr" || unit === "hrs") return num * 3600
-  if (unit === "day" || unit === "days") return num * 86400
-  return 0
+  if (unit === "second") return amount
+  if (unit === "minute") return amount * 60
+  if (unit === "hour") return amount * 3600
+  return amount * 86400
 }
 
-const scopeToPermission = (scopes: { read: boolean; write: boolean; admin: boolean }): ApiKey["permissions"] => {
-  if (scopes.admin) return "Full Access"
-  if (scopes.write) return "Read/Write"
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value))
+}
+
+function formatRelativeTime(value: string | null) {
+  if (!value) return "Never"
+
+  const deltaSeconds = Math.max(1, Math.floor((Date.now() - new Date(value).getTime()) / 1000))
+  const buckets = [
+    { limit: 60, divisor: 1, unit: "second" as const },
+    { limit: 3600, divisor: 60, unit: "minute" as const },
+    { limit: 86400, divisor: 3600, unit: "hour" as const },
+  ]
+
+  for (const bucket of buckets) {
+    if (deltaSeconds < bucket.limit) {
+      const amount = Math.floor(deltaSeconds / bucket.divisor)
+      return `${amount} ${bucket.unit}${amount === 1 ? "" : "s"} ago`
+    }
+  }
+
+  const days = Math.floor(deltaSeconds / 86400)
+  return `${days} day${days === 1 ? "" : "s"} ago`
+}
+
+function scopeToPermission(scopes: string[]): ApiKeyRow["permissions"] {
+  if (scopes.includes("admin")) return "Full Access"
+  if (scopes.includes("write")) return "Read/Write"
   return "Read Only"
+}
+
+function toRow(key: RemoteApiKey): ApiKeyRow {
+  return {
+    id: key.key_id,
+    name: key.name,
+    keyPrefix: key.key_prefix,
+    permissions: scopeToPermission(key.scopes),
+    created: formatDate(key.created_at),
+    lastUsed: formatRelativeTime(key.last_used_at),
+    active: key.is_active,
+    mode: key.mode,
+    rateLimit: key.rate_limit,
+    scopes: key.scopes,
+  }
 }
 
 export default function ApiKeysPage() {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(initialApiKeys)
+  const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [generatedKey, setGeneratedKey] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRevoking, setIsRevoking] = useState<string | null>(null)
 
-  // Form state
   const [keyName, setKeyName] = useState("")
-  const [environment, setEnvironment] = useState<string>("test")
+  const [environment, setEnvironment] = useState<"test" | "live">("test")
   const [scopes, setScopes] = useState({ read: true, write: false, admin: false })
+
+  async function loadApiKeys() {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await dashboardApiFetch<ApiKeysResponse>("/api/dashboard/api-keys")
+      setApiKeys(response.keys.map(toRow))
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : "Failed to load API keys"
+      setError(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadApiKeys()
+  }, [])
 
   function resetForm() {
     setKeyName("")
@@ -152,58 +199,100 @@ export default function ApiKeysPage() {
     setScopes({ read: true, write: false, admin: false })
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (!keyName.trim()) return
-    const randomStr = Math.random().toString(36).substring(2, 14)
-    const prefix = environment === "live" ? "demo_live_" : "demo_test_"
-    const fullKey = `${prefix}${randomStr}`
-    const newKey: ApiKey = {
-      id: crypto.randomUUID(),
-      name: keyName.trim(),
-      key: `${prefix}${randomStr.slice(0, 3)}...${randomStr.slice(-3)}`,
-      permissions: scopeToPermission(scopes),
-      created: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      lastUsed: "Never",
-      active: true,
+
+    const nextScopes = Object.entries(scopes)
+      .filter(([, enabled]) => enabled)
+      .map(([scope]) => scope)
+
+    if (nextScopes.length === 0) {
+      toast.error("Select at least one scope")
+      return
     }
-    setApiKeys((prev) => [...prev, newKey])
-    setGeneratedKey(fullKey)
-    setDialogOpen(false)
-    resetForm()
-    setSuccessDialogOpen(true)
-    toast.success("API key generated")
+
+    setIsSubmitting(true)
+
+    try {
+      const response = await dashboardApiFetch<CreateApiKeyResponse>("/api/dashboard/api-keys", {
+        method: "POST",
+        body: JSON.stringify({
+          name: keyName.trim(),
+          mode: environment,
+          scopes: nextScopes,
+        }),
+      })
+
+      setApiKeys((current) => [toRow(response), ...current])
+      setGeneratedKey(response.key)
+      setDialogOpen(false)
+      setSuccessDialogOpen(true)
+      resetForm()
+      toast.success("API key generated")
+    } catch (submitError) {
+      const message = submitError instanceof Error ? submitError.message : "Failed to generate API key"
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  function handleRevoke(id: string) {
-    setApiKeys((prev) => prev.filter((k) => k.id !== id))
-    toast.success("Key revoked")
+  async function handleRevoke(id: string) {
+    setIsRevoking(id)
+
+    try {
+      await dashboardApiFetch(`/api/dashboard/api-keys/${id}`, {
+        method: "DELETE",
+      })
+      setApiKeys((current) => current.filter((key) => key.id !== id))
+      toast.success("API key revoked")
+    } catch (revokeError) {
+      const message = revokeError instanceof Error ? revokeError.message : "Failed to revoke API key"
+      toast.error(message)
+    } finally {
+      setIsRevoking(null)
+    }
   }
 
   function toggleSort(key: string) {
     if (sortKey === key) {
-      setSortDir(d => d === "asc" ? "desc" : "asc")
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"))
     } else {
       setSortKey(key)
       setSortDir("asc")
     }
   }
 
-  const sorted = [...apiKeys].sort((a, b) => {
-    if (!sortKey) return 0
-    let cmp = 0
-    if (sortKey === "created") {
-      cmp = new Date(a.created).getTime() - new Date(b.created).getTime()
-    } else if (sortKey === "lastUsed") {
-      cmp = parseLastUsed(a.lastUsed) - parseLastUsed(b.lastUsed)
-    } else if (sortKey === "active") {
-      cmp = (a.active === b.active) ? 0 : a.active ? -1 : 1
-    } else {
-      const av = a[sortKey as keyof ApiKey] as string
-      const bv = b[sortKey as keyof ApiKey] as string
-      cmp = av.localeCompare(bv)
-    }
-    return sortDir === "asc" ? cmp : -cmp
-  })
+  const stats = useMemo(() => {
+    const active = apiKeys.filter((key) => key.active).length
+    const live = apiKeys.filter((key) => key.mode === "live").length
+    const admin = apiKeys.filter((key) => key.scopes.includes("admin")).length
+
+    return [
+      { label: "Active Keys", value: active.toString(), icon: Key },
+      { label: "Live Keys", value: live.toString(), icon: ShieldCheck },
+      { label: "Admin Keys", value: admin.toString(), icon: FloppyDisk },
+    ]
+  }, [apiKeys])
+
+  const sorted = useMemo(() => {
+    return [...apiKeys].sort((a, b) => {
+      if (!sortKey) return 0
+
+      let comparison = 0
+      if (sortKey === "created") {
+        comparison = new Date(a.created).getTime() - new Date(b.created).getTime()
+      } else if (sortKey === "lastUsed") {
+        comparison = parseLastUsed(a.lastUsed) - parseLastUsed(b.lastUsed)
+      } else if (sortKey === "active") {
+        comparison = a.active === b.active ? 0 : a.active ? -1 : 1
+      } else {
+        comparison = String(a[sortKey as keyof ApiKeyRow]).localeCompare(String(b[sortKey as keyof ApiKeyRow]))
+      }
+
+      return sortDir === "asc" ? comparison : -comparison
+    })
+  }, [apiKeys, sortDir, sortKey])
 
   return (
     <div className="space-y-6">
@@ -215,17 +304,17 @@ export default function ApiKeysPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {stats.map((s) => {
-          const Ico = s.icon
+        {stats.map((stat) => {
+          const Icon = stat.icon
           return (
-            <Card key={s.label} size="sm">
+            <Card key={stat.label} size="sm">
               <CardContent className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                  <Ico className="h-4 w-4 text-muted-foreground" />
+                  <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-lg font-semibold tracking-tight tabular-nums">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg font-semibold tracking-tight tabular-nums">{stat.value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -244,101 +333,141 @@ export default function ApiKeysPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="pl-4 cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("name")}
-                >
-                  <span className="flex items-center gap-1">
-                    Key Name
-                    {sortKey === "name" ? (
-                      sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                    ) : (
-                      <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
-                    )}
-                  </span>
-                </TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("created")}
-                >
-                  <span className="flex items-center gap-1">
-                    Created
-                    {sortKey === "created" ? (
-                      sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                    ) : (
-                      <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
-                    )}
-                  </span>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("lastUsed")}
-                >
-                  <span className="flex items-center gap-1">
-                    Last Used
-                    {sortKey === "lastUsed" ? (
-                      sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                    ) : (
-                      <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
-                    )}
-                  </span>
-                </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("active")}
-                >
-                  <span className="flex items-center gap-1">
-                    Status
-                    {sortKey === "active" ? (
-                      sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                    ) : (
-                      <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
-                    )}
-                  </span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((k) => (
-                <ContextMenu key={k.id}>
-                  <ContextMenuTrigger render={<TableRow />}>
-                    <TableCell className="pl-4 font-medium">{k.name}</TableCell>
-                    <TableCell>
-                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                        ••••{k.key}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={permissionVariant[k.permissions] ?? "outline"}>
-                        {k.permissions}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{k.created}</TableCell>
-                    <TableCell className="text-muted-foreground">{k.lastUsed}</TableCell>
-                    <TableCell>
-                      <Switch defaultChecked={k.active} size="sm" />
-                    </TableCell>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem onClick={() => { navigator.clipboard.writeText(k.key); toast.success("Copied to clipboard") }}>
-                      Copy Key
-                    </ContextMenuItem>
-                    <ContextMenuSeparator />
-                    <ContextMenuItem variant="destructive" onClick={() => handleRevoke(k.id)}>Revoke</ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="px-6 py-10 text-sm text-muted-foreground">Loading API keys…</div>
+          ) : error ? (
+            <EmptyState
+              icon={Key}
+              title="API keys unavailable"
+              description={error}
+              action={() => void loadApiKeys()}
+              actionLabel="Retry"
+            />
+          ) : sorted.length === 0 ? (
+            <EmptyState
+              icon={Key}
+              title="No API keys"
+              description="Generate an API key to authenticate dashboard and automation clients."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="pl-4 cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("name")}
+                  >
+                    <span className="flex items-center gap-1">
+                      Key Name
+                      {sortKey === "name" ? (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                  </TableHead>
+                  <TableHead>Prefix</TableHead>
+                  <TableHead>Permissions</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("created")}
+                  >
+                    <span className="flex items-center gap-1">
+                      Created
+                      {sortKey === "created" ? (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("lastUsed")}
+                  >
+                    <span className="flex items-center gap-1">
+                      Last Used
+                      {sortKey === "lastUsed" ? (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => toggleSort("active")}
+                  >
+                    <span className="flex items-center gap-1">
+                      Status
+                      {sortKey === "active" ? (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((key) => (
+                  <ContextMenu key={key.id}>
+                    <ContextMenuTrigger render={<TableRow />}>
+                      <TableCell className="pl-4 font-medium">{key.name}</TableCell>
+                      <TableCell>
+                        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                          {key.keyPrefix}
+                        </code>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={permissionVariant[key.permissions]}>{key.permissions}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{key.mode}</Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{key.created}</TableCell>
+                      <TableCell className="text-muted-foreground">{key.lastUsed}</TableCell>
+                      <TableCell>
+                        <Badge variant={key.active ? "default" : "secondary"}>
+                          {key.active ? "Active" : "Revoked"}
+                        </Badge>
+                      </TableCell>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => {
+                          navigator.clipboard.writeText(key.keyPrefix)
+                          toast.success("API key prefix copied")
+                        }}
+                      >
+                        Copy Prefix
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() => {
+                          navigator.clipboard.writeText(key.id)
+                          toast.success("API key ID copied")
+                        }}
+                      >
+                        Copy Key ID
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        variant="destructive"
+                        disabled={isRevoking === key.id}
+                        onClick={() => void handleRevoke(key.id)}
+                      >
+                        {isRevoking === key.id ? "Revoking…" : "Revoke"}
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Generate New Key Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -346,9 +475,9 @@ export default function ApiKeysPage() {
             <DialogDescription>Create a new API key for your application.</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleGenerate()
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleGenerate()
             }}
             className="space-y-4"
           >
@@ -357,13 +486,13 @@ export default function ApiKeysPage() {
               <Input
                 placeholder="e.g. Production API"
                 value={keyName}
-                onChange={(e) => setKeyName(e.target.value)}
+                onChange={(event) => setKeyName(event.target.value)}
                 required
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Environment</label>
-              <Select value={environment} onValueChange={(v) => v && setEnvironment(v)}>
+              <Select value={environment} onValueChange={(value) => value && setEnvironment(value as "test" | "live")}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -380,7 +509,7 @@ export default function ApiKeysPage() {
                   <input
                     type="checkbox"
                     checked={scopes.read}
-                    onChange={(e) => setScopes((s) => ({ ...s, read: e.target.checked }))}
+                    onChange={(event) => setScopes((current) => ({ ...current, read: event.target.checked }))}
                     className="rounded border-input"
                   />
                   Read
@@ -389,7 +518,7 @@ export default function ApiKeysPage() {
                   <input
                     type="checkbox"
                     checked={scopes.write}
-                    onChange={(e) => setScopes((s) => ({ ...s, write: e.target.checked }))}
+                    onChange={(event) => setScopes((current) => ({ ...current, write: event.target.checked }))}
                     className="rounded border-input"
                   />
                   Write
@@ -398,7 +527,7 @@ export default function ApiKeysPage() {
                   <input
                     type="checkbox"
                     checked={scopes.admin}
-                    onChange={(e) => setScopes((s) => ({ ...s, admin: e.target.checked }))}
+                    onChange={(event) => setScopes((current) => ({ ...current, admin: event.target.checked }))}
                     className="rounded border-input"
                   />
                   Admin
@@ -407,13 +536,14 @@ export default function ApiKeysPage() {
             </div>
             <DialogFooter>
               <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-              <Button type="submit">Generate Key</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Generating…" : "Generate Key"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Success Dialog showing the generated key */}
       <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -430,7 +560,7 @@ export default function ApiKeysPage() {
               variant="outline"
               onClick={() => {
                 navigator.clipboard.writeText(generatedKey)
-                toast.success("Copied to clipboard")
+                toast.success("API key copied")
               }}
             >
               Copy
