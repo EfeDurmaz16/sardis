@@ -22,7 +22,7 @@ export class SardisProxyError extends Error {
   }
 }
 
-function getSardisApiConfig() {
+export function getSardisApiConfig() {
   const apiKey = process.env.SARDIS_API_KEY
   if (!apiKey) {
     throw new SardisProxyError(
@@ -49,7 +49,7 @@ function buildErrorMessage(status: number, payload: unknown): string {
   return `Sardis API request failed with status ${status}`
 }
 
-export async function sardisProxyFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function sardisProxyResponse(path: string, init: RequestInit = {}): Promise<Response> {
   const { apiKey, baseUrl } = getSardisApiConfig()
   const headers = new Headers(init.headers)
 
@@ -66,12 +66,20 @@ export async function sardisProxyFetch<T>(path: string, init: RequestInit = {}):
     cache: "no-store",
   })
 
-  const text = await response.text()
-  const payload = text ? safeJsonParse(text) : null
-
   if (!response.ok) {
+    const text = await response.text()
+    const payload = text ? safeJsonParse(text) : null
     throw new SardisProxyError(buildErrorMessage(response.status, payload), response.status, payload)
   }
+
+  return response
+}
+
+export async function sardisProxyFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await sardisProxyResponse(path, init)
+
+  const text = await response.text()
+  const payload = text ? safeJsonParse(text) : null
 
   return payload as T
 }
