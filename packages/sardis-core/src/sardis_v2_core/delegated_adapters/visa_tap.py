@@ -7,6 +7,7 @@ Real adapter requires a Visa partnership: TRID (Token Requestor ID) and
 an mTLS certificate issued by Visa.  Use MockVisaTAPAdapter for dev/test.
 Swap to VisaTAPAdapter when the partnership is in place.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -30,6 +31,8 @@ from ..delegated_executor import (
 )
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["MockVisaTAPAdapter", "verify_visa_tap_signature"]
 
 
 # ---------------------------------------------------------------------------
@@ -72,12 +75,19 @@ _VISA_PRODUCTION_BASE = "https://api.visa.com"
 
 
 class VisaTAPAdapter:
-    """Real Visa TAP adapter (placeholder until partnership/TRID confirmed).
+    """Real Visa TAP adapter -- integration template, NOT yet functional.
 
-    Requires:
-      - TRID  — Token Requestor ID assigned by Visa
-      - mTLS  — mutual TLS certificate issued by Visa
-      - api_key — Visa Developer API key
+    Requires Visa partnership credentials. Use MockVisaTAPAdapter for development.
+
+    This class serves as a structural template for the production Visa TAP
+    integration. All execution methods raise NotImplementedError until the
+    following partnership prerequisites are met:
+
+      - TRID  -- Token Requestor ID assigned by Visa
+      - mTLS  -- mutual TLS certificate issued by Visa
+      - api_key -- Visa Developer API key
+
+    Contact partnerships@sardis.sh to initiate the Visa onboarding process.
     """
 
     def __init__(
@@ -133,7 +143,8 @@ class VisaTAPAdapter:
         #     )
         #     return self._translate_from_visa(response.json())
         raise NotImplementedError(
-            "Real Visa TAP API not yet available. Use MockVisaTAPAdapter."
+            "Visa TAP integration requires partnership credentials "
+            "(TRID + mTLS). Contact partnerships@sardis.sh"
         )
 
     async def provision_credential(
@@ -160,7 +171,8 @@ class VisaTAPAdapter:
         # dpan = data["token"]["value"].encode()
         # par  = data.get("paymentAccountReference", "")
         raise NotImplementedError(
-            "Real Visa TAP provisioning not yet available. Use MockVisaTAPAdapter."
+            "Visa TAP credential provisioning requires partnership credentials "
+            "(TRID + mTLS). Contact partnerships@sardis.sh"
         )
 
     async def check_health(self) -> bool:
