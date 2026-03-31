@@ -1,153 +1,136 @@
+import { useEffect, useMemo, useState } from 'react'
 
-import { Routes, Route, Navigate } from 'react-router-dom'
-import Layout from './components/Layout'
-import DashboardPage from './pages/Dashboard'
-import AgentsPage from './pages/Agents'
-import LoginPage from './pages/Login'
-import OnboardingPage from './pages/Onboarding'
-import DemoPage from './pages/Demo'
-import CardsPage from './pages/Cards'
-import ReconciliationPage from './pages/Reconciliation'
-import PolicyPlaygroundPage from './pages/PolicyPlayground'
-import LiveEventsPage from './pages/LiveEvents'
-import ApprovalsPage from './pages/Approvals'
-import AnalyticsPage from './pages/Analytics'
-import GuardrailsPage from './pages/Guardrails'
-import ConfidenceRouterPage from './pages/ConfidenceRouter'
-import AuditAnchorsPage from './pages/AuditAnchors'
-import AgentIdentityPage from './pages/AgentIdentity'
-import GoalDriftPage from './pages/GoalDrift'
-import EnterpriseSupportPage from './pages/EnterpriseSupport'
-import StripeIssuingDemoPage from './pages/StripeIssuingDemo'
-import KillSwitchPage from './pages/KillSwitch'
-import EvidencePage from './pages/Evidence'
-import PoliciesPage from './pages/Policies'
-import MerchantsPage from './pages/Merchants'
-import SimulationPage from './pages/Simulation'
-import AnomalyDashboardPage from './pages/AnomalyDashboard'
-import BillingPage from './pages/Billing'
-import APIKeysPage from './pages/APIKeys'
-import WebhookManagerPage from './pages/WebhookManager'
-import SettingsPage from './pages/Settings'
-import AlertPreferencesPage from './pages/AlertPreferences'
-import LiveLaneOnboardingPage from './pages/LiveLaneOnboarding'
-import PolicyManagerPage from './pages/PolicyManager'
-import ControlCenterPage from './pages/ControlCenter'
-import WorkflowTemplatesPage from './pages/WorkflowTemplates'
-import PolicyAnalyticsPage from './pages/PolicyAnalytics'
-import CounterpartiesPage from './pages/Counterparties'
-import ApprovalConfigPage from './pages/ApprovalConfig'
-import ProviderScorecardsPage from './pages/ProviderScorecards'
-import CheckoutControlsPage from './pages/CheckoutControls'
-import FallbackPoliciesPage from './pages/FallbackPolicies'
-import EnvironmentTemplatesPage from './pages/EnvironmentTemplates'
-import AgentObservabilityPage from './pages/AgentObservability'
-import TransactionsPage from './pages/Transactions'
-import SignupPage from './pages/Signup'
-import ForgotPasswordPage from './pages/ForgotPassword'
-import ResetPasswordPage from './pages/ResetPassword'
-import MandatesPage from './pages/Mandates'
-import MPPSessionsPage from './pages/MPPSessions'
-import { AuthProvider, useAuth } from './auth/AuthContext'
+const CANONICAL_DASHBOARD_URL = 'https://app.sardis.sh'
+const REDIRECT_DELAY_SECONDS = 6
 
-// Requires auth only — used for the onboarding route itself to avoid redirect loops
-const AuthRequired = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-  return <>{children}</>;
-};
+const DASHBOARD_ROUTE_MAP: Record<string, string> = {
+  '/': '/',
+  '/agents': '/agents',
+  '/cards': '/virtual-cards',
+  '/analytics': '/analytics',
+  '/reconciliation': '/reconciliation',
+  '/policies': '/policy-manager',
+  '/approvals': '/approvals',
+  '/events': '/live-events',
+  '/guardrails': '/guardrails',
+  '/enterprise-support': '/support',
+  '/stripe-issuing': '/virtual-cards',
+  '/kill-switch': '/kill-switch',
+  '/evidence': '/evidence',
+  '/policy-management': '/policy-manager',
+  '/merchants': '/merchants',
+  '/simulation': '/simulation',
+  '/anomaly': '/anomaly-detection',
+  '/billing': '/billing',
+  '/api-keys': '/api-keys',
+  '/webhooks': '/webhooks',
+  '/settings': '/settings',
+  '/go-live': '/go-live',
+  '/control-center': '/control-center',
+  '/templates': '/workflows',
+  '/counterparties': '/counterparties',
+  '/approval-config': '/approval-config',
+  '/provider-health': '/provider-health',
+  '/checkout-controls': '/checkout-controls',
+  '/fallback-rules': '/fallback-rules',
+  '/environment-templates': '/environments',
+  '/agent-observability': '/observability',
+  '/transactions': '/transactions',
+  '/mandates': '/mandates',
+  '/mpp-sessions': '/mpp-sessions',
+}
 
-// Requires auth and redirects to onboarding when the user has no agents yet
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, needsOnboarding } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-  if (needsOnboarding) {
-    return <Navigate to="/onboarding" />;
-  }
-  return <>{children}</>;
-};
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route
-        path="/onboarding"
-        element={
-          <AuthRequired>
-            <OnboardingPage />
-          </AuthRequired>
-        }
-      />
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/demo" element={<DemoPage />} />
-                <Route path="/agents" element={<AgentsPage />} />
-                <Route path="/cards" element={<CardsPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                <Route path="/reconciliation" element={<ReconciliationPage />} />
-                <Route path="/policies" element={<PolicyPlaygroundPage />} />
-                <Route path="/approvals" element={<ApprovalsPage />} />
-                <Route path="/events" element={<LiveEventsPage />} />
-                <Route path="/guardrails" element={<GuardrailsPage />} />
-                <Route path="/confidence-router" element={<ConfidenceRouterPage />} />
-                <Route path="/audit-anchors" element={<AuditAnchorsPage />} />
-                <Route path="/agent-identity" element={<AgentIdentityPage />} />
-                <Route path="/goal-drift" element={<GoalDriftPage />} />
-                <Route path="/enterprise-support" element={<EnterpriseSupportPage />} />
-                <Route path="/stripe-issuing" element={<StripeIssuingDemoPage />} />
-                <Route path="/kill-switch" element={<KillSwitchPage />} />
-                <Route path="/evidence" element={<EvidencePage />} />
-                <Route path="/policy-management" element={<PoliciesPage />} />
-                <Route path="/merchants" element={<MerchantsPage />} />
-                <Route path="/simulation" element={<SimulationPage />} />
-                <Route path="/anomaly" element={<AnomalyDashboardPage />} />
-                <Route path="/billing" element={<BillingPage />} />
-                <Route path="/api-keys" element={<APIKeysPage />} />
-                <Route path="/webhooks" element={<WebhookManagerPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/alert-preferences" element={<AlertPreferencesPage />} />
-                <Route path="/go-live" element={<LiveLaneOnboardingPage />} />
-                <Route path="/policy-manager" element={<PolicyManagerPage />} />
-                <Route path="/control-center" element={<ControlCenterPage />} />
-                <Route path="/templates" element={<WorkflowTemplatesPage />} />
-                <Route path="/policy-analytics" element={<PolicyAnalyticsPage />} />
-                <Route path="/counterparties" element={<CounterpartiesPage />} />
-                <Route path="/approval-config" element={<ApprovalConfigPage />} />
-                <Route path="/provider-health" element={<ProviderScorecardsPage />} />
-                <Route path="/checkout-controls" element={<CheckoutControlsPage />} />
-                <Route path="/fallback-rules" element={<FallbackPoliciesPage />} />
-                <Route path="/environment-templates" element={<EnvironmentTemplatesPage />} />
-                <Route path="/agent-observability" element={<AgentObservabilityPage />} />
-                <Route path="/transactions" element={<TransactionsPage />} />
-                <Route path="/mandates" element={<MandatesPage />} />
-                <Route path="/mpp-sessions" element={<MPPSessionsPage />} />
-              </Routes>
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
-  );
+function resolveDashboardTarget(location: Window['location']) {
+  const normalizedPath = location.pathname.replace(/\/+$/, '') || '/'
+  const mappedPath = DASHBOARD_ROUTE_MAP[normalizedPath] || '/'
+  return `${CANONICAL_DASHBOARD_URL}${mappedPath}${location.search}${location.hash}`
 }
 
 function App() {
+  const targetUrl = useMemo(() => resolveDashboardTarget(window.location), [])
+  const [secondsRemaining, setSecondsRemaining] = useState(REDIRECT_DELAY_SECONDS)
+
+  useEffect(() => {
+    document.title = 'Sardis Legacy Dashboard Deprecated'
+
+    const countdown = window.setInterval(() => {
+      setSecondsRemaining((current) => {
+        if (current <= 1) {
+          window.clearInterval(countdown)
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+
+    const redirect = window.setTimeout(() => {
+      window.location.replace(targetUrl)
+    }, REDIRECT_DELAY_SECONDS * 1000)
+
+    return () => {
+      window.clearInterval(countdown)
+      window.clearTimeout(redirect)
+    }
+  }, [targetUrl])
+
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <main className="min-h-screen bg-slate-950 text-slate-50">
+      <div className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 py-16">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+          Legacy Surface Deprecated
+        </p>
+        <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+          This dashboard has moved to the canonical Next.js app.
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+          This Vite dashboard remains only as a compatibility shell. Continue in the canonical dashboard at
+          {' '}
+          <a className="underline underline-offset-4" href={CANONICAL_DASHBOARD_URL}>
+            app.sardis.sh
+          </a>
+          .
+        </p>
+
+        <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-slate-950/30">
+          <p className="text-sm font-medium text-slate-100">Redirect target</p>
+          <p className="mt-2 break-all text-sm text-slate-400">{targetUrl}</p>
+          <p className="mt-4 text-sm text-slate-400">
+            Automatic redirect in {secondsRemaining}s.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950"
+              href={targetUrl}
+            >
+              Continue to canonical dashboard
+            </a>
+            <a
+              className="inline-flex items-center justify-center rounded-full border border-slate-700 px-5 py-3 text-sm font-medium text-slate-100"
+              href={CANONICAL_DASHBOARD_URL}
+            >
+              Open dashboard home
+            </a>
+          </div>
+        </div>
+
+        <section className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/60 p-6">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Developer Note
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-slate-300">
+            New app work should move to
+            {' '}
+            <code>apps/dashboard</code>
+            {' '}
+            instead of this directory. Marketing and public entry flows now live in
+            {' '}
+            <code>apps/landing</code>
+            .
+          </p>
+        </section>
+      </div>
+    </main>
   )
 }
 
