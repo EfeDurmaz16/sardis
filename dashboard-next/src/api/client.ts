@@ -1409,6 +1409,73 @@ export const walletsApi = {
   },
 }
 
+// Bridge APIs (V2)
+export const bridgeApi = {
+  getQuote: (params: {
+    source_chain_id: number
+    dest_chain_id: number
+    token?: string
+    amount: string
+    wallet_id: string
+  }) => requestV2<{
+    quote_id: string
+    provider: string
+    source_chain_id: number
+    source_chain_name: string
+    dest_chain_id: number
+    dest_chain_name: string
+    source_token: string
+    dest_token: string
+    input_amount: string
+    output_amount: string
+    fee_amount: string
+    fee_usd: string
+    estimated_time_seconds: number
+    sender: string
+    recipient: string
+  }>('/bridge/quote', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }),
+
+  execute: (params: {
+    source_chain_id: number
+    dest_chain_id: number
+    token?: string
+    amount: string
+    wallet_id: string
+  }) => requestV2<{
+    bridge_id: string
+    provider: string
+    status: string
+    source_tx_hash: string | null
+    destination_tx_hash: string | null
+    source_chain_id: number
+    dest_chain_id: number
+    input_amount: string
+    output_amount: string
+  }>('/bridge/execute', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  }),
+
+  getStatus: (requestId: string) => requestV2<{
+    request_id: string
+    status: string
+    source_tx_hash: string | null
+    destination_tx_hash: string | null
+    raw: Record<string, unknown> | null
+  }>(`/bridge/status/${requestId}`),
+
+  getChains: () => requestV2<{
+    chains: Array<{
+      chain_id: number
+      name: string
+      usdc_address: string
+    }>
+  }>('/bridge/chains'),
+}
+
 // Anomaly APIs (V2)
 export const anomalyApi = {
   assess: (data: { agent_id: string; amount: string; merchant_id?: string; mcc_code?: string }) =>

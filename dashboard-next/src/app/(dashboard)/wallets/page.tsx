@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import {
   Wallet,
   Search,
   Plus,
   ArrowRight,
+  ArrowLeftRight,
   Copy,
   Check,
   ExternalLink,
@@ -14,11 +15,13 @@ import {
   Activity,
   Loader2,
   CreditCard,
+  ChevronDown,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import clsx from 'clsx'
 import { useWallets } from '@/hooks/useApi'
-import { walletsApi } from '@/api/client'
+import { walletsApi, bridgeApi } from '@/api/client'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu"
 
@@ -36,10 +39,22 @@ type WalletItem = {
   created_at?: string
 }
 
+const BRIDGE_CHAINS = [
+  { chain_id: 8453, name: 'Base', icon: '🔵' },
+  { chain_id: 4217, name: 'Tempo', icon: '⚡' },
+  { chain_id: 1, name: 'Ethereum', icon: '💠' },
+  { chain_id: 137, name: 'Polygon', icon: '🟣' },
+  { chain_id: 42161, name: 'Arbitrum', icon: '🔷' },
+  { chain_id: 10, name: 'Optimism', icon: '🔴' },
+] as const
+
+type BridgeStatus = 'idle' | 'quoting' | 'executing' | 'polling' | 'success' | 'error'
+
 export default function WalletsPage() {
   const { data: apiWallets = [], isLoading } = useWallets()
   const [search, setSearch] = useState('')
   const [selectedWallet, setSelectedWallet] = useState<WalletItem | null>(null)
+  const [bridgeWallet, setBridgeWallet] = useState<WalletItem | null>(null)
 
   const wallets: WalletItem[] = apiWallets as WalletItem[]
   const filtered = wallets.filter(
@@ -116,6 +131,7 @@ export default function WalletsPage() {
               key={wallet.wallet_id}
               wallet={wallet}
               onView={() => setSelectedWallet(wallet)}
+              onBridge={() => setBridgeWallet(wallet)}
             />
           ))}
         </div>
@@ -126,6 +142,14 @@ export default function WalletsPage() {
         wallet={selectedWallet}
         open={!!selectedWallet}
         onOpenChange={(open) => { if (!open) setSelectedWallet(null) }}
+        onBridge={(w) => { setSelectedWallet(null); setBridgeWallet(w) }}
+      />
+
+      {/* Bridge modal */}
+      <BridgeModal
+        wallet={bridgeWallet}
+        open={!!bridgeWallet}
+        onClose={() => setBridgeWallet(null)}
       />
     </div>
   )
@@ -134,9 +158,11 @@ export default function WalletsPage() {
 function WalletCard({
   wallet,
   onView,
+  onBridge,
 }: {
   wallet: WalletItem
   onView: () => void
+  onBridge: () => void
 }) {
   const balance = parseFloat(wallet.balance || '0')
   const [copied, setCopied] = useState(false)
@@ -225,14 +251,14 @@ function WalletCard({
                 )}
                 Fund
               </button>
-              <Link
-                href={`/wallets/fund?wallet=${wallet.wallet_id}`}
-                className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hover:bg-dark-100 rounded-lg"
-                title="Fund via Coinbase, MoonPay, or Conduit"
+              <button
+                onClick={(e) => { e.stopPropagation(); onBridge() }}
+                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300 transition-colors px-3 py-1.5 bg-blue-500/10 rounded-lg hover:bg-blue-500/20"
+                title="Bridge USDC to another chain"
               >
-                <DollarSign className="w-4 h-4" />
-                More
-              </Link>
+                <ArrowLeftRight className="w-4 h-4" />
+                Bridge
+              </button>
             </div>
             <button
               onClick={onView}
@@ -251,6 +277,8 @@ function WalletCard({
         <ContextMenuSeparator />
         <ContextMenuItem onClick={(e) => handleStripeFund(e as unknown as React.MouseEvent)}>Fund via Stripe</ContextMenuItem>
         <ContextMenuItem onClick={() => window.location.href = `/wallets/fund?wallet=${wallet.wallet_id}`}>Fund via Other Provider</ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={onBridge}>Bridge to Another Chain</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -260,10 +288,12 @@ function WalletDetailPanel({
   wallet,
   open,
   onOpenChange,
+  onBridge,
 }: {
   wallet: WalletItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onBridge: (wallet: WalletItem) => void
 }) {
   const balance = parseFloat(wallet?.balance || '0')
   const spent = parseFloat(wallet?.spent_total || '0')
@@ -411,7 +441,7 @@ function WalletDetailPanel({
             </div>
           )}
 
-          {/* Fund CTAs */}
+          {/* Fund & Bridge CTAs */}
           <div className="space-y-2">
             <button
               onClick={handleStripeFund}
@@ -425,6 +455,13 @@ function WalletDetailPanel({
               )}
               Fund via Stripe
             </button>
+            <button
+              onClick={() => wallet && onBridge(wallet)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-blue-500/30 text-blue-400 font-medium rounded-lg hover:bg-blue-500/10 hover:text-blue-300 transition-colors"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Bridge to Another Chain
+            </button>
             <Link
               href={`/wallets/fund?wallet=${wallet.wallet_id}`}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-dark-100 text-gray-400 font-medium rounded-lg hover:bg-dark-200 hover:text-white transition-colors"
@@ -437,5 +474,363 @@ function WalletDetailPanel({
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+// ── Bridge Modal ────────────────────────────────────────────────────
+
+function ChainSelect({
+  label,
+  value,
+  onChange,
+  excludeChainId,
+}: {
+  label: string
+  value: number
+  onChange: (chainId: number) => void
+  excludeChainId?: number
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs text-gray-500 uppercase tracking-wider">{label}</label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full appearance-none bg-dark-200 border border-dark-100 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-sardis-500/50 pr-10"
+        >
+          {BRIDGE_CHAINS.filter((c) => c.chain_id !== excludeChainId).map((chain) => (
+            <option key={chain.chain_id} value={chain.chain_id}>
+              {chain.icon} {chain.name}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+      </div>
+    </div>
+  )
+}
+
+function BridgeModal({
+  wallet,
+  open,
+  onClose,
+}: {
+  wallet: WalletItem | null
+  open: boolean
+  onClose: () => void
+}) {
+  const [sourceChain, setSourceChain] = useState(8453)
+  const [destChain, setDestChain] = useState(4217)
+  const [amount, setAmount] = useState('')
+  const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus>('idle')
+  const [error, setError] = useState<string | null>(null)
+  const [quote, setQuote] = useState<{
+    output_amount: string
+    fee_usd: string
+    estimated_time_seconds: number
+  } | null>(null)
+  const [result, setResult] = useState<{
+    bridge_id: string
+    status: string
+    source_tx_hash: string | null
+    destination_tx_hash: string | null
+  } | null>(null)
+  const quoteTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Auto-fetch quote when params change
+  useEffect(() => {
+    if (!wallet || !amount || !open) {
+      setQuote(null)
+      return
+    }
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setQuote(null)
+      return
+    }
+    if (sourceChain === destChain) {
+      setQuote(null)
+      return
+    }
+
+    if (quoteTimeout.current) clearTimeout(quoteTimeout.current)
+    quoteTimeout.current = setTimeout(async () => {
+      setBridgeStatus('quoting')
+      setError(null)
+      try {
+        const q = await bridgeApi.getQuote({
+          source_chain_id: sourceChain,
+          dest_chain_id: destChain,
+          token: 'USDC',
+          amount,
+          wallet_id: wallet.wallet_id,
+        })
+        setQuote({
+          output_amount: q.output_amount,
+          fee_usd: q.fee_usd,
+          estimated_time_seconds: q.estimated_time_seconds,
+        })
+        setBridgeStatus('idle')
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch quote')
+        setBridgeStatus('idle')
+        setQuote(null)
+      }
+    }, 600)
+
+    return () => {
+      if (quoteTimeout.current) clearTimeout(quoteTimeout.current)
+    }
+  }, [wallet, amount, sourceChain, destChain, open])
+
+  // Reset when modal closes
+  useEffect(() => {
+    if (!open) {
+      setBridgeStatus('idle')
+      setError(null)
+      setQuote(null)
+      setResult(null)
+      setAmount('')
+    }
+  }, [open])
+
+  const handleSwapChains = () => {
+    setSourceChain(destChain)
+    setDestChain(sourceChain)
+  }
+
+  const handleExecute = async () => {
+    if (!wallet || !amount) return
+    setBridgeStatus('executing')
+    setError(null)
+    setResult(null)
+
+    try {
+      const res = await bridgeApi.execute({
+        source_chain_id: sourceChain,
+        dest_chain_id: destChain,
+        token: 'USDC',
+        amount,
+        wallet_id: wallet.wallet_id,
+      })
+
+      setResult(res)
+
+      // If status is not final, start polling
+      if (res.status !== 'success' && res.status !== 'failure') {
+        setBridgeStatus('polling')
+        let polls = 0
+        const maxPolls = 40
+        const interval = setInterval(async () => {
+          polls++
+          try {
+            const statusRes = await bridgeApi.getStatus(res.bridge_id)
+            if (statusRes.status === 'success' || statusRes.status === 'failure' || statusRes.status === 'refunded') {
+              setResult((prev) => prev ? {
+                ...prev,
+                status: statusRes.status,
+                source_tx_hash: statusRes.source_tx_hash || prev.source_tx_hash,
+                destination_tx_hash: statusRes.destination_tx_hash || prev.destination_tx_hash,
+              } : prev)
+              setBridgeStatus(statusRes.status === 'success' ? 'success' : 'error')
+              clearInterval(interval)
+            }
+          } catch {
+            // Polling error — continue
+          }
+          if (polls >= maxPolls) {
+            setBridgeStatus('success') // Optimistic — tx was broadcast
+            clearInterval(interval)
+          }
+        }, 2000)
+      } else {
+        setBridgeStatus(res.status === 'success' ? 'success' : 'error')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Bridge execution failed')
+      setBridgeStatus('error')
+    }
+  }
+
+  if (!open) return null
+
+  const sourceName = BRIDGE_CHAINS.find((c) => c.chain_id === sourceChain)?.name || 'Unknown'
+  const destName = BRIDGE_CHAINS.find((c) => c.chain_id === destChain)?.name || 'Unknown'
+  const isExecuting = bridgeStatus === 'executing' || bridgeStatus === 'polling'
+  const canExecute = bridgeStatus === 'idle' && quote && amount && sourceChain !== destChain
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative z-10 w-full max-w-lg mx-4 bg-dark-300 border border-dark-100 rounded-2xl shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-dark-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+              <ArrowLeftRight className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Bridge USDC</h2>
+              <p className="text-xs text-gray-500">
+                {wallet?.wallet_id ? `Wallet: ${wallet.wallet_id.slice(0, 12)}...` : ''}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-5">
+          {/* Chain selectors */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
+            <ChainSelect
+              label="From"
+              value={sourceChain}
+              onChange={setSourceChain}
+              excludeChainId={destChain}
+            />
+            <button
+              onClick={handleSwapChains}
+              className="mb-1 p-2 rounded-lg bg-dark-200 hover:bg-dark-100 text-gray-400 hover:text-white transition-colors"
+              title="Swap chains"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+            <ChainSelect
+              label="To"
+              value={destChain}
+              onChange={setDestChain}
+              excludeChainId={sourceChain}
+            />
+          </div>
+
+          {/* Amount */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-gray-500 uppercase tracking-wider">Amount (USD)</label>
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="100.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isExecuting}
+                className="w-full pl-9 pr-16 py-3 bg-dark-200 border border-dark-100 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-sardis-500/50 disabled:opacity-50"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 font-mono">USDC</span>
+            </div>
+          </div>
+
+          {/* Quote preview */}
+          {bridgeStatus === 'quoting' && (
+            <div className="bg-dark-200 rounded-lg p-4 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+              <span className="text-sm text-gray-400">Fetching quote...</span>
+            </div>
+          )}
+
+          {quote && bridgeStatus !== 'quoting' && (
+            <div className="bg-dark-200 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">You receive</span>
+                <span className="text-sm text-white font-mono">{quote.output_amount} USDC</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Bridge fee</span>
+                <span className="text-sm text-gray-400 font-mono">{quote.fee_usd}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Est. time</span>
+                <span className="text-sm text-gray-400">~{quote.estimated_time_seconds}s</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Route</span>
+                <span className="text-sm text-gray-400">{sourceName} &rarr; {destName} via Relay</span>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+
+          {/* Result */}
+          {result && (
+            <div className={clsx(
+              'rounded-lg p-4 space-y-2',
+              result.status === 'success' ? 'bg-sardis-500/10 border border-sardis-500/20' : 'bg-blue-500/10 border border-blue-500/20'
+            )}>
+              <div className="flex items-center gap-2">
+                {bridgeStatus === 'polling' ? (
+                  <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                ) : result.status === 'success' ? (
+                  <Check className="w-4 h-4 text-sardis-400" />
+                ) : (
+                  <Activity className="w-4 h-4 text-blue-400" />
+                )}
+                <span className={clsx(
+                  'text-sm font-medium',
+                  result.status === 'success' ? 'text-sardis-400' : 'text-blue-400'
+                )}>
+                  {bridgeStatus === 'polling' ? 'Bridging in progress...' : result.status === 'success' ? 'Bridge complete!' : `Status: ${result.status}`}
+                </span>
+              </div>
+              {result.source_tx_hash && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-gray-500">Source tx</span>
+                  <span className="text-xs text-gray-400 font-mono truncate max-w-[200px]">{result.source_tx_hash}</span>
+                </div>
+              )}
+              {result.destination_tx_hash && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-gray-500">Destination tx</span>
+                  <span className="text-xs text-gray-400 font-mono truncate max-w-[200px]">{result.destination_tx_hash}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-dark-100 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 border border-dark-100 text-gray-400 font-medium rounded-lg hover:bg-dark-200 hover:text-white transition-colors"
+          >
+            {result?.status === 'success' ? 'Done' : 'Cancel'}
+          </button>
+          {!result?.status || result.status !== 'success' ? (
+            <button
+              onClick={handleExecute}
+              disabled={!canExecute && !isExecuting}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExecuting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {bridgeStatus === 'polling' ? 'Bridging...' : 'Signing...'}
+                </>
+              ) : (
+                <>
+                  <ArrowLeftRight className="w-4 h-4" />
+                  Bridge
+                </>
+              )}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }

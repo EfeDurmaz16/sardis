@@ -34,9 +34,11 @@ Relay API v2 endpoints (confirmed live):
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
+from typing import Any
 
 import httpx
 
@@ -171,16 +173,94 @@ class CrossChainBridge:
                 amount_wei, sender, recipient,
             )
 
-    async def execute(self, quote: BridgeQuote) -> BridgeResult:
-        """Execute a bridge transfer using the quote's provider.
+    async def execute(
+        self,
+        quote: BridgeQuote,
+        *,
+        sign_and_send: Callable[
+            [str, str, int, int],
+            Coroutine[Any, Any, str],
+        ],
+    ) -> BridgeResult:
+        """Execute a bridge transfer by signing and broadcasting each step.
+
+        Args:
+            quote: A BridgeQuote obtained from get_quote() or get_best_quote().
+            sign_and_send: An async callable ``(to, data, value, chain_id) -> tx_hash``
+                that signs the transaction via MPC and broadcasts it.
+                This keeps the bridge module decoupled from Turnkey internals.
+
+        Returns:
+            BridgeResult with tx hashes and final status.
 
         Raises:
-            NotImplementedError: Bridge execution requires MPC signing
-                integration via Turnkey. Use quote() for fee estimation.
+            RuntimeError: If the quote has no transaction steps.
+            Exception: Propagated from sign_and_send or status polling.
         """
-        raise NotImplementedError(
-            "Bridge execution requires MPC signing integration. "
-            "Use get_quote() or get_best_quote() for fee estimation."
+        if not quote.tx_data or not quote.tx_data.get("steps"):
+            raise RuntimeError(
+                "Quote has no executable transaction steps. "
+                "Ensure get_quote() returned tx_data with steps."
+            )
+
+        steps = quote.tx_data["steps"]
+        tx_hashes: list[str] = []
+
+        for i, step in enumerate(steps):
+            tx = step.get("tx", {})
+            to = tx.get("to", "")
+            data = tx.get("data", "")
+            raw_value = tx.get("value", 0)
+            if isinstance(raw_value, str):
+                value = int(raw_value, 16) if raw_value.startswith("0x") else int(raw_value)
+            else:
+                value = int(raw_value)
+            chain_id = int(tx.get("chainId", quote.source_chain_id))
+
+            logger.info(
+                "Bridge step %d/%d (kind=%s): to=%s chain_id=%d",
+                i + 1, len(steps), step.get("kind", "unknown"), to, chain_id,
+            )
+
+            tx_hash = await sign_and_send(to, data, value, chain_id)
+            tx_hashes.append(tx_hash)
+            logger.info("Bridge step %d/%d broadcast: %s", i + 1, len(steps), tx_hash)
+
+        # Poll for completion if this is a Relay bridge
+        source_tx_hash = tx_hashes[0] if tx_hashes else None
+        destination_tx_hash = None
+        status = "pending"
+
+        if quote.provider == BridgeProvider.RELAY:
+            try:
+                status_data = await self.poll_relay_status(
+                    quote.quote_id,
+                    max_polls=60,
+                    interval=1.5,
+                )
+                status = status_data.get("status", "unknown")
+
+                # Extract destination tx hash from Relay status response
+                steps_status = status_data.get("steps", [])
+                for step_s in steps_status:
+                    for item in step_s.get("items", []):
+                        dest_hash = item.get("destinationTxHash")
+                        if dest_hash:
+                            destination_tx_hash = dest_hash
+            except Exception as e:
+                logger.warning("Bridge status polling failed: %s", e)
+                status = "submitted"  # Optimistic — tx was broadcast successfully
+
+        return BridgeResult(
+            bridge_id=quote.quote_id,
+            provider=quote.provider,
+            status=status,
+            source_tx_hash=source_tx_hash,
+            destination_tx_hash=destination_tx_hash,
+            source_chain_id=quote.source_chain_id,
+            destination_chain_id=quote.destination_chain_id,
+            input_amount=quote.input_amount,
+            output_amount=quote.output_amount,
         )
 
     async def poll_relay_status(
