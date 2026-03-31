@@ -1,10 +1,7 @@
-name: Deploy Dashboard (Next.js)
+name: Legacy Dashboard Next Deploy (Manual Only)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'dashboard-next/**'
+  workflow_dispatch:
 
 permissions: read-all
 
