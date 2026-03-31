@@ -28,6 +28,10 @@ if command -v pnpm >/dev/null 2>&1 && [[ -d "$ROOT_DIR/node_modules" ]] && [[ "$
     pnpm run build:mcp
     pnpm run test:ts-sdks
     pnpm run build:ts-sdks
+    pnpm run typecheck:landing
+    pnpm run build:landing
+    pnpm run typecheck:dashboard
+    pnpm run build:dashboard
   )
 else
   node_checks_skipped=1
