@@ -34,15 +34,7 @@ export function registerHoldCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printSuccess('Hold created successfully');
-        console.log();
-        printKeyValue([
-          ['Hold ID', brand.info('hold_sim_' + Date.now().toString(36))],
-          ['Amount', `${opts.amount.toFixed(2)} ${opts.token}`],
-          ['Wallet', opts.wallet],
-          ['Expires', `${opts.hours}h from now`],
-        ]);
-        console.log();
+        printError('Cannot create holds in sandbox mode. Run `sardis login` to connect your API key.');
         return;
       }
 
@@ -87,14 +79,7 @@ export function registerHoldCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printSuccess('Hold captured successfully');
-        console.log();
-        printKeyValue([
-          ['Hold ID', holdId],
-          ['Captured', opts.amount ? `${opts.amount.toFixed(2)}` : 'full amount'],
-          ['Status', chalk.green('captured')],
-        ]);
-        console.log();
+        printError('Cannot capture holds in sandbox mode. Run `sardis login` to connect your API key.');
         return;
       }
 
@@ -132,13 +117,7 @@ export function registerHoldCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printSuccess('Hold voided successfully');
-        console.log();
-        printKeyValue([
-          ['Hold ID', holdId],
-          ['Status', chalk.dim('voided')],
-        ]);
-        console.log();
+        printError('Cannot void holds in sandbox mode. Run `sardis login` to connect your API key.');
         return;
       }
 
@@ -172,15 +151,8 @@ export function registerHoldCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printTable(
-          ['Hold ID', 'Wallet', 'Amount', 'Status', 'Expires'],
-          [
-            ['hold_abc123', 'wal_sim_demo01', '100.00 USDC', chalk.cyan('active'), '2026-03-03 10:00'],
-            ['hold_def456', 'wal_sim_demo01', '250.00 USDC', chalk.green('captured'), '2026-03-02 18:00'],
-            ['hold_ghi789', 'wal_sim_demo02', '50.00 USDC', chalk.dim('voided'), '2026-03-01 12:00'],
-          ],
-        );
-        console.log();
+        console.log(brand.dim('\n  No real holds available in sandbox mode.'));
+        console.log(brand.dim('  Run `sardis login` to connect your API key and list real holds.\n'));
         return;
       }
 

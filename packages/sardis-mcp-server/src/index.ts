@@ -59,14 +59,39 @@ export async function createServer() {
     }
   );
 
+  // Tools that never return simulated data (they either call API or return static data)
+  const LIVE_ONLY_TOOLS = new Set([
+    'sardis_check_policy',
+    'sardis_validate_limits',
+    'sardis_list_event_types',
+    'sardis_check_agent_trust',
+    'sardis_verify_agent_identity',
+    'sardis_view_policy_history',
+    'sardis_discover_services',
+    'sardis_provision_service',
+    'sardis_list_provisioned',
+    'sardis_preview_paid_api',
+    'sardis_sandbox_demo',
+    'sardis_get_rules',
+    'sardis_update_wallet_limits',
+    'sardis_archive_wallet',
+  ]);
+
   // List available tools (from modular tool definitions)
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const currentConfig = getConfig();
+    const isSimulated = currentConfig.mode === 'simulated';
+
     return {
-      tools: allToolDefinitions.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema,
-      })),
+      tools: allToolDefinitions.map((tool) => {
+        const hasSimPath = !LIVE_ONLY_TOOLS.has(tool.name);
+        const simSuffix = isSimulated && hasSimPath ? ' [sim]' : '';
+        return {
+          name: tool.name,
+          description: tool.description + simSuffix,
+          inputSchema: tool.inputSchema,
+        };
+      }),
     };
   });
 
@@ -191,6 +216,7 @@ export async function createServer() {
     }
 
     if (uri === 'sardis://tools') {
+      const currentConfig = getConfig();
       return {
         contents: [
           {
@@ -199,6 +225,10 @@ export async function createServer() {
             text: JSON.stringify(
               {
                 total_tools: allToolDefinitions.length,
+                mode: currentConfig.mode,
+                ...(currentConfig.mode === 'simulated' ? {
+                  _notice: '[SIMULATED] Tools marked [sim] return fake data in simulated mode. Set SARDIS_API_KEY and SARDIS_MODE=live for real data.',
+                } : {}),
                 tools: allToolDefinitions.map((t) => ({
                   name: t.name,
                   description: t.description,
@@ -359,7 +389,8 @@ export async function createServer() {
 
     const result = await handler(args);
 
-    // In simulated mode, inject _sandbox metadata into JSON responses
+    // In simulated mode, inject [SIMULATED] prefix and _sandbox metadata into responses
+    // so that simulated output can NEVER be confused with real data.
     const config = getConfig();
     if (config.mode === 'simulated' && result.content?.length > 0) {
       result.content = result.content.map((item) => {
@@ -367,10 +398,12 @@ export async function createServer() {
           try {
             const parsed = JSON.parse(item.text);
             parsed._sandbox = true;
-            parsed._notice = 'Simulated response — no real funds were moved';
-            return { ...item, text: JSON.stringify(parsed, null, 2) };
+            parsed._notice = '[SIMULATED] This response contains fake data. No real funds were moved. Set SARDIS_API_KEY and SARDIS_MODE=live for real transactions.';
+            const jsonText = JSON.stringify(parsed, null, 2);
+            return { ...item, text: `[SIMULATED] ${jsonText}` };
           } catch {
-            // Not JSON, skip injection
+            // Not JSON — prefix plain text with [SIMULATED]
+            return { ...item, text: `[SIMULATED] ${item.text}` };
           }
         }
         return item;
@@ -392,7 +425,11 @@ export async function runServer() {
 
   // Log configuration status
   console.error(`Sardis MCP Server v${MCP_SERVER_VERSION} running on stdio`);
-  console.error(`Mode: ${config.mode}`);
+  if (config.mode === 'simulated') {
+    console.error(`Mode: SIMULATED — Responses are NOT real. Set SARDIS_API_KEY for live mode.`);
+  } else {
+    console.error(`Mode: ${config.mode}`);
+  }
   console.error(`API URL: ${config.apiUrl}`);
   console.error(`API Key configured: ${config.apiKey ? 'yes' : 'no'}`);
   console.error(`Wallet ID: ${config.walletId || '(not set)'}`);

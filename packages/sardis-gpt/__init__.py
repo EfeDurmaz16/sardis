@@ -1,10 +1,12 @@
 """sardis-gpt: ChatGPT Custom GPT Actions configuration.
 
-This package contains only an OpenAPI Actions YAML file for use with
-the ChatGPT Custom GPT builder. There is no executable Python SDK.
+This is a config-only package that ships an OpenAPI Actions YAML file
+for use with the ChatGPT Custom GPT builder.  It contains no executable
+Python code — importing it is a no-op.
+
+Usage:
+    Copy ``actions.yaml`` into the ChatGPT Custom GPT builder.
+    Do NOT import this package as a library.
 """
 
-raise NotImplementedError(
-    "sardis-gpt requires OpenAPI Actions YAML only. "
-    "No executable SDK. Use the YAML with ChatGPT Custom GPT builder."
-)
+# No executable code — this package only provides the OpenAPI YAML artefact.

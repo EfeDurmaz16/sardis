@@ -22,15 +22,8 @@ export function registerWalletCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printTable(
-          ['ID', 'Agent', 'Balance', 'Currency', 'Status'],
-          [
-            ['wal_sim_demo01', 'agent_abc', '1,250.00', 'USDC', chalk.green('Active')],
-            ['wal_sim_demo02', 'agent_def', '3,400.00', 'USDC', chalk.green('Active')],
-            ['wal_sim_demo03', 'agent_ghi', '0.00', 'EURC', chalk.dim('Inactive')],
-          ],
-        );
-        console.log();
+        console.log(brand.dim('\n  No real wallets available in sandbox mode.'));
+        console.log(brand.dim('  Run `sardis login` to connect your API key and list real wallets.\n'));
         return;
       }
 
@@ -82,14 +75,7 @@ export function registerWalletCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printSuccess('Wallet created successfully');
-        console.log();
-        printKeyValue([
-          ['ID', brand.info('wal_sim_' + Date.now().toString(36))],
-          ['Agent', opts.agent],
-          ['Currency', opts.currency],
-        ]);
-        console.log();
+        printError('Cannot create wallets in sandbox mode. Run `sardis login` to connect your API key.');
         return;
       }
 
