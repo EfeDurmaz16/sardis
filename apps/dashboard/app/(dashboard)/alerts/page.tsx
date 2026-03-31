@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -43,83 +43,20 @@ import {
   Broadcast,
   SpeakerSimpleSlash,
   Plus,
+  Spinner,
 } from "@phosphor-icons/react"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
-type Alert = {
+type AlertRule = {
+  id: string
   name: string
   condition: string
   channel: string
   severity: string
-  lastTriggered: string
+  last_triggered: string | null
   active: boolean
 }
-
-const initialAlerts: Alert[] = [
-  {
-    name: "High Transaction Volume",
-    condition: "> 1,000 txns/min",
-    channel: "Slack",
-    severity: "Warning",
-    lastTriggered: "2 hrs ago",
-    active: true,
-  },
-  {
-    name: "Failed Payment Spike",
-    condition: "> 5% failure rate",
-    channel: "Email",
-    severity: "Critical",
-    lastTriggered: "1 day ago",
-    active: true,
-  },
-  {
-    name: "Agent Wallet Low Balance",
-    condition: "Balance < $1,000",
-    channel: "Slack",
-    severity: "Warning",
-    lastTriggered: "4 hrs ago",
-    active: true,
-  },
-  {
-    name: "Webhook Delivery Failure",
-    condition: "> 3 consecutive failures",
-    channel: "Email",
-    severity: "Critical",
-    lastTriggered: "3 days ago",
-    active: true,
-  },
-  {
-    name: "Unauthorized Access Attempt",
-    condition: "> 5 failed logins",
-    channel: "SMS",
-    severity: "Critical",
-    lastTriggered: "12 hrs ago",
-    active: true,
-  },
-  {
-    name: "API Latency Threshold",
-    condition: "p99 > 500ms",
-    channel: "Webhook",
-    severity: "Warning",
-    lastTriggered: "6 hrs ago",
-    active: true,
-  },
-  {
-    name: "Daily Spend Limit",
-    condition: "> 80% of limit used",
-    channel: "Email",
-    severity: "Info",
-    lastTriggered: "1 hr ago",
-    active: false,
-  },
-  {
-    name: "New Agent Registration",
-    condition: "Any new agent created",
-    channel: "Slack",
-    severity: "Info",
-    lastTriggered: "5 hrs ago",
-    active: false,
-  },
-]
 
 const channelVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
   Email: "outline",
@@ -130,8 +67,11 @@ const channelVariant: Record<string, "default" | "secondary" | "outline" | "dest
 
 const severityColor: Record<string, string> = {
   Critical: "bg-destructive",
+  critical: "bg-destructive",
   Warning: "bg-warning",
+  warning: "bg-warning",
   Info: "bg-info",
+  info: "bg-info",
 }
 
 const conditionLabels: Record<string, string> = {
@@ -140,38 +80,63 @@ const conditionLabels: Record<string, string> = {
   agent_inactive: "Agent inactive for threshold minutes",
 }
 
-const stats = [
-  { label: "Active Alerts", value: "12", icon: Bell },
-  { label: "Triggered Today", value: "5", icon: Lightning },
-  { label: "Channels", value: "3", icon: Broadcast },
-  { label: "Muted", value: "2", icon: SpeakerSimpleSlash },
-]
-
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts)
+  const { data: alertRules, loading } = useSardis<AlertRule[]>("api/v2/alerts")
+  const alerts = alertRules ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
   const [newCondition, setNewCondition] = useState("spend_exceeds")
   const [newThreshold, setNewThreshold] = useState("")
   const [newSeverity, setNewSeverity] = useState("Warning")
 
+  // Compute stats from real data
+  const stats = useMemo(() => {
+    const activeCount = alerts.filter((a) => a.active).length
+    const mutedCount = alerts.filter((a) => !a.active).length
+    const triggeredToday = alerts.filter((a) => {
+      if (!a.last_triggered) return false
+      const triggered = new Date(a.last_triggered)
+      const now = new Date()
+      return (
+        triggered.getFullYear() === now.getFullYear() &&
+        triggered.getMonth() === now.getMonth() &&
+        triggered.getDate() === now.getDate()
+      )
+    }).length
+    const channels = new Set(alerts.map((a) => a.channel)).size
+
+    return [
+      { label: "Active Alerts", value: String(activeCount), icon: Bell },
+      { label: "Triggered Today", value: String(triggeredToday), icon: Lightning },
+      { label: "Channels", value: String(channels), icon: Broadcast },
+      { label: "Muted", value: String(mutedCount), icon: SpeakerSimpleSlash },
+    ]
+  }, [alerts])
+
   function handleCreate() {
     if (!newName.trim() || !newThreshold.trim()) return
-    const condLabel = conditionLabels[newCondition] ?? newCondition
-    const alert: Alert = {
-      name: newName.trim(),
-      condition: `${condLabel} (${newThreshold})`,
-      channel: "Slack",
-      severity: newSeverity,
-      lastTriggered: "Never",
-      active: true,
-    }
-    setAlerts((prev) => [alert, ...prev])
+    // TODO: POST to API to create alert rule
     setNewName("")
     setNewCondition("spend_exceeds")
     setNewThreshold("")
     setNewSeverity("Warning")
     setDialogOpen(false)
+  }
+
+  function formatLastTriggered(val: string | null): string {
+    if (!val) return "Never"
+    const d = new Date(val)
+    if (isNaN(d.getTime())) return val
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    if (diffMin < 1) return "Just now"
+    if (diffMin < 60) return `${diffMin}m ago`
+    const diffHrs = Math.floor(diffMin / 60)
+    if (diffHrs < 24) return `${diffHrs}h ago`
+    const diffDays = Math.floor(diffHrs / 24)
+    return `${diffDays}d ago`
   }
 
   return (
@@ -293,6 +258,17 @@ export default function AlertsPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : alerts.length === 0 ? (
+            <EmptyState
+              icon={Bell}
+              title="No alert rules"
+              description="Create alert rules to get notified about important events like spend thresholds, failures, and agent activity"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -306,7 +282,7 @@ export default function AlertsPage() {
             </TableHeader>
             <TableBody>
               {alerts.map((a) => (
-                <TableRow key={a.name}>
+                <TableRow key={a.id ?? a.name}>
                   <TableCell className="pl-4 font-medium">{a.name}</TableCell>
                   <TableCell>
                     <code className="text-xs text-muted-foreground">{a.condition}</code>
@@ -322,7 +298,9 @@ export default function AlertsPage() {
                       {a.severity}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{a.lastTriggered}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatLastTriggered(a.last_triggered)}
+                  </TableCell>
                   <TableCell>
                     <Switch defaultChecked={a.active} size="sm" />
                   </TableCell>
@@ -330,6 +308,7 @@ export default function AlertsPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

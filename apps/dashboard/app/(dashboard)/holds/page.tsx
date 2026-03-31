@@ -2,65 +2,36 @@
 
 import { useState } from "react"
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
+  Card, CardContent, CardHeader, CardTitle,
 } from "@/components/ui/card"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-  ContextMenuSeparator,
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator,
 } from "@/components/ui/context-menu"
 import {
-  Pause,
-  CurrencyDollar,
-  Warning,
-  CheckCircle,
+  Pause, CurrencyDollar, Warning, CheckCircle, Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Hold = {
-  id: string
-  description: string
-  agent: string
+  hold_id: string
+  wallet_id: string
+  agent_id: string
   amount: string
+  currency: string
   merchant: string
-  created: string
-  expires: string
-  status: "active" | "expiring" | "released" | "captured"
+  description: string
+  status: string
+  created_at: string
+  expires_at: string
 }
 
-const initialHolds: Hold[] = [
-  { id: "HLD-001", description: "Cloud hosting pre-auth", agent: "Payment Router Alpha", amount: "$2,400", merchant: "AWS", created: "Mar 25, 2026", expires: "Mar 27, 2026", status: "expiring" },
-  { id: "HLD-002", description: "SaaS subscription hold", agent: "Subscription Manager", amount: "$890", merchant: "Notion", created: "Mar 24, 2026", expires: "Mar 31, 2026", status: "active" },
-  { id: "HLD-003", description: "API usage deposit", agent: "Expense Tracker v2", amount: "$1,500", merchant: "OpenAI", created: "Mar 23, 2026", expires: "Apr 01, 2026", status: "active" },
-  { id: "HLD-004", description: "Hardware procurement", agent: "Vendor Pay Agent", amount: "$3,200", merchant: "Dell Technologies", created: "Mar 22, 2026", expires: "Mar 27, 2026", status: "expiring" },
-  { id: "HLD-005", description: "Conference registration", agent: "Expense Tracker v2", amount: "$750", merchant: "Eventbrite", created: "Mar 21, 2026", expires: "Apr 05, 2026", status: "active" },
-  { id: "HLD-006", description: "Software license hold", agent: "Payment Router Alpha", amount: "$1,200", merchant: "JetBrains", created: "Mar 20, 2026", expires: "Mar 26, 2026", status: "released" },
-  { id: "HLD-007", description: "Office supplies pre-auth", agent: "Vendor Pay Agent", amount: "$460", merchant: "Staples", created: "Mar 19, 2026", expires: "Mar 25, 2026", status: "released" },
-  { id: "HLD-008", description: "Cloud storage upgrade", agent: "Treasury Sweep Bot", amount: "$2,050", merchant: "Google Cloud", created: "Mar 26, 2026", expires: "Apr 02, 2026", status: "active" },
-]
-
-const stats = [
-  { label: "Active Holds", value: "7", icon: Pause },
-  { label: "Total Held", value: "$12,450", icon: CurrencyDollar },
-  { label: "Expiring Today", value: "2", icon: Warning },
-  { label: "Released Today", value: "5", icon: CheckCircle },
-]
-
-const statusConfig: Record<Hold["status"], { variant: "success" | "warning" | "secondary" | "default"; label: string }> = {
+const statusConfig: Record<string, { variant: "success" | "warning" | "secondary" | "default"; label: string }> = {
   active: { variant: "success", label: "Active" },
   expiring: { variant: "warning", label: "Expiring" },
   released: { variant: "secondary", label: "Released" },
@@ -68,14 +39,20 @@ const statusConfig: Record<Hold["status"], { variant: "success" | "warning" | "s
 }
 
 export default function HoldsPage() {
-  const [holds, setHolds] = useState<Hold[]>(initialHolds)
+  const { data: remoteHolds, loading } = useSardis<Hold[]>("api/v2/holds")
+  const holds = remoteHolds ?? []
 
-  function updateHoldStatus(id: string, status: "released" | "captured") {
-    setHolds((prev) =>
-      prev.map((h) => (h.id === id ? { ...h, status } : h))
-    )
-    toast.success(`Hold ${id} ${status}`)
-  }
+  const activeCount = holds.filter(h => h.status === "active").length
+  const releasedCount = holds.filter(h => h.status === "released").length
+  const totalHeld = holds.filter(h => h.status === "active" || h.status === "expiring")
+    .reduce((sum, h) => sum + (parseFloat(h.amount) || 0), 0)
+
+  const stats = [
+    { label: "Active Holds", value: String(activeCount), icon: Pause },
+    { label: "Total Held", value: `$${totalHeld.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, icon: CurrencyDollar },
+    { label: "Expiring", value: String(holds.filter(h => h.status === "expiring").length), icon: Warning },
+    { label: "Released", value: String(releasedCount), icon: CheckCircle },
+  ]
 
   return (
     <div className="space-y-6">
@@ -95,7 +72,7 @@ export default function HoldsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-lg font-semibold tracking-tight tabular-nums">{s.value}</p>
+                  <p className="text-lg font-semibold tracking-tight tabular-nums">{loading ? "—" : s.value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -108,6 +85,17 @@ export default function HoldsPage() {
           <CardTitle>All Holds</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : holds.length === 0 ? (
+            <EmptyState
+              icon={Pause}
+              title="No holds"
+              description="Payment holds will appear here when agents create pre-authorizations"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -123,36 +111,30 @@ export default function HoldsPage() {
             </TableHeader>
             <TableBody>
               {holds.map((hold) => {
-                const st = statusConfig[hold.status]
+                const st = statusConfig[hold.status] || { variant: "secondary" as const, label: hold.status }
                 return (
-                  <ContextMenu key={hold.id}>
+                  <ContextMenu key={hold.hold_id}>
                     <ContextMenuTrigger render={<TableRow />}>
-                        <TableCell className="pl-4 font-mono text-xs">{hold.id}</TableCell>
-                        <TableCell className="font-medium">{hold.description}</TableCell>
-                        <TableCell className="text-muted-foreground">{hold.agent}</TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">{hold.amount}</TableCell>
-                        <TableCell className="text-muted-foreground">{hold.merchant}</TableCell>
-                        <TableCell className="text-muted-foreground">{hold.created}</TableCell>
-                        <TableCell className="text-muted-foreground">{hold.expires}</TableCell>
+                        <TableCell className="pl-4 font-mono text-xs">{hold.hold_id}</TableCell>
+                        <TableCell className="font-medium">{hold.description || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{hold.agent_id}</TableCell>
+                        <TableCell className="text-right tabular-nums font-medium">${parseFloat(hold.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-muted-foreground">{hold.merchant || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{hold.created_at}</TableCell>
+                        <TableCell className="text-muted-foreground">{hold.expires_at}</TableCell>
                         <TableCell>
                           <Badge variant={st.variant}>{st.label}</Badge>
                         </TableCell>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(hold.id); toast.success("Copied to clipboard") }}>
+                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(hold.hold_id); toast.success("Copied to clipboard") }}>
                         Copy ID
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem
-                        onClick={() => updateHoldStatus(hold.id, "released")}
-                        disabled={hold.status === "released" || hold.status === "captured"}
-                      >
+                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={() => toast.info("Release hold via API")}>
                         Release
                       </ContextMenuItem>
-                      <ContextMenuItem
-                        onClick={() => updateHoldStatus(hold.id, "captured")}
-                        disabled={hold.status === "released" || hold.status === "captured"}
-                      >
+                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={() => toast.info("Capture hold via API")}>
                         Capture
                       </ContextMenuItem>
                     </ContextMenuContent>
@@ -161,6 +143,7 @@ export default function HoldsPage() {
               })}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

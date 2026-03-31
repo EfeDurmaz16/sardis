@@ -26,6 +26,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowsDownUp,
+  Spinner,
 } from "@phosphor-icons/react"
 import {
   ContextMenu,
@@ -47,36 +48,18 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Merchant = {
+  merchant_id: string
   name: string
   category: string
   status: "verified" | "pending" | "suspended"
-  totalVolume: string
-  transactionCount: string
+  total_volume: number
+  transaction_count: number
   chains: string[]
-  addedDate: string
+  created_at: string
 }
-
-const merchants: Merchant[] = [
-  { name: "Stripe", category: "Payment Processing", status: "verified", totalVolume: "$245,800", transactionCount: "1,842", chains: ["Ethereum", "Polygon"], addedDate: "Jan 12, 2025" },
-  { name: "Amazon Web Services", category: "Cloud Infrastructure", status: "verified", totalVolume: "$128,400", transactionCount: "423", chains: ["Ethereum"], addedDate: "Feb 3, 2025" },
-  { name: "Vercel", category: "Cloud Hosting", status: "verified", totalVolume: "$42,600", transactionCount: "156", chains: ["Base", "Polygon"], addedDate: "Mar 18, 2025" },
-  { name: "Datadog", category: "Observability", status: "verified", totalVolume: "$38,200", transactionCount: "89", chains: ["Ethereum", "Arbitrum"], addedDate: "Apr 5, 2025" },
-  { name: "GitHub", category: "Developer Tools", status: "verified", totalVolume: "$18,950", transactionCount: "312", chains: ["Polygon"], addedDate: "Jan 28, 2025" },
-  { name: "Cloudflare", category: "CDN & Security", status: "verified", totalVolume: "$67,300", transactionCount: "198", chains: ["Ethereum", "Optimism"], addedDate: "Feb 14, 2025" },
-  { name: "OpenAI", category: "AI Services", status: "pending", totalVolume: "$92,400", transactionCount: "567", chains: ["Ethereum", "Base"], addedDate: "Mar 22, 2026" },
-  { name: "Supabase", category: "Backend Services", status: "verified", totalVolume: "$24,100", transactionCount: "143", chains: ["Polygon", "Arbitrum"], addedDate: "May 10, 2025" },
-  { name: "Twilio", category: "Communications", status: "verified", totalVolume: "$56,800", transactionCount: "234", chains: ["Ethereum"], addedDate: "Mar 1, 2025" },
-  { name: "Notion", category: "Productivity", status: "pending", totalVolume: "$15,200", transactionCount: "67", chains: ["Base"], addedDate: "Mar 15, 2026" },
-]
-
-const stats = [
-  { label: "Total Merchants", value: "18", icon: Storefront },
-  { label: "Verified", value: "16", icon: CheckCircle },
-  { label: "Pending Review", value: "2", icon: Clock },
-  { label: "30d Volume", value: "$892k", icon: CurrencyDollar },
-]
 
 const statusConfig: Record<Merchant["status"], { color: string; label: string }> = {
   verified: { color: "bg-success", label: "Verified" },
@@ -92,21 +75,48 @@ const chainVariant: Record<string, "outline"> = {
   Base: "outline",
 }
 
-function parseCurrency(val: string): number {
-  return parseFloat(val.replace(/[$,]/g, "")) || 0
+function formatCurrency(value: number): string {
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}k`
+  return `$${value.toFixed(0)}`
 }
 
-function parseCount(val: string): number {
-  return parseFloat(val.replace(/,/g, "")) || 0
+function formatVolume(value: number): string {
+  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
+function formatCount(value: number): string {
+  return value.toLocaleString("en-US")
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
 export default function MerchantsPage() {
+  const { data: remoteMerchants, loading } = useSardis<Merchant[]>("api/v2/merchants")
+  const merchants = remoteMerchants ?? []
+
   const [tab, setTab] = useState("all")
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
   const [checkoutMerchant, setCheckoutMerchant] = useState<Merchant | null>(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+
+  /* ---------- Computed stats ---------- */
+  const totalMerchants = merchants.length
+  const verifiedCount = merchants.filter((m) => m.status === "verified").length
+  const pendingCount = merchants.filter((m) => m.status === "pending").length
+  const totalVolume = merchants.reduce((sum, m) => sum + (m.total_volume ?? 0), 0)
+
+  const stats = [
+    { label: "Total Merchants", value: String(totalMerchants), icon: Storefront },
+    { label: "Verified", value: String(verifiedCount), icon: CheckCircle },
+    { label: "Pending Review", value: String(pendingCount), icon: Clock },
+    { label: "30d Volume", value: formatCurrency(totalVolume), icon: CurrencyDollar },
+  ]
 
   function toggleSort(key: string) {
     if (sortKey === key) {
@@ -124,17 +134,25 @@ export default function MerchantsPage() {
   const sorted = [...filtered].sort((a, b) => {
     if (!sortKey) return 0
     let cmp = 0
-    if (sortKey === "totalVolume") {
-      cmp = parseCurrency(a.totalVolume) - parseCurrency(b.totalVolume)
-    } else if (sortKey === "transactionCount") {
-      cmp = parseCount(a.transactionCount) - parseCount(b.transactionCount)
+    if (sortKey === "total_volume") {
+      cmp = (a.total_volume ?? 0) - (b.total_volume ?? 0)
+    } else if (sortKey === "transaction_count") {
+      cmp = (a.transaction_count ?? 0) - (b.transaction_count ?? 0)
     } else {
-      const av = a[sortKey as keyof Merchant] as string
-      const bv = b[sortKey as keyof Merchant] as string
+      const av = String(a[sortKey as keyof Merchant] ?? "")
+      const bv = String(b[sortKey as keyof Merchant] ?? "")
       cmp = av.localeCompare(bv)
     }
     return sortDir === "asc" ? cmp : -cmp
   })
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Spinner className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -216,11 +234,11 @@ export default function MerchantsPage() {
                 </TableHead>
                 <TableHead
                   className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("totalVolume")}
+                  onClick={() => toggleSort("total_volume")}
                 >
                   <span className="flex items-center justify-end gap-1">
                     Total Volume
-                    {sortKey === "totalVolume" ? (
+                    {sortKey === "total_volume" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
@@ -229,11 +247,11 @@ export default function MerchantsPage() {
                 </TableHead>
                 <TableHead
                   className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("transactionCount")}
+                  onClick={() => toggleSort("transaction_count")}
                 >
                   <span className="flex items-center justify-end gap-1">
                     Transactions
-                    {sortKey === "transactionCount" ? (
+                    {sortKey === "transaction_count" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
@@ -248,7 +266,7 @@ export default function MerchantsPage() {
               {sorted.map((m) => {
                 const st = statusConfig[m.status]
                 return (
-                  <ContextMenu key={m.name}>
+                  <ContextMenu key={m.merchant_id}>
                     <ContextMenuTrigger render={<TableRow />}>
                       <TableCell className="pl-4 font-medium">{m.name}</TableCell>
                       <TableCell className="text-muted-foreground">{m.category}</TableCell>
@@ -258,8 +276,8 @@ export default function MerchantsPage() {
                           {st.label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{m.totalVolume}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{m.transactionCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatVolume(m.total_volume)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{formatCount(m.transaction_count)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {m.chains.map((chain) => (
@@ -269,14 +287,14 @@ export default function MerchantsPage() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{m.addedDate}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(m.created_at)}</TableCell>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(m.name); toast.success("Copied to clipboard") }}>
+                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(m.merchant_id); toast.success("Copied to clipboard") }}>
                         Copy ID
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem onClick={() => setSelectedMerchant(prev => prev?.name === m.name ? null : m)}>View Details</ContextMenuItem>
+                      <ContextMenuItem onClick={() => setSelectedMerchant(prev => prev?.merchant_id === m.merchant_id ? null : m)}>View Details</ContextMenuItem>
                       <ContextMenuItem onClick={() => { setCheckoutMerchant(m); setCheckoutOpen(true) }}>Create Checkout Link</ContextMenuItem>
                     </ContextMenuContent>
                   </ContextMenu>
@@ -314,11 +332,11 @@ export default function MerchantsPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Volume</p>
-                <p className="text-sm font-medium">{selectedMerchant.totalVolume}</p>
+                <p className="text-sm font-medium">{formatVolume(selectedMerchant.total_volume)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Transactions</p>
-                <p className="text-sm">{selectedMerchant.transactionCount}</p>
+                <p className="text-sm">{formatCount(selectedMerchant.transaction_count)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Chains Supported</p>
@@ -330,7 +348,7 @@ export default function MerchantsPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Added Date</p>
-                <p className="text-sm">{selectedMerchant.addedDate}</p>
+                <p className="text-sm">{formatDate(selectedMerchant.created_at)}</p>
               </div>
             </div>
           </CardContent>

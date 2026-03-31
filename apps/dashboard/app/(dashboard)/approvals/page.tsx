@@ -34,47 +34,21 @@ import {
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type ApprovalStatus = "pending" | "approved" | "rejected"
 
 type Approval = {
   id: string
-  type: "Payment" | "Agent" | "Config" | "Access"
+  type: string
   description: string
   requestedBy: string
   amount: string
-  riskLevel: "low" | "medium" | "high"
+  riskLevel: string
   submittedAt: string
   status: ApprovalStatus
   resolvedBy?: string
 }
-
-const initialApprovals: Approval[] = [
-  { id: "APR-001", type: "Payment", description: "Large payment to new vendor — Acme Corp", requestedBy: "Sarah Chen", amount: "$45,000", riskLevel: "high", submittedAt: "10 min ago", status: "pending" },
-  { id: "APR-002", type: "Agent", description: "Register new payment routing agent", requestedBy: "Mike Torres", amount: "—", riskLevel: "medium", submittedAt: "34 min ago", status: "pending" },
-  { id: "APR-003", type: "Config", description: "Increase daily mandate limit to $50k", requestedBy: "Alex Kim", amount: "$50,000", riskLevel: "high", submittedAt: "1 hr ago", status: "pending" },
-  { id: "APR-004", type: "Payment", description: "Recurring subscription — Cloud Services Inc", requestedBy: "Sarah Chen", amount: "$2,400", riskLevel: "low", submittedAt: "2 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-005", type: "Access", description: "API key generation for staging environment", requestedBy: "Dev Team", amount: "—", riskLevel: "low", submittedAt: "3 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-006", type: "Payment", description: "Cross-chain bridge transfer to Arbitrum", requestedBy: "Mike Torres", amount: "$8,200", riskLevel: "medium", submittedAt: "3 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-007", type: "Config", description: "Modify geo-blocking rules for EU region", requestedBy: "Compliance Team", amount: "—", riskLevel: "medium", submittedAt: "4 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-008", type: "Agent", description: "Activate yield optimizer in production", requestedBy: "Alex Kim", amount: "—", riskLevel: "high", submittedAt: "5 hrs ago", status: "rejected", resolvedBy: "Admin" },
-  { id: "APR-009", type: "Payment", description: "Bulk payout to 15 contractors", requestedBy: "HR System", amount: "$32,500", riskLevel: "medium", submittedAt: "5 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-010", type: "Access", description: "Grant admin access to new team member", requestedBy: "Sarah Chen", amount: "—", riskLevel: "high", submittedAt: "6 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-011", type: "Payment", description: "Refund request — duplicate transaction", requestedBy: "Support", amount: "$1,200", riskLevel: "low", submittedAt: "6 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-012", type: "Config", description: "Disable rate limiting for load test", requestedBy: "Dev Team", amount: "—", riskLevel: "high", submittedAt: "7 hrs ago", status: "rejected", resolvedBy: "Admin" },
-  { id: "APR-013", type: "Payment", description: "Monthly infrastructure payment — AWS", requestedBy: "Treasury Bot", amount: "$18,700", riskLevel: "low", submittedAt: "8 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-014", type: "Agent", description: "Deploy updated expense tracker agent", requestedBy: "Mike Torres", amount: "—", riskLevel: "low", submittedAt: "9 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-015", type: "Payment", description: "One-time bonus distribution", requestedBy: "HR System", amount: "$24,000", riskLevel: "medium", submittedAt: "10 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-016", type: "Access", description: "Revoke API access for departed employee", requestedBy: "Security Team", amount: "—", riskLevel: "low", submittedAt: "12 hrs ago", status: "approved", resolvedBy: "Admin" },
-  { id: "APR-017", type: "Config", description: "Update webhook endpoints for notifications", requestedBy: "Dev Team", amount: "—", riskLevel: "low", submittedAt: "14 hrs ago", status: "approved", resolvedBy: "Admin" },
-]
-
-const stats = [
-  { label: "Pending", value: "3", icon: Hourglass },
-  { label: "Approved Today", value: "12", icon: CheckCircle },
-  { label: "Rejected Today", value: "2", icon: XCircle },
-  { label: "Avg Response Time", value: "12m", icon: Timer },
-]
 
 const typeVariant: Record<Approval["type"], "default" | "secondary" | "outline" | "destructive"> = {
   Payment: "default",
@@ -90,8 +64,25 @@ const riskColor: Record<Approval["riskLevel"], string> = {
 }
 
 export default function ApprovalsPage() {
+  const { data: remoteApprovals, loading } = useSardis<Approval[]>("api/v2/approvals")
   const [tab, setTab] = useState("pending")
-  const [approvals, setApprovals] = useState<Approval[]>(initialApprovals)
+  const [approvals, setApprovals] = useState<Approval[]>([])
+
+  // Sync remote data when it arrives
+  if (remoteApprovals && remoteApprovals.length > 0 && approvals.length === 0) {
+    setApprovals(remoteApprovals)
+  }
+
+  const pendingCount = approvals.filter(a => a.status === "pending").length
+  const approvedCount = approvals.filter(a => a.status === "approved").length
+  const rejectedCount = approvals.filter(a => a.status === "rejected").length
+
+  const stats = [
+    { label: "Pending", value: String(pendingCount), icon: Hourglass },
+    { label: "Approved", value: String(approvedCount), icon: CheckCircle },
+    { label: "Rejected", value: String(rejectedCount), icon: XCircle },
+    { label: "Total", value: String(approvals.length), icon: Timer },
+  ]
 
   const filtered = tab === "all"
     ? approvals
@@ -130,7 +121,7 @@ export default function ApprovalsPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-lg font-semibold tracking-tight tabular-nums">{s.value}</p>
+                  <p className="text-lg font-semibold tracking-tight tabular-nums">{loading ? "—" : s.value}</p>
                 </div>
               </CardContent>
             </Card>

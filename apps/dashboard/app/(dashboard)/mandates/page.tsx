@@ -42,6 +42,7 @@ import {
   ChartBar,
   Gauge,
   Plus,
+  Spinner,
 } from "@phosphor-icons/react"
 import {
   ContextMenu,
@@ -52,54 +53,39 @@ import {
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Mandate = {
-  id: string
+  mandate_id: string
   name: string
-  agent: string
-  limit: string
-  used: string
-  usedPct: number
-  remaining: string
-  period: "Daily" | "Weekly" | "Monthly"
-  status: "active" | "exhausted" | "paused"
-  created: string
+  agent_id: string
+  limit_amount: string
+  used_amount: string
+  remaining_amount: string
+  period: string
+  status: string
+  created_at: string
 }
 
-const initialMandates: Mandate[] = [
-  { id: "1", name: "Vendor Payments", agent: "Vendor Pay Agent", limit: "$10,000", used: "$4,200", usedPct: 42, remaining: "$5,800", period: "Daily", status: "active", created: "Jan 15, 2026" },
-  { id: "2", name: "Cloud Infrastructure", agent: "Expense Tracker v2", limit: "$25,000", used: "$18,350", usedPct: 73, remaining: "$6,650", period: "Weekly", status: "active", created: "Feb 02, 2026" },
-  { id: "3", name: "Treasury Operations", agent: "Treasury Sweep Bot", limit: "$100,000", used: "$67,200", usedPct: 67, remaining: "$32,800", period: "Monthly", status: "active", created: "Dec 10, 2025" },
-  { id: "4", name: "Employee Payroll", agent: "Payroll Distributor", limit: "$200,000", used: "$54,100", usedPct: 27, remaining: "$145,900", period: "Monthly", status: "active", created: "Nov 20, 2025" },
-  { id: "5", name: "Gas Fee Budget", agent: "Gas Optimizer v3", limit: "$2,000", used: "$1,850", usedPct: 93, remaining: "$150", period: "Daily", status: "active", created: "Mar 01, 2026" },
-  { id: "6", name: "Bridge Transfers", agent: "Cross-chain Bridge", limit: "$50,000", used: "$31,600", usedPct: 63, remaining: "$18,400", period: "Weekly", status: "active", created: "Jan 28, 2026" },
-  { id: "7", name: "SaaS Subscriptions", agent: "Subscription Manager", limit: "$15,000", used: "$8,920", usedPct: 59, remaining: "$6,080", period: "Monthly", status: "paused", created: "Feb 14, 2026" },
-  { id: "8", name: "Invoice Settlement", agent: "Invoice Settler", limit: "$20,000", used: "$20,000", usedPct: 100, remaining: "$0", period: "Weekly", status: "exhausted", created: "Feb 22, 2026" },
-  { id: "9", name: "Yield Operations", agent: "Yield Harvester", limit: "$8,000", used: "$3,250", usedPct: 41, remaining: "$4,750", period: "Daily", status: "active", created: "Mar 10, 2026" },
-  { id: "10", name: "Contractor Payments", agent: "Payroll Distributor", limit: "$70,000", used: "$12,150", usedPct: 17, remaining: "$57,850", period: "Monthly", status: "active", created: "Mar 05, 2026" },
-]
-
-const stats = [
-  { label: "Active Mandates", value: "18", icon: ShieldCheck },
-  { label: "Total Limit", value: "$500,000", icon: CurrencyDollar },
-  { label: "Used This Month", value: "$148,000", icon: ChartBar },
-  { label: "Utilization", value: "29.6%", icon: Gauge },
-]
-
-const statusConfig: Record<Mandate["status"], { color: string; label: string }> = {
+const statusConfig: Record<string, { color: string; label: string }> = {
   active: { color: "bg-success", label: "Active" },
   exhausted: { color: "bg-destructive", label: "Exhausted" },
   paused: { color: "bg-warning", label: "Paused" },
 }
 
 const periodVariant: Record<string, "outline"> = {
+  daily: "outline",
+  weekly: "outline",
+  monthly: "outline",
   Daily: "outline",
   Weekly: "outline",
   Monthly: "outline",
 }
 
 export default function MandatesPage() {
-  const [mandates, setMandates] = useState<Mandate[]>(initialMandates)
+  const { data: remoteMandates, loading } = useSardis<Mandate[]>("api/v2/spending-mandates")
+  const mandates = remoteMandates ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
 
   // Form state
@@ -107,6 +93,25 @@ export default function MandatesPage() {
   const [perTxLimit, setPerTxLimit] = useState("")
   const [dailyLimit, setDailyLimit] = useState("")
   const [approvalMode, setApprovalMode] = useState<string>("auto")
+
+  // Compute stats dynamically
+  const activeCount = mandates.filter((m) => m.status === "active").length
+  const totalLimit = mandates.reduce(
+    (sum, m) => sum + (parseFloat(m.limit_amount) || 0),
+    0,
+  )
+  const totalUsed = mandates.reduce(
+    (sum, m) => sum + (parseFloat(m.used_amount) || 0),
+    0,
+  )
+  const utilization = totalLimit > 0 ? ((totalUsed / totalLimit) * 100).toFixed(1) : "0.0"
+
+  const stats = [
+    { label: "Active Mandates", value: String(activeCount), icon: ShieldCheck },
+    { label: "Total Limit", value: `$${totalLimit.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, icon: CurrencyDollar },
+    { label: "Used This Period", value: `$${totalUsed.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, icon: ChartBar },
+    { label: "Utilization", value: `${utilization}%`, icon: Gauge },
+  ]
 
   function resetForm() {
     setPurpose("")
@@ -117,38 +122,48 @@ export default function MandatesPage() {
 
   function handleCreate() {
     if (!purpose.trim()) return
-    const limitVal = dailyLimit || perTxLimit || "$0"
-    const newMandate: Mandate = {
-      id: crypto.randomUUID(),
-      name: purpose.trim(),
-      agent: "Unassigned",
-      limit: `$${Number(limitVal.replace(/[^0-9.]/g, "") || 0).toLocaleString()}`,
-      used: "$0",
-      usedPct: 0,
-      remaining: `$${Number(limitVal.replace(/[^0-9.]/g, "") || 0).toLocaleString()}`,
-      period: "Daily",
-      status: "active",
-      created: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-    }
-    setMandates((prev) => [...prev, newMandate])
+    // TODO: POST to API to create mandate
     setDialogOpen(false)
     resetForm()
     toast.success("Mandate created")
   }
 
   function handleActivate(id: string) {
-    setMandates((prev) => prev.map((m) => m.id === id ? { ...m, status: "active" as const } : m))
+    // TODO: PATCH to API
     toast.success("Mandate activated")
   }
 
   function handleSuspend(id: string) {
-    setMandates((prev) => prev.map((m) => m.id === id ? { ...m, status: "paused" as const } : m))
+    // TODO: PATCH to API
     toast.success("Mandate suspended")
   }
 
   function handleRevoke(id: string) {
-    setMandates((prev) => prev.filter((m) => m.id !== id))
+    // TODO: DELETE to API
     toast.success("Mandate revoked")
+  }
+
+  function formatCurrency(val: string) {
+    const n = parseFloat(val)
+    if (isNaN(n)) return "$0.00"
+    return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+  }
+
+  function computeUsedPct(m: Mandate) {
+    const limit = parseFloat(m.limit_amount) || 0
+    const used = parseFloat(m.used_amount) || 0
+    return limit > 0 ? Math.round((used / limit) * 100) : 0
+  }
+
+  function formatPeriod(p: string) {
+    return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+  }
+
+  function formatDate(d: string) {
+    if (!d) return "—"
+    const date = new Date(d)
+    if (isNaN(date.getTime())) return d
+    return date.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
   }
 
   return (
@@ -169,7 +184,7 @@ export default function MandatesPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-lg font-semibold tracking-tight tabular-nums">{s.value}</p>
+                  <p className="text-lg font-semibold tracking-tight tabular-nums">{loading ? "—" : s.value}</p>
                 </div>
               </CardContent>
             </Card>
@@ -188,7 +203,11 @@ export default function MandatesPage() {
           </CardAction>
         </CardHeader>
         <CardContent className="px-0">
-          {mandates.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : mandates.length === 0 ? (
             <EmptyState
               icon={ShieldCheck}
               title="No mandates"
@@ -210,22 +229,24 @@ export default function MandatesPage() {
             </TableHeader>
             <TableBody>
               {mandates.map((m) => {
-                const st = statusConfig[m.status]
+                const st = statusConfig[m.status] ?? { color: "bg-muted", label: m.status }
+                const usedPct = computeUsedPct(m)
+                const period = formatPeriod(m.period)
                 return (
-                  <ContextMenu key={m.id}>
+                  <ContextMenu key={m.mandate_id}>
                     <ContextMenuTrigger render={<TableRow />}>
                       <TableCell className="pl-4 font-medium">{m.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{m.agent}</TableCell>
-                      <TableCell className="text-right tabular-nums">{m.limit}</TableCell>
+                      <TableCell className="text-muted-foreground">{m.agent_id}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(m.limit_amount)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Progress value={m.usedPct} className="h-1.5 w-16 [&_[data-slot=progress-track]]:h-1.5" />
-                          <span className="text-xs text-muted-foreground">{m.used}</span>
+                          <Progress value={usedPct} className="h-1.5 w-16 [&_[data-slot=progress-track]]:h-1.5" />
+                          <span className="text-xs text-muted-foreground">{formatCurrency(m.used_amount)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{m.remaining}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatCurrency(m.remaining_amount)}</TableCell>
                       <TableCell>
-                        <Badge variant={periodVariant[m.period]}>{m.period}</Badge>
+                        <Badge variant={periodVariant[m.period] ?? "outline"}>{period}</Badge>
                       </TableCell>
                       <TableCell>
                         <span className="inline-flex items-center gap-1.5">
@@ -233,16 +254,16 @@ export default function MandatesPage() {
                           {st.label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{m.created}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(m.created_at)}</TableCell>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
-                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(m.name); toast.success("Copied to clipboard") }}>
+                      <ContextMenuItem onClick={() => { navigator.clipboard.writeText(m.mandate_id); toast.success("Copied to clipboard") }}>
                         Copy ID
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem disabled={m.status === "active"} onClick={() => handleActivate(m.id)}>Activate</ContextMenuItem>
-                      <ContextMenuItem disabled={m.status === "paused"} onClick={() => handleSuspend(m.id)}>Suspend</ContextMenuItem>
-                      <ContextMenuItem variant="destructive" onClick={() => handleRevoke(m.id)}>Revoke</ContextMenuItem>
+                      <ContextMenuItem disabled={m.status === "active"} onClick={() => handleActivate(m.mandate_id)}>Activate</ContextMenuItem>
+                      <ContextMenuItem disabled={m.status === "paused"} onClick={() => handleSuspend(m.mandate_id)}>Suspend</ContextMenuItem>
+                      <ContextMenuItem variant="destructive" onClick={() => handleRevoke(m.mandate_id)}>Revoke</ContextMenuItem>
                       <ContextMenuSeparator />
                       <ContextMenuItem>Expand</ContextMenuItem>
                     </ContextMenuContent>

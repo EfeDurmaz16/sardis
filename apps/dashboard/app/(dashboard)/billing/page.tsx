@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Card,
   CardContent,
@@ -34,40 +34,82 @@ import {
   CurrencyDollar,
   CreditCard,
   FileText,
+  Spinner,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/empty-state"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Invoice = {
+  id: string
   date: string
   description: string
-  amount: string
-  status: "Paid" | "Pending"
+  amount: number | string
+  status: string
+  download_url?: string | null
 }
 
-const invoices: Invoice[] = [
-  { date: "Mar 1, 2026", description: "Pro Plan - Monthly", amount: "$299.00", status: "Paid" },
-  { date: "Feb 1, 2026", description: "Pro Plan - Monthly", amount: "$299.00", status: "Paid" },
-  { date: "Jan 1, 2026", description: "Pro Plan - Monthly", amount: "$299.00", status: "Paid" },
-  { date: "Dec 1, 2025", description: "Pro Plan - Monthly", amount: "$299.00", status: "Paid" },
-  { date: "Nov 1, 2025", description: "Pro Plan - Monthly + Overage", amount: "$347.50", status: "Paid" },
-]
+type BillingPlan = {
+  name: string
+  price: number
+  interval: string
+  next_billing_date: string | null
+  payment_method?: {
+    brand: string
+    last4: string
+    exp_month: number
+    exp_year: number
+  } | null
+  usage?: {
+    label: string
+    used: number
+    limit: number
+  }[]
+}
 
-const usage = [
-  { label: "API Calls", used: "12,847", limit: "50,000", percent: 26 },
-  { label: "Agents", used: "24", limit: "50", percent: 48 },
-  { label: "Storage", used: "2.1 GB", limit: "10 GB", percent: 21 },
-]
+function formatCurrency(value: number | string): string {
+  const num = typeof value === "string" ? parseFloat(value) : value
+  if (!Number.isFinite(num)) return "$0.00"
+  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 export default function BillingPage() {
+  const { data: invoices, loading: invoicesLoading } = useSardis<Invoice[]>("api/v2/billing/invoices")
+  const { data: plan, loading: planLoading } = useSardis<BillingPlan>("api/v2/billing/plan")
+  const invoiceList = invoices ?? []
+
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [cardNumber, setCardNumber] = useState("**** **** **** 4242")
-  const [expiry, setExpiry] = useState("12/27")
+  const [cardNumber, setCardNumber] = useState("")
+  const [expiry, setExpiry] = useState("")
   const [cardName, setCardName] = useState("")
 
+  const loading = invoicesLoading || planLoading
+
+  // Compute usage percentages from plan data
+  const usageItems = useMemo(() => {
+    if (!plan?.usage) return []
+    return plan.usage.map((u) => ({
+      label: u.label,
+      used: u.used,
+      limit: u.limit,
+      percent: u.limit > 0 ? Math.round((u.used / u.limit) * 100) : 0,
+    }))
+  }, [plan])
+
   function handleUpdate() {
+    // TODO: POST to API to update payment method
     toast.success("Payment method updated")
     setDialogOpen(false)
+    setCardNumber("")
+    setExpiry("")
+    setCardName("")
   }
+
+  const planName = plan?.name ?? "Free"
+  const planPrice = plan?.price ?? 0
+  const planInterval = plan?.interval ?? "mo"
+  const paymentMethod = plan?.payment_method ?? null
+  const nextBilling = plan?.next_billing_date ?? null
 
   return (
     <div className="space-y-6">
@@ -78,6 +120,12 @@ export default function BillingPage() {
         </p>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+      <>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="border-b">
@@ -89,27 +137,37 @@ export default function BillingPage() {
           <CardContent className="space-y-4 pt-4">
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="text-lg font-semibold">Pro Plan</p>
-                <p className="text-sm text-muted-foreground">Billed monthly</p>
+                <p className="text-lg font-semibold">{planName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {planPrice > 0 ? `Billed ${planInterval === "year" ? "annually" : "monthly"}` : "No active subscription"}
+                </p>
               </div>
-              <p className="text-2xl font-bold tracking-tight tabular-nums">
-                $299<span className="text-sm font-normal text-muted-foreground">/mo</span>
-              </p>
+              {planPrice > 0 && (
+                <p className="text-2xl font-bold tracking-tight tabular-nums">
+                  {formatCurrency(planPrice)}
+                  <span className="text-sm font-normal text-muted-foreground">/{planInterval}</span>
+                </p>
+              )}
             </div>
-            <Separator />
-            <div className="space-y-3">
-              {usage.map((u) => (
-                <div key={u.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{u.label}</span>
-                    <span className="font-medium tabular-nums">
-                      {u.used} <span className="text-muted-foreground font-normal">/ {u.limit}</span>
-                    </span>
-                  </div>
-                  <Progress value={u.percent} />
+            {usageItems.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  {usageItems.map((u) => (
+                    <div key={u.label} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{u.label}</span>
+                        <span className="font-medium tabular-nums">
+                          {u.used.toLocaleString()}{" "}
+                          <span className="text-muted-foreground font-normal">/ {u.limit.toLocaleString()}</span>
+                        </span>
+                      </div>
+                      <Progress value={u.percent} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -121,23 +179,50 @@ export default function BillingPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            <div className="flex items-center gap-4 rounded-lg border p-4">
-              <div className="flex h-10 w-14 items-center justify-center rounded-md bg-muted">
-                <CreditCard className="h-5 w-5 text-muted-foreground" />
+            {paymentMethod ? (
+              <div className="flex items-center gap-4 rounded-lg border p-4">
+                <div className="flex h-10 w-14 items-center justify-center rounded-md bg-muted">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">
+                    {paymentMethod.brand} ending in {paymentMethod.last4}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Expires {String(paymentMethod.exp_month).padStart(2, "0")}/{String(paymentMethod.exp_year).slice(-2)}
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+                  Update
+                </Button>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Visa ending in 4242</p>
-                <p className="text-xs text-muted-foreground">Expires 12/27</p>
+            ) : (
+              <div className="flex items-center gap-4 rounded-lg border border-dashed p-4">
+                <div className="flex h-10 w-14 items-center justify-center rounded-md bg-muted">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-muted-foreground">No payment method on file</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+                  Add
+                </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-                Update
-              </Button>
-            </div>
-            <div className="rounded-lg border border-dashed p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                Next billing date: <span className="font-medium text-foreground">April 1, 2026</span>
-              </p>
-            </div>
+            )}
+            {nextBilling ? (
+              <div className="rounded-lg border border-dashed p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Next billing date:{" "}
+                  <span className="font-medium text-foreground">
+                    {new Date(nextBilling).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </p>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -194,6 +279,13 @@ export default function BillingPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-0">
+          {invoiceList.length === 0 ? (
+            <EmptyState
+              icon={FileText}
+              title="No invoices"
+              description="Your billing history will appear here once you have an active subscription"
+            />
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -205,27 +297,47 @@ export default function BillingPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoices.map((inv, i) => (
-                <TableRow key={i}>
-                  <TableCell className="pl-4 text-muted-foreground">{inv.date}</TableCell>
+              {invoiceList.map((inv) => (
+                <TableRow key={inv.id}>
+                  <TableCell className="pl-4 text-muted-foreground">
+                    {new Date(inv.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </TableCell>
                   <TableCell className="font-medium">{inv.description}</TableCell>
-                  <TableCell className="text-right tabular-nums">{inv.amount}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatCurrency(inv.amount)}
+                  </TableCell>
                   <TableCell>
-                    <Badge variant={inv.status === "Paid" ? "success" : "warning"}>
+                    <Badge variant={inv.status.toLowerCase() === "paid" ? "success" : "warning"}>
                       {inv.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" className="text-xs">
-                      Download
-                    </Button>
+                    {inv.download_url ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => window.open(inv.download_url!, "_blank")}
+                      >
+                        Download
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">--</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   )
 }
