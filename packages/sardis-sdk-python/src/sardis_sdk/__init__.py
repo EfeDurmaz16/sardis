@@ -58,6 +58,14 @@ from .client import (
     TokenInfo,
 )
 
+# Telemetry
+from .telemetry import (
+    AsyncSardisTelemetry,
+    SardisTelemetry,
+    TelemetryConfig,
+    TelemetryEvent,
+)
+
 # Models
 from .models.agent import Agent, AgentCreate, AgentUpdate, CreateAgentRequest
 from .models.base import (
@@ -324,6 +332,11 @@ __all__ = [
     "SyncAccountHolderRequest",
     "SyncBulkExecutor",
     "SyncPaginator",
+    # Telemetry
+    "TelemetryConfig",
+    "TelemetryEvent",
+    "SardisTelemetry",
+    "AsyncSardisTelemetry",
     "TimeoutConfig",
     "TimeoutError",
     "Token",

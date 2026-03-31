@@ -12,6 +12,12 @@ def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     client = SardisClient(api_key=key)
+    # Auto-register with telemetry if available
+    try:
+        from sardis.telemetry import ensure_registered_sync
+        ensure_registered_sync(client, framework="crewai")
+    except Exception:
+        pass  # Telemetry is optional
     return client, wid
 
 

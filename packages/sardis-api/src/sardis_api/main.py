@@ -96,6 +96,9 @@ from .routers import a2a_payments as a2a_payments_router
 from .routers import acp as acp_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
+from .routers import agent_activity as agent_activity_router
+from .routers import agent_events as agent_events_router
+from .routers import agent_heartbeat as agent_heartbeat_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
@@ -108,6 +111,7 @@ from .routers import audit_anchors as audit_anchors_router
 # Protocol v1.0 routers
 from .routers import batch_payments as batch_payments_router
 from .routers import billing as billing_router
+from .routers import bridge as bridge_router
 from .routers import cards as cards_router
 from .routers import checkout as checkout_router
 from .routers import checkout_controls as checkout_controls_router
@@ -423,6 +427,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("Usage metering middleware loaded (billing disabled — no-op until SARDIS_BILLING_BILLING_ENABLED=true)")
 
+    # 6d. Activity logger middleware (agent sync Layer 1 — fire-and-forget)
+    from .middleware.activity_logger import ActivityLoggerMiddleware
+    app.add_middleware(ActivityLoggerMiddleware)
+    logger.info("Activity logger middleware enabled")
+
     # 7. CORS middleware with settings-based origins
     app.add_middleware(
         CORSMiddleware,
@@ -440,6 +449,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             "Signature",
             "TAP-Version",
             "PAYMENT-SIGNATURE",
+            "X-Sardis-Agent-Id",
+            "X-Sardis-Session-Id",
         ],
         expose_headers=[
             "X-Request-ID",
@@ -961,6 +972,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         circle_nanopayments_client=circle_gateway_nanopayments_client,
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+    # Cross-chain bridge router
+    app.dependency_overrides[bridge_router.get_deps] = lambda: bridge_router.BridgeDependencies(
+        wallet_repo=wallet_repo,
+        chain_executor=chain_exec,
+    )
+    app.include_router(bridge_router.router, prefix="/api/v2/bridge", tags=["bridge"])
+    logger.info("Bridge router registered at /api/v2/bridge")
 
     # x402 facilitator router (feature-flag gated)
     if settings.x402.facilitator_enabled:
@@ -1811,6 +1830,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         wallet_manager=wallet_mgr,
     )
     app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
+    app.include_router(agent_activity_router.router, prefix="/api/v2/agents", tags=["agent-activity"])
+
+    app.dependency_overrides[agent_heartbeat_router.get_deps] = lambda: agent_heartbeat_router.HeartbeatDependencies(
+        database_url=database_url,
+    )
+    app.include_router(agent_heartbeat_router.router, prefix="/api/v2/agents", tags=["agent-heartbeat"])
+
+    app.dependency_overrides[agent_events_router.get_deps] = lambda: agent_events_router.EventsDependencies(
+        database_url=database_url,
+    )
+    app.include_router(agent_events_router.router, prefix="/api/v2/agents", tags=["agent-events"])
 
     # FIDES identity & trust routes (feature-flag gated)
     if settings.fides.enabled:

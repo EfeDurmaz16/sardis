@@ -20,6 +20,9 @@ class DashboardMetrics(BaseModel):
     tx_count_total: int
     agent_count: int
     active_agents: int
+    online_agents: int = 0
+    api_calls_24h: int = 0
+    agent_events_24h: int = 0
     mandate_count: int
     active_sessions: int
     policy_pass_rate: float
@@ -48,6 +51,9 @@ async def get_dashboard_metrics(
     tx_24h = 0
     agent_count = 0
     active_agents = 0
+    online_agents = 0
+    api_calls_24h = 0
+    agent_events_24h = 0
     mandate_count = 0
     active_sessions = 0
     wallet_count = 0
@@ -112,6 +118,41 @@ async def get_dashboard_metrics(
                     principal.org_id,
                 ) or 0
 
+                # Online agents (last_seen_at within 2 minutes)
+                try:
+                    online_agents = await conn.fetchval(
+                        """SELECT COUNT(*) FROM agents a
+                        JOIN organizations o ON o.id = a.organization_id
+                        WHERE o.external_id = $1
+                          AND a.is_active = TRUE
+                          AND a.last_seen_at > NOW() - INTERVAL '2 minutes'""",
+                        principal.org_id,
+                    ) or 0
+                except Exception:
+                    pass  # Column may not exist yet
+
+                # API calls in last 24h (from activity log)
+                try:
+                    api_calls_24h = await conn.fetchval(
+                        """SELECT COUNT(*) FROM api_activity_log
+                        WHERE org_id = $1
+                          AND created_at > NOW() - INTERVAL '24 hours'""",
+                        principal.org_id,
+                    ) or 0
+                except Exception:
+                    pass  # Table may not exist yet
+
+                # Agent events in last 24h
+                try:
+                    agent_events_24h = await conn.fetchval(
+                        """SELECT COUNT(*) FROM agent_events
+                        WHERE org_id = $1
+                          AND created_at > NOW() - INTERVAL '24 hours'""",
+                        principal.org_id,
+                    ) or 0
+                except Exception:
+                    pass  # Table may not exist yet
+
     except Exception as e:
         logger.warning("Dashboard metrics query failed: %s", e)
 
@@ -130,6 +171,9 @@ async def get_dashboard_metrics(
         tx_count_total=tx_total,
         agent_count=agent_count,
         active_agents=active_agents,
+        online_agents=online_agents,
+        api_calls_24h=api_calls_24h,
+        agent_events_24h=agent_events_24h,
         mandate_count=mandate_count,
         active_sessions=active_sessions,
         policy_pass_rate=policy_pass_rate,

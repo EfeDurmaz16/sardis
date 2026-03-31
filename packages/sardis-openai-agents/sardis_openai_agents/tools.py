@@ -31,6 +31,12 @@ def _ensure_client():
     global _default_client, _default_wallet_id
     if _default_client is None:
         _default_client, _default_wallet_id = _get_client()
+        # Auto-register with telemetry if available
+        try:
+            from sardis.telemetry import ensure_registered_sync
+            ensure_registered_sync(_default_client, framework="openai-agents")
+        except Exception:
+            pass  # Telemetry is optional
     return _default_client, _default_wallet_id
 
 

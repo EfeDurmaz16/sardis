@@ -104,6 +104,17 @@ export interface SardisClientOptions {
 
   /** Token refresh configuration for automatic token renewal */
   tokenRefresh?: TokenRefreshConfig;
+
+  /**
+   * Telemetry configuration. Controls agent auto-registration, heartbeat,
+   * and event batching to the Sardis dashboard.
+   *
+   * - `true` — enable with defaults
+   * - `false` — disable
+   * - `TelemetryConfig` — enable with custom settings
+   * - `undefined` — enable with defaults (opt-out via SARDIS_TELEMETRY_ENABLED=false)
+   */
+  telemetry?: TelemetryConfig | boolean;
 }
 
 /**
@@ -123,6 +134,49 @@ export interface SardisClientOptions {
 export interface TokenRefreshConfig {
   /** Function to refresh the authentication token */
   refreshToken: () => Promise<string>;
+}
+
+/**
+ * Telemetry configuration for agent-to-dashboard sync.
+ *
+ * All fields are optional — sensible defaults are used and can be
+ * overridden via environment variables (SARDIS_AGENT_ID, etc.).
+ */
+export interface TelemetryConfig {
+  /** Enable or disable telemetry (default: true, env: SARDIS_TELEMETRY_ENABLED) */
+  enabled?: boolean;
+
+  /** Agent identifier (default: auto-generated, env: SARDIS_AGENT_ID) */
+  agentId?: string;
+
+  /** Agent display name (default: "unnamed-agent", env: SARDIS_AGENT_NAME) */
+  agentName?: string;
+
+  /** Framework name (e.g., "openai-agents", "crewai") */
+  framework?: string;
+
+  /** Heartbeat interval in seconds (default: 60, env: SARDIS_HEARTBEAT_INTERVAL) */
+  heartbeatInterval?: number;
+
+  /** Batch flush interval in seconds (default: 10, env: SARDIS_BATCH_INTERVAL) */
+  batchInterval?: number;
+
+  /** Max events per flush (default: 10, env: SARDIS_BATCH_SIZE) */
+  batchSize?: number;
+}
+
+/**
+ * A telemetry event queued for batch delivery.
+ */
+export interface TelemetryEvent {
+  /** Event type (e.g., "tool_call", "payment", "error") */
+  event_type: string;
+
+  /** Arbitrary event payload */
+  event_data: Record<string, unknown>;
+
+  /** ISO-8601 timestamp from the SDK */
+  sdk_timestamp: string;
 }
 
 /**

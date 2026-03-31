@@ -56,7 +56,9 @@ import type {
   PaginatedResponse,
   PaginationParams,
   TokenRefreshConfig,
+  TelemetryConfig,
 } from './types.js';
+import { SardisTelemetry } from './telemetry.js';
 
 /** Default API base URL */
 const DEFAULT_BASE_URL = 'https://api.sardis.sh';
@@ -176,6 +178,9 @@ export class SardisClient {
 
   /** @internal Request timeout in milliseconds */
   private timeout: number;
+
+  /** @internal Telemetry module for agent-to-dashboard sync */
+  private telemetry: SardisTelemetry | null = null;
 
   /**
    * Payment operations - execute mandates and AP2 payment bundles.
@@ -395,6 +400,88 @@ export class SardisClient {
     this.subscriptions = new SubscriptionsV2Resource(this);
     this.escrow = new EscrowResource(this);
     this.checkout = new CheckoutResource(this);
+
+    // Initialize telemetry
+    this.initTelemetry(options.telemetry);
+  }
+
+  /**
+   * Initializes telemetry based on configuration.
+   * @internal
+   */
+  private initTelemetry(config: TelemetryConfig | boolean | undefined): void {
+    try {
+      // false explicitly disables telemetry
+      if (config === false) return;
+
+      const telemetryConfig: TelemetryConfig | undefined =
+        config === true ? {} : config;
+
+      this.telemetry = new SardisTelemetry(telemetryConfig);
+
+      if (!this.telemetry.isEnabled()) {
+        this.telemetry = null;
+        return;
+      }
+
+      // Create a bound request function for telemetry to use
+      const requestFn = <T>(method: string, path: string, options?: { data?: unknown }) =>
+        this.request<T>(method, path, options);
+
+      // Auto-register (fire-and-forget)
+      this.telemetry.ensureRegistered(requestFn).catch(() => {});
+
+      // Start heartbeat + flush timers
+      this.telemetry.startHeartbeat(requestFn);
+
+      // Add request interceptor to merge telemetry headers
+      const telemetry = this.telemetry;
+      this.addRequestInterceptor({
+        onRequest: (reqConfig) => {
+          const headers = telemetry.getHeaders();
+          if (reqConfig.headers) {
+            Object.assign(reqConfig.headers, headers);
+          } else {
+            reqConfig.headers = headers;
+          }
+          return reqConfig;
+        },
+      });
+    } catch {
+      // Telemetry init failure never blocks client creation
+      this.telemetry = null;
+    }
+  }
+
+  /**
+   * Shuts down telemetry, flushing remaining events and stopping timers.
+   * Call this when the client is no longer needed.
+   *
+   * @example
+   * ```typescript
+   * const client = new SardisClient({ apiKey: 'sk_...' });
+   * // ... use client ...
+   * await client.destroy();
+   * ```
+   */
+  async destroy(): Promise<void> {
+    if (this.telemetry) {
+      const requestFn = <T>(method: string, path: string, options?: { data?: unknown }) =>
+        this.request<T>(method, path, options);
+      await this.telemetry.shutdown(requestFn);
+      this.telemetry = null;
+    }
+  }
+
+  /**
+   * Track a telemetry event. Events are buffered and flushed periodically.
+   * No-op if telemetry is disabled.
+   *
+   * @param eventType - The type of event (e.g., 'tool_call', 'payment', 'error')
+   * @param data - Arbitrary event data
+   */
+  trackEvent(eventType: string, data?: Record<string, unknown>): void {
+    this.telemetry?.track(eventType, data);
   }
 
   /**

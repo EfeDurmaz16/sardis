@@ -62,6 +62,7 @@ from .models.errors import (
     TimeoutError,
     ValidationError,
 )
+from .telemetry import AsyncSardisTelemetry, SardisTelemetry, TelemetryConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -374,6 +375,7 @@ class BaseClient:
         log_level: LogLevel = LogLevel.BASIC,
         token_refresh_callback: Callable[[], str] | None = None,
         default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
     ):
         """Initialize the base client.
 
@@ -386,6 +388,8 @@ class BaseClient:
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
         """
         if not api_key:
             raise ValueError("API key is required")
@@ -418,6 +422,14 @@ class BaseClient:
         self._token_refresh_callback = token_refresh_callback
         self._token_info: TokenInfo | None = None
 
+        # Configure telemetry
+        if telemetry is False:
+            self._telemetry_config: TelemetryConfig | None = None
+        elif telemetry is True or telemetry is None:
+            self._telemetry_config = TelemetryConfig.from_env()
+        else:
+            self._telemetry_config = telemetry
+
         # Default headers
         self._default_headers = {
             "X-API-Key": self._api_key,
@@ -434,6 +446,13 @@ class BaseClient:
     ) -> dict[str, str]:
         """Build headers for a request."""
         headers = self._default_headers.copy()
+
+        # Merge telemetry headers (agent_id, session_id)
+        try:
+            if hasattr(self, "_telemetry") and self._telemetry is not None:
+                headers.update(self._telemetry.get_headers())
+        except Exception:
+            pass
 
         if context:
             headers["X-Request-ID"] = context.request_id
@@ -582,6 +601,7 @@ class AsyncSardisClient(BaseClient):
         log_level: LogLevel = LogLevel.BASIC,
         token_refresh_callback: Callable[[], str] | None = None,
         default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
     ):
         """Initialize the async client.
 
@@ -594,6 +614,8 @@ class AsyncSardisClient(BaseClient):
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
         """
         super().__init__(
             api_key=api_key,
@@ -604,9 +626,20 @@ class AsyncSardisClient(BaseClient):
             log_level=log_level,
             token_refresh_callback=token_refresh_callback,
             default_headers=default_headers,
+            telemetry=telemetry,
         )
 
         self._client: httpx.AsyncClient | None = None
+
+        # Initialize async telemetry
+        self._telemetry: AsyncSardisTelemetry | None = None
+        if self._telemetry_config and self._telemetry_config.enabled:
+            self._telemetry = AsyncSardisTelemetry(
+                config=self._telemetry_config,
+                base_url=self._base_url,
+                api_key=self._api_key,
+                sdk_version=__version__,
+            )
 
         # Initialize resources lazily
         self._agents: AsyncAgentsResource | None = None
@@ -1061,7 +1094,14 @@ class AsyncSardisClient(BaseClient):
             self._client = None
 
     async def __aenter__(self) -> AsyncSardisClient:
-        """Async context manager entry."""
+        """Async context manager entry. Starts telemetry if enabled."""
+        if self._telemetry:
+            try:
+                await self._telemetry.ensure_registered()
+                await self._telemetry.start_heartbeat()
+                await self._telemetry.start_flush_timer()
+            except Exception:
+                logger.debug("Telemetry startup failed", exc_info=True)
         return self
 
     async def __aexit__(
@@ -1070,7 +1110,12 @@ class AsyncSardisClient(BaseClient):
         exc_val: BaseException | None,
         exc_tb: Any | None,
     ) -> None:
-        """Async context manager exit."""
+        """Async context manager exit. Shuts down telemetry."""
+        if self._telemetry:
+            try:
+                await self._telemetry.shutdown()
+            except Exception:
+                logger.debug("Telemetry shutdown failed", exc_info=True)
         await self.close()
 
 
@@ -1098,6 +1143,7 @@ class SardisClient(BaseClient):
         log_level: LogLevel = LogLevel.BASIC,
         token_refresh_callback: Callable[[], str] | None = None,
         default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
     ):
         """Initialize the sync client.
 
@@ -1110,6 +1156,8 @@ class SardisClient(BaseClient):
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
         """
         super().__init__(
             api_key=api_key,
@@ -1120,9 +1168,26 @@ class SardisClient(BaseClient):
             log_level=log_level,
             token_refresh_callback=token_refresh_callback,
             default_headers=default_headers,
+            telemetry=telemetry,
         )
 
         self._client: httpx.Client | None = None
+
+        # Initialize sync telemetry
+        self._telemetry: SardisTelemetry | None = None
+        if self._telemetry_config and self._telemetry_config.enabled:
+            self._telemetry = SardisTelemetry(
+                config=self._telemetry_config,
+                base_url=self._base_url,
+                api_key=self._api_key,
+                sdk_version=__version__,
+            )
+            try:
+                self._telemetry.ensure_registered()
+                self._telemetry.start_heartbeat()
+                self._telemetry.start_flush_timer()
+            except Exception:
+                logger.debug("Sync telemetry startup failed", exc_info=True)
 
         # Initialize resources lazily
         self._agents: AgentsResource | None = None
@@ -1572,6 +1637,11 @@ class SardisClient(BaseClient):
 
     def close(self) -> None:
         """Close the HTTP client and release resources."""
+        if self._telemetry:
+            try:
+                self._telemetry.shutdown()
+            except Exception:
+                logger.debug("Sync telemetry shutdown failed", exc_info=True)
         if self._client and not self._client.is_closed:
             self._client.close()
             self._client = None

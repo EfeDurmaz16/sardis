@@ -66,6 +66,9 @@
 // Main client
 export { SardisClient } from './client.js';
 
+// Telemetry
+export { SardisTelemetry } from './telemetry.js';
+
 // Errors
 export {
   // Error base class
@@ -103,6 +106,8 @@ export type {
   TokenRefreshConfig,
   PaginationParams,
   PaginatedResponse,
+  TelemetryConfig,
+  TelemetryEvent,
 } from './types.js';
 
 // Types - Common

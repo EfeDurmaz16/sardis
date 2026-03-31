@@ -61,6 +61,10 @@ from .usage_metering import (
     EXEMPT_PREFIXES,
     UsageMeteringMiddleware,
 )
+from .activity_logger import (
+    ACTIVITY_EXEMPT_PREFIXES,
+    ActivityLoggerMiddleware,
+)
 from .mpp_gate import (
     add_mpp_receipt_header,
     mpp_gate,
@@ -128,4 +132,7 @@ __all__ = [
     # MPP dual-access gate
     "mpp_gate",
     "add_mpp_receipt_header",
+    # Activity logger (agent sync Layer 1)
+    "ActivityLoggerMiddleware",
+    "ACTIVITY_EXEMPT_PREFIXES",
 ]

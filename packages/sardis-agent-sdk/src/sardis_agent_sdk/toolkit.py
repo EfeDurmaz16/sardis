@@ -75,6 +75,12 @@ class SardisToolkit:
         self.wallet_id = wallet_id
         self.read_only = read_only
         self.handler = SardisToolHandler(client=client, wallet_id=wallet_id)
+        # Auto-register with telemetry if available
+        try:
+            from sardis.telemetry import ensure_registered_sync
+            ensure_registered_sync(client, framework="claude-agent-sdk")
+        except Exception:
+            pass  # Telemetry is optional
 
     # ------------------------------------------------------------------
     # Tool definitions
