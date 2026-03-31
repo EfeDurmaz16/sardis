@@ -94,10 +94,30 @@ class AgentResponse(BaseModel):
     metadata: dict
     created_at: str
     updated_at: str
+    last_seen_at: str | None = None
+    online_status: str = "unknown"
+    session_id: str | None = None
+    framework: str | None = None
+    sdk_version: str | None = None
     next_steps: list[str] = []
 
     @classmethod
     def from_agent(cls, agent: Agent, next_steps: list[str] | None = None) -> AgentResponse:
+        # Compute online status from last_seen_at (online = seen within last 2 minutes)
+        last_seen = getattr(agent, "last_seen_at", None) or agent.metadata.get("last_seen_at")
+        online_status = "unknown"
+        last_seen_iso = None
+        if last_seen is not None:
+            if isinstance(last_seen, str):
+                try:
+                    last_seen = datetime.fromisoformat(last_seen)
+                except (ValueError, TypeError):
+                    last_seen = None
+            if last_seen is not None:
+                last_seen_iso = last_seen.isoformat()
+                age = datetime.now(UTC) - last_seen
+                online_status = "online" if age < timedelta(minutes=2) else "offline"
+
         return cls(
             agent_id=agent.agent_id,
             name=agent.name,
@@ -114,6 +134,11 @@ class AgentResponse(BaseModel):
             metadata=agent.metadata,
             created_at=agent.created_at.isoformat(),
             updated_at=agent.updated_at.isoformat(),
+            last_seen_at=last_seen_iso,
+            online_status=online_status,
+            session_id=getattr(agent, "session_id", None),
+            framework=getattr(agent, "framework", None),
+            sdk_version=getattr(agent, "sdk_version", None),
             next_steps=next_steps or [],
         )
 

@@ -158,14 +158,16 @@ async def optional_principal(
 
 
 def _set_chain_state(request: Request, principal: Principal) -> None:
-    """Propagate environment and default chain to ``request.state``.
+    """Propagate environment, chain, and principal to ``request.state``.
 
-    This allows ASGI middleware and other non-dependency code to inspect
-    the resolved chain/environment without requiring the ``Principal``
-    dependency directly.
+    This allows ASGI middleware (e.g. ActivityLoggerMiddleware) and other
+    non-dependency code to inspect the resolved principal without requiring
+    the ``Principal`` dependency directly.
     """
     request.state.environment = principal.environment
     request.state.default_chain = principal.default_chain
+    request.state.principal = principal
+    request.state.org_id = principal.organization_id
 
 
 async def require_admin_principal(
