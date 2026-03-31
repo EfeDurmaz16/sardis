@@ -51,8 +51,22 @@ class PolicyDependencies:
     agent_repo: AgentRepository
 
 
-def get_deps() -> PolicyDependencies:
-    raise NotImplementedError("Dependency override required")
+def get_deps(request: Request) -> PolicyDependencies:
+    policy_store = getattr(request.app.state, "policy_store", None)
+    agent_repo = getattr(request.app.state, "agent_repo", None)
+
+    if policy_store is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="policy_store_not_configured",
+        )
+    if agent_repo is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="agent_repository_not_configured",
+        )
+
+    return PolicyDependencies(policy_store=policy_store, agent_repo=agent_repo)
 
 
 # ============================================================================
