@@ -37,8 +37,9 @@ export interface PolicyCheckResult {
  * Calls the Sardis API `/api/v2/mpp/evaluate` endpoint to verify
  * the agent has sufficient mandate budget and the vendor is allowed.
  *
- * If the Sardis API is unreachable we fail-open to avoid blocking
- * legitimate traffic, but log the failure for investigation.
+ * If the Sardis API is unreachable while policy enforcement is enabled,
+ * we fail closed so production traffic is never allowed through without
+ * an authoritative Sardis policy decision.
  */
 export async function checkPolicy(
   request: PolicyCheckRequest,
@@ -76,10 +77,9 @@ export async function checkPolicy(
       console.error(
         `Sardis policy API error ${response.status}: ${body}`,
       );
-      // Fail-open: don't block payments if Sardis API is down
       return {
-        allowed: true,
-        reason: `Policy API returned ${response.status} — fail-open`,
+        allowed: false,
+        reason: `Policy API returned ${response.status}; payment blocked because policy enforcement is unavailable`,
       };
     }
 
@@ -101,10 +101,9 @@ export async function checkPolicy(
     };
   } catch (error) {
     console.error('Sardis policy check failed:', error);
-    // Fail-open on network errors
     return {
-      allowed: true,
-      reason: 'Policy check unreachable — fail-open',
+      allowed: false,
+      reason: 'Policy check unreachable; payment blocked because policy enforcement is unavailable',
     };
   }
 }

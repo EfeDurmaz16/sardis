@@ -112,12 +112,29 @@ export function createSardisTools(config: SardisToolsConfig = {}) {
 
         try {
           const wallet = await client.wallets.get(wid);
-          const limitPerTx = parseFloat(wallet.limit_per_tx || '0');
+          const agentId = wallet.agent_id;
+          if (!agentId) {
+            return {
+              success: false,
+              error: `Wallet ${wid} is not linked to an agent; cannot run canonical policy check`,
+            };
+          }
+
+          const result = await client.policies.check({
+            agent_id: agentId,
+            amount: amount.toString(),
+            currency: 'USD',
+            merchant_id: merchant,
+          });
+
           return {
-            allowed: amount <= limitPerTx,
-            message: amount <= limitPerTx
-              ? `$${amount} to ${merchant} would be allowed`
-              : `$${amount} exceeds per-tx limit of $${limitPerTx}`,
+            success: true,
+            allowed: result.allowed,
+            walletId: wid,
+            agentId,
+            policyId: result.policy_id,
+            message: result.reason,
+            reason: result.reason,
           };
         } catch (error: unknown) {
           return { success: false, error: error instanceof Error ? error.message : 'Failed' };

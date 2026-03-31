@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
 from sardis_api.authz import Principal, require_principal
@@ -192,15 +192,47 @@ async def tighten_scope(
 @router.post("/{credential_id}/rotate")
 async def rotate_credential(
     credential_id: str,
+    request: Request,
     cred_store=Depends(_get_credential_store),
 ):
-    """Rotate token (same authority, new token)."""
+    """Rotate token (same authority, new token) if the provider supports it."""
     cred = await cred_store.get(credential_id)
     if cred is None:
         raise HTTPException(404, "Credential not found")
-    # In production: call provider to issue new token
-    new_token = b"rotated_token_placeholder"
-    updated = await cred_store.rotate(credential_id, new_token)
+
+    adapter = getattr(request.app.state, "delegated_adapter", None)
+    rotate_impl = getattr(adapter, "rotate_credential", None)
+    if not callable(rotate_impl):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=(
+                "Credential rotation is unavailable: the configured delegated credential "
+                "provider does not implement real token rotation"
+            ),
+        )
+
+    encryption = getattr(request.app.state, "credential_encryption", None)
+    try:
+        new_token = await rotate_impl(cred, encryption=encryption)
+    except NotImplementedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=f"Credential rotation is unavailable: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Credential rotation failed for %s", credential_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Credential rotation failed: {exc}",
+        ) from exc
+
+    if not isinstance(new_token, (bytes, bytearray)) or not new_token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Credential rotation failed: provider did not return a new credential token",
+        )
+
+    updated = await cred_store.rotate(credential_id, bytes(new_token))
     return {"status": "rotated", "credential_id": updated.credential_id}
 
 

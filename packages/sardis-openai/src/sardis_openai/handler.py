@@ -8,9 +8,16 @@ from __future__ import annotations
 
 import json
 import logging
+from decimal import Decimal
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+async def _maybe_await(value: Any) -> Any:
+    if hasattr(value, "__await__"):
+        return await value
+    return value
 
 
 class SardisToolHandler:
@@ -50,6 +57,18 @@ class SardisToolHandler:
                 self._client = SardisClient(api_key=self._api_key)
         return self._client
 
+    async def _get_wallet(self, wallet_id: str) -> Any:
+        return await _maybe_await(self._get_client().wallets.get(wallet_id))
+
+    async def _resolve_agent_id_from_wallet(self, wallet_id: str) -> str:
+        wallet = await self._get_wallet(wallet_id)
+        agent_id = getattr(wallet, "agent_id", None)
+        if not agent_id:
+            raise ValueError(
+                f"Wallet {wallet_id} is not linked to an agent; cannot run canonical policy check"
+            )
+        return str(agent_id)
+
     async def handle(self, tool_call: Any) -> str:
         """Handle a single OpenAI tool call.
 
@@ -87,18 +106,23 @@ class SardisToolHandler:
         """Execute payment via Sardis."""
         client = self._get_client()
         wallet_id = args.get("wallet_id", self._default_wallet_id)
+        if not wallet_id:
+            return {"status": "failed", "error": "wallet_id is required"}
 
         try:
-            result = await client.payments.execute(
-                wallet_id=wallet_id,
-                to=args["to"],
-                amount=args["amount"],
-                token=args["token"],
-                purpose=args["purpose"],
+            result = await _maybe_await(
+                client.wallets.transfer(
+                    wallet_id,
+                    destination=args["to"],
+                    amount=Decimal(str(args["amount"])),
+                    token=args["token"],
+                    memo=args["purpose"],
+                )
             )
             return {
                 "status": "success",
                 "tx_hash": getattr(result, "tx_hash", None),
+                "chain": getattr(result, "chain", None),
                 "amount": args["amount"],
                 "token": args["token"],
                 "to": args["to"],
@@ -110,15 +134,17 @@ class SardisToolHandler:
         """Check wallet balance."""
         client = self._get_client()
         wallet_id = args.get("wallet_id", self._default_wallet_id)
+        if not wallet_id:
+            return {"error": "wallet_id is required"}
 
         try:
-            balance = await client.wallets.balance(wallet_id)
+            balance = await _maybe_await(client.wallets.get_balance(wallet_id))
             return {
                 "wallet_id": wallet_id,
-                "available": str(getattr(balance, "available", "0")),
+                "balance": str(getattr(balance, "balance", "0")),
                 "token": getattr(balance, "token", "USDC"),
-                "daily_spent": str(getattr(balance, "spent_daily", "0")),
-                "daily_remaining": str(getattr(balance, "daily_remaining", "0")),
+                "chain": getattr(balance, "chain", None),
+                "address": getattr(balance, "address", None),
             }
         except Exception as e:
             return {"error": str(e)}
@@ -127,17 +153,25 @@ class SardisToolHandler:
         """Dry-run policy check."""
         client = self._get_client()
         wallet_id = args.get("wallet_id", self._default_wallet_id)
+        if not wallet_id:
+            return {"allowed": False, "reason": "wallet_id is required"}
 
         try:
-            result = await client.policies.check(
-                wallet_id=wallet_id,
-                amount=args["amount"],
-                vendor=args.get("vendor"),
+            agent_id = await self._resolve_agent_id_from_wallet(wallet_id)
+            result = await _maybe_await(
+                client.policies.check(
+                    agent_id=agent_id,
+                    amount=Decimal(str(args["amount"])),
+                    currency="USD",
+                    merchant_id=args.get("vendor"),
+                )
             )
             return {
-                "allowed": getattr(result, "allowed", True),
+                "allowed": getattr(result, "allowed", False),
                 "reason": getattr(result, "reason", ""),
-                "rules_applied": getattr(result, "rules_applied", []),
+                "policy_id": getattr(result, "policy_id", None),
+                "wallet_id": wallet_id,
+                "agent_id": agent_id,
             }
         except Exception as e:
             return {"allowed": False, "reason": str(e)}
@@ -146,41 +180,52 @@ class SardisToolHandler:
         """Issue virtual card."""
         client = self._get_client()
         agent_id = args.get("agent_id", self._default_agent_id)
+        if not agent_id:
+            return {"status": "failed", "error": "agent_id is required"}
 
         try:
-            card = await client.cards.create(
-                agent_id=agent_id,
-                spending_limit=args["spending_limit"],
-                merchant_categories=args.get("merchant_categories", []),
+            agent = await _maybe_await(client.agents.get(agent_id))
+            wallet_id = getattr(agent, "wallet_id", None)
+            if not wallet_id:
+                return {
+                    "status": "failed",
+                    "error": f"Agent {agent_id} has no wallet_id; cannot issue a card",
+                }
+
+            card = await _maybe_await(
+                client.cards.issue(
+                    wallet_id=wallet_id,
+                    limit_per_tx=Decimal(str(args["spending_limit"])),
+                    limit_daily=Decimal(str(args["spending_limit"])),
+                    limit_monthly=Decimal(str(args["spending_limit"])),
+                )
             )
             return {
                 "status": "created",
-                "card_id": getattr(card, "card_id", None),
+                "card_id": getattr(card, "card_id", getattr(card, "id", None)),
                 "last_four": getattr(card, "last_four", "0000"),
                 "spending_limit": args["spending_limit"],
+                "warning": (
+                    "merchant_categories were requested but are not enforced by the current "
+                    "cards.issue SDK method"
+                    if args.get("merchant_categories")
+                    else None
+                ),
             }
         except Exception as e:
             return {"status": "failed", "error": str(e)}
 
     async def _handle_spending_summary(self, args: dict) -> dict:
         """Get spending analytics."""
-        client = self._get_client()
         agent_id = args.get("agent_id", self._default_agent_id)
-
-        try:
-            summary = await client.spending.summary(
-                agent_id=agent_id,
-                period=args["period"],
-            )
-            return {
-                "agent_id": agent_id,
-                "period": args["period"],
-                "total_spent": str(getattr(summary, "total", "0")),
-                "by_category": getattr(summary, "by_category", {}),
-                "by_vendor": getattr(summary, "by_vendor", {}),
-            }
-        except Exception as e:
-            return {"error": str(e)}
+        return {
+            "error": (
+                "Spending summary is unavailable: the current Sardis SDK does not expose "
+                "a spending.summary resource"
+            ),
+            "agent_id": agent_id,
+            "period": args.get("period"),
+        }
 
 
 async def handle_tool_call(

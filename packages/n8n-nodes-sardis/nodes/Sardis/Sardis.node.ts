@@ -173,25 +173,42 @@ export class Sardis implements INodeType {
           const amount = this.getNodeParameter('amount', i) as number;
           const merchant = this.getNodeParameter('merchant', i) as string;
 
-          const response = await this.helpers.request({
+          const walletResponse = await this.helpers.request({
             method: 'GET',
             url: `${baseUrl}/api/v2/wallets/${walletId}`,
             headers: { 'X-API-Key': apiKey },
           });
 
-          const wallet = typeof response === 'string' ? JSON.parse(response) : response;
-          const limitPerTx = parseFloat(wallet.limit_per_tx || '0');
-          const allowed = amount <= limitPerTx;
+          const wallet = typeof walletResponse === 'string' ? JSON.parse(walletResponse) : walletResponse;
+          const agentId = wallet.agent_id as string | undefined;
+          if (!agentId) {
+            throw new Error(`Wallet ${walletId} is not linked to an agent; cannot run canonical policy check`);
+          }
+
+          const response = await this.helpers.request({
+            method: 'POST',
+            url: `${baseUrl}/api/v2/policies/check`,
+            headers: { 'X-API-Key': apiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              agent_id: agentId,
+              amount: amount.toString(),
+              currency: 'USD',
+              merchant_id: merchant,
+            }),
+          });
+
+          const result = typeof response === 'string' ? JSON.parse(response) : response;
 
           returnData.push({
             json: {
-              allowed,
+              allowed: Boolean(result.allowed),
               amount,
               merchant,
-              limitPerTx,
-              message: allowed
-                ? `$${amount} to ${merchant} would be allowed`
-                : `$${amount} exceeds per-tx limit of $${limitPerTx}`,
+              walletId,
+              agentId,
+              policyId: result.policy_id,
+              reason: result.reason,
+              message: result.reason,
             },
           });
         }
