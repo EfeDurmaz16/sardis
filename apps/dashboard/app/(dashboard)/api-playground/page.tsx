@@ -3,10 +3,10 @@
 import { useState } from "react"
 import {
   Card,
+  CardAction,
   CardContent,
   CardHeader,
   CardTitle,
-  CardAction,
 } from "@/components/ui/card"
 import {
   Table,
@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -27,90 +28,206 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  PaperPlaneTilt,
   Clock,
   CircleNotch,
+  PaperPlaneTilt,
 } from "@phosphor-icons/react"
 
+type Method = "GET" | "POST" | "PUT" | "DELETE"
+
 type Endpoint = {
-  method: "GET" | "POST" | "PUT" | "DELETE"
+  method: Method
   path: string
   description: string
   auth: boolean
 }
 
+type PlaygroundResult = {
+  body: string
+  statusLabel: string
+  statusCode: number | null
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_SARDIS_API_BASE_URL ?? ""
+
 const endpoints: Endpoint[] = [
-  { method: "GET", path: "/api/v1/agents", description: "List all agents", auth: true },
-  { method: "POST", path: "/api/v1/agents", description: "Create a new agent", auth: true },
-  { method: "GET", path: "/api/v1/transactions", description: "List transactions", auth: true },
-  { method: "POST", path: "/api/v1/transactions", description: "Create a transaction", auth: true },
-  { method: "GET", path: "/api/v1/policies", description: "List all policies", auth: true },
-  { method: "PUT", path: "/api/v1/policies/:id", description: "Update a policy", auth: true },
-  { method: "GET", path: "/api/v1/wallets", description: "List wallets", auth: true },
-  { method: "DELETE", path: "/api/v1/agents/:id", description: "Delete an agent", auth: true },
+  { method: "GET", path: "/api/v2/agents", description: "List agents", auth: true },
+  { method: "GET", path: "/api/v2/transactions", description: "List transactions", auth: true },
+  { method: "POST", path: "/api/v2/policies/check", description: "Dry-run a policy decision", auth: true },
+  { method: "POST", path: "/api/v2/simulate", description: "Simulate a payment without executing it", auth: true },
+  { method: "GET", path: "/api/v2/wallets", description: "List wallets", auth: true },
+  { method: "GET", path: "/api/v2/reliability/providers", description: "Fetch provider scorecards", auth: false },
 ]
 
-const methodColor: Record<string, string> = {
+const methodColor: Record<Method, string> = {
   GET: "bg-success/10 text-success",
   POST: "bg-info/10 text-info",
   PUT: "bg-warning/10 text-warning",
   DELETE: "bg-destructive/10 text-destructive",
 }
 
-const sampleRequestBody = `{
-  "name": "Payment Router Beta",
-  "chain": "ethereum",
-  "mandate": {
-    "limit": 10000,
-    "period": "daily"
-  },
-  "status": "active"
-}`
+const defaultBodyByMethod: Record<Method, string> = {
+  GET: "",
+  POST: JSON.stringify(
+    {
+      agent_id: "agent_demo_123",
+      amount: "25.00",
+      currency: "USD",
+      merchant_id: "merchant_demo",
+    },
+    null,
+    2,
+  ),
+  PUT: JSON.stringify({ enabled: true }, null, 2),
+  DELETE: "",
+}
 
-const mockResponse = `{
-  "id": "agt_1a2b3c4d5e6f",
-  "name": "Payment Router Beta",
-  "chain": "ethereum",
-  "wallet": "0x7e5A...6b3C",
-  "balance": "$0.00",
-  "mandate": {
-    "limit": 10000,
-    "period": "daily",
-    "used": 0
-  },
-  "status": "active",
-  "created_at": "2026-03-28T10:30:00Z"
-}`
+function resolveRequestUrl(path: string): string | null {
+  if (/^https?:\/\//i.test(path)) {
+    return path
+  }
+
+  if (!API_BASE_URL) {
+    return null
+  }
+
+  const base = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`
+  return `${base}${normalizedPath}`
+}
+
+function formatResponseBody(payload: unknown): string {
+  if (typeof payload === "string") {
+    return payload
+  }
+  return JSON.stringify(payload, null, 2)
+}
+
+function getStatusLabel(status: number, statusText: string): string {
+  return `${status} ${statusText || "Unknown"}`
+}
+
+function getStatusVariant(statusCode: number | null): "success" | "outline" | "destructive" {
+  if (statusCode === null) {
+    return "outline"
+  }
+  if (statusCode >= 200 && statusCode < 300) {
+    return "success"
+  }
+  return "destructive"
+}
 
 export default function ApiPlaygroundPage() {
+  const [method, setMethod] = useState<Method>("POST")
+  const [path, setPath] = useState("/api/v2/policies/check")
+  const [authHeader, setAuthHeader] = useState("")
+  const [requestBody, setRequestBody] = useState(defaultBodyByMethod.POST)
   const [loading, setLoading] = useState(false)
-  const [response, setResponse] = useState<string | null>(null)
-  const [statusCode, setStatusCode] = useState<string | null>(null)
+  const [result, setResult] = useState<PlaygroundResult | null>(null)
   const [responseTime, setResponseTime] = useState<number | null>(null)
 
-  function handleSend() {
+  async function handleSend() {
     setLoading(true)
-    setResponse(null)
-    setStatusCode(null)
+    setResult(null)
     setResponseTime(null)
 
-    setTimeout(() => {
+    const requestUrl = resolveRequestUrl(path)
+    if (!requestUrl) {
       setLoading(false)
-      setResponse(mockResponse)
-      setStatusCode("200 OK")
-      setResponseTime(124)
-    }, 1000)
+      setResult({
+        statusLabel: "Configuration required",
+        statusCode: null,
+        body: JSON.stringify(
+          {
+            error: "dashboard_api_base_url_not_configured",
+            message: "Set NEXT_PUBLIC_SARDIS_API_BASE_URL to enable live playground requests.",
+            path,
+          },
+          null,
+          2,
+        ),
+      })
+      return
+    }
+
+    const headers: HeadersInit = {
+      Accept: "application/json",
+    }
+    if (authHeader.trim()) {
+      headers.Authorization = authHeader.trim()
+    }
+
+    let body: string | undefined
+    if (method !== "GET" && requestBody.trim()) {
+      headers["Content-Type"] = "application/json"
+      body = requestBody
+    }
+
+    const startedAt = performance.now()
+
+    try {
+      const response = await fetch(requestUrl, {
+        method,
+        headers,
+        body,
+      })
+      const elapsed = Math.round(performance.now() - startedAt)
+      const rawText = await response.text()
+      let formatted = rawText
+
+      if (rawText) {
+        try {
+          formatted = formatResponseBody(JSON.parse(rawText))
+        } catch {
+          formatted = rawText
+        }
+      } else {
+        formatted = JSON.stringify({ message: "Empty response body" }, null, 2)
+      }
+
+      setResponseTime(elapsed)
+      setResult({
+        statusLabel: getStatusLabel(response.status, response.statusText),
+        statusCode: response.status,
+        body: formatted,
+      })
+    } catch (error) {
+      const elapsed = Math.round(performance.now() - startedAt)
+      setResponseTime(elapsed)
+      setResult({
+        statusLabel: "Network error",
+        statusCode: null,
+        body: JSON.stringify(
+          {
+            error: "request_failed",
+            message: error instanceof Error ? error.message : "Unknown fetch error",
+            request_url: requestUrl,
+          },
+          null,
+          2,
+        ),
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function applyEndpoint(endpoint: Endpoint) {
+    setMethod(endpoint.method)
+    setPath(endpoint.path)
+    setRequestBody(defaultBodyByMethod[endpoint.method])
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">API Playground</h1>
-        <p className="text-sm text-muted-foreground">Explore and test API endpoints interactively</p>
+        <p className="text-sm text-muted-foreground">
+          Send real requests against the configured Sardis API. No mock responses are returned here.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Left Panel — Request */}
         <Card>
           <CardHeader className="border-b">
             <CardTitle>Request</CardTitle>
@@ -126,8 +243,25 @@ export default function ApiPlaygroundPage() {
             </CardAction>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+              <p>
+                Base URL:{" "}
+                <code className="font-mono">
+                  {API_BASE_URL || "NEXT_PUBLIC_SARDIS_API_BASE_URL is not set"}
+                </code>
+              </p>
+            </div>
+
             <div className="flex gap-2">
-              <Select items={{ GET: "GET", POST: "POST", PUT: "PUT", DELETE: "DELETE" }}>
+              <Select
+                value={method}
+                onValueChange={(value) => {
+                  if (!value) return
+                  const nextMethod = value as Method
+                  setMethod(nextMethod)
+                  setRequestBody(defaultBodyByMethod[nextMethod])
+                }}
+              >
                 <SelectTrigger className="w-28">
                   <SelectValue placeholder="POST" />
                 </SelectTrigger>
@@ -140,8 +274,9 @@ export default function ApiPlaygroundPage() {
               </Select>
               <Input
                 className="flex-1"
-                placeholder="/api/v1/agents"
-                defaultValue="/api/v1/agents"
+                placeholder="/api/v2/policies/check"
+                value={path}
+                onChange={(event) => setPath(event.target.value)}
               />
             </div>
 
@@ -150,38 +285,52 @@ export default function ApiPlaygroundPage() {
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input className="flex-1" defaultValue="Authorization" readOnly />
-                  <Input className="flex-1" defaultValue="Bearer demo_live_redacted_3f8a" />
+                  <Input
+                    className="flex-1"
+                    placeholder="Bearer <token>"
+                    value={authHeader}
+                    onChange={(event) => setAuthHeader(event.target.value)}
+                  />
                 </div>
                 <div className="flex gap-2">
                   <Input className="flex-1" defaultValue="Content-Type" readOnly />
-                  <Input className="flex-1" defaultValue="application/json" readOnly />
+                  <Input
+                    className="flex-1"
+                    value={method === "GET" ? "Not sent for GET" : "application/json"}
+                    readOnly
+                  />
                 </div>
               </div>
             </div>
 
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground">Body</p>
-              <pre className="rounded-lg border bg-muted/50 p-3 text-xs font-mono overflow-x-auto leading-relaxed">
-                {sampleRequestBody}
-              </pre>
+              <Textarea
+                className="min-h-48 font-mono text-xs leading-relaxed"
+                value={requestBody}
+                onChange={(event) => setRequestBody(event.target.value)}
+                placeholder='{"agent_id":"agent_demo_123"}'
+                disabled={method === "GET"}
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Right Panel — Response */}
         <Card>
           <CardHeader className="border-b">
             <CardTitle>Response</CardTitle>
             <CardAction>
-              {statusCode && (
+              {result && (
                 <div className="flex items-center gap-3">
-                  <Badge variant="success">
-                    {statusCode}
+                  <Badge variant={getStatusVariant(result.statusCode)}>
+                    {result.statusLabel}
                   </Badge>
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {responseTime}ms
-                  </span>
+                  {responseTime !== null && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {responseTime}ms
+                    </span>
+                  )}
                 </div>
               )}
             </CardAction>
@@ -191,23 +340,22 @@ export default function ApiPlaygroundPage() {
               <div className="flex items-center justify-center py-12">
                 <CircleNotch className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : response ? (
-              <pre className="rounded-lg border bg-muted/50 p-3 text-xs font-mono overflow-x-auto leading-relaxed">
-                {response}
+            ) : result ? (
+              <pre className="overflow-x-auto rounded-lg border bg-muted/50 p-3 text-xs leading-relaxed">
+                {result.body}
               </pre>
             ) : (
               <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Click Send to make a request
+                Click Send to make a live request
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* API Endpoints */}
       <Card>
         <CardHeader className="border-b">
-          <CardTitle>API Endpoints</CardTitle>
+          <CardTitle>Canonical Endpoints</CardTitle>
         </CardHeader>
         <CardContent className="px-0">
           <Table>
@@ -220,18 +368,26 @@ export default function ApiPlaygroundPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {endpoints.map((ep, i) => (
-                <TableRow key={i}>
+              {endpoints.map((endpoint) => (
+                <TableRow
+                  key={`${endpoint.method}:${endpoint.path}`}
+                  className="cursor-pointer"
+                  onClick={() => applyEndpoint(endpoint)}
+                >
                   <TableCell className="pl-4">
-                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-mono font-semibold ${methodColor[ep.method]}`}>
-                      {ep.method}
+                    <span
+                      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-mono font-semibold ${methodColor[endpoint.method]}`}
+                    >
+                      {endpoint.method}
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs">{ep.path}</TableCell>
-                  <TableCell className="text-muted-foreground">{ep.description}</TableCell>
+                  <TableCell className="font-mono text-xs">{endpoint.path}</TableCell>
+                  <TableCell className="text-muted-foreground">{endpoint.description}</TableCell>
                   <TableCell>
-                    {ep.auth && (
+                    {endpoint.auth ? (
                       <Badge variant="outline">Required</Badge>
+                    ) : (
+                      <Badge variant="outline">Optional</Badge>
                     )}
                   </TableCell>
                 </TableRow>
