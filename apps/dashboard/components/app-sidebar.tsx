@@ -274,11 +274,9 @@ function SidebarContent({
         {!isCollapsed && (
           <div className="p-2 border-t">
             <div className="bg-muted/50 border rounded-lg p-3">
-              <div className="text-[10px] font-medium text-muted-foreground mb-0.5">API Calls This Month</div>
-              <div className="text-base font-semibold mb-1.5">
-                12,847 <span className="text-xs font-normal text-muted-foreground">/ 50,000</span>
-              </div>
-              <Progress value={26} className="h-1" />
+              <div className="text-[10px] font-medium text-muted-foreground mb-0.5">Plan</div>
+              <div className="text-sm font-semibold">Free</div>
+              <div className="text-[10px] text-muted-foreground mt-1">Upgrade in Billing</div>
             </div>
           </div>
         )}

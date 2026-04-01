@@ -94,7 +94,7 @@ export default function SettingsPage() {
     setSavedTwoFa(twoFa)
     setSavedSessionTimeout(sessionTimeout)
     setSavedIpAllowlist(ipAllowlist)
-    toast.success("Settings saved successfully")
+    toast.success("Settings saved locally. API sync coming soon.")
   }
 
   if (loading) {

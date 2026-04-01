@@ -308,20 +308,20 @@ export default function BillingPage() {
                     <Badge className="bg-primary text-primary-foreground text-[10px]">Most Popular</Badge>
                   </div>
                 )}
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-3 pt-6 px-6">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-sm">{PLAN_LABELS[plan.plan] ?? plan.plan}</CardTitle>
                     {isCurrent && <Badge variant="outline" className="text-[10px]">Current</Badge>}
                   </div>
-                  <p className="text-2xl font-bold mt-1">{priceLabel}</p>
+                  <p className="text-2xl font-bold mt-2">{priceLabel}</p>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-2 text-sm text-muted-foreground">
-                  <div className="flex justify-between"><span>API calls</span><span className="font-medium text-foreground">{formatNumber(plan.api_calls_per_month)}</span></div>
-                  <div className="flex justify-between"><span>Agents</span><span className="font-medium text-foreground">{plan.agents === null ? "Unlimited" : plan.agents}</span></div>
-                  <div className="flex justify-between"><span>Tx fee</span><span className="font-medium text-foreground">{plan.tx_fee_bps} bps</span></div>
-                  <div className="flex justify-between"><span>Volume</span><span className="font-medium text-foreground">{plan.monthly_tx_volume_cents === null ? "Unlimited" : formatCents(plan.monthly_tx_volume_cents)}</span></div>
+                <CardContent className="flex-1 space-y-3.5 text-sm text-muted-foreground px-6 pb-6">
+                  <div className="flex justify-between py-0.5"><span>API calls</span><span className="font-medium text-foreground">{formatNumber(plan.api_calls_per_month)}</span></div>
+                  <div className="flex justify-between py-0.5"><span>Agents</span><span className="font-medium text-foreground">{plan.agents === null ? "Unlimited" : plan.agents}</span></div>
+                  <div className="flex justify-between py-0.5"><span>Tx fee</span><span className="font-medium text-foreground">{plan.tx_fee_bps} bps</span></div>
+                  <div className="flex justify-between py-0.5"><span>Volume</span><span className="font-medium text-foreground">{plan.monthly_tx_volume_cents === null ? "Unlimited" : formatCents(plan.monthly_tx_volume_cents)}</span></div>
                 </CardContent>
-                <div className="p-4 pt-0">
+                <div className="p-6 pt-0">
                   {isCurrent ? (
                     <div className="flex items-center justify-center gap-1.5 py-2 text-sm text-primary font-medium">
                       <CheckCircle className="w-4 h-4" />
