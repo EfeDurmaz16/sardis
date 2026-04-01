@@ -192,8 +192,8 @@ export default function BillingPage() {
                     Expires {String(paymentMethod.exp_month).padStart(2, "0")}/{String(paymentMethod.exp_year).slice(-2)}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
-                  Update
+                <Button variant="outline" size="sm" onClick={() => window.open("https://billing.stripe.com/p/login/sardis", "_blank")}>
+                  Manage
                 </Button>
               </div>
             ) : (
@@ -202,9 +202,9 @@ export default function BillingPage() {
                   <CreditCard className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-muted-foreground">No payment method on file</p>
+                  <p className="text-sm text-muted-foreground">Payment methods are managed through Stripe</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => setDialogOpen(true)}>
+                <Button variant="outline" size="sm" onClick={() => toast.info("Upgrade to a paid plan to add a payment method")}>
                   Add
                 </Button>
               </div>
