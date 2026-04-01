@@ -13,6 +13,23 @@ const sardisAuth = PieceAuth.SecretText({
   required: true,
 });
 
+async function getWalletAgentId(baseUrl: string, apiKey: string, walletId: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/v2/wallets/${walletId}`, {
+    headers: { 'X-API-Key': apiKey },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load wallet ${walletId}: ${response.status} ${await response.text()}`);
+  }
+
+  const wallet = await response.json() as { agent_id?: string };
+  if (!wallet.agent_id) {
+    throw new Error(`Wallet ${walletId} is not linked to an agent; cannot run canonical policy check`);
+  }
+
+  return wallet.agent_id;
+}
+
 const sendPayment = createAction({
   name: 'send_payment',
   displayName: 'Send Payment',
@@ -188,23 +205,33 @@ const checkPolicy = createAction({
   async run(context) {
     const { auth, propsValue } = context;
     const baseUrl = 'https://api.sardis.sh';
+    const apiKey = auth as string;
+    const agentId = await getWalletAgentId(baseUrl, apiKey, propsValue.walletId);
 
-    const response = await fetch(`${baseUrl}/api/v2/simulate`, {
+    const response = await fetch(`${baseUrl}/api/v2/policies/check`, {
       method: 'POST',
       headers: {
-        'X-API-Key': auth as string,
+        'X-API-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        wallet_id: propsValue.walletId,
+        agent_id: agentId,
         amount: propsValue.amount!.toString(),
-        destination: propsValue.merchant,
-        token: propsValue.token || 'USDC',
-        chain: propsValue.chain || 'base',
+        currency: 'USD',
+        merchant_id: propsValue.merchant,
       }),
     });
 
-    return await response.json();
+    if (!response.ok) {
+      throw new Error(`Policy check failed: ${response.status} ${await response.text()}`);
+    }
+
+    const result = await response.json() as Record<string, unknown>;
+    return {
+      ...result,
+      wallet_id: propsValue.walletId,
+      agent_id: agentId,
+    };
   },
 });
 

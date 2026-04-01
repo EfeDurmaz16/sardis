@@ -1,3 +1,4 @@
+// Static mockup — not wired to live data. Wire to Sardis API when Stripe App is published.
 import {
   Box,
   ContextView,

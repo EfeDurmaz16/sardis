@@ -10,7 +10,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -75,6 +75,26 @@ def get_deps() -> EventsDependencies:
     raise NotImplementedError("Dependency override required")
 
 
+def _get_events_deps(request: Request) -> EventsDependencies:
+    deps = getattr(request.app.state, "agent_events_deps", None)
+    if deps is None:
+        deps = getattr(request.app.state, "events_deps", None)
+    if deps is not None:
+        return deps
+
+    database_url = getattr(request.app.state, "database_url", None)
+    if database_url:
+        return EventsDependencies(database_url=database_url)
+
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail=(
+            "Agent events require app.state.agent_events_deps, app.state.events_deps, "
+            "or app.state.database_url wiring."
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -84,7 +104,7 @@ async def batch_events(
     agent_id: str,
     body: BatchEventsRequest,
     principal: Principal = Depends(require_principal),
-    deps: EventsDependencies = Depends(get_deps),
+    deps: EventsDependencies = Depends(_get_events_deps),
 ):
     """Ingest a batch of events from the SDK.
 
@@ -101,7 +121,7 @@ async def batch_events(
         )
 
     pool = await deps._get_pool()
-    org_id = principal.org_id or principal.subject
+    org_id = principal.org_id
     now = datetime.now(UTC)
 
     import json as _json
@@ -169,11 +189,11 @@ async def list_events(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     principal: Principal = Depends(require_principal),
-    deps: EventsDependencies = Depends(get_deps),
+    deps: EventsDependencies = Depends(_get_events_deps),
 ):
     """Query events for an agent with optional type/session filters."""
     pool = await deps._get_pool()
-    org_id = principal.org_id or principal.subject
+    org_id = principal.org_id
 
     where_clauses = ["org_id = $1", "agent_id = $2"]
     params: list[Any] = [org_id, agent_id]

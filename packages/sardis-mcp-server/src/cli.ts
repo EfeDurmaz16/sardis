@@ -50,35 +50,102 @@ USAGE:
 
 DESCRIPTION:
   Sardis MCP Server enables AI agents to execute secure payments
-  using Model Context Protocol. It exposes ${toolCount} tools across ${categoryCount} categories:
+  using Model Context Protocol. It exposes ${toolCount} tools across ${categoryCount} categories.
 
-  Wallet (5):     sardis_get_wallet, sardis_get_balance, sardis_create_wallet,
-                  sardis_update_wallet_policy, sardis_list_wallets
+  Tools marked [sim] return simulated/fake data when SARDIS_MODE=simulated
+  or when SARDIS_API_KEY is not set. Set both for real data.
 
-  Payment (3):    sardis_pay, sardis_get_transaction, sardis_list_transactions
+  Wallet:         sardis_get_wallet [sim], sardis_get_balance [sim],
+                  sardis_create_wallet [sim], sardis_list_wallets [sim]
 
-  Policy (3):     sardis_check_policy, sardis_validate_limits, sardis_check_compliance
+  Payment:        sardis_pay [sim], sardis_get_transaction [sim],
+                  sardis_list_transactions [sim]
 
-  Hold (6):       sardis_create_hold, sardis_capture_hold, sardis_void_hold,
-                  sardis_get_hold, sardis_list_holds, sardis_extend_hold
+  Policy:         sardis_check_policy, sardis_validate_limits,
+                  sardis_check_compliance [sim], sardis_get_policies [sim]
 
-  Agent (4):      sardis_create_agent, sardis_get_agent, sardis_list_agents,
-                  sardis_update_agent
+  Hold:           sardis_create_hold [sim], sardis_capture_hold [sim],
+                  sardis_void_hold [sim], sardis_release_hold [sim],
+                  sardis_get_hold [sim], sardis_list_holds [sim],
+                  sardis_extend_hold [sim]
 
-  Card (6):       sardis_issue_card, sardis_get_card, sardis_list_cards,
-                  sardis_freeze_card, sardis_unfreeze_card, sardis_cancel_card
+  Agent:          sardis_create_agent [sim], sardis_get_agent [sim],
+                  sardis_list_agents [sim], sardis_update_agent [sim]
 
-  Fiat/Treasury (11):
-                  sardis_sync_treasury_account_holder, sardis_list_financial_accounts
-                  sardis_link_external_bank_account, sardis_verify_micro_deposits
-                  sardis_fund_wallet, sardis_withdraw_to_bank, sardis_withdraw
-                  sardis_get_funding_status, sardis_get_withdrawal_status
-                  sardis_get_treasury_balances, sardis_list_funding_transactions
+  Card:           sardis_issue_card [sim], sardis_create_card [sim],
+                  sardis_get_card [sim], sardis_list_cards [sim],
+                  sardis_freeze_card [sim], sardis_unfreeze_card [sim],
+                  sardis_cancel_card [sim]
 
-  Approval (2):   sardis_request_approval, sardis_get_approval_status
+  Fiat/Treasury:  sardis_sync_treasury_account_holder [sim],
+                  sardis_list_financial_accounts [sim],
+                  sardis_link_external_bank_account [sim],
+                  sardis_verify_micro_deposits [sim],
+                  sardis_fund_wallet [sim], sardis_withdraw_to_bank [sim],
+                  sardis_withdraw [sim], sardis_get_funding_status [sim],
+                  sardis_get_withdrawal_status [sim],
+                  sardis_get_treasury_balances [sim],
+                  sardis_list_funding_transactions [sim]
 
-  Analytics (3):  sardis_get_spending_summary, sardis_get_spending_by_vendor,
-                  sardis_get_spending_by_category
+  Approval:       sardis_request_approval [sim],
+                  sardis_get_approval_status [sim],
+                  sardis_list_pending_approvals [sim],
+                  sardis_cancel_approval [sim]
+
+  Analytics:      sardis_get_spending_summary [sim],
+                  sardis_get_spending_by_vendor [sim],
+                  sardis_get_spending_by_category [sim],
+                  sardis_get_spending_trends [sim]
+
+  Events:         sardis_subscribe_events [sim],
+                  sardis_list_event_types,
+                  sardis_get_event_history [sim],
+                  sardis_configure_webhook [sim]
+
+  Guardrails:     sardis_check_circuit_breaker [sim],
+                  sardis_activate_kill_switch [sim],
+                  sardis_deactivate_kill_switch [sim],
+                  sardis_check_rate_limits [sim],
+                  sardis_get_behavioral_alerts [sim]
+
+  x402:           sardis_x402_pay [sim], sardis_x402_preview_cost [sim],
+                  sardis_x402_list_payments [sim]
+
+  Trust:          sardis_check_agent_trust, sardis_verify_agent_identity,
+                  sardis_view_policy_history
+
+  Jobs:           sardis_create_job [sim], sardis_fund_job [sim],
+                  sardis_submit_deliverable [sim], sardis_evaluate_job [sim],
+                  sardis_get_job [sim], sardis_list_jobs [sim],
+                  sardis_dispute_job [sim]
+
+  Mandate:        sardis_create_mandate [sim], sardis_list_mandates [sim],
+                  sardis_revoke_mandate [sim], sardis_check_mandate [sim]
+
+  MPP:            sardis_mpp_create_session [sim], sardis_mpp_execute [sim],
+                  sardis_mpp_close_session [sim], sardis_mpp_get_session [sim],
+                  sardis_mpp_issue_card [sim], sardis_mpp_evaluate_policy [sim]
+
+  Payment Object: sardis_mint_payment_object [sim],
+                  sardis_present_payment_object [sim],
+                  sardis_verify_payment_object [sim],
+                  sardis_get_payment_object [sim],
+                  sardis_list_payment_objects [sim]
+
+  Funding:        sardis_create_funding_commitment [sim],
+                  sardis_list_funding_cells [sim],
+                  sardis_split_cell [sim], sardis_merge_cells [sim]
+
+  Escrow:         sardis_create_escrow [sim], sardis_confirm_delivery [sim],
+                  sardis_file_dispute [sim], sardis_submit_evidence [sim],
+                  sardis_resolve_dispute [sim]
+
+  Proxy:          sardis_call_paid_api [sim], sardis_preview_paid_api
+
+  Projects:       sardis_discover_services, sardis_provision_service,
+                  sardis_list_provisioned
+
+  Sandbox:        sardis_sandbox_demo
 
 CONFIGURATION (Claude Desktop):
   Add to ~/Library/Application Support/Claude/claude_desktop_config.json:
@@ -93,11 +160,14 @@ CONFIGURATION (Claude Desktop):
   }
 
 ENVIRONMENT VARIABLES:
-  SARDIS_API_KEY     Your Sardis API key (optional for simulated mode)
+  SARDIS_API_KEY     Your Sardis API key (required for live mode)
   SARDIS_WALLET_ID   Default wallet ID
   SARDIS_AGENT_ID    Agent ID for this connection
   SARDIS_PAYMENT_IDENTITY  Signed one-click identity for MCP bootstrap
   SARDIS_MODE        'live' or 'simulated' (default: simulated)
+
+  NOTE: Without SARDIS_API_KEY, ALL tools marked [sim] return fake data.
+  Set SARDIS_API_KEY=sk_... and SARDIS_MODE=live for real transactions.
 
 LEARN MORE:
   Documentation: https://sardis.sh/docs
@@ -519,15 +589,21 @@ async function main() {
     if (isSandbox) {
       console.error('');
       console.error('╔══════════════════════════════════════════════════════════════╗');
-      console.error(`║  Sardis MCP Server v${MCP_SERVER_VERSION} — SANDBOX MODE                   ║`);
+      console.error(`║  Sardis MCP Server v${MCP_SERVER_VERSION} — SIMULATED MODE                 ║`);
       console.error('║                                                             ║');
-      console.error('║  All transactions are SIMULATED (no real funds move)        ║');
-      console.error('║  Policy validation runs REAL logic                          ║');
+      console.error('║  ⚠ Running in SIMULATED mode. Responses are NOT real.      ║');
+      console.error('║  ⚠ All data returned by tools is FAKE / generated.         ║');
+      console.error('║  ⚠ No real funds move. No real wallets are created.        ║');
+      console.error('║                                                             ║');
+      console.error('║  Policy validation runs REAL logic.                         ║');
       console.error(
         `║  ${String(toolCount).padEnd(2, ' ')} tools available across ${String(categoryCount).padEnd(2, ' ')} categories                ║`
       );
       console.error('║                                                             ║');
-      console.error('║  Set SARDIS_API_KEY + SARDIS_MODE=live for real txns        ║');
+      console.error('║  Set SARDIS_API_KEY for live mode:                          ║');
+      console.error('║    export SARDIS_API_KEY=sk_live_...                        ║');
+      console.error('║    export SARDIS_MODE=live                                  ║');
+      console.error('║                                                             ║');
       console.error('║  Try: sardis_sandbox_demo for a guided walkthrough          ║');
       console.error('╚══════════════════════════════════════════════════════════════╝');
       console.error('');

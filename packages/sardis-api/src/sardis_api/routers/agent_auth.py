@@ -43,10 +43,46 @@ discovery_router = APIRouter(tags=["agent-auth"])
 router = APIRouter(tags=["agent-auth"])
 
 # ---------------------------------------------------------------------------
-# In-memory stores (production: swap for Postgres-backed repos)
+# In-memory stores — DEV ONLY.
+# These dicts are ephemeral: data is lost on every process restart.
+# In production/staging the endpoints below guard against use without a real
+# database pool, returning HTTP 503 until the Postgres-backed repos are wired.
 # ---------------------------------------------------------------------------
 _agent_registry: dict[str, dict] = {}
 _capability_grants: dict[str, list[dict]] = {}  # agent_id -> [grants]
+
+_SARDIS_ENV = os.getenv("SARDIS_ENVIRONMENT", "development").lower()
+
+if _SARDIS_ENV not in ("production", "staging"):
+    logger.warning(
+        "agent_auth: running with IN-MEMORY stores (SARDIS_ENVIRONMENT=%s). "
+        "Agent registrations and capability grants will NOT survive restarts. "
+        "This is acceptable for local development only.",
+        _SARDIS_ENV,
+    )
+
+
+def _require_persistent_store(request: Request) -> None:
+    """Guard: in production/staging, refuse to serve if no DB pool is available.
+
+    The in-memory dicts are a data-loss footgun in deployed environments.
+    Until Postgres-backed repos replace them, return 503 so operators notice
+    immediately instead of silently losing agent state on redeploy.
+    """
+    if _SARDIS_ENV not in ("production", "staging"):
+        return  # in-memory fallback is fine for dev/test
+
+    pool = getattr(getattr(request, "app", None), "state", None)
+    pool = getattr(pool, "db_pool", None) if pool is not None else None
+    if pool is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Agent auth store is not available. "
+                "In-memory stores are disabled in production/staging — "
+                "a database pool (app.state.db_pool) is required."
+            ),
+        )
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -641,6 +677,7 @@ async def execute_capability(
       - mandate_create -> spending mandate creation
       - balance_check -> wallet balance query
     """
+    _require_persistent_store(request)
     execution_id = f"exec_{uuid4().hex[:12]}"
     now = datetime.now(UTC)
 
@@ -866,6 +903,7 @@ async def _exec_balance_check(params: dict, principal: Principal) -> dict:
 @router.post("/agent/register", response_model=AgentRegistrationResponse, status_code=status.HTTP_201_CREATED)
 async def register_agent(
     body: AgentRegistrationRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
     """Register an AI agent with Sardis via the Agent Auth Protocol.
@@ -873,6 +911,7 @@ async def register_agent(
     Creates an agent identity, optionally grants requested capabilities.
     The agent receives an ID and can then use JWT-signed requests.
     """
+    _require_persistent_store(request)
     agent_id = f"agent_auth_{uuid4().hex[:12]}"
     now = datetime.now(UTC)
 
@@ -956,6 +995,7 @@ async def agent_status(
 
     Uses the agent JWT sub claim or query param to identify the agent.
     """
+    _require_persistent_store(request)
     # Try JWT first
     agent_payload = _verify_agent_jwt(request)
     agent_id = agent_payload.get("sub") if agent_payload else None
@@ -997,6 +1037,7 @@ async def request_capability(
     principal: Principal = Depends(require_principal),
 ):
     """Request an additional capability for an agent."""
+    _require_persistent_store(request)
     agent_payload = _verify_agent_jwt(request)
     agent_id = agent_payload.get("sub") if agent_payload else None
 
@@ -1048,9 +1089,11 @@ async def request_capability(
 @router.post("/agent/revoke", response_model=AgentRevokeResponse)
 async def revoke_agent(
     body: AgentRevokeRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
     """Revoke an agent's access and all capability grants."""
+    _require_persistent_store(request)
     agent_id = body.agent_id
 
     if agent_id not in _agent_registry:

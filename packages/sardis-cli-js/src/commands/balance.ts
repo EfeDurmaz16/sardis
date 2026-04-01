@@ -17,16 +17,11 @@ export function registerBalanceCommand(program: Command): void {
 
       if (isSandbox(config)) {
         printSandboxBanner();
-        printHeader('Wallet Balance');
-        printKeyValue([
-          ['Wallet ID', walletId || 'wal_sim_demo01'],
-          ['Balance', brand.success('1,250.00 USDC')],
-          ['Spent Total', '750.00 USDC'],
-          ['Limit/Tx', '500.00'],
-          ['Limit Total', '5,000.00'],
-          ['Chain', 'Base'],
-        ]);
-        console.log();
+        if (!walletId) {
+          printError('No wallet ID specified. Run `sardis login` to connect your API key, then pass a wallet ID.');
+        } else {
+          printError(`Cannot fetch balance for ${walletId} in sandbox mode. Run \`sardis login\` to connect your API key.`);
+        }
         return;
       }
 

@@ -69,7 +69,7 @@ describe('checkPolicy', () => {
     expect(result.reason).toBe('BUDGET_EXCEEDED');
   });
 
-  it('fails open on API error', async () => {
+  it('fails closed on API error', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
@@ -82,11 +82,11 @@ describe('checkPolicy', () => {
       'testkey_policy_123',
     );
 
-    expect(result.allowed).toBe(true);
-    expect(result.reason).toContain('fail-open');
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('blocked because policy enforcement is unavailable');
   });
 
-  it('fails open on network error', async () => {
+  it('fails closed on network error', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('DNS resolution failed'));
 
     const result = await checkPolicy(
@@ -95,8 +95,8 @@ describe('checkPolicy', () => {
       'testkey_policy_123',
     );
 
-    expect(result.allowed).toBe(true);
-    expect(result.reason).toContain('fail-open');
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('blocked because policy enforcement is unavailable');
   });
 
   it('sends correct payload to Sardis API', async () => {

@@ -51,6 +51,21 @@ def _demo_session_redis_url() -> str | None:
     )
 
 
+def _checkout_environment() -> str:
+    return os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+
+
+def _merchant_checkout_sandbox_enabled() -> bool:
+    if _checkout_environment() in {"prod", "production"}:
+        return False
+    return os.getenv("SARDIS_MERCHANT_CHECKOUT_SANDBOX", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def _demo_session_ttl_seconds(session: Any) -> int:
     ttl = _DEMO_SESSION_TTL_SECONDS
     if session.expires_at:
@@ -148,6 +163,9 @@ def _deserialize_demo_session(payload: str):
 
 
 async def _load_demo_session(client_secret: str):
+    if not _merchant_checkout_sandbox_enabled():
+        return None
+
     redis_url = _demo_session_redis_url()
     payload: str | None = None
     if redis_url:
@@ -171,6 +189,15 @@ async def _load_demo_session(client_secret: str):
 
 
 async def _save_demo_session(session: Any) -> None:
+    if not _merchant_checkout_sandbox_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Demo checkout sessions require "
+                "SARDIS_MERCHANT_CHECKOUT_SANDBOX=true."
+            ),
+        )
+
     payload = _serialize_demo_session(session)
     redis_url = _demo_session_redis_url()
     if redis_url:
@@ -855,8 +882,6 @@ async def confirm_external_payment(
 
 # ── Staging Test Session ─────────────────────────────────────────
 
-_SARDIS_ENVIRONMENT = os.getenv("SARDIS_ENVIRONMENT", "dev")
-
 
 class TestSessionResponse(BaseModel):
     session_id: str
@@ -876,10 +901,18 @@ async def create_test_session(
     against a test merchant so external parties (e.g. CDP review) can
     test the full wallet connection and payment flow.
     """
-    if _SARDIS_ENVIRONMENT == "prod":
+    if _checkout_environment() in {"prod", "production"}:
         raise HTTPException(
             status_code=403,
             detail="Test sessions are not available in production",
+        )
+    if not _merchant_checkout_sandbox_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Demo checkout sessions require "
+                "SARDIS_MERCHANT_CHECKOUT_SANDBOX=true."
+            ),
         )
 
     test_merchant_id = os.getenv("SARDIS_TEST_MERCHANT_ID", "merch_test_staging")

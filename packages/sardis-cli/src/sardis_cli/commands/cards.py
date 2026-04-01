@@ -1,9 +1,13 @@
-"""Virtual card management commands."""
+"""Virtual card management commands.
+
+NOTE: Card operations are not yet connected to a live backend.
+All subcommands in this module will display a 'not yet implemented' message.
+Card issuance is planned via Stripe Issuing; see sardis --help for available commands.
+"""
 from __future__ import annotations
 
 import click
 from rich.console import Console
-from rich.table import Table
 
 console = Console()
 
@@ -11,7 +15,7 @@ console = Console()
 @click.group()
 @click.pass_context
 def cards(ctx):
-    """Virtual card operations (Stripe Issuing)."""
+    """Virtual card operations (Stripe Issuing). [Not yet implemented]"""
     pass
 
 
@@ -23,23 +27,7 @@ def cards(ctx):
 @click.pass_context
 def create(ctx, agent_id: str, spending_limit: float, currency: str, categories: str | None):
     """Create a virtual card for an agent."""
-    ctx.obj["config"]
-
-    console.print("\n[bold]Creating Virtual Card[/bold]")
-    console.print(f"  Agent: [cyan]{agent_id}[/cyan]")
-    console.print(f"  Limit: [green]${spending_limit:.2f}/month[/green]")
-    console.print(f"  Currency: [white]{currency}[/white]")
-
-    if categories:
-        console.print(f"  Categories: [yellow]{categories}[/yellow]")
-    else:
-        console.print("  Categories: [yellow]all (unrestricted)[/yellow]")
-
-    console.print("\n  Card ID: [bold cyan]card_sim_abc123[/bold cyan]")
-    console.print("  Number: [dim]4242 •••• •••• 1234[/dim]")
-    console.print("  Status: [green]active[/green]")
-    console.print("  Provider: [white]Stripe Issuing[/white]")
-    console.print("\n[yellow]⚠ Sandbox mode: Virtual card created in test environment[/yellow]")
+    click.echo("Command not yet implemented. See sardis --help for available commands.")
 
 
 @cards.command("list")
@@ -48,22 +36,7 @@ def create(ctx, agent_id: str, spending_limit: float, currency: str, categories:
 @click.pass_context
 def list_cards(ctx, agent_id: str | None, status: str):
     """List virtual cards."""
-    ctx.obj["config"]
-
-    table = Table(title="Virtual Cards")
-    table.add_column("Card ID", style="cyan")
-    table.add_column("Agent", style="white")
-    table.add_column("Last 4", style="dim")
-    table.add_column("Limit", style="green", justify="right")
-    table.add_column("Spent", style="yellow", justify="right")
-    table.add_column("Status", style="white")
-    table.add_column("Provider", style="dim")
-
-    table.add_row("card_abc123", "agent_abc...", "1234", "$500.00", "$127.50", "[green]active[/green]", "Stripe")
-    table.add_row("card_def456", "agent_def...", "5678", "$1,000.00", "$890.00", "[green]active[/green]", "Stripe")
-    table.add_row("card_ghi789", "agent_ghi...", "9012", "$200.00", "$200.00", "[red]frozen[/red]", "Lithic")
-
-    console.print(table)
+    click.echo("Command not yet implemented. See sardis --help for available commands.")
 
 
 @cards.command()
@@ -71,9 +44,7 @@ def list_cards(ctx, agent_id: str | None, status: str):
 @click.pass_context
 def freeze(ctx, card_id: str):
     """Freeze a virtual card (temporarily disable)."""
-    console.print(f"\n[yellow]Freezing card {card_id}...[/yellow]")
-    console.print(f"[green]Card {card_id} frozen successfully.[/green]")
-    console.print("[dim]Use 'sardis cards unfreeze' to re-enable.[/dim]")
+    click.echo("Command not yet implemented. See sardis --help for available commands.")
 
 
 @cards.command()
@@ -81,8 +52,7 @@ def freeze(ctx, card_id: str):
 @click.pass_context
 def unfreeze(ctx, card_id: str):
     """Unfreeze a virtual card."""
-    console.print(f"\n[cyan]Unfreezing card {card_id}...[/cyan]")
-    console.print(f"[green]Card {card_id} is now active.[/green]")
+    click.echo("Command not yet implemented. See sardis --help for available commands.")
 
 
 @cards.command()
@@ -91,5 +61,4 @@ def unfreeze(ctx, card_id: str):
 @click.pass_context
 def cancel(ctx, card_id: str):
     """Cancel a virtual card (permanent)."""
-    console.print(f"\n[red]Cancelling card {card_id}...[/red]")
-    console.print(f"[green]Card {card_id} cancelled permanently.[/green]")
+    click.echo("Command not yet implemented. See sardis --help for available commands.")

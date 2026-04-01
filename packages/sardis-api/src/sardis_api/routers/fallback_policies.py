@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import UTC, datetime
+import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -16,6 +17,7 @@ from sardis_api.authz import require_principal
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
+_ALLOWED_RAILS = {"stablecoin", "virtual_card", "x402", "bank_transfer"}
 
 
 class FallbackRule(BaseModel):
@@ -62,63 +64,60 @@ class DegradedModePolicy(BaseModel):
 # Stores — DB-backed with in-memory cache
 # ---------------------------------------------------------------------------
 _fallback_rules: dict[str, dict] = {}  # process-local cache
-_degraded_modes: dict[str, dict] = {
-    "stablecoin": {
-        "rail": "stablecoin",
-        "mode": "normal",
-        "reason": None,
-        "max_amount_override": None,
-        "require_approval": False,
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-    "virtual_card": {
-        "rail": "virtual_card",
-        "mode": "normal",
-        "reason": None,
-        "max_amount_override": None,
-        "require_approval": False,
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-    "x402": {
-        "rail": "x402",
-        "mode": "normal",
-        "reason": None,
-        "max_amount_override": None,
-        "require_approval": False,
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-    "bank_transfer": {
-        "rail": "bank_transfer",
-        "mode": "normal",
-        "reason": None,
-        "max_amount_override": None,
-        "require_approval": False,
-        "updated_at": datetime.now(UTC).isoformat(),
-    },
-}
+_degraded_modes: dict[str, dict] = {}
+_operator_config_loaded = False
 
-# Seed a default rule so the UI has something to show on first boot.
-_default_rule_id = f"fbr_{uuid.uuid4().hex[:12]}"
-_fallback_rules[_default_rule_id] = {
-    "id": _default_rule_id,
-    "name": "Stablecoin → Card Fallback",
-    "primary_rail": "stablecoin",
-    "fallback_rail": "virtual_card",
-    "trigger": "failure",
-    "behavior": "retry_then_fallback",
-    "max_retries": 2,
-    "retry_delay_seconds": 5,
-    "enabled": True,
-    "audit_log": True,
-}
+
+async def _load_operator_config() -> None:
+    """Hydrate fallback/degraded-mode state from durable storage once."""
+    global _operator_config_loaded
+    if _operator_config_loaded:
+        return
+
+    _operator_config_loaded = True
+    try:
+        from sardis_v2_core.database import Database
+        rows = await Database.fetch(
+            """
+            SELECT key, value
+            FROM operator_config
+            WHERE key LIKE 'fallback_rule:%' OR key LIKE 'degraded_mode:%'
+            """
+        )
+    except Exception as exc:
+        logger.warning("Failed to load fallback operator config from DB: %s", exc)
+        return
+
+    for row in rows:
+        key = str(row.get("key") or "")
+        raw_value = row.get("value")
+        if isinstance(raw_value, str):
+            try:
+                value = json.loads(raw_value)
+            except json.JSONDecodeError:
+                logger.warning("Skipping invalid operator_config JSON for key %s", key)
+                continue
+        else:
+            value = raw_value
+
+        if not isinstance(value, dict):
+            logger.warning("Skipping non-object operator_config payload for key %s", key)
+            continue
+
+        if key.startswith("fallback_rule:"):
+            rule_id = key.split(":", 1)[1]
+            value["id"] = value.get("id") or rule_id
+            _fallback_rules[rule_id] = value
+        elif key.startswith("degraded_mode:"):
+            rail = key.split(":", 1)[1]
+            value["rail"] = value.get("rail") or rail
+            _degraded_modes[rail] = value
 
 
 async def _persist_rule(rule_id: str, record: dict) -> None:
     """Write fallback rule to DB."""
     _fallback_rules[rule_id] = record
     try:
-        import json
-
         from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
@@ -146,8 +145,6 @@ async def _persist_degraded_mode(rail: str, record: dict) -> None:
     """Write degraded mode to DB."""
     _degraded_modes[rail] = record
     try:
-        import json
-
         from sardis_v2_core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
@@ -167,12 +164,14 @@ async def _persist_degraded_mode(rail: str, record: dict) -> None:
 @router.get("/rules", response_model=list[FallbackRule])
 async def list_fallback_rules() -> list[FallbackRule]:
     """List all configured fallback rules."""
+    await _load_operator_config()
     return [FallbackRule(**r) for r in _fallback_rules.values()]
 
 
 @router.post("/rules", response_model=FallbackRule, status_code=201)
 async def create_fallback_rule(body: FallbackRule) -> FallbackRule:
     """Create a new cross-rail fallback rule."""
+    await _load_operator_config()
     rule_id = f"fbr_{uuid.uuid4().hex[:12]}"
     record = body.model_dump()
     record["id"] = rule_id
@@ -184,6 +183,7 @@ async def create_fallback_rule(body: FallbackRule) -> FallbackRule:
 @router.put("/rules/{rule_id}", response_model=FallbackRule)
 async def update_fallback_rule(rule_id: str, body: FallbackRule) -> FallbackRule:
     """Update an existing fallback rule."""
+    await _load_operator_config()
     if rule_id not in _fallback_rules:
         raise HTTPException(status_code=404, detail="Rule not found")
     record = body.model_dump()
@@ -196,6 +196,7 @@ async def update_fallback_rule(rule_id: str, body: FallbackRule) -> FallbackRule
 @router.delete("/rules/{rule_id}", status_code=204)
 async def delete_fallback_rule(rule_id: str) -> None:
     """Delete a fallback rule."""
+    await _load_operator_config()
     if rule_id not in _fallback_rules:
         raise HTTPException(status_code=404, detail="Rule not found")
     await _delete_rule_from_db(rule_id)
@@ -210,13 +211,15 @@ async def delete_fallback_rule(rule_id: str) -> None:
 @router.get("/degraded-modes", response_model=list[DegradedModePolicy])
 async def list_degraded_modes() -> list[DegradedModePolicy]:
     """List current degraded-mode status for all rails."""
+    await _load_operator_config()
     return [DegradedModePolicy(**d) for d in _degraded_modes.values()]
 
 
 @router.put("/degraded-modes/{rail}", response_model=DegradedModePolicy)
 async def set_degraded_mode(rail: str, body: DegradedModePolicy) -> DegradedModePolicy:
     """Set degraded-mode policy for a specific rail."""
-    if rail not in _degraded_modes:
+    await _load_operator_config()
+    if rail not in _ALLOWED_RAILS:
         raise HTTPException(status_code=404, detail=f"Unknown rail: {rail}")
     record = body.model_dump()
     record["rail"] = rail

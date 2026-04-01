@@ -16,18 +16,25 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 _generator = None
 
 
+def _reports_sandbox_enabled() -> bool:
+    return os.environ.get("SARDIS_REPORTS_SANDBOX", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _get_generator():
     global _generator
     if _generator is None:
-        env = os.environ.get("SARDIS_ENVIRONMENT", "dev").strip().lower()
-        if env in ("production", "prod", "staging"):
-            raise RuntimeError(
-                "Report generator requires persistent backend. "
-                "Configure via set_report_generator() in lifespan."
+        if not _reports_sandbox_enabled():
+            raise HTTPException(
+                status_code=501,
+                detail=(
+                    "Reports require a persistent backend. Configure via "
+                    "set_report_generator() or enable SARDIS_REPORTS_SANDBOX=true "
+                    "for explicit ephemeral sandbox mode."
+                ),
             )
         logger.warning(
             "Using in-memory ComplianceReportGenerator — data will be lost on restart. "
-            "Not suitable for production."
+            "Explicit sandbox mode only; not suitable for live deployments."
         )
         from sardis_v2_core.compliance_reports import ComplianceReportGenerator
         _generator = ComplianceReportGenerator()

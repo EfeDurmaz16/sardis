@@ -28,6 +28,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from sardis_v2_core.merchant import (
     Merchant,
     MerchantCheckoutLink,
@@ -351,6 +353,58 @@ class TestMerchantCheckoutRouterWiring:
         assert "merchant_checkout_router" in source
 
 
+class TestMerchantCheckoutSandboxSessions:
+    def _build_public_client(self):
+        from sardis_api.routers import merchant_checkout
+
+        app = FastAPI()
+        app.include_router(merchant_checkout.public_router)
+        app.dependency_overrides[merchant_checkout.get_deps] = lambda: merchant_checkout.MerchantCheckoutDependencies(
+            merchant_repo=MockMerchantRepo(),
+            sardis_connector=types.SimpleNamespace(),
+            checkout_base_url="https://checkout.test.sardis",
+        )
+        return TestClient(app)
+
+    def test_create_test_session_requires_explicit_sandbox(self, monkeypatch):
+        from sardis_api.routers import merchant_checkout
+
+        merchant_checkout._DEMO_SESSIONS_FALLBACK.clear()
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
+        monkeypatch.delenv("SARDIS_MERCHANT_CHECKOUT_SANDBOX", raising=False)
+        monkeypatch.delenv("SARDIS_REDIS_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.delenv("UPSTASH_REDIS_URL", raising=False)
+
+        with self._build_public_client() as client:
+            response = client.post("/create-test-session")
+
+        assert response.status_code == 503, response.text
+        assert response.json()["detail"] == (
+            "Demo checkout sessions require "
+            "SARDIS_MERCHANT_CHECKOUT_SANDBOX=true."
+        )
+        assert merchant_checkout._DEMO_SESSIONS_FALLBACK == {}
+
+    def test_create_test_session_allows_explicit_sandbox_fallback(self, monkeypatch):
+        from sardis_api.routers import merchant_checkout
+
+        merchant_checkout._DEMO_SESSIONS_FALLBACK.clear()
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
+        monkeypatch.setenv("SARDIS_MERCHANT_CHECKOUT_SANDBOX", "true")
+        monkeypatch.delenv("SARDIS_REDIS_URL", raising=False)
+        monkeypatch.delenv("REDIS_URL", raising=False)
+        monkeypatch.delenv("UPSTASH_REDIS_URL", raising=False)
+
+        with self._build_public_client() as client:
+            response = client.post("/create-test-session")
+
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["checkout_url"].startswith("https://checkout.test.sardis/s/")
+        assert payload["client_secret"] in merchant_checkout._DEMO_SESSIONS_FALLBACK
+
+
 # ── Session Lifecycle Tests ────────────────────────────────────────
 
 
@@ -563,6 +617,8 @@ class TestDemoSessionPersistence:
         from sardis_api.routers import merchant_checkout as merchant_checkout_router
 
         session = _make_session(metadata={"test_session": True})
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
+        monkeypatch.setenv("SARDIS_MERCHANT_CHECKOUT_SANDBOX", "true")
         self._install_fake_redis(
             monkeypatch,
             _FakeRedisClient(set_exc=TimeoutError("redis write timed out")),
@@ -578,6 +634,8 @@ class TestDemoSessionPersistence:
         from sardis_api.routers import merchant_checkout as merchant_checkout_router
 
         session = _make_session(metadata={"test_session": True})
+        monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
+        monkeypatch.setenv("SARDIS_MERCHANT_CHECKOUT_SANDBOX", "true")
         payload = merchant_checkout_router._serialize_demo_session(session)
         merchant_checkout_router._DEMO_SESSIONS_FALLBACK[session.client_secret] = payload
 

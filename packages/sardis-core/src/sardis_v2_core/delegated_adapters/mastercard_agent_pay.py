@@ -7,6 +7,7 @@ Currently supports MockMastercardAgentPayAdapter for dev/test.  Swap to
 real adapter when Mastercard partnership provides MDES API access and
 P12 certificate provisioning.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,12 +30,27 @@ from ..delegated_executor import (
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["MockMastercardAgentPayAdapter"]
+
 
 class MastercardAgentPayAdapter:
-    """Real Mastercard Agent Pay / MDES adapter (placeholder until MDES API access confirmed).
+    """Real Mastercard Agent Pay / MDES adapter -- integration template, NOT yet functional.
+
+    Requires Mastercard partnership credentials. Use MockMastercardAgentPayAdapter
+    for development.
+
+    This class serves as a structural template for the production Mastercard MDES
+    integration. All execution methods raise NotImplementedError until the
+    following partnership prerequisites are met:
+
+      - consumer_key -- Mastercard Developer Portal consumer key
+      - P12 certificate -- PKCS12 mutual TLS certificate from Mastercard
+      - MDES API access -- approved via Mastercard for Agents program
 
     Authentication uses PKCS12 (P12) certificate + consumer key as required
     by the Mastercard Developers OAuth1.0a signing scheme.
+
+    Contact partnerships@sardis.sh to initiate the Mastercard onboarding process.
     """
 
     def __init__(
@@ -87,8 +103,8 @@ class MastercardAgentPayAdapter:
         # )
         # return self._translate_from_mastercard(response.json())
         raise NotImplementedError(
-            "Real Mastercard MDES Agent Pay API not yet available. "
-            "Use MockMastercardAgentPayAdapter."
+            "Mastercard MDES Agent Pay integration requires partnership credentials "
+            "(P12 certificate + consumer key). Contact partnerships@sardis.sh"
         )
 
     async def provision_credential(
@@ -115,8 +131,8 @@ class MastercardAgentPayAdapter:
         #   "fundingAccountInfo": { ... },
         # }
         raise NotImplementedError(
-            "Real Mastercard MDES tokenization API not yet available. "
-            "Use MockMastercardAgentPayAdapter."
+            "Mastercard MDES tokenization requires partnership credentials "
+            "(P12 certificate + consumer key). Contact partnerships@sardis.sh"
         )
 
     async def check_health(self) -> bool:

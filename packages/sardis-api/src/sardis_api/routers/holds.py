@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sardis_v2_core.holds import Hold, HoldsRepository
 
@@ -84,12 +84,29 @@ def get_deps() -> HoldsDependencies:
     raise NotImplementedError("Must be overridden")
 
 
+def _get_holds_deps(request: Request) -> HoldsDependencies:
+    deps = getattr(request.app.state, "holds_deps", None)
+    if deps is not None:
+        return deps
+
+    holds_repo = getattr(request.app.state, "holds_repo", None)
+    if holds_repo is not None:
+        return HoldsDependencies(holds_repo=holds_repo)
+
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail=(
+            "Holds require app.state.holds_deps or app.state.holds_repo wiring."
+        ),
+    )
+
+
 # Routes
 
 @router.post("", response_model=HoldOperationResponse, status_code=status.HTTP_201_CREATED)
 async def create_hold(
     request: CreateHoldRequest,
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """Create a new hold (pre-authorization) on funds."""
     result = await deps.holds_repo.create(
@@ -116,7 +133,7 @@ async def create_hold(
 @router.get("/{hold_id}", response_model=HoldResponse)
 async def get_hold(
     hold_id: str,
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """Get a hold by ID."""
     hold = await deps.holds_repo.get(hold_id)
@@ -132,7 +149,7 @@ async def get_hold(
 async def capture_hold(
     hold_id: str,
     request: CaptureHoldRequest | None = None,
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """Capture (complete) a hold."""
     amount = request.amount if request else None
@@ -155,7 +172,7 @@ async def capture_hold(
 @router.post("/{hold_id}/void", response_model=HoldOperationResponse)
 async def void_hold(
     hold_id: str,
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """Void (cancel) a hold, releasing the funds."""
     result = await deps.holds_repo.void(hold_id)
@@ -177,7 +194,7 @@ async def list_wallet_holds(
     wallet_id: str,
     status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(default=50, ge=1, le=500),
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """List holds for a wallet."""
     holds = await deps.holds_repo.list_by_wallet(
@@ -191,7 +208,7 @@ async def list_wallet_holds(
 @router.get("", response_model=list[HoldResponse])
 async def list_active_holds(
     limit: int = Query(default=100, ge=1, le=500),
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """List all active holds."""
     holds = await deps.holds_repo.list_active(limit=limit)
@@ -201,7 +218,7 @@ async def list_active_holds(
 @router.post("/expire", response_model=dict)
 async def expire_old_holds(
     _: Principal = Depends(require_admin_principal),
-    deps: HoldsDependencies = Depends(get_deps),
+    deps: HoldsDependencies = Depends(_get_holds_deps),
 ):
     """Mark expired holds as expired. Admin endpoint."""
     count = await deps.holds_repo.expire_old_holds()

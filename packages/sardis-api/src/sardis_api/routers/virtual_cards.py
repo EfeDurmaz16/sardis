@@ -5,9 +5,9 @@ policy enforcement. Cards are funded with USDC on Tempo via MPP x402.
 
 Flow: Agent -> Sardis policy check -> Laso x402 -> Visa prepaid card
 
-Sandbox mode: When SARDIS_CHAIN_MODE != "live", returns simulated card data
-so the full flow can be demonstrated without a funded Tempo wallet or Laso
-connectivity. Real cards are issued when Laso is configured and live.
+Sandbox mode: Only enabled when SARDIS_VIRTUAL_CARDS_SANDBOX=true. Without
+that explicit opt-in, live-shaped endpoints return truthful unavailable
+responses unless Laso is configured and SARDIS_CHAIN_MODE=live.
 
 Endpoints:
     POST /cards/virtual/issue          — Issue a virtual card ($5-$1,000)
@@ -118,20 +118,30 @@ class BalanceResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _is_sandbox_mode() -> bool:
-    """Return True when Laso should use sandbox (simulated) card data.
+    """Return True only when virtual-card sandbox mode is explicitly enabled."""
+    return os.getenv("SARDIS_VIRTUAL_CARDS_SANDBOX", "").strip().lower() == "true"
 
-    Sandbox mode is active when:
-    - SARDIS_CHAIN_MODE is not "live", OR
-    - SARDIS_VIRTUAL_CARDS_SANDBOX is explicitly "true"
 
-    In sandbox mode every endpoint returns deterministic fake data so the
-    full API flow can be demonstrated without Laso connectivity or a funded
-    Tempo wallet.
+def _ensure_virtual_cards_mode() -> None:
+    """Reject live-shaped calls that would otherwise silently simulate.
+
+    Virtual cards are production-facing endpoints. They should only return
+    deterministic sandbox data when the caller/operator explicitly opted in
+    via ``SARDIS_VIRTUAL_CARDS_SANDBOX=true``. Non-live chain mode alone is
+    not sufficient because it makes the endpoint look live while serving
+    fake cards, fake balances, and fake payments.
     """
-    if os.getenv("SARDIS_VIRTUAL_CARDS_SANDBOX", "").strip().lower() == "true":
-        return True
+    if _is_sandbox_mode():
+        return
     chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
-    return chain_mode != "live"
+    if chain_mode != "live":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Virtual cards are unavailable unless SARDIS_CHAIN_MODE=live "
+                "or SARDIS_VIRTUAL_CARDS_SANDBOX=true."
+            ),
+        )
 
 
 def _generate_sandbox_card(
@@ -181,7 +191,16 @@ def _generate_sandbox_card(
 
 def _get_laso_service():
     """Import and instantiate LasoMPPService (lazy to avoid import-time failures)."""
-    from sardis_mpp.services.laso import LasoMPPService
+    try:
+        from sardis_mpp.services.laso import LasoMPPService
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=(
+                "Virtual cards require the sardis_mpp Laso integration in live mode. "
+                "Set SARDIS_VIRTUAL_CARDS_SANDBOX=true only for explicit sandbox use."
+            ),
+        ) from exc
     return LasoMPPService()
 
 
@@ -228,6 +247,8 @@ async def issue_virtual_card(
 
     Restrictions (live mode): US-only, $5-$1,000, non-reloadable, no 3D Secure.
     """
+    _ensure_virtual_cards_mode()
+
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
@@ -264,6 +285,8 @@ async def issue_virtual_card(
             currency=req.currency,
             card_type=req.card_type,
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -315,6 +338,8 @@ async def get_virtual_card(
 
     In sandbox mode, returns the in-memory sandbox card if it exists.
     """
+    _ensure_virtual_cards_mode()
+
     # ── Sandbox mode ─────────────────────────────────────────────────
     if _is_sandbox_mode():
         card_data = _sandbox_cards.get(card_id)
@@ -338,6 +363,8 @@ async def get_virtual_card(
     try:
         laso = _get_laso_service()
         card = await laso.get_card_data(card_id)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Laso card lookup failed for %s: %s", card_id, e)
         raise HTTPException(status_code=502, detail=f"Card lookup failed: {e}")
@@ -377,6 +404,8 @@ async def use_card_for_payment(
     With mandate_id, the payment is validated against spending policy limits.
     In sandbox mode, validates against in-memory card data.
     """
+    _ensure_virtual_cards_mode()
+
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
@@ -469,6 +498,8 @@ async def send_payment(
     Funded with USDC on Tempo. Requires human confirmation before processing.
     In sandbox mode, returns a simulated pending payment.
     """
+    _ensure_virtual_cards_mode()
+
     if req.mandate_id:
         await _check_mandate(req.mandate_id, principal.org_id, req.amount)
 
@@ -496,6 +527,8 @@ async def send_payment(
             method=req.method,
             recipient=req.recipient,
         )
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
@@ -524,6 +557,8 @@ async def get_balance(
 
     In sandbox mode, returns a simulated $1,000 available balance.
     """
+    _ensure_virtual_cards_mode()
+
     # ── Sandbox mode ─────────────────────────────────────────────────
     if _is_sandbox_mode():
         return BalanceResponse(
@@ -537,6 +572,8 @@ async def get_balance(
     try:
         laso = _get_laso_service()
         balance = await laso.get_balance()
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Laso balance check failed: %s", e)
         raise HTTPException(status_code=502, detail=f"Balance check failed: {e}")

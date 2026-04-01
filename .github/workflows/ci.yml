@@ -187,7 +187,7 @@ jobs:
         run: pnpm --filter @sardis/sdk-js test
 
   dashboard-build:
-    name: Dashboard Build
+    name: Canonical Dashboard Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -217,17 +217,17 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: cd dashboard && pnpm install
+        run: pnpm install
+
+      - name: Type check dashboard
+        run: pnpm --filter @sardis/app-dashboard typecheck
 
       - name: Build dashboard
-        run: cd dashboard && pnpm build
+        run: pnpm --filter @sardis/app-dashboard build
 
   build-landing:
-    name: Landing Page Build
+    name: Canonical Landing Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: landing
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -259,4 +259,4 @@ jobs:
         run: pnpm install
 
       - name: Build landing page
-        run: pnpm build
+        run: pnpm --filter @sardis/app-landing typecheck && pnpm --filter @sardis/app-landing build

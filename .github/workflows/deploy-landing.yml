@@ -1,11 +1,19 @@
-name: Deploy Landing
+name: Deploy Canonical Landing
 
 on:
   push:
     branches: [main]
-    paths: ['landing/**']
+    paths:
+      - 'apps/landing/**'
+      - 'packages/ui-web/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   pull_request:
-    paths: ['landing/**']
+    paths:
+      - 'apps/landing/**'
+      - 'packages/ui-web/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
 
 permissions: read-all
 
@@ -14,56 +22,54 @@ env:
 
 jobs:
   build:
-    name: Build Landing
+    name: Build Canonical Landing
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: landing
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: landing/package-lock.json
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          run_install: false
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Lint
-        run: npm run lint --if-present
+        run: pnpm --filter @sardis/app-landing lint
 
       - name: Build
-        run: npm run build
+        run: pnpm --filter @sardis/app-landing typecheck && pnpm --filter @sardis/app-landing build
 
   deploy:
-    name: Deploy Landing to Vercel
+    name: Deploy Canonical Landing to Vercel
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: production
       url: https://sardis.sh
-    defaults:
-      run:
-        working-directory: landing
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: landing/package-lock.json
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          run_install: false
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install
 
       - name: Build
-        run: npm run build
-        env:
-          VITE_API_URL: https://api.sardis.sh
+        run: pnpm --filter @sardis/app-landing build
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25
@@ -71,5 +77,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
-          working-directory: landing
+          working-directory: apps/landing
           vercel-args: '--prod'

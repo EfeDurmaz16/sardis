@@ -1,11 +1,19 @@
-name: Deploy Dashboard
+name: Deploy Canonical Dashboard
 
 on:
   push:
     branches: [main]
-    paths: ['dashboard/**']
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/ui-web/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   pull_request:
-    paths: ['dashboard/**']
+    paths:
+      - 'apps/dashboard/**'
+      - 'packages/ui-web/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
 
 permissions: read-all
 
@@ -14,11 +22,8 @@ env:
 
 jobs:
   build:
-    name: Build Dashboard
+    name: Build Canonical Dashboard
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dashboard
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -26,31 +31,31 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          run_install: false
+
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Type check
-        run: npm run typecheck
-        continue-on-error: true
+        run: pnpm --filter @sardis/app-dashboard typecheck
 
       - name: Lint
-        run: npm run lint --if-present
-        continue-on-error: true
+        run: pnpm --filter @sardis/app-dashboard lint
 
       - name: Build
-        run: npm run build
+        run: pnpm --filter @sardis/app-dashboard build
 
   deploy:
-    name: Deploy Dashboard to Vercel
+    name: Deploy Canonical Dashboard to Vercel
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: production
       url: https://app.sardis.sh
-    defaults:
-      run:
-        working-directory: dashboard
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -58,13 +63,16 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+        with:
+          run_install: false
+
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Build
-        run: npm run build
-        env:
-          VITE_API_URL: https://api.sardis.sh
+        run: pnpm --filter @sardis/app-dashboard build
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25
@@ -72,5 +80,5 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_DASHBOARD }}
-          working-directory: dashboard
+          working-directory: apps/dashboard
           vercel-args: '--prod'
