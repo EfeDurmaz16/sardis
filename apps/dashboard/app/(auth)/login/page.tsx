@@ -89,17 +89,17 @@ export default function LoginPage() {
             />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Sign in to Sardis</h1>
-        <p className="text-sm text-muted-foreground mt-2">
+        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Sign in to Sardis</h1>
+        <p className="text-sm text-gray-500 mt-2">
           Enter your credentials to access the dashboard
         </p>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader className="pb-4 pt-6 px-6">
-          <CardTitle className="text-base">Account</CardTitle>
+      <Card className="shadow-sm bg-white border-gray-200 w-full">
+        <CardHeader className="pb-4 pt-6 px-8">
+          <CardTitle className="text-base text-gray-900">Account</CardTitle>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent className="px-8 pb-8">
           <form onSubmit={handleSubmit} className="space-y-4" id="login-form">
             {error && (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -110,7 +110,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="text-sm font-medium text-foreground"
+                className="text-sm font-medium text-gray-700"
               >
                 Email
               </label>
@@ -127,7 +127,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <label
                 htmlFor="password"
-                className="text-sm font-medium text-foreground"
+                className="text-sm font-medium text-gray-700"
               >
                 Password
               </label>
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -167,15 +167,15 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col gap-2 text-center text-sm">
           <Link
             href="/forgot-password"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-gray-500 hover:text-gray-900 transition-colors"
           >
             Forgot password?
           </Link>
-          <p className="text-muted-foreground">
+          <p className="text-gray-500">
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="text-foreground font-medium hover:underline"
+              className="text-gray-900 font-medium hover:underline"
             >
               Create one
             </Link>

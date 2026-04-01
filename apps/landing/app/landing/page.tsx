@@ -484,15 +484,15 @@ payment = client.pay(
               ))}
             </div>
             <div style={{ marginTop: "auto", paddingTop: 8 }}>
-              <PrimaryCTA label="Get started" t={t} slide href="https://app.sardis.sh/login" />
+              <PrimaryCTA label="Get started" t={t} slide href="https://app.sardis.sh" />
             </div>
           </div>
           {/* Starter — MOST POPULAR — Double Bezel */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1.15, padding: 3, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 24, position: "relative" }}>
-            <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", background: t.btnBg, borderRadius: 100 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1.25, padding: 3, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 24, position: "relative" }}>
+            <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", background: t.btnBg, borderRadius: 100, zIndex: 1 }}>
               <span style={{ fontSize: 10, fontWeight: 700, color: t.btnText, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Most popular</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 36, gap: 28, background: t.cardBg, borderRadius: 21, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 8px 32px rgba(26,22,20,0.06)" }}>
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "44px 40px 40px", gap: 32, background: t.cardBg, borderRadius: 21, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 12px 40px rgba(26,22,20,0.08)" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Starter</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
@@ -508,7 +508,7 @@ payment = client.pay(
                 ))}
               </div>
               <div style={{ marginTop: "auto", paddingTop: 8 }}>
-                <PrimaryCTA label="Start building" t={t} slide href="https://app.sardis.sh/login" />
+                <PrimaryCTA label="Start building" t={t} slide href="https://app.sardis.sh/billing" />
               </div>
             </div>
           </div>
