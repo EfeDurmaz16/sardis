@@ -131,7 +131,7 @@ function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light;
             style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 8px 12px 24px", background: t.btnBg, borderRadius: 100 }}
           >
             <span className={jakarta.className} style={{ fontSize: 14, fontWeight: 500, color: t.btnText }}>{label}</span>
-            <div className="sardis-arrow" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: "50%", background: t.btnIconBg }}>
+            <div className="sardis-arrow" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 26, height: 28, borderRadius: "50%", background: t.btnIconBg }}>
               <span style={{ fontSize: 13, color: t.btnText }}>→</span>
             </div>
           </div>
@@ -302,7 +302,7 @@ payment = client.pay(
       </Section>
 
       {/* ═══ LOGO STRIP ═══ */}
-      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 56px", gap: 32, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
+      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "72px 56px 56px", gap: 32, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Early partners" t={t} />
           <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
@@ -312,7 +312,7 @@ payment = client.pay(
               { name: "Base", domain: "base.org" },
               { name: "Tempo", domain: "tempo.xyz" },
             ].map((p) => (
-              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 26, opacity: 0.7, objectFit: "contain" }} />
+              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 28, opacity: 0.85, objectFit: "contain" }} />
             ))}
           </div>
         </div>
@@ -323,7 +323,7 @@ payment = client.pay(
               { name: "AutoGPT", domain: "agpt.co" },
               { name: "Activepieces", domain: "activepieces.com" },
             ].map((p) => (
-              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 26, opacity: 0.7, objectFit: "contain" }} />
+              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 28, opacity: 0.85, objectFit: "contain" }} />
             ))}
           </div>
         </div>
