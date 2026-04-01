@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.sardis.sh";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sardis.sh";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -11,10 +11,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${siteUrl}/landing`,
+      url: `https://docs.sardis.sh`,
       lastModified: new Date(),
       changeFrequency: "weekly",
-      priority: 0.6,
+      priority: 0.8,
+    },
+    {
+      url: `https://app.sardis.sh`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   ];
 }

@@ -99,8 +99,10 @@ function SardisLogo({ color, size = 20 }: { color: string; size?: number }) {
 }
 
 /* ── Button-in-Button CTA ── */
-function PrimaryCTA({ label, t, slide }: { label: string; t: typeof light; slide?: boolean }) {
+function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light; slide?: boolean; href?: string }) {
   const [slid, setSlid] = useState(false)
+  const Tag = href ? "a" : "div"
+  const linkProps = href ? { href, ...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {}) } : {}
 
   if (slide) {
     return (
@@ -118,10 +120,11 @@ function PrimaryCTA({ label, t, slide }: { label: string; t: typeof light; slide
           .sardis-btn:hover .sardis-btn-icon { transform: translateX(2px) scale(1.08); }
           .sardis-btn-icon { transition: transform 250ms cubic-bezier(0.32,0.72,0,1); }
         `}</style>
-        <div
+        <Tag
           className="sardis-slide-track"
-          style={{ display: "inline-flex", padding: 4, background: `${t.text}06`, border: `1px solid ${t.text}0A`, borderRadius: 100, width: "100%" }}
-          onClick={() => { setSlid(true); setTimeout(() => setSlid(false), 1200) }}
+          style={{ display: "inline-flex", padding: 4, background: `${t.text}06`, border: `1px solid ${t.text}0A`, borderRadius: 100, width: "100%", textDecoration: "none" }}
+          onClick={!href ? () => { setSlid(true); setTimeout(() => setSlid(false), 1200) } : undefined}
+          {...linkProps}
         >
           <div
             className={`sardis-slide-pill ${slid ? "slid" : ""}`}
@@ -132,15 +135,16 @@ function PrimaryCTA({ label, t, slide }: { label: string; t: typeof light; slide
               <span style={{ fontSize: 13, color: t.btnText }}>→</span>
             </div>
           </div>
-        </div>
+        </Tag>
       </>
     )
   }
 
   return (
-    <div
+    <Tag
       className="sardis-btn"
-      style={{ display: "inline-flex", padding: "2px", background: `${t.text}08`, border: `1px solid ${t.text}14`, borderRadius: 100 }}
+      style={{ display: "inline-flex", padding: "2px", background: `${t.text}08`, border: `1px solid ${t.text}14`, borderRadius: 100, textDecoration: "none" }}
+      {...linkProps}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 8px 14px 28px", background: t.btnBg, borderRadius: 100 }}>
         <span className={jakarta.className} style={{ fontSize: 15, fontWeight: 500, color: t.btnText }}>{label}</span>
@@ -148,15 +152,17 @@ function PrimaryCTA({ label, t, slide }: { label: string; t: typeof light; slide
           <span style={{ fontSize: 14, color: t.btnText }}>→</span>
         </div>
       </div>
-    </div>
+    </Tag>
   )
 }
 
-function GhostCTA({ label, t }: { label: string; t: typeof light }) {
+function GhostCTA({ label, t, href }: { label: string; t: typeof light; href?: string }) {
+  const Tag = href ? "a" : "div"
+  const linkProps = href ? { href, ...(href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {}) } : {}
   return (
-    <div className="sardis-btn" style={{ display: "flex", alignItems: "center", padding: "16px 24px", border: `1px solid ${t.borderStrong}`, borderRadius: 100, cursor: "pointer" }}>
+    <Tag className="sardis-btn" style={{ display: "flex", alignItems: "center", padding: "16px 24px", border: `1px solid ${t.borderStrong}`, borderRadius: 100, cursor: "pointer", textDecoration: "none" }} {...linkProps}>
       <span style={{ fontSize: 15, color: t.textMuted }}>{label}</span>
-    </div>
+    </Tag>
   )
 }
 
@@ -218,12 +224,17 @@ payment = client.pay(
             <span className={jakarta.className} style={{ fontSize: 15, fontWeight: 700, color: t.text, letterSpacing: "-0.02em" }}>Sardis</span>
           </Link>
           <div style={{ display: "flex", gap: 32 }}>
-            {["Product", "Developers", "Security", "Pricing", "Docs"].map((l) => (
-              <span key={l} style={{ fontSize: 13, color: t.textMuted, cursor: "pointer" }}>{l}</span>
+            {[
+              { label: "Product", href: "#product" },
+              { label: "Docs", href: "https://docs.sardis.sh" },
+              { label: "Security", href: "https://docs.sardis.sh/security" },
+              { label: "Pricing", href: "#pricing" },
+            ].map((l) => (
+              <a key={l.label} href={l.href} style={{ fontSize: 13, color: t.textMuted, cursor: "pointer", textDecoration: "none" }} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{l.label}</a>
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ fontSize: 13, color: t.textMuted, cursor: "pointer" }}>Sign in</span>
+            <a href="https://app.sardis.sh/login" style={{ fontSize: 13, color: t.textMuted, cursor: "pointer", textDecoration: "none" }}>Sign in</a>
             {mounted && (
               <button
                 onClick={() => setTheme(isDark ? "light" : "dark")}
@@ -232,12 +243,12 @@ payment = client.pay(
                 {isDark ? "☀" : "☾"}
               </button>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 6px 8px 18px", background: t.btnBg, borderRadius: 100, cursor: "pointer" }}>
+            <a href="https://app.sardis.sh" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 6px 8px 18px", background: t.btnBg, borderRadius: 100, cursor: "pointer", textDecoration: "none" }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: t.btnText }}>Get started</span>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24, borderRadius: "50%", background: t.btnIconBg }}>
                 <span style={{ fontSize: 12, color: t.btnText }}>→</span>
               </div>
-            </div>
+            </a>
           </div>
         </div>
       </nav>
@@ -255,8 +266,8 @@ payment = client.pay(
           Set spending rules, enforce compliance guardrails, and let your agents transact autonomously. Every payment verified.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: 14, paddingTop: 8 }}>
-          <PrimaryCTA label="Get started free" t={t} />
-          <GhostCTA label="Read the docs" t={t} />
+          <PrimaryCTA label="Get started free" t={t} href="https://app.sardis.sh" />
+          <GhostCTA label="Read the docs" t={t} href="https://docs.sardis.sh" />
         </div>
       </Section>
 
@@ -364,7 +375,7 @@ payment = client.pay(
       </Section>
 
       {/* ═══ FEATURES BENTO ═══ */}
-      <Section style={{ padding: "120px 56px", display: "flex", flexDirection: "column", gap: 40 }}>
+      <Section id="product" style={{ padding: "120px 56px", display: "flex", flexDirection: "column", gap: 40 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <Eyebrow text="Features" t={t} />
           <h2 className={jakarta.className} style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.035em", lineHeight: "42px" }}>
@@ -390,7 +401,7 @@ payment = client.pay(
           <div style={{ display: "flex", gap: 12 }}>
             {[
               { label: "Frameworks", title: "CrewAI, LangChain, Vercel AI, custom runtimes." },
-              { label: "Multi-chain", title: "Stablecoin settlement on Base, Polygon, Arbitrum." },
+              { label: "Multi-chain", title: "Live on Tempo and Base. Polygon, Arbitrum, Optimism coming soon." },
               { label: "Sandbox", title: "Test prompts and policies before funds move." },
             ].map((f) => (
               <BezelCard key={f.label} t={t}>
@@ -429,7 +440,7 @@ payment = client.pay(
       </Section>
 
       {/* ═══ PRICING ═══ */}
-      <Section style={{ padding: "120px 56px", display: "flex", flexDirection: "column", gap: 48, background: t.sectionAlt }}>
+      <Section id="pricing" style={{ padding: "120px 56px", display: "flex", flexDirection: "column", gap: 48, background: t.sectionAlt }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <Eyebrow text="Pricing" t={t} />
@@ -437,58 +448,97 @@ payment = client.pay(
               Start free. Add control<br />as spending gets real.
             </h2>
           </div>
-          <span style={{ fontSize: 13, color: t.textLabel }}>Three tiers, less complexity.</span>
+          <span style={{ fontSize: 13, color: t.textLabel }}>Five tiers, zero complexity.</span>
         </div>
-        <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ display: "flex", gap: 12 }}>
           {/* Free */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 28, gap: 20, border: `1px solid ${t.border}`, borderRadius: 20 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Free</span>
-              <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>$0</span>
-              <span style={{ fontSize: 13, color: t.textFaint }}>Internal testing.</span>
+              <span className={jakarta.className} style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em" }}>$0</span>
+              <span style={{ fontSize: 13, color: t.textFaint }}>Sandbox, 1 agent.</span>
             </div>
             <div style={{ height: 1, background: t.border }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {["Sandbox", "SDK access", "Basic policy"].map((f) => (
-                <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["Sandbox environment", "SDK access", "Basic policy engine"].map((f) => (
+                <span key={f} style={{ fontSize: 12, color: t.textMuted }}>{f}</span>
               ))}
             </div>
-            <GhostCTA label="Get started" t={t} />
+            <GhostCTA label="Get started" t={t} href="https://app.sardis.sh/signup?plan=free" />
           </div>
-          {/* Pro — Double Bezel */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 2, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 22 }}>
-            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, background: t.cardBg, borderRadius: 20, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 8px 32px rgba(26,22,20,0.06)" }}>
+          {/* Dev */}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 28, gap: 20, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Dev</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span className={jakarta.className} style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em" }}>$49</span>
+                <span style={{ fontSize: 13, color: t.textFaint }}>/ mo</span>
+              </div>
+              <span style={{ fontSize: 13, color: t.textFaint }}>Testnet, 2 agents.</span>
+            </div>
+            <div style={{ height: 1, background: t.border }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["Testnet only", "100 tx / month", "MCP + frameworks"].map((f) => (
+                <span key={f} style={{ fontSize: 12, color: t.textMuted }}>{f}</span>
+              ))}
+            </div>
+            <GhostCTA label="Start Dev" t={t} href="https://app.sardis.sh/signup?plan=dev" />
+          </div>
+          {/* Starter — MOST POPULAR — Double Bezel */}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 2, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 22, position: "relative" }}>
+            <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", padding: "4px 14px", background: t.btnBg, borderRadius: 100 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: t.btnText, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Most popular</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 28, gap: 20, background: t.cardBg, borderRadius: 20, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 8px 32px rgba(26,22,20,0.06)" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Pro</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Starter</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>$49</span>
-                  <span style={{ fontSize: 13, color: t.textFaint }}>/ month</span>
+                  <span className={jakarta.className} style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em" }}>$199</span>
+                  <span style={{ fontSize: 13, color: t.textFaint }}>/ mo</span>
                 </div>
-                <span style={{ fontSize: 13, color: t.textFaint }}>Production teams.</span>
+                <span style={{ fontSize: 13, color: t.textFaint }}>Production, 25 agents.</span>
               </div>
               <div style={{ height: 1, background: t.border }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {["Production API", "MCP + frameworks", "Audit events + webhooks", "Multi-chain settlement"].map((f) => (
-                  <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {["Mainnet settlement", "Unlimited transactions", "Audit events + webhooks", "Multi-chain"].map((f) => (
+                  <span key={f} style={{ fontSize: 12, color: t.textMuted }}>{f}</span>
                 ))}
               </div>
-              <PrimaryCTA label="Start Pro" t={t} slide />
+              <PrimaryCTA label="Start Starter" t={t} slide href="https://app.sardis.sh/signup?plan=starter" />
             </div>
           </div>
-          {/* Enterprise */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+          {/* Growth */}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 28, gap: 20, border: `1px solid ${t.border}`, borderRadius: 20 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Enterprise</span>
-              <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>Custom</span>
-              <span style={{ fontSize: 13, color: t.textFaint }}>Regulated workflows.</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Growth</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span className={jakarta.className} style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em" }}>$499</span>
+                <span style={{ fontSize: 13, color: t.textFaint }}>/ mo</span>
+              </div>
+              <span style={{ fontSize: 13, color: t.textFaint }}>KYB + PEP, 100 agents.</span>
             </div>
             <div style={{ height: 1, background: t.border }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {["KYC + sanctions", "Policy review", "SLAs + support"].map((f) => (
-                <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["KYB verification", "PEP screening", "Advanced audit trail", "FX support"].map((f) => (
+                <span key={f} style={{ fontSize: 12, color: t.textMuted }}>{f}</span>
               ))}
             </div>
-            <GhostCTA label="Talk to sales" t={t} />
+            <GhostCTA label="Start Growth" t={t} href="https://app.sardis.sh/signup?plan=growth" />
+          </div>
+          {/* Enterprise */}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 28, gap: 20, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Enterprise</span>
+              <span className={jakarta.className} style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.03em" }}>Custom</span>
+              <span style={{ fontSize: 13, color: t.textFaint }}>White-glove, unlimited.</span>
+            </div>
+            <div style={{ height: 1, background: t.border }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["Dedicated support", "Custom SLAs", "Unlimited agents", "Policy review"].map((f) => (
+                <span key={f} style={{ fontSize: 12, color: t.textMuted }}>{f}</span>
+              ))}
+            </div>
+            <GhostCTA label="Talk to sales" t={t} href="https://cal.com/sardis/15min" />
           </div>
         </div>
       </Section>
@@ -505,11 +555,11 @@ payment = client.pay(
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 14 }}>
-          <PrimaryCTA label="Get started" t={t} />
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "12px 22px", border: `1px solid ${t.borderStrong}`, borderRadius: 100, cursor: "pointer" }}>
+          <PrimaryCTA label="Get started" t={t} href="https://app.sardis.sh" />
+          <a href="https://cal.com/sardis/15min" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, padding: "12px 22px", border: `1px solid ${t.borderStrong}`, borderRadius: 100, cursor: "pointer", textDecoration: "none" }}>
             <span style={{ fontSize: 14, color: t.textMuted }}>Talk to sales</span>
             <span style={{ fontSize: 14, color: t.textGhost }}>↗</span>
-          </div>
+          </a>
         </div>
       </Section>
 
@@ -520,8 +570,15 @@ payment = client.pay(
           <span style={{ fontSize: 12, color: t.textGhost }}>© 2026 Sardis. Payment OS for AI agents.</span>
         </div>
         <div style={{ display: "flex", gap: 24 }}>
-          {["Product", "Docs", "Security", "Pricing", "Privacy", "Terms"].map((l) => (
-            <span key={l} style={{ fontSize: 12, color: t.textLabel, cursor: "pointer" }}>{l}</span>
+          {[
+            { label: "Product", href: "#product" },
+            { label: "Docs", href: "https://docs.sardis.sh" },
+            { label: "Security", href: "https://docs.sardis.sh/security" },
+            { label: "Pricing", href: "#pricing" },
+            { label: "Privacy", href: "https://docs.sardis.sh/privacy" },
+            { label: "Terms", href: "https://docs.sardis.sh/terms" },
+          ].map((l) => (
+            <a key={l.label} href={l.href} style={{ fontSize: 12, color: t.textLabel, cursor: "pointer", textDecoration: "none" }} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{l.label}</a>
           ))}
         </div>
       </footer>
