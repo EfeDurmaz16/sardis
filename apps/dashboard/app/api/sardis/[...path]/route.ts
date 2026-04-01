@@ -1,8 +1,22 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 import { proxyErrorResponse, sardisProxyResponse } from "@/utils/sardis-proxy"
 
 async function forward(request: NextRequest) {
+  // ── Auth gate: require a valid session cookie before proxying ──
+  const cookieStore = await cookies()
+  const sessionToken =
+    cookieStore.get("better-auth.session_token")?.value ||
+    cookieStore.get("sardis_session")?.value
+
+  if (!sessionToken) {
+    return NextResponse.json(
+      { error: "Unauthorized", detail: "No active session. Please sign in." },
+      { status: 401 },
+    )
+  }
+
   const segments = request.nextUrl.pathname.replace(/^\/api\/sardis\//, "")
   const apiPath = `/${segments}${request.nextUrl.search}`
 

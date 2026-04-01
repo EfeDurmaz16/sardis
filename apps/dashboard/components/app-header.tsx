@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useTheme } from "next-themes"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
+import { useSession, signOut } from "@/lib/auth-client"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -296,6 +297,17 @@ function getBreadcrumbs(pathname: string): BreadcrumbItem[] {
 
 export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => void; onSearchClick?: () => void }) {
   const router = useRouter()
+  const { data: sessionData } = useSession()
+  const user = sessionData?.user
+  const userEmail = user?.email ?? "user@sardis.sh"
+  const userName = user?.name ?? userEmail.split("@")[0]
+  const userInitials = userName
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U"
+
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [paymentRecipient, setPaymentRecipient] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
@@ -307,6 +319,16 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     setPaymentOpen(false)
     setPaymentRecipient(""); setPaymentAmount(""); setPaymentChain("Base")
   }
+
+  async function handleSignOut() {
+    await signOut()
+    // Clear legacy cookies/localStorage
+    localStorage.removeItem("sardis_session")
+    document.cookie = "sardis_session=; path=/; max-age=0"
+    document.cookie = "better-auth.session_token=; path=/; max-age=0"
+    window.location.href = "/login"
+  }
+
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
   const breadcrumbs = getBreadcrumbs(pathname)
@@ -442,15 +464,15 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-1 cursor-pointer outline-none">
             <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-medium flex items-center justify-center">
-              ED
+              {userInitials}
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="bottom" sideOffset={8} className="w-56">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-sm font-medium leading-none">Efe Baran Durmaz</p>
-                  <p className="text-xs leading-none text-muted-foreground">efe@sardis.sh</p>
+                  <p className="text-sm font-medium leading-none">{userName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
@@ -478,7 +500,7 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
               <SignOut className="w-4 h-4" />
               Sign Out
             </DropdownMenuItem>
