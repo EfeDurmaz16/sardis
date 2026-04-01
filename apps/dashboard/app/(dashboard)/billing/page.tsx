@@ -69,8 +69,10 @@ function formatNumber(n: number | null): string {
 
 function getAuthHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {}
-  const token = localStorage.getItem("sardis_session")
-  if (token) return { Authorization: `Bearer ${token}` }
+  try {
+    const token = localStorage.getItem("sardis_session")
+    if (token) return { Authorization: `Bearer ${token}` }
+  } catch { /* SSR safety */ }
   return {}
 }
 

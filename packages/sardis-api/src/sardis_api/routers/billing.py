@@ -378,22 +378,22 @@ async def create_checkout_session(
                 checkout_kwargs["line_items"] = _build_inline_line_items()
                 session = stripe.checkout.Session.create(**checkout_kwargs)
             except Exception as inner_exc:
-                logger.error("Stripe checkout fallback failed: %s", inner_exc)
+                logger.error("Stripe checkout fallback failed: %s (type=%s)", inner_exc, type(inner_exc).__name__)
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Failed to create checkout session",
+                    detail=f"Checkout fallback failed: {type(inner_exc).__name__}: {str(inner_exc)[:200]}",
                 ) from inner_exc
         else:
-            logger.error("Stripe checkout session creation failed: %s", exc)
+            logger.error("Stripe checkout failed: %s (type=%s)", exc, type(exc).__name__)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Failed to create checkout session",
+                detail=f"Checkout failed: {type(exc).__name__}: {str(exc)[:200]}",
             ) from exc
     except Exception as exc:
-        logger.error("Stripe checkout session creation failed: %s", exc)
+        logger.error("Stripe checkout session creation failed: %s (type=%s)", exc, type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Failed to create checkout session",
+            detail=f"Failed to create checkout session: {type(exc).__name__}: {str(exc)[:200]}",
         ) from exc
 
     # Analytics: track plan upgrade intent (fire-and-forget, never blocks the request)
