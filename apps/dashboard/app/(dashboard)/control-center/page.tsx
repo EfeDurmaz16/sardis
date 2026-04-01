@@ -41,7 +41,7 @@ const securityControls = [
 ]
 
 export default function ControlCenterPage() {
-  const { data: ksStatus, loading } = useSardis<KillSwitchStatus>("api/v2/guardrails/kill-switch/status")
+  const { data: ksStatus, loading, refetch } = useSardis<KillSwitchStatus>("api/v2/guardrails/kill-switch/status")
 
   const [controls, setControls] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -130,7 +130,23 @@ export default function ControlCenterPage() {
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent>
-                    <ContextMenuItem onClick={() => { setControls((prev) => ({ ...prev, [control.key]: !prev[control.key] })); toast.success(controls[control.key] ? "Deactivated" : "Activated") }}>
+                    <ContextMenuItem onClick={async () => {
+                      const newState = !controls[control.key]
+                      setControls((prev) => ({ ...prev, [control.key]: newState }))
+                      try {
+                        const res = await fetch("/api/sardis/api/v2/control-center/config", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ control: control.key, enabled: newState }),
+                        })
+                        if (!res.ok) throw new Error("Failed")
+                        toast.success(newState ? "Activated" : "Deactivated")
+                        refetch()
+                      } catch {
+                        setControls((prev) => ({ ...prev, [control.key]: !newState }))
+                        toast.error("Failed to toggle control")
+                      }
+                    }}>
                       {controls[control.key] ? "Disable" : "Enable"} {control.label}
                     </ContextMenuItem>
                     <ContextMenuSeparator />
@@ -223,7 +239,25 @@ export default function ControlCenterPage() {
           </div>
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button onClick={() => { setConfigOpen(false); toast.success(`Configuration saved for ${configControl}`) }}>Save Configuration</Button>
+            <Button onClick={async () => {
+              try {
+                const res = await fetch("/api/sardis/api/v2/control-center/config", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    control: configControl,
+                    threshold: parseInt(configThreshold),
+                    cooldown: parseInt(configCooldown),
+                  }),
+                })
+                if (!res.ok) throw new Error("Failed")
+                toast.success(`Configuration saved for ${configControl}`)
+                setConfigOpen(false)
+                refetch()
+              } catch {
+                toast.error("Failed to save configuration")
+              }
+            }}>Save Configuration</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

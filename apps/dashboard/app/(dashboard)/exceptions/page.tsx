@@ -109,7 +109,7 @@ function formatCreated(val: string | null): string {
 }
 
 export default function ExceptionsPage() {
-  const { data: exceptionData, loading } = useSardis<ExceptionEntry[]>("api/v2/exceptions")
+  const { data: exceptionData, loading, refetch } = useSardis<ExceptionEntry[]>("api/v2/exceptions")
   const exceptions = exceptionData ?? []
 
   const [tab, setTab] = useState("all")
@@ -161,21 +161,51 @@ export default function ExceptionsPage() {
     setEditOpen(true)
   }
 
-  function handleEditSave() {
+  async function handleEditSave() {
     if (!editItem) return
-    // TODO: PUT to API to update exception
-    setEditOpen(false)
-    toast.success(`Exception ${editItem.id} updated`)
+    try {
+      const res = await fetch(`/api/sardis/api/v2/exceptions/${editItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rule: editRule,
+          description: editDescription,
+          severity: editSeverity,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`Exception ${editItem.id} updated`)
+      setEditOpen(false)
+      refetch()
+    } catch {
+      toast.error("Failed to update exception")
+    }
   }
 
-  function handleRetry(id: string) {
-    // TODO: POST to API to retry exception
-    toast.info(`Retrying ${id}...`)
+  async function handleRetry(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/exceptions/${id}/retry`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.info(`Retrying ${id}...`)
+      refetch()
+    } catch {
+      toast.error("Failed to retry exception")
+    }
   }
 
-  function handleResolve(id: string) {
-    // TODO: POST to API to resolve exception
-    toast.success(`Exception ${id} resolved`)
+  async function handleResolve(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/exceptions/${id}/resolve`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`Exception ${id} resolved`)
+      refetch()
+    } catch {
+      toast.error("Failed to resolve exception")
+    }
   }
 
   return (

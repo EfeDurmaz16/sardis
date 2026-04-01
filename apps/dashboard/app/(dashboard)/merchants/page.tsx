@@ -95,7 +95,7 @@ function formatDate(iso: string): string {
 }
 
 export default function MerchantsPage() {
-  const { data: remoteMerchants, loading } = useSardis<Merchant[]>("api/v2/merchants")
+  const { data: remoteMerchants, loading, refetch } = useSardis<Merchant[]>("api/v2/merchants")
   const merchants = remoteMerchants ?? []
 
   const [tab, setTab] = useState("all")
@@ -365,14 +365,28 @@ export default function MerchantsPage() {
             </DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
               const formData = new FormData(e.currentTarget)
               const amount = (formData.get("amount") as string).trim()
               const description = (formData.get("description") as string).trim()
-              if (!amount) return
-              toast.success(`Checkout link created for ${checkoutMerchant?.name}: $${amount}${description ? ` - ${description}` : ""}`)
-              setCheckoutOpen(false)
+              if (!amount || !checkoutMerchant) return
+              try {
+                const res = await fetch(`/api/sardis/api/v2/merchants/${checkoutMerchant.merchant_id}/links`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    amount: parseFloat(amount),
+                    description,
+                  }),
+                })
+                if (!res.ok) throw new Error("Failed")
+                toast.success(`Checkout link created for ${checkoutMerchant.name}`)
+                setCheckoutOpen(false)
+                refetch()
+              } catch {
+                toast.error("Failed to create checkout link")
+              }
             }}
             className="space-y-4"
           >

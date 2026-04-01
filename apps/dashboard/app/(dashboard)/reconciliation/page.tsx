@@ -72,13 +72,12 @@ const statusConfig: Record<Discrepancy["status"], { variant: "destructive" | "wa
 }
 
 export default function ReconciliationPage() {
-  const { data: reconData, loading } = useSardis<ReconciliationEntry[]>("api/v2/admin/reconciliation")
+  const { data: reconData, loading, refetch } = useSardis<ReconciliationEntry[]>("api/v2/admin/reconciliation")
 
   // Flatten all entries into a single reconciliation view
   const entry = reconData?.[0] ?? null
-  const [localDiscrepancies, setLocalDiscrepancies] = useState<Discrepancy[] | null>(null)
 
-  const discrepancies = localDiscrepancies ?? entry?.discrepancies ?? []
+  const discrepancies = entry?.discrepancies ?? []
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<Discrepancy | null>(null)
@@ -88,12 +87,19 @@ export default function ReconciliationPage() {
     setSheetOpen(true)
   }
 
-  function handleForceReconcile(txId: string) {
-    const updated = discrepancies.map((d) =>
-      d.txId === txId ? { ...d, status: "reconciled" as const } : d
-    )
-    setLocalDiscrepancies(updated)
-    toast.success(`${txId} force reconciled`)
+  async function handleForceReconcile(txId: string) {
+    try {
+      const res = await fetch("/api/sardis/api/v2/reconciliation/force", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tx_id: txId }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`${txId} force reconciled`)
+      refetch()
+    } catch {
+      toast.error("Failed to force reconcile")
+    }
   }
 
   const stats = useMemo(() => {
@@ -348,7 +354,7 @@ export default function ReconciliationPage() {
           )}
           <SheetFooter>
             {selectedItem && selectedItem.status !== "reconciled" && selectedItem.status !== "resolved" && (
-              <Button onClick={() => { handleForceReconcile(selectedItem.txId); setSelectedItem({ ...selectedItem, status: "reconciled" }) }}>Force Reconcile</Button>
+              <Button onClick={async () => { await handleForceReconcile(selectedItem.txId); setSelectedItem({ ...selectedItem, status: "reconciled" }) }}>Force Reconcile</Button>
             )}
             <SheetClose render={<Button variant="outline" />}>Close</SheetClose>
           </SheetFooter>

@@ -45,6 +45,7 @@ import {
   Plus,
   Spinner,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 
@@ -81,7 +82,7 @@ const conditionLabels: Record<string, string> = {
 }
 
 export default function AlertsPage() {
-  const { data: alertRules, loading } = useSardis<AlertRule[]>("api/v2/alerts")
+  const { data: alertRules, loading, refetch } = useSardis<AlertRule[]>("api/v2/alerts")
   const alerts = alertRules ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -114,14 +115,30 @@ export default function AlertsPage() {
     ]
   }, [alerts])
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!newName.trim() || !newThreshold.trim()) return
-    // TODO: POST to API to create alert rule
-    setNewName("")
-    setNewCondition("spend_exceeds")
-    setNewThreshold("")
-    setNewSeverity("Warning")
-    setDialogOpen(false)
+    try {
+      const res = await fetch("/api/sardis/api/v2/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          condition: newCondition,
+          threshold: newThreshold,
+          severity: newSeverity,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to create alert")
+      toast.success("Alert rule created")
+      setNewName("")
+      setNewCondition("spend_exceeds")
+      setNewThreshold("")
+      setNewSeverity("Warning")
+      setDialogOpen(false)
+      refetch()
+    } catch {
+      toast.error("Failed to create alert rule")
+    }
   }
 
   function formatLastTriggered(val: string | null): string {

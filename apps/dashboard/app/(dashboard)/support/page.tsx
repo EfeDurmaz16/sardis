@@ -79,10 +79,9 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "warni
 }
 
 export default function SupportPage() {
-  const { data: ticketData, loading } = useSardis<SupportTicket[]>("api/v2/support/tickets")
-  const [localTickets, setLocalTickets] = useState<SupportTicket[] | null>(null)
+  const { data: ticketData, loading, refetch } = useSardis<SupportTicket[]>("api/v2/support/tickets")
 
-  const tickets = localTickets ?? ticketData ?? []
+  const tickets = ticketData ?? []
 
   const [tab, setTab] = useState("all")
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -94,13 +93,14 @@ export default function SupportPage() {
 
   const stats = useMemo(() => {
     const openCount = tickets.filter((t) => t.status === "Open").length
+    const inProgressCount = tickets.filter((t) => t.status === "In Progress").length
     const resolvedThisWeek = tickets.filter((t) => t.status === "Resolved").length
 
     return [
       { label: "Open Tickets", value: String(openCount), icon: Headset },
-      { label: "Avg Response", value: tickets.length > 0 ? "4h" : "N/A", icon: Timer },
+      { label: "In Progress", value: String(inProgressCount), icon: Timer },
       { label: "Resolved This Week", value: String(resolvedThisWeek), icon: CheckCircle },
-      { label: "Satisfaction", value: tickets.length > 0 ? "4.8/5" : "N/A", icon: Star },
+      { label: "Total Tickets", value: String(tickets.length), icon: Star },
     ]
   }, [tickets])
 
@@ -110,27 +110,39 @@ export default function SupportPage() {
     setDescription("")
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!subject.trim()) return
-    const nextId = Math.max(...tickets.map((t) => parseInt(t.id.replace("TKT-", ""))), 1000) + 1
-    const newTicket: SupportTicket = {
-      id: `TKT-${nextId}`,
-      subject: subject.trim(),
-      priority: priority as SupportTicket["priority"],
-      status: "Open",
-      created: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-      lastUpdate: "Just now",
+    try {
+      const res = await fetch("/api/sardis/api/v2/support/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          priority,
+          description: description.trim(),
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to create ticket")
+      toast.success("Ticket created")
+      setDialogOpen(false)
+      resetForm()
+      refetch()
+    } catch {
+      toast.error("Failed to create ticket")
     }
-    setLocalTickets([newTicket, ...tickets])
-    setDialogOpen(false)
-    resetForm()
-    toast.success("Ticket created")
   }
 
-  function handleClose(id: string) {
-    const updated = tickets.map((t) => t.id === id ? { ...t, status: "Resolved" as const, lastUpdate: "Just now" } : t)
-    setLocalTickets(updated)
-    toast.success("Ticket closed")
+  async function handleClose(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/support/tickets/${id}/close`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Ticket closed")
+      refetch()
+    } catch {
+      toast.error("Failed to close ticket")
+    }
   }
 
   const filtered = tab === "all"

@@ -81,7 +81,7 @@ const quickActionDefs = [
 ]
 
 export default function KillSwitchPage() {
-  const { data: status, loading } = useSardis<KillSwitchStatus>("api/v2/guardrails/kill-switch/status")
+  const { data: status, loading, refetch } = useSardis<KillSwitchStatus>("api/v2/guardrails/kill-switch/status")
 
   const [active, setActive] = useState<boolean | null>(null)
   const [toggles, setToggles] = useState<Record<string, boolean>>({})
@@ -143,7 +143,20 @@ export default function KillSwitchPage() {
           <Button
             variant={isActive ? "outline" : "destructive"}
             size="lg"
-            onClick={() => { setActive(!isActive); toast.success(isActive ? "Deactivated" : "Activated") }}
+            onClick={async () => {
+              try {
+                const endpoint = isActive ? "deactivate" : "activate"
+                const res = await fetch(`/api/sardis/api/v2/admin/kill-switch/${endpoint}`, {
+                  method: "POST",
+                })
+                if (!res.ok) throw new Error("Failed")
+                setActive(!isActive)
+                toast.success(isActive ? "Kill switch deactivated" : "Kill switch activated")
+                refetch()
+              } catch {
+                toast.error("Failed to toggle kill switch")
+              }
+            }}
           >
             <Power className="h-4 w-4" weight="bold" />
             {isActive ? "Deactivate Kill Switch" : "Activate Kill Switch"}

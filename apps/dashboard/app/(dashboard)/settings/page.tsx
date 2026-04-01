@@ -85,16 +85,35 @@ export default function SettingsPage() {
     sessionTimeout !== savedSessionTimeout ||
     ipAllowlist !== savedIpAllowlist
 
-  function handleSave() {
-    setSavedOrgName(orgName)
-    setSavedTimezone(timezone)
-    setSavedEmailNotif(emailNotif)
-    setSavedSlackNotif(slackNotif)
-    setSavedWebhookNotif(webhookNotif)
-    setSavedTwoFa(twoFa)
-    setSavedSessionTimeout(sessionTimeout)
-    setSavedIpAllowlist(ipAllowlist)
-    toast.success("Settings saved locally. API sync coming soon.")
+  async function handleSave() {
+    try {
+      const res = await fetch("/api/sardis/api/v2/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgName,
+          timezone,
+          emailNotifications: emailNotif,
+          slackNotifications: slackNotif,
+          webhookNotifications: webhookNotif,
+          twoFactorAuth: twoFa,
+          sessionTimeout,
+          ipAllowlist,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed")
+      setSavedOrgName(orgName)
+      setSavedTimezone(timezone)
+      setSavedEmailNotif(emailNotif)
+      setSavedSlackNotif(slackNotif)
+      setSavedWebhookNotif(webhookNotif)
+      setSavedTwoFa(twoFa)
+      setSavedSessionTimeout(sessionTimeout)
+      setSavedIpAllowlist(ipAllowlist)
+      toast.success("Settings saved")
+    } catch {
+      toast.error("Failed to save settings")
+    }
   }
 
   if (loading) {

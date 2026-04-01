@@ -92,7 +92,7 @@ function formatDate(val: string | null): string {
 }
 
 export default function InvoicesPage() {
-  const { data: invoiceData, loading } = useSardis<Invoice[]>("api/v2/invoices")
+  const { data: invoiceData, loading, refetch } = useSardis<Invoice[]>("api/v2/invoices")
   const invoices = invoiceData ?? []
 
   const [tab, setTab] = useState("all")
@@ -124,9 +124,17 @@ export default function InvoicesPage() {
     setSheetOpen(true)
   }
 
-  function handleMarkPaid(id: string) {
-    // TODO: POST to API to mark paid
-    toast.success(`Invoice ${id} marked as paid`)
+  async function handleMarkPaid(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/invoices/${id}/mark-paid`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`Invoice ${id} marked as paid`)
+      refetch()
+    } catch {
+      toast.error("Failed to mark invoice as paid")
+    }
   }
 
   return (
@@ -272,10 +280,6 @@ export default function InvoicesPage() {
                   <Badge variant={statusConfig[selectedInvoice.status]?.variant ?? "warning"}>{statusConfig[selectedInvoice.status]?.label ?? selectedInvoice.status}</Badge>
                 </div>
                 <Separator />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Payment Method</span>
-                  <span>Wire Transfer</span>
-                </div>
                 <Separator />
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Reference</span>
@@ -286,7 +290,7 @@ export default function InvoicesPage() {
           )}
           <SheetFooter>
             {selectedInvoice && selectedInvoice.status !== "paid" && (
-              <Button onClick={() => { handleMarkPaid(selectedInvoice.id); setSelectedInvoice({ ...selectedInvoice, status: "paid" }); toast.success(`Invoice ${selectedInvoice.id} marked as paid`) }}>Mark as Paid</Button>
+              <Button onClick={async () => { await handleMarkPaid(selectedInvoice.id); setSelectedInvoice({ ...selectedInvoice, status: "paid" }) }}>Mark as Paid</Button>
             )}
             <SheetClose render={<Button variant="outline" />}>Close</SheetClose>
           </SheetFooter>

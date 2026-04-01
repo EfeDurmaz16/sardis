@@ -226,14 +226,28 @@ export default function VirtualCardsPage() {
             </DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault()
               const formData = new FormData(e.currentTarget)
               const merchant = (formData.get("merchant") as string).trim()
               const amount = (formData.get("amount") as string).trim()
-              if (!merchant || !amount) return
-              toast.success(`Payment of $${amount} to ${merchant} processed on ${paymentCard?.masked_number}`)
-              setPaymentOpen(false)
+              if (!merchant || !amount || !paymentCard) return
+              try {
+                const res = await fetch(`/api/sardis/api/v2/cards/virtual/${paymentCard.id}/payment`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    merchant,
+                    amount: parseFloat(amount),
+                  }),
+                })
+                if (!res.ok) throw new Error("Failed")
+                toast.success(`Payment of $${amount} to ${merchant} processed`)
+                setPaymentOpen(false)
+                refetch()
+              } catch {
+                toast.error("Failed to process payment")
+              }
             }}
             className="space-y-4"
           >

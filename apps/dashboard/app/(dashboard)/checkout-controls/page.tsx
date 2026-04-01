@@ -56,7 +56,7 @@ const actionVariant: Record<CheckoutRule["action"], "destructive" | "warning" | 
 }
 
 export default function CheckoutControlsPage() {
-  const { data: config, loading } = useSardis<CheckoutConfig>("api/v2/checkout/controls")
+  const { data: config, loading, refetch } = useSardis<CheckoutConfig>("api/v2/checkout/controls")
   const rules = config?.rules ?? []
 
   const [toggles, setToggles] = useState<Record<string, boolean>>({})
@@ -150,9 +150,25 @@ export default function CheckoutControlsPage() {
                       <TableCell>
                         <Switch
                           checked={isEnabled(rule)}
-                          onCheckedChange={(checked: boolean) =>
+                          onCheckedChange={async (checked: boolean) => {
                             setToggles((prev) => ({ ...prev, [rule.name]: checked }))
-                          }
+                            try {
+                              const res = await fetch("/api/sardis/api/v2/checkout/controls", {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  rule_name: rule.name,
+                                  enabled: checked,
+                                }),
+                              })
+                              if (!res.ok) throw new Error("Failed")
+                              toast.success(`${rule.name} ${checked ? "enabled" : "disabled"}`)
+                              refetch()
+                            } catch {
+                              setToggles((prev) => ({ ...prev, [rule.name]: !checked }))
+                              toast.error("Failed to update checkout control")
+                            }
+                          }}
                         />
                       </TableCell>
                   </ContextMenuTrigger>
@@ -161,7 +177,23 @@ export default function CheckoutControlsPage() {
                       Copy
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => setToggles((prev) => ({ ...prev, [rule.name]: !isEnabled(rule) }))}>
+                    <ContextMenuItem onClick={async () => {
+                      const newState = !isEnabled(rule)
+                      setToggles((prev) => ({ ...prev, [rule.name]: newState }))
+                      try {
+                        const res = await fetch("/api/sardis/api/v2/checkout/controls", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ rule_name: rule.name, enabled: newState }),
+                        })
+                        if (!res.ok) throw new Error("Failed")
+                        toast.success(`${rule.name} ${newState ? "enabled" : "disabled"}`)
+                        refetch()
+                      } catch {
+                        setToggles((prev) => ({ ...prev, [rule.name]: !newState }))
+                        toast.error("Failed to toggle rule")
+                      }
+                    }}>
                       Toggle
                     </ContextMenuItem>
                   </ContextMenuContent>

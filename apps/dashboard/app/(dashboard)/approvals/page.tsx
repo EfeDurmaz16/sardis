@@ -64,14 +64,10 @@ const riskColor: Record<Approval["riskLevel"], string> = {
 }
 
 export default function ApprovalsPage() {
-  const { data: remoteApprovals, loading } = useSardis<Approval[]>("api/v2/approvals")
+  const { data: remoteApprovals, loading, refetch } = useSardis<Approval[]>("api/v2/approvals")
   const [tab, setTab] = useState("pending")
-  const [approvals, setApprovals] = useState<Approval[]>([])
 
-  // Sync remote data when it arrives
-  if (remoteApprovals && remoteApprovals.length > 0 && approvals.length === 0) {
-    setApprovals(remoteApprovals)
-  }
+  const approvals = remoteApprovals ?? []
 
   const pendingCount = approvals.filter(a => a.status === "pending").length
   const approvedCount = approvals.filter(a => a.status === "approved").length
@@ -88,18 +84,30 @@ export default function ApprovalsPage() {
     ? approvals
     : approvals.filter((a) => a.status === tab)
 
-  function handleApprove(id: string) {
-    setApprovals((prev) => prev.map((a) =>
-      a.id === id ? { ...a, status: "approved" as ApprovalStatus, resolvedBy: "You" } : a
-    ))
-    toast.success(`${id} approved`)
+  async function handleApprove(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/approvals/${id}/approve`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`${id} approved`)
+      refetch()
+    } catch {
+      toast.error("Failed to approve")
+    }
   }
 
-  function handleReject(id: string) {
-    setApprovals((prev) => prev.map((a) =>
-      a.id === id ? { ...a, status: "rejected" as ApprovalStatus, resolvedBy: "You" } : a
-    ))
-    toast.success(`${id} rejected`)
+  async function handleReject(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/approvals/${id}/deny`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success(`${id} rejected`)
+      refetch()
+    } catch {
+      toast.error("Failed to reject")
+    }
   }
 
   return (

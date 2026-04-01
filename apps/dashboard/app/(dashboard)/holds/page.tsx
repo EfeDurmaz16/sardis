@@ -39,7 +39,7 @@ const statusConfig: Record<string, { variant: "success" | "warning" | "secondary
 }
 
 export default function HoldsPage() {
-  const { data: remoteHolds, loading } = useSardis<Hold[]>("api/v2/holds")
+  const { data: remoteHolds, loading, refetch } = useSardis<Hold[]>("api/v2/holds")
   const holds = remoteHolds ?? []
 
   const activeCount = holds.filter(h => h.status === "active").length
@@ -131,10 +131,28 @@ export default function HoldsPage() {
                         Copy ID
                       </ContextMenuItem>
                       <ContextMenuSeparator />
-                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={() => toast.info("Release hold via API")}>
+                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/sardis/api/v2/holds/${hold.hold_id}/release`, { method: "POST" })
+                          if (!res.ok) throw new Error("Failed")
+                          toast.success("Hold released")
+                          refetch()
+                        } catch {
+                          toast.error("Failed to release hold")
+                        }
+                      }}>
                         Release
                       </ContextMenuItem>
-                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={() => toast.info("Capture hold via API")}>
+                      <ContextMenuItem disabled={hold.status === "released" || hold.status === "captured"} onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/sardis/api/v2/holds/${hold.hold_id}/capture`, { method: "POST" })
+                          if (!res.ok) throw new Error("Failed")
+                          toast.success("Hold captured")
+                          refetch()
+                        } catch {
+                          toast.error("Failed to capture hold")
+                        }
+                      }}>
                         Capture
                       </ContextMenuItem>
                     </ContextMenuContent>

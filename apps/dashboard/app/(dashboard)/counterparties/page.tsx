@@ -98,7 +98,6 @@ export default function CounterpartiesPage() {
   const { data, loading, error, refetch } = useSardis<Counterparty[]>("api/v2/counterparties")
 
   const [tab, setTab] = useState("all")
-  const [localOverrides, setLocalOverrides] = useState<Counterparty[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
@@ -107,10 +106,7 @@ export default function CounterpartiesPage() {
   const [cpAddress, setCpAddress] = useState("")
   const [cpType, setCpType] = useState<string>("wallet")
 
-  const counterparties = useMemo(() => {
-    if (localOverrides.length > 0) return localOverrides
-    return data ?? []
-  }, [data, localOverrides])
+  const counterparties = data ?? []
 
   const stats = useMemo(() => {
     const total = counterparties.length
@@ -147,46 +143,54 @@ export default function CounterpartiesPage() {
     setDialogOpen(true)
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!cpName.trim() || !cpAddress.trim()) return
 
-    if (editingId) {
-      setLocalOverrides(
-        counterparties.map((cp) =>
-          cp.id === editingId
-            ? {
-                ...cp,
-                name: cpName.trim(),
-                address: cpAddress.trim(),
-                type: cpTypeToDisplay[cpType as CpType],
-              }
-            : cp
-        )
-      )
-      toast.success("Counterparty updated")
-    } else {
-      const randomHex = () => Math.random().toString(16).substring(2, 6)
-      const newCp: Counterparty = {
-        id: crypto.randomUUID(),
-        name: cpName.trim(),
-        type: cpTypeToDisplay[cpType as CpType],
-        address: cpAddress.trim() || `0x${randomHex()}...${randomHex()}`,
-        risk_score: Math.floor(Math.random() * 50),
-        tx_count: 0,
-        total_volume: "$0",
-        status: "pending",
-        added_date: new Date().toISOString().slice(0, 10),
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/sardis/api/v2/counterparties/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: cpName.trim(),
+            address: cpAddress.trim(),
+            type: cpType,
+          }),
+        })
+        if (!res.ok) throw new Error("Failed")
+        toast.success("Counterparty updated")
+      } else {
+        const res = await fetch("/api/sardis/api/v2/counterparties", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: cpName.trim(),
+            address: cpAddress.trim(),
+            type: cpType,
+          }),
+        })
+        if (!res.ok) throw new Error("Failed")
+        toast.success("Counterparty added")
       }
-      setLocalOverrides([...counterparties, newCp])
-      toast.success("Counterparty added")
+      setDialogOpen(false)
+      resetForm()
+      refetch()
+    } catch {
+      toast.error(editingId ? "Failed to update counterparty" : "Failed to add counterparty")
     }
-    setDialogOpen(false)
-    resetForm()
   }
 
-  function handleDelete(id: string) {
-    setLocalOverrides(counterparties.filter((cp) => cp.id !== id))
-    toast.success("Counterparty deleted")
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/counterparties/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Counterparty deleted")
+      refetch()
+    } catch {
+      toast.error("Failed to delete counterparty")
+    }
   }
 
   const filtered = tab === "all"

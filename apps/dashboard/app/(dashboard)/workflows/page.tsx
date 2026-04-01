@@ -46,6 +46,7 @@ import {
   Plus,
   Spinner,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 
@@ -81,10 +82,9 @@ const templateTriggerMap: Record<string, Workflow["trigger"]> = {
 }
 
 export default function WorkflowsPage() {
-  const { data: workflowData, loading } = useSardis<Workflow[]>("api/v2/workflow-templates")
-  const [localWorkflows, setLocalWorkflows] = useState<Workflow[] | null>(null)
+  const { data: workflowData, loading, refetch } = useSardis<Workflow[]>("api/v2/workflow-templates")
 
-  const workflows = localWorkflows ?? workflowData ?? []
+  const workflows = workflowData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [newName, setNewName] = useState("")
@@ -97,33 +97,36 @@ export default function WorkflowsPage() {
     const avgSuccess = workflows.length > 0
       ? (workflows.reduce((sum, w) => sum + w.successRate, 0) / workflows.length).toFixed(1)
       : "0.0"
-    const avgDuration = workflows.length > 0 ? "1.2s" : "0s"
-
     return [
       { label: "Active Workflows", value: String(activeCount), icon: GitMerge },
       { label: "Executions Today", value: String(totalExecutions), icon: Lightning },
       { label: "Success Rate", value: `${avgSuccess}%`, icon: CheckCircle },
-      { label: "Avg Duration", value: avgDuration, icon: Timer },
+      { label: "Total Workflows", value: String(workflows.length), icon: Timer },
     ]
   }, [workflows])
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!newName.trim()) return
-    const workflow: Workflow = {
-      name: newName.trim(),
-      trigger: templateTriggerMap[newTemplate] ?? "Manual",
-      actions: 0,
-      lastRun: "Never",
-      executions24h: 0,
-      successRate: 100,
-      status: "active",
-      created: new Date().toISOString().slice(0, 10),
+    try {
+      const res = await fetch("/api/sardis/api/v2/workflows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          template: newTemplate,
+          description: newDescription.trim(),
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to create workflow")
+      toast.success("Workflow created")
+      setNewName("")
+      setNewTemplate("payment_approval")
+      setNewDescription("")
+      setDialogOpen(false)
+      refetch()
+    } catch {
+      toast.error("Failed to create workflow")
     }
-    setLocalWorkflows([workflow, ...workflows])
-    setNewName("")
-    setNewTemplate("payment_approval")
-    setNewDescription("")
-    setDialogOpen(false)
   }
 
   return (

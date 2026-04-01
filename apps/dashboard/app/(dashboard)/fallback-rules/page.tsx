@@ -69,7 +69,7 @@ const priorityVariant: Record<number, "outline"> = {
 }
 
 export default function FallbackRulesPage() {
-  const { data: ruleData, loading } = useSardis<FallbackRule[]>("api/v2/fallback-policies")
+  const { data: ruleData, loading, refetch } = useSardis<FallbackRule[]>("api/v2/fallback-policies")
   const rules = ruleData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -123,21 +123,53 @@ export default function FallbackRulesPage() {
     "settlement-delay": "Settlement delay",
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!primaryRail.trim() || !fallbackRail.trim()) return
-    // TODO: POST/PUT to API to create/update fallback rule
-    if (editingId) {
-      toast.success("Rule updated")
-    } else {
-      toast.success("Rule created")
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/sardis/api/v2/fallback-rules/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            primary_chain: primaryRail.trim(),
+            fallback_chains: fallbackRail.split(",").map((s) => s.trim()).filter(Boolean),
+            trigger,
+          }),
+        })
+        if (!res.ok) throw new Error("Failed")
+        toast.success("Rule updated")
+      } else {
+        const res = await fetch("/api/sardis/api/v2/fallback-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            primary_chain: primaryRail.trim(),
+            fallback_chains: fallbackRail.split(",").map((s) => s.trim()).filter(Boolean),
+            trigger,
+          }),
+        })
+        if (!res.ok) throw new Error("Failed")
+        toast.success("Rule created")
+      }
+      setDialogOpen(false)
+      resetForm()
+      refetch()
+    } catch {
+      toast.error(editingId ? "Failed to update rule" : "Failed to create rule")
     }
-    setDialogOpen(false)
-    resetForm()
   }
 
-  function handleDelete(id: string) {
-    // TODO: DELETE to API
-    toast.success("Rule deleted")
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/fallback-rules/${id}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Rule deleted")
+      refetch()
+    } catch {
+      toast.error("Failed to delete rule")
+    }
   }
 
   return (

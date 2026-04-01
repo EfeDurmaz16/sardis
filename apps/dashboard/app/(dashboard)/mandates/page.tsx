@@ -83,7 +83,7 @@ const periodVariant: Record<string, "outline"> = {
 }
 
 export default function MandatesPage() {
-  const { data: remoteMandates, loading } = useSardis<Mandate[]>("api/v2/spending-mandates")
+  const { data: remoteMandates, loading, refetch } = useSardis<Mandate[]>("api/v2/spending-mandates")
   const mandates = remoteMandates ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -120,27 +120,66 @@ export default function MandatesPage() {
     setApprovalMode("auto")
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!purpose.trim()) return
-    // TODO: POST to API to create mandate
-    setDialogOpen(false)
-    resetForm()
-    toast.success("Mandate created")
+    try {
+      const res = await fetch("/api/sardis/api/v2/spending-mandates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: purpose.trim(),
+          per_transaction_limit: perTxLimit ? parseFloat(perTxLimit) : undefined,
+          daily_limit: dailyLimit ? parseFloat(dailyLimit) : undefined,
+          approval_mode: approvalMode,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to create mandate")
+      toast.success("Mandate created")
+      setDialogOpen(false)
+      resetForm()
+      refetch()
+    } catch {
+      toast.error("Failed to create mandate")
+    }
   }
 
-  function handleActivate(id: string) {
-    // TODO: PATCH to API
-    toast.success("Mandate activated")
+  async function handleActivate(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/spending-mandates/${id}/activate`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Mandate activated")
+      refetch()
+    } catch {
+      toast.error("Failed to activate mandate")
+    }
   }
 
-  function handleSuspend(id: string) {
-    // TODO: PATCH to API
-    toast.success("Mandate suspended")
+  async function handleSuspend(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/spending-mandates/${id}/suspend`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Mandate suspended")
+      refetch()
+    } catch {
+      toast.error("Failed to suspend mandate")
+    }
   }
 
-  function handleRevoke(id: string) {
-    // TODO: DELETE to API
-    toast.success("Mandate revoked")
+  async function handleRevoke(id: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/spending-mandates/${id}/revoke`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      toast.success("Mandate revoked")
+      refetch()
+    } catch {
+      toast.error("Failed to revoke mandate")
+    }
   }
 
   function formatCurrency(val: string) {

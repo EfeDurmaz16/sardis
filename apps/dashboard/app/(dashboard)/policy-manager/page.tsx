@@ -45,6 +45,7 @@ import {
   Plus,
   Spinner,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 
@@ -106,7 +107,7 @@ function capitalize(val: string): string {
 }
 
 export default function PolicyManagerPage() {
-  const { data: policyData, loading } = useSardis<Policy[]>("api/v2/policies")
+  const { data: policyData, loading, refetch } = useSardis<Policy[]>("api/v2/policies")
   const policies = policyData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -133,13 +134,28 @@ export default function PolicyManagerPage() {
     ]
   }, [policies])
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!newName.trim()) return
-    // TODO: POST to API to create policy
-    setNewName("")
-    setNewDescription("")
-    setNewType("spending")
-    setDialogOpen(false)
+    try {
+      const res = await fetch("/api/sardis/api/v2/policies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          description: newDescription.trim(),
+          type: newType,
+        }),
+      })
+      if (!res.ok) throw new Error("Failed to create policy")
+      toast.success("Policy created")
+      setNewName("")
+      setNewDescription("")
+      setNewType("spending")
+      setDialogOpen(false)
+      refetch()
+    } catch {
+      toast.error("Failed to create policy")
+    }
   }
 
   return (
