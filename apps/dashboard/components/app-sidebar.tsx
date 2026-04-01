@@ -39,7 +39,7 @@ const navSections: NavSection[] = [
   {
     items: [
       { label: "Overview", href: "/", icon: SquaresFour },
-      { label: "Agents", href: "/agents", icon: Robot, badge: "24" },
+      { label: "Agents", href: "/agents", icon: Robot },
       { label: "Transactions", href: "/transactions", icon: ArrowsLeftRight },
       { label: "Mandates", href: "/mandates", icon: ShieldCheck },
       { label: "Wallets", href: "/wallets", icon: Wallet },
