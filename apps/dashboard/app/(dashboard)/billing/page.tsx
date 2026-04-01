@@ -326,11 +326,9 @@ export default function BillingPage() {
                       Current Plan
                     </div>
                   ) : isEnterprise ? (
-                    <Button variant="outline" className="w-full" asChild>
-                      <a href="https://cal.com/sardis/15min" target="_blank" rel="noopener noreferrer">
-                        <Building2 className="w-4 h-4 mr-2" />
-                        Talk to Sales
-                      </a>
+                    <Button variant="outline" className="w-full" onClick={() => window.open("https://cal.com/sardis/15min", "_blank")}>
+                      <Building2 className="w-4 h-4 mr-2" />
+                      Talk to Sales
                     </Button>
                   ) : (
                     <Button
