@@ -299,7 +299,20 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
   const router = useRouter()
   const { data: sessionData } = useSession()
   const user = sessionData?.user
-  const userEmail = user?.email ?? "user@sardis.sh"
+
+  // Fallback: decode JWT from localStorage if better-auth session not available
+  let jwtEmail: string | null = null
+  if (typeof window !== "undefined" && !user?.email) {
+    try {
+      const token = localStorage.getItem("sardis_session")
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+        jwtEmail = payload.email || payload.sub || null
+      }
+    } catch { /* ignore */ }
+  }
+
+  const userEmail = user?.email ?? jwtEmail ?? "user@sardis.sh"
   const userName = user?.name ?? userEmail.split("@")[0]
   const userInitials = userName
     .split(" ")

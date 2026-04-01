@@ -1,4 +1,4 @@
-<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-  <rect width="32" height="32" rx="6" fill="#111111"/>
-  <text x="16" y="22" text-anchor="middle" font-family="system-ui" font-weight="700" font-size="18" fill="#ffffff">S</text>
+<svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 5H10a7 7 0 000 14h2" stroke="#111" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M8 23h10a7 7 0 000-14h-2" stroke="#111" stroke-width="3" stroke-linecap="round" fill="none"/>
 </svg>

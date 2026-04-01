@@ -69,40 +69,37 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-md">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 flex items-center justify-center mx-auto mb-4">
-          <svg width="48" height="48" viewBox="0 0 28 28" fill="none">
+    <div className="w-full max-w-sm mx-auto px-4">
+      <div className="text-center mb-10">
+        <div className="w-14 h-14 flex items-center justify-center mx-auto mb-5">
+          <svg width="40" height="40" viewBox="0 0 28 28" fill="none">
             <path
               d="M20 5H10a7 7 0 000 14h2"
-              stroke="#ff4f00"
+              stroke="currentColor"
               strokeWidth="3"
               strokeLinecap="round"
               fill="none"
             />
             <path
               d="M8 23h10a7 7 0 000-14h-2"
-              stroke="#ff4f00"
+              stroke="currentColor"
               strokeWidth="3"
               strokeLinecap="round"
               fill="none"
             />
           </svg>
         </div>
-        <h1 className="text-3xl font-bold text-foreground">Sardis</h1>
-        <p className="text-muted-foreground mt-2">
-          Sign in to manage your payment network
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Sign in to Sardis</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Enter your credentials to access the dashboard
         </p>
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">Sign In</CardTitle>
-          <CardDescription>
-            Enter your credentials to access the dashboard
-          </CardDescription>
+      <Card className="shadow-sm">
+        <CardHeader className="pb-4 pt-6 px-6">
+          <CardTitle className="text-base">Account</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-4" id="login-form">
             {error && (
               <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
