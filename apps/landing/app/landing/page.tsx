@@ -303,18 +303,22 @@ payment = client.pay(
       </Section>
 
       {/* ═══ LOGO STRIP ═══ */}
-      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "48px 56px", gap: 28, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 48 }}>
+      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 56px", gap: 32, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Early partners" t={t} />
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>Stripe</span>
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>Bridge</span>
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>Base</span>
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>Tempo</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Stripe</span>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Bridge</span>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Base</span>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Tempo</span>
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 48 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Live integrations" t={t} />
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>AutoGPT</span>
-          <span className={jakarta.className} style={{ fontSize: 16, fontWeight: 700, color: t.textGhost }}>Activepieces</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>AutoGPT</span>
+            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Activepieces</span>
+          </div>
         </div>
       </Section>
 
