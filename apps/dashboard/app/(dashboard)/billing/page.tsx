@@ -1,343 +1,353 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardAction,
-} from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
-import {
-  CurrencyDollar,
   CreditCard,
-  FileText,
-  Spinner,
-} from "@phosphor-icons/react"
+  Zap,
+  Users,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  ExternalLink,
+  Building2,
+  Loader2,
+} from "lucide-react"
 import { toast } from "sonner"
-import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
 
-type Invoice = {
-  id: string
-  date: string
-  description: string
-  amount: number | string
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim()
+
+interface BillingPlan {
+  plan: string
+  price_monthly_cents: number
+  api_calls_per_month: number | null
+  agents: number | null
+  tx_fee_bps: number
+  monthly_tx_volume_cents: number | null
+}
+
+interface BillingUsage {
+  api_calls_used: number
+  api_calls_limit: number | null
+  tx_volume_cents: number
+  tx_volume_limit_cents: number | null
+  agents_used: number
+  agents_limit: number | null
+}
+
+interface BillingAccount {
+  plan: string
   status: string
-  download_url?: string | null
+  usage: BillingUsage
+  stripe_customer_id: string | null
+  current_period_end: string | null
 }
 
-type BillingPlan = {
-  name: string
-  price: number
-  interval: string
-  next_billing_date: string | null
-  payment_method?: {
-    brand: string
-    last4: string
-    exp_month: number
-    exp_year: number
-  } | null
-  usage?: {
-    label: string
-    used: number
-    limit: number
-  }[]
+const PLAN_LABELS: Record<string, string> = {
+  dev: "Dev",
+  starter: "Starter",
+  growth: "Growth",
+  enterprise: "Enterprise",
 }
 
-function formatCurrency(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value
-  if (!Number.isFinite(num)) return "$0.00"
-  return `$${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function formatCents(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+  }).format(cents / 100)
+}
+
+function formatNumber(n: number | null): string {
+  if (n === null) return "Unlimited"
+  return new Intl.NumberFormat("en-US").format(n)
+}
+
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {}
+  const token = localStorage.getItem("sardis_session")
+  if (token) return { Authorization: `Bearer ${token}` }
+  return {}
 }
 
 export default function BillingPage() {
-  const { data: invoicesRaw, loading: invoicesLoading } = useSardis<Invoice[] | Record<string, unknown>>("api/v2/billing/invoices")
-  const { data: plan, loading: planLoading } = useSardis<BillingPlan>("api/v2/billing/plan")
-  const invoiceList = Array.isArray(invoicesRaw) ? invoicesRaw : []
+  const [loading, setLoading] = useState(true)
+  const [account, setAccount] = useState<BillingAccount | null>(null)
+  const [plans, setPlans] = useState<BillingPlan[]>([])
+  const [error, setError] = useState(false)
+  const [upgrading, setUpgrading] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
 
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [cardNumber, setCardNumber] = useState("")
-  const [expiry, setExpiry] = useState("")
-  const [cardName, setCardName] = useState("")
+  useEffect(() => {
+    fetchBillingData()
+  }, [])
 
-  const loading = invoicesLoading || planLoading
+  async function fetchBillingData() {
+    setLoading(true)
+    try {
+      const headers = { ...getAuthHeaders(), "Content-Type": "application/json" }
 
-  // Compute usage percentages from plan data
-  const usageItems = useMemo(() => {
-    if (!plan?.usage || !Array.isArray(plan.usage)) return []
-    return plan.usage.map((u: { label: string; used: number; limit: number }) => ({
-      label: u.label,
-      used: u.used,
-      limit: u.limit,
-      percent: u.limit > 0 ? Math.round((u.used / u.limit) * 100) : 0,
-    }))
-  }, [plan])
+      const [accountRes, plansRes] = await Promise.all([
+        fetch(`${API_URL}/api/v2/billing/account`, { headers }).catch(() => null),
+        fetch(`${API_URL}/api/v2/billing/plans`, { headers }).catch(() => null),
+      ])
 
-  function handleUpdate() {
-    // TODO: POST to API to update payment method
-    toast.success("Payment method updated")
-    setDialogOpen(false)
-    setCardNumber("")
-    setExpiry("")
-    setCardName("")
+      if (accountRes?.ok) {
+        const raw = await accountRes.json()
+        if (raw.account) {
+          setAccount({
+            plan: raw.account.plan ?? "dev",
+            status: raw.account.status ?? "active",
+            usage: raw.usage ?? { api_calls_used: 0, api_calls_limit: null, tx_volume_cents: 0, tx_volume_limit_cents: null, agents_used: 0, agents_limit: null },
+            stripe_customer_id: raw.account.stripe_customer_id ?? null,
+            current_period_end: raw.account.current_period_end ?? null,
+          })
+        } else {
+          setAccount(raw)
+        }
+      } else {
+        setError(true)
+      }
+
+      if (plansRes?.ok) {
+        const data = await plansRes.json()
+        const order = ["dev", "starter", "growth", "enterprise"]
+        const sorted = [...(data.plans ?? [])].sort(
+          (a: BillingPlan, b: BillingPlan) => order.indexOf(a.plan) - order.indexOf(b.plan)
+        )
+        setPlans(sorted)
+      }
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const planName = plan?.name ?? "Free"
-  const planPrice = plan?.price ?? 0
-  const planInterval = plan?.interval ?? "mo"
-  const paymentMethod = plan?.payment_method ?? null
-  const nextBilling = plan?.next_billing_date ?? null
+  async function handleUpgrade(plan: string) {
+    setUpgrading(plan)
+    try {
+      const headers = { ...getAuthHeaders(), "Content-Type": "application/json" }
+      const res = await fetch(`${API_URL}/api/v2/billing/checkout`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ plan }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.checkout_url) {
+          window.open(data.checkout_url, "_blank")
+          toast.success("Stripe Checkout opened in a new tab")
+        }
+      } else {
+        const err = await res.json().catch(() => null)
+        toast.error(err?.detail || "Billing is being set up. Contact support@sardis.sh")
+      }
+    } catch {
+      toast.error("Network error. Please try again.")
+    } finally {
+      setUpgrading(null)
+    }
+  }
+
+  async function handlePortal() {
+    setPortalLoading(true)
+    try {
+      const headers = getAuthHeaders()
+      const res = await fetch(`${API_URL}/api/v2/billing/portal`, {
+        method: "POST",
+        headers,
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.portal_url) {
+          window.open(data.portal_url, "_blank")
+        }
+      } else {
+        toast.error("Billing portal unavailable. Contact support@sardis.sh")
+      }
+    } catch {
+      toast.error("Network error.")
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const currentPlan = account?.plan ?? "dev"
+  const status = account?.status ?? "active"
+  const usage = account?.usage ?? {
+    api_calls_used: 0, api_calls_limit: null,
+    tx_volume_cents: 0, tx_volume_limit_cents: null,
+    agents_used: 0, agents_limit: null,
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your subscription, usage, and payment methods
-        </p>
+        <p className="text-sm text-muted-foreground">Manage your plan, usage, and payment details</p>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Spinner className="w-5 h-5 animate-spin text-muted-foreground" />
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">Billing not configured. You are on the Free plan.</p>
         </div>
-      ) : (
-      <>
-      <div className="grid gap-4 lg:grid-cols-2">
+      )}
+
+      {/* Current Plan + Usage */}
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <CurrencyDollar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-muted-foreground" />
               Current Plan
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            <div className="flex items-baseline justify-between">
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-lg font-semibold">{planName}</p>
-                <p className="text-sm text-muted-foreground">
-                  {planPrice > 0 ? `Billed ${planInterval === "year" ? "annually" : "monthly"}` : "No active subscription"}
-                </p>
+                <p className="text-lg font-semibold">{PLAN_LABELS[currentPlan] ?? currentPlan}</p>
+                <Badge variant={status === "active" ? "default" : "secondary"} className="mt-1">
+                  {status}
+                </Badge>
               </div>
-              {planPrice > 0 && (
-                <p className="text-2xl font-bold tracking-tight tabular-nums">
-                  {formatCurrency(planPrice)}
-                  <span className="text-sm font-normal text-muted-foreground">/{planInterval}</span>
+              {plans.find((p) => p.plan === currentPlan) && (
+                <p className="text-2xl font-bold tabular-nums">
+                  {formatCents(plans.find((p) => p.plan === currentPlan)!.price_monthly_cents)}
+                  <span className="text-sm font-normal text-muted-foreground">/mo</span>
                 </p>
               )}
             </div>
-            {usageItems.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-3">
-                  {usageItems.map((u) => (
-                    <div key={u.label} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{u.label}</span>
-                        <span className="font-medium tabular-nums">
-                          {u.used.toLocaleString()}{" "}
-                          <span className="text-muted-foreground font-normal">/ {u.limit.toLocaleString()}</span>
-                        </span>
-                      </div>
-                      <Progress value={u.percent} />
-                    </div>
-                  ))}
-                </div>
-              </>
+            {account?.current_period_end && (
+              <p className="text-xs text-muted-foreground">
+                Current period ends {new Date(account.current_period_end).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              </p>
             )}
+            <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading} className="w-full">
+              {portalLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-2" />}
+              Manage Billing on Stripe
+            </Button>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              Payment Method
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              Usage
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 pt-4">
-            {paymentMethod ? (
-              <div className="flex items-center gap-4 rounded-lg border p-4">
-                <div className="flex h-10 w-14 items-center justify-center rounded-md bg-muted">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">
-                    {paymentMethod.brand} ending in {paymentMethod.last4}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Expires {String(paymentMethod.exp_month).padStart(2, "0")}/{String(paymentMethod.exp_year).slice(-2)}
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => window.open("https://billing.stripe.com/p/login/sardis", "_blank")}>
-                  Manage
-                </Button>
+          <CardContent className="space-y-4">
+            {/* API Calls */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API Calls</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {formatNumber(usage.api_calls_used)} / {formatNumber(usage.api_calls_limit)}
+                </span>
               </div>
-            ) : (
-              <div className="flex items-center gap-4 rounded-lg border border-dashed p-4">
-                <div className="flex h-10 w-14 items-center justify-center rounded-md bg-muted">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Payment methods are managed through Stripe</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => toast.info("Upgrade to a paid plan to add a payment method")}>
-                  Add
-                </Button>
+              <Progress value={usage.api_calls_limit ? Math.min((usage.api_calls_used / usage.api_calls_limit) * 100, 100) : 5} />
+            </div>
+
+            {/* Agents */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Agents</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {formatNumber(usage.agents_used)} / {formatNumber(usage.agents_limit)}
+                </span>
               </div>
-            )}
-            {nextBilling ? (
-              <div className="rounded-lg border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Next billing date:{" "}
-                  <span className="font-medium text-foreground">
-                    {new Date(nextBilling).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </p>
+              <Progress value={usage.agents_limit ? Math.min((usage.agents_used / usage.agents_limit) * 100, 100) : 5} />
+            </div>
+
+            {/* Tx Volume */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Transaction Volume</span>
+                <span className="text-muted-foreground tabular-nums">
+                  {formatCents(usage.tx_volume_cents)} / {usage.tx_volume_limit_cents ? formatCents(usage.tx_volume_limit_cents) : "Unlimited"}
+                </span>
               </div>
-            ) : null}
+              <Progress value={usage.tx_volume_limit_cents ? Math.min((usage.tx_volume_cents / usage.tx_volume_limit_cents) * 100, 100) : 5} />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Update Payment Method Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Payment Method</DialogTitle>
-            <DialogDescription>
-              Enter your new card details below.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Card Number</label>
-              <Input
-                placeholder="**** **** **** 4242"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Expiry Date</label>
-              <Input
-                placeholder="MM/YY"
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Cardholder Name</label>
-              <Input
-                placeholder="John Doe"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
-              Cancel
-            </DialogClose>
-            <Button onClick={handleUpdate}>Update</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Separator />
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            Billing History
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          {invoiceList.length === 0 ? (
-            <EmptyState
-              icon={FileText}
-              title="No invoices"
-              description="Your billing history will appear here once you have an active subscription"
-            />
-          ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-4">Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Invoice</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoiceList.map((inv) => (
-                <TableRow key={inv.id}>
-                  <TableCell className="pl-4 text-muted-foreground">
-                    {new Date(inv.date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </TableCell>
-                  <TableCell className="font-medium">{inv.description}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatCurrency(inv.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={inv.status.toLowerCase() === "paid" ? "success" : "warning"}>
-                      {inv.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {inv.download_url ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => window.open(inv.download_url!, "_blank")}
-                      >
-                        Download
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">--</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          )}
-        </CardContent>
-      </Card>
-      </>
-      )}
+      {/* Plans Grid */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Available Plans</h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          {plans.map((plan) => {
+            const isCurrent = plan.plan === currentPlan
+            const isPopular = plan.plan === "starter"
+            const isEnterprise = plan.plan === "enterprise"
+            const priceLabel = plan.price_monthly_cents === 0 ? "Free" : `${formatCents(plan.price_monthly_cents)}/mo`
+
+            return (
+              <Card key={plan.plan} className={`relative flex flex-col ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""} ${isPopular && !isCurrent ? "border-primary/40" : ""}`}>
+                {isPopular && !isCurrent && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground text-[10px]">Most Popular</Badge>
+                  </div>
+                )}
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm">{PLAN_LABELS[plan.plan] ?? plan.plan}</CardTitle>
+                    {isCurrent && <Badge variant="outline" className="text-[10px]">Current</Badge>}
+                  </div>
+                  <p className="text-2xl font-bold mt-1">{priceLabel}</p>
+                </CardHeader>
+                <CardContent className="flex-1 space-y-2 text-sm text-muted-foreground">
+                  <div className="flex justify-between"><span>API calls</span><span className="font-medium text-foreground">{formatNumber(plan.api_calls_per_month)}</span></div>
+                  <div className="flex justify-between"><span>Agents</span><span className="font-medium text-foreground">{plan.agents === null ? "Unlimited" : plan.agents}</span></div>
+                  <div className="flex justify-between"><span>Tx fee</span><span className="font-medium text-foreground">{plan.tx_fee_bps} bps</span></div>
+                  <div className="flex justify-between"><span>Volume</span><span className="font-medium text-foreground">{plan.monthly_tx_volume_cents === null ? "Unlimited" : formatCents(plan.monthly_tx_volume_cents)}</span></div>
+                </CardContent>
+                <div className="p-4 pt-0">
+                  {isCurrent ? (
+                    <div className="flex items-center justify-center gap-1.5 py-2 text-sm text-primary font-medium">
+                      <CheckCircle className="w-4 h-4" />
+                      Current Plan
+                    </div>
+                  ) : isEnterprise ? (
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href="https://cal.com/sardis/15min" target="_blank" rel="noopener noreferrer">
+                        <Building2 className="w-4 h-4 mr-2" />
+                        Talk to Sales
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full"
+                      onClick={() => handleUpgrade(plan.plan)}
+                      disabled={upgrading !== null}
+                    >
+                      {upgrading === plan.plan ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      {upgrading === plan.plan ? "Redirecting..." : "Upgrade"}
+                    </Button>
+                  )}
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
