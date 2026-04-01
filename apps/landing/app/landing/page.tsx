@@ -120,11 +120,17 @@ function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light;
           .sardis-btn:hover .sardis-btn-icon { transform: translateX(2px) scale(1.08); }
           .sardis-btn-icon { transition: transform 250ms cubic-bezier(0.32,0.72,0,1); }
         `}</style>
-        <Tag
+        <div
           className="sardis-slide-track"
-          style={{ display: "inline-flex", padding: 4, background: `${t.text}06`, border: `1px solid ${t.text}0A`, borderRadius: 100, width: "100%", textDecoration: "none" }}
-          onClick={!href ? () => { setSlid(true); setTimeout(() => setSlid(false), 1200) } : undefined}
-          {...linkProps}
+          style={{ display: "inline-flex", padding: 4, background: `${t.text}06`, border: `1px solid ${t.text}0A`, borderRadius: 100, width: "100%", textDecoration: "none", cursor: "pointer" }}
+          onClick={() => {
+            setSlid(true)
+            if (href) {
+              setTimeout(() => { window.location.href = href }, 600)
+            } else {
+              setTimeout(() => setSlid(false), 1200)
+            }
+          }}
         >
           <div
             className={`sardis-slide-pill ${slid ? "slid" : ""}`}
@@ -135,7 +141,7 @@ function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light;
               <span style={{ fontSize: 13, color: t.btnText }}>→</span>
             </div>
           </div>
-        </Tag>
+        </div>
       </>
     )
   }

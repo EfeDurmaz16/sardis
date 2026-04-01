@@ -74,9 +74,9 @@ function formatCurrency(value: number | string): string {
 }
 
 export default function BillingPage() {
-  const { data: invoices, loading: invoicesLoading } = useSardis<Invoice[]>("api/v2/billing/invoices")
+  const { data: invoicesRaw, loading: invoicesLoading } = useSardis<Invoice[] | Record<string, unknown>>("api/v2/billing/invoices")
   const { data: plan, loading: planLoading } = useSardis<BillingPlan>("api/v2/billing/plan")
-  const invoiceList = invoices ?? []
+  const invoiceList = Array.isArray(invoicesRaw) ? invoicesRaw : []
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [cardNumber, setCardNumber] = useState("")
@@ -87,8 +87,8 @@ export default function BillingPage() {
 
   // Compute usage percentages from plan data
   const usageItems = useMemo(() => {
-    if (!plan?.usage) return []
-    return plan.usage.map((u) => ({
+    if (!plan?.usage || !Array.isArray(plan.usage)) return []
+    return plan.usage.map((u: { label: string; used: number; limit: number }) => ({
       label: u.label,
       used: u.used,
       limit: u.limit,
