@@ -302,7 +302,7 @@ payment = client.pay(
       </Section>
 
       {/* ═══ LOGO STRIP ═══ */}
-      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "72px 56px 56px", gap: 32, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
+      <Section style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "56px 56px", gap: 32, marginTop: 24, borderTop: `1px solid ${t.border}`, borderBottom: `1px solid ${t.border}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Early partners" t={t} />
           <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
@@ -461,64 +461,64 @@ payment = client.pay(
           </div>
           <span style={{ fontSize: 13, color: t.textLabel }}>Simple pricing, real control.</span>
         </div>
-        <div style={{ display: "flex", gap: 16, maxWidth: 920, margin: "0 auto", width: "100%" }}>
+        <div style={{ display: "flex", gap: 20, maxWidth: 1100, margin: "0 auto", width: "100%" }}>
           {/* Free */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, border: `1px solid ${t.border}`, borderRadius: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 36, gap: 28, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Free</span>
-              <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>$0</span>
-              <span style={{ fontSize: 14, color: t.textFaint }}>Sandbox, 2 agents, testnet only.</span>
+              <span className={jakarta.className} style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.03em" }}>$0</span>
+              <span style={{ fontSize: 14, color: t.textFaint, marginTop: 4 }}>Sandbox, 2 agents, testnet only.</span>
             </div>
             <div style={{ height: 1, background: t.border }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {["Sandbox environment", "SDK + MCP access", "Basic policy engine", "Community support"].map((f) => (
                 <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
               ))}
             </div>
-            <div style={{ marginTop: "auto" }}>
-              <GhostCTA label="Get started" t={t} href="https://app.sardis.sh" />
+            <div style={{ marginTop: "auto", paddingTop: 8 }}>
+              <PrimaryCTA label="Get started" t={t} slide href="https://app.sardis.sh/login" />
             </div>
           </div>
           {/* Starter — MOST POPULAR — Double Bezel */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 2, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 22, position: "relative" }}>
-            <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", padding: "4px 14px", background: t.btnBg, borderRadius: 100 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1.15, padding: 3, background: `${t.text}0F`, border: `1px solid ${t.text}1A`, borderRadius: 24, position: "relative" }}>
+            <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", padding: "5px 16px", background: t.btnBg, borderRadius: 100 }}>
               <span style={{ fontSize: 10, fontWeight: 700, color: t.btnText, letterSpacing: "0.08em", textTransform: "uppercase" as const }}>Most popular</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, background: t.cardBg, borderRadius: 20, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 8px 32px rgba(26,22,20,0.06)" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 36, gap: 28, background: t.cardBg, borderRadius: 21, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 8px 32px rgba(26,22,20,0.06)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Starter</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>$199</span>
+                  <span className={jakarta.className} style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.03em" }}>$199</span>
                   <span style={{ fontSize: 14, color: t.textFaint }}>/ mo</span>
                 </div>
-                <span style={{ fontSize: 14, color: t.textFaint }}>Production, mainnet, 25 agents.</span>
+                <span style={{ fontSize: 14, color: t.textFaint, marginTop: 4 }}>Production, mainnet, 25 agents.</span>
               </div>
               <div style={{ height: 1, background: t.border }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {["Everything in Free", "Mainnet settlement", "Unlimited transactions", "Multi-chain (Tempo + Base)", "Audit events + webhooks", "Priority support"].map((f) => (
                   <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
                 ))}
               </div>
-              <div style={{ marginTop: "auto" }}>
-                <PrimaryCTA label="Start building" t={t} slide href="https://app.sardis.sh" />
+              <div style={{ marginTop: "auto", paddingTop: 8 }}>
+                <PrimaryCTA label="Start building" t={t} slide href="https://app.sardis.sh/login" />
               </div>
             </div>
           </div>
           {/* Enterprise */}
-          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 32, gap: 24, border: `1px solid ${t.border}`, borderRadius: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: 36, gap: 28, border: `1px solid ${t.border}`, borderRadius: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Enterprise</span>
-              <span className={jakarta.className} style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em" }}>Custom</span>
-              <span style={{ fontSize: 14, color: t.textFaint }}>Unlimited agents, white-glove.</span>
+              <span className={jakarta.className} style={{ fontSize: 48, fontWeight: 800, letterSpacing: "-0.03em" }}>Custom</span>
+              <span style={{ fontSize: 14, color: t.textFaint, marginTop: 4 }}>Unlimited agents, white-glove.</span>
             </div>
             <div style={{ height: 1, background: t.border }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {["Everything in Starter", "KYB + PEP screening", "Advanced audit trail", "FX support", "Custom SLAs", "Dedicated support"].map((f) => (
                 <span key={f} style={{ fontSize: 13, color: t.textMuted }}>{f}</span>
               ))}
             </div>
-            <div style={{ marginTop: "auto" }}>
-              <GhostCTA label="Talk to sales" t={t} href="https://cal.com/sardis/15min" />
+            <div style={{ marginTop: "auto", paddingTop: 8 }}>
+              <PrimaryCTA label="Talk to sales" t={t} slide href="https://cal.com/sardis/15min" />
             </div>
           </div>
         </div>
