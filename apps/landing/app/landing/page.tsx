@@ -110,7 +110,7 @@ function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light;
         <style>{`
           .sardis-slide-track { position: relative; border-radius: 100px; cursor: pointer; overflow: hidden; }
           .sardis-slide-pill { transition: transform 500ms cubic-bezier(0.32,0.72,0,1); }
-          .sardis-slide-pill.slid { transform: translateX(calc(150%)); }
+          .sardis-slide-pill.slid { transform: translateX(calc(100% - 4px)); }
           .sardis-slide-pill .sardis-arrow { transition: transform 300ms cubic-bezier(0.32,0.72,0,1); }
           .sardis-slide-track:hover .sardis-arrow { transform: translateX(3px); }
           .sardis-slide-track:hover .sardis-slide-pill:not(.slid) { transform: translateX(4px); }
@@ -124,9 +124,11 @@ function PrimaryCTA({ label, t, slide, href }: { label: string; t: typeof light;
           className="sardis-slide-track"
           style={{ display: "inline-flex", padding: 4, background: `${t.text}06`, border: `1px solid ${t.text}0A`, borderRadius: 100, width: "100%", textDecoration: "none", cursor: "pointer" }}
           onClick={() => {
+            if (slid) return
             setSlid(true)
             if (href) {
-              setTimeout(() => { window.location.href = href }, 600)
+              setTimeout(() => { window.location.href = href }, 650)
+              setTimeout(() => setSlid(false), 700)
             } else {
               setTimeout(() => setSlid(false), 1200)
             }
