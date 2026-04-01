@@ -23,14 +23,7 @@ export class SardisProxyError extends Error {
 }
 
 export function getSardisApiConfig() {
-  const apiKey = process.env.SARDIS_API_KEY
-  if (!apiKey) {
-    throw new SardisProxyError(
-      "Dashboard API proxy is not configured. Set SARDIS_API_KEY for apps/dashboard.",
-      503,
-      { error: "dashboard_api_key_missing" },
-    )
-  }
+  const apiKey = process.env.SARDIS_API_KEY ?? ""
 
   return {
     apiKey,
@@ -49,11 +42,25 @@ function buildErrorMessage(status: number, payload: unknown): string {
   return `Sardis API request failed with status ${status}`
 }
 
-export async function sardisProxyResponse(path: string, init: RequestInit = {}): Promise<Response> {
+export async function sardisProxyResponse(
+  path: string,
+  init: RequestInit = {},
+  options?: { userJwt?: string },
+): Promise<Response> {
   const { apiKey, baseUrl } = getSardisApiConfig()
   const headers = new Headers(init.headers)
 
-  headers.set("X-API-Key", apiKey)
+  if (options?.userJwt) {
+    headers.set("Authorization", `Bearer ${options.userJwt}`)
+  } else if (apiKey) {
+    headers.set("X-API-Key", apiKey)
+  } else {
+    throw new SardisProxyError(
+      "No user JWT and no SARDIS_API_KEY configured. Cannot authenticate with Sardis API.",
+      503,
+      { error: "no_auth_credentials" },
+    )
+  }
   headers.set("Accept", "application/json")
 
   if (init.body && !headers.has("Content-Type")) {
@@ -75,8 +82,12 @@ export async function sardisProxyResponse(path: string, init: RequestInit = {}):
   return response
 }
 
-export async function sardisProxyFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await sardisProxyResponse(path, init)
+export async function sardisProxyFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options?: { userJwt?: string },
+): Promise<T> {
+  const response = await sardisProxyResponse(path, init, options)
 
   const text = await response.text()
   const payload = text ? safeJsonParse(text) : null

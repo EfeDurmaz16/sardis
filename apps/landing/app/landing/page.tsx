@@ -234,7 +234,6 @@ payment = client.pay(
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <a href="https://app.sardis.sh/login" style={{ fontSize: 13, color: t.textMuted, cursor: "pointer", textDecoration: "none" }}>Sign in</a>
             {mounted && (
               <button
                 onClick={() => setTheme(isDark ? "light" : "dark")}
@@ -307,17 +306,25 @@ payment = client.pay(
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Early partners" t={t} />
           <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Stripe</span>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Bridge</span>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Base</span>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Tempo</span>
+            {[
+              { name: "Stripe", domain: "stripe.com" },
+              { name: "Bridge", domain: "bridge.xyz" },
+              { name: "Base", domain: "base.org" },
+              { name: "Tempo", domain: "tempo.xyz" },
+            ].map((p) => (
+              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 26, opacity: 0.5, objectFit: "contain" }} />
+            ))}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
           <Eyebrow text="Live integrations" t={t} />
           <div style={{ display: "flex", alignItems: "center", gap: 36 }}>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>AutoGPT</span>
-            <span className={jakarta.className} style={{ fontSize: 18, fontWeight: 700, color: t.textMuted, letterSpacing: "-0.01em" }}>Activepieces</span>
+            {[
+              { name: "AutoGPT", domain: "agpt.co" },
+              { name: "Activepieces", domain: "activepieces.com" },
+            ].map((p) => (
+              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 26, opacity: 0.5, objectFit: "contain" }} />
+            ))}
           </div>
         </div>
       </Section>

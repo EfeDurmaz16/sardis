@@ -17,14 +17,21 @@ async function forward(request: NextRequest) {
     )
   }
 
+  // Extract user JWT from sardis_session cookie for per-user auth
+  const userJwt = cookieStore.get("sardis_session")?.value
+
   const segments = request.nextUrl.pathname.replace(/^\/api\/sardis\//, "")
   const apiPath = `/${segments}${request.nextUrl.search}`
 
   try {
-    const upstream = await sardisProxyResponse(apiPath, {
-      method: request.method,
-      body: request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined,
-    })
+    const upstream = await sardisProxyResponse(
+      apiPath,
+      {
+        method: request.method,
+        body: request.method !== "GET" && request.method !== "HEAD" ? await request.text() : undefined,
+      },
+      { userJwt },
+    )
 
     return new Response(upstream.body, {
       status: upstream.status,
