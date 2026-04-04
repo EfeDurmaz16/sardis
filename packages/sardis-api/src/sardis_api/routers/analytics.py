@@ -256,17 +256,15 @@ async def get_spending_over_time(
 
     pool = await get_db_pool()
 
-    # Determine date truncation based on group_by
-    if group_by == "day":
-        trunc = "day"
-    elif group_by == "week":
-        trunc = "week"
-    else:
-        trunc = "month"
+    # Whitelist-validated date truncation to prevent SQL injection
+    _TRUNC_MAP = {"day": "day", "week": "week", "month": "month"}
+    trunc_sql = _TRUNC_MAP.get(group_by)
+    if not trunc_sql:
+        raise HTTPException(status_code=400, detail=f"Invalid group_by: {group_by}")
 
     query = f"""
         SELECT
-            DATE_TRUNC('{trunc}', t.created_at) as date,
+            DATE_TRUNC('{trunc_sql}', t.created_at) as date,
             SUM(t.amount) as amount,
             COUNT(*) as count
         FROM transactions t
@@ -281,7 +279,7 @@ async def get_spending_over_time(
         query += " AND w.agent_id = $3::uuid"
         params.append(agent_id)
 
-    query += f" GROUP BY DATE_TRUNC('{trunc}', t.created_at) ORDER BY date"
+    query += f" GROUP BY DATE_TRUNC('{trunc_sql}', t.created_at) ORDER BY date"
 
     try:
         async with pool.acquire() as conn:

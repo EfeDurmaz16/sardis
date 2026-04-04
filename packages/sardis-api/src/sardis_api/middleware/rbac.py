@@ -22,7 +22,7 @@ from fastapi import HTTPException, Request, status
 from sardis_v2_core.organizations import OrganizationManager, OrgMember
 from sardis_v2_core.rbac import Permission, RBACEngine
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger("sardis.api.rbac")
 
@@ -164,9 +164,14 @@ class RBACMiddleware(BaseHTTPMiddleware):
                 request.state.org_id = org_id
 
         except Exception as e:
-            logger.error(f"RBAC middleware error: {e}", exc_info=True)
-            # Don't block the request on middleware errors
-            # Let the route handler deal with missing org_member
+            logger.error(f"RBAC membership lookup failed: {e}", exc_info=True)
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev").lower()
+            if env not in ("dev", "development", "test", "local"):
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Authorization service unavailable"},
+                )
+            # In dev/test, allow request to continue with missing org_member
             request.state.org_member = None
             request.state.org_id = org_id
 

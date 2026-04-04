@@ -39,7 +39,7 @@ from sardis_api.authz import Principal, require_principal
 from sardis_api.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
 from sardis_api.routers.metrics import record_policy_check, record_policy_denial_spike
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
 
 

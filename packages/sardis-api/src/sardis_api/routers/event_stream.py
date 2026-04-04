@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from sardis_api.authz import Principal, require_principal
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 # In-memory event bus — maps org_id to list of subscriber queues
 _subscribers: dict[str, list[asyncio.Queue]] = {}

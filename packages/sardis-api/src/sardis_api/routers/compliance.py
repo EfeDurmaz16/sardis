@@ -22,7 +22,7 @@ from sardis_api.webhook_replay import run_with_replay_protection
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 public_router = APIRouter()
 
 

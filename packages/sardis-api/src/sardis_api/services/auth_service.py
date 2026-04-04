@@ -504,6 +504,11 @@ class AuthService:
         secret = os.getenv("JWT_SECRET_KEY", "")
         if not secret:
             raise RuntimeError("JWT_SECRET_KEY environment variable is required")
+        if len(secret) < 32:
+            raise RuntimeError(
+                "JWT_SECRET_KEY is too short (minimum 32 characters for HS256). "
+                "Generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
 
         # Default access token lifetime: JWT_EXPIRATION_HOURS env var (default 24h)
         # to match the dashboard session cookie lifecycle.
