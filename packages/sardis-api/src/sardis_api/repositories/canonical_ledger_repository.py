@@ -616,7 +616,10 @@ class CanonicalLedgerRepository:
         if pool is None:
             return []
         query = """
-            SELECT *
+            SELECT journey_id, organization_id, rail, provider, external_reference,
+                   direction, currency, canonical_state, expected_amount_minor,
+                   settled_amount_minor, retry_count, last_return_code, break_status,
+                   first_event_at, last_event_at, metadata, created_at, updated_at
             FROM canonical_ledger_journeys
             WHERE organization_id = $1
         """
@@ -660,7 +663,9 @@ class CanonicalLedgerRepository:
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT *
+                SELECT break_id, organization_id, journey_id, break_type, severity,
+                       expected_amount_minor, settled_amount_minor, delta_minor,
+                       status, metadata, detected_at
                 FROM reconciliation_breaks
                 WHERE organization_id = $1
                   AND ($2::text IS NULL OR status = $2)
@@ -693,7 +698,8 @@ class CanonicalLedgerRepository:
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                SELECT *
+                SELECT review_id, organization_id, journey_id, reason_code, priority,
+                       status, assigned_to, payload, created_at, updated_at, resolved_at
                 FROM manual_review_queue
                 WHERE organization_id = $1
                   AND ($2::text IS NULL OR status = $2)
