@@ -221,6 +221,11 @@ gv-team.md
 # Git worktrees
 .worktrees/
 
+# Long-sprint agent artifacts
+.agent-progress*.json
+.agent-issues*.json
+.claude/ralph-loop.local.md
+
 # AI tool configs (not ours)
 .adal/
 .agent/
