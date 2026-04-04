@@ -21,7 +21,7 @@ check_cmd pytest
 
 if [[ "${1:-}" != "--no-install" ]]; then
   echo "[clone-smoke] installing Python dependencies"
-  python3 -m pip install -r requirements.txt
+  python3 -m pip install .
 
   echo "[clone-smoke] installing Node workspace dependencies"
   pnpm install --no-frozen-lockfile
