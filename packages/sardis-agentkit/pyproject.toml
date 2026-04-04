@@ -2,7 +2,7 @@
 name = "sardis-agentkit"
 version = "0.1.0"
 description = "Sardis payment actions for Coinbase AgentKit"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
     "httpx>=0.24.0",

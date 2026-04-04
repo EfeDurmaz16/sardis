@@ -9,7 +9,7 @@ description = "CrewAI integration for Sardis - agent payment tools, pre-built ag
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["sardis", "crewai", "ai-agents", "payments", "fintech", "multi-agent", "orchestration"]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -7,7 +7,7 @@ name = "sardis-composio"
 version = "1.0.0"
 description = "Sardis payment tools for Composio's tool marketplace"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Sardis", email = "efe@sardis.sh" }]
 keywords = ["sardis", "composio", "payments", "ai-agents", "fintech"]

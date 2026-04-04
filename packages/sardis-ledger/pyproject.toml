@@ -8,7 +8,7 @@ version = "1.1.0"
 description = "Production-grade append-only ledger with row-level locking, batch processing, and blockchain reconciliation"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 readme = "README.md"
 license = {text = "MIT"}
 keywords = [

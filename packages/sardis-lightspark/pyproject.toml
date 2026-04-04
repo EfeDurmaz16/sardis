@@ -7,7 +7,7 @@ name = "sardis-lightspark"
 version = "1.0.0"
 description = "Sardis Lightspark Grid Integration - FX, fiat rails, UMA addresses"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 keywords = ["sardis", "lightspark", "grid", "uma", "fx", "fiat", "payments"]

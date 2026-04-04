@@ -8,7 +8,7 @@ version = "1.1.0"
 description = "Sardis payment tools for Browser Use - enable browser agents to make policy-controlled payments"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 keywords = ["sardis", "browser-use", "ai-agents", "payments", "stablecoin"]
 classifiers = [

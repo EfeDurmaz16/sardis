@@ -7,7 +7,7 @@ name = "sardis-cli"
 version = "1.0.0"
 description = "Sardis command-line interface for agent payments"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
