@@ -11,8 +11,8 @@ export default async function AuthPage({ params }: { params: Promise<{ path: str
   const { path } = await params
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <div className="w-full max-w-md">
+    <main className="flex min-h-svh items-center justify-center bg-muted/30 px-4 py-8">
+      <div className="w-full max-w-md mx-auto">
         <div className="text-center mb-8">
           <div className="w-14 h-14 flex items-center justify-center mx-auto mb-5">
             <svg width="40" height="40" viewBox="0 0 28 28" fill="none">
