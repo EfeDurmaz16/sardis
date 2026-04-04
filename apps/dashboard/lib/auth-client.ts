@@ -1,7 +1,9 @@
 import { createAuthClient } from "better-auth/react";
-import { jwtClient } from "better-auth/client/plugins";
+import { jwtClient, magicLinkClient, oneTapClient, phoneNumberClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
 import { apiKeyClient } from "@better-auth/api-key/client";
+import { polarClient } from "@polar-sh/better-auth/client";
+import { stripeClient } from "@better-auth/stripe/client";
 
 export const authClient = createAuthClient({
   // Use same-origin for auth requests — the Next.js app serves /api/auth/*
@@ -10,7 +12,18 @@ export const authClient = createAuthClient({
   baseURL: typeof window !== "undefined"
     ? window.location.origin
     : (process.env.NEXT_PUBLIC_APP_URL || "https://app.sardis.sh"),
-  plugins: [jwtClient(), passkeyClient(), apiKeyClient()],
+  plugins: [
+    jwtClient(),
+    passkeyClient(),
+    apiKeyClient(),
+    magicLinkClient(),
+    oneTapClient({
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+    }),
+    phoneNumberClient(),
+    polarClient(),
+    stripeClient(),
+  ],
 });
 
 export const {

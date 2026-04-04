@@ -1,9 +1,13 @@
 import { betterAuth } from "better-auth";
-import { jwt } from "better-auth/plugins";
+import { jwt, magicLink, oneTap, phoneNumber } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { apiKey } from "@better-auth/api-key";
 import { agentAuth } from "@better-auth/agent-auth";
 import type { Capability } from "@better-auth/agent-auth";
+import { polar, checkout, portal, usage, webhooks } from "@polar-sh/better-auth";
+import { stripe } from "@better-auth/stripe";
+import { Polar } from "@polar-sh/sdk";
+import Stripe from "stripe";
 import { Pool } from "pg";
 
 /**
@@ -420,6 +424,125 @@ export const auth = betterAuth({
         },
       },
     }),
+    /**
+     * Magic Link — passwordless email login.
+     * Requires RESEND_API_KEY (or other email provider) to send magic links.
+     * The sendMagicLink callback must be implemented to deliver the link.
+     */
+    magicLink({
+      sendMagicLink: async ({ email, token, url }, ctx) => {
+        // Use Resend or other email service to deliver magic links.
+        // In production, replace with real email delivery.
+        const RESEND_API_KEY = process.env.RESEND_API_KEY;
+        if (!RESEND_API_KEY) {
+          console.warn("[magic-link] RESEND_API_KEY not set — logging link to console");
+          console.log(`[magic-link] ${email}: ${url}`);
+          return;
+        }
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "Sardis <auth@sardis.sh>",
+            to: email,
+            subject: "Sign in to Sardis",
+            html: `<p>Click <a href="${url}">here</a> to sign in to your Sardis account. This link expires in 5 minutes.</p>`,
+          }),
+        });
+      },
+    }),
+    /**
+     * Google One Tap — seamless Google sign-in popup.
+     * Server plugin; client-side configured separately in auth-client.ts.
+     */
+    oneTap(),
+    /**
+     * Phone Number — OTP-based phone authentication.
+     * Requires an SMS provider (Twilio, etc.) to send OTP codes.
+     */
+    phoneNumber({
+      sendOTP: async ({ phoneNumber: phone, code }, ctx) => {
+        // Use Twilio or other SMS provider to deliver OTP.
+        const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
+        const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+        const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER;
+        if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+          console.warn("[phone] Twilio credentials not set — logging OTP to console");
+          console.log(`[phone] ${phone}: ${code}`);
+          return;
+        }
+        await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Basic ${Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString("base64")}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              From: TWILIO_FROM,
+              To: phone,
+              Body: `Your Sardis verification code is: ${code}`,
+            }).toString(),
+          },
+        );
+      },
+    }),
+    /**
+     * Polar — usage-based billing via Polar.sh (primary billing provider).
+     * Only initialized if POLAR_ACCESS_TOKEN is set.
+     */
+    ...(process.env.POLAR_ACCESS_TOKEN
+      ? [
+          polar({
+            client: new Polar({
+              accessToken: process.env.POLAR_ACCESS_TOKEN,
+              server: (process.env.POLAR_ENVIRONMENT as "sandbox" | "production") || "sandbox",
+            }),
+            createCustomerOnSignUp: true,
+            use: [
+              checkout({
+                products: [
+                  ...(process.env.POLAR_PRO_PRODUCT_ID
+                    ? [{ productId: process.env.POLAR_PRO_PRODUCT_ID, slug: "pro" }]
+                    : []),
+                  ...(process.env.POLAR_TEAM_PRODUCT_ID
+                    ? [{ productId: process.env.POLAR_TEAM_PRODUCT_ID, slug: "team" }]
+                    : []),
+                ],
+                successUrl: "/billing?checkout=success&checkout_id={CHECKOUT_ID}",
+                authenticatedUsersOnly: true,
+              }),
+              portal(),
+              usage(),
+              webhooks({
+                secret: process.env.POLAR_WEBHOOK_SECRET!,
+                onPayload: async (payload) => {
+                  console.log("[polar-webhook]", payload.type);
+                },
+              }),
+            ],
+          }),
+        ]
+      : []),
+    /**
+     * Stripe — fallback billing provider (primary once Stripe Atlas completes).
+     * Only initialized if STRIPE_SECRET_KEY is set.
+     */
+    ...(process.env.STRIPE_SECRET_KEY
+      ? [
+          stripe({
+            stripeClient: new Stripe(process.env.STRIPE_SECRET_KEY, {
+              apiVersion: "2026-02-25.clover",
+            }),
+            stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+            createCustomerOnSignUp: true,
+          }),
+        ]
+      : []),
   ],
   // Map model names to ba_-prefixed tables (migration 077)
   user: {
@@ -454,6 +577,23 @@ export const auth = betterAuth({
         type: "string",
         required: false,
         fieldName: "display_name",
+      },
+      // Phone number plugin fields (migration 099)
+      phoneNumber: {
+        type: "string",
+        required: false,
+        fieldName: "phone_number",
+      },
+      phoneNumberVerified: {
+        type: "boolean",
+        required: false,
+        fieldName: "phone_number_verified",
+      },
+      // Stripe plugin field (migration 099)
+      stripeCustomerId: {
+        type: "string",
+        required: false,
+        fieldName: "stripe_customer_id",
       },
     },
   },
