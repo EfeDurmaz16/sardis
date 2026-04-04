@@ -19,18 +19,19 @@ import {
   Check,
 } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts'
+import dynamic from 'next/dynamic'
+
+// Lazy-load recharts components to keep them out of the initial bundle.
+const AreaChart = dynamic(() => import('recharts').then(m => ({ default: m.AreaChart })), { ssr: false }) as any
+const Area = dynamic(() => import('recharts').then(m => ({ default: m.Area })), { ssr: false }) as any
+const XAxis = dynamic(() => import('recharts').then(m => ({ default: m.XAxis })), { ssr: false }) as any
+const YAxis = dynamic(() => import('recharts').then(m => ({ default: m.YAxis })), { ssr: false }) as any
+const CartesianGrid = dynamic(() => import('recharts').then(m => ({ default: m.CartesianGrid })), { ssr: false }) as any
+const Tooltip = dynamic(() => import('recharts').then(m => ({ default: m.Tooltip })), { ssr: false }) as any
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })), { ssr: false }) as any
+const PieChart = dynamic(() => import('recharts').then(m => ({ default: m.PieChart })), { ssr: false }) as any
+const Pie = dynamic(() => import('recharts').then(m => ({ default: m.Pie })), { ssr: false }) as any
+const Cell = dynamic(() => import('recharts').then(m => ({ default: m.Cell })), { ssr: false }) as any
 import clsx from 'clsx'
 
 /* ─── Types ─── */

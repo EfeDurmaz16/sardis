@@ -23,9 +23,12 @@ import {
   Store,
   BarChart3,
 } from 'lucide-react';
-import { SpendingChart } from '@/components/charts/SpendingChart';
-import { AgentSpendingBar } from '@/components/charts/AgentSpendingBar';
-import { CategoryPie } from '@/components/charts/CategoryPie';
+import dynamic from 'next/dynamic';
+
+// Lazy-load chart components to avoid bundling recharts on initial page load
+const SpendingChart = dynamic(() => import('@/components/charts/SpendingChart').then(m => ({ default: m.SpendingChart })), { ssr: false });
+const AgentSpendingBar = dynamic(() => import('@/components/charts/AgentSpendingBar').then(m => ({ default: m.AgentSpendingBar })), { ssr: false });
+const CategoryPie = dynamic(() => import('@/components/charts/CategoryPie').then(m => ({ default: m.CategoryPie })), { ssr: false });
 import { getAuthHeaders } from '@/api/client';
 
 // API base URL

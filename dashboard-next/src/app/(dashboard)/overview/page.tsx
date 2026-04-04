@@ -25,20 +25,22 @@ import {
   Send
 } from 'lucide-react'
 import Link from 'next/link'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts'
+import dynamic from 'next/dynamic'
+
+// Lazy-load recharts components to keep them out of the initial bundle.
+// Each resolves a named export from the 'recharts' package.
+const AreaChart = dynamic(() => import('recharts').then(m => ({ default: m.AreaChart })), { ssr: false }) as any
+const Area = dynamic(() => import('recharts').then(m => ({ default: m.Area })), { ssr: false }) as any
+const XAxis = dynamic(() => import('recharts').then(m => ({ default: m.XAxis })), { ssr: false }) as any
+const YAxis = dynamic(() => import('recharts').then(m => ({ default: m.YAxis })), { ssr: false }) as any
+const CartesianGrid = dynamic(() => import('recharts').then(m => ({ default: m.CartesianGrid })), { ssr: false }) as any
+const Tooltip = dynamic(() => import('recharts').then(m => ({ default: m.Tooltip })), { ssr: false }) as any
+const ResponsiveContainer = dynamic(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })), { ssr: false }) as any
+const BarChart = dynamic(() => import('recharts').then(m => ({ default: m.BarChart })), { ssr: false }) as any
+const Bar = dynamic(() => import('recharts').then(m => ({ default: m.Bar })), { ssr: false }) as any
+const PieChart = dynamic(() => import('recharts').then(m => ({ default: m.PieChart })), { ssr: false }) as any
+const Pie = dynamic(() => import('recharts').then(m => ({ default: m.Pie })), { ssr: false }) as any
+const Cell = dynamic(() => import('recharts').then(m => ({ default: m.Cell })), { ssr: false }) as any
 import clsx from 'clsx'
 import StatCard from '@/components/StatCard'
 import { FaucetButton } from '@/components/FaucetButton'
