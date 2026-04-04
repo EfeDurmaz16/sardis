@@ -353,60 +353,48 @@ export default function ApiKeysPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead
-                    className="pl-4 cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("name")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead className="pl-4">
+                    <button onClick={() => toggleSort("name")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Key Name
                       {sortKey === "name" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                   <TableHead>Prefix</TableHead>
                   <TableHead>Permissions</TableHead>
                   <TableHead>Mode</TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("created")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("created")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "created" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Created
                       {sortKey === "created" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("lastUsed")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("lastUsed")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "lastUsed" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Last Used
                       {sortKey === "lastUsed" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("active")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("active")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "active" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Status
                       {sortKey === "active" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                 </TableRow>
               </TableHeader>

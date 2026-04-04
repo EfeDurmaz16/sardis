@@ -222,57 +222,45 @@ export default function TransactionsPage() {
                 <TableHead className="pl-4">TX ID</TableHead>
                 <TableHead>From</TableHead>
                 <TableHead>To</TableHead>
-                <TableHead
-                  className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("amount")}
-                >
-                  <span className="flex items-center justify-end gap-1">
+                <TableHead className="text-right">
+                  <button onClick={() => toggleSort("amount")} className="flex items-center justify-end gap-1 w-full cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "amount" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                     Amount
                     {sortKey === "amount" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
                     )}
-                  </span>
+                  </button>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("chain")}
-                >
-                  <span className="flex items-center gap-1">
+                <TableHead>
+                  <button onClick={() => toggleSort("chain")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "chain" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                     Chain
                     {sortKey === "chain" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
                     )}
-                  </span>
+                  </button>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("status")}
-                >
-                  <span className="flex items-center gap-1">
+                <TableHead>
+                  <button onClick={() => toggleSort("status")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "status" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                     Status
                     {sortKey === "status" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
                     )}
-                  </span>
+                  </button>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => toggleSort("created_at")}
-                >
-                  <span className="flex items-center gap-1">
+                <TableHead>
+                  <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "created_at" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                     Timestamp
                     {sortKey === "created_at" ? (
                       sortDir === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
                     ) : (
                       <ArrowsDownUp className="w-3 h-3 text-muted-foreground/50" />
                     )}
-                  </span>
+                  </button>
                 </TableHead>
               </TableRow>
             </TableHeader>
