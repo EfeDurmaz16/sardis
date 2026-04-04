@@ -122,6 +122,15 @@ class EvaluationResponse(BaseModel):
 
 _VALID_STATES = {"open", "funded", "submitted", "completed", "rejected", "expired", "disputed"}
 
+_VALID_ROLES: frozenset[str] = frozenset({"client", "provider", "evaluator"})
+
+# Maps role name -> the SQL column that holds the agent ID for that role
+_ROLE_COLUMN_MAP: dict[str, str] = {
+    "client": "client_agent_id",
+    "provider": "provider_agent_id",
+    "evaluator": "evaluator_agent_id",
+}
+
 _STATE_TRANSITIONS: dict[str, set[str]] = {
     "open": {"funded", "expired"},
     "funded": {"submitted", "expired", "disputed"},
@@ -289,17 +298,14 @@ async def list_jobs(
 
     if role:
         role = role.lower()
-        if role == "client":
-            conditions.append(f"client_agent_id = ${idx}")
-        elif role == "provider":
-            conditions.append(f"provider_agent_id = ${idx}")
-        elif role == "evaluator":
-            conditions.append(f"evaluator_agent_id = ${idx}")
-        else:
+        if role not in _VALID_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="role must be one of: client, provider, evaluator",
+                detail=f"Invalid role. Must be one of: {', '.join(sorted(_VALID_ROLES))}",
             )
+        # Use pre-validated column name from the allow-list (no dynamic SQL injection)
+        col = _ROLE_COLUMN_MAP[role]
+        conditions.append(f"{col} = ${idx}")
         params.append(target_agent)
         idx += 1
     else:
