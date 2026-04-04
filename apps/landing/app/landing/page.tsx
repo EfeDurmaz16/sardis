@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useTheme } from "next-themes"
 import { Plus_Jakarta_Sans } from "next/font/google"
 import { motion } from "framer-motion"
+import Image from "next/image"
 import Link from "next/link"
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" })
@@ -320,7 +321,7 @@ payment = client.pay(
               { name: "Base", domain: "base.org" },
               { name: "Tempo", domain: "tempo.xyz" },
             ].map((p) => (
-              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 28, opacity: 0.85, objectFit: "contain" }} />
+              <Image key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} width={100} height={28} style={{ opacity: 0.85, objectFit: "contain" }} />
             ))}
           </div>
         </div>
@@ -331,7 +332,7 @@ payment = client.pay(
               { name: "AutoGPT", domain: "agpt.co" },
               { name: "Activepieces", domain: "activepieces.com" },
             ].map((p) => (
-              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} style={{ height: 28, opacity: 0.85, objectFit: "contain" }} />
+              <Image key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} width={100} height={28} style={{ opacity: 0.85, objectFit: "contain" }} />
             ))}
           </div>
         </div>
