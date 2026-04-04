@@ -39,7 +39,7 @@ def _pool_kwargs(database_url: str) -> dict:
         import ssl
         ssl_ctx = ssl.create_default_context()
         neon_min = int(os.getenv("SARDIS_DB_POOL_MIN_NEON", "2"))
-        neon_max = int(os.getenv("SARDIS_DB_POOL_MAX_NEON", "15"))
+        neon_max = int(os.getenv("SARDIS_DB_POOL_MAX_NEON", "25"))
         pool_kwargs.update({
             "ssl": ssl_ctx,
             "min_size": neon_min,
