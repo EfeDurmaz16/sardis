@@ -112,6 +112,9 @@ class DependencyContainer:
     # =========================================================================
     # Core Services (always available)
     # =========================================================================
+    # NOTE: @cached_property is not thread-safe, but this is acceptable
+    # because asyncio runs on a single thread per event loop.
+    # If threaded workers are ever used, switch to threading.Lock-based init.
 
     @cached_property
     def identity_registry(self) -> Any:
