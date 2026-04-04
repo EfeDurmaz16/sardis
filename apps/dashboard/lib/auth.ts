@@ -200,6 +200,8 @@ export const auth = betterAuth({
     "https://sardis.sh",
     "http://localhost:3000",
     "http://localhost:3005",
+    // Vercel auto-generated preview domains
+    /^https:\/\/dashboard-.*-efedurmaz16s-projects\.vercel\.app$/,
   ],
   emailAndPassword: {
     enabled: true,
