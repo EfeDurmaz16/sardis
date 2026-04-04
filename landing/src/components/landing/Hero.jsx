@@ -24,8 +24,8 @@ function WalletScreen() {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span style={{ color: '#F5F5F5', fontSize: 40, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>$2,847</span>
-          <span style={{ color: '#505460', fontSize: 16, fontWeight: 500 }}>.50</span>
+          <span className="text-3xl md:text-[40px]" style={{ color: '#F5F5F5', fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>$2,847</span>
+          <span className="text-base" style={{ color: '#505460', fontWeight: 500 }}>.50</span>
         </div>
         <span style={{ color: '#505460', fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>2,847.50 USDC on Base</span>
       </div>
