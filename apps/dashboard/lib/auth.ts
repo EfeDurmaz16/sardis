@@ -209,6 +209,24 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    password: {
+      verify: async ({ hash, password }) => {
+        // Legacy pbkdf2 format: "pbkdf2:salt:iterations:hash"
+        if (hash.startsWith("pbkdf2:")) {
+          const crypto = await import("crypto");
+          const parts = hash.split(":");
+          if (parts.length < 4) return false;
+          const [, salt, iterations, storedHash] = parts;
+          const derived = crypto.pbkdf2Sync(
+            password, salt, parseInt(iterations, 10), 64, "sha512"
+          );
+          return derived.toString("hex") === storedHash;
+        }
+        // better-auth default format: "salt:hash" (scrypt)
+        const { verifyPassword } = await import("better-auth/crypto");
+        return verifyPassword({ hash, password });
+      },
+    },
   },
   socialProviders: {
     google: {
