@@ -136,7 +136,8 @@ const navSections: NavSection[] = [
   },
 ]
 
-// Decode JWT payload
+// JWT payload decoded for display only (email, name).
+// Token is verified server-side on every API call — this is NOT used for auth decisions.
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const parts = token.split('.')
