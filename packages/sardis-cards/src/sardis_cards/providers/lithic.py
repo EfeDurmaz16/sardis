@@ -1,4 +1,7 @@
-"""Lithic card provider implementation."""
+"""
+DORMANT: Lithic card provider is not active. Sardis uses Stripe Issuing.
+Lithic requires $5M funding minimum. Kept for potential future use.
+"""
 
 from __future__ import annotations
 
