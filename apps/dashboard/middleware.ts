@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/** Routes that don't require authentication */
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/api/auth"];
+const PUBLIC_PATHS = ["/auth", "/api/auth"];
+
+const REDIRECTS: Record<string, string> = {
+  "/login": "/auth/sign-in",
+  "/signup": "/auth/sign-up",
+  "/forgot-password": "/auth/forgot-password",
+  "/reset-password": "/auth/reset-password",
+};
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(
@@ -12,6 +18,12 @@ function isPublicPath(pathname: string): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Redirect old auth paths to new ones
+  const redirect = REDIRECTS[pathname];
+  if (redirect) {
+    return NextResponse.redirect(new URL(redirect, request.url), 301);
+  }
 
   // Allow public routes, static assets, and Next.js internals
   if (
@@ -24,34 +36,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // NOTE: Middleware only checks cookie presence for routing decisions.
-  // Actual token validation happens server-side on every API call.
-  // This is acceptable because dashboard pages fetch data via authenticated API calls.
+  // Check for session cookie
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("sardis_session")?.value;
 
   if (!sessionToken) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Best-effort JWT expiry check — if the token has three dot-separated
-  // segments we can decode the payload and compare `exp` without a
-  // crypto dependency.  An expired token still gets through to the API
-  // which will reject it server-side, but redirecting early improves UX.
-  if (sessionToken.split(".").length === 3) {
-    try {
-      const payload = JSON.parse(atob(sessionToken.split(".")[1]));
-      if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
-        const loginUrl = new URL("/login", request.url);
-        loginUrl.searchParams.set("callbackUrl", pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-    } catch {
-      // Malformed token — let the API handle rejection
-    }
+    const signInUrl = new URL("/auth/sign-in", request.url);
+    signInUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();
