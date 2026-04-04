@@ -38,7 +38,6 @@ classifiers = [
 ]
 dependencies = [
     "sardis-core>=0.1.0",
-    "sqlalchemy>=2.0",
 ]
 
 [project.optional-dependencies]
