@@ -1,0 +1,11 @@
+# E2B Sandbox Template Configuration
+# https://e2b.dev/docs/sandbox-template
+
+[template]
+name = "sardis-agent"
+dockerfile = "e2b.Dockerfile"
+description = "Sandbox with Sardis SDK for AI agent payment testing"
+
+[template.metadata]
+author = "sardis-pay"
+tags = ["ai-agents", "payments", "stablecoins", "sardis"]

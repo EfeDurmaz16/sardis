@@ -1,0 +1,152 @@
+openapi: "3.1.0"
+info:
+  title: Sardis Payment API
+  description: Execute policy-controlled payments for AI agents via Sardis
+  version: "1.0.0"
+servers:
+  - url: https://api.sardis.sh
+paths:
+  /api/v2/wallets/{wallet_id}/transfer:
+    post:
+      operationId: sendPayment
+      summary: Execute a policy-controlled payment
+      description: Send a stablecoin payment from a Sardis wallet. The payment is checked against the wallet's spending policy before execution.
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The wallet ID to pay from
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destination
+                - amount
+              properties:
+                destination:
+                  type: string
+                  description: Recipient address or merchant identifier
+                amount:
+                  type: string
+                  description: Payment amount (e.g. "25.00")
+                token:
+                  type: string
+                  enum: [USDC, USDT, PYUSD, EURC]
+                  default: USDC
+                  description: Stablecoin to use
+                chain:
+                  type: string
+                  enum: [base, ethereum, polygon, arbitrum, optimism]
+                  default: base
+                  description: Blockchain network
+                memo:
+                  type: string
+                  description: Payment reason / purpose
+      responses:
+        "200":
+          description: Payment result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [submitted, completed, rejected]
+                  tx_hash:
+                    type: string
+                  chain:
+                    type: string
+                  message:
+                    type: string
+      security:
+        - apiKey: []
+
+  /api/v2/wallets/{wallet_id}/balance:
+    get:
+      operationId: getBalance
+      summary: Check wallet balance
+      description: Get the current balance and spending limits for a wallet
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chain
+          in: query
+          schema:
+            type: string
+            default: base
+        - name: token
+          in: query
+          schema:
+            type: string
+            default: USDC
+      responses:
+        "200":
+          description: Balance info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  wallet_id:
+                    type: string
+                  balance:
+                    type: string
+                  token:
+                    type: string
+                  chain:
+                    type: string
+                  address:
+                    type: string
+      security:
+        - apiKey: []
+
+  /api/v2/wallets/{wallet_id}:
+    get:
+      operationId: getWallet
+      summary: Get wallet information
+      description: Get wallet details including spending limits and policy
+      parameters:
+        - name: wallet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  agent_id:
+                    type: string
+                  currency:
+                    type: string
+                  limit_per_tx:
+                    type: string
+                  limit_total:
+                    type: string
+                  is_active:
+                    type: boolean
+      security:
+        - apiKey: []
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Your Sardis API key
