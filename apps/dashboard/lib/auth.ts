@@ -4,11 +4,26 @@ import { passkey } from "@better-auth/passkey";
 import { apiKey } from "@better-auth/api-key";
 import { agentAuth } from "@better-auth/agent-auth";
 import type { Capability } from "@better-auth/agent-auth";
-import { polar, checkout, portal, usage, webhooks } from "@polar-sh/better-auth";
-import { stripe } from "@better-auth/stripe";
-import { Polar } from "@polar-sh/sdk";
-import Stripe from "stripe";
 import { Pool } from "pg";
+
+// Lazy-loaded billing plugins — only imported when env vars are set
+// to avoid crashing auth if packages aren't installed
+let polarPlugin: any = null;
+let stripePlugin: any = null;
+if (process.env.POLAR_ACCESS_TOKEN) {
+  try {
+    const polarMod = require("@polar-sh/better-auth");
+    const { Polar } = require("@polar-sh/sdk");
+    polarPlugin = { ...polarMod, Polar };
+  } catch { /* @polar-sh/better-auth not installed */ }
+}
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    const { stripe } = require("@better-auth/stripe");
+    const Stripe = require("stripe").default || require("stripe");
+    stripePlugin = { stripe, Stripe };
+  } catch { /* @better-auth/stripe not installed */ }
+}
 
 /**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
@@ -536,16 +551,16 @@ export const auth = betterAuth({
      * Polar — usage-based billing via Polar.sh (primary billing provider).
      * Only initialized if POLAR_ACCESS_TOKEN is set.
      */
-    ...(process.env.POLAR_ACCESS_TOKEN
+    ...(polarPlugin && process.env.POLAR_ACCESS_TOKEN
       ? [
-          polar({
-            client: new Polar({
+          polarPlugin.polar({
+            client: new polarPlugin.Polar({
               accessToken: process.env.POLAR_ACCESS_TOKEN,
               server: (process.env.POLAR_ENVIRONMENT as "sandbox" | "production") || "sandbox",
             }),
             createCustomerOnSignUp: true,
             use: [
-              checkout({
+              polarPlugin.checkout({
                 products: [
                   ...(process.env.POLAR_PRO_PRODUCT_ID
                     ? [{ productId: process.env.POLAR_PRO_PRODUCT_ID, slug: "pro" }]
@@ -557,11 +572,11 @@ export const auth = betterAuth({
                 successUrl: "/billing?checkout=success&checkout_id={CHECKOUT_ID}",
                 authenticatedUsersOnly: true,
               }),
-              portal(),
-              usage(),
-              webhooks({
+              polarPlugin.portal(),
+              polarPlugin.usage(),
+              polarPlugin.webhooks({
                 secret: process.env.POLAR_WEBHOOK_SECRET!,
-                onPayload: async (payload) => {
+                onPayload: async (payload: any) => {
                   console.log("[polar-webhook]", payload.type);
                 },
               }),
@@ -573,10 +588,10 @@ export const auth = betterAuth({
      * Stripe — fallback billing provider (primary once Stripe Atlas completes).
      * Only initialized if STRIPE_SECRET_KEY is set.
      */
-    ...(process.env.STRIPE_SECRET_KEY
+    ...(stripePlugin && process.env.STRIPE_SECRET_KEY
       ? [
-          stripe({
-            stripeClient: new Stripe(process.env.STRIPE_SECRET_KEY, {
+          stripePlugin.stripe({
+            stripeClient: new stripePlugin.Stripe(process.env.STRIPE_SECRET_KEY, {
               apiVersion: "2026-02-25.clover",
             }),
             stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
