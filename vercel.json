@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "vite",
-  "installCommand": "cd landing && npm install",
-  "buildCommand": "cd landing && npm run build",
-  "outputDirectory": "landing/dist",
+  "framework": "nextjs",
+  "installCommand": "cd apps/landing && pnpm install",
+  "buildCommand": "cd apps/landing && pnpm build",
+  "outputDirectory": "apps/landing/.next",
   "headers": [
     {
       "source": "/(.*)",
@@ -18,7 +18,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
 }
