@@ -398,14 +398,13 @@ async def list_wallets(
             offset=offset,
         )
     else:
-        # Non-admin callers: list wallets for agents in their org (best-effort).
-        agents = await deps.agent_repo.list(owner_id=principal.organization_id, limit=1000, offset=0)
-        collected: list[Wallet] = []
-        for agent in agents:
-            w = await deps.wallet_repo.get_by_agent(agent.agent_id)
-            if w:
-                collected.append(w)
-        wallets = collected[offset : offset + limit]
+        # Non-admin callers: single-pass list for their org (no N+1).
+        wallets = await deps.wallet_repo.list_by_owner(
+            owner_id=principal.organization_id,
+            agent_repo=deps.agent_repo,
+            limit=limit,
+            offset=offset,
+        )
     return [WalletResponse.from_wallet(w) for w in wallets]
 
 
