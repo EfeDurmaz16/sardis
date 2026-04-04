@@ -52,6 +52,20 @@ interface BillingAccount {
   current_period_end: string | null;
 }
 
+/** Validates that a URL points to a trusted Stripe domain before opening. */
+function isValidBillingUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' &&
+      (parsed.hostname.endsWith('.stripe.com') ||
+       parsed.hostname.endsWith('.polar.sh'))
+    );
+  } catch {
+    return false;
+  }
+}
+
 const PLAN_ORDER = ['dev', 'starter', 'growth', 'enterprise'];
 
 const PLAN_LABELS: Record<string, string> = {
@@ -357,7 +371,11 @@ export default function BillingPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        window.open(data.checkout_url, '_blank');
+        if (data.checkout_url && isValidBillingUrl(data.checkout_url)) {
+          window.open(data.checkout_url, '_blank', 'noopener,noreferrer');
+        } else {
+          alert('Invalid checkout URL received. Please contact support@sardis.sh');
+        }
       } else {
         const err = await res.json().catch(() => null);
         alert(err?.detail || 'Billing is being set up. Please try again later or contact support@sardis.sh');
@@ -379,7 +397,11 @@ export default function BillingPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        window.open(data.portal_url, '_blank');
+        if (data.portal_url && isValidBillingUrl(data.portal_url)) {
+          window.open(data.portal_url, '_blank', 'noopener,noreferrer');
+        } else {
+          alert('Invalid portal URL received. Please contact support@sardis.sh');
+        }
       } else {
         alert('Billing portal is not available. Please contact support@sardis.sh');
       }
@@ -418,7 +440,7 @@ export default function BillingPage() {
       </div>
 
       {billingError && (
-        <div className="card p-4 border-amber-500/30 bg-amber-500/5 flex items-center gap-3">
+        <div role="alert" aria-live="polite" className="card p-4 border-amber-500/30 bg-amber-500/5 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
           <p className="text-sm text-amber-300">
             Billing not configured. You are on the Free plan.
