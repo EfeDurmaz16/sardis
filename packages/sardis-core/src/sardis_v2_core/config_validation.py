@@ -440,9 +440,18 @@ def load_config_from_env() -> SardisConfig:
         if url:
             rpc_urls[chain] = url
 
-    # CORS origins
-    cors_str = os.getenv("CORS_ORIGINS", "*")
-    cors_origins = [o.strip() for o in cors_str.split(",")]
+    # CORS origins — default to empty (no CORS) instead of wildcard
+    cors_str = os.getenv("CORS_ORIGINS", "")
+    cors_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
+    if "*" in cors_origins and environment in (Environment.PRODUCTION, Environment.STAGING):
+        import logging as _logging
+        _logging.getLogger("sardis.config").warning(
+            "CORS_ORIGINS contains wildcard '*' in %s — this is insecure. "
+            "Set explicit origins (e.g., 'https://sardis.sh,https://app.sardis.sh').",
+            environment.value,
+        )
+        # Remove wildcard in prod/staging — fall back to empty (no CORS)
+        cors_origins = [o for o in cors_origins if o != "*"]
 
     return SardisConfig(
         environment=environment,
