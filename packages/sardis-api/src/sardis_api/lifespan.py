@@ -561,77 +561,92 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("Stripe SPT adapter init failed: %s", e)
 
-        if settings.delegated.visa_tap_enabled:
-            try:
-                from sardis_v2_core.delegated_adapters.visa_tap import (
-                    VisaTAPAdapter,
-                )
-
-                if settings.visa_tap.api_key and settings.visa_tap.certificate_path:
-                    from sardis_v2_core.credential_store import CredentialEncryption
-                    adapter = VisaTAPAdapter(
-                        api_key=settings.visa_tap.api_key,
-                        certificate_path=settings.visa_tap.certificate_path,
-                        trid=settings.visa_tap.trid,
-                        environment=settings.visa_tap.environment,
-                        base_url=settings.visa_tap.base_url,
-                        encryption=CredentialEncryption(),
-                    )
-                    delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
-                else:
-                    _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-                    if _env in ("dev", "test", "development"):
-                        from sardis_v2_core.delegated_adapters.visa_tap import MockVisaTAPAdapter
-                        adapter = MockVisaTAPAdapter()
-                        delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
-                        logger.info("Visa TAP: using mock adapter (dev/test only)")
-                    else:
-                        logger.warning(
-                            "Visa TAP: skipping registration — no API key/cert configured "
-                            "and mock adapters are not allowed in %s", _env,
-                        )
-            except Exception as e:
-                logger.warning("Visa TAP adapter init failed: %s", e)
-
-        if settings.delegated.mastercard_agent_pay_enabled:
-            try:
-                from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
-                    MastercardAgentPayAdapter,
-                )
-
-                if settings.mastercard.consumer_key and settings.mastercard.p12_certificate_path:
-                    from sardis_v2_core.credential_store import CredentialEncryption
-                    adapter = MastercardAgentPayAdapter(
-                        consumer_key=settings.mastercard.consumer_key,
-                        p12_certificate_path=settings.mastercard.p12_certificate_path,
-                        key_alias=settings.mastercard.key_alias,
-                        key_password=settings.mastercard.key_password,
-                        environment=settings.mastercard.environment,
-                        base_url=settings.mastercard.base_url,
-                        encryption=CredentialEncryption(),
-                    )
-                    delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
-                else:
-                    _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-                    if _env in ("dev", "test", "development"):
-                        from sardis_v2_core.delegated_adapters.mastercard_agent_pay import MockMastercardAgentPayAdapter
-                        adapter = MockMastercardAgentPayAdapter()
-                        delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
-                        logger.info("Mastercard: using mock adapter (dev/test only)")
-                    else:
-                        logger.warning(
-                            "Mastercard: skipping registration — no consumer key/cert configured "
-                            "and mock adapters are not allowed in %s", _env,
-                        )
-            except Exception as e:
-                logger.warning("Mastercard adapter init failed: %s", e)
-
         app.state.delegated_registry = delegated_registry
+
+        # Defer Visa TAP and Mastercard adapter registration to a background
+        # task so the API becomes ready faster. These adapters are not needed
+        # for health checks or core payment flows at startup.
+        async def _deferred_adapter_init():
+            """Register delegated adapters after API is ready."""
+            if settings.delegated.visa_tap_enabled:
+                try:
+                    from sardis_v2_core.delegated_adapters.visa_tap import (
+                        VisaTAPAdapter,
+                    )
+
+                    if settings.visa_tap.api_key and settings.visa_tap.certificate_path:
+                        from sardis_v2_core.credential_store import CredentialEncryption
+                        adapter = VisaTAPAdapter(
+                            api_key=settings.visa_tap.api_key,
+                            certificate_path=settings.visa_tap.certificate_path,
+                            trid=settings.visa_tap.trid,
+                            environment=settings.visa_tap.environment,
+                            base_url=settings.visa_tap.base_url,
+                            encryption=CredentialEncryption(),
+                        )
+                        delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
+                    else:
+                        _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+                        if _env in ("dev", "test", "development"):
+                            from sardis_v2_core.delegated_adapters.visa_tap import MockVisaTAPAdapter
+                            adapter = MockVisaTAPAdapter()
+                            delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
+                            logger.info("Visa TAP: using mock adapter (dev/test only)")
+                        else:
+                            logger.warning(
+                                "Visa TAP: skipping registration — no API key/cert configured "
+                                "and mock adapters are not allowed in %s", _env,
+                            )
+                except Exception as e:
+                    logger.warning("Visa TAP adapter init failed: %s", e)
+
+            if settings.delegated.mastercard_agent_pay_enabled:
+                try:
+                    from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+                        MastercardAgentPayAdapter,
+                    )
+
+                    if settings.mastercard.consumer_key and settings.mastercard.p12_certificate_path:
+                        from sardis_v2_core.credential_store import CredentialEncryption
+                        adapter = MastercardAgentPayAdapter(
+                            consumer_key=settings.mastercard.consumer_key,
+                            p12_certificate_path=settings.mastercard.p12_certificate_path,
+                            key_alias=settings.mastercard.key_alias,
+                            key_password=settings.mastercard.key_password,
+                            environment=settings.mastercard.environment,
+                            base_url=settings.mastercard.base_url,
+                            encryption=CredentialEncryption(),
+                        )
+                        delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
+                    else:
+                        _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+                        if _env in ("dev", "test", "development"):
+                            from sardis_v2_core.delegated_adapters.mastercard_agent_pay import MockMastercardAgentPayAdapter
+                            adapter = MockMastercardAgentPayAdapter()
+                            delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
+                            logger.info("Mastercard: using mock adapter (dev/test only)")
+                        else:
+                            logger.warning(
+                                "Mastercard: skipping registration — no consumer key/cert configured "
+                                "and mock adapters are not allowed in %s", _env,
+                            )
+                except Exception as e:
+                    logger.warning("Mastercard adapter init failed: %s", e)
+
+            if len(delegated_registry) > 0:
+                logger.info(
+                    "Deferred delegated adapters registered: %s",
+                    [n.value for n in delegated_registry.available_networks()],
+                )
+
+        asyncio.create_task(_deferred_adapter_init())
         if len(delegated_registry) > 0:
             logger.info(
-                "Delegated adapter registry initialized: %s",
+                "Delegated adapter registry initialized (sync): %s; Visa TAP + Mastercard deferred to background",
                 [n.value for n in delegated_registry.available_networks()],
             )
+        else:
+            logger.info("Delegated adapter registry: Visa TAP + Mastercard init deferred to background")
     except Exception as e:
         logger.warning("Delegated adapter registry init failed (non-fatal): %s", e)
 
