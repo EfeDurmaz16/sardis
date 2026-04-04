@@ -42,12 +42,14 @@ export default function CheckoutPage() {
       });
   }, [clientSecret]);
 
-  // Notify parent iframe of events (use embed_origin for security, fall back to "*")
+  // Notify parent iframe of events (use embed_origin for security, never fall back to "*")
   const postToParent = (event: string, data?: Record<string, unknown>) => {
     if (window.parent !== window) {
       // Prefer session-level embed_origin (set at session creation), then URL param (set by embed SDK)
-      const targetOrigin = session?.embed_origin || urlEmbedOrigin || "*";
-      window.parent.postMessage({ source: "sardis-checkout", event, ...data }, targetOrigin);
+      const targetOrigin = session?.embed_origin || urlEmbedOrigin;
+      if (targetOrigin) {
+        window.parent.postMessage({ source: "sardis-checkout", event, ...data }, targetOrigin);
+      }
     }
   };
 
