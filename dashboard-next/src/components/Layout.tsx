@@ -193,6 +193,7 @@ export default function Layout({ children }: LayoutProps) {
             <div key={section.label} className="pt-2 mt-2 border-t border-dark-100/40">
               <button
                 onClick={() => toggleSection(section.label)}
+                aria-expanded={!!openSections[section.label]}
                 className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
               >
                 <span className="flex-1 text-left">{section.label}</span>
@@ -231,6 +232,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="pt-3 mt-3 border-t border-dark-100/60">
             <button
               onClick={() => setExperimentalOpen((prev) => !prev)}
+              aria-expanded={experimentalOpen}
               className="w-full flex items-center gap-2 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
             >
               <ExperimentalIcon className="w-3.5 h-3.5" />

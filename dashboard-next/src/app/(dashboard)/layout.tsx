@@ -285,6 +285,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
           <div key={section.label} className="mt-[8px]">
             <button
               onClick={() => toggleSection(section.label)}
+              aria-expanded={!!openSections[section.label]}
               className="w-full flex items-center justify-between px-[10px] py-[3px] group"
             >
               <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[#888] group-hover:text-[#666] transition-colors">
