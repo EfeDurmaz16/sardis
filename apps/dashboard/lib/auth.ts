@@ -230,7 +230,7 @@ export const auth = betterAuth({
       },
     }),
     passkey({
-      rpID: process.env.NODE_ENV === "production" ? "sardis.sh" : "localhost",
+      rpID: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
       rpName: "Sardis",
       origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
     }),
@@ -349,7 +349,7 @@ export const auth = betterAuth({
        */
       proofOfPresence: {
         enabled: true,
-        rpId: process.env.NODE_ENV === "production" ? "sardis.sh" : "localhost",
+        rpId: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
         origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
       },
       maxAgentsPerUser: 25,
@@ -358,6 +358,67 @@ export const auth = betterAuth({
       jwtMaxAge: 60,              // 60s JWT validity
       freshSessionWindow: 300,    // 5 min fresh session for approvals
       trustProxy: true,           // Vercel reverse proxy
+      schema: {
+        agentHost: {
+          modelName: "ba_agent_host",
+          fields: {
+            userId: "user_id",
+            defaultCapabilities: "default_capabilities",
+            publicKey: "public_key",
+            jwksUrl: "jwks_url",
+            enrollmentTokenHash: "enrollment_token_hash",
+            enrollmentTokenExpiresAt: "enrollment_token_expires_at",
+            activatedAt: "activated_at",
+            expiresAt: "expires_at",
+            lastUsedAt: "last_used_at",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+        agent: {
+          modelName: "ba_agent",
+          fields: {
+            userId: "user_id",
+            hostId: "host_id",
+            publicKey: "public_key",
+            jwksUrl: "jwks_url",
+            lastUsedAt: "last_used_at",
+            activatedAt: "activated_at",
+            expiresAt: "expires_at",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+        agentCapabilityGrant: {
+          modelName: "ba_agent_capability_grant",
+          fields: {
+            agentId: "agent_id",
+            deniedBy: "denied_by",
+            grantedBy: "granted_by",
+            expiresAt: "expires_at",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+        approvalRequest: {
+          modelName: "ba_approval_request",
+          fields: {
+            agentId: "agent_id",
+            hostId: "host_id",
+            userId: "user_id",
+            userCodeHash: "user_code_hash",
+            loginHint: "login_hint",
+            bindingMessage: "binding_message",
+            clientNotificationToken: "client_notification_token",
+            clientNotificationEndpoint: "client_notification_endpoint",
+            deliveryMode: "delivery_mode",
+            lastPolledAt: "last_polled_at",
+            expiresAt: "expires_at",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+      },
     }),
   ],
   // Map model names to ba_-prefixed tables (migration 077)
@@ -446,7 +507,7 @@ export const auth = betterAuth({
     fields: {
       publicKey: "public_key",
       userId: "user_id",
-      credentialId: "credential_id",
+      credentialID: "credential_id",
       deviceType: "device_type",
       backedUp: "backed_up",
       createdAt: "created_at",
