@@ -101,7 +101,7 @@ const navSections: NavSection[] = [
     defaultOpen: false,
     items: [
       { label: "Settings", href: "/settings", icon: Gear },
-      { label: "Security", href: "/settings/security", icon: Lock },
+      { label: "Security", href: "/account/security", icon: Lock },
       { label: "API Keys", href: "/api-keys", icon: Key },
       { label: "Webhooks", href: "/webhooks", icon: PaperPlaneTilt },
       { label: "Billing", href: "/billing", icon: CurrencyDollar },
