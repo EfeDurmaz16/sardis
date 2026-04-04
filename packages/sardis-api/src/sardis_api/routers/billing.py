@@ -1,6 +1,7 @@
 """Billing API endpoints for subscription and usage management.
 
-Provides plan management, usage tracking, and Stripe webhook handling.
+Supports Stripe and Polar.sh as billing providers via SARDIS_BILLING_PROVIDER env var.
+Default: polar (April 2026 — Stripe live access frozen due to crypto onramp).
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field
 from sardis_api.authz import Principal, require_principal
 from sardis_api.billing.config import PLAN_LIMITS, PLAN_PRICES_CENTS, BillingConfig
 from sardis_api.billing.models import BillingAccount, PlanInfo, UsageSnapshot
+from sardis_api.billing.polar_adapter import get_billing_provider, get_billing_provider_name
 from sardis_api.services.stripe_billing import PLANS, StripeBillingService
 from sardis_api.services.usage_metering import UsageMeteringService
 
@@ -46,8 +48,9 @@ router = APIRouter(
 webhook_router = APIRouter(prefix="/api/v2/billing", tags=["billing"])
 
 
-def _get_billing_service() -> StripeBillingService:
-    return StripeBillingService()
+def _get_billing_service():
+    """Return the active billing service (Stripe or Polar based on env var)."""
+    return get_billing_provider()
 
 
 def _get_metering_service() -> UsageMeteringService:
@@ -114,6 +117,11 @@ class PlansResponse(BaseModel):
 class BillingAccountResponse(BaseModel):
     account: BillingAccount
     usage: UsageSnapshot
+
+
+class BillingProviderResponse(BaseModel):
+    provider: str
+    portal_label: str
 
 
 class CheckoutRequest(BaseModel):
@@ -244,6 +252,17 @@ async def stripe_billing_webhook(
 _PAID_PLANS = {"dev", "starter", "growth"}
 
 
+@webhook_router.get("/provider", response_model=BillingProviderResponse)
+async def get_billing_provider_info():
+    """Return the active billing provider. No auth required."""
+    name = get_billing_provider_name()
+    portal_labels = {"polar": "Manage on Polar", "stripe": "Manage on Stripe"}
+    return BillingProviderResponse(
+        provider=name,
+        portal_label=portal_labels.get(name, "Manage Billing"),
+    )
+
+
 @webhook_router.get("/plans", response_model=PlansResponse)
 async def list_plans():
     """Return all available plans with pricing and limits. No auth required."""
@@ -297,7 +316,7 @@ async def create_checkout_session(
     body: CheckoutRequest,
     principal: Principal = Depends(require_principal),
 ):
-    """Create a Stripe Checkout Session for a paid plan subscription."""
+    """Create a checkout session for a paid plan subscription (Stripe or Polar)."""
     if not _billing_config.billing_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -310,6 +329,33 @@ async def create_checkout_session(
             detail=f"Plan must be one of: {sorted(_PAID_PLANS)}",
         )
 
+    provider = get_billing_provider_name()
+    dashboard_billing_url = os.getenv(
+        "SARDIS_DASHBOARD_BILLING_URL", "https://app.sardis.sh/billing"
+    )
+
+    # --- Polar checkout path ---
+    if provider == "polar":
+        from sardis_api.billing.polar_adapter import PolarBillingAdapter
+        polar = PolarBillingAdapter()
+        try:
+            result = await polar.create_checkout(
+                org_id=principal.organization_id,
+                plan=body.plan,
+                success_url=f"{dashboard_billing_url}?success=1",
+                cancel_url=f"{dashboard_billing_url}?canceled=1",
+            )
+            from sardis_api.analytics.posthog_tracker import PLAN_UPGRADED, track_event
+            track_event(principal.user_id, PLAN_UPGRADED, {"plan": body.plan, "provider": "polar"})
+            return CheckoutResponse(checkout_url=result.checkout_url)
+        except Exception as exc:
+            logger.error("Polar checkout failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Checkout session creation failed",
+            ) from exc
+
+    # --- Stripe checkout path ---
     try:
         import stripe  # type: ignore[import]
     except ImportError as exc:
@@ -321,12 +367,6 @@ async def create_checkout_session(
 
     stripe.api_key = _billing_config.stripe_secret_key
 
-    dashboard_billing_url = os.getenv(
-        "SARDIS_DASHBOARD_BILLING_URL", "https://app.sardis.sh/billing"
-    )
-
-    # Build line_items: prefer pre-configured Stripe price IDs, fall back to
-    # inline price_data so checkout works even without dashboard-created prices.
     _plan_to_price = {
         "dev": _billing_config.stripe_price_dev,
         "starter": _billing_config.stripe_price_starter,
@@ -335,8 +375,6 @@ async def create_checkout_session(
     price_id = _plan_to_price.get(body.plan, "")
 
     def _build_inline_line_items() -> list[dict]:
-        """Inline price_data — creates an ad-hoc price so checkout works
-        without pre-created Stripe products/prices."""
         plan_display = PLAN_LABELS.get(body.plan, body.plan.title())
         return [
             {
@@ -367,38 +405,15 @@ async def create_checkout_session(
         else:
             checkout_kwargs["line_items"] = _build_inline_line_items()
             session = stripe.checkout.Session.create(**checkout_kwargs)
-    except stripe.InvalidRequestError as exc:
-        # Price ID doesn't exist on this Stripe account — retry with inline price_data
-        if price_id and "No such price" in str(exc):
-            logger.warning(
-                "Stripe price %s not found, falling back to inline price_data for plan %s",
-                price_id, body.plan,
-            )
-            try:
-                checkout_kwargs["line_items"] = _build_inline_line_items()
-                session = stripe.checkout.Session.create(**checkout_kwargs)
-            except Exception as inner_exc:
-                logger.error("Stripe checkout fallback failed: %s (type=%s)", inner_exc, type(inner_exc).__name__)
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=f"Checkout fallback failed: {type(inner_exc).__name__}: {str(inner_exc)[:200]}",
-                ) from inner_exc
-        else:
-            logger.error("Stripe checkout failed: %s (type=%s)", exc, type(exc).__name__)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Checkout failed: {type(exc).__name__}: {str(exc)[:200]}",
-            ) from exc
     except Exception as exc:
-        logger.error("Stripe checkout session creation failed: %s (type=%s)", exc, type(exc).__name__)
+        logger.error("Stripe checkout failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to create checkout session: {type(exc).__name__}: {str(exc)[:200]}",
+            detail="Checkout session creation failed",
         ) from exc
 
-    # Analytics: track plan upgrade intent (fire-and-forget, never blocks the request)
     from sardis_api.analytics.posthog_tracker import PLAN_UPGRADED, track_event
-    track_event(principal.user_id, PLAN_UPGRADED, {"plan": body.plan})
+    track_event(principal.user_id, PLAN_UPGRADED, {"plan": body.plan, "provider": "stripe"})
 
     return CheckoutResponse(checkout_url=session.url)
 
@@ -406,20 +421,27 @@ async def create_checkout_session(
 @router.post("/portal", response_model=PortalResponse)
 async def create_portal_session(
     principal: Principal = Depends(require_principal),
-    billing: StripeBillingService = Depends(_get_billing_service),
+    billing=Depends(_get_billing_service),
 ):
-    """Create a Stripe Billing Portal session for subscription management."""
+    """Create a billing portal session for subscription management."""
     if not _billing_config.billing_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Billing is not enabled",
         )
 
+    provider = get_billing_provider_name()
+
+    # Polar: redirect to Polar dashboard (no portal API)
+    if provider == "polar":
+        return PortalResponse(portal_url="https://polar.sh/sardislabs/subscriptions")
+
+    # Stripe: create portal session
     sub = await billing.get_or_create_subscription(principal.organization_id)
     if not sub.stripe_customer_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No Stripe customer found for this organization",
+            detail="No billing customer found for this organization",
         )
 
     try:

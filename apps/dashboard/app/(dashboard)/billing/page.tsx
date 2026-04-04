@@ -83,10 +83,22 @@ export default function BillingPage() {
   const [error, setError] = useState(false)
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [provider, setProvider] = useState<{ provider: string; portal_label: string }>({ provider: "stripe", portal_label: "Manage Billing" })
 
   useEffect(() => {
     fetchBillingData()
+    fetchProvider()
   }, [])
+
+  async function fetchProvider() {
+    try {
+      const res = await fetch(`${API_URL}/api/v2/billing/provider`)
+      if (res.ok) {
+        const data = await res.json()
+        setProvider(data)
+      }
+    } catch { /* fallback to stripe labels */ }
+  }
 
   async function fetchBillingData() {
     setLoading(true)
@@ -143,7 +155,7 @@ export default function BillingPage() {
         const data = await res.json()
         if (data.checkout_url) {
           window.open(data.checkout_url, "_blank")
-          toast.success("Stripe Checkout opened in a new tab")
+          toast.success("Checkout opened in a new tab")
         }
       } else {
         const err = await res.json().catch(() => null)
@@ -240,7 +252,7 @@ export default function BillingPage() {
             )}
             <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading} className="w-full">
               {portalLoading ? <SpinnerGap className="w-4 h-4 mr-2 animate-spin" /> : <ArrowSquareOut className="w-4 h-4 mr-2" />}
-              Manage Billing on Stripe
+              {provider.portal_label}
             </Button>
           </CardContent>
         </Card>

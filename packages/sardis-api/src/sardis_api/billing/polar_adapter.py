@@ -1,10 +1,10 @@
-"""Polar.sh billing adapter — DEPRECATED, replaced by direct Stripe billing.
+"""Polar.sh billing adapter — alternative billing provider.
 
-Sardis Labs, Inc. is now incorporated (Delaware C-corp via Stripe Atlas, March 2026).
-All billing goes through Stripe directly. This adapter is retained for historical
-reference and in case any existing Polar subscriptions need to be migrated.
+Used when SARDIS_BILLING_PROVIDER=polar. Implements the same interface as
+StripeBillingService so the billing router can swap between them.
 
-DO NOT USE for new integrations. See services/stripe_billing.py instead.
+April 2026: Stripe froze live access due to crypto onramp feature usage.
+Polar is the active billing provider until Stripe resolves.
 """
 from __future__ import annotations
 
@@ -145,6 +145,61 @@ class PolarBillingAdapter:
             )
             return resp.status_code in (200, 204)
 
+    async def get_or_create_subscription(self, org_id: str):
+        """Get subscription from DB (compatible with StripeBillingService interface)."""
+        from sardis_api.services.stripe_billing import SubscriptionInfo
+        try:
+            from sardis_v2_core.database import Database
+            pool = await Database.get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT plan, status, stripe_subscription_id FROM billing_subscriptions WHERE org_id = $1",
+                    org_id,
+                )
+                if row:
+                    return SubscriptionInfo(
+                        org_id=org_id,
+                        plan=row["plan"],
+                        status=row["status"],
+                        stripe_customer_id=None,
+                        stripe_subscription_id=row["stripe_subscription_id"],
+                    )
+        except Exception as exc:
+            logger.warning("Failed to get subscription for org %s: %s", org_id, exc)
+
+        return SubscriptionInfo(
+            org_id=org_id, plan="dev", status="active",
+            stripe_customer_id=None, stripe_subscription_id=None,
+        )
+
+    async def create_subscription(self, org_id: str, plan: str, **kwargs):
+        """Create/update subscription in DB."""
+        from sardis_api.services.stripe_billing import SubscriptionInfo
+        try:
+            from sardis_v2_core.database import Database
+            pool = await Database.get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO billing_subscriptions (org_id, plan, status, created_at, updated_at)
+                    VALUES ($1, $2, 'active', now(), now())
+                    ON CONFLICT (org_id) DO UPDATE SET plan = $2, status = 'active', updated_at = now()
+                    """,
+                    org_id, plan,
+                )
+        except Exception as exc:
+            logger.error("Failed to create subscription: %s", exc)
+
+        return SubscriptionInfo(org_id=org_id, plan=plan, status="active")
+
+    async def get_invoices(self, org_id: str) -> list:
+        """Polar doesn't expose invoices via API. Return empty list."""
+        return []
+
+    def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
+        """Alias for verify_webhook (compatible with StripeBillingService)."""
+        return self.verify_webhook(body, signature)
+
     def verify_webhook(self, payload: bytes, signature: str) -> bool:
         """Verify Polar webhook signature."""
         if not POLAR_WEBHOOK_SECRET:
@@ -225,18 +280,26 @@ class PolarBillingAdapter:
 # ---------------------------------------------------------------------------
 
 def get_billing_provider():
-    """Get the active billing provider.
+    """Get the active billing provider based on SARDIS_BILLING_PROVIDER env var.
 
-    Always returns StripeBillingService. Polar is deprecated since
-    Sardis Labs, Inc. incorporation (March 2026).
+    Supports: "polar" (default since April 2026) and "stripe".
     """
-    provider = os.getenv("SARDIS_BILLING_PROVIDER", "stripe").lower()
+    provider = os.getenv("SARDIS_BILLING_PROVIDER", "polar").lower()
 
     if provider == "polar":
-        logger.warning(
-            "SARDIS_BILLING_PROVIDER=polar is deprecated. "
-            "Polar adapter is no longer maintained. Falling back to Stripe."
-        )
+        adapter = PolarBillingAdapter()
+        if adapter.is_configured:
+            logger.info("Using Polar billing provider")
+            return adapter
+        logger.warning("Polar not configured (no POLAR_ACCESS_TOKEN), falling back to Stripe")
 
     from sardis_api.services.stripe_billing import StripeBillingService
     return StripeBillingService()
+
+
+def get_billing_provider_name() -> str:
+    """Return the active provider name for frontend display."""
+    provider = os.getenv("SARDIS_BILLING_PROVIDER", "polar").lower()
+    if provider == "polar" and POLAR_ACCESS_TOKEN:
+        return "polar"
+    return "stripe"
