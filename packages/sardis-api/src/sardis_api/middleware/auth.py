@@ -1,12 +1,27 @@
-"""API Key authentication middleware."""
+"""API Key authentication middleware.
+
+Reads API keys from the ``ba_apikey`` table which is **shared** with the
+better-auth api-key plugin running in the Next.js dashboard.  Both services
+(FastAPI sardis-api and Next.js dashboard) connect to the same Neon PostgreSQL
+database.  The dashboard writes keys via better-auth; this module validates
+them on the FastAPI side by querying the same table directly.
+
+Key hashing
+-----------
+better-auth's built-in api-key plugin uses plain SHA-256 by default.  We
+keep HMAC-SHA256 as the *primary* hash for keys created via the FastAPI CRUD
+endpoints (stronger against rainbow-table attacks), and fall back to plain
+SHA-256 for keys created by the dashboard through better-auth.
+"""
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, Security, status
@@ -62,15 +77,56 @@ class AuthContext:
     default_chain: str = "base_sepolia"
 
 
+def _permissions_to_scopes(permissions: dict | list | str | None) -> list[str]:
+    """Convert better-auth permissions JSONB to a flat scopes list.
+
+    better-auth stores permissions as ``{"wallets": ["read","write"], ...}``.
+    The legacy Sardis API uses flat scope strings like ``"read"``, ``"write"``,
+    ``"admin"``, ``"*"``, or namespaced ``"api_keys:create"`` etc.
+
+    This helper flattens the nested structure into a deduplicated list of
+    simple scope strings that the existing permission-checking code expects.
+    """
+    if permissions is None:
+        return ["read", "write"]
+
+    if isinstance(permissions, str):
+        try:
+            permissions = json.loads(permissions)
+        except (json.JSONDecodeError, TypeError):
+            return ["read", "write"]
+
+    if isinstance(permissions, list):
+        return list(permissions) if permissions else ["read", "write"]
+
+    if isinstance(permissions, dict):
+        scopes: set[str] = set()
+        for _resource, actions in permissions.items():
+            if isinstance(actions, list):
+                for a in actions:
+                    scopes.add(str(a))
+            elif isinstance(actions, str):
+                scopes.add(actions)
+        # If the permissions dict includes write for admin resource, grant admin
+        if "write" in (permissions.get("admin") or []):
+            scopes.add("admin")
+        return sorted(scopes) if scopes else ["read", "write"]
+
+    return ["read", "write"]
+
+
 class APIKeyManager:
-    """Manages API key validation and storage."""
+    """Manages API key validation and storage.
+
+    Backs onto the ``ba_apikey`` table shared with better-auth.
+    """
 
     def __init__(self, dsn: str):
         self._dsn = dsn
         self._pg_pool = None
         self._use_postgres = dsn.startswith("postgresql://") or dsn.startswith("postgres://")
 
-        # In-memory cache for dev/testing
+        # In-memory cache for dev/testing when no Postgres DSN is provided
         self._keys: dict[str, APIKey] = {}
         self._key_to_id: dict[str, str] = {}  # prefix -> key_id
 
@@ -80,24 +136,6 @@ class APIKeyManager:
             from sardis_v2_core.database import Database
             self._pg_pool = await Database.get_pool()
         return self._pg_pool
-
-    async def _ensure_org_uuid(self, conn, organization_external_id: str) -> str:
-        row = await conn.fetchrow(
-            "SELECT id FROM organizations WHERE external_id = $1",
-            organization_external_id,
-        )
-        if row:
-            return str(row["id"])
-        created = await conn.fetchrow(
-            """
-            INSERT INTO organizations (external_id, name, settings)
-            VALUES ($1, $2, '{}'::jsonb)
-            RETURNING id
-            """,
-            organization_external_id,
-            organization_external_id,
-        )
-        return str(created["id"])
 
     @staticmethod
     def generate_api_key(*, test: bool = False) -> tuple[str, str, str]:
@@ -148,18 +186,28 @@ class APIKeyManager:
             return "live"
         return "test"
 
+    @staticmethod
+    def _plain_sha256(key: str) -> str:
+        """Plain SHA-256 hash — used by better-auth when creating keys.
+
+        better-auth's built-in api-key plugin stores keys with plain SHA-256.
+        This fallback ensures keys created via the dashboard can be validated
+        here alongside HMAC-SHA256 hashes from FastAPI-created keys.
+        """
+        return hashlib.sha256(key.encode()).hexdigest()
+
     async def create_key(
         self,
         organization_id: str,
         name: str,
-        scopes: list[str] = None,
+        scopes: list[str] | None = None,
         rate_limit: int = 100,
         expires_at: datetime | None = None,
         *,
         test: bool = False,
     ) -> tuple[str, APIKey]:
         """
-        Create a new API key.
+        Create a new API key in the ba_apikey table.
 
         Returns:
             (full_key, api_key_record)
@@ -169,8 +217,14 @@ class APIKeyManager:
         full_key, prefix, key_hash = self.generate_api_key(test=test)
         scopes = scopes or ["read", "write"]
         key_env = self.resolve_environment(full_key)
+        config_id = key_env  # "test" or "live"
 
         key_id = f"key_{secrets.token_hex(8)}"
+
+        # Build permissions JSONB from flat scopes for better-auth compatibility.
+        # If scopes contain resource-specific permissions, nest them; otherwise
+        # apply the same actions to all default resources.
+        permissions_dict = self._scopes_to_permissions(scopes)
 
         api_key = APIKey(
             key_id=key_id,
@@ -190,23 +244,35 @@ class APIKeyManager:
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
-                org_uuid = await self._ensure_org_uuid(conn, organization_id)
+                # Resolve user_id from organization_id.
+                # ba_apikey.user_id references ba_user.id.
+                # We find the first user in that org (or fall back to org_id).
+                user_id = await self._resolve_user_id(conn, organization_id)
+
                 await conn.execute(
                     """
-                    INSERT INTO api_keys (
-                        key_prefix, key_hash, organization_id, name,
-                        scopes, rate_limit, is_active, expires_at, environment
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    INSERT INTO ba_apikey (
+                        id, key, name, prefix, user_id, config_id,
+                        rate_limit_enabled, rate_limit_max, rate_limit_time_window,
+                        enabled, expires_at, created_at, updated_at,
+                        permissions, metadata
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6,
+                        TRUE, $7, 3600000,
+                        TRUE, $8, NOW(), NOW(),
+                        $9, $10
+                    )
                     """,
-                    prefix,
+                    key_id,
                     key_hash,
-                    org_uuid,
                     name,
-                    scopes,
+                    prefix,
+                    user_id,
+                    config_id,
                     rate_limit,
-                    True,
                     expires_at,
-                    key_env,
+                    json.dumps(permissions_dict),
+                    json.dumps({"org_id": organization_id, "source": "fastapi"}),
                 )
         else:
             self._keys[key_id] = api_key
@@ -215,18 +281,63 @@ class APIKeyManager:
         return full_key, api_key
 
     @staticmethod
-    def _plain_sha256(key: str) -> str:
-        """Plain SHA-256 hash — used by auth_service.py when registering keys.
+    def _scopes_to_permissions(scopes: list[str]) -> dict:
+        """Convert flat scopes list to better-auth permissions JSONB format.
 
-        This fallback ensures keys created via AuthService.register() /
-        AuthService.generate_api_key() (which store plain SHA-256 hashes)
-        can still be validated here alongside HMAC-SHA256 hashes.
+        Maps simple scope strings (read, write, admin, *) into the nested
+        ``{"resource": ["action", ...]}`` structure that better-auth expects.
         """
-        return hashlib.sha256(key.encode()).hexdigest()
+        default_resources = ["wallets", "payments", "policies", "mandates", "agents"]
+
+        if "*" in scopes or "admin" in scopes:
+            perms = {r: ["read", "write"] for r in default_resources}
+            perms["admin"] = ["read", "write"]
+            return perms
+
+        actions = set()
+        for s in scopes:
+            if s in ("read", "write"):
+                actions.add(s)
+        actions = sorted(actions) if actions else ["read"]
+        return {r: list(actions) for r in default_resources}
+
+    async def _resolve_user_id(self, conn, organization_id: str) -> str:
+        """Resolve a ba_user.id from an organization external ID.
+
+        The ba_apikey table references ba_user(id), not organizations.
+        We find the first user associated with the org, or fall back
+        to using organization_id directly (for bootstrapping scenarios).
+        """
+        row = await conn.fetchrow(
+            "SELECT id FROM ba_user WHERE org_id = $1 LIMIT 1",
+            organization_id,
+        )
+        if row:
+            return str(row["id"])
+
+        # Fallback: check if organization_id itself is a ba_user.id
+        row = await conn.fetchrow(
+            "SELECT id FROM ba_user WHERE id = $1",
+            organization_id,
+        )
+        if row:
+            return str(row["id"])
+
+        # Last resort: use the org_id as-is (bootstrap/dev scenario).
+        # This may violate FK if ba_user row doesn't exist yet,
+        # but will work in dev/test where FK checks are relaxed.
+        logger.warning(
+            "No ba_user found for org_id=%s; using org_id as user_id fallback",
+            organization_id,
+        )
+        return organization_id
 
     async def validate_key(self, key: str) -> APIKey | None:
         """
-        Validate an API key.
+        Validate an API key against the ba_apikey table.
+
+        Tries HMAC-SHA256 hash first (FastAPI-created keys), then falls back
+        to plain SHA-256 (better-auth dashboard-created keys).
 
         Returns:
             APIKey if valid, None otherwise
@@ -236,42 +347,39 @@ class APIKeyManager:
 
         prefix = self.get_prefix(key)
         key_hash = self.hash_key(key)
-        # Also compute the plain SHA-256 hash as a fallback.
-        # auth_service.py stores keys with plain SHA-256 while this module
-        # uses HMAC-SHA256.  We try both so that keys from either code path
-        # can be validated.
+        # Also compute plain SHA-256 for keys created by better-auth dashboard
         plain_hash = self._plain_sha256(key)
 
         if self._use_postgres:
             pool = await self._get_pool()
             async with pool.acquire() as conn:
-                # Try HMAC-SHA256 hash first (keys created by APIKeyManager)
+                # Try HMAC-SHA256 hash first (keys created by FastAPI APIKeyManager)
                 row = await conn.fetchrow(
                     """
-                    SELECT k.*, o.external_id AS organization_external_id
-                    FROM api_keys k
-                    JOIN organizations o ON o.id = k.organization_id
-                    WHERE k.key_prefix = $1 AND k.key_hash = $2 AND k.is_active = TRUE
+                    SELECT ak.*, u.org_id AS user_org_id
+                    FROM ba_apikey ak
+                    LEFT JOIN ba_user u ON u.id = ak.user_id
+                    WHERE ak.prefix = $1 AND ak.key = $2 AND ak.enabled = TRUE
                     """,
                     prefix,
                     key_hash,
                 )
-                # Fallback: plain SHA-256 (DEPRECATED - migrate to HMAC-SHA256)
+                # Fallback: plain SHA-256 (keys created by better-auth dashboard)
                 if not row:
                     row = await conn.fetchrow(
                         """
-                        SELECT k.*, o.external_id AS organization_external_id
-                        FROM api_keys k
-                        JOIN organizations o ON o.id = k.organization_id
-                        WHERE k.key_prefix = $1 AND k.key_hash = $2 AND k.is_active = TRUE
+                        SELECT ak.*, u.org_id AS user_org_id
+                        FROM ba_apikey ak
+                        LEFT JOIN ba_user u ON u.id = ak.user_id
+                        WHERE ak.prefix = $1 AND ak.key = $2 AND ak.enabled = TRUE
                         """,
                         prefix,
                         plain_hash,
                     )
                     if row:
-                        logger.warning(
-                            "API key '%s...' using deprecated plain SHA-256 hash. "
-                            "Key should be re-generated with HMAC-SHA256.",
+                        logger.info(
+                            "API key '%s...' validated via plain SHA-256 "
+                            "(better-auth dashboard key).",
                             prefix,
                         )
 
@@ -280,73 +388,47 @@ class APIKeyManager:
                     if row["expires_at"] and row["expires_at"] < datetime.now(UTC):
                         return None
 
-                    # Update last used
+                    # Update last request timestamp and request count
                     await conn.execute(
-                        "UPDATE api_keys SET last_used_at = NOW() WHERE key_prefix = $1",
-                        prefix,
+                        """
+                        UPDATE ba_apikey
+                        SET last_request = NOW(),
+                            request_count = request_count + 1,
+                            updated_at = NOW()
+                        WHERE id = $1
+                        """,
+                        row["id"],
                     )
 
-                    env = self.resolve_environment(row["key_prefix"])
+                    env = row["config_id"] or self.resolve_environment(row["prefix"] or "")
+                    org_id = row["user_org_id"] or row["user_id"]
+                    permissions = row["permissions"]
+                    scopes = _permissions_to_scopes(permissions)
+
                     return APIKey(
                         key_id=str(row["id"]),
-                        key_prefix=row["key_prefix"],
-                        key_hash=row["key_hash"],
-                        organization_id=str(row["organization_external_id"]),
-                        name=row["name"],
-                        scopes=row["scopes"],
-                        rate_limit=row["rate_limit"],
-                        is_active=row["is_active"],
+                        key_prefix=row["prefix"] or "",
+                        key_hash=row["key"],
+                        organization_id=str(org_id),
+                        name=row["name"] or "API Key",
+                        scopes=scopes,
+                        rate_limit=row["rate_limit_max"] or 100,
+                        is_active=row["enabled"],
                         expires_at=row["expires_at"],
                         created_at=row["created_at"],
-                        last_used_at=row["last_used_at"],
+                        last_used_at=row["last_request"],
                         environment=env,
                     )
 
-                # Fallback: check user_api_keys table (Phase 2 user auth)
-                # Try HMAC hash first, then plain SHA-256
-                user_row = await conn.fetchrow(
-                    """
-                    SELECT id, user_id, org_id, key_prefix, key_hash, name, scopes, expires_at, created_at, last_used_at
-                    FROM user_api_keys
-                    WHERE key_hash = $1
-                    """,
-                    key_hash,
-                )
-                if not user_row:
-                    user_row = await conn.fetchrow(
-                        """
-                        SELECT id, user_id, org_id, key_prefix, key_hash, name, scopes, expires_at, created_at, last_used_at
-                        FROM user_api_keys
-                        WHERE key_hash = $1
-                        """,
-                        plain_hash,
-                    )
-                if user_row:
-                    if user_row["expires_at"] and user_row["expires_at"] < datetime.now(UTC):
-                        return None
-                    await conn.execute(
-                        "UPDATE user_api_keys SET last_used_at = NOW() WHERE id = $1",
-                        user_row["id"],
-                    )
-                    user_env = self.resolve_environment(user_row["key_prefix"] or "")
-                    return APIKey(
-                        key_id=str(user_row["id"]),
-                        key_prefix=user_row["key_prefix"],
-                        key_hash=user_row["key_hash"],
-                        organization_id=str(user_row["org_id"]),
-                        name=user_row["name"] or "default",
-                        scopes=list(user_row["scopes"]) if user_row["scopes"] else ["*"],
-                        rate_limit=100,
-                        is_active=True,
-                        expires_at=user_row["expires_at"],
-                        created_at=user_row["created_at"],
-                        last_used_at=user_row["last_used_at"],
-                        environment=user_env,
-                    )
+                # Legacy fallback: check old api_keys table for backward compat
+                # during migration period. Remove after full migration.
+                legacy_key = await self._check_legacy_api_keys(conn, prefix, key_hash, plain_hash)
+                if legacy_key:
+                    return legacy_key
 
                 return None
         else:
-            # In-memory lookup
+            # In-memory lookup (dev/testing without Postgres)
             key_id = self._key_to_id.get(prefix)
             if not key_id:
                 return None
@@ -370,97 +452,49 @@ class APIKeyManager:
 
             return api_key
 
-    async def revoke_key(self, key_id: str) -> bool:
-        """Revoke an API key."""
-        if self._use_postgres:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                result = await conn.execute(
-                    "UPDATE api_keys SET is_active = FALSE WHERE id = $1",
-                    key_id,
-                )
-                return "UPDATE 1" in result
-        else:
-            if key_id in self._keys:
-                self._keys[key_id].is_active = False
-                return True
-            return False
+    async def _check_legacy_api_keys(
+        self, conn, prefix: str, key_hash: str, plain_hash: str
+    ) -> APIKey | None:
+        """Check the legacy api_keys and user_api_keys tables.
 
-    async def find_org_by_email(self, email: str) -> str | None:
-        """Find an organization by email stored in settings JSONB.
-
-        Returns the organization external_id if found, None otherwise.
+        This provides backward compatibility during the migration period.
+        Keys found here still work but callers should migrate to ba_apikey.
         """
-        if self._use_postgres:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT external_id FROM organizations WHERE settings->>'email' = $1",
-                    email,
-                )
-                if row:
-                    return str(row["external_id"])
-                return None
-        else:
-            # In-memory fallback: scan keys for matching org settings
-            # Organizations aren't stored in-memory directly, so we can't check.
-            # Return None (no duplicate detected) for in-memory mode.
-            return None
-
-    async def list_keys(self, organization_id: str) -> list[APIKey]:
-        """List all API keys for an organization."""
-        if self._use_postgres:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                rows = await conn.fetch(
-                    """
-                    SELECT k.*, o.external_id AS organization_external_id
-                    FROM api_keys k
-                    JOIN organizations o ON o.id = k.organization_id
-                    WHERE o.external_id = $1
-                    ORDER BY k.created_at DESC
-                    """,
-                    organization_id,
-                )
-                return [
-                    APIKey(
-                        key_id=str(row["id"]),
-                        key_prefix=row["key_prefix"],
-                        key_hash=row["key_hash"],
-                        organization_id=str(row["organization_external_id"]),
-                        name=row["name"],
-                        scopes=row["scopes"],
-                        rate_limit=row["rate_limit"],
-                        is_active=row["is_active"],
-                        expires_at=row["expires_at"],
-                        created_at=row["created_at"],
-                        last_used_at=row["last_used_at"],
-                        environment=self.resolve_environment(row["key_prefix"]),
+        # Legacy api_keys table
+        for hash_val in (key_hash, plain_hash):
+            row = await conn.fetchrow(
+                """
+                SELECT k.*, o.external_id AS organization_external_id
+                FROM api_keys k
+                JOIN organizations o ON o.id = k.organization_id
+                WHERE k.key_prefix = $1 AND k.key_hash = $2 AND k.is_active = TRUE
+                """,
+                prefix,
+                hash_val,
+            )
+            if row:
+                if hash_val == plain_hash:
+                    logger.warning(
+                        "API key '%s...' found in legacy api_keys table with "
+                        "plain SHA-256. Migrate to ba_apikey table.",
+                        prefix,
                     )
-                    for row in rows
-                ]
-        else:
-            return [
-                key for key in self._keys.values()
-                if key.organization_id == organization_id
-            ]
+                else:
+                    logger.info(
+                        "API key '%s...' found in legacy api_keys table. "
+                        "Migrate to ba_apikey table.",
+                        prefix,
+                    )
 
-    async def get_key(self, key_id: str) -> APIKey | None:
-        """Get an API key by ID."""
-        if self._use_postgres:
-            pool = await self._get_pool()
-            async with pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    """
-                    SELECT k.*, o.external_id AS organization_external_id
-                    FROM api_keys k
-                    JOIN organizations o ON o.id = k.organization_id
-                    WHERE k.id = $1
-                    """,
-                    key_id,
-                )
-                if not row:
+                if row["expires_at"] and row["expires_at"] < datetime.now(UTC):
                     return None
+
+                await conn.execute(
+                    "UPDATE api_keys SET last_used_at = NOW() WHERE key_prefix = $1",
+                    prefix,
+                )
+
+                env = self.resolve_environment(row["key_prefix"])
                 return APIKey(
                     key_id=str(row["id"]),
                     key_prefix=row["key_prefix"],
@@ -473,10 +507,156 @@ class APIKeyManager:
                     expires_at=row["expires_at"],
                     created_at=row["created_at"],
                     last_used_at=row["last_used_at"],
-                    environment=self.resolve_environment(row["key_prefix"]),
+                    environment=env,
+                )
+
+        # Legacy user_api_keys table
+        for hash_val in (key_hash, plain_hash):
+            user_row = await conn.fetchrow(
+                """
+                SELECT id, user_id, org_id, key_prefix, key_hash, name,
+                       scopes, expires_at, created_at, last_used_at
+                FROM user_api_keys
+                WHERE key_hash = $1
+                """,
+                hash_val,
+            )
+            if user_row:
+                if user_row["expires_at"] and user_row["expires_at"] < datetime.now(UTC):
+                    return None
+                await conn.execute(
+                    "UPDATE user_api_keys SET last_used_at = NOW() WHERE id = $1",
+                    user_row["id"],
+                )
+                user_env = self.resolve_environment(user_row["key_prefix"] or "")
+                return APIKey(
+                    key_id=str(user_row["id"]),
+                    key_prefix=user_row["key_prefix"],
+                    key_hash=user_row["key_hash"],
+                    organization_id=str(user_row["org_id"]),
+                    name=user_row["name"] or "default",
+                    scopes=list(user_row["scopes"]) if user_row["scopes"] else ["*"],
+                    rate_limit=100,
+                    is_active=True,
+                    expires_at=user_row["expires_at"],
+                    created_at=user_row["created_at"],
+                    last_used_at=user_row["last_used_at"],
+                    environment=user_env,
+                )
+
+        return None
+
+    async def revoke_key(self, key_id: str) -> bool:
+        """Revoke an API key by setting enabled=FALSE in ba_apikey."""
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                result = await conn.execute(
+                    "UPDATE ba_apikey SET enabled = FALSE, updated_at = NOW() WHERE id = $1",
+                    key_id,
+                )
+                return "UPDATE 1" in result
+        else:
+            if key_id in self._keys:
+                self._keys[key_id].is_active = False
+                return True
+            return False
+
+    async def list_keys(self, organization_id: str) -> list[APIKey]:
+        """List all API keys for an organization from ba_apikey."""
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT ak.*, u.org_id AS user_org_id
+                    FROM ba_apikey ak
+                    LEFT JOIN ba_user u ON u.id = ak.user_id
+                    WHERE u.org_id = $1 OR ak.user_id = $1
+                    ORDER BY ak.created_at DESC
+                    """,
+                    organization_id,
+                )
+                return [
+                    APIKey(
+                        key_id=str(row["id"]),
+                        key_prefix=row["prefix"] or "",
+                        key_hash=row["key"],
+                        organization_id=str(row["user_org_id"] or row["user_id"]),
+                        name=row["name"] or "API Key",
+                        scopes=_permissions_to_scopes(row["permissions"]),
+                        rate_limit=row["rate_limit_max"] or 100,
+                        is_active=row["enabled"],
+                        expires_at=row["expires_at"],
+                        created_at=row["created_at"],
+                        last_used_at=row["last_request"],
+                        environment=row["config_id"] or self.resolve_environment(row["prefix"] or ""),
+                    )
+                    for row in rows
+                ]
+        else:
+            return [
+                key for key in self._keys.values()
+                if key.organization_id == organization_id
+            ]
+
+    async def get_key(self, key_id: str) -> APIKey | None:
+        """Get an API key by ID from ba_apikey."""
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT ak.*, u.org_id AS user_org_id
+                    FROM ba_apikey ak
+                    LEFT JOIN ba_user u ON u.id = ak.user_id
+                    WHERE ak.id = $1
+                    """,
+                    key_id,
+                )
+                if not row:
+                    return None
+                return APIKey(
+                    key_id=str(row["id"]),
+                    key_prefix=row["prefix"] or "",
+                    key_hash=row["key"],
+                    organization_id=str(row["user_org_id"] or row["user_id"]),
+                    name=row["name"] or "API Key",
+                    scopes=_permissions_to_scopes(row["permissions"]),
+                    rate_limit=row["rate_limit_max"] or 100,
+                    is_active=row["enabled"],
+                    expires_at=row["expires_at"],
+                    created_at=row["created_at"],
+                    last_used_at=row["last_request"],
+                    environment=row["config_id"] or self.resolve_environment(row["prefix"] or ""),
                 )
         else:
             return self._keys.get(key_id)
+
+    async def find_org_by_email(self, email: str) -> str | None:
+        """Find an organization by email via ba_user table.
+
+        Returns the org_id if found, None otherwise.
+        """
+        if self._use_postgres:
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT org_id FROM ba_user WHERE email = $1 AND org_id IS NOT NULL",
+                    email,
+                )
+                if row:
+                    return str(row["org_id"])
+                # Fallback: check legacy organizations table
+                row = await conn.fetchrow(
+                    "SELECT external_id FROM organizations WHERE settings->>'email' = $1",
+                    email,
+                )
+                if row:
+                    return str(row["external_id"])
+                return None
+        else:
+            return None
 
 
 # Global API key manager instance (set during app initialization)
