@@ -577,7 +577,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         create_kyc_service,
         create_sanctions_service,
     )
-    from sardis_compliance.providers import IdenfyKYCProvider, ScorechainProvider
+    from sardis_compliance.providers import ScorechainProvider
 
     kyc_environment = "production" if settings.is_production else "sandbox"
     kyc_primary_name = (os.getenv("SARDIS_KYC_PRIMARY_PROVIDER", "persona") or "persona").strip().lower()
@@ -595,17 +595,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 api_key=persona_api_key,
                 template_id=persona_template_id,
                 webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-                environment=kyc_environment,
-            )
-        if name == "idenfy":
-            idenfy_api_key = os.getenv("IDENFY_API_KEY", "")
-            idenfy_api_secret = os.getenv("IDENFY_API_SECRET", "")
-            if not idenfy_api_key or not idenfy_api_secret or IdenfyKYCProvider is None:
-                return None
-            return IdenfyKYCProvider(
-                api_key=idenfy_api_key,
-                api_secret=idenfy_api_secret,
-                webhook_secret=os.getenv("IDENFY_WEBHOOK_SECRET") or idenfy_api_secret,
                 environment=kyc_environment,
             )
         if name == "mock":

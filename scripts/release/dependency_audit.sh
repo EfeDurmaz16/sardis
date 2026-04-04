@@ -16,8 +16,8 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "[deps] running pip-audit against requirements.txt"
-pip-audit -r requirements.txt
+echo "[deps] running pip-audit against pyproject.toml"
+pip-audit
 
 echo "[deps] installing node dependencies for audit graph"
 pnpm install --no-frozen-lockfile

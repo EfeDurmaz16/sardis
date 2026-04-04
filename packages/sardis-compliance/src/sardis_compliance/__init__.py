@@ -160,7 +160,6 @@ from .pep import (
 )
 from .providers import (
     ChainalysisOracleProvider,
-    IDenfyKYCProvider,
     NotabeneTravelRuleProvider,
     OFACAddressProvider,
     OpenSanctionsProvider,
@@ -403,7 +402,6 @@ __all__ = [
     "CircleRiskLevel",
     "create_circle_compliance_provider",
     # Alternative Providers
-    "IDenfyKYCProvider",
     "ScorechainProvider",
     # Free Sanctions Providers
     "OFACAddressProvider",

@@ -5,13 +5,6 @@ with zero monthly fees and per-transaction pricing.
 """
 
 try:
-    from .idenfy import IdenfyKYCProvider
-    IDenfyKYCProvider = IdenfyKYCProvider
-except ImportError:
-    IdenfyKYCProvider = None  # type: ignore[assignment,misc]
-    IDenfyKYCProvider = None  # type: ignore[assignment,misc]
-
-try:
     from .didit import DiditKYCProvider
 except ImportError:
     DiditKYCProvider = None  # type: ignore[assignment,misc]
@@ -29,8 +22,6 @@ from .privado_id import PrivadoIDProvider
 from .watchman import WatchmanProvider
 
 __all__ = [
-    "IdenfyKYCProvider",
-    "IDenfyKYCProvider",
     "DiditKYCProvider",
     "ScorechainProvider",
     "OFACAddressProvider",

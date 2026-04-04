@@ -1,8 +1,8 @@
 """
 KYC (Know Your Customer) integration module.
 
-Supports Persona as the primary KYC provider for identity verification.
-Persona API: https://docs.withpersona.com/
+Primary KYC provider: Didit (packages/sardis-compliance/providers/didit.py).
+Secondary/fallback: Persona (kept for enterprise compliance requirements).
 """
 from __future__ import annotations
 
@@ -234,7 +234,8 @@ class FailoverKYCProvider(KYCProvider):
 
 class PersonaKYCProvider(KYCProvider):
     """
-    Persona KYC provider implementation.
+    Secondary KYC provider (Persona). Primary is Didit.
+    Kept as fallback for enterprise compliance requirements.
 
     Persona provides identity verification through:
     - Government ID verification
