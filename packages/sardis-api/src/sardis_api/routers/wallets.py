@@ -118,8 +118,8 @@ class WalletResponse(BaseModel):
     paymaster_enabled: bool = False
     bundler_profile: str | None = None
     is_active: bool
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     @classmethod
     def from_wallet(cls, wallet: Wallet) -> WalletResponse:
@@ -137,8 +137,8 @@ class WalletResponse(BaseModel):
             paymaster_enabled=wallet.paymaster_enabled,
             bundler_profile=wallet.bundler_profile,
             is_active=wallet.is_active,
-            created_at=wallet.created_at.isoformat(),
-            updated_at=wallet.updated_at.isoformat(),
+            created_at=wallet.created_at,
+            updated_at=wallet.updated_at,
         )
 
 
