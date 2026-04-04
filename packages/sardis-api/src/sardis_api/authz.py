@@ -122,7 +122,11 @@ async def require_principal(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="JWT is missing organization scope",
             )
-        scopes = ["*"] if user.role == "admin" else ["read"]
+        # Admin users get wildcard scope; normal users get read+write.
+        # API-key-based principals carry their own scopes from the DB.
+        # TODO: Expand JWT claims to include explicit scopes so this
+        #       hard-coded mapping can be removed.
+        scopes = ["*"] if user.role == "admin" else ["read", "write"]
         principal = Principal(
             kind="jwt",
             organization_id=org_id,
