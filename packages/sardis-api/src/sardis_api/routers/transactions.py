@@ -1,6 +1,8 @@
 """Transaction status and gas estimation API routes."""
 from __future__ import annotations
 
+import hashlib
+import time
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -155,10 +157,8 @@ async def estimate_gas(
             detail=f"Token {request.token} not supported on {request.chain}. Supported: {list(supported_tokens.keys())}",
         )
 
+    # TODO: Add dedicated estimate_gas method to ChainExecutor that doesn't require a full mandate
     # Create a sentinel mandate for gas estimation (bypasses proof verification)
-    import hashlib
-    import time
-
     from sardis_v2_core.mandates import VCProof
 
     _gas_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
