@@ -211,14 +211,16 @@ async def _require_wallet_access(
     principal: Principal,
     deps: WalletDependencies,
 ) -> Wallet:
+    # Fetch wallet and agent concurrently when possible.
     wallet = await deps.wallet_repo.get(wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
-    agent = await deps.agent_repo.get(wallet.agent_id)
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(wallet.agent_id)
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+        if agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return wallet
 
 
