@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -38,8 +40,8 @@ class CreateMandateRequest(BaseModel):
     allowed_tokens: list[str] | None = None
     approval_threshold: Decimal | None = None
     approval_mode: str = "auto"
-    expires_at: str | None = None
-    initial_status: str = "active"
+    expires_at: datetime | None = None
+    initial_status: Literal["draft", "active"] = "active"
     metadata: dict | None = None
 
 
@@ -177,7 +179,7 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
         allowed_chains=body.allowed_chains, allowed_tokens=body.allowed_tokens,
         approval_threshold=str(body.approval_threshold) if body.approval_threshold else None,
         approval_mode=body.approval_mode, status=body.initial_status,
-        version=1, policy_hash=ph, expires_at=body.expires_at,
+        version=1, policy_hash=ph, expires_at=body.expires_at.isoformat() if body.expires_at else None,
         created_at=now.isoformat(), updated_at=now.isoformat(),
         next_steps=[
             "POST /api/v2/agents — Create an AI agent (optional — mandate works at org level without one)",

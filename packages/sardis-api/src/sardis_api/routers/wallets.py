@@ -33,7 +33,7 @@ router = APIRouter(dependencies=[Depends(require_principal)])
 # Request/Response Models
 class CreateWalletRequest(BaseModel):
     agent_id: str
-    mpc_provider: str = "circle"  # "circle" | "turnkey" | "fireblocks" | "local"
+    mpc_provider: Literal["circle", "turnkey", "fireblocks", "local"] = "circle"
     account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1"
     currency: str = "USDC"
     limit_per_tx: Decimal = Field(default=Decimal("100.00"))
