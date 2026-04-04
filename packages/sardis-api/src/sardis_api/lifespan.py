@@ -187,36 +187,47 @@ async def lifespan(app: FastAPI):
                 tolerance_minor = int(os.getenv("SARDIS_TREASURY_RECON_TOLERANCE_MINOR", "1000"))
                 try:
                     org_ids = await repo.list_organization_ids()
-                    mismatches = 0
-                    for org_id in org_ids:
-                        snapshots = await repo.list_latest_balance_snapshots(org_id)
-                        if not snapshots:
-                            continue
-                        snapshot_total = sum(int(s.get("total_amount_minor", 0) or 0) for s in snapshots)
-                        payments = await repo.list_payments_for_reconciliation(
-                            org_id,
-                            status_filter=["SETTLED", "RELEASED", "RETURNED"],
-                            limit=1000,
-                        )
-                        expected_total = 0
-                        for p in payments:
-                            status_value = str(p.get("status", "")).upper()
-                            amount_minor = int(p.get("amount_minor", 0) or 0)
-                            if status_value in {"SETTLED", "RELEASED"}:
-                                expected_total += amount_minor
-                            elif status_value == "RETURNED":
-                                expected_total -= amount_minor
-                        delta = abs(snapshot_total - expected_total)
-                        if delta > tolerance_minor:
-                            mismatches += 1
-                            logger.warning(
-                                "Treasury reconciliation mismatch org=%s snapshot_total=%s expected_total=%s delta=%s tolerance=%s",
+
+                    sem = asyncio.Semaphore(5)
+                    mismatch_flags: list[bool] = []
+
+                    async def _reconcile_org(org_id: str) -> bool:
+                        async with sem:
+                            snapshots = await repo.list_latest_balance_snapshots(org_id)
+                            if not snapshots:
+                                return False
+                            snapshot_total = sum(int(s.get("total_amount_minor", 0) or 0) for s in snapshots)
+                            payments = await repo.list_payments_for_reconciliation(
                                 org_id,
-                                snapshot_total,
-                                expected_total,
-                                delta,
-                                tolerance_minor,
+                                status_filter=["SETTLED", "RELEASED", "RETURNED"],
+                                limit=1000,
                             )
+                            expected_total = 0
+                            for p in payments:
+                                status_val = str(p.get("status", "")).upper()
+                                amount_minor = int(p.get("amount_minor", 0) or 0)
+                                if status_val in {"SETTLED", "RELEASED"}:
+                                    expected_total += amount_minor
+                                elif status_val == "RETURNED":
+                                    expected_total -= amount_minor
+                            delta = abs(snapshot_total - expected_total)
+                            if delta > tolerance_minor:
+                                logger.warning(
+                                    "Treasury reconciliation mismatch org=%s snapshot_total=%s expected_total=%s delta=%s tolerance=%s",
+                                    org_id,
+                                    snapshot_total,
+                                    expected_total,
+                                    delta,
+                                    tolerance_minor,
+                                )
+                                return True
+                            return False
+
+                    mismatch_flags = await asyncio.gather(
+                        *[_reconcile_org(oid) for oid in org_ids],
+                        return_exceptions=True,
+                    )
+                    mismatches = sum(1 for f in mismatch_flags if f is True)
                     status_value = "warning" if mismatches > 0 else "success"
                     background_jobs_total.labels(job_name="treasury_reconciliation", status=status_value).inc()
                 except Exception as e:
