@@ -28,7 +28,7 @@ import {
   MagnifyingGlass, List, Sun, Moon, Plus, CreditCard, CaretDown, CaretRight,
   User, Receipt, Key, Keyboard, SignOut,
 } from "@phosphor-icons/react"
-import { Bell } from "lucide-react"
+import { Bell } from "@phosphor-icons/react"
 
 const notifications = [
   {

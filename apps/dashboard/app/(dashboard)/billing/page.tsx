@@ -8,15 +8,15 @@ import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import {
   CreditCard,
-  Zap,
+  Lightning,
   Users,
-  TrendingUp,
+  TrendUp,
   CheckCircle,
-  AlertCircle,
-  ExternalLink,
-  Building2,
-  Loader2,
-} from "lucide-react"
+  WarningCircle,
+  ArrowSquareOut,
+  Buildings,
+  SpinnerGap,
+} from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim()
@@ -182,7 +182,7 @@ export default function BillingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <SpinnerGap className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -204,7 +204,7 @@ export default function BillingPage() {
 
       {error && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <WarningCircle className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800">Billing not configured. You are on the Free plan.</p>
         </div>
       )}
@@ -239,7 +239,7 @@ export default function BillingPage() {
               </p>
             )}
             <Button variant="outline" size="sm" onClick={handlePortal} disabled={portalLoading} className="w-full">
-              {portalLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-2" />}
+              {portalLoading ? <SpinnerGap className="w-4 h-4 mr-2 animate-spin" /> : <ArrowSquareOut className="w-4 h-4 mr-2" />}
               Manage Billing on Stripe
             </Button>
           </CardContent>
@@ -248,7 +248,7 @@ export default function BillingPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-muted-foreground" />
+              <TrendUp className="w-4 h-4 text-muted-foreground" />
               Usage
             </CardTitle>
           </CardHeader>
@@ -256,7 +256,7 @@ export default function BillingPage() {
             {/* API Calls */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5"><Zap className="w-3.5 h-3.5" /> API Calls</span>
+                <span className="flex items-center gap-1.5"><Lightning className="w-3.5 h-3.5" /> API Calls</span>
                 <span className="text-muted-foreground tabular-nums">
                   {formatNumber(usage.api_calls_used)} / {formatNumber(usage.api_calls_limit)}
                 </span>
@@ -278,7 +278,7 @@ export default function BillingPage() {
             {/* Tx Volume */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5" /> Transaction Volume</span>
+                <span className="flex items-center gap-1.5"><TrendUp className="w-3.5 h-3.5" /> Transaction Volume</span>
                 <span className="text-muted-foreground tabular-nums">
                   {formatCents(usage.tx_volume_cents)} / {usage.tx_volume_limit_cents ? formatCents(usage.tx_volume_limit_cents) : "Unlimited"}
                 </span>
@@ -329,7 +329,7 @@ export default function BillingPage() {
                     </div>
                   ) : isEnterprise ? (
                     <Button variant="outline" className="w-full" onClick={() => window.open("https://cal.com/sardis/15min", "_blank")}>
-                      <Building2 className="w-4 h-4 mr-2" />
+                      <Buildings className="w-4 h-4 mr-2" />
                       Talk to Sales
                     </Button>
                   ) : (
@@ -338,7 +338,7 @@ export default function BillingPage() {
                       onClick={() => handleUpgrade(plan.plan)}
                       disabled={upgrading !== null}
                     >
-                      {upgrading === plan.plan ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      {upgrading === plan.plan ? <SpinnerGap className="w-4 h-4 mr-2 animate-spin" /> : null}
                       {upgrading === plan.plan ? "Redirecting..." : "Upgrade"}
                     </Button>
                   )}
