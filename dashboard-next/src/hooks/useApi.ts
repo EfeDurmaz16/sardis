@@ -4,10 +4,12 @@ import type { ApprovalListResponse } from '@/api/client'
 import type { WebhookSubscription } from '../types'
 
 // Agents
-export function useAgents() {
+export function useAgents(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['agents'],
     queryFn: agentApi.list,
+    refetchOnWindowFocus: true,
+    ...(options?.refetchInterval ? { refetchInterval: options.refetchInterval } : {}),
   })
 }
 
@@ -476,18 +478,22 @@ export function useBillingAccount() {
 }
 
 // Transactions
-export function useTransactions(limit = 50) {
+export function useTransactions(limit = 50, options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['transactions', limit],
     queryFn: () => paymentApi.getHistory(limit),
+    refetchOnWindowFocus: true,
+    ...(options?.refetchInterval ? { refetchInterval: options.refetchInterval } : {}),
   })
 }
 
 // Wallets
-export function useWallets() {
+export function useWallets(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['wallets'],
     queryFn: walletsApi.list,
+    refetchOnWindowFocus: true,
+    ...(options?.refetchInterval ? { refetchInterval: options.refetchInterval } : {}),
   })
 }
 
@@ -556,10 +562,12 @@ export function useDashboardMetrics() {
 }
 
 // Spending Mandates
-export function useMandates() {
+export function useMandates(options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: ['mandates'],
     queryFn: spendingMandatesApi.list,
+    refetchOnWindowFocus: true,
+    ...(options?.refetchInterval ? { refetchInterval: options.refetchInterval } : {}),
   })
 }
 
