@@ -198,10 +198,9 @@ export const auth = betterAuth({
     "https://dashboard.sardis.sh",
     "https://app.sardis.sh",
     "https://sardis.sh",
+    "https://dashboard-wine-alpha-31.vercel.app",
     "http://localhost:3000",
     "http://localhost:3005",
-    // Vercel auto-generated preview domains
-    /^https:\/\/dashboard-.*-efedurmaz16s-projects\.vercel\.app$/,
   ],
   emailAndPassword: {
     enabled: true,
