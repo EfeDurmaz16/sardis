@@ -771,8 +771,8 @@ async def _exec_payment(params: dict, principal: Principal) -> dict:
             "currency": params.get("currency", "USDC"),
         }
     except Exception as exc:
-        logger.error("Payment execution failed: %s", exc)
-        return {"error": f"Payment failed: {str(exc)}"}
+        logger.error("Payment execution failed: %s", exc, exc_info=True)
+        return {"error_code": "payment_failed", "message": "Payment could not be processed"}
 
 
 async def _exec_fx_quote(params: dict, principal: Principal) -> dict:

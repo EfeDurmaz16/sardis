@@ -6,7 +6,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sardis_v2_core.database import Database
 
 from sardis_api.middleware.auth import APIKey, require_api_key
@@ -24,12 +24,24 @@ def _validate_sort_column(col: str) -> str:
 
 # Request/Response Models
 class CreateInvoiceRequest(BaseModel):
-    amount: str
+    amount: str = Field(..., pattern=r'^\d+(\.\d{1,18})?$', description="Payment amount as decimal string")
     currency: str = "USDC"
     description: str | None = None
     merchant_name: str | None = None
     payer_agent_id: str | None = None
     reference: str | None = None
+
+    @field_validator('amount')
+    @classmethod
+    def validate_amount(cls, v: str) -> str:
+        from decimal import Decimal as D, InvalidOperation
+        try:
+            d = D(v)
+            if d <= 0:
+                raise ValueError("Amount must be positive")
+            return v
+        except InvalidOperation:
+            raise ValueError("Invalid amount format")
 
 
 class InvoiceResponse(BaseModel):

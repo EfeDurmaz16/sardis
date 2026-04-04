@@ -609,7 +609,7 @@ async def create_agent(
     ])
 
 
-@router.get("", response_model=list[AgentResponse])
+@router.get("")
 async def list_agents(
     owner_id: str | None = Query(None),
     is_active: bool | None = Query(None),
@@ -626,7 +626,8 @@ async def list_agents(
         limit=limit,
         offset=offset,
     )
-    return [AgentResponse.from_agent(a) for a in agents]
+    items = [AgentResponse.from_agent(a) for a in agents]
+    return {"items": items, "total": len(items), "limit": limit, "offset": offset}
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)

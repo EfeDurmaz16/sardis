@@ -12,7 +12,9 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -38,8 +40,8 @@ class CreateMandateRequest(BaseModel):
     allowed_tokens: list[str] | None = None
     approval_threshold: Decimal | None = None
     approval_mode: str = "auto"
-    expires_at: str | None = None
-    initial_status: str = "active"
+    expires_at: datetime | None = None
+    initial_status: Literal["draft", "active"] = "active"
     metadata: dict | None = None
 
 
@@ -177,7 +179,7 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
         allowed_chains=body.allowed_chains, allowed_tokens=body.allowed_tokens,
         approval_threshold=str(body.approval_threshold) if body.approval_threshold else None,
         approval_mode=body.approval_mode, status=body.initial_status,
-        version=1, policy_hash=ph, expires_at=body.expires_at,
+        version=1, policy_hash=ph, expires_at=body.expires_at.isoformat() if body.expires_at else None,
         created_at=now.isoformat(), updated_at=now.isoformat(),
         next_steps=[
             "POST /api/v2/agents — Create an AI agent (optional — mandate works at org level without one)",
@@ -186,11 +188,13 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
     )
 
 
-@router.get("", response_model=list[MandateResponse])
+@router.get("")
 async def list_mandates(
     status_filter: str | None = None,
     agent_id: str | None = None,
     wallet_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     principal: Principal = Depends(require_principal),
 ):
     """List spending mandates for the organization.
@@ -203,22 +207,27 @@ async def list_mandates(
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             q = "SELECT * FROM spending_mandates WHERE org_id = $1"
+            count_q = "SELECT COUNT(*) FROM spending_mandates WHERE org_id = $1"
             p: list = [principal.organization_id]
             if status_filter:
                 q += f" AND status = ${len(p)+1}"
+                count_q += f" AND status = ${len(p)+1}"
                 p.append(status_filter)
             if agent_id:
                 q += f" AND agent_id = ${len(p)+1}"
+                count_q += f" AND agent_id = ${len(p)+1}"
                 p.append(agent_id)
             if wallet_id:
                 q += f" AND wallet_id = ${len(p)+1}"
+                count_q += f" AND wallet_id = ${len(p)+1}"
                 p.append(wallet_id)
-            q += " ORDER BY created_at DESC LIMIT 100"
-            rows = await conn.fetch(q, *p)
+            total = await conn.fetchval(count_q, *p)
+            q += f" ORDER BY created_at DESC LIMIT ${len(p)+1} OFFSET ${len(p)+2}"
+            rows = await conn.fetch(q, *p, limit, offset)
     except Exception as exc:
         logger.error("Failed to list mandates: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to list mandates")
-    return [_row_to_response(r) for r in rows]
+    return {"items": [_row_to_response(r) for r in rows], "total": total, "limit": limit, "offset": offset}
 
 
 @router.get("/{mandate_id}", response_model=MandateResponse)

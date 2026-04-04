@@ -29,10 +29,12 @@ router = APIRouter(prefix="/api/v2/account", tags=["account"])
 # Stores — DB-backed with process-local cache
 # ---------------------------------------------------------------------------
 
-# export_id -> export record dict (process-local cache)
+# NOTE: Process-local cache. In multi-instance deployments,
+# consider backing with Redis for consistency.
 _export_store: dict[str, dict[str, Any]] = {}
 
-# user_id -> datetime of last export request (process-local cache)
+# NOTE: Process-local cache. In multi-instance deployments,
+# consider backing with Redis for consistency.
 _rate_limit_store: dict[str, datetime.datetime] = {}
 
 _RATE_LIMIT_HOURS = 24
@@ -248,7 +250,7 @@ async def _build_export_payload(user_id: str, org_id: str | None) -> dict[str, A
             ]
 
     except Exception as exc:
-        logger.error("Data export DB query failed for user %s: %s", user_id, exc)
+        _logger.error("Data export DB query failed for user %s: %s", user_id, exc)
         # Return partial data rather than failing entirely
 
     return payload

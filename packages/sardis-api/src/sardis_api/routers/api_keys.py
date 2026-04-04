@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -32,7 +33,7 @@ class CreateAPIKeyRequest(BaseModel):
         default=None,
         description="Days until expiration (None = never expires)"
     )
-    mode: str = Field(
+    mode: Literal["test", "live"] = Field(
         default="test",
         description="Key mode: 'test' (sandbox, sk_test_ prefix) or 'live' (production, sk_live_ prefix)"
     )

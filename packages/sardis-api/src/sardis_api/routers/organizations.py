@@ -1,10 +1,13 @@
 """Organization API endpoints for multi-tenant management."""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sardis_v2_core.organizations import (
     MemberRole,
     Organization,
@@ -31,6 +34,14 @@ class CreateOrganizationRequest(BaseModel):
     settings: dict | None = None
     metadata: dict | None = None
 
+    @field_validator('metadata')
+    @classmethod
+    def validate_metadata_size(cls, v: dict | None) -> dict | None:
+        import json
+        if v and len(json.dumps(v)) > 10240:
+            raise ValueError("Metadata too large (max 10KB)")
+        return v
+
 
 class UpdateOrganizationRequest(BaseModel):
     """Request to update organization details."""
@@ -39,6 +50,14 @@ class UpdateOrganizationRequest(BaseModel):
     billing_email: str | None = None
     settings: dict | None = None
     metadata: dict | None = None
+
+    @field_validator('metadata')
+    @classmethod
+    def validate_metadata_size(cls, v: dict | None) -> dict | None:
+        import json
+        if v and len(json.dumps(v)) > 10240:
+            raise ValueError("Metadata too large (max 10KB)")
+        return v
 
 
 class OrganizationResponse(BaseModel):
@@ -232,9 +251,10 @@ async def create_organization(
         return OrganizationResponse.from_org(org)
 
     except ValueError as e:
+        logger.warning("Invalid organization creation request: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Invalid organization parameters"
         )
 
 

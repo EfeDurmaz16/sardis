@@ -123,16 +123,49 @@ class TrustAttestationRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+class FidesDIDResponse(BaseModel):
+    """Response for DID registration."""
+    agent_id: str
+    fides_did: str
+    verified_at: str | None = None
+
+
+class FidesIdentityResponse(BaseModel):
+    """Response for identity lookup."""
+    agent_id: str
+    fides_did: str | None = None
+    verified_at: str | None = None
+    public_key_hex: str | None = None
+
+
+class TrustAttestationResponse(BaseModel):
+    """Response for trust attestation."""
+    success: bool
+    attestation_id: str | None = None
+    issuer_did: str
+    subject_did: str
+    trust_level: int
+
+
+class PolicyChainVerificationResponse(BaseModel):
+    """Response for policy chain verification."""
+    agent_id: str
+    valid: bool
+    chain_length: int
+    broken_at: int | None = None
+    error: str | None = None
+
+
 # ============ DID Registration ============
 
 
-@router.post("/agents/{agent_id}/fides/register")
+@router.post("/agents/{agent_id}/fides/register", response_model=FidesDIDResponse)
 async def register_fides_did(
     agent_id: str,
     req: RegisterFidesDIDRequest,
     principal: Principal = Depends(require_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
-) -> dict[str, Any]:
+) -> FidesDIDResponse:
     """Link a FIDES DID to a Sardis agent with Ed25519 ownership proof."""
     existing_agent = await _require_agent_access(agent_id, principal, agent_repo)
     bridge = _get_did_bridge()
@@ -145,7 +178,8 @@ async def register_fides_did(
             public_key=req.public_key,
         )
     except DIDRegistrationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("FIDES DID registration failed for agent %s: %s", agent_id, e)
+        raise HTTPException(status_code=400, detail="DID registration failed")
 
     if agent_repo is not None and existing_agent is not None:
         merged_metadata = _metadata_for_agent(existing_agent)
@@ -160,19 +194,19 @@ async def register_fides_did(
             metadata=merged_metadata,
         )
 
-    return {
-        "agent_id": mapping.agent_id,
-        "fides_did": mapping.fides_did,
-        "verified_at": mapping.verified_at.isoformat() if mapping.verified_at else None,
-    }
+    return FidesDIDResponse(
+        agent_id=mapping.agent_id,
+        fides_did=mapping.fides_did,
+        verified_at=mapping.verified_at.isoformat() if mapping.verified_at else None,
+    )
 
 
-@router.get("/agents/{agent_id}/fides/identity")
+@router.get("/agents/{agent_id}/fides/identity", response_model=FidesIdentityResponse)
 async def get_fides_identity(
     agent_id: str,
     principal: Principal = Depends(require_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
-) -> dict[str, Any]:
+) -> FidesIdentityResponse:
     """Get the linked FIDES identity for an agent."""
     agent = await _require_agent_access(agent_id, principal, agent_repo)
     bridge = _get_did_bridge()
@@ -182,19 +216,19 @@ async def get_fides_identity(
         metadata = _metadata_for_agent(agent)
         identity_meta = metadata.get("fides_identity") if metadata else None
         public_key_hex = identity_meta.get("public_key_hex") if isinstance(identity_meta, dict) else None
-        return {
-            "agent_id": agent_id,
-            "fides_did": _linked_fides_did(agent),
-            "verified_at": identity_meta.get("verified_at") if isinstance(identity_meta, dict) else None,
-            "public_key_hex": public_key_hex,
-        }
+        return FidesIdentityResponse(
+            agent_id=agent_id,
+            fides_did=_linked_fides_did(agent),
+            verified_at=identity_meta.get("verified_at") if isinstance(identity_meta, dict) else None,
+            public_key_hex=public_key_hex,
+        )
 
-    return {
-        "agent_id": mapping.agent_id,
-        "fides_did": mapping.fides_did,
-        "verified_at": mapping.verified_at.isoformat() if mapping.verified_at else None,
-        "public_key_hex": mapping.public_key_hex,
-    }
+    return FidesIdentityResponse(
+        agent_id=mapping.agent_id,
+        fides_did=mapping.fides_did,
+        verified_at=mapping.verified_at.isoformat() if mapping.verified_at else None,
+        public_key_hex=mapping.public_key_hex,
+    )
 
 
 # ============ Trust Score ============
@@ -265,13 +299,13 @@ async def get_trust_path(
 # ============ Trust Attestation ============
 
 
-@router.post("/agents/{agent_id}/trust/attest")
+@router.post("/agents/{agent_id}/trust/attest", response_model=TrustAttestationResponse)
 async def issue_trust_attestation(
     agent_id: str,
     req: TrustAttestationRequest,
     principal: Principal = Depends(require_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
-) -> dict[str, Any]:
+) -> TrustAttestationResponse:
     """Issue a trust attestation to the FIDES network."""
     agent = await _require_agent_access(agent_id, principal, agent_repo)
     bridge = _get_did_bridge()
@@ -295,13 +329,13 @@ async def issue_trust_attestation(
     if not result.success:
         raise HTTPException(status_code=502, detail=result.error or "Attestation failed")
 
-    return {
-        "success": True,
-        "attestation_id": result.attestation_id,
-        "issuer_did": issuer_did,
-        "subject_did": req.target_did,
-        "trust_level": req.trust_level,
-    }
+    return TrustAttestationResponse(
+        success=True,
+        attestation_id=result.attestation_id,
+        issuer_did=issuer_did,
+        subject_did=req.target_did,
+        trust_level=req.trust_level,
+    )
 
 
 # ============ Policy History (AGIT) ============
@@ -352,21 +386,21 @@ async def get_policy_at_commit(
     }
 
 
-@router.post("/agents/{agent_id}/policy-history/verify")
+@router.post("/agents/{agent_id}/policy-history/verify", response_model=PolicyChainVerificationResponse)
 async def verify_policy_chain(
     agent_id: str,
     principal: Principal = Depends(require_principal),
     agent_repo: AgentRepository | None = Depends(get_agent_repo),
-) -> dict[str, Any]:
+) -> PolicyChainVerificationResponse:
     """Verify integrity of the AGIT policy hash chain."""
     await _require_agent_access(agent_id, principal, agent_repo)
     engine = _get_agit_engine()
     verification = engine.verify_policy_chain(agent_id)
 
-    return {
-        "agent_id": agent_id,
-        "valid": verification.valid,
-        "chain_length": verification.chain_length,
-        "broken_at": verification.broken_at,
-        "error": verification.error,
-    }
+    return PolicyChainVerificationResponse(
+        agent_id=agent_id,
+        valid=verification.valid,
+        chain_length=verification.chain_length,
+        broken_at=verification.broken_at,
+        error=verification.error,
+    )

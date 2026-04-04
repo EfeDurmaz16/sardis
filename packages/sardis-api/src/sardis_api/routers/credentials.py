@@ -5,7 +5,7 @@ import logging
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from sardis_api.authz import Principal, require_principal
 
@@ -30,6 +30,20 @@ class ProvisionCredentialRequest(BaseModel):
     daily_limit: str | None = "2000"
     allowed_mccs: list[str] | None = None
     allowed_merchant_ids: list[str] | None = None
+
+    @field_validator('max_per_tx', 'daily_limit')
+    @classmethod
+    def validate_amount_fields(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        from decimal import Decimal as D, InvalidOperation
+        try:
+            d = D(v)
+            if d <= 0:
+                raise ValueError("Amount must be positive")
+            return v
+        except InvalidOperation:
+            raise ValueError("Invalid amount format")
 
 
 class TightenScopeRequest(BaseModel):
@@ -215,15 +229,16 @@ async def rotate_credential(
     try:
         new_token = await rotate_impl(cred, encryption=encryption)
     except NotImplementedError as exc:
+        logger.warning("Credential rotation not implemented: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"Credential rotation is unavailable: {exc}",
+            detail="Credential rotation is unavailable for this provider",
         ) from exc
     except Exception as exc:
         logger.exception("Credential rotation failed for %s", credential_id)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Credential rotation failed: {exc}",
+            detail="Credential rotation failed",
         ) from exc
 
     if not isinstance(new_token, (bytes, bytearray)) or not new_token:
