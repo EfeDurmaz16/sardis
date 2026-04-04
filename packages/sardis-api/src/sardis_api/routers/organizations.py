@@ -1,7 +1,10 @@
 """Organization API endpoints for multi-tenant management."""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
@@ -248,9 +251,10 @@ async def create_organization(
         return OrganizationResponse.from_org(org)
 
     except ValueError as e:
+        logger.warning("Invalid organization creation request: %s", e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail="Invalid organization parameters"
         )
 
 
