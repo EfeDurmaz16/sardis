@@ -505,7 +505,7 @@ function Sidebar({ items, activeTab, onTabChange, dotMap }) {
       {/* Desktop sidebar */}
       <div
         className="hidden md:block py-4"
-        style={{ width: "200px", flexShrink: 0, borderRight: "1px solid var(--landing-border)" }}
+        style={{ minWidth: "180px", width: "200px", maxWidth: "220px", flexShrink: 0, borderRight: "1px solid var(--landing-border)" }}
       >
         {items.map((label) => {
           const isActive = label === activeTab;
@@ -609,7 +609,7 @@ function TitleBar({ title }) {
 function DataTable({ viewData }) {
   const { title, columns, rows, renderRow } = viewData;
   return (
-    <div className="flex-1 p-6 min-w-0">
+    <div className="flex-1 p-4 sm:p-6 min-w-0 overflow-x-auto">
       <div className="flex items-center justify-between mb-6">
         <span
           style={{
