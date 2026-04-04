@@ -27,12 +27,21 @@ async def polar_webhook(request: Request):
 
     adapter = PolarBillingAdapter()
 
-    if adapter.is_configured and signature:
-        if not adapter.verify_webhook(body, signature):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid webhook signature",
-            )
+    if not adapter.is_configured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook handler not configured",
+        )
+    if not signature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing webhook signature",
+        )
+    if not adapter.verify_webhook(body, signature):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
 
     try:
         import json
