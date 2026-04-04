@@ -132,7 +132,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # HSTS - only for HTTPS or non-development environments
-        is_secure = request.url.scheme == "https" or os.getenv("SARDIS_ENVIRONMENT") not in ("dev", "development")
+        is_secure = (
+            request.url.scheme == "https"
+            or request.headers.get("x-forwarded-proto") == "https"
+            or os.getenv("SARDIS_ENVIRONMENT") not in ("dev", "development")
+        )
         if is_secure:
             response.headers["Strict-Transport-Security"] = self._build_hsts_header()
 
