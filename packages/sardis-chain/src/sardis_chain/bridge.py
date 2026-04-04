@@ -123,6 +123,11 @@ class CrossChainBridge:
     ):
         self.preferred_provider = preferred_provider
         self.timeout = timeout
+        self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(timeout))
+
+    async def close(self) -> None:
+        """Close the persistent HTTP client."""
+        await self._http_client.aclose()
 
     async def get_quote(
         self,
@@ -275,22 +280,21 @@ class CrossChainBridge:
         """
         import asyncio
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            for i in range(max_polls):
-                resp = await client.get(
-                    "https://api.relay.link/intents/status/v3",
-                    params={"requestId": request_id},
-                )
-                resp.raise_for_status()
-                data = resp.json()
+        for i in range(max_polls):
+            resp = await self._http_client.get(
+                "https://api.relay.link/intents/status/v3",
+                params={"requestId": request_id},
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-                status = data.get("status", "unknown")
-                if status in ("success", "failure", "refunded"):
-                    return data
-                if i < max_polls - 1:
-                    await asyncio.sleep(interval)
+            status = data.get("status", "unknown")
+            if status in ("success", "failure", "refunded"):
+                return data
+            if i < max_polls - 1:
+                await asyncio.sleep(interval)
 
-            return data  # Return last status even if not terminal
+        return data  # Return last status even if not terminal
 
     # ── Provider implementations ─────────────────────────────────────
 
@@ -322,86 +326,85 @@ class CrossChainBridge:
         if relay_api_key:
             headers["x-api-key"] = relay_api_key
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                resp = await client.post(
-                    "https://api.relay.link/quote/v2",
-                    json={
-                        "user": sender,
-                        "originChainId": source_chain_id,
-                        "destinationChainId": dest_chain_id,
-                        "originCurrency": source_token,
-                        "destinationCurrency": dest_token,
-                        "amount": str(amount),
-                        "recipient": recipient,
-                        "tradeType": "EXACT_INPUT",
-                    },
-                    headers=headers,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+        try:
+            resp = await self._http_client.post(
+                "https://api.relay.link/quote/v2",
+                json={
+                    "user": sender,
+                    "originChainId": source_chain_id,
+                    "destinationChainId": dest_chain_id,
+                    "originCurrency": source_token,
+                    "destinationCurrency": dest_token,
+                    "amount": str(amount),
+                    "recipient": recipient,
+                    "tradeType": "EXACT_INPUT",
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-                # Parse Relay v2 response
-                steps = data.get("steps", [])
-                fees = data.get("fees", {})
-                fee_amount = int(fees.get("relayer", {}).get("amount", "0"))
+            # Parse Relay v2 response
+            steps = data.get("steps", [])
+            fees = data.get("fees", {})
+            fee_amount = int(fees.get("relayer", {}).get("amount", "0"))
 
-                # Extract time estimate from details
-                details = data.get("details", {})
-                time_estimate = int(details.get("timeEstimate", 10))
+            # Extract time estimate from details
+            details = data.get("details", {})
+            time_estimate = int(details.get("timeEstimate", 10))
 
-                # Extract tx data from steps (approve + deposit)
-                tx_steps = []
-                request_id = None
-                for step in steps:
-                    items = step.get("items", [])
-                    for item in items:
-                        tx_data_item = item.get("data", {})
-                        if tx_data_item:
-                            tx_steps.append({
-                                "kind": step.get("id", "unknown"),
-                                "tx": tx_data_item,
-                            })
-                        if item.get("check", {}).get("endpoint"):
-                            # Extract requestId for status polling
-                            endpoint = item["check"]["endpoint"]
-                            if "requestId=" in endpoint:
-                                request_id = endpoint.split("requestId=")[-1].split("&")[0]
+            # Extract tx data from steps (approve + deposit)
+            tx_steps = []
+            request_id = None
+            for step in steps:
+                items = step.get("items", [])
+                for item in items:
+                    tx_data_item = item.get("data", {})
+                    if tx_data_item:
+                        tx_steps.append({
+                            "kind": step.get("id", "unknown"),
+                            "tx": tx_data_item,
+                        })
+                    if item.get("check", {}).get("endpoint"):
+                        # Extract requestId for status polling
+                        endpoint = item["check"]["endpoint"]
+                        if "requestId=" in endpoint:
+                            request_id = endpoint.split("requestId=")[-1].split("&")[0]
 
-                return BridgeQuote(
-                    provider=BridgeProvider.RELAY,
-                    quote_id=request_id or data.get("requestId", uuid.uuid4().hex[:16]),
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=amount - fee_amount,
-                    fee_amount=fee_amount,
-                    estimated_time_seconds=time_estimate,
-                    sender=sender,
-                    recipient=recipient,
-                    tx_data={"steps": tx_steps} if tx_steps else None,
-                )
-            except httpx.HTTPError as e:
-                logger.warning("Relay quote failed: %s, falling back to estimate", e)
-                # Return estimated quote — based on confirmed live data:
-                # ~$0.02 fee for USDC Base→Tempo, ~1.5s fill
-                estimated_fee = max(int(amount * 0.001), 1000)  # 0.1% fee, min $0.001
-                return BridgeQuote(
-                    provider=BridgeProvider.RELAY,
-                    quote_id=f"est_{uuid.uuid4().hex[:12]}",
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=amount - estimated_fee,
-                    fee_amount=estimated_fee,
-                    estimated_time_seconds=10,
-                    sender=sender,
-                    recipient=recipient,
-                )
+            return BridgeQuote(
+                provider=BridgeProvider.RELAY,
+                quote_id=request_id or data.get("requestId", uuid.uuid4().hex[:16]),
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=amount - fee_amount,
+                fee_amount=fee_amount,
+                estimated_time_seconds=time_estimate,
+                sender=sender,
+                recipient=recipient,
+                tx_data={"steps": tx_steps} if tx_steps else None,
+            )
+        except httpx.HTTPError as e:
+            logger.warning("Relay quote failed: %s, falling back to estimate", e)
+            # Return estimated quote — based on confirmed live data:
+            # ~$0.02 fee for USDC Base→Tempo, ~1.5s fill
+            estimated_fee = max(int(amount * 0.001), 1000)  # 0.1% fee, min $0.001
+            return BridgeQuote(
+                provider=BridgeProvider.RELAY,
+                quote_id=f"est_{uuid.uuid4().hex[:12]}",
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=amount - estimated_fee,
+                fee_amount=estimated_fee,
+                estimated_time_seconds=10,
+                sender=sender,
+                recipient=recipient,
+            )
 
     async def _across_quote(
         self,
@@ -419,55 +422,54 @@ class CrossChainBridge:
         """
         import uuid
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                resp = await client.get(
-                    "https://app.across.to/api/suggested-fees",
-                    params={
-                        "inputToken": source_token,
-                        "outputToken": dest_token,
-                        "originChainId": source_chain_id,
-                        "destinationChainId": dest_chain_id,
-                        "amount": str(amount),
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
+        try:
+            resp = await self._http_client.get(
+                "https://app.across.to/api/suggested-fees",
+                params={
+                    "inputToken": source_token,
+                    "outputToken": dest_token,
+                    "originChainId": source_chain_id,
+                    "destinationChainId": dest_chain_id,
+                    "amount": str(amount),
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-                total_relay_fee = int(data.get("totalRelayFee", {}).get("total", "0"))
-                timestamp = int(data.get("timestamp", "0"))
+            total_relay_fee = int(data.get("totalRelayFee", {}).get("total", "0"))
+            timestamp = int(data.get("timestamp", "0"))
 
-                return BridgeQuote(
-                    provider=BridgeProvider.ACROSS,
-                    quote_id=f"across_{timestamp}_{uuid.uuid4().hex[:8]}",
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=amount - total_relay_fee,
-                    fee_amount=total_relay_fee,
-                    estimated_time_seconds=int(data.get("estimatedFillTimeSec", 60)),
-                    sender=sender,
-                    recipient=recipient,
-                )
-            except httpx.HTTPError as e:
-                logger.warning("Across quote failed: %s, falling back to estimate", e)
-                estimated_fee = max(int(amount * 0.002), 2000)
-                return BridgeQuote(
-                    provider=BridgeProvider.ACROSS,
-                    quote_id=f"est_{uuid.uuid4().hex[:12]}",
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=amount - estimated_fee,
-                    fee_amount=estimated_fee,
-                    estimated_time_seconds=60,
-                    sender=sender,
-                    recipient=recipient,
-                )
+            return BridgeQuote(
+                provider=BridgeProvider.ACROSS,
+                quote_id=f"across_{timestamp}_{uuid.uuid4().hex[:8]}",
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=amount - total_relay_fee,
+                fee_amount=total_relay_fee,
+                estimated_time_seconds=int(data.get("estimatedFillTimeSec", 60)),
+                sender=sender,
+                recipient=recipient,
+            )
+        except httpx.HTTPError as e:
+            logger.warning("Across quote failed: %s, falling back to estimate", e)
+            estimated_fee = max(int(amount * 0.002), 2000)
+            return BridgeQuote(
+                provider=BridgeProvider.ACROSS,
+                quote_id=f"est_{uuid.uuid4().hex[:12]}",
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=amount - estimated_fee,
+                fee_amount=estimated_fee,
+                estimated_time_seconds=60,
+                sender=sender,
+                recipient=recipient,
+            )
 
     async def _squid_quote(
         self,
@@ -489,69 +491,68 @@ class CrossChainBridge:
 
         squid_api_key = os.getenv("SQUID_API_KEY", "")
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                headers = {}
-                if squid_api_key:
-                    headers["x-integrator-id"] = squid_api_key
+        try:
+            headers = {}
+            if squid_api_key:
+                headers["x-integrator-id"] = squid_api_key
 
-                resp = await client.post(
-                    "https://apiplus.squidrouter.com/v2/route",
-                    json={
-                        "fromAddress": sender,
-                        "fromChain": str(source_chain_id),
-                        "fromToken": source_token,
-                        "fromAmount": str(amount),
-                        "toChain": str(dest_chain_id),
-                        "toToken": dest_token,
-                        "toAddress": recipient,
-                        "slippageConfig": {"autoMode": 1},
-                    },
-                    headers=headers,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            resp = await self._http_client.post(
+                "https://apiplus.squidrouter.com/v2/route",
+                json={
+                    "fromAddress": sender,
+                    "fromChain": str(source_chain_id),
+                    "fromToken": source_token,
+                    "fromAmount": str(amount),
+                    "toChain": str(dest_chain_id),
+                    "toToken": dest_token,
+                    "toAddress": recipient,
+                    "slippageConfig": {"autoMode": 1},
+                },
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-                route = data.get("route", {})
-                estimate = route.get("estimate", {})
-                to_amount = int(estimate.get("toAmount", str(amount)))
-                fee_costs = estimate.get("feeCosts", [])
-                total_fee = sum(int(f.get("amount", "0")) for f in fee_costs)
+            route = data.get("route", {})
+            estimate = route.get("estimate", {})
+            to_amount = int(estimate.get("toAmount", str(amount)))
+            fee_costs = estimate.get("feeCosts", [])
+            total_fee = sum(int(f.get("amount", "0")) for f in fee_costs)
 
-                tx_data = route.get("transactionRequest", {})
+            tx_data = route.get("transactionRequest", {})
 
-                return BridgeQuote(
-                    provider=BridgeProvider.SQUID,
-                    quote_id=route.get("requestId", uuid.uuid4().hex[:16]),
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=to_amount,
-                    fee_amount=total_fee,
-                    estimated_time_seconds=int(estimate.get("estimatedRouteDuration", 120)),
-                    sender=sender,
-                    recipient=recipient,
-                    tx_data=tx_data if tx_data else None,
-                )
-            except httpx.HTTPError as e:
-                logger.warning("Squid quote failed: %s, falling back to estimate", e)
-                estimated_fee = max(int(amount * 0.003), 3000)
-                return BridgeQuote(
-                    provider=BridgeProvider.SQUID,
-                    quote_id=f"est_{uuid.uuid4().hex[:12]}",
-                    source_chain_id=source_chain_id,
-                    destination_chain_id=dest_chain_id,
-                    source_token=source_token,
-                    destination_token=dest_token,
-                    input_amount=amount,
-                    output_amount=amount - estimated_fee,
-                    fee_amount=estimated_fee,
-                    estimated_time_seconds=120,
-                    sender=sender,
-                    recipient=recipient,
-                )
+            return BridgeQuote(
+                provider=BridgeProvider.SQUID,
+                quote_id=route.get("requestId", uuid.uuid4().hex[:16]),
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=to_amount,
+                fee_amount=total_fee,
+                estimated_time_seconds=int(estimate.get("estimatedRouteDuration", 120)),
+                sender=sender,
+                recipient=recipient,
+                tx_data=tx_data if tx_data else None,
+            )
+        except httpx.HTTPError as e:
+            logger.warning("Squid quote failed: %s, falling back to estimate", e)
+            estimated_fee = max(int(amount * 0.003), 3000)
+            return BridgeQuote(
+                provider=BridgeProvider.SQUID,
+                quote_id=f"est_{uuid.uuid4().hex[:12]}",
+                source_chain_id=source_chain_id,
+                destination_chain_id=dest_chain_id,
+                source_token=source_token,
+                destination_token=dest_token,
+                input_amount=amount,
+                output_amount=amount - estimated_fee,
+                fee_amount=estimated_fee,
+                estimated_time_seconds=120,
+                sender=sender,
+                recipient=recipient,
+            )
 
     async def get_best_quote(
         self,

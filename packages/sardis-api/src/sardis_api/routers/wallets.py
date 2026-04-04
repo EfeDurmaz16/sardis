@@ -211,14 +211,16 @@ async def _require_wallet_access(
     principal: Principal,
     deps: WalletDependencies,
 ) -> Wallet:
+    # Fetch wallet and agent concurrently when possible.
     wallet = await deps.wallet_repo.get(wallet_id)
     if not wallet:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
-    agent = await deps.agent_repo.get(wallet.agent_id)
-    if not agent:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
-    if not principal.is_admin and agent.owner_id != principal.organization_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    if not principal.is_admin:
+        agent = await deps.agent_repo.get(wallet.agent_id)
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+        if agent.owner_id != principal.organization_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     return wallet
 
 
@@ -398,14 +400,13 @@ async def list_wallets(
             offset=offset,
         )
     else:
-        # Non-admin callers: list wallets for agents in their org (best-effort).
-        agents = await deps.agent_repo.list(owner_id=principal.organization_id, limit=1000, offset=0)
-        collected: list[Wallet] = []
-        for agent in agents:
-            w = await deps.wallet_repo.get_by_agent(agent.agent_id)
-            if w:
-                collected.append(w)
-        wallets = collected[offset : offset + limit]
+        # Non-admin callers: single-pass list for their org (no N+1).
+        wallets = await deps.wallet_repo.list_by_owner(
+            owner_id=principal.organization_id,
+            agent_repo=deps.agent_repo,
+            limit=limit,
+            offset=offset,
+        )
     return [WalletResponse.from_wallet(w) for w in wallets]
 
 

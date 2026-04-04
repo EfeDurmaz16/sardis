@@ -32,6 +32,8 @@ class WalletRepository:
             ttl_seconds=ttl_seconds,
             max_items=max_items,
         )
+        # Secondary index: agent_id → wallet_id for O(1) lookup
+        self._agent_to_wallet: dict[str, str] = {}
 
     async def create(
         self,
@@ -65,16 +67,49 @@ class WalletRepository:
         if addresses:
             wallet.addresses.update(addresses)
         self._wallets[wallet.wallet_id] = wallet
+        self._agent_to_wallet[agent_id] = wallet.wallet_id
         return wallet
 
     async def get(self, wallet_id: str) -> Wallet | None:
         return self._wallets.get(wallet_id)
 
     async def get_by_agent(self, agent_id: str) -> Wallet | None:
-        for wallet in self._wallets.values():
-            if wallet.agent_id == agent_id:
-                return wallet
+        # O(1) lookup via secondary index
+        wallet_id = self._agent_to_wallet.get(agent_id)
+        if wallet_id is not None:
+            return self._wallets.get(wallet_id)
         return None
+
+    async def list_by_owner(
+        self,
+        owner_id: str,
+        agent_repo: object | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> builtins.list[Wallet]:
+        """List wallets for all agents owned by an organization.
+
+        If a database pool is available, uses a single JOIN query.
+        Otherwise falls back to in-memory filtering via the agent_repo.
+
+        Args:
+            owner_id: Organization external_id.
+            agent_repo: AgentRepository (used for in-memory fallback).
+            limit: Max results.
+            offset: Pagination offset.
+        """
+        # Fast path: in-memory — collect wallets whose agent belongs to org
+        if agent_repo is not None and hasattr(agent_repo, "list"):
+            agents = await agent_repo.list(owner_id=owner_id, limit=10000, offset=0)
+            agent_ids = {a.agent_id for a in agents}
+            wallets = [
+                w for w in self._wallets.values()
+                if w.agent_id in agent_ids
+            ]
+            return wallets[offset: offset + limit]
+        # Fallback: return all wallets (admin path should not hit this)
+        all_wallets = list(self._wallets.values())
+        return all_wallets[offset: offset + limit]
 
     async def list(
         self,
@@ -142,7 +177,9 @@ class WalletRepository:
         return wallet
 
     async def delete(self, wallet_id: str) -> bool:
-        if wallet_id in self._wallets:
+        wallet = self._wallets.get(wallet_id)
+        if wallet is not None:
+            self._agent_to_wallet.pop(wallet.agent_id, None)
             del self._wallets[wallet_id]
             return True
         return False

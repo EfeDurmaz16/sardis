@@ -1,6 +1,7 @@
 """Dashboard metrics — aggregated data for overview page."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends
@@ -65,93 +66,130 @@ async def get_dashboard_metrics(
 
         if hasattr(container, 'db_pool') and container.db_pool:
             pool = container.db_pool
-            async with pool.acquire() as conn:
-                # Transaction stats
-                tx_row = await conn.fetchrow(
-                    """SELECT
-                        COUNT(*) as total,
-                        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as last_24h,
-                        COALESCE(SUM(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN amount ELSE 0 END), 0) as volume_24h
-                    FROM ledger_entries WHERE org_id = $1""",
-                    principal.org_id,
-                )
-                if tx_row:
-                    tx_total = tx_row["total"] or 0
-                    tx_24h = tx_row["last_24h"] or 0
-                    volume_24h = f"{float(tx_row['volume_24h'] or 0):.2f}"
 
-                # Agent count
-                agent_row = await conn.fetchrow(
-                    """SELECT
-                        COUNT(*) as total,
-                        COUNT(*) FILTER (WHERE is_active = true) as active
-                    FROM agents WHERE owner_id = $1""",
-                    principal.org_id,
-                )
-                if agent_row:
-                    agent_count = agent_row["total"] or 0
-                    active_agents = agent_row["active"] or 0
+            # Helper coroutines — each acquires its own connection so they
+            # can run concurrently via asyncio.gather.
 
-                # Mandate count
-                mandate_count = await conn.fetchval(
-                    "SELECT COUNT(*) FROM spending_mandates WHERE org_id = $1",
-                    principal.org_id,
-                ) or 0
+            async def _tx_stats():
+                async with pool.acquire() as conn:
+                    return await conn.fetchrow(
+                        """SELECT
+                            COUNT(*) as total,
+                            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as last_24h,
+                            COALESCE(SUM(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN amount ELSE 0 END), 0) as volume_24h
+                        FROM ledger_entries WHERE org_id = $1""",
+                        principal.org_id,
+                    )
 
-                # Active MPP sessions
-                active_sessions = await conn.fetchval(
-                    "SELECT COUNT(*) FROM mpp_sessions WHERE org_id = $1 AND status = 'active'",
-                    principal.org_id,
-                ) or 0
+            async def _agent_stats():
+                async with pool.acquire() as conn:
+                    return await conn.fetchrow(
+                        """SELECT
+                            COUNT(*) as total,
+                            COUNT(*) FILTER (WHERE is_active = true) as active
+                        FROM agents WHERE owner_id = $1""",
+                        principal.org_id,
+                    )
 
-                # Wallet count
-                wallet_count = await conn.fetchval(
-                    "SELECT COUNT(*) FROM wallets WHERE org_id = $1",
-                    principal.org_id,
-                ) or 0
-
-                # Blocked transactions (policy violations)
-                blocked_24h = await conn.fetchval(
-                    """SELECT COUNT(*) FROM ledger_entries
-                    WHERE org_id = $1 AND status = 'blocked'
-                    AND created_at > NOW() - INTERVAL '24 hours'""",
-                    principal.org_id,
-                ) or 0
-
-                # Online agents (last_seen_at within 2 minutes)
-                try:
-                    online_agents = await conn.fetchval(
-                        """SELECT COUNT(*) FROM agents a
-                        JOIN organizations o ON o.id = a.organization_id
-                        WHERE o.external_id = $1
-                          AND a.is_active = TRUE
-                          AND a.last_seen_at > NOW() - INTERVAL '2 minutes'""",
+            async def _mandate_count_q():
+                async with pool.acquire() as conn:
+                    return await conn.fetchval(
+                        "SELECT COUNT(*) FROM spending_mandates WHERE org_id = $1",
                         principal.org_id,
                     ) or 0
-                except Exception:
-                    pass  # Column may not exist yet
 
-                # API calls in last 24h (from activity log)
-                try:
-                    api_calls_24h = await conn.fetchval(
-                        """SELECT COUNT(*) FROM api_activity_log
-                        WHERE org_id = $1
-                          AND created_at > NOW() - INTERVAL '24 hours'""",
+            async def _active_sessions_q():
+                async with pool.acquire() as conn:
+                    return await conn.fetchval(
+                        "SELECT COUNT(*) FROM mpp_sessions WHERE org_id = $1 AND status = 'active'",
                         principal.org_id,
                     ) or 0
-                except Exception:
-                    pass  # Table may not exist yet
 
-                # Agent events in last 24h
-                try:
-                    agent_events_24h = await conn.fetchval(
-                        """SELECT COUNT(*) FROM agent_events
-                        WHERE org_id = $1
-                          AND created_at > NOW() - INTERVAL '24 hours'""",
+            async def _wallet_count_q():
+                async with pool.acquire() as conn:
+                    return await conn.fetchval(
+                        "SELECT COUNT(*) FROM wallets WHERE org_id = $1",
                         principal.org_id,
                     ) or 0
+
+            async def _blocked_24h_q():
+                async with pool.acquire() as conn:
+                    return await conn.fetchval(
+                        """SELECT COUNT(*) FROM ledger_entries
+                        WHERE org_id = $1 AND status = 'blocked'
+                        AND created_at > NOW() - INTERVAL '24 hours'""",
+                        principal.org_id,
+                    ) or 0
+
+            async def _online_agents_q():
+                try:
+                    async with pool.acquire() as conn:
+                        return await conn.fetchval(
+                            """SELECT COUNT(*) FROM agents a
+                            JOIN organizations o ON o.id = a.organization_id
+                            WHERE o.external_id = $1
+                              AND a.is_active = TRUE
+                              AND a.last_seen_at > NOW() - INTERVAL '2 minutes'""",
+                            principal.org_id,
+                        ) or 0
                 except Exception:
-                    pass  # Table may not exist yet
+                    return 0  # Column may not exist yet
+
+            async def _api_calls_q():
+                try:
+                    async with pool.acquire() as conn:
+                        return await conn.fetchval(
+                            """SELECT COUNT(*) FROM api_activity_log
+                            WHERE org_id = $1
+                              AND created_at > NOW() - INTERVAL '24 hours'""",
+                            principal.org_id,
+                        ) or 0
+                except Exception:
+                    return 0  # Table may not exist yet
+
+            async def _agent_events_q():
+                try:
+                    async with pool.acquire() as conn:
+                        return await conn.fetchval(
+                            """SELECT COUNT(*) FROM agent_events
+                            WHERE org_id = $1
+                              AND created_at > NOW() - INTERVAL '24 hours'""",
+                            principal.org_id,
+                        ) or 0
+                except Exception:
+                    return 0  # Table may not exist yet
+
+            # Run all queries concurrently
+            (
+                tx_row,
+                agent_row,
+                mandate_count,
+                active_sessions,
+                wallet_count,
+                blocked_24h,
+                online_agents,
+                api_calls_24h,
+                agent_events_24h,
+            ) = await asyncio.gather(
+                _tx_stats(),
+                _agent_stats(),
+                _mandate_count_q(),
+                _active_sessions_q(),
+                _wallet_count_q(),
+                _blocked_24h_q(),
+                _online_agents_q(),
+                _api_calls_q(),
+                _agent_events_q(),
+            )
+
+            if tx_row:
+                tx_total = tx_row["total"] or 0
+                tx_24h = tx_row["last_24h"] or 0
+                volume_24h = f"{float(tx_row['volume_24h'] or 0):.2f}"
+
+            if agent_row:
+                agent_count = agent_row["total"] or 0
+                active_agents = agent_row["active"] or 0
 
     except Exception as e:
         logger.warning("Dashboard metrics query failed: %s", e)

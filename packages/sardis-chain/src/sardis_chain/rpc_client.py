@@ -250,18 +250,18 @@ class ProductionRPCClient:
         return int(result, 16)
 
     def _select_endpoint(self) -> tuple[RPCEndpointConfig, EndpointHealth]:
-        """Select the best endpoint based on health and priority."""
-        # Calculate scores for all endpoints
-        scored = [
-            (config, health, health.get_priority_score(config.priority))
-            for config, health in self._endpoints
-        ]
+        """Select the best endpoint based on health and priority.
 
-        # Sort by score (lower is better)
-        scored.sort(key=lambda x: x[2])
-
-        # Return best endpoint
-        config, health, _ = scored[0]
+        Uses min() instead of sort() — O(n) vs O(n log n) — since only the
+        single best endpoint is needed.
+        """
+        config, health, _ = min(
+            (
+                (config, health, health.get_priority_score(config.priority))
+                for config, health in self._endpoints
+            ),
+            key=lambda x: x[2],
+        )
         return config, health
 
     async def _call_internal(

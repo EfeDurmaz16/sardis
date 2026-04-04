@@ -89,13 +89,21 @@ class UniswapV3Adapter:
         rpc_url: str | None = None,
         chain: str = "base",
     ) -> None:
+        import httpx as _httpx
+
         self._rpc_url = rpc_url or os.getenv("SARDIS_BASE_RPC_URL", "")
         self._chain = chain
         self._quoter = QUOTER_V2.get(chain, "")
         self._router = SWAP_ROUTER_02.get(chain, "")
+        # Persistent HTTP client — avoids per-call connection overhead
+        self._http_client = _httpx.AsyncClient(timeout=_httpx.Timeout(30.0))
 
         if not self._rpc_url:
             logger.warning("No RPC URL for Uniswap V3 on %s", chain)
+
+    async def close(self) -> None:
+        """Close the persistent HTTP client."""
+        await self._http_client.aclose()
 
     async def get_quote(
         self,
@@ -108,24 +116,21 @@ class UniswapV3Adapter:
         if not self._quoter or not self._rpc_url:
             raise ValueError(f"Uniswap V3 not configured for {self._chain}")
 
-        import httpx
-
         # Encode quoteExactInputSingle call
         calldata = self._encode_quote_exact_input_single(
             token_in, token_out, amount_in, fee_tier
         )
 
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(
-                self._rpc_url,
-                json={
-                    "jsonrpc": "2.0",
-                    "method": "eth_call",
-                    "params": [{"to": self._quoter, "data": calldata}, "latest"],
-                    "id": 1,
-                },
-            )
-            result = resp.json()
+        resp = await self._http_client.post(
+            self._rpc_url,
+            json={
+                "jsonrpc": "2.0",
+                "method": "eth_call",
+                "params": [{"to": self._quoter, "data": calldata}, "latest"],
+                "id": 1,
+            },
+        )
+        result = resp.json()
 
         if "error" in result:
             raise RuntimeError(f"QuoterV2 call failed: {result['error']}")
@@ -176,7 +181,6 @@ class UniswapV3Adapter:
         if not self._router or not self._rpc_url:
             raise ValueError(f"SwapRouter02 not configured for {self._chain}")
 
-        import httpx
         from eth_account import Account
 
         account = Account.from_key(key)
@@ -187,17 +191,16 @@ class UniswapV3Adapter:
         min_out = int(quote.amount_out * (10000 - slippage_bps) / 10000)
 
         # Get nonce and gas
-        async with httpx.AsyncClient(timeout=15) as client:
-            nonce_resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_getTransactionCount",
-                "params": [sender, "pending"], "id": 1,
-            })
-            gas_resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_gasPrice", "params": [], "id": 2,
-            })
-            chain_resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 3,
-            })
+        nonce_resp = await self._http_client.post(self._rpc_url, json={
+            "jsonrpc": "2.0", "method": "eth_getTransactionCount",
+            "params": [sender, "pending"], "id": 1,
+        })
+        gas_resp = await self._http_client.post(self._rpc_url, json={
+            "jsonrpc": "2.0", "method": "eth_gasPrice", "params": [], "id": 2,
+        })
+        chain_resp = await self._http_client.post(self._rpc_url, json={
+            "jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 3,
+        })
 
         nonce = int(nonce_resp.json()["result"], 16)
         gas_price = int(gas_resp.json()["result"], 16)
@@ -211,13 +214,12 @@ class UniswapV3Adapter:
 
         # Check current allowance — skip approve if already sufficient
         allowance_data = self._encode_allowance(sender, self._router)
-        async with httpx.AsyncClient(timeout=15) as client:
-            allowance_resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_call",
-                "params": [{"to": quote.token_in, "data": "0x" + allowance_data.hex()}, "latest"],
-                "id": 1,
-            })
-            allowance_result = allowance_resp.json()
+        allowance_resp = await self._http_client.post(self._rpc_url, json={
+            "jsonrpc": "2.0", "method": "eth_call",
+            "params": [{"to": quote.token_in, "data": "0x" + allowance_data.hex()}, "latest"],
+            "id": 1,
+        })
+        allowance_result = allowance_resp.json()
 
         current_allowance = 0
         if "result" in allowance_result and allowance_result["result"] != "0x":
@@ -237,12 +239,11 @@ class UniswapV3Adapter:
             }
             signed_approve = Account.sign_transaction(approve_tx, key)
 
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(self._rpc_url, json={
-                    "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
-                    "params": ["0x" + signed_approve.raw_transaction.hex()], "id": 1,
-                })
-                approve_result = resp.json()
+            resp = await self._http_client.post(self._rpc_url, json={
+                "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
+                "params": ["0x" + signed_approve.raw_transaction.hex()], "id": 1,
+            })
+            approve_result = resp.json()
 
             if "error" in approve_result:
                 raise RuntimeError(f"Approve tx failed: {approve_result['error']}")
@@ -271,12 +272,11 @@ class UniswapV3Adapter:
         }
         signed_swap = Account.sign_transaction(swap_tx, key)
 
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(self._rpc_url, json={
-                "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
-                "params": ["0x" + signed_swap.raw_transaction.hex()], "id": 1,
-            })
-            swap_result = resp.json()
+        resp = await self._http_client.post(self._rpc_url, json={
+            "jsonrpc": "2.0", "method": "eth_sendRawTransaction",
+            "params": ["0x" + signed_swap.raw_transaction.hex()], "id": 1,
+        })
+        swap_result = resp.json()
 
         if "error" in swap_result:
             raise RuntimeError(f"Swap tx failed: {swap_result['error']}")
@@ -301,15 +301,12 @@ class UniswapV3Adapter:
         """Poll for transaction receipt."""
         import asyncio
 
-        import httpx
-
         for _ in range(max_attempts):
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(self._rpc_url, json={
-                    "jsonrpc": "2.0", "method": "eth_getTransactionReceipt",
-                    "params": [tx_hash], "id": 1,
-                })
-                result = resp.json()
+            resp = await self._http_client.post(self._rpc_url, json={
+                "jsonrpc": "2.0", "method": "eth_getTransactionReceipt",
+                "params": [tx_hash], "id": 1,
+            })
+            result = resp.json()
 
             receipt = result.get("result")
             if receipt:
