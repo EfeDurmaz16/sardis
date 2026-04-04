@@ -10,7 +10,7 @@ authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 keywords = [
     "api",
     "fastapi",
@@ -38,19 +38,17 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "fastapi>=0.109",
+    "fastapi>=0.109,<1.0",
     "python-multipart>=0.0.7",
     "uvicorn>=0.23",
-    "websockets>=11.0",
     "sardis-core>=0.1.0",
     "sardis-ledger>=0.1.0",
     "sardis-chain>=0.1.0",
     "sardis-compliance>=0.1.0",
     "sentry-sdk[fastapi]>=2.0",
     "alembic>=1.13",
-    "asyncpg>=0.29",
+    "asyncpg>=0.29,<1.0",
     "prometheus-client>=0.19",
-    "apscheduler>=3.10",
     "PyJWT>=2.12.0",
     "opentelemetry-api>=1.20",
     "opentelemetry-sdk>=1.20",
@@ -58,7 +56,6 @@ dependencies = [
     "opentelemetry-instrumentation-asyncpg>=0.41b0",
     "pyotp>=2.9",
     "resend>=2.0",
-    "pympp>=0.4.0",
     "PyNaCl>=1.5",
 ]
 

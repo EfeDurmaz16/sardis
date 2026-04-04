@@ -9,7 +9,7 @@ description = "Runtime safety guardrails for Sardis agent payments: circuit brea
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = [
     "guardrails",
     "circuit-breaker",

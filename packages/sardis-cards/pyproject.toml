@@ -7,7 +7,7 @@ name = "sardis-cards"
 version = "1.1.0"
 description = "Virtual card integration for Sardis payment platform"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]

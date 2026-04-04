@@ -7,7 +7,7 @@ name = "sardis-autogpt"
 version = "2.0.0"
 description = "Sardis payment blocks for AutoGPT - policy-controlled AI agent payments"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Sardis", email = "efe@sardis.sh" }]
 keywords = ["sardis", "autogpt", "payments", "ai-agents", "blockchain", "usdc"]

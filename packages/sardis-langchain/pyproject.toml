@@ -9,7 +9,7 @@ description = "LangChain integration for Sardis - Payment OS for the Agent Econo
 readme = "README.md"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

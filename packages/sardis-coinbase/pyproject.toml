@@ -7,7 +7,7 @@ name = "sardis-coinbase"
 version = "1.0.0"
 description = "Coinbase CDP and x402 integrations for Sardis"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 keywords = ["sardis", "coinbase", "cdp", "x402", "payments", "ai-agents", "crypto"]

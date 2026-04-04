@@ -7,7 +7,7 @@ name = "sardis-striga"
 version = "1.0.0"
 description = "Sardis Striga Integration - EEA card issuance, vIBAN, SEPA, and EURC off-ramp"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 keywords = ["sardis", "striga", "cards", "viban", "sepa", "eurc", "payments"]

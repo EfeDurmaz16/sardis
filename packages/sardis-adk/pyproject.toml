@@ -9,7 +9,7 @@ description = "Google Agent Development Kit (ADK) integration for Sardis"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["sardis", "adk", "google", "agent-development-kit", "payments", "ai-agents", "fintech"]
 classifiers = [
     "Development Status :: 4 - Beta",

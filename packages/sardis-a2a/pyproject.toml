@@ -9,7 +9,7 @@ description = "Agent-to-Agent (A2A) protocol integration for Sardis"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 keywords = ["sardis", "a2a", "agent-to-agent", "protocol", "payments", "ai-agents", "google"]
 classifiers = [
     "Development Status :: 4 - Beta",
