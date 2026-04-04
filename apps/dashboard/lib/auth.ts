@@ -209,6 +209,27 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    sendResetPassword: async ({ user, url }) => {
+      const RESEND_API_KEY = process.env.RESEND_API_KEY;
+      if (!RESEND_API_KEY) {
+        console.warn("[reset-password] RESEND_API_KEY not set — logging link");
+        console.log(`[reset-password] ${user.email}: ${url}`);
+        return;
+      }
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Sardis <auth@sardis.sh>",
+          to: user.email,
+          subject: "Reset your Sardis password",
+          html: `<p>Click <a href="${url}">here</a> to reset your password. This link expires in 1 hour.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
+        }),
+      });
+    },
     password: {
       verify: async ({ hash, password }) => {
         // Legacy pbkdf2 format: "pbkdf2:salt:iterations:hash"
