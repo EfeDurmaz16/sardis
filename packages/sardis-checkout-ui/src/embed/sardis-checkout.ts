@@ -121,8 +121,10 @@ function open(opts: OpenOptions) {
   };
   document.addEventListener("keydown", onKey);
 
-  // Listen for postMessage from iframe
+  // Listen for postMessage from iframe (verify origin matches checkout base URL)
+  const checkoutOrigin = new URL(CHECKOUT_BASE).origin;
   const onMessage = (e: MessageEvent) => {
+    if (e.origin !== checkoutOrigin) return;
     if (e.data?.source !== "sardis-checkout") return;
     if (e.data.event === "success") {
       opts.onSuccess?.({

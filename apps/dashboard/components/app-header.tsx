@@ -28,8 +28,9 @@ import {
   MagnifyingGlass, List, Sun, Moon, Plus, CreditCard, CaretDown, CaretRight,
   User, Receipt, Key, Keyboard, SignOut,
 } from "@phosphor-icons/react"
-import { Bell } from "lucide-react"
+import { Bell } from "@phosphor-icons/react"
 
+// TODO: Wire to real notification API — these are placeholder items
 const notifications = [
   {
     message: "Agent #12 exceeded daily spending limit",
@@ -401,9 +402,11 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
 
         <Popover>
           <PopoverTrigger
+            aria-label="Notifications"
             className={buttonVariants({ variant: "outline", size: "icon", className: "relative" })}
           >
             <Bell className="w-4 h-4" />
+            {/* TODO: Replace static badge count with real notification count */}
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
               3
             </span>
@@ -530,15 +533,15 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Recipient</label>
-              <Input value={paymentRecipient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRecipient(e.target.value)} placeholder="e.g. MerchantCo or 0x..." />
+              <label htmlFor="payment-recipient" className="text-sm font-medium">Recipient</label>
+              <Input id="payment-recipient" value={paymentRecipient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRecipient(e.target.value)} placeholder="e.g. MerchantCo or 0x..." />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount ($)</label>
-              <Input type="number" value={paymentAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentAmount(e.target.value)} placeholder="0.00" />
+              <label htmlFor="payment-amount" className="text-sm font-medium">Amount ($)</label>
+              <Input id="payment-amount" type="number" value={paymentAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Chain</label>
+              <span className="text-sm font-medium">Chain</span>
               <div className="flex gap-2 flex-wrap">
                 {["Base", "Polygon", "Arbitrum", "Optimism", "Ethereum"].map((chain) => (
                   <Button key={chain} variant={paymentChain === chain ? "default" : "outline"} size="sm" onClick={() => setPaymentChain(chain)}>

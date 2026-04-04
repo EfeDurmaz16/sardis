@@ -353,60 +353,48 @@ export default function ApiKeysPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead
-                    className="pl-4 cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("name")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead className="pl-4">
+                    <button onClick={() => toggleSort("name")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Key Name
                       {sortKey === "name" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                   <TableHead>Prefix</TableHead>
                   <TableHead>Permissions</TableHead>
                   <TableHead>Mode</TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("created")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("created")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "created" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Created
                       {sortKey === "created" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("lastUsed")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("lastUsed")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "lastUsed" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Last Used
                       {sortKey === "lastUsed" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("active")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("active")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "active" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Status
                       {sortKey === "active" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -482,8 +470,9 @@ export default function ApiKeysPage() {
             className="space-y-4"
           >
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Key Name</label>
+              <label htmlFor="api-key-name" className="text-sm font-medium">Key Name</label>
               <Input
+                id="api-key-name"
                 placeholder="e.g. Production API"
                 value={keyName}
                 onChange={(event) => setKeyName(event.target.value)}
@@ -491,9 +480,9 @@ export default function ApiKeysPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Environment</label>
+              <label htmlFor="api-key-environment" className="text-sm font-medium">Environment</label>
               <Select value={environment} onValueChange={(value) => value && setEnvironment(value as "test" | "live")}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="api-key-environment" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -503,7 +492,7 @@ export default function ApiKeysPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Scopes</label>
+              <span className="text-sm font-medium">Scopes</span>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input

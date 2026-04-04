@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Card, CardHeader, CardTitle, CardContent, CardDescription, CardAction,
 } from "@/components/ui/card"
@@ -10,30 +10,16 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator,
 } from "@/components/ui/context-menu"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
-import {
   ArrowUp, Circle, CaretDown, CaretUp, CheckCircle, Rocket, ShieldCheck, Users,
   Spinner, CloudSlash,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import {
-  PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer,
-} from "recharts"
 import { useSardis } from "@/hooks/use-sardis"
 
 /* ------------------------------------------------------------------ */
@@ -130,21 +116,26 @@ export default function OverviewPage() {
   ])
   const completedSteps = quickStartSteps.filter((s) => s.done).length
 
-  // New Payment dialog
-  const [newPaymentOpen, setNewPaymentOpen] = useState(false)
-  const [paymentRecipient, setPaymentRecipient] = useState("")
-  const [paymentAmount, setPaymentAmount] = useState("")
-  const [paymentChain, setPaymentChain] = useState("Base")
 
-  // Derive quick-start completion from real metrics
-  const agentExists = (metrics?.agent_count ?? 0) > 0
-  const walletExists = (metrics?.wallet_count ?? 0) > 0
-  if (agentExists && !quickStartSteps[0].done) {
-    quickStartSteps[0] = { ...quickStartSteps[0], done: true }
-  }
-  if (walletExists && !quickStartSteps[1].done) {
-    quickStartSteps[1] = { ...quickStartSteps[1], done: true }
-  }
+  // Derive quick-start completion from real metrics (in useEffect to avoid state mutation during render)
+  useEffect(() => {
+    const agentExists = (metrics?.agent_count ?? 0) > 0
+    const walletExists = (metrics?.wallet_count ?? 0) > 0
+
+    setQuickStartSteps((prev) => {
+      const next = [...prev]
+      let changed = false
+      if (agentExists && !next[0].done) {
+        next[0] = { ...next[0], done: true }
+        changed = true
+      }
+      if (walletExists && !next[1].done) {
+        next[1] = { ...next[1], done: true }
+        changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [metrics?.agent_count, metrics?.wallet_count])
 
   function handleQuickStartClick(index: number) {
     if (quickStartSteps[index].done) return
@@ -152,18 +143,6 @@ export default function OverviewPage() {
       i === index ? { ...s, done: true } : s
     ))
     toast.success(`Completed: ${quickStartSteps[index].label}`)
-  }
-
-  function handleNewPayment() {
-    if (!paymentRecipient || !paymentAmount) {
-      toast.error("Please fill in all fields")
-      return
-    }
-    toast.success(`Payment of $${paymentAmount} to ${paymentRecipient} initiated on ${paymentChain}`)
-    setNewPaymentOpen(false)
-    setPaymentRecipient("")
-    setPaymentAmount("")
-    setPaymentChain("Base")
   }
 
   const txList = recentTxs ?? []
@@ -203,11 +182,6 @@ export default function OverviewPage() {
             <StatusPill color="blue" label={`${metrics?.mandate_count ?? 0} Mandates`} />
           </div>
         )}
-      </div>
-
-      {/* ---- New Payment Button ---- */}
-      <div className="flex justify-end mt-4">
-        <Button onClick={() => setNewPaymentOpen(true)}>New Payment</Button>
       </div>
 
       {/* ---- Main Grid ---- */}
@@ -442,44 +416,6 @@ export default function OverviewPage() {
         )}
       </Card>
 
-      {/* New Payment Dialog */}
-      <Dialog open={newPaymentOpen} onOpenChange={setNewPaymentOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New Payment</DialogTitle>
-            <DialogDescription>Create a new payment transaction</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Recipient</label>
-              <Input value={paymentRecipient} onChange={(e) => setPaymentRecipient(e.target.value)} placeholder="e.g. MerchantCo or 0x..." />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Amount ($)</label>
-              <Input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0.00" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Chain</label>
-              <div className="flex gap-2">
-                {["Base", "Polygon", "Arbitrum", "Optimism", "Ethereum"].map((chain) => (
-                  <Button
-                    key={chain}
-                    variant={paymentChain === chain ? "default" : "outline"}
-                    size="xs"
-                    onClick={() => setPaymentChain(chain)}
-                  >
-                    {chain}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
-            <Button onClick={handleNewPayment}>Send Payment</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

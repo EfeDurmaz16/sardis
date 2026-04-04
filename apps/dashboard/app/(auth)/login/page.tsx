@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, Fingerprint } from "lucide-react";
+import { Eye, EyeSlash, Fingerprint } from "@phosphor-icons/react";
 import { signIn, authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,9 +84,9 @@ export default function LoginPage() {
       if (data.access_token) {
         // Store JWT for API client + middleware
         localStorage.setItem("sardis_session", data.access_token);
-        // Set cookies for middleware auth checks
-        document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `sardis_session=${data.access_token}; path=/; max-age=604800; SameSite=Lax`;
+        // Set cookies for middleware auth checks (Secure flag prevents transmission over HTTP)
+        document.cookie = `sardis_session=${data.access_token}; path=/; max-age=604800; SameSite=Lax; Secure`;
+        document.cookie = `better-auth.session_token=${data.access_token}; path=/; max-age=604800; SameSite=Lax; Secure`;
         // Hard navigation to ensure cookies are sent with the first request
         window.location.href = "/";
         return;
@@ -121,15 +121,15 @@ export default function LoginPage() {
             />
           </svg>
         </div>
-        <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">Sign in to Sardis</h1>
-        <p className="text-sm text-gray-500 mt-2">
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">Sign in to Sardis</h1>
+        <p className="text-sm text-muted-foreground mt-2">
           Enter your credentials to access the dashboard
         </p>
       </div>
 
-      <Card className="shadow-md bg-white border border-gray-300 w-full">
+      <Card className="shadow-sm bg-card border-border w-full">
         <CardHeader className="pb-4 pt-6 px-8">
-          <CardTitle className="text-base text-gray-900">Account</CardTitle>
+          <CardTitle className="text-base text-foreground">Account</CardTitle>
         </CardHeader>
         <CardContent className="px-8 pb-8">
           <form onSubmit={handleSubmit} className="space-y-4" id="login-form">
@@ -142,7 +142,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <label
                 htmlFor="email"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-foreground"
               >
                 Email
               </label>
@@ -160,7 +160,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <label
                 htmlFor="password"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-medium text-foreground"
               >
                 Password
               </label>
@@ -177,10 +177,11 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeSlash className="h-4 w-4" />
                   ) : (
                     <Eye className="h-4 w-4" />
                   )}
@@ -200,10 +201,10 @@ export default function LoginPage() {
           {/* Separator */}
           <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
+              <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-400">or</span>
+              <span className="bg-card px-2 text-muted-foreground">or</span>
             </div>
           </div>
 
@@ -215,22 +216,22 @@ export default function LoginPage() {
             disabled={isLoading}
             onClick={handlePasskeySignIn}
           >
-            <Fingerprint className="mr-2 h-4 w-4" />
+            <Fingerprint className="mr-2 h-4 w-4" weight="regular" />
             Sign in with Passkey
           </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-2 text-center text-sm border-t border-gray-200 bg-gray-50/50 pt-4">
           <Link
             href="/forgot-password"
-            className="text-gray-500 hover:text-gray-900 transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Forgot password?
           </Link>
-          <p className="text-gray-500">
+          <p className="text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="text-gray-900 font-medium hover:underline"
+              className="text-foreground font-medium hover:underline"
             >
               Create one
             </Link>

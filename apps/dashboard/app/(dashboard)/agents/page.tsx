@@ -325,72 +325,57 @@ export default function AgentsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead
-                    className="pl-4 cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("name")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead className="pl-4">
+                    <button onClick={() => toggleSort("name")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Agent Name
                       {sortKey === "name" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                   <TableHead>Wallet Address</TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("perTransactionLimit")}
-                  >
-                    <span className="flex items-center justify-end gap-1">
+                  <TableHead className="text-right">
+                    <button onClick={() => toggleSort("perTransactionLimit")} className="flex items-center justify-end gap-1 w-full cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "perTransactionLimit" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Per Tx Limit
                       {sortKey === "perTransactionLimit" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                   <TableHead>Chain</TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("status")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("status")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "status" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Status
                       {sortKey === "status" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="text-right cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("dailyLimit")}
-                  >
-                    <span className="flex items-center justify-end gap-1">
+                  <TableHead className="text-right">
+                    <button onClick={() => toggleSort("dailyLimit")} className="flex items-center justify-end gap-1 w-full cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "dailyLimit" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Daily Limit
                       {sortKey === "dailyLimit" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer select-none hover:text-foreground transition-colors"
-                    onClick={() => toggleSort("updatedAt")}
-                  >
-                    <span className="flex items-center gap-1">
+                  <TableHead>
+                    <button onClick={() => toggleSort("updatedAt")} className="flex items-center gap-1 cursor-pointer select-none hover:text-foreground transition-colors" aria-sort={sortKey === "updatedAt" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
                       Last Updated
                       {sortKey === "updatedAt" ? (
                         sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
                       ) : (
                         <ArrowsDownUp className="h-3 w-3 text-muted-foreground/50" />
                       )}
-                    </span>
+                    </button>
                   </TableHead>
                 </TableRow>
               </TableHeader>
