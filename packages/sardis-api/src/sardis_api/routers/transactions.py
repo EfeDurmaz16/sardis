@@ -1,6 +1,7 @@
 """Transaction status and gas estimation API routes."""
 from __future__ import annotations
 
+import asyncio
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -338,59 +339,64 @@ async def batch_transfer(
     # Generate batch ID
     batch_id = f"batch_{uuid.uuid4().hex[:16]}"
 
-    # Execute transfers
-    results = []
-    successful = 0
-    failed = 0
-
+    # Build mandates up-front
+    mandates_with_transfers: list[tuple[int, BatchTransferItem, PaymentMandate]] = []
     for idx, transfer in enumerate(request.transfers):
-        try:
-            # Create mandate for this transfer
-            proof = VCProof(
-                verification_method=f"did:key:{request.wallet_id}#key-1",
-                created=f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
-                proof_value=f"batch_transfer_{batch_id}_{idx}",
-            )
+        proof = VCProof(
+            verification_method=f"did:key:{request.wallet_id}#key-1",
+            created=f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+            proof_value=f"batch_transfer_{batch_id}_{idx}",
+        )
+        mandate = PaymentMandate(
+            mandate_id=f"{batch_id}_tx_{idx}",
+            mandate_type="payment",
+            issuer=request.wallet_id,
+            subject=request.wallet_id,
+            expires_at=int(time.time()) + 300,
+            nonce=f"{batch_id}_{idx}",
+            proof=proof,
+            domain="sardis.sh",
+            purpose="batch_transfer",
+            destination=transfer.destination,
+            amount_minor=int(transfer.amount),
+            token=request.token,
+            chain=request.chain,
+            audit_hash=f"batch_{batch_id}_{idx}",
+        )
+        mandates_with_transfers.append((idx, transfer, mandate))
 
-            mandate = PaymentMandate(
-                mandate_id=f"{batch_id}_tx_{idx}",
-                mandate_type="payment",
-                issuer=request.wallet_id,
-                subject=request.wallet_id,
-                expires_at=int(time.time()) + 300,
-                nonce=f"{batch_id}_{idx}",
-                proof=proof,
-                domain="sardis.sh",
-                purpose="batch_transfer",
-                destination=transfer.destination,
-                amount_minor=int(transfer.amount),
-                token=request.token,
-                chain=request.chain,
-                audit_hash=f"batch_{batch_id}_{idx}",
-            )
+    # Execute transfers concurrently with bounded concurrency
+    sem = asyncio.Semaphore(10)
 
-            # Execute transfer
-            receipt = await deps.chain_executor.execute_mandate(mandate)
+    async def _execute_one(
+        idx: int, transfer: BatchTransferItem, mandate: PaymentMandate
+    ) -> BatchTransferItemResult:
+        async with sem:
+            try:
+                receipt = await deps.chain_executor.execute_mandate(mandate)
+                return BatchTransferItemResult(
+                    reference=transfer.reference,
+                    destination=transfer.destination,
+                    amount=transfer.amount,
+                    tx_hash=receipt.tx_hash,
+                    status="success",
+                )
+            except Exception as e:
+                return BatchTransferItemResult(
+                    reference=transfer.reference,
+                    destination=transfer.destination,
+                    amount=transfer.amount,
+                    tx_hash=None,
+                    status="failed",
+                    error=str(e),
+                )
 
-            results.append(BatchTransferItemResult(
-                reference=transfer.reference,
-                destination=transfer.destination,
-                amount=transfer.amount,
-                tx_hash=receipt.tx_hash,
-                status="success",
-            ))
-            successful += 1
+    results = await asyncio.gather(
+        *[_execute_one(idx, t, m) for idx, t, m in mandates_with_transfers]
+    )
 
-        except Exception as e:
-            results.append(BatchTransferItemResult(
-                reference=transfer.reference,
-                destination=transfer.destination,
-                amount=transfer.amount,
-                tx_hash=None,
-                status="failed",
-                error=str(e),
-            ))
-            failed += 1
+    successful = sum(1 for r in results if r.status == "success")
+    failed = sum(1 for r in results if r.status == "failed")
 
     return BatchTransferResponse(
         batch_id=batch_id,
