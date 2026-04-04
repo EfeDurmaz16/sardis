@@ -30,6 +30,23 @@ _logger = logging.getLogger("sardis.api.evidence_export")
 
 EVIDENCE_SIGNING_KEY = os.getenv("SARDIS_EVIDENCE_SIGNING_KEY", "sardis-dev-signing-key")
 
+_EVIDENCE_KEY_VALIDATED = False
+
+
+def _validate_evidence_signing_key() -> None:
+    """Lazy check: reject the hardcoded default in production/staging."""
+    global _EVIDENCE_KEY_VALIDATED
+    if _EVIDENCE_KEY_VALIDATED:
+        return
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev").lower()
+    if env in ("prod", "production", "staging") and EVIDENCE_SIGNING_KEY == "sardis-dev-signing-key":
+        raise RuntimeError(
+            "SARDIS_EVIDENCE_SIGNING_KEY must be set in production/staging environments. "
+            "The default dev signing key is not acceptable."
+        )
+    _EVIDENCE_KEY_VALIDATED = True
+
+
 router = APIRouter()
 
 
@@ -242,6 +259,7 @@ async def verify_evidence_bundle(
     _principal: Principal = Depends(require_principal),
 ) -> VerifyResponse:
     """Verify the integrity of an exported evidence bundle."""
+    _validate_evidence_signing_key()
     _logger.info("evidence verify requested tx_id=%s", body.tx_id)
     expected_sig = hmac.new(
         EVIDENCE_SIGNING_KEY.encode(),
@@ -277,6 +295,7 @@ async def export_evidence_bundle(
     principal: Principal = Depends(require_principal),
 ) -> EvidenceBundle:
     """Export a complete evidence bundle for *tx_id*."""
+    _validate_evidence_signing_key()
     _logger.info(
         "evidence export requested tx_id=%s org_id=%s",
         tx_id,
@@ -302,6 +321,7 @@ async def download_evidence_bundle(
     principal: Principal | None = Depends(optional_principal),
 ) -> JSONResponse:
     """Return the evidence bundle as a downloadable JSON file."""
+    _validate_evidence_signing_key()
     _logger.info(
         "evidence download requested tx_id=%s org_id=%s",
         tx_id,
