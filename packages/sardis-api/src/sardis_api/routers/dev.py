@@ -107,12 +107,12 @@ async def dev_faucet(req: FaucetRequest, request: Request):
     - Max 100 USDC per request
     - Not available in production
     """
-    # Gate: block in production
+    # Gate: only allow in dev/test environments (denylist → allowlist)
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").lower()
-    if env in ("prod", "production"):
+    if env not in ("dev", "development", "test", "local"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Faucet is not available in production",
+            detail="Faucet only available in dev/test environments",
         )
 
     # Gate: require EOA private key
@@ -216,8 +216,8 @@ async def dev_faucet(req: FaucetRequest, request: Request):
 async def faucet_status():
     """Check faucet availability and EOA balance."""
     env = os.getenv("SARDIS_ENVIRONMENT", "dev").lower()
-    if env in ("prod", "production"):
-        return {"available": False, "reason": "Not available in production"}
+    if env not in ("dev", "development", "test", "local"):
+        return {"available": False, "reason": "Faucet only available in dev/test environments"}
 
     eoa_private_key = os.getenv("SARDIS_EOA_PRIVATE_KEY", "")
     if not eoa_private_key:
