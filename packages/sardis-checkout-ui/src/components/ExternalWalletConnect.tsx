@@ -5,6 +5,14 @@ import {
   getExternalWalletConnectParams,
 } from "@/lib/api";
 
+/** Typed wrapper for wagmi signTypedData to satisfy EIP-712 argument shape. */
+type SignTypedDataFn = (args: {
+  domain: Record<string, unknown>;
+  types: Record<string, Array<{ name: string; type: string }>>;
+  primaryType: string;
+  message: Record<string, unknown>;
+}) => Promise<`0x${string}`>;
+
 interface ExternalWalletConnectProps {
   clientSecret: string;
   connectedAddress?: string | null;
@@ -66,12 +74,8 @@ export default function ExternalWalletConnect({
     try {
       const params = await getExternalWalletConnectParams(clientSecret, address);
       const { EIP712Domain: _domain, ...types } = params.typed_data.types;
-      const signature = await (signTypedDataAsync as (args: {
-        domain: Record<string, unknown>;
-        types: Record<string, Array<{ name: string; type: string }>>;
-        primaryType: string;
-        message: Record<string, unknown>;
-      }) => Promise<`0x${string}`>)({
+      const typedSign = signTypedDataAsync as SignTypedDataFn;
+      const signature = await typedSign({
         domain: params.typed_data.domain,
         types,
         primaryType: params.typed_data.primaryType,
