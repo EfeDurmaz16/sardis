@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
-import { signIn } from "@/lib/auth-client";
+import { Eye, EyeOff, Fingerprint } from "lucide-react";
+import { signIn, authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +25,38 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Conditional UI: trigger passkey autofill on mount if browser supports it
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.PublicKeyCredential?.isConditionalMediationAvailable) return;
+    window.PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
+      if (available) {
+        authClient.signIn.passkey({ autoFill: true });
+      }
+    });
+  }, []);
+
+  const handlePasskeySignIn = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      await authClient.signIn.passkey({
+        fetchOptions: {
+          onSuccess: () => {
+            window.location.href = "/";
+          },
+          onError: (ctx: { error: { message?: string } }) => {
+            setError(ctx.error.message || "Passkey sign-in failed");
+          },
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Passkey sign-in failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +152,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="you@company.com"
+                autoComplete="username webauthn"
                 required
               />
             </div>
@@ -163,6 +196,28 @@ export default function LoginPage() {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+
+          {/* Separator */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">or</span>
+            </div>
+          </div>
+
+          {/* Passkey sign-in */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={isLoading}
+            onClick={handlePasskeySignIn}
+          >
+            <Fingerprint className="mr-2 h-4 w-4" />
+            Sign in with Passkey
+          </Button>
         </CardContent>
         <CardFooter className="flex flex-col gap-2 text-center text-sm">
           <Link
