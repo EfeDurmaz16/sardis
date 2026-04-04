@@ -232,16 +232,18 @@ export const auth = betterAuth({
     },
     password: {
       verify: async ({ hash, password }) => {
-        // Legacy pbkdf2 format: "pbkdf2:salt:iterations:hash"
+        // Legacy format: "pbkdf2:salt:dk_hex" (100k iterations, sha256)
         if (hash.startsWith("pbkdf2:")) {
           const crypto = await import("crypto");
-          const parts = hash.split(":");
-          if (parts.length < 4) return false;
-          const [, salt, iterations, storedHash] = parts;
+          const [, salt, storedDk] = hash.split(":", 3);
+          if (!salt || !storedDk) return false;
           const derived = crypto.pbkdf2Sync(
-            password, salt, parseInt(iterations, 10), 64, "sha512"
+            password, salt, 100_000, 32, "sha256"
           );
-          return derived.toString("hex") === storedHash;
+          return crypto.timingSafeEqual(
+            Buffer.from(derived.toString("hex")),
+            Buffer.from(storedDk)
+          );
         }
         // better-auth default format: "salt:hash" (scrypt)
         const { verifyPassword } = await import("better-auth/crypto");
