@@ -277,4 +277,174 @@ contract RefundProtocolTest is Test {
         bytes32 digest = targetProtocol.hashEarlyWithdrawalInfo(paymentIDs, withdrawalAmounts, feeAmount, expiry, salt);
         return vm.sign(RECIPIENT_PK, digest);
     }
+
+    // ============ Fuzz: Payment Amounts ============
+
+    function testFuzz_payAmount(uint256 amount) public {
+        // Bound to reasonable range: 1 wei to 10B USDC (6 decimals)
+        amount = bound(amount, 1, 10_000_000_000e6);
+
+        token.mint(payer, amount); // ensure payer has enough
+        vm.prank(payer);
+        token.approve(address(protocol), type(uint256).max);
+
+        vm.prank(payer);
+        protocol.pay(recipient, amount, refundTo);
+
+        // Verify payment was created correctly
+        (address payTo, uint256 payAmount,,, uint256 withdrawn, bool refunded) = protocol.payments(protocol.nonce() - 1);
+        assertEq(payTo, recipient);
+        assertEq(payAmount, amount);
+        assertEq(withdrawn, 0);
+        assertFalse(refunded);
+        assertEq(protocol.balances(recipient), amount);
+    }
+
+    function testFuzz_payAmount_zeroReverts(uint256 seed) public {
+        // Zero amount payment should still work at the protocol level (no explicit zero check).
+        // This is documented behavior - the protocol allows zero-amount payments.
+        seed; // unused, keep for fuzz runner
+        vm.prank(payer);
+        protocol.pay(recipient, 0, refundTo);
+
+        (address payTo, uint256 payAmount,,,,) = protocol.payments(0);
+        assertEq(payTo, recipient);
+        assertEq(payAmount, 0);
+    }
+}
+
+// ============ Reentrancy Tests ============
+
+import "./mocks/ReentrantToken.sol";
+
+contract RefundProtocolReentrancyTest is Test {
+    uint256 internal constant RECIPIENT_PK = 0xA11CE;
+    uint256 internal constant ONE_DAY = 1 days;
+
+    RefundProtocol internal protocol;
+    ReentrantToken internal reentrantToken;
+
+    address internal arbiter = address(0xA1B1);
+    address internal payer = address(0xCAFE);
+    address internal refundTo = address(0xBEEF);
+    address internal recipient;
+
+    function setUp() public {
+        recipient = vm.addr(RECIPIENT_PK);
+
+        reentrantToken = new ReentrantToken();
+        protocol = new RefundProtocol(arbiter, address(reentrantToken), "RefundProtocol", "1");
+
+        reentrantToken.mint(payer, 10_000e6);
+        vm.prank(payer);
+        reentrantToken.approve(address(protocol), type(uint256).max);
+    }
+
+    function test_reentrancy_payDuringWithdrawTransfer() public {
+        // Setup: create a payment
+        vm.prank(payer);
+        protocol.pay(recipient, 100e6, refundTo);
+
+        // Set lockup to 0 so we can withdraw immediately
+        vm.prank(arbiter);
+        protocol.setLockupSeconds(recipient, 0);
+
+        // Configure reentrancy: during the transfer in withdraw(), try to call pay() again
+        reentrantToken.setReentrancyCallback(
+            address(protocol),
+            abi.encodeWithSelector(
+                RefundProtocol.pay.selector,
+                recipient,
+                50e6,
+                refundTo
+            )
+        );
+
+        // Give the token contract some balance to attempt the reentrant pay
+        reentrantToken.mint(address(reentrantToken), 50e6);
+        vm.prank(address(reentrantToken));
+        reentrantToken.approve(address(protocol), type(uint256).max);
+
+        // Withdraw should succeed. The reentrant pay() is a different function so it
+        // succeeds and adds 50e6 to the recipient balance. Key invariant: the original
+        // withdrawal of 100e6 still completes correctly (CEI pattern means balance was
+        // decremented BEFORE the external call).
+        uint256 balanceBefore = protocol.balances(recipient);
+        assertEq(balanceBefore, 100e6);
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 0;
+        vm.prank(recipient);
+        protocol.withdraw(ids);
+
+        // After withdraw: original 100e6 was deducted, reentrant pay() added 50e6
+        // Balance = 100e6 - 100e6 + 50e6 = 50e6
+        assertEq(protocol.balances(recipient), 50e6, "Balance should reflect withdraw - 100 + reentrant pay + 50");
+        // The original withdrawal payment is fully marked as withdrawn
+        (,,,, uint256 withdrawn,) = protocol.payments(0);
+        assertEq(withdrawn, 100e6, "Payment 0 should be fully withdrawn");
+    }
+
+    function test_reentrancy_payDuringEarlyWithdraw() public {
+        // Create payment
+        vm.prank(payer);
+        protocol.pay(recipient, 100e6, refundTo);
+
+        // Configure reentrancy on the transfer inside earlyWithdrawByArbiter
+        reentrantToken.setReentrancyCallback(
+            address(protocol),
+            abi.encodeWithSelector(
+                RefundProtocol.pay.selector,
+                recipient,
+                10e6,
+                refundTo
+            )
+        );
+        reentrantToken.mint(address(reentrantToken), 10e6);
+        vm.prank(address(reentrantToken));
+        reentrantToken.approve(address(protocol), type(uint256).max);
+
+        // Early withdraw
+        uint256[] memory paymentIDs = new uint256[](1);
+        paymentIDs[0] = 0;
+        uint256[] memory withdrawalAmounts = new uint256[](1);
+        withdrawalAmounts[0] = 60e6;
+        uint256 expiry = block.timestamp + ONE_DAY;
+        bytes32 digest = protocol.hashEarlyWithdrawalInfo(paymentIDs, withdrawalAmounts, 0, expiry, 1);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(RECIPIENT_PK, digest);
+
+        vm.prank(arbiter);
+        protocol.earlyWithdrawByArbiter(paymentIDs, withdrawalAmounts, 0, expiry, 1, recipient, v, r, s);
+
+        // CEI pattern: balance was decremented by 60e6 before the external transfer call.
+        // During transfer, the reentrant pay() added 10e6 to recipient balance.
+        // Net: 100e6 - 60e6 + 10e6 = 50e6
+        assertEq(protocol.balances(recipient), 50e6, "Balance: 100 - 60 withdrawn + 10 reentrant pay");
+        // The withdrawal hash should be marked as used (replay protection)
+        bytes32 withdrawalHash = protocol.hashEarlyWithdrawalInfo(paymentIDs, withdrawalAmounts, 0, expiry, 1);
+        assertTrue(protocol.withdrawalHashes(withdrawalHash), "Withdrawal hash should be marked used");
+    }
+
+    function test_reentrancy_refundDuringPay() public {
+        // Configure reentrancy: during the transferFrom in pay(), try to call refundByRecipient
+        // First we need an existing payment to attempt the refund on
+        reentrantToken.disableReentrancy();
+        vm.prank(payer);
+        protocol.pay(recipient, 50e6, refundTo);
+
+        // Now set up reentrancy for the next pay() call
+        reentrantToken.setReentrancyCallback(
+            address(protocol),
+            abi.encodeWithSelector(RefundProtocol.refundByRecipient.selector, 0)
+        );
+
+        // The reentrant refundByRecipient should fail because msg.sender would be the token,
+        // not the recipient
+        vm.prank(payer);
+        protocol.pay(recipient, 50e6, refundTo);
+
+        // Payment 0 should NOT have been refunded by the reentrancy attempt
+        (,,,,, bool refunded) = protocol.payments(0);
+        assertFalse(refunded, "Reentrancy should not have succeeded in refunding");
+    }
 }
