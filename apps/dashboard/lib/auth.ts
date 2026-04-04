@@ -263,6 +263,108 @@ export const auth = betterAuth({
       rpName: "Sardis",
       origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
     }),
+    /**
+     * API Key management plugin — two configs for test/live mode.
+     *
+     * Test keys (sk_test_*): lower rate limits, safe for development.
+     * Live keys (sk_live_*): production rate limits, full capabilities.
+     *
+     * Permissions use Sardis resource-action model:
+     *   wallets: read, write   — wallet creation, balance checks
+     *   payments: read, write  — payment execution, history
+     *   policies: read, write  — policy CRUD
+     *   mandates: read, write  — spending mandate management
+     *   agents: read, write    — agent registration, capability grants
+     *   admin: read, write     — org settings, billing, key management
+     *
+     * Keys are hashed with the built-in SHA-256 hasher (default).
+     * Metadata is enabled to store mode, environment, and custom labels.
+     * Table: ba_apikey (via schema mapping to match ba_ prefix convention).
+     */
+    apiKey(
+      [
+        {
+          configId: "test",
+          defaultPrefix: "sk_test_",
+          defaultKeyLength: 48,
+          requireName: true,
+          enableMetadata: true,
+          rateLimit: {
+            enabled: true,
+            timeWindow: 1000 * 60 * 60,      // 1 hour window
+            maxRequests: 100,                 // 100 req/hour for test keys
+          },
+          keyExpiration: {
+            defaultExpiresIn: 1000 * 60 * 60 * 24 * 90, // 90 days default
+            maxExpiresIn: 365,                           // max 1 year
+          },
+          permissions: {
+            defaultPermissions: {
+              wallets: ["read"],
+              payments: ["read"],
+              policies: ["read"],
+              mandates: ["read"],
+              agents: ["read"],
+            },
+          },
+          startingCharactersConfig: {
+            shouldStore: true,
+            charactersLength: 12,   // prefix + first 4 chars of key
+          },
+        },
+        {
+          configId: "live",
+          defaultPrefix: "sk_live_",
+          defaultKeyLength: 48,
+          requireName: true,
+          enableMetadata: true,
+          rateLimit: {
+            enabled: true,
+            timeWindow: 1000 * 60 * 60,      // 1 hour window
+            maxRequests: 1000,                // 1000 req/hour for live keys
+          },
+          keyExpiration: {
+            defaultExpiresIn: null,           // no expiration by default
+            maxExpiresIn: 365,                // max 1 year if set
+          },
+          permissions: {
+            defaultPermissions: {
+              wallets: ["read", "write"],
+              payments: ["read", "write"],
+              policies: ["read", "write"],
+              mandates: ["read", "write"],
+              agents: ["read", "write"],
+            },
+          },
+          startingCharactersConfig: {
+            shouldStore: true,
+            charactersLength: 12,   // prefix + first 4 chars of key
+          },
+        },
+      ],
+      {
+        schema: {
+          apikey: {
+            modelName: "ba_apikey",
+            fields: {
+              configId: "config_id",
+              referenceId: "reference_id",
+              refillInterval: "refill_interval",
+              refillAmount: "refill_amount",
+              lastRefillAt: "last_refill_at",
+              rateLimitEnabled: "rate_limit_enabled",
+              rateLimitTimeWindow: "rate_limit_time_window",
+              rateLimitMax: "rate_limit_max",
+              requestCount: "request_count",
+              lastRequest: "last_request",
+              expiresAt: "expires_at",
+              createdAt: "created_at",
+              updatedAt: "updated_at",
+            },
+          },
+        },
+      },
+    ),
     agentAuth({
       providerName: "Sardis",
       providerDescription:
