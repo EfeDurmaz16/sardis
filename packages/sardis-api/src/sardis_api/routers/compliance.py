@@ -646,10 +646,10 @@ async def create_kyc_verification(
         )
 
     except Exception as e:
-        logger.error(f"Failed to create KYC verification: {e}")
+        logger.error(f"Failed to create KYC verification: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create KYC verification: {str(e)}",
+            detail="KYC verification failed",
         )
 
 

@@ -1893,7 +1893,8 @@ def create_secure_checkout_router() -> APIRouter:
         try:
             merchant_origin, merchant_host = _normalize_merchant_origin(payload.merchant_url)
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            logger.warning("Invalid merchant URL in capability request: %s", exc)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid merchant URL") from exc
 
         merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
         pan_allowed_for_merchant = True
@@ -1960,7 +1961,8 @@ def create_secure_checkout_router() -> APIRouter:
         try:
             merchant_origin, merchant_host = _normalize_merchant_origin(payload.merchant_url)
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+            logger.warning("Invalid merchant URL in checkout request: %s", exc)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid merchant URL") from exc
 
         merchant_mode, mode_reason = _resolve_merchant_mode(merchant_host)
         if merchant_mode == MerchantExecutionMode.BLOCKED:

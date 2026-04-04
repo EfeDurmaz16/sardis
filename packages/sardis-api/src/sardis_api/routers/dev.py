@@ -190,7 +190,7 @@ async def dev_faucet(req: FaucetRequest, request: Request):
         logger.error(f"Faucet transfer failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Faucet transfer failed: {exc}",
+            detail="Faucet transfer failed",
         ) from exc
 
     explorer = chain_config.get("explorer", "")

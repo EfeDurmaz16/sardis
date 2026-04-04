@@ -145,7 +145,8 @@ async def register_fides_did(
             public_key=req.public_key,
         )
     except DIDRegistrationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("FIDES DID registration failed for agent %s: %s", agent_id, e)
+        raise HTTPException(status_code=400, detail="DID registration failed")
 
     if agent_repo is not None and existing_agent is not None:
         merged_metadata = _metadata_for_agent(existing_agent)

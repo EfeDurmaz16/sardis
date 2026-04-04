@@ -441,9 +441,10 @@ async def fund_wallet(
     try:
         wallet_address = await _resolve_wallet_address(wallet_id)
     except ValueError as exc:
+        logger.warning("Wallet not found for onramp %s: %s", wallet_id, exc)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Wallet not found",
         )
     except Exception as exc:
         logger.error("Failed to resolve wallet address for %s: %s", wallet_id, exc)
@@ -495,9 +496,10 @@ async def fund_wallet(
             sandbox=sandbox,
         )
     except ValueError as exc:
+        logger.warning("Invalid onramp parameters: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail="Invalid onramp request parameters",
         )
     except Exception as exc:
         logger.error("Turnkey onramp session creation failed: %s", exc)
@@ -591,9 +593,10 @@ async def _fund_wallet_conduit(
             tx_id = quote.quote_id  # Use quote ID as session reference
 
     except ValueError as exc:
+        logger.warning("Invalid Conduit onramp parameters: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
+            detail="Invalid onramp request parameters",
         )
     except ConduitAPIError as exc:
         logger.error("Conduit onramp failed: %s", exc)
@@ -888,9 +891,10 @@ async def create_stripe_onramp_session(
     try:
         wallet_address = await _resolve_wallet_address(req.wallet_id)
     except ValueError as exc:
+        logger.warning("Wallet not found for Stripe onramp %s: %s", req.wallet_id, exc)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Wallet not found",
         )
     except Exception as exc:
         logger.error("Failed to resolve wallet for Stripe onramp: %s", exc)
@@ -956,9 +960,10 @@ async def get_stripe_onramp_link(
     try:
         wallet_address = await _resolve_wallet_address(wallet_id)
     except ValueError as exc:
+        logger.warning("Wallet not found for Stripe link %s: %s", wallet_id, exc)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
+            detail="Wallet not found",
         )
     except Exception as exc:
         logger.error("Failed to resolve wallet for Stripe link: %s", exc)

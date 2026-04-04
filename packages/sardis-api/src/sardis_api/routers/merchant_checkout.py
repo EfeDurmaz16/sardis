@@ -551,12 +551,13 @@ async def pay_session(
             payer_wallet_id=body.wallet_id,
         )
     except ValueError as e:
+        logger.warning("Checkout payment validation failed: %s", e)
         asyncio.create_task(alert_payment_failure(
             error=str(e),
             org_id=session.merchant_id,
             tx_id=session.session_id,
         ))
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail="Invalid payment request")
 
     return PaymentResultResponse(
         session_id=result["session_id"],
@@ -1113,7 +1114,8 @@ async def get_onramp_token(
     try:
         token = _generate_cdp_jwt("POST", "/onramp/v1/token")
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("CDP JWT generation failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     import httpx
 

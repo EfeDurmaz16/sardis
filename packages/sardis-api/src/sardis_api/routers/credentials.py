@@ -215,15 +215,16 @@ async def rotate_credential(
     try:
         new_token = await rotate_impl(cred, encryption=encryption)
     except NotImplementedError as exc:
+        logger.warning("Credential rotation not implemented: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail=f"Credential rotation is unavailable: {exc}",
+            detail="Credential rotation is unavailable for this provider",
         ) from exc
     except Exception as exc:
         logger.exception("Credential rotation failed for %s", credential_id)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Credential rotation failed: {exc}",
+            detail="Credential rotation failed",
         ) from exc
 
     if not isinstance(new_token, (bytes, bytearray)) or not new_token:
