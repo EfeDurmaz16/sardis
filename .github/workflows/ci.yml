@@ -8,7 +8,8 @@ on:
     branches:
       - main
 
-permissions: read-all
+# Default: no permissions. Each job declares its own minimal set.
+permissions: {}
 
 env:
   PYTHON_VERSION: "3.12"
@@ -18,6 +19,8 @@ jobs:
   python-lint-test:
     name: Python Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -58,6 +61,8 @@ jobs:
   idempotency-replay-e2e:
     name: Idempotency Replay E2E
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -84,6 +89,9 @@ jobs:
   contracts-gas:
     name: Contracts Gas Ceiling
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write        # needed for upload-artifact
     defaults:
       run:
         working-directory: contracts
@@ -111,6 +119,8 @@ jobs:
   contracts-strict:
     name: Contracts Strict Forge
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: contracts
@@ -144,6 +154,8 @@ jobs:
   typescript-sdk:
     name: TypeScript SDK Build & Type Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -189,6 +201,8 @@ jobs:
   dashboard-build:
     name: Canonical Dashboard Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -228,6 +242,8 @@ jobs:
   build-landing:
     name: Canonical Landing Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
