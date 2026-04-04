@@ -223,7 +223,7 @@ export const auth = betterAuth({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "Sardis <auth@sardis.sh>",
+          from: "Sardis <auth@mail.sardis.sh>",
           to: user.email,
           subject: "Reset your Sardis password",
           html: `<p>Click <a href="${url}">here</a> to reset your password. This link expires in 1 hour.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
@@ -485,7 +485,7 @@ export const auth = betterAuth({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "Sardis <auth@sardis.sh>",
+            from: "Sardis <auth@mail.sardis.sh>",
             to: email,
             subject: "Sign in to Sardis",
             html: `<p>Click <a href="${url}">here</a> to sign in to your Sardis account. This link expires in 5 minutes.</p>`,
