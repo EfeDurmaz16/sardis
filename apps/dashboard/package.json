@@ -15,7 +15,10 @@
     "@better-auth/api-key": "^1.5.6",
     "@better-auth/passkey": "^1.5.6",
     "@daveyplate/better-auth-ui": "^3.4.0",
+<<<<<<< HEAD
     "@hookform/resolvers": "^5.2.2",
+=======
+>>>>>>> sprint/t2-auth-provider
     "@phosphor-icons/react": "^2.1.10",
     "better-auth": "^1.5.6",
     "class-variance-authority": "^0.7.1",

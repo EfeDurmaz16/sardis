@@ -4,6 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "sonner"
+import { Providers } from "./providers"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
@@ -28,10 +29,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <TooltipProvider>
-            {children}
-            <Toaster richColors position="bottom-right" />
-          </TooltipProvider>
+          <Providers>
+            <TooltipProvider>
+              {children}
+              <Toaster richColors position="bottom-right" />
+            </TooltipProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>
