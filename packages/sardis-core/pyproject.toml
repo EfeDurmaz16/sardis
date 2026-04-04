@@ -44,10 +44,12 @@ dependencies = [
     "apscheduler>=3.10",
     "asyncpg>=0.29",
     "aiohttp>=3.8",
-    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
+ml = [
+    "scipy>=1.11",
+]
 nl-parser = [
     "instructor>=1.0",
     "openai>=1.0",
