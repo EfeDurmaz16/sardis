@@ -237,6 +237,11 @@ export const auth = betterAuth({
       rpID: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
       rpName: "Sardis",
       origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+      authenticatorSelection: {
+        authenticatorAttachment: "platform",
+        userVerification: "required",
+        residentKey: "required",
+      },
     }),
     /**
      * API Key management plugin — two configs for test/live mode.
