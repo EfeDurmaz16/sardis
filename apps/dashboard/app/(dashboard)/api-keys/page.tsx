@@ -482,8 +482,9 @@ export default function ApiKeysPage() {
             className="space-y-4"
           >
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Key Name</label>
+              <label htmlFor="api-key-name" className="text-sm font-medium">Key Name</label>
               <Input
+                id="api-key-name"
                 placeholder="e.g. Production API"
                 value={keyName}
                 onChange={(event) => setKeyName(event.target.value)}
@@ -491,9 +492,9 @@ export default function ApiKeysPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Environment</label>
+              <label htmlFor="api-key-environment" className="text-sm font-medium">Environment</label>
               <Select value={environment} onValueChange={(value) => value && setEnvironment(value as "test" | "live")}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger id="api-key-environment" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -503,7 +504,7 @@ export default function ApiKeysPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Scopes</label>
+              <span className="text-sm font-medium">Scopes</span>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 text-sm">
                   <input

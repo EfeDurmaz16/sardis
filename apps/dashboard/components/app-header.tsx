@@ -533,15 +533,15 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Recipient</label>
-              <Input value={paymentRecipient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRecipient(e.target.value)} placeholder="e.g. MerchantCo or 0x..." />
+              <label htmlFor="payment-recipient" className="text-sm font-medium">Recipient</label>
+              <Input id="payment-recipient" value={paymentRecipient} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentRecipient(e.target.value)} placeholder="e.g. MerchantCo or 0x..." />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount ($)</label>
-              <Input type="number" value={paymentAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentAmount(e.target.value)} placeholder="0.00" />
+              <label htmlFor="payment-amount" className="text-sm font-medium">Amount ($)</label>
+              <Input id="payment-amount" type="number" value={paymentAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPaymentAmount(e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Chain</label>
+              <span className="text-sm font-medium">Chain</span>
               <div className="flex gap-2 flex-wrap">
                 {["Base", "Polygon", "Arbitrum", "Optimism", "Ethereum"].map((chain) => (
                   <Button key={chain} variant={paymentChain === chain ? "default" : "outline"} size="sm" onClick={() => setPaymentChain(chain)}>
