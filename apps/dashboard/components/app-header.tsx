@@ -30,6 +30,7 @@ import {
 } from "@phosphor-icons/react"
 import { Bell } from "@phosphor-icons/react"
 
+// TODO: Wire to real notification API — these are placeholder items
 const notifications = [
   {
     message: "Agent #12 exceeded daily spending limit",
@@ -401,9 +402,11 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
 
         <Popover>
           <PopoverTrigger
+            aria-label="Notifications"
             className={buttonVariants({ variant: "outline", size: "icon", className: "relative" })}
           >
             <Bell className="w-4 h-4" />
+            {/* TODO: Replace static badge count with real notification count */}
             <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
               3
             </span>
