@@ -51,9 +51,6 @@ if [[ -f "contracts/src/RefundProtocol.sol" ]]; then
 elif [[ -f "contracts/src/SardisEscrow.sol" ]]; then
   CONTRACT_FILE="contracts/src/SardisEscrow.sol"
   mode="legacy-sardis-escrow"
-elif [[ -f "contracts/deprecated/SardisEscrow.sol" ]]; then
-  CONTRACT_FILE="contracts/deprecated/SardisEscrow.sol"
-  mode="legacy-sardis-escrow"
 else
   echo "[escrow-governance][fail] missing supported escrow contract surface"
   failures=$((failures + 1))

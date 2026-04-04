@@ -37,9 +37,6 @@ if [[ -f "contracts/src/SardisPolicyModule.sol" ]]; then
 elif [[ -f "contracts/src/SardisSmartAccount.sol" ]]; then
   contract_file="contracts/src/SardisSmartAccount.sol"
   require_match 'setPolicySigner' "$contract_file" "smart account must support policy signer rotation"
-elif [[ -f "contracts/deprecated/SardisSmartAccount.sol" ]]; then
-  contract_file="contracts/deprecated/SardisSmartAccount.sol"
-  require_match 'setPolicySigner' "$contract_file" "smart account must support policy signer rotation"
 else
   echo "[key-governance][fail] missing supported contract surface (SardisPolicyModule or SardisSmartAccount)"
   failures=$((failures + 1))
