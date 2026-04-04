@@ -111,12 +111,13 @@ class AdminRateLimiter:
             key_hash = hashlib.sha256(api_key.encode()).hexdigest()[:16]
             parts.append(f"key:{key_hash}")
 
-        # IP address
-        forwarded = request.headers.get("X-Forwarded-For", "")
-        if forwarded:
-            ip = forwarded.split(",")[0].strip()
+        # Prefer actual client IP over spoofable X-Forwarded-For
+        if request.client and request.client.host:
+            ip = request.client.host
         else:
-            ip = request.client.host if request.client else "unknown"
+            # Fallback to X-Forwarded-For only if client.host unavailable
+            forwarded = request.headers.get("X-Forwarded-For", "")
+            ip = forwarded.split(",")[0].strip() if forwarded else "unknown"
         parts.append(f"ip:{ip}")
 
         return "|".join(parts)
@@ -266,7 +267,8 @@ class AdminRateLimiter:
         self._states[client_id].failed_attempts = 0
 
 
-# Global admin rate limiter instance
+# NOTE: Rate limit state is process-local. In multi-instance deployments,
+# back with Redis (SARDIS_REDIS_URL) for accurate cross-instance limiting.
 _admin_rate_limiter = AdminRateLimiter()
 
 

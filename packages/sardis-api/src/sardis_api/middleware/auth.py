@@ -256,7 +256,7 @@ class APIKeyManager:
                     prefix,
                     key_hash,
                 )
-                # Fallback: try plain SHA-256 hash (keys created by AuthService)
+                # Fallback: plain SHA-256 (DEPRECATED - migrate to HMAC-SHA256)
                 if not row:
                     row = await conn.fetchrow(
                         """
@@ -268,6 +268,12 @@ class APIKeyManager:
                         prefix,
                         plain_hash,
                     )
+                    if row:
+                        logger.warning(
+                            "API key '%s...' using deprecated plain SHA-256 hash. "
+                            "Key should be re-generated with HMAC-SHA256.",
+                            prefix,
+                        )
 
                 if row:
                     # Check expiration

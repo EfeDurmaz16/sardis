@@ -24,7 +24,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for session cookie (better-auth sets this, login page also sets it)
+  // NOTE: Middleware only checks cookie presence for routing decisions.
+  // Actual token validation happens server-side on every API call.
+  // This is acceptable because dashboard pages fetch data via authenticated API calls.
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("sardis_session")?.value;
@@ -33,6 +35,23 @@ export function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Best-effort JWT expiry check — if the token has three dot-separated
+  // segments we can decode the payload and compare `exp` without a
+  // crypto dependency.  An expired token still gets through to the API
+  // which will reject it server-side, but redirecting early improves UX.
+  if (sessionToken.split(".").length === 3) {
+    try {
+      const payload = JSON.parse(atob(sessionToken.split(".")[1]));
+      if (typeof payload.exp === "number" && payload.exp * 1000 < Date.now()) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("callbackUrl", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+    } catch {
+      // Malformed token — let the API handle rejection
+    }
   }
 
   return NextResponse.next();
