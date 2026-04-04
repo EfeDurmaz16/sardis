@@ -47,18 +47,19 @@ export async function sardisProxyResponse(
   init: RequestInit = {},
   options?: { userJwt?: string },
 ): Promise<Response> {
-  const { apiKey, baseUrl } = getSardisApiConfig()
+  const { baseUrl } = getSardisApiConfig()
   const headers = new Headers(init.headers)
 
   if (options?.userJwt) {
     headers.set("Authorization", `Bearer ${options.userJwt}`)
-  } else if (apiKey) {
-    headers.set("X-API-Key", apiKey)
   } else {
+    // Do not fall back to SARDIS_API_KEY for user-facing requests.
+    // The server-side API key carries elevated privileges and must not
+    // be used to proxy unauthenticated dashboard requests.
     throw new SardisProxyError(
-      "No user JWT and no SARDIS_API_KEY configured. Cannot authenticate with Sardis API.",
-      503,
-      { error: "no_auth_credentials" },
+      "Authentication required. No user session found.",
+      401,
+      { error: "authentication_required" },
     )
   }
   headers.set("Accept", "application/json")
