@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { jwt } from "better-auth/plugins";
-// TODO: Add passkey + magicLink plugins after installing @simplewebauthn/server
+import { passkey } from "@better-auth/passkey";
 import { Pool } from "pg";
 
 /**
@@ -87,8 +87,11 @@ export const auth = betterAuth({
         jwks: { modelName: "ba_jwks" },
       },
     }),
-    // Passkey + magic link plugins ready to enable after:
-    // npm install @simplewebauthn/server @simplewebauthn/browser
+    passkey({
+      rpID: process.env.NODE_ENV === "production" ? "sardis.sh" : "localhost",
+      rpName: "Sardis",
+      origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+    }),
   ],
   // Map model names to ba_-prefixed tables (migration 077)
   user: {
@@ -169,6 +172,17 @@ export const auth = betterAuth({
       expiresAt: "expires_at",
       createdAt: "created_at",
       updatedAt: "updated_at",
+    },
+  },
+  passkey: {
+    modelName: "ba_passkey",
+    fields: {
+      publicKey: "public_key",
+      userId: "user_id",
+      credentialId: "credential_id",
+      deviceType: "device_type",
+      backedUp: "backed_up",
+      createdAt: "created_at",
     },
   },
 });
