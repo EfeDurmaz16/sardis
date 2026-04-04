@@ -1,6 +1,5 @@
 {
   "framework": "nextjs",
-  "installCommand": "pnpm install --no-frozen-lockfile",
-  "buildCommand": "next build",
-  "nodeVersion": "22.x"
+  "installCommand": "npm install --legacy-peer-deps",
+  "buildCommand": "next build"
 }
