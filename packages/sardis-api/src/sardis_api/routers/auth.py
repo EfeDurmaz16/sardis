@@ -34,6 +34,16 @@ if not _jwt_secret_env:
         "This will invalidate all tokens on restart. Set JWT_SECRET_KEY for persistent sessions."
     )
     _jwt_secret_env = secrets.token_hex(32)
+elif len(_jwt_secret_env) < 32:
+    if os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production", "staging"):
+        raise RuntimeError(
+            "CRITICAL: JWT_SECRET_KEY is too short (minimum 32 characters for HS256). "
+            "Generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    _logger.warning(
+        "JWT_SECRET_KEY is shorter than 32 characters. "
+        "This is insecure for HS256. Use at least 32 characters in production."
+    )
 
 JWT_SECRET = _jwt_secret_env
 JWT_ALGORITHM = "HS256"
