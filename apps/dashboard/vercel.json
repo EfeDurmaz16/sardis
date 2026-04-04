@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "pnpm install",
-  "buildCommand": "next build"
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "next build",
+  "nodeVersion": "22.x"
 }
