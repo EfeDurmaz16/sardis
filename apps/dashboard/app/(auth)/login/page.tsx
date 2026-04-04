@@ -127,7 +127,7 @@ export default function LoginPage() {
         </p>
       </div>
 
-      <Card className="shadow-sm bg-white border-gray-200 w-full">
+      <Card className="shadow-md bg-white border border-gray-300 w-full">
         <CardHeader className="pb-4 pt-6 px-8">
           <CardTitle className="text-base text-gray-900">Account</CardTitle>
         </CardHeader>
@@ -190,7 +190,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gray-900 text-white hover:bg-gray-800"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Sign In"}
@@ -219,7 +219,7 @@ export default function LoginPage() {
             Sign in with Passkey
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 text-center text-sm">
+        <CardFooter className="flex flex-col gap-2 text-center text-sm border-t border-gray-200 bg-gray-50/50 pt-4">
           <Link
             href="/forgot-password"
             className="text-gray-500 hover:text-gray-900 transition-colors"
