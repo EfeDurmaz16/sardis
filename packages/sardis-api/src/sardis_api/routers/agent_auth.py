@@ -1,36 +1,30 @@
 """Agent Auth Protocol — Discovery, registration, and capability execution.
 
-Implements the Agent Auth Protocol to make Sardis discoverable by any AI agent.
-Key insight: spending mandates ARE capability grants with constraints.
+Delegates identity management (registration, status, revocation, JWT verification)
+to the better-auth agent-auth plugin running on the dashboard service.  Sardis-specific
+business logic (capability execution, constraint validation, mandate mapping) stays here.
 
 Endpoints:
-  GET  /.well-known/agent-configuration  — Discovery document
-  GET  /api/v2/capability/list            — Available capabilities
-  POST /api/v2/capability/execute         — Execute a capability with JWT
-  POST /api/v2/agent/register             — Register agent identity
-  GET  /api/v2/agent/status               — Agent status + grants
-  POST /api/v2/agent/request-capability   — Request a capability grant
-  POST /api/v2/agent/revoke               — Revoke agent access
+  GET  /.well-known/agent-configuration  — Redirect to better-auth discovery
+  GET  /api/v2/capability/list            — Available capabilities (proxied from better-auth)
+  POST /api/v2/capability/execute         — Execute a capability (Sardis business logic)
+  POST /api/v2/agent/register             — Proxy to better-auth agent registration
+  GET  /api/v2/agent/status               — Proxy to better-auth agent status
+  POST /api/v2/agent/request-capability   — Proxy to better-auth capability request
+  POST /api/v2/agent/revoke               — Proxy to better-auth agent revocation
 """
 from __future__ import annotations
 
-import base64
-import hashlib
-import json
 import logging
 import os
-import time
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
-
-# Fail-closed: Ed25519 verification is MANDATORY. If PyNaCl is missing,
-# the module refuses to load — no agent auth without crypto verification.
-from nacl.exceptions import BadSignatureError
-from nacl.signing import VerifyKey
 
 from sardis_api.authz import Principal, require_principal
 
@@ -43,191 +37,29 @@ discovery_router = APIRouter(tags=["agent-auth"])
 router = APIRouter(tags=["agent-auth"])
 
 # ---------------------------------------------------------------------------
-# In-memory stores — DEV ONLY.
-# These dicts are ephemeral: data is lost on every process restart.
-# In production/staging the endpoints below guard against use without a real
-# database pool, returning HTTP 503 until the Postgres-backed repos are wired.
+# Configuration
 # ---------------------------------------------------------------------------
-_agent_registry: dict[str, dict] = {}
-_capability_grants: dict[str, list[dict]] = {}  # agent_id -> [grants]
-
-_SARDIS_ENV = os.getenv("SARDIS_ENVIRONMENT", "development").lower()
-
-if _SARDIS_ENV not in ("production", "staging"):
-    logger.warning(
-        "agent_auth: running with IN-MEMORY stores (SARDIS_ENVIRONMENT=%s). "
-        "Agent registrations and capability grants will NOT survive restarts. "
-        "This is acceptable for local development only.",
-        _SARDIS_ENV,
-    )
-
-
-def _require_persistent_store(request: Request) -> None:
-    """Guard: in production/staging, refuse to serve if no DB pool is available.
-
-    The in-memory dicts are a data-loss footgun in deployed environments.
-    Until Postgres-backed repos replace them, return 503 so operators notice
-    immediately instead of silently losing agent state on redeploy.
-    """
-    if _SARDIS_ENV not in ("production", "staging"):
-        return  # in-memory fallback is fine for dev/test
-
-    pool = getattr(getattr(request, "app", None), "state", None)
-    pool = getattr(pool, "db_pool", None) if pool is not None else None
-    if pool is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Agent auth store is not available. "
-                "In-memory stores are disabled in production/staging — "
-                "a database pool (app.state.db_pool) is required."
-            ),
-        )
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-PROVIDER_NAME = "Sardis Payment OS"
+BETTER_AUTH_URL = os.getenv("BETTER_AUTH_URL", "https://app.sardis.sh")
 PROVIDER_URL = os.getenv("SARDIS_API_URL", "https://api.sardis.sh")
-ALGORITHMS = ["Ed25519"]
-SUPPORTED_MODES = ["delegated", "autonomous"]
 
-CAPABILITIES = {
-    "payment": {
-        "id": "payment",
-        "name": "Execute Payment",
-        "description": "Execute a payment via USDC, card, or bank rail",
-        "version": "1.0.0",
-        "schema": {
-            "input": {
-                "type": "object",
-                "properties": {
-                    "amount": {"type": "string", "description": "Payment amount in minor units"},
-                    "currency": {"type": "string", "default": "USDC"},
-                    "recipient": {"type": "string", "description": "Recipient wallet or address"},
-                    "rail": {"type": "string", "enum": ["usdc", "card", "bank"]},
-                    "memo": {"type": "string"},
-                },
-                "required": ["amount", "recipient"],
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "transaction_id": {"type": "string"},
-                    "status": {"type": "string"},
-                    "amount": {"type": "string"},
-                    "currency": {"type": "string"},
-                },
-            },
-        },
-    },
-    "fx_quote": {
-        "id": "fx_quote",
-        "name": "Get FX Quote",
-        "description": "Get a foreign exchange quote between two currencies",
-        "version": "1.0.0",
-        "schema": {
-            "input": {
-                "type": "object",
-                "properties": {
-                    "from_currency": {"type": "string"},
-                    "to_currency": {"type": "string"},
-                    "amount": {"type": "string"},
-                },
-                "required": ["from_currency", "to_currency", "amount"],
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "rate": {"type": "string"},
-                    "from_amount": {"type": "string"},
-                    "to_amount": {"type": "string"},
-                    "expires_at": {"type": "string"},
-                },
-            },
-        },
-    },
-    "policy_check": {
-        "id": "policy_check",
-        "name": "Check Spending Policy",
-        "description": "Evaluate whether a proposed payment passes spending policies",
-        "version": "1.0.0",
-        "schema": {
-            "input": {
-                "type": "object",
-                "properties": {
-                    "amount": {"type": "string"},
-                    "currency": {"type": "string"},
-                    "vendor_category": {"type": "string"},
-                    "merchant_id": {"type": "string"},
-                },
-                "required": ["amount"],
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "allowed": {"type": "boolean"},
-                    "reason": {"type": "string"},
-                    "remaining_budget": {"type": "string"},
-                },
-            },
-        },
-    },
-    "mandate_create": {
-        "id": "mandate_create",
-        "name": "Create Spending Mandate",
-        "description": "Create a spending mandate defining scoped authority for an agent",
-        "version": "1.0.0",
-        "schema": {
-            "input": {
-                "type": "object",
-                "properties": {
-                    "purpose_scope": {"type": "string"},
-                    "amount_daily": {"type": "string"},
-                    "amount_monthly": {"type": "string"},
-                    "allowed_rails": {"type": "array", "items": {"type": "string"}},
-                    "merchant_scope": {"type": "object"},
-                },
-                "required": ["purpose_scope"],
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "mandate_id": {"type": "string"},
-                    "status": {"type": "string"},
-                },
-            },
-        },
-    },
-    "balance_check": {
-        "id": "balance_check",
-        "name": "Check Wallet Balance",
-        "description": "Check the balance of a wallet",
-        "version": "1.0.0",
-        "schema": {
-            "input": {
-                "type": "object",
-                "properties": {
-                    "wallet_id": {"type": "string"},
-                    "currency": {"type": "string", "default": "USDC"},
-                },
-                "required": ["wallet_id"],
-            },
-            "output": {
-                "type": "object",
-                "properties": {
-                    "balance": {"type": "string"},
-                    "currency": {"type": "string"},
-                    "wallet_id": {"type": "string"},
-                },
-            },
-        },
-    },
-}
+# Shared httpx client — created lazily to avoid import-time side effects.
+_http_client: httpx.AsyncClient | None = None
+
+
+def _get_http_client() -> httpx.AsyncClient:
+    """Return (or create) a shared async httpx client for better-auth calls."""
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            base_url=BETTER_AUTH_URL,
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            headers={"Accept": "application/json"},
+        )
+    return _http_client
 
 
 # ---------------------------------------------------------------------------
-# Request / Response Models
+# Request / Response Models (unchanged API contract)
 # ---------------------------------------------------------------------------
 
 class AgentRegistrationRequest(BaseModel):
@@ -315,28 +147,107 @@ class AgentRevokeResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Mandate-to-Capability Mapper
+# better-auth proxy helpers
+# ---------------------------------------------------------------------------
+
+def _forward_headers(request: Request) -> dict[str, str]:
+    """Build headers to forward to better-auth, preserving auth context."""
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    # Forward the main auth header so better-auth can identify the user
+    if auth_header := request.headers.get("authorization"):
+        headers["Authorization"] = auth_header
+    # Forward agent JWT header
+    if agent_jwt := request.headers.get("x-agent-jwt"):
+        headers["X-Agent-JWT"] = agent_jwt
+    # Forward cookies (better-auth session cookies)
+    if cookie := request.headers.get("cookie"):
+        headers["Cookie"] = cookie
+    return headers
+
+
+async def _proxy_to_better_auth(
+    method: str,
+    path: str,
+    request: Request,
+    json_body: dict | None = None,
+    params: dict | None = None,
+) -> dict:
+    """Proxy a request to better-auth and return the JSON response.
+
+    Raises HTTPException on network errors or non-2xx responses.
+    """
+    client = _get_http_client()
+    headers = _forward_headers(request)
+
+    try:
+        resp = await client.request(
+            method=method,
+            url=path,
+            headers=headers,
+            json=json_body,
+            params=params,
+        )
+    except httpx.RequestError as exc:
+        logger.error("better-auth proxy error: %s %s -> %s", method, path, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Agent auth service unavailable",
+        ) from exc
+
+    if resp.status_code >= 400:
+        # Pass through better-auth error responses
+        try:
+            detail = resp.json()
+        except Exception:
+            detail = resp.text or "Unknown error from auth service"
+        raise HTTPException(status_code=resp.status_code, detail=detail)
+
+    try:
+        return resp.json()
+    except Exception:
+        return {}
+
+
+async def _verify_agent_jwt(request: Request) -> dict | None:
+    """Verify an agent JWT by calling better-auth's token verification.
+
+    Sends the X-Agent-JWT header to better-auth for cryptographic verification
+    against the agent's registered public key.  Returns the decoded payload or
+    None when no token is present / verification fails.
+    """
+    token = request.headers.get("x-agent-jwt", "")
+    if not token:
+        return None
+
+    client = _get_http_client()
+    try:
+        resp = await client.post(
+            "/api/auth/agent/verify-token",
+            headers={"X-Agent-JWT": token, "Accept": "application/json"},
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("payload") or data
+    except httpx.RequestError as exc:
+        logger.warning("Agent JWT verification call failed: %s", exc)
+
+    # TODO: When better-auth exposes a cross-service verify endpoint with JWKS,
+    # replace this fallback with local JWKS-based EdDSA verification.
+    logger.debug("Agent JWT verification: token present but could not be verified via better-auth")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Mandate-to-Capability Mapper (Sardis business logic — kept as-is)
 # ---------------------------------------------------------------------------
 
 def mandate_to_capability_grant(mandate: dict) -> dict:
     """Convert a spending mandate into an Agent Auth capability grant.
 
     The key insight: a spending mandate IS a capability grant with constraints.
-    Example:
-        Mandate: "max $500/day on dev tools"
-        =>
-        Capability grant: {
-            "capability": "payment",
-            "constraints": {
-                "amount": {"max": 500},
-                "period": {"in": ["daily"]},
-                "vendor_category": {"in": ["dev_tools"]}
-            }
-        }
     """
     constraints: dict = {}
 
-    # Amount constraints
     amount_constraints: dict = {}
     if mandate.get("amount_per_tx"):
         amount_constraints["max_per_tx"] = str(mandate["amount_per_tx"])
@@ -351,35 +262,20 @@ def mandate_to_capability_grant(mandate: dict) -> dict:
     if amount_constraints:
         constraints["amount"] = amount_constraints
 
-    # Currency constraint
     if mandate.get("currency"):
         constraints["currency"] = {"in": [mandate["currency"]]}
-
-    # Rail constraints
     if mandate.get("allowed_rails"):
         constraints["rail"] = {"in": mandate["allowed_rails"]}
-
-    # Chain constraints
     if mandate.get("allowed_chains"):
         constraints["chain"] = {"in": mandate["allowed_chains"]}
-
-    # Token constraints
     if mandate.get("allowed_tokens"):
         constraints["token"] = {"in": mandate["allowed_tokens"]}
-
-    # Merchant / vendor scope
     if mandate.get("merchant_scope"):
         constraints["vendor_category"] = mandate["merchant_scope"]
-
-    # Purpose scope
     if mandate.get("purpose_scope"):
         constraints["purpose"] = {"in": [mandate["purpose_scope"]]}
-
-    # Approval mode
     if mandate.get("approval_mode"):
         constraints["approval_mode"] = mandate["approval_mode"]
-
-    # Approval threshold
     if mandate.get("approval_threshold"):
         constraints["approval_threshold"] = str(mandate["approval_threshold"])
 
@@ -395,10 +291,7 @@ def mandate_to_capability_grant(mandate: dict) -> dict:
 
 
 def capability_grant_to_mandate(grant: dict) -> dict:
-    """Convert an Agent Auth capability grant back to a spending mandate shape.
-
-    Inverse of mandate_to_capability_grant — useful for policy enforcement.
-    """
+    """Convert an Agent Auth capability grant back to a spending mandate shape."""
     constraints = grant.get("constraints", {})
     amount = constraints.get("amount", {})
 
@@ -421,25 +314,18 @@ def capability_grant_to_mandate(grant: dict) -> dict:
     currency = constraints.get("currency", {})
     if currency.get("in"):
         mandate["currency"] = currency["in"][0]
-
     if constraints.get("rail", {}).get("in"):
         mandate["allowed_rails"] = constraints["rail"]["in"]
-
     if constraints.get("chain", {}).get("in"):
         mandate["allowed_chains"] = constraints["chain"]["in"]
-
     if constraints.get("token", {}).get("in"):
         mandate["allowed_tokens"] = constraints["token"]["in"]
-
     if constraints.get("vendor_category"):
         mandate["merchant_scope"] = constraints["vendor_category"]
-
     if constraints.get("purpose", {}).get("in"):
         mandate["purpose_scope"] = constraints["purpose"]["in"][0]
-
     if constraints.get("approval_mode"):
         mandate["approval_mode"] = constraints["approval_mode"]
-
     if constraints.get("approval_threshold"):
         mandate["approval_threshold"] = Decimal(constraints["approval_threshold"])
 
@@ -447,219 +333,95 @@ def capability_grant_to_mandate(grant: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Constraint Validation
+# Constraint Validation (Sardis business logic — kept as-is)
 # ---------------------------------------------------------------------------
 
 def validate_constraints(grant: dict, params: dict) -> tuple[bool, str | None]:
-    """Validate execution parameters against capability grant constraints.
-
-    Returns (allowed, reason).
-    """
+    """Validate execution parameters against capability grant constraints."""
     constraints = grant.get("constraints", {})
     if not constraints:
         return True, None
 
-    # Amount check
     amount_constraints = constraints.get("amount", {})
     if params.get("amount") and amount_constraints:
         try:
             req_amount = Decimal(str(params["amount"]))
         except Exception:
             return False, "Invalid amount format"
-
         max_per_tx = amount_constraints.get("max_per_tx")
         if max_per_tx and req_amount > Decimal(max_per_tx):
             return False, f"Amount {req_amount} exceeds per-transaction limit of {max_per_tx}"
 
-    # Currency check
     currency_constraint = constraints.get("currency", {})
     if params.get("currency") and currency_constraint.get("in"):
         if params["currency"] not in currency_constraint["in"]:
             return False, f"Currency {params['currency']} not in allowed currencies: {currency_constraint['in']}"
 
-    # Rail check
     rail_constraint = constraints.get("rail", {})
     if params.get("rail") and rail_constraint.get("in"):
         if params["rail"] not in rail_constraint["in"]:
             return False, f"Rail {params['rail']} not in allowed rails: {rail_constraint['in']}"
 
-    # Vendor category check
     vendor_constraint = constraints.get("vendor_category", {})
     if params.get("vendor_category") and vendor_constraint.get("in"):
         if params["vendor_category"] not in vendor_constraint["in"]:
-            return False, f"Vendor category not allowed"
+            return False, "Vendor category not allowed"
 
     return True, None
 
 
 # ---------------------------------------------------------------------------
-# JWT Verification Helpers (Ed25519)
-# ---------------------------------------------------------------------------
-
-def _verify_agent_jwt(request: Request) -> dict | None:
-    """Extract and verify an agent JWT from the X-Agent-JWT header.
-
-    Uses a dedicated header to avoid conflicts with the main
-    Authorization: Bearer header used by API key / dashboard JWT auth.
-
-    Performs MANDATORY Ed25519 signature verification against the agent's
-    registered public key. No bypass, no skip, no fallback to unverified.
-
-    JWT format: <header>.<payload>.<signature>
-      - header and payload are base64url-encoded JSON
-      - signature is base64url-encoded Ed25519 signature over "<header>.<payload>"
-
-    Returns decoded payload dict or None on failure.
-    """
-    token = request.headers.get("x-agent-jwt", "")
-    if not token:
-        return None
-
-    parts = token.split(".")
-    if len(parts) != 3:
-        logger.warning("Agent JWT rejected: invalid structure (expected 3 parts, got %d)", len(parts))
-        return None
-
-    header_b64, payload_b64, signature_b64 = parts
-
-    # Decode payload
-    try:
-        padded_payload = payload_b64 + "=" * (4 - len(payload_b64) % 4) if len(payload_b64) % 4 else payload_b64
-        payload_bytes = base64.urlsafe_b64decode(padded_payload)
-        payload = json.loads(payload_bytes)
-    except Exception:
-        logger.warning("Agent JWT rejected: malformed payload")
-        return None
-
-    # Validate required claims
-    if "sub" not in payload:
-        logger.warning("Agent JWT rejected: missing 'sub' claim")
-        return None
-
-    # Check expiration
-    if "exp" in payload and payload["exp"] < time.time():
-        logger.warning("Agent JWT rejected: token expired")
-        return None
-
-    # Look up agent — agent MUST be registered
-    agent_id = payload.get("sub")
-    if not agent_id or agent_id not in _agent_registry:
-        logger.warning("Agent JWT rejected: agent '%s' not registered", agent_id)
-        return None
-
-    agent = _agent_registry[agent_id]
-    if agent["status"] != "active":
-        logger.warning("Agent JWT rejected: agent '%s' status is '%s'", agent_id, agent["status"])
-        return None
-
-    # ----- MANDATORY Ed25519 signature verification -----
-    # Decode the signature from the JWT
-    try:
-        padded_sig = signature_b64 + "=" * (4 - len(signature_b64) % 4) if len(signature_b64) % 4 else signature_b64
-        signature_bytes = base64.urlsafe_b64decode(padded_sig)
-    except Exception:
-        logger.warning("Agent JWT rejected: malformed signature encoding")
-        return None
-
-    # The signature base is the standard JWT signing input: "<header>.<payload>"
-    # (the raw base64url strings, NOT decoded bytes)
-    signature_base = f"{header_b64}.{payload_b64}".encode("ascii")
-
-    # Reconstruct the VerifyKey from the agent's registered hex-encoded public key
-    try:
-        public_key_bytes = bytes.fromhex(agent["public_key"])
-        verify_key = VerifyKey(public_key_bytes)
-    except Exception:
-        logger.error("Agent JWT rejected: invalid public key for agent '%s'", agent_id)
-        return None
-
-    # Verify the signature — this is the cryptographic gate
-    try:
-        verify_key.verify(signature_base, signature_bytes)
-    except BadSignatureError:
-        logger.warning("Agent JWT rejected: Ed25519 signature verification FAILED for agent '%s'", agent_id)
-        return None
-    except Exception:
-        logger.error("Agent JWT rejected: unexpected error during signature verification for agent '%s'", agent_id)
-        return None
-
-    logger.debug("Agent JWT verified: agent '%s' signature valid", agent_id)
-    return payload
-
-
-# ---------------------------------------------------------------------------
-# Discovery Endpoint (public, no auth)
+# Discovery Endpoint (public, no auth) — redirect to better-auth
 # ---------------------------------------------------------------------------
 
 @discovery_router.get("/.well-known/agent-configuration")
 async def agent_configuration():
     """Agent Auth Protocol discovery document.
 
-    Any AI agent can discover Sardis capabilities by fetching this endpoint.
-    Inspired by FIDES /.well-known/fides.json (~/fides/services/discovery/).
+    Redirects to the better-auth agent-auth plugin's discovery endpoint on
+    the dashboard service which is the canonical source of truth for agent
+    configuration, capabilities, and supported algorithms.
     """
-    return {
-        "provider": {
-            "name": PROVIDER_NAME,
-            "url": PROVIDER_URL,
-            "description": "AI-native payment infrastructure. Spending mandates, policy enforcement, and multi-rail payments for autonomous agents.",
-            "logo_url": f"{PROVIDER_URL}/logo.svg",
-        },
-        "protocol_version": "1.0.0",
-        "supported_modes": SUPPORTED_MODES,
-        "algorithms": ALGORITHMS,
-        "capabilities": list(CAPABILITIES.keys()),
-        "approval_methods": ["device_authorization", "api_key", "jwt"],
-        "endpoints": {
-            "register": f"{PROVIDER_URL}/api/v2/agent/register",
-            "status": f"{PROVIDER_URL}/api/v2/agent/status",
-            "request_capability": f"{PROVIDER_URL}/api/v2/agent/request-capability",
-            "execute": f"{PROVIDER_URL}/api/v2/capability/execute",
-            "list_capabilities": f"{PROVIDER_URL}/api/v2/capability/list",
-            "revoke": f"{PROVIDER_URL}/api/v2/agent/revoke",
-        },
-        "security": {
-            "type": "custom_header",
-            "header": "X-Agent-JWT",
-            "scheme": "jwt",
-            "algorithm": "EdDSA",
-            "description": (
-                "Ed25519 JWT tokens via X-Agent-JWT header. "
-                "Separate from the main Authorization header to support "
-                "dual auth (API key + agent identity)."
-            ),
-        },
-        # FIDES extensions (compatible with ~/fides agent card format)
-        "x-fides-compatible": True,
-        "x-sardis-mandate-support": True,
-    }
+    return RedirectResponse(
+        url=f"{BETTER_AUTH_URL}/api/auth/agent/.well-known/agent-configuration",
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+    )
 
 
 # ---------------------------------------------------------------------------
-# Capability Listing (public)
+# Capability Listing (public) — proxy to better-auth
 # ---------------------------------------------------------------------------
 
 @discovery_router.get("/api/v2/capability/list")
-async def list_capabilities():
-    """List all capabilities Sardis exposes to agents."""
-    return {
-        "capabilities": [
-            {
-                "id": cap["id"],
-                "name": cap["name"],
-                "description": cap["description"],
-                "version": cap["version"],
-                "schema": cap["schema"],
-            }
-            for cap in CAPABILITIES.values()
-        ],
-        "total": len(CAPABILITIES),
-    }
+async def list_capabilities(request: Request):
+    """List all capabilities Sardis exposes to agents.
+
+    Proxies to better-auth which holds the canonical capability definitions
+    configured in the agentAuth plugin.
+    """
+    try:
+        data = await _proxy_to_better_auth(
+            "GET", "/api/auth/agent/capabilities", request,
+        )
+        return data
+    except HTTPException:
+        # Fallback: return a minimal capability list when better-auth is unreachable.
+        # This keeps the endpoint functional during dashboard downtime.
+        return {
+            "capabilities": [
+                {"name": cap, "description": f"Sardis {cap} capability"}
+                for cap in ("payment", "fx_quote", "policy_check", "mandate_create", "balance_check")
+            ],
+            "total": 5,
+        }
 
 
 # ---------------------------------------------------------------------------
-# Capability Execution (authenticated)
+# Capability Execution (authenticated — Sardis business logic)
 # ---------------------------------------------------------------------------
+
+KNOWN_CAPABILITIES = {"payment", "fx_quote", "policy_check", "mandate_create", "balance_check"}
+
 
 @router.post("/capability/execute", response_model=CapabilityExecuteResponse)
 async def execute_capability(
@@ -669,49 +431,60 @@ async def execute_capability(
 ):
     """Execute a capability on behalf of an agent.
 
-    Verifies the agent's JWT, checks capability grants and constraints,
-    then dispatches to the appropriate Sardis service:
-      - payment    -> PaymentOrchestrator / sardis.pay()
-      - fx_quote   -> LiquidityRouter
-      - policy_check -> SpendingPolicy.evaluate()
-      - mandate_create -> spending mandate creation
-      - balance_check -> wallet balance query
+    Verifies the agent's JWT via better-auth, checks capability grants and
+    constraints, then dispatches to the appropriate Sardis service.
     """
-    _require_persistent_store(request)
     execution_id = f"exec_{uuid4().hex[:12]}"
     now = datetime.now(UTC)
 
-    # Validate capability exists
-    if body.capability not in CAPABILITIES:
+    if body.capability not in KNOWN_CAPABILITIES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown capability: {body.capability}. Available: {list(CAPABILITIES.keys())}",
+            detail=f"Unknown capability: {body.capability}. Available: {sorted(KNOWN_CAPABILITIES)}",
         )
 
-    # Check agent JWT if present (agent-to-provider flow)
-    agent_payload = _verify_agent_jwt(request)
+    # Verify agent JWT via better-auth
+    agent_payload = await _verify_agent_jwt(request)
     agent_id = agent_payload.get("sub") if agent_payload else None
 
-    # If agent is registered, validate capability grants
-    if agent_id and agent_id in _agent_registry:
-        grants = _capability_grants.get(agent_id, [])
-        matching = [g for g in grants if g["capability"] == body.capability and g["status"] == "active"]
-        if not matching:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Agent {agent_id} does not have an active grant for capability '{body.capability}'",
+    # If the agent is authenticated, validate grants via better-auth
+    if agent_id:
+        try:
+            grants_data = await _proxy_to_better_auth(
+                "GET",
+                f"/api/auth/agent/grants/{agent_id}",
+                request,
             )
+            grants = grants_data.get("grants", [])
+            matching = [
+                g for g in grants
+                if g.get("capability") == body.capability and g.get("status") == "active"
+            ]
+            if not matching:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Agent {agent_id} does not have an active grant for capability '{body.capability}'",
+                )
+            # Validate constraints on the first matching grant
+            allowed, reason = validate_constraints(matching[0], body.parameters)
+            if not allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Constraint violation: {reason}",
+                )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("Could not validate agent grants via better-auth: %s", exc)
+            # Fail-open only in development; production requires grant validation
+            env = os.getenv("SARDIS_ENVIRONMENT", "development").lower()
+            if env in ("production", "staging"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Agent grant validation service unavailable",
+                ) from exc
 
-        # Validate constraints on the first matching grant
-        grant = matching[0]
-        allowed, reason = validate_constraints(grant, body.parameters)
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Constraint violation: {reason}",
-            )
-
-    # Dispatch to sardis services
+    # Dispatch to Sardis services
     result = await _dispatch_capability(body.capability, body.parameters, principal)
 
     return CapabilityExecuteResponse(
@@ -724,9 +497,12 @@ async def execute_capability(
     )
 
 
+# ---------------------------------------------------------------------------
+# Capability Dispatch (Sardis business logic — kept as-is)
+# ---------------------------------------------------------------------------
+
 async def _dispatch_capability(capability: str, params: dict, principal: Principal) -> dict:
     """Route capability execution to the appropriate Sardis service."""
-
     if capability == "payment":
         return await _exec_payment(params, principal)
     elif capability == "fx_quote":
@@ -747,7 +523,6 @@ async def _exec_payment(params: dict, principal: Principal) -> dict:
         from sardis_v2_core.payment_orchestrator import PaymentOrchestrator
 
         orchestrator = PaymentOrchestrator()
-        # Map Agent Auth params to orchestrator format
         payment_result = await orchestrator.execute_payment(
             org_id=principal.organization_id,
             amount=params.get("amount", "0"),
@@ -780,8 +555,8 @@ async def _exec_fx_quote(params: dict, principal: Principal) -> dict:
     try:
         from sardis_v2_core.liquidity_router import LiquidityRouter
 
-        router = LiquidityRouter()
-        quote = await router.get_quote(
+        liq_router = LiquidityRouter()
+        quote = await liq_router.get_quote(
             from_currency=params.get("from_currency", "USD"),
             to_currency=params.get("to_currency", "USDC"),
             amount=params.get("amount", "0"),
@@ -793,7 +568,6 @@ async def _exec_fx_quote(params: dict, principal: Principal) -> dict:
             "expires_at": getattr(quote, "expires_at", ""),
         }
     except ImportError:
-        # Simulated quote for dev
         return {
             "rate": "1.0",
             "from_amount": params.get("amount", "0"),
@@ -807,7 +581,6 @@ async def _exec_fx_quote(params: dict, principal: Principal) -> dict:
 async def _exec_policy_check(params: dict, principal: Principal) -> dict:
     """Check spending policy."""
     try:
-        # Check against spending mandates if agent_id is known
         from sardis_v2_core.database import Database
 
         pool = await Database.get_pool()
@@ -816,11 +589,9 @@ async def _exec_policy_check(params: dict, principal: Principal) -> dict:
                 "SELECT * FROM spending_mandates WHERE org_id = $1 AND status = 'active'",
                 principal.organization_id,
             )
-
         if not mandates:
             return {"allowed": True, "reason": "No active mandates (unrestricted)", "remaining_budget": "unlimited"}
 
-        # Check amount against mandate limits
         amount = Decimal(str(params.get("amount", "0")))
         for m in mandates:
             if m["amount_per_tx"] and amount > m["amount_per_tx"]:
@@ -829,10 +600,8 @@ async def _exec_policy_check(params: dict, principal: Principal) -> dict:
                     "reason": f"Exceeds per-transaction limit of {m['amount_per_tx']}",
                     "remaining_budget": str(m["amount_per_tx"]),
                 }
-
         return {"allowed": True, "reason": "Within policy limits", "remaining_budget": "available"}
     except (ImportError, Exception):
-        # In dev/test mode without Postgres, fall back to unrestricted
         return {"allowed": True, "reason": "Policy engine not available (dev mode)", "remaining_budget": "unlimited"}
 
 
@@ -897,7 +666,7 @@ async def _exec_balance_check(params: dict, principal: Principal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Agent Registration (authenticated)
+# Agent Registration — proxy to better-auth
 # ---------------------------------------------------------------------------
 
 @router.post("/agent/register", response_model=AgentRegistrationResponse, status_code=status.HTTP_201_CREATED)
@@ -908,72 +677,42 @@ async def register_agent(
 ):
     """Register an AI agent with Sardis via the Agent Auth Protocol.
 
-    Creates an agent identity, optionally grants requested capabilities.
-    The agent receives an ID and can then use JWT-signed requests.
+    Proxies the registration to better-auth's agent-auth plugin which stores
+    the agent identity in the ba_agent table and manages key material.
     """
-    _require_persistent_store(request)
-    agent_id = f"agent_auth_{uuid4().hex[:12]}"
-    now = datetime.now(UTC)
+    data = await _proxy_to_better_auth(
+        "POST",
+        "/api/auth/agent/register",
+        request,
+        json_body={
+            "name": body.agent_name,
+            "description": body.agent_description,
+            "publicKey": body.public_key,
+            "algorithm": body.algorithm,
+            "mode": body.mode,
+            "capabilities": body.capabilities_requested,
+            "callbackUrl": body.callback_url,
+            "metadata": body.metadata,
+        },
+    )
 
-    if body.mode not in SUPPORTED_MODES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported mode: {body.mode}. Supported: {SUPPORTED_MODES}",
-        )
-
-    if body.algorithm not in ALGORITHMS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported algorithm: {body.algorithm}. Supported: {ALGORITHMS}",
-        )
-
-    # Store agent
-    _agent_registry[agent_id] = {
-        "agent_id": agent_id,
-        "org_id": principal.organization_id,
-        "agent_name": body.agent_name,
-        "agent_description": body.agent_description,
-        "public_key": body.public_key,
-        "algorithm": body.algorithm,
-        "mode": body.mode,
-        "status": "active",
-        "callback_url": body.callback_url,
-        "metadata": body.metadata or {},
-        "created_at": now.isoformat(),
-        "last_active_at": now.isoformat(),
-    }
-
-    # Auto-grant requested capabilities
-    grants = []
-    for cap_id in body.capabilities_requested:
-        if cap_id in CAPABILITIES:
-            grant = {
-                "grant_id": f"grant_{uuid4().hex[:12]}",
-                "agent_id": agent_id,
-                "capability": cap_id,
-                "status": "active",
-                "constraints": {},
-                "granted_at": now.isoformat(),
-                "expires_at": None,
-            }
-            grants.append(grant)
-
-    _capability_grants[agent_id] = grants
+    now = datetime.now(UTC).isoformat()
+    agent_id = data.get("agentId") or data.get("agent_id") or f"agent_auth_{uuid4().hex[:12]}"
 
     logger.info(
-        "Agent registered: %s (org=%s, mode=%s, caps=%d)",
-        agent_id, principal.organization_id, body.mode, len(grants),
+        "Agent registered via better-auth: %s (org=%s, mode=%s)",
+        agent_id, principal.organization_id, body.mode,
     )
 
     return AgentRegistrationResponse(
         agent_id=agent_id,
-        org_id=principal.organization_id,
-        status="active",
-        mode=body.mode,
-        public_key=body.public_key,
-        algorithm=body.algorithm,
-        capabilities_granted=grants,
-        created_at=now.isoformat(),
+        org_id=data.get("orgId") or data.get("org_id") or principal.organization_id,
+        status=data.get("status", "active"),
+        mode=data.get("mode", body.mode),
+        public_key=data.get("publicKey") or data.get("public_key") or body.public_key,
+        algorithm=data.get("algorithm", body.algorithm),
+        capabilities_granted=data.get("capabilitiesGranted") or data.get("capabilities_granted") or [],
+        created_at=data.get("createdAt") or data.get("created_at") or now,
         next_steps=[
             "Use the agent_id as JWT 'sub' claim for capability execution",
             "POST /api/v2/capability/execute with signed JWT to perform actions",
@@ -983,7 +722,7 @@ async def register_agent(
 
 
 # ---------------------------------------------------------------------------
-# Agent Status
+# Agent Status — proxy to better-auth
 # ---------------------------------------------------------------------------
 
 @router.get("/agent/status", response_model=AgentStatusResponse)
@@ -991,43 +730,44 @@ async def agent_status(
     request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Get agent status and capability grants.
-
-    Uses the agent JWT sub claim or query param to identify the agent.
-    """
-    _require_persistent_store(request)
+    """Get agent status and capability grants via better-auth."""
     # Try JWT first
-    agent_payload = _verify_agent_jwt(request)
+    agent_payload = await _verify_agent_jwt(request)
     agent_id = agent_payload.get("sub") if agent_payload else None
 
     # Fallback to query param
     if not agent_id:
         agent_id = request.query_params.get("agent_id")
 
-    if not agent_id or agent_id not in _agent_registry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if not agent_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="agent_id required (via JWT or query param)")
 
-    agent = _agent_registry[agent_id]
-    if agent["org_id"] != principal.organization_id and not principal.is_admin:
+    data = await _proxy_to_better_auth(
+        "GET",
+        f"/api/auth/agent/{agent_id}",
+        request,
+    )
+
+    # Verify org ownership
+    agent_org = data.get("orgId") or data.get("org_id") or ""
+    if agent_org != principal.organization_id and not principal.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    grants = _capability_grants.get(agent_id, [])
 
     return AgentStatusResponse(
         agent_id=agent_id,
-        org_id=agent["org_id"],
-        status=agent["status"],
-        mode=agent["mode"],
-        public_key=agent["public_key"],
-        algorithm=agent["algorithm"],
-        capabilities=grants,
-        created_at=agent["created_at"],
-        last_active_at=agent.get("last_active_at"),
+        org_id=agent_org or principal.organization_id,
+        status=data.get("status", "unknown"),
+        mode=data.get("mode", "delegated"),
+        public_key=data.get("publicKey") or data.get("public_key") or "",
+        algorithm=data.get("algorithm", "Ed25519"),
+        capabilities=data.get("capabilities") or data.get("grants") or [],
+        created_at=data.get("createdAt") or data.get("created_at") or "",
+        last_active_at=data.get("lastActiveAt") or data.get("last_active_at"),
     )
 
 
 # ---------------------------------------------------------------------------
-# Request Capability
+# Request Capability — proxy to better-auth
 # ---------------------------------------------------------------------------
 
 @router.post("/agent/request-capability", response_model=CapabilityGrantResponse)
@@ -1036,54 +776,39 @@ async def request_capability(
     request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Request an additional capability for an agent."""
-    _require_persistent_store(request)
-    agent_payload = _verify_agent_jwt(request)
+    """Request an additional capability for an agent via better-auth."""
+    agent_payload = await _verify_agent_jwt(request)
     agent_id = agent_payload.get("sub") if agent_payload else None
-
     if not agent_id:
         agent_id = request.query_params.get("agent_id")
+    if not agent_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="agent_id required (via JWT or query param)")
 
-    if not agent_id or agent_id not in _agent_registry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    data = await _proxy_to_better_auth(
+        "POST",
+        f"/api/auth/agent/{agent_id}/request-capability",
+        request,
+        json_body={
+            "capability": body.capability,
+            "constraints": body.constraints,
+            "justification": body.justification,
+        },
+    )
 
-    agent = _agent_registry[agent_id]
-    if agent["org_id"] != principal.organization_id and not principal.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    if body.capability not in CAPABILITIES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown capability: {body.capability}",
-        )
-
-    now = datetime.now(UTC)
-    grant = {
-        "grant_id": f"grant_{uuid4().hex[:12]}",
-        "agent_id": agent_id,
-        "capability": body.capability,
-        "status": "active",
-        "constraints": body.constraints or {},
-        "granted_at": now.isoformat(),
-        "expires_at": None,
-    }
-
-    if agent_id not in _capability_grants:
-        _capability_grants[agent_id] = []
-    _capability_grants[agent_id].append(grant)
-
+    now = datetime.now(UTC).isoformat()
     return CapabilityGrantResponse(
-        grant_id=grant["grant_id"],
+        grant_id=data.get("grantId") or data.get("grant_id") or f"grant_{uuid4().hex[:12]}",
         agent_id=agent_id,
         capability=body.capability,
-        status="active",
-        constraints=body.constraints,
-        granted_at=now.isoformat(),
+        status=data.get("status", "active"),
+        constraints=data.get("constraints") or body.constraints,
+        granted_at=data.get("grantedAt") or data.get("granted_at") or now,
+        expires_at=data.get("expiresAt") or data.get("expires_at"),
     )
 
 
 # ---------------------------------------------------------------------------
-# Revoke Agent
+# Revoke Agent — proxy to better-auth
 # ---------------------------------------------------------------------------
 
 @router.post("/agent/revoke", response_model=AgentRevokeResponse)
@@ -1092,31 +817,21 @@ async def revoke_agent(
     request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Revoke an agent's access and all capability grants."""
-    _require_persistent_store(request)
-    agent_id = body.agent_id
+    """Revoke an agent's access and all capability grants via better-auth."""
+    data = await _proxy_to_better_auth(
+        "POST",
+        f"/api/auth/agent/{body.agent_id}/revoke",
+        request,
+        json_body={"reason": body.reason},
+    )
 
-    if agent_id not in _agent_registry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    now = datetime.now(UTC).isoformat()
 
-    agent = _agent_registry[agent_id]
-    if agent["org_id"] != principal.organization_id and not principal.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-
-    now = datetime.now(UTC)
-
-    # Revoke agent
-    agent["status"] = "revoked"
-
-    # Revoke all grants
-    for grant in _capability_grants.get(agent_id, []):
-        grant["status"] = "revoked"
-
-    logger.info("Agent revoked: %s (reason=%s)", agent_id, body.reason)
+    logger.info("Agent revoked via better-auth: %s (reason=%s)", body.agent_id, body.reason)
 
     return AgentRevokeResponse(
-        agent_id=agent_id,
-        status="revoked",
-        revoked_at=now.isoformat(),
+        agent_id=body.agent_id,
+        status=data.get("status", "revoked"),
+        revoked_at=data.get("revokedAt") or data.get("revoked_at") or now,
         reason=body.reason,
     )
