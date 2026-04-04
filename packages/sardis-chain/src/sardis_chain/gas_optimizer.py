@@ -9,8 +9,11 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
+
+import httpx
 
 from .config import get_config
 from .price_oracle import get_price_oracle
@@ -100,7 +103,14 @@ class GasOptimizer:
         self.cache_ttl = cache_ttl_seconds
         self._gas_cache: dict[str, tuple[Decimal, float]] = {}
         self._price_oracle = get_price_oracle()
-        self._lock = asyncio.Lock()
+        # Per-chain locks to avoid global contention
+        self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        # Persistent HTTP client — avoids per-call connection overhead
+        self._http_client = httpx.AsyncClient(timeout=httpx.Timeout(5.0))
+
+    async def close(self) -> None:
+        """Close the persistent HTTP client."""
+        await self._http_client.aclose()
 
     async def estimate_gas(
         self,
@@ -307,8 +317,8 @@ class GasOptimizer:
         if cached is not None:
             return cached
 
-        async with self._lock:
-            # Double-check after acquiring lock
+        async with self._locks[chain]:
+            # Double-check after acquiring per-chain lock
             cached = self._get_cached_gas_price(chain)
             if cached is not None:
                 return cached
@@ -359,29 +369,27 @@ class GasOptimizer:
         rpc_url = self.rpc_urls.get(chain)
         if rpc_url:
             try:
-                import httpx
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    resp = await client.post(
-                        rpc_url,
-                        json={
-                            "jsonrpc": "2.0",
-                            "method": "eth_gasPrice",
-                            "params": [],
-                            "id": 1,
-                        },
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    hex_price = data.get("result", "0x0")
-                    wei_price = int(hex_price, 16)
-                    gwei_price = Decimal(wei_price) / Decimal("1000000000")
+                resp = await self._http_client.post(
+                    rpc_url,
+                    json={
+                        "jsonrpc": "2.0",
+                        "method": "eth_gasPrice",
+                        "params": [],
+                        "id": 1,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                hex_price = data.get("result", "0x0")
+                wei_price = int(hex_price, 16)
+                gwei_price = Decimal(wei_price) / Decimal("1000000000")
 
-                    # Clamp to sane bounds
-                    estimates = self.GAS_PRICE_ESTIMATES.get(chain, self.GAS_PRICE_ESTIMATES["ethereum"])
-                    gwei_price = max(estimates["min"], min(estimates["max"] * 3, gwei_price))
+                # Clamp to sane bounds
+                estimates = self.GAS_PRICE_ESTIMATES.get(chain, self.GAS_PRICE_ESTIMATES["ethereum"])
+                gwei_price = max(estimates["min"], min(estimates["max"] * 3, gwei_price))
 
-                    logger.debug("RPC gas price for %s: %s gwei", chain, gwei_price)
-                    return gwei_price
+                logger.debug("RPC gas price for %s: %s gwei", chain, gwei_price)
+                return gwei_price
             except Exception as e:
                 logger.warning("RPC gas price fetch failed for %s: %s, using static estimate", chain, e)
 
