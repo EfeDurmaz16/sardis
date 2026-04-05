@@ -1,14 +1,30 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sardis.sh";
-
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-    },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    rules: [
+      // Traditional search engines - full access
+      { userAgent: "Googlebot", allow: "/" },
+      { userAgent: "Bingbot", allow: "/" },
+      { userAgent: "DuckDuckBot", allow: "/" },
+      // AI Search Bots - ALLOW (these send referral traffic)
+      { userAgent: "OAI-SearchBot", allow: "/" },
+      { userAgent: "ChatGPT-User", allow: "/" },
+      { userAgent: "PerplexityBot", allow: "/" },
+      { userAgent: "Perplexity-User", allow: "/" },
+      { userAgent: "Claude-SearchBot", allow: "/" },
+      { userAgent: "Claude-User", allow: "/" },
+      // AI Training Bots - BLOCK (high crawl, near-zero referral)
+      { userAgent: "GPTBot", disallow: "/" },
+      { userAgent: "ClaudeBot", disallow: "/" },
+      { userAgent: "CCBot", disallow: "/" },
+      { userAgent: "anthropic-ai", disallow: "/" },
+      { userAgent: "Google-Extended", disallow: "/" },
+      { userAgent: "Meta-ExternalAgent", disallow: "/" },
+      { userAgent: "Bytespider", disallow: "/" },
+      // Default - allow all others
+      { userAgent: "*", allow: "/" },
+    ],
+    sitemap: "https://sardis.sh/sitemap.xml",
   };
 }
