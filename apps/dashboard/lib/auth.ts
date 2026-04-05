@@ -271,7 +271,14 @@ export const auth = betterAuth({
         }),
       },
       schema: {
-        jwks: { modelName: "ba_jwks" },
+        jwks: {
+          modelName: "ba_jwks",
+          fields: {
+            publicKey: "public_key",
+            privateKey: "private_key",
+            createdAt: "created_at",
+          },
+        },
       },
     }),
     passkey({
