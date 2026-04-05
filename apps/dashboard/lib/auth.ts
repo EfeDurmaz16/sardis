@@ -285,6 +285,19 @@ export const auth = betterAuth({
       rpID: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
       rpName: "Sardis",
       origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+      schema: {
+        passkey: {
+          modelName: "ba_passkey",
+          fields: {
+            publicKey: "public_key",
+            userId: "user_id",
+            credentialID: "credential_id",
+            deviceType: "device_type",
+            backedUp: "backed_up",
+            createdAt: "created_at",
+          },
+        },
+      },
     }),
     /**
      * API Key management plugin — two configs for test/live mode.
@@ -676,17 +689,6 @@ export const auth = betterAuth({
       expiresAt: "expires_at",
       createdAt: "created_at",
       updatedAt: "updated_at",
-    },
-  },
-  passkey: {
-    modelName: "ba_passkey",
-    fields: {
-      publicKey: "public_key",
-      userId: "user_id",
-      credentialID: "credential_id",
-      deviceType: "device_type",
-      backedUp: "backed_up",
-      createdAt: "created_at",
     },
   },
 });

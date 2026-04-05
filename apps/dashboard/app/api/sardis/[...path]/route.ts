@@ -7,6 +7,7 @@ async function forward(request: NextRequest) {
   // ── Auth gate: require a valid session cookie before proxying ──
   const cookieStore = await cookies()
   const sessionToken =
+    cookieStore.get("__Secure-better-auth.session_token")?.value ||
     cookieStore.get("better-auth.session_token")?.value ||
     cookieStore.get("sardis_session")?.value
 
