@@ -1,7 +1,19 @@
-import { auth } from "@/lib/auth";
-import { toNextJsHandler } from "better-auth/next-js";
-
-const handler = toNextJsHandler(auth);
+let auth: any;
+let handler: any;
+try {
+  const authMod = require("@/lib/auth");
+  auth = authMod.auth;
+  const { toNextJsHandler } = require("better-auth/next-js");
+  handler = toNextJsHandler(auth);
+} catch (e: any) {
+  console.error("[auth] FATAL: Failed to load auth module:", e?.message);
+  console.error(e?.stack?.split("\n").slice(0, 10).join("\n"));
+  const errorResponse = () => new Response(
+    JSON.stringify({ error: "Auth module failed to load", detail: e?.message }),
+    { status: 500, headers: { "Content-Type": "application/json" } }
+  );
+  handler = { GET: errorResponse, POST: errorResponse };
+}
 
 export async function GET(req: Request) {
   try {
