@@ -177,7 +177,7 @@ function GhostCTA({ label, t, href }: { label: string; t: typeof light; href?: s
 /* ── Eyebrow Label ── */
 function Eyebrow({ text, t }: { text: string; t: typeof light }) {
   return (
-    <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 11, fontWeight: 500, color: t.textFaint, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>{text}</span>
+    <span style={{ fontFamily: "var(--font-geist-sans)", fontSize: 12, fontWeight: 500, color: t.textFaint, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>{text}</span>
   )
 }
 
@@ -293,12 +293,12 @@ payment = client.pay(
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#FEBC2E" }} />
                 <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#28C840" }} />
               </div>
-              <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 11, color: t.terminalMuted }}>quickstart.py</span>
+              <span style={{ fontFamily: "var(--font-geist-mono)", fontSize: 12, color: t.terminalMuted }}>quickstart.py</span>
               <div style={{ padding: "3px 10px", border: `1px solid ${t.terminalBorder}`, borderRadius: 6 }}>
                 <span style={{ fontSize: 10, fontWeight: 500, color: t.terminalMuted }}>Python</span>
               </div>
             </div>
-            <pre className="p-4 md:p-6 text-[11px] md:text-[13px] overflow-x-auto" style={{ fontFamily: "var(--font-geist-mono)", lineHeight: "24px", color: t.terminalCode, whiteSpace: "pre", margin: 0 }}>
+            <pre className="p-4 md:p-6 text-xs md:text-[13px] overflow-x-auto" style={{ fontFamily: "var(--font-geist-mono)", lineHeight: "24px", color: t.terminalCode, whiteSpace: "pre", margin: 0 }}>
               {codeLines}
             </pre>
             <div className="flex items-center justify-between px-4 md:px-5 py-3" style={{ borderTop: `1px solid ${t.terminalBorder}` }}>
@@ -407,8 +407,8 @@ payment = client.pay(
               <span style={{ fontSize: 10, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>SDKs</span>
               <span className={`${jakarta.className} text-base md:text-[19px]`} style={{ fontWeight: 600 }}>Python and TypeScript clients for policy and authorizations.</span>
               <div className="flex flex-wrap gap-2 pt-3">
-                <code style={{ padding: "4px 10px", background: `${t.text}06`, border: `1px solid ${t.text}0F`, borderRadius: 6, fontFamily: "var(--font-geist-mono)", fontSize: 11, color: t.textFaint }}>pip install sardis</code>
-                <code style={{ padding: "4px 10px", background: `${t.text}06`, border: `1px solid ${t.text}0F`, borderRadius: 6, fontFamily: "var(--font-geist-mono)", fontSize: 11, color: t.textFaint }}>npm i @sardis/sdk</code>
+                <code style={{ padding: "4px 10px", background: `${t.text}06`, border: `1px solid ${t.text}0F`, borderRadius: 6, fontFamily: "var(--font-geist-mono)", fontSize: 12, color: t.textFaint }}>pip install sardis</code>
+                <code style={{ padding: "4px 10px", background: `${t.text}06`, border: `1px solid ${t.text}0F`, borderRadius: 6, fontFamily: "var(--font-geist-mono)", fontSize: 12, color: t.textFaint }}>npm i @sardis/sdk</code>
               </div>
             </BezelCard>
             <BezelCard t={t}>
@@ -473,7 +473,7 @@ payment = client.pay(
           {/* Free */}
           <div className="flex flex-col flex-1 p-6 md:p-9 gap-6 md:gap-7" style={{ border: `1px solid ${t.border}`, borderRadius: 20 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Free</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Free</span>
               <span className={`${jakarta.className} text-[36px] md:text-[48px] tracking-[-0.03em]`} style={{ fontWeight: 800 }}>$0</span>
               <span style={{ fontSize: 14, color: t.textFaint, marginTop: 4 }}>Sandbox, 2 agents, testnet only.</span>
             </div>
@@ -494,7 +494,7 @@ payment = client.pay(
             </div>
             <div className="flex flex-col flex-1 p-7 md:p-10 pt-10 md:pt-11 gap-6 md:gap-8" style={{ background: t.cardBg, borderRadius: 21, boxShadow: isDark ? "inset 0 1px 0 rgba(253,251,247,0.04)" : "0 12px 40px rgba(26,22,20,0.08)" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Starter</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: t.text, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Starter</span>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
                   <span className={`${jakarta.className} text-[36px] md:text-[48px] tracking-[-0.03em]`} style={{ fontWeight: 800 }}>$199</span>
                   <span style={{ fontSize: 14, color: t.textFaint }}>/ mo</span>
@@ -515,7 +515,7 @@ payment = client.pay(
           {/* Enterprise */}
           <div className="flex flex-col flex-1 p-6 md:p-9 gap-6 md:gap-7" style={{ border: `1px solid ${t.border}`, borderRadius: 20 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Enterprise</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: t.textLabel, letterSpacing: "0.1em", textTransform: "uppercase" as const }}>Enterprise</span>
               <span className={`${jakarta.className} text-[36px] md:text-[48px] tracking-[-0.03em]`} style={{ fontWeight: 800 }}>Custom</span>
               <span style={{ fontSize: 14, color: t.textFaint, marginTop: 4 }}>Unlimited agents, white-glove.</span>
             </div>
