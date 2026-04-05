@@ -157,22 +157,30 @@ export default function BillingPage() {
   async function handleUpgrade(plan: string) {
     setUpgrading(plan)
     try {
-      const headers = { ...getAuthHeaders(), "Content-Type": "application/json" }
-      const res = await fetch(`${API_URL}/api/v2/billing/checkout`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ plan }),
+      // Use better-auth Polar checkout endpoint (same-origin, not Cloud Run)
+      const slug = plan === "starter" ? "starter" : plan === "growth" ? "growth" : plan
+      const res = await fetch(`/api/auth/checkout/${slug}`, {
+        method: "GET",
+        credentials: "include",
       })
       if (res.ok) {
         const data = await res.json()
-        if (data.checkout_url) {
-          window.open(data.checkout_url, "_blank")
-          toast.success("Checkout opened in a new tab")
+        if (data.url) {
+          window.location.href = data.url
+          return
         }
-      } else {
-        const err = await res.json().catch(() => null)
-        toast.error(err?.detail || "Billing is being set up. Contact support@sardis.sh")
       }
+      // Fallback: direct Polar checkout link
+      const polarSlugs: Record<string, string> = {
+        starter: "7aa8578d-ea9f-4e19-8d5a-377fb3b6e1d9",
+        growth: "0f0009fe-fa2f-4052-9af1-ff6fb076055d",
+      }
+      const productId = polarSlugs[plan]
+      if (productId) {
+        window.location.href = `https://polar.sh/checkout/${productId}`
+        return
+      }
+      toast.error("Upgrade unavailable. Contact support@sardis.sh")
     } catch {
       toast.error("Network error. Please try again.")
     } finally {
@@ -183,21 +191,20 @@ export default function BillingPage() {
   async function handlePortal() {
     setPortalLoading(true)
     try {
-      const headers = getAuthHeaders()
-      const res = await fetch(`${API_URL}/api/v2/billing/portal`, {
-        method: "POST",
-        headers,
-      })
+      // Try better-auth Polar portal first
+      const res = await fetch("/api/auth/portal", { credentials: "include" })
       if (res.ok) {
         const data = await res.json()
-        if (data.portal_url) {
-          window.open(data.portal_url, "_blank")
+        if (data.url) {
+          window.open(data.url, "_blank")
+          setPortalLoading(false)
+          return
         }
-      } else {
-        toast.error("Billing portal unavailable. Contact support@sardis.sh")
       }
+      // Fallback: direct Polar dashboard
+      window.open("https://polar.sh/sardislabs/subscriptions", "_blank")
     } catch {
-      toast.error("Network error.")
+      window.open("https://polar.sh/sardislabs/subscriptions", "_blank")
     } finally {
       setPortalLoading(false)
     }
@@ -326,24 +333,31 @@ export default function BillingPage() {
             const priceLabel = plan.price_monthly_cents === 0 ? "Free" : `${formatCents(plan.price_monthly_cents)}/mo`
 
             return (
-              <Card key={plan.plan} className={`relative flex flex-col ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""} ${isPopular && !isCurrent ? "border-primary/40" : ""}`}>
+              <Card key={plan.plan} className={`relative flex flex-col min-h-[380px] ${isCurrent ? "border-primary ring-1 ring-primary/20" : ""} ${isPopular && !isCurrent ? "border-primary/40" : ""}`}>
                 {isPopular && !isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground text-[10px]">Most Popular</Badge>
                   </div>
                 )}
-                <CardHeader className="pb-3 pt-6 px-6">
+                <CardHeader className="pb-4 pt-8 px-6">
                   <div className="flex items-center gap-2">
-                    <CardTitle className="text-sm">{PLAN_LABELS[plan.plan] ?? plan.plan}</CardTitle>
+                    <CardTitle className="text-base font-semibold">{PLAN_LABELS[plan.plan] ?? plan.plan}</CardTitle>
                     {isCurrent && <Badge variant="outline" className="text-[10px]">Current</Badge>}
                   </div>
-                  <p className="text-2xl font-bold mt-2">{priceLabel}</p>
+                  <p className="text-3xl font-bold mt-3">{priceLabel}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {plan.plan === "dev" && "Get started with testnet access"}
+                    {plan.plan === "starter" && "Production-ready for mainnet"}
+                    {plan.plan === "growth" && "Advanced compliance & scale"}
+                    {plan.plan === "enterprise" && "Custom pricing & dedicated support"}
+                  </p>
                 </CardHeader>
-                <CardContent className="flex-1 space-y-3.5 text-sm text-muted-foreground px-6 pb-6">
-                  <div className="flex justify-between py-0.5"><span>API calls</span><span className="font-medium text-foreground">{formatNumber(plan.api_calls_per_month)}</span></div>
-                  <div className="flex justify-between py-0.5"><span>Agents</span><span className="font-medium text-foreground">{plan.agents === null ? "Unlimited" : plan.agents}</span></div>
-                  <div className="flex justify-between py-0.5"><span>Tx fee</span><span className="font-medium text-foreground">{plan.tx_fee_bps} bps</span></div>
-                  <div className="flex justify-between py-0.5"><span>Volume</span><span className="font-medium text-foreground">{plan.monthly_tx_volume_cents === null ? "Unlimited" : formatCents(plan.monthly_tx_volume_cents)}</span></div>
+                <CardContent className="flex-1 space-y-4 text-sm text-muted-foreground px-6 pb-6">
+                  <Separator />
+                  <div className="flex justify-between py-1"><span>API calls</span><span className="font-medium text-foreground">{formatNumber(plan.api_calls_per_month)}</span></div>
+                  <div className="flex justify-between py-1"><span>Agents</span><span className="font-medium text-foreground">{plan.agents === null ? "Unlimited" : plan.agents}</span></div>
+                  <div className="flex justify-between py-1"><span>Tx fee</span><span className="font-medium text-foreground">{(plan.tx_fee_bps / 100).toFixed(2)}%</span></div>
+                  <div className="flex justify-between py-1"><span>Volume</span><span className="font-medium text-foreground">{plan.monthly_tx_volume_cents === null ? "Unlimited" : formatCents(plan.monthly_tx_volume_cents)}</span></div>
                 </CardContent>
                 <div className="p-6 pt-0">
                   {isCurrent ? (
