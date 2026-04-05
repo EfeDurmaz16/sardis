@@ -1,7 +1,6 @@
 import { AccountView } from "@daveyplate/better-auth-ui"
 import { accountViewPaths } from "@daveyplate/better-auth-ui/server"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 
 export const dynamicParams = false
 
@@ -15,9 +14,9 @@ export default async function AccountPage({ params }: { params: Promise<{ path: 
   return (
     <main className="mx-auto max-w-3xl py-8 px-4 md:px-8">
       <div className="mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">← Back to Dashboard</Link>
-        </Button>
+        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+          ← Back to Dashboard
+        </Link>
       </div>
       <div className="[&_[data-slot=card]]:max-w-none">
         <AccountView path={path} />
