@@ -552,12 +552,8 @@ export const auth = betterAuth({
       use: [
         checkout({
           products: [
-            ...(process.env.POLAR_PRO_PRODUCT_ID
-              ? [{ productId: process.env.POLAR_PRO_PRODUCT_ID, slug: "pro" }]
-              : []),
-            ...(process.env.POLAR_TEAM_PRODUCT_ID
-              ? [{ productId: process.env.POLAR_TEAM_PRODUCT_ID, slug: "team" }]
-              : []),
+            { productId: "7aa8578d-ea9f-4e19-8d5a-377fb3b6e1d9", slug: "starter" },
+            { productId: "0f0009fe-fa2f-4052-9af1-ff6fb076055d", slug: "growth" },
           ],
           successUrl: "/billing?checkout=success&checkout_id={CHECKOUT_ID}",
           authenticatedUsersOnly: true,
