@@ -440,7 +440,9 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           </DropdownMenu>
         </div>
 
-        <UserButton />
+        <div className="[&_button]:bg-transparent [&_button]:border-border [&_button]:text-foreground [&_img]:rounded-full [&_button]:rounded-lg [&_button]:h-9 [&_button]:px-2">
+          <UserButton />
+        </div>
       </div>
 
       {/* New Payment Dialog */}

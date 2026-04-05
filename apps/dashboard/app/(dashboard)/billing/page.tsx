@@ -54,6 +54,14 @@ const PLAN_LABELS: Record<string, string> = {
   enterprise: "Enterprise",
 }
 
+// Static fallback plans — shown immediately while API loads
+const STATIC_PLANS: BillingPlan[] = [
+  { plan: "dev", price_monthly_cents: 0, api_calls_per_month: 1000, agents: 2, tx_fee_bps: 150, monthly_tx_volume_cents: null },
+  { plan: "starter", price_monthly_cents: 19900, api_calls_per_month: null, agents: 25, tx_fee_bps: 100, monthly_tx_volume_cents: null },
+  { plan: "growth", price_monthly_cents: 49900, api_calls_per_month: null, agents: 100, tx_fee_bps: 75, monthly_tx_volume_cents: null },
+  { plan: "enterprise", price_monthly_cents: 0, api_calls_per_month: null, agents: null, tx_fee_bps: 50, monthly_tx_volume_cents: null },
+]
+
 function formatCents(cents: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -77,13 +85,17 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export default function BillingPage() {
-  const [loading, setLoading] = useState(true)
-  const [account, setAccount] = useState<BillingAccount | null>(null)
-  const [plans, setPlans] = useState<BillingPlan[]>([])
+  const [loading, setLoading] = useState(false)
+  const [account, setAccount] = useState<BillingAccount | null>({
+    plan: "dev", status: "active",
+    usage: { api_calls_used: 0, api_calls_limit: 1000, tx_volume_cents: 0, tx_volume_limit_cents: null, agents_used: 0, agents_limit: 2 },
+    stripe_customer_id: null, current_period_end: null,
+  })
+  const [plans, setPlans] = useState<BillingPlan[]>(STATIC_PLANS)
   const [error, setError] = useState(false)
   const [upgrading, setUpgrading] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
-  const [provider, setProvider] = useState<{ provider: string; portal_label: string }>({ provider: "stripe", portal_label: "Manage Billing" })
+  const [provider, setProvider] = useState<{ provider: string; portal_label: string }>({ provider: "polar", portal_label: "Manage on Polar" })
 
   useEffect(() => {
     fetchBillingData()
