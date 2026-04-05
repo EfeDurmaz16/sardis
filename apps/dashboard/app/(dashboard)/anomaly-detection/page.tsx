@@ -23,16 +23,16 @@ import {
   ChartBar,
   Spinner,
 } from "@phosphor-icons/react"
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts"
+import dynamic from "next/dynamic"
+
+const AreaChart = dynamic(() => import("recharts").then((m) => ({ default: m.AreaChart })), { ssr: false })
+const Area = dynamic(() => import("recharts").then((m) => ({ default: m.Area })), { ssr: false })
+const XAxis = dynamic(() => import("recharts").then((m) => ({ default: m.XAxis })), { ssr: false })
+const YAxis = dynamic(() => import("recharts").then((m) => ({ default: m.YAxis })), { ssr: false })
+const CartesianGrid = dynamic(() => import("recharts").then((m) => ({ default: m.CartesianGrid })), { ssr: false })
+const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Tooltip })), { ssr: false })
+const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ default: m.ResponsiveContainer })), { ssr: false })
+const Legend = dynamic(() => import("recharts").then((m) => ({ default: m.Legend })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 

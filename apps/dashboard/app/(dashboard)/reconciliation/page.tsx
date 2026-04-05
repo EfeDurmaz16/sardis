@@ -42,7 +42,14 @@ import {
   XCircle,
   Spinner,
 } from "@phosphor-icons/react"
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
+import dynamic from "next/dynamic"
+
+const PieChart = dynamic(() => import("recharts").then((m) => ({ default: m.PieChart })), { ssr: false })
+const Pie = dynamic(() => import("recharts").then((m) => ({ default: m.Pie })), { ssr: false })
+const Cell = dynamic(() => import("recharts").then((m) => ({ default: m.Cell })), { ssr: false })
+const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ default: m.ResponsiveContainer })), { ssr: false })
+const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Tooltip })), { ssr: false })
+const Legend = dynamic(() => import("recharts").then((m) => ({ default: m.Legend })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 

@@ -25,12 +25,12 @@ import {
   Eye,
   Spinner,
 } from "@phosphor-icons/react"
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts"
+import dynamic from "next/dynamic"
+
+const LineChart = dynamic(() => import("recharts").then((m) => ({ default: m.LineChart })), { ssr: false })
+const Line = dynamic(() => import("recharts").then((m) => ({ default: m.Line })), { ssr: false })
+const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ default: m.ResponsiveContainer })), { ssr: false })
+const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Tooltip })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
 import { useSardis } from "@/hooks/use-sardis"
 
