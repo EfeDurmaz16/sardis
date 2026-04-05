@@ -137,7 +137,8 @@ export default function ReconciliationPage() {
 
   function renderDiscrepancyTable(items: Discrepancy[], showChain: boolean, showDetected: boolean) {
     return (
-      <Table>
+      <div className="overflow-x-auto">
+      <Table className="min-w-[600px]">
         <TableHeader>
           <TableRow>
             <TableHead className="pl-4">TX ID</TableHead>
@@ -186,6 +187,7 @@ export default function ReconciliationPage() {
           })}
         </TableBody>
       </Table>
+      </div>
     )
   }
 
@@ -193,7 +195,7 @@ export default function ReconciliationPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reconciliation</h1>
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Reconciliation</h1>
           <p className="text-sm text-muted-foreground">Transaction reconciliation and discrepancy tracking</p>
         </div>
         <div className="flex items-center justify-center py-16">

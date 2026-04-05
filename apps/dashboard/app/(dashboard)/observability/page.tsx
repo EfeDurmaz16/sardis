@@ -118,7 +118,7 @@ export default function ObservabilityPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Observability</h1>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Observability</h1>
         <p className="text-sm text-muted-foreground">System health, logs, traces, and performance metrics</p>
       </div>
 
@@ -196,8 +196,8 @@ export default function ObservabilityPage() {
                     description="Distributed traces will appear here once requests flow through the system"
                   />
                 ) : (
-                  <div className="pt-3">
-                    <Table>
+                  <div className="pt-3 overflow-x-auto">
+                    <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Trace ID</TableHead>

@@ -100,7 +100,7 @@ export default function AnomalyDetectionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Anomaly Detection</h1>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Anomaly Detection</h1>
         <p className="text-sm text-muted-foreground">ML-based anomaly detection and threat monitoring</p>
       </div>
 
@@ -179,7 +179,8 @@ export default function AnomalyDetectionPage() {
               description="The ML anomaly detection engine has not flagged any suspicious activity yet"
             />
           ) : (
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-4">Alert ID</TableHead>
@@ -213,6 +214,7 @@ export default function AnomalyDetectionPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
           )}
         </CardContent>
       </Card>

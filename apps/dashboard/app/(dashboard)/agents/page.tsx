@@ -254,7 +254,7 @@ export default function AgentsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Agents</h1>
           <p className="text-sm text-muted-foreground">Real agent records from the canonical Sardis API.</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void loadAgents()} disabled={loading}>
@@ -322,7 +322,8 @@ export default function AgentsPage() {
               description="Create your first real agent to start issuing wallets and policies."
             />
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-4">
@@ -456,6 +457,7 @@ export default function AgentsPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

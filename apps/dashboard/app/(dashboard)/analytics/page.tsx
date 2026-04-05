@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">Policy performance and effectiveness metrics</p>
         </div>
         <div className="flex items-center justify-center py-16">
@@ -99,7 +99,7 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+          <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">Policy performance and effectiveness metrics</p>
         </div>
         <EmptyState
@@ -116,7 +116,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Analytics</h1>
         <p className="text-sm text-muted-foreground">Policy performance and effectiveness metrics</p>
       </div>
 

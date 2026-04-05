@@ -151,7 +151,7 @@ export default function OverviewPage() {
     <>
       {/* ---- Stats Row ---- */}
       <div className="flex flex-col lg:flex-row gap-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
           {metricsLoading ? (
             <>
               {[1,2,3,4].map((i) => (
@@ -434,7 +434,7 @@ function StatCard({ label, value, sub, positive }: {
     <Card>
       <CardContent>
         <div className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{label}</div>
-        <div className="text-xl font-semibold mt-0.5 tabular-nums">{value}</div>
+        <div className="text-lg md:text-xl font-semibold mt-0.5 tabular-nums">{value}</div>
         <div className={cn(
           "flex items-center gap-1 text-[11px] mt-0.5",
           positive ? "text-success" : "text-muted-foreground"

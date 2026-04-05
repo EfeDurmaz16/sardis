@@ -287,7 +287,7 @@ export default function WalletsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Wallets</h1>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Wallets</h1>
         <p className="text-sm text-muted-foreground">Manage wallets and track balances across chains</p>
       </div>
 
@@ -332,7 +332,8 @@ export default function WalletsPage() {
               description="Wallets will appear here once agents or treasury flows provision them."
             />
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+            <Table className="min-w-[700px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="pl-4">Wallet</TableHead>
@@ -404,6 +405,7 @@ export default function WalletsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -446,7 +448,8 @@ export default function WalletsPage() {
                 description="Confirmed inbound deposits will appear here when the backend records them."
               />
             ) : (
-              <Table>
+              <div className="overflow-x-auto">
+              <Table className="min-w-[500px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="pl-4">Wallet</TableHead>
@@ -483,6 +486,7 @@ export default function WalletsPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>

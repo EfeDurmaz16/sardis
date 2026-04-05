@@ -205,7 +205,7 @@ export default function BillingPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
+        <h1 className="text-xl md:text-2xl font-semibold tracking-tight">Billing</h1>
         <p className="text-sm text-muted-foreground">Manage your plan, usage, and payment details</p>
       </div>
 
@@ -217,7 +217,7 @@ export default function BillingPage() {
       )}
 
       {/* Current Plan + Usage */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -301,7 +301,7 @@ export default function BillingPage() {
       {/* Plans Grid */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Available Plans</h2>
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
             const isCurrent = plan.plan === currentPlan
             const isPopular = plan.plan === "starter"
