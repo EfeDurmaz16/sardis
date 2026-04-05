@@ -6,24 +6,8 @@ import { agentAuth } from "@better-auth/agent-auth";
 import type { Capability } from "@better-auth/agent-auth";
 import { Pool } from "pg";
 
-// Lazy-loaded billing plugins — only imported when env vars are set
-// to avoid crashing auth if packages aren't installed
-let polarPlugin: any = null;
-let stripePlugin: any = null;
-if (process.env.POLAR_ACCESS_TOKEN) {
-  try {
-    const polarMod = require("@polar-sh/better-auth");
-    const { Polar } = require("@polar-sh/sdk");
-    polarPlugin = { ...polarMod, Polar };
-  } catch { /* @polar-sh/better-auth not installed */ }
-}
-if (process.env.STRIPE_SECRET_KEY) {
-  try {
-    const { stripe } = require("@better-auth/stripe");
-    const Stripe = require("stripe").default || require("stripe");
-    stripePlugin = { stripe, Stripe };
-  } catch { /* @better-auth/stripe not installed */ }
-}
+// Polar and Stripe billing plugins are disabled until env vars are configured.
+// Re-enable by uncommenting and setting POLAR_ACCESS_TOKEN / STRIPE_SECRET_KEY.
 
 /**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
@@ -551,54 +535,14 @@ export const auth = betterAuth({
      * Polar — usage-based billing via Polar.sh (primary billing provider).
      * Only initialized if POLAR_ACCESS_TOKEN is set.
      */
-    ...(polarPlugin && process.env.POLAR_ACCESS_TOKEN
-      ? [
-          polarPlugin.polar({
-            client: new polarPlugin.Polar({
-              accessToken: process.env.POLAR_ACCESS_TOKEN,
-              server: (process.env.POLAR_ENVIRONMENT as "sandbox" | "production") || "sandbox",
-            }),
-            createCustomerOnSignUp: true,
-            use: [
-              polarPlugin.checkout({
-                products: [
-                  ...(process.env.POLAR_PRO_PRODUCT_ID
-                    ? [{ productId: process.env.POLAR_PRO_PRODUCT_ID, slug: "pro" }]
-                    : []),
-                  ...(process.env.POLAR_TEAM_PRODUCT_ID
-                    ? [{ productId: process.env.POLAR_TEAM_PRODUCT_ID, slug: "team" }]
-                    : []),
-                ],
-                successUrl: "/billing?checkout=success&checkout_id={CHECKOUT_ID}",
-                authenticatedUsersOnly: true,
-              }),
-              polarPlugin.portal(),
-              polarPlugin.usage(),
-              polarPlugin.webhooks({
-                secret: process.env.POLAR_WEBHOOK_SECRET!,
-                onPayload: async (payload: any) => {
-                  console.log("[polar-webhook]", payload.type);
-                },
-              }),
-            ],
-          }),
-        ]
-      : []),
+    // Polar billing plugin — disabled until POLAR_ACCESS_TOKEN is set on Vercel
+    // See: https://better-auth.com/docs/plugins/polar
     /**
      * Stripe — fallback billing provider (primary once Stripe Atlas completes).
      * Only initialized if STRIPE_SECRET_KEY is set.
      */
-    ...(stripePlugin && process.env.STRIPE_SECRET_KEY
-      ? [
-          stripePlugin.stripe({
-            stripeClient: new stripePlugin.Stripe(process.env.STRIPE_SECRET_KEY, {
-              apiVersion: "2026-02-25.clover",
-            }),
-            stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
-            createCustomerOnSignUp: true,
-          }),
-        ]
-      : []),
+    // Stripe billing plugin — disabled until STRIPE_SECRET_KEY is set on Vercel
+    // See: https://better-auth.com/docs/plugins/stripe
   ],
   // Map model names to ba_-prefixed tables (migration 077)
   user: {
