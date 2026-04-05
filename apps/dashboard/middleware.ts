@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/auth", "/api/auth"];
+const PUBLIC_PATHS = ["/auth", "/api/auth", "/api/debug"];
 
 const REDIRECTS: Record<string, string> = {
   "/login": "/auth/sign-in",
