@@ -36,8 +36,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for session cookie
+  // Check for session cookie (production uses __Secure- prefix)
   const sessionToken =
+    request.cookies.get("__Secure-better-auth.session_token")?.value ||
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("sardis_session")?.value;
 
