@@ -98,8 +98,8 @@ export default function BillingPage() {
   const [provider, setProvider] = useState<{ provider: string; portal_label: string }>({ provider: "polar", portal_label: "Manage on Polar" })
 
   useEffect(() => {
+    // Only fetch account data in background — plans are static, no need to wait
     fetchBillingData()
-    fetchProvider()
   }, [])
 
   async function fetchProvider() {
@@ -113,14 +113,16 @@ export default function BillingPage() {
   }
 
   async function fetchBillingData() {
-    setLoading(true)
+    // Account data fetched in background — page renders instantly with static defaults
     try {
       const headers = { ...getAuthHeaders(), "Content-Type": "application/json" }
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000) // 5s max
 
-      const [accountRes, plansRes] = await Promise.all([
-        fetch(`${API_URL}/api/v2/billing/account`, { headers }).catch(() => null),
-        fetch(`${API_URL}/api/v2/billing/plans`, { headers }).catch(() => null),
-      ])
+      const accountRes = await fetch(`${API_URL}/api/v2/billing/account`, {
+        headers, signal: controller.signal,
+      }).catch(() => null)
+      clearTimeout(timeout)
 
       if (accountRes?.ok) {
         const raw = await accountRes.json()
@@ -132,36 +134,19 @@ export default function BillingPage() {
             stripe_customer_id: raw.account.stripe_customer_id ?? null,
             current_period_end: raw.account.current_period_end ?? null,
           })
-        } else {
-          setAccount(raw)
         }
-      } else {
-        setError(true)
       }
-
-      if (plansRes?.ok) {
-        const data = await plansRes.json()
-        const order = ["dev", "starter", "growth", "enterprise"]
-        const sorted = [...(data.plans ?? [])].sort(
-          (a: BillingPlan, b: BillingPlan) => order.indexOf(a.plan) - order.indexOf(b.plan)
-        )
-        setPlans(sorted)
-      }
-    } catch {
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
+    } catch { /* silent — page works with static defaults */ }
   }
 
   async function handleUpgrade(plan: string) {
     setUpgrading(plan)
     try {
-      // Use better-auth Polar checkout endpoint (same-origin, not Cloud Run)
-      const slug = plan === "starter" ? "starter" : plan === "growth" ? "growth" : plan
-      const res = await fetch(`/api/auth/checkout/${slug}`, {
-        method: "GET",
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ plan }),
       })
       if (res.ok) {
         const data = await res.json()
@@ -170,17 +155,8 @@ export default function BillingPage() {
           return
         }
       }
-      // Fallback: direct Polar checkout link
-      const polarSlugs: Record<string, string> = {
-        starter: "7aa8578d-ea9f-4e19-8d5a-377fb3b6e1d9",
-        growth: "0f0009fe-fa2f-4052-9af1-ff6fb076055d",
-      }
-      const productId = polarSlugs[plan]
-      if (productId) {
-        window.location.href = `https://polar.sh/checkout/${productId}`
-        return
-      }
-      toast.error("Upgrade unavailable. Contact support@sardis.sh")
+      const err = await res.json().catch(() => null)
+      toast.error(err?.error || "Checkout unavailable. Contact support@sardis.sh")
     } catch {
       toast.error("Network error. Please try again.")
     } finally {
