@@ -4,10 +4,11 @@ import { passkey } from "@better-auth/passkey";
 import { apiKey } from "@better-auth/api-key";
 import { agentAuth } from "@better-auth/agent-auth";
 import type { Capability } from "@better-auth/agent-auth";
+import { polar, checkout, portal, usage, webhooks } from "@polar-sh/better-auth";
+import { stripe } from "@better-auth/stripe";
+import { Polar } from "@polar-sh/sdk";
+import Stripe from "stripe";
 import { Pool } from "pg";
-
-// Polar and Stripe billing plugins are disabled until env vars are configured.
-// Re-enable by uncommenting and setting POLAR_ACCESS_TOKEN / STRIPE_SECRET_KEY.
 
 /**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
@@ -535,14 +536,46 @@ export const auth = betterAuth({
      * Polar — usage-based billing via Polar.sh (primary billing provider).
      * Only initialized if POLAR_ACCESS_TOKEN is set.
      */
-    // Polar billing plugin — disabled until POLAR_ACCESS_TOKEN is set on Vercel
-    // See: https://better-auth.com/docs/plugins/polar
+    ...(process.env.POLAR_ACCESS_TOKEN ? [polar({
+      client: new Polar({
+        accessToken: process.env.POLAR_ACCESS_TOKEN,
+        server: (process.env.POLAR_ENVIRONMENT as "sandbox" | "production") || "sandbox",
+      }),
+      createCustomerOnSignUp: true,
+      use: [
+        checkout({
+          products: [
+            ...(process.env.POLAR_PRO_PRODUCT_ID
+              ? [{ productId: process.env.POLAR_PRO_PRODUCT_ID, slug: "pro" }]
+              : []),
+            ...(process.env.POLAR_TEAM_PRODUCT_ID
+              ? [{ productId: process.env.POLAR_TEAM_PRODUCT_ID, slug: "team" }]
+              : []),
+          ],
+          successUrl: "/billing?checkout=success&checkout_id={CHECKOUT_ID}",
+          authenticatedUsersOnly: true,
+        }),
+        portal(),
+        usage(),
+        ...(process.env.POLAR_WEBHOOK_SECRET ? [webhooks({
+          secret: process.env.POLAR_WEBHOOK_SECRET,
+          onPayload: async (payload) => {
+            console.log("[polar-webhook]", payload.type);
+          },
+        })] : []),
+      ],
+    })] : []),
     /**
      * Stripe — fallback billing provider (primary once Stripe Atlas completes).
      * Only initialized if STRIPE_SECRET_KEY is set.
      */
-    // Stripe billing plugin — disabled until STRIPE_SECRET_KEY is set on Vercel
-    // See: https://better-auth.com/docs/plugins/stripe
+    ...(process.env.STRIPE_SECRET_KEY ? [stripe({
+      stripeClient: new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2026-02-25.clover",
+      }),
+      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+      createCustomerOnSignUp: true,
+    })] : []),
   ],
   // Map model names to ba_-prefixed tables (migration 077)
   user: {

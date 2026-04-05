@@ -2,6 +2,8 @@ import { createAuthClient } from "better-auth/react";
 import { jwtClient, magicLinkClient, oneTapClient, phoneNumberClient } from "better-auth/client/plugins";
 import { passkeyClient } from "@better-auth/passkey/client";
 import { apiKeyClient } from "@better-auth/api-key/client";
+import { polarClient } from "@polar-sh/better-auth/client";
+import { stripeClient } from "@better-auth/stripe/client";
 
 export const authClient = createAuthClient({
   // Use same-origin for auth requests — the Next.js app serves /api/auth/*
@@ -19,7 +21,8 @@ export const authClient = createAuthClient({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
     }),
     phoneNumberClient(),
-    // polarClient() and stripeClient() disabled until env vars configured
+    polarClient(),
+    stripeClient(),
   ],
 });
 
