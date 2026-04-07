@@ -29,28 +29,22 @@ jobs:
           GCP_WIP: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         run: |
           if [ -z "$GCP_WIP" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::GCP credentials not configured, skipping deploy"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER secret is not configured. Previously this step silently skipped the deploy, which meant backend changes never shipped — the running revision stayed frozen at whatever was last deployed manually. Set the secret in repository settings (Settings → Secrets → Actions) to enable automated Cloud Run deploys. Until then, backend deploys must be run manually via scripts/deploy-cloudrun.sh."
+            exit 1
           fi
 
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        if: steps.check-gcp.outputs.skip != 'true'
 
       - name: Authenticate to Google Cloud
-        if: steps.check-gcp.outputs.skip != 'true'
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        if: steps.check-gcp.outputs.skip != 'true'
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Build with Cloud Build
-        if: steps.check-gcp.outputs.skip != 'true'
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
@@ -60,7 +54,6 @@ jobs:
             --substitutions=_SERVICE_NAME=${{ env.SERVICE_NAME }},_REGION=${{ env.REGION }}
 
       - name: Deploy to Cloud Run
-        if: steps.check-gcp.outputs.skip != 'true'
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
@@ -73,7 +66,6 @@ jobs:
             --port=8000
 
       - name: Verify deployment
-        if: steps.check-gcp.outputs.skip != 'true'
         env:
           GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: |
