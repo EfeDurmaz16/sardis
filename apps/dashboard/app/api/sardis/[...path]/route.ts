@@ -1,25 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
 
+import { auth } from "@/lib/auth"
 import { proxyErrorResponse, sardisProxyResponse } from "@/utils/sardis-proxy"
 
 async function forward(request: NextRequest) {
-  // ── Auth gate: require a valid session cookie before proxying ──
-  const cookieStore = await cookies()
-  const sessionToken =
-    cookieStore.get("__Secure-better-auth.session_token")?.value ||
-    cookieStore.get("better-auth.session_token")?.value ||
-    cookieStore.get("sardis_session")?.value
-
-  if (!sessionToken) {
+  // ── Auth gate: mint a fresh JWT from the better-auth session cookie ──
+  // better-auth sets an HttpOnly session cookie (__Secure-better-auth.session_token
+  // in production, better-auth.session_token in dev). The Sardis API expects an
+  // EdDSA JWT in `Authorization: Bearer ...` and validates it via JWKS. The JWT
+  // plugin exposes `/api/auth/token` (auth.api.getToken) which mints a short-lived
+  // JWT bound to the current session. We mint per-request because tokens are
+  // 1h-scoped, the cost is one in-process call (no network), and per-request
+  // minting keeps the proxy stateless.
+  let userJwt: string
+  try {
+    const result = await auth.api.getToken({ headers: request.headers })
+    userJwt = result.token
+  } catch {
     return NextResponse.json(
       { error: "Unauthorized", detail: "No active session. Please sign in." },
       { status: 401 },
     )
   }
-
-  // Extract user JWT from sardis_session cookie for per-user auth
-  const userJwt = cookieStore.get("sardis_session")?.value
 
   const segments = request.nextUrl.pathname.replace(/^\/api\/sardis\//, "")
   const apiPath = `/${segments}${request.nextUrl.search}`

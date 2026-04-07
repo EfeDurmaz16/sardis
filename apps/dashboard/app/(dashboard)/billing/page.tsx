@@ -19,7 +19,9 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").trim()
+// All Sardis API traffic from the browser MUST go through the same-origin
+// /api/sardis proxy — see lib/sardis-api.ts for the full rationale.
+const PROXY_BASE = "/api/sardis"
 
 interface BillingPlan {
   plan: string
@@ -75,14 +77,8 @@ function formatNumber(n: number | null): string {
   return new Intl.NumberFormat("en-US").format(n)
 }
 
-function getAuthHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {}
-  try {
-    const token = localStorage.getItem("sardis_session")
-    if (token) return { Authorization: `Bearer ${token}` }
-  } catch { /* SSR safety */ }
-  return {}
-}
+// Auth is handled by the /api/sardis proxy which mints a fresh JWT from the
+// HttpOnly better-auth session cookie. No client-side token reading needed.
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(false)
@@ -104,7 +100,9 @@ export default function BillingPage() {
 
   async function fetchProvider() {
     try {
-      const res = await fetch(`${API_URL}/api/v2/billing/provider`)
+      const res = await fetch(`${PROXY_BASE}/api/v2/billing/provider`, {
+        credentials: "include",
+      })
       if (res.ok) {
         const data = await res.json()
         setProvider(data)
@@ -115,12 +113,13 @@ export default function BillingPage() {
   async function fetchBillingData() {
     // Account data fetched in background — page renders instantly with static defaults
     try {
-      const headers = { ...getAuthHeaders(), "Content-Type": "application/json" }
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 5000) // 5s max
 
-      const accountRes = await fetch(`${API_URL}/api/v2/billing/account`, {
-        headers, signal: controller.signal,
+      const accountRes = await fetch(`${PROXY_BASE}/api/v2/billing/account`, {
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        signal: controller.signal,
       }).catch(() => null)
       clearTimeout(timeout)
 

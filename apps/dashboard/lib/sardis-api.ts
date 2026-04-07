@@ -1,6 +1,15 @@
 "use client"
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").trim()
+// All Sardis API traffic from the browser MUST go through the same-origin
+// /api/sardis proxy. The proxy mints a fresh better-auth JWT from the session
+// cookie and forwards it to the upstream Sardis API. Calling api.sardis.sh
+// directly from the browser does NOT work because:
+//   1. The session cookie is HttpOnly — JS cannot read it to attach as a Bearer
+//   2. CORS preflight on a different origin would require explicit allow-origin
+//   3. No client-side path can mint a JWT — better-auth.api.getToken is server-only
+// All requests use a relative URL so they hit the Next.js app on the same domain
+// the user is on (dashboard.sardis.sh OR app.sardis.sh).
+const PROXY_BASE = "/api/sardis"
 
 export class ApiError extends Error {
   readonly statusCode: number
@@ -68,48 +77,21 @@ export type CreateAgentInput = {
   create_wallet?: boolean
 }
 
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") {
-    return null
-  }
-
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
-}
-
-function getStoredToken(): string | null {
-  if (typeof window === "undefined") {
-    return null
-  }
-
-  return (
-    window.localStorage.getItem("sardis_session") ||
-    readCookie("better-auth.session_token") ||
-    readCookie("sardis_session")
-  )
-}
-
 async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
-  if (!API_BASE) {
-    throw new ApiError("NEXT_PUBLIC_API_URL is not configured", 500)
-  }
-
-  const token = getStoredToken()
-  if (!token) {
-    throw new AuthRequiredError()
-  }
-
   const headers = new Headers(init.headers)
   headers.set("Accept", "application/json")
-  headers.set("Authorization", `Bearer ${token}`)
 
   if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json")
   }
 
-  const response = await fetch(`${API_BASE}/api/v2${path}`, {
+  // The proxy reads the session cookie automatically — credentials: "include"
+  // is required even for same-origin because Next.js can be served from a
+  // different subdomain than where the cookie was set during sign-in.
+  const response = await fetch(`${PROXY_BASE}/api/v2${path}`, {
     ...init,
     headers,
+    credentials: "include",
     cache: "no-store",
   })
 
