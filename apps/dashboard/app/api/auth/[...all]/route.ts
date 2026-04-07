@@ -18,9 +18,17 @@ try {
 } catch (e: unknown) {
   initError = errorMessage(e) || "Unknown auth init error";
   console.error("[auth] INIT FAILED:", initError, e instanceof Error ? e.stack : undefined);
-  // Fallback handler that returns the error for both GET and POST
-  const errResponse = async () => Response.json({ error: initError }, { status: 500 });
-  handler = { GET: errResponse, POST: errResponse } satisfies BetterAuthHandler;
+  // Fallback handler that returns the error for every HTTP verb better-auth
+  // accepts. Must match BetterAuthHandler exactly (GET/POST/PATCH/PUT/DELETE).
+  const errResponse = async (_req: Request) =>
+    Response.json({ error: initError }, { status: 500 });
+  handler = {
+    GET: errResponse,
+    POST: errResponse,
+    PATCH: errResponse,
+    PUT: errResponse,
+    DELETE: errResponse,
+  } satisfies BetterAuthHandler;
 }
 
 export async function GET(req: Request) {
