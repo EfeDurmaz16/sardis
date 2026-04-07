@@ -82,8 +82,10 @@ Every feature we ship today is composable with the on-chain future without a rew
 
 ## Traction
 
-- 50,000 SDK installs (zero marketing spend)
-- Integrations with 10+ agent frameworks (LangChain, CrewAI, OpenAI, Google ADK, Vercel AI, Browser Use, AutoGPT, Composio)
+- **70K+ SDK installs** (zero marketing spend)
+- **Live in production on Base and Tempo mainnet** (Tempo mainnet since MPP launch day, 2026-03-18)
+- **Stripe MPP early access partner** — one of the first companies building on the new agent payments rail
+- Integrations with 18+ agent frameworks (LangChain, CrewAI, AutoGPT, OpenAI Agents SDK, Claude Agent SDK, Google ADK, Google A2A, Coinbase AgentKit, Browser Use, Composio, OpenClaw, Stagehand, Vercel AI SDK, Activepieces, n8n, E2B, GPT Actions, MCP server)
 - Advisory from leaders at Coinbase, Stripe, Circle, Base, Lightspark, Solana, Bridge
 - 500K+ lines of production code, 68 API endpoints, 9 smart contracts, 194 test files
 - Built by a solo 20-year-old founder

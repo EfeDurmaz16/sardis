@@ -34,9 +34,9 @@ Confirmation required. If blocked, human-readable explanation provided.
 Agent -> Sardis API -> Policy Engine (12 checks) -> Chain Router (6 chains) -> MPC Signer (Turnkey) -> Audit Trail (Merkle-anchored).
 We never store private keys. We never touch your funds. Every decision is cryptographically provable.
 
-## Slide 7: 15 Framework Integrations
-OpenAI Agents SDK, Claude/MCP (40+ tools), Google ADK, Vercel AI SDK, CrewAI, LangChain, AutoGPT, Browser Use, n8n, Activepieces (live), Composio, Coinbase AgentKit, Stagehand, OpenClaw, CLI.
-pip install sardis — 5 minutes to first payment. 50K SDK installs. 225K LOC.
+## Slide 7: 18+ Framework Integrations
+LangChain, CrewAI, AutoGPT, OpenAI Agents SDK, OpenAI direct, Claude Agent SDK, Google ADK, Google A2A, Coinbase AgentKit, Browser Use, Composio, OpenClaw, Stagehand, Vercel AI SDK, Activepieces (LIVE), n8n, E2B, GPT Actions, MCP server (Claude Desktop / Cursor / Windsurf — 40+ tools).
+pip install sardis — 5 minutes to first payment. **70K+ SDK installs. 225K LOC. Live on Base and Tempo mainnet. Stripe MPP early access partner.**
 
 ## Slide 8: Compliance Built In
 15 modules: KYC (Didit), KYB, AML/Sanctions (6 providers), PEP, SAR filing, MiCA, Travel Rule (Notabene), Risk Scoring, Fraud Rules, Merkle Audit Trail, Agent Identity (KYA), Policy Evidence Bundles, Compliance Reports, TAP Signatures, Adverse Media.

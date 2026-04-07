@@ -15,10 +15,10 @@ Updated: 2026-03-24 | Status: ACTIVE
 | **Custody model** | Non-custodial (Turnkey MPC) | Custodial (Ramp holds funds) | N/A | Custodial (Stripe holds) | Non-custodial (CDP) |
 | **Audit trail** | Merkle-anchored, tamper-evident, on-chain proof | Transaction history | Authorization logs | Stripe dashboard logs | On-chain (public ledger) |
 | **Cross-border FX** | USDC/EURC atomic swap — 5-15 bps, 1.5s settlement | Standard FX — 1-3%, 2-3 days | None | Standard FX rates | On-chain only |
-| **Framework integrations** | 15: OpenAI, Claude/MCP, CrewAI, LangChain, AutoGPT, Vercel AI SDK, Browser Use, n8n, Activepieces, Composio, AgentKit, Stagehand, OpenClaw, E2B, GPT Actions | REST API only | SDK | MPP directory (100+ services) | AgentKit SDK |
+| **Framework integrations** | 18+: LangChain, CrewAI, AutoGPT, OpenAI Agents SDK, OpenAI direct, Claude Agent SDK, Google ADK, Google A2A, Coinbase AgentKit, Browser Use, Composio, OpenClaw, Stagehand, Vercel AI SDK, Activepieces, n8n, E2B, GPT Actions, MCP server (Claude/Cursor/Windsurf) | REST API only | SDK | MPP directory (100+ services) | AgentKit SDK |
 | **Developer experience** | pip install sardis + sardis.pay() — 5 min to first payment | Dashboard + API key | SDK integration | MPP client integration | AgentKit ActionProvider |
 | **Pricing** | Free / $29 / $199 / $499 / Enterprise + 0.1-0.5% per tx | Enterprise custom (high ACV) | Enterprise custom ($40M raised) | Per-transaction | Free (chain gas fees) |
-| **Stage** | Pre-revenue, 50K SDK installs, 225K LOC | Live (March 2026) | $40M raised, live | Live (March 2026) | Live |
+| **Stage** | Pre-revenue, 70K+ SDK installs, live on Base and Tempo mainnet, Stripe MPP early access partner | Live (March 2026) | $40M raised, live | Live (March 2026) | Live |
 
 ---
 

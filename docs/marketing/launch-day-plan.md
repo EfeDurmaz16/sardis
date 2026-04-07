@@ -41,10 +41,10 @@ Tweet 4 (NLP Policies):
 Set spending rules in English: "Max $500/day on dev tools, no single payment above $100, block weekends." Sardis parses it into machine-enforced rules. Confirmation required before activation. No ambiguity.
 
 Tweet 5 (Scale):
-225K lines of production code. 55 distinct capabilities. 15 framework integrations. 6 chains supported. 50K SDK installs. Built solo in 12 months. Not a pitch deck — a product.
+225K lines of production code. 55 distinct capabilities. 18+ framework integrations. Live on Base and Tempo mainnet. 70K+ SDK installs. Stripe MPP early access partner. Built solo in 12 months. Not a pitch deck — a product.
 
 Tweet 6 (Integrations):
-Works with your stack: OpenAI Agents SDK, Claude/MCP (40+ tools), CrewAI, LangChain, AutoGPT, Vercel AI SDK, Browser Use, Stagehand, n8n, Activepieces. pip install sardis. Done.
+Works with your stack: LangChain, CrewAI, AutoGPT, OpenAI Agents SDK, Claude Agent SDK, Google ADK, Coinbase AgentKit, Browser Use, Composio, Stagehand, Vercel AI SDK, n8n, Activepieces, MCP server. pip install sardis. Done.
 
 Tweet 7 (Compliance):
 Enterprise compliance from day 1: KYC/KYB (Didit), AML/Sanctions (6 providers), SAR auto-filing, MiCA (EU), Merkle-anchored audit trail. Most Series B fintechs do not have this stack.
@@ -80,7 +80,7 @@ What is different:
 
 Stack: Python 3.12/FastAPI (backend), Solidity/Foundry (contracts), React/Next.js (dashboard), TypeScript (SDKs).
 
-225K LOC, 55 capabilities, 50K SDK installs. Built solo in 12 months. Open-core (SDKs are MIT).
+225K LOC, 55 capabilities, 70K+ SDK installs, live on Base and Tempo mainnet, Stripe MPP early access partner. Built solo in 12 months. Open-core (SDKs are MIT).
 
 Looking for design partners. Try it: sardis.sh | Docs: sardis.sh/docs
 
