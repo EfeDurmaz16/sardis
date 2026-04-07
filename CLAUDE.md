@@ -1,5 +1,16 @@
 # Sardis - Claude Code Project Configuration
 
+## ⚠️ Diligence Rule (READ FIRST)
+
+**Before making any factual claim about this codebase — integrations, packages, chain support, deployment state, version numbers, or traction metrics — you MUST verify against the live system, not this doc.**
+
+- **Package list?** Run `ls packages/sardis-*/pyproject.toml packages/sardis-*/package.json` — not this file.
+- **Chain support?** Read `packages/sardis-core/src/sardis_v2_core/config.py` (`ChainConfig` entries) and `tokens.py` (`contract_addresses` maps) — not this file.
+- **Deployment state?** Check Cloud Run / Vercel / block explorers — not memory, not docs.
+- **Integration list?** See `~/.claude/projects/-Users-efebarandurmaz-sardis/memory/integrations_real_list_april_2026.md` or glob `packages/sardis-*`.
+
+This doc is a **starting point**, not the source of truth. It drifts. It has drifted. If you catch a claim here that conflicts with the codebase, **trust the code and update this file.**
+
 ## Project Overview
 
 **Sardis** is the Payment OS for the Agent Economy - infrastructure enabling AI agents to make real financial transactions safely through non-custodial MPC wallets with natural language spending policies.
@@ -35,31 +46,55 @@ sardis/
 │       ├── developer-advocacy.md
 │       └── launch-coordinator.md
 ├── sardis/                 # Simple Python SDK (public interface)
-├── packages/               # Core monorepo packages
-│   ├── sardis-core/        # Domain models, config, database
-│   ├── sardis-api/         # FastAPI REST endpoints
-│   ├── sardis-chain/       # Blockchain execution, chain routing
-│   ├── sardis-protocol/    # AP2/TAP protocol verification
-│   ├── sardis-wallet/      # Wallet management, MPC
-│   ├── sardis-ledger/      # Append-only audit trail
-│   ├── sardis-compliance/  # KYC (Persona) + AML (Elliptic)
-│   ├── sardis-cards/       # Virtual cards (Lithic)
-│   ├── sardis-mcp-server/  # MCP server for Claude/Cursor
+├── packages/               # Core monorepo packages (⚠️ list below may be stale — run `ls packages/` for truth)
+│   │
+│   │ ── Core platform ──
+│   ├── sardis-core/        # Domain models, config, database, spending policy
+│   ├── sardis-api/         # FastAPI REST endpoints (47+ routers)
+│   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
+│   ├── sardis-protocol/    # AP2 / TAP protocol verification
+│   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain
+│   ├── sardis-ledger/      # Append-only audit trail + Merkle anchoring
+│   ├── sardis-compliance/  # KYC (Didit) + AML (Elliptic)
+│   ├── sardis-cards/       # Virtual cards (Stripe Issuing)
+│   ├── sardis-checkout/    # Pay with Sardis merchant flows
+│   ├── sardis-guardrails/  # Agent guardrails
+│   ├── sardis-zk-policy/   # ZK-proof-based policy enforcement
+│   ├── sardis-ucp/         # Universal Commerce Protocol
+│   │
+│   │ ── SDKs and CLI ──
 │   ├── sardis-sdk-python/  # Full Python SDK
 │   ├── sardis-sdk-js/      # TypeScript SDK
 │   ├── sardis-cli/         # Command-line tool
-│   ├── sardis-checkout/    # Merchant checkout flows
-│   ├── sardis-browser-use/  # Browser Use integration (78k stars)
-│   ├── sardis-crewai/       # CrewAI multi-agent integration
-│   ├── sardis-autogpt/      # AutoGPT block integration (180k stars)
+│   ├── sardis-mcp-server/  # MCP server (Claude Desktop, Cursor, Windsurf)
+│   │
+│   │ ── AI framework integrations ──
+│   ├── sardis-langchain/     # LangChain toolkit (v1.0.0 published)
+│   ├── sardis-crewai/        # CrewAI multi-agent integration
+│   ├── sardis-autogpt/       # AutoGPT block integration
 │   ├── sardis-openai-agents/ # OpenAI Agents SDK integration
-│   ├── sardis-composio/     # Composio tool marketplace
-│   ├── sardis-stagehand/    # Stagehand/Browserbase integration
-│   ├── sardis-ai-sdk/       # Vercel AI SDK integration
-│   ├── n8n-nodes-sardis/    # n8n workflow automation node
-│   ├── sardis-activepieces/ # Activepieces workflow piece
-│   ├── sardis-e2b/          # E2B sandbox template
-│   └── sardis-gpt/          # ChatGPT Custom GPT Actions
+│   ├── sardis-openai/        # OpenAI direct integration
+│   ├── sardis-agent-sdk/     # Claude Agent SDK integration
+│   ├── sardis-adk/           # Google Agent Development Kit
+│   ├── sardis-a2a/           # Google Agent-to-Agent protocol
+│   ├── sardis-agentkit/      # Coinbase AgentKit
+│   ├── sardis-browser-use/   # Browser Use integration
+│   ├── sardis-composio/      # Composio tool marketplace
+│   ├── sardis-openclaw/      # OpenClaw integration
+│   ├── sardis-stagehand/     # Stagehand / Browserbase integration
+│   ├── sardis-ai-sdk/        # Vercel AI SDK integration
+│   ├── sardis-activepieces/  # Activepieces workflow piece
+│   ├── n8n-nodes-sardis/     # n8n workflow automation node
+│   ├── sardis-e2b/           # E2B sandbox template
+│   ├── sardis-gpt/           # ChatGPT Custom GPT Actions
+│   │
+│   │ ── Payment / infra providers ──
+│   ├── sardis-coinbase/    # Coinbase services (CDP, x402, onramp)
+│   ├── sardis-lightspark/  # Lightning Network payments
+│   ├── sardis-striga/      # Striga banking/cards
+│   ├── sardis-mpp/         # Stripe MPP + Tempo (Merchant Payment Protocol)
+│   ├── sardis-ramp/        # On/off ramp providers
+│   └── sardis-checkout-ui/ # Pay with Sardis frontend (React/Vite)
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol
@@ -89,14 +124,25 @@ sardis/
 
 ## Supported Chains & Tokens
 
+**Source of truth:** `packages/sardis-core/src/sardis_v2_core/config.py` (`ChainConfig` list) and `tokens.py` (`contract_addresses` map). Verify against the code before quoting in any pitch / investor deck / marketing copy — this table drifts.
+
+**Production mainnets (live, from `config.py`):**
+
+| Chain | Chain ID | Tokens | Status |
+|-------|---------|--------|--------|
+| **Base** | 8453 | USDC, EURC | ✅ Production (primary) |
+| **Tempo** | 4217 | USDC, USDC.e, EURC | ✅ Production (MPP launch day, 2026-03-18) |
+
+**Additional mainnets with token contracts configured in `tokens.py`:**
+
 | Chain | Tokens |
 |-------|--------|
-| Arc (Circle L1) | USDC, EURC |
-| Base | USDC, EURC |
-| Polygon | USDC, USDT, EURC |
 | Ethereum | USDC, USDT, PYUSD, EURC |
+| Polygon | USDC, USDT, EURC |
 | Arbitrum | USDC, USDT |
 | Optimism | USDC, USDT |
+
+**Testnets:** `base_sepolia` (84532), `tempo_testnet` (42429), `arc_testnet`.
 
 ## Development Commands
 
