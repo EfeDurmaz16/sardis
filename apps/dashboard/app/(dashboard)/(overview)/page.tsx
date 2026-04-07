@@ -122,6 +122,10 @@ export default function OverviewPage() {
     const agentExists = (metrics?.agent_count ?? 0) > 0
     const walletExists = (metrics?.wallet_count ?? 0) > 0
 
+    // Idempotent update — bails out when nothing changed, so the
+    // "cascading renders" heuristic does not apply. The guard above
+    // guarantees we never flip state on a run where metrics have not changed.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuickStartSteps((prev) => {
       const next = [...prev]
       let changed = false

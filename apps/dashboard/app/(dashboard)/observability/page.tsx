@@ -89,13 +89,12 @@ export default function ObservabilityPage() {
 
   const logs = data?.logs ?? []
   const traces = data?.traces ?? []
-  const metrics = useMemo(() => {
-    if (!data?.metrics) return []
-    return data.metrics.map((m, i) => ({
-      ...m,
-      color: m.color || defaultChartColors[i % defaultChartColors.length],
-    }))
-  }, [data?.metrics])
+  // React Compiler handles memoization automatically; keeping the manual
+  // useMemo wrapper confuses the compiler ("could not preserve memoization").
+  const metrics = (data?.metrics ?? []).map((m, i) => ({
+    ...m,
+    color: m.color || defaultChartColors[i % defaultChartColors.length],
+  }))
 
   const stats = useMemo(() => {
     if (!data) {
