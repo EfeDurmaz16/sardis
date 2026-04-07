@@ -48,8 +48,9 @@ export async function POST(req: Request) {
 
     const data = await res.json();
     return Response.json({ url: data.url });
-  } catch (e: any) {
-    console.error("[checkout] Error:", e.message);
-    return Response.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Unknown checkout error";
+    console.error("[checkout] Error:", message);
+    return Response.json({ error: message }, { status: 500 });
   }
 }
