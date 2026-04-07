@@ -593,6 +593,77 @@ export const auth = betterAuth({
       createCustomerOnSignUp: true,
     })] : []),
   ],
+  /**
+   * Auto-provision a Sardis organization for every new user.
+   *
+   * The FastAPI backend gates every /api/v2 endpoint on
+   * `principal.org_id` being non-empty (authz.py require_principal).
+   * If a user signs up without an org_id, every subsequent dashboard call
+   * fails with "JWT is missing organization scope" 403.
+   *
+   * We handle this in two phases:
+   *   1. `before` hook — compute a deterministic slug from the email
+   *      and write it to ba_user.org_id as part of the insert. This
+   *      guarantees the JWT issued by the JWT plugin will carry the
+   *      claim on the very first get-session call.
+   *   2. `after` hook — insert the matching row into `organizations`
+   *      (the backend table the API key / principal flow references)
+   *      so queries like `WHERE org_id = $1` actually find something.
+   *
+   * The org external_id format matches the legacy org_ slug convention
+   * already present in the organizations table (org_efe_sardis_sh, etc).
+   */
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const email = (user.email || "").toString().toLowerCase();
+          const slug = email
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .slice(0, 48);
+          const orgId = `org_${slug || "user_" + Date.now().toString(36)}`;
+          return {
+            data: {
+              ...user,
+              orgId,
+            },
+          };
+        },
+        after: async (user) => {
+          const email = (user.email || "").toString().toLowerCase();
+          const slug = email
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .slice(0, 48);
+          const orgId = `org_${slug || "user_" + Date.now().toString(36)}`;
+          const displayName = (user.name as string | undefined)?.trim() || email || "New User";
+          // Use the same pg pool better-auth is configured with, via a
+          // dedicated short-lived client. Idempotent: ON CONFLICT DO NOTHING.
+          const pgPool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            max: 1,
+            ssl: { rejectUnauthorized: false },
+          });
+          try {
+            await pgPool.query(
+              `INSERT INTO organizations (external_id, name, plan, billing_email)
+               VALUES ($1, $2, 'free', $3)
+               ON CONFLICT (external_id) DO NOTHING`,
+              [orgId, displayName, email || null],
+            );
+          } catch (err) {
+            console.error(
+              "[auth.databaseHooks.user.create.after] failed to create organization",
+              { orgId, email, err: err instanceof Error ? err.message : String(err) },
+            );
+          } finally {
+            await pgPool.end().catch(() => {});
+          }
+        },
+      },
+    },
+  },
   // Map model names to ba_-prefixed tables (migration 077)
   user: {
     modelName: "ba_user",
