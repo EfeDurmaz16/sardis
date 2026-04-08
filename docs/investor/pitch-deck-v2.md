@@ -216,6 +216,7 @@ No custody. No MTL required. Non-custodial architecture means zero marginal cost
 | AutoGPT (180K GitHub stars) | In talks with founding engineer | Largest autonomous agent community |
 | Catena Labs | Design partner meeting scheduled | Agent identity and trust |
 | Stripe MPP | Early access granted | First-party access to Stripe's agent payment protocol |
+| Turnkey (Series B, $52.5M) | Production integration, EWaaS launch case study | Non-custodial MPC for every Sardis wallet across all 15+ SDKs |
 
 ### Compliance Readiness
 
@@ -259,6 +260,8 @@ Sardis is the only platform that combines:
 - Merkle-anchored append-only audit trail (on-chain, tamper-evident)
 - Spending mandates with full lifecycle (7-dimension scoped authority)
 - Multi-rail execution under one policy boundary (card + USDC + bank)
+
+**The EWaaS distribution moat:** Sardis is built on Turnkey MPC, the same infrastructure powering Moonshot, Infinex, and Magic Eden. When Turnkey launched Embedded Wallet-as-a-Service in April 2026, Sardis became a launch case study. Every one of our 15+ framework SDKs (CrewAI, LangChain, AutoGPT, Browser Use, Composio, OpenAI Agents SDK, Claude Agent SDK, Vercel AI SDK, n8n, Activepieces, E2B, MCP) spins up Turnkey sub-orgs on behalf of agents. Every new agent using a Sardis SDK is a new wallet on Turnkey's platform. This is a two-sided advantage: we ride Turnkey's Series B-funded security audit and regulatory work, and Turnkey rides Sardis into every major agent framework. Competitors who roll their own MPC take on custody liability and a 12-month audit timeline. Sardis shipped on day one.
 
 **Analogy:** Alloy built identity orchestration for humans across rails. Sardis builds payment governance for AI agents across rails. The value is in the control plane, not the rails themselves.
 

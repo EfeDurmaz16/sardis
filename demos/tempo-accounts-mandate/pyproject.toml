@@ -1,0 +1,17 @@
+[project]
+name = "sardis-tempo-accounts-mandate-demo"
+version = "0.1.0"
+description = "Self-contained demo — Sardis spending mandates on top of Tempo accounts"
+requires-python = ">=3.12"
+dependencies = [
+    "rich>=13.0",
+]
+
+[tool.uv.sources]
+sardis-wallet = { path = "../../packages/sardis-wallet", editable = true }
+
+[project.optional-dependencies]
+live = [
+    "httpx>=0.27",
+    "eth-account>=0.11",
+]
