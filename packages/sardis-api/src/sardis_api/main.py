@@ -286,6 +286,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         docs_url="/api/v2/docs",
         redoc_url="/api/v2/redoc",
         lifespan=lifespan,
+        # Disable trailing-slash 307 redirects. The dashboard proxy on
+        # app.sardis.sh forwards JWTs in the Authorization header — when
+        # FastAPI redirected /api/v2/merchants → /api/v2/merchants/ we saw
+        # the second hop arrive at the auth middleware without the bearer
+        # token, surfacing as 401 even though the principal was valid.
+        # Routers that defined "/" instead of "" used to depend on this
+        # redirect; switching it off means each router declaration must
+        # match the path the dashboard actually calls (no trailing slash).
+        redirect_slashes=False,
     )
 
     # Override OpenAPI generation with custom schema

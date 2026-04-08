@@ -212,7 +212,7 @@ async def _refresh_pending_queue_depth(deps: ApprovalsDependencies) -> None:
 # Endpoints
 # ============================================================================
 
-@router.post("/", response_model=ApprovalResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ApprovalResponse, status_code=status.HTTP_201_CREATED)
 async def create_approval(
     request: CreateApprovalRequest,
     deps: ApprovalsDependencies = Depends(get_deps),
@@ -395,7 +395,7 @@ async def cancel_approval(
     return ApprovalResponse.from_approval(approval)
 
 
-@router.get("/", response_model=ApprovalListResponse)
+@router.get("", response_model=ApprovalListResponse)
 async def list_approvals(
     status: ApprovalStatus | None = Query(default=None, description="Filter by status"),
     agent_id: str | None = Query(default=None, description="Filter by agent ID"),

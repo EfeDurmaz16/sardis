@@ -134,7 +134,7 @@ TEMPLATES = [
 _TEMPLATE_INDEX: dict[str, WorkflowTemplate] = {t.id: t for t in TEMPLATES}
 
 
-@router.get("/", response_model=list[WorkflowTemplate])
+@router.get("", response_model=list[WorkflowTemplate])
 async def list_templates():
     """List all available workflow templates."""
     return TEMPLATES

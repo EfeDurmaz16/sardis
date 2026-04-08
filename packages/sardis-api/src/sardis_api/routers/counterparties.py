@@ -113,7 +113,7 @@ class TrustProfileResponse(BaseModel):
     flags: list[str] = []  # e.g., ["new_merchant", "high_volume"]
 
 
-@router.post("/", response_model=CounterpartyResponse, status_code=201)
+@router.post("", response_model=CounterpartyResponse, status_code=201)
 async def create_counterparty(body: CounterpartyCreate, principal: Principal = Depends(require_principal)):
     cpty_id = f"cpty_{uuid.uuid4().hex[:12]}"
     now = datetime.now(UTC).isoformat()
@@ -134,7 +134,7 @@ async def create_counterparty(body: CounterpartyCreate, principal: Principal = D
     return CounterpartyResponse(**record)
 
 
-@router.get("/", response_model=list[CounterpartyResponse])
+@router.get("", response_model=list[CounterpartyResponse])
 async def list_counterparties(
     type: str | None = Query(default=None),
     trust_status: str | None = Query(default=None),

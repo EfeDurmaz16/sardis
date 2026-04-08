@@ -141,7 +141,7 @@ def _merchant_response(m) -> MerchantResponse:
 
 # ── Merchant Endpoints ────────────────────────────────────────────
 
-@router.post("/", response_model=MerchantResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=MerchantResponse, status_code=status.HTTP_201_CREATED)
 async def create_merchant(
     body: CreateMerchantRequest,
     deps: MerchantDependencies = Depends(get_deps),
@@ -174,7 +174,7 @@ async def create_merchant(
     return _merchant_response(merchant)
 
 
-@router.get("/", response_model=list[MerchantResponse])
+@router.get("", response_model=list[MerchantResponse])
 async def list_merchants(
     org_id: str = "default",
     deps: MerchantDependencies = Depends(get_deps),
