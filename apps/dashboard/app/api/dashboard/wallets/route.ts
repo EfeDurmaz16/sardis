@@ -127,8 +127,15 @@ export async function GET() {
 
     const agentNameById = new Map((agents || []).map((agent) => [agent.agent_id, agent.name || agent.agent_id]))
 
-    const walletSnapshots = await Promise.all(
-      wallets.map(async (wallet): Promise<WalletSnapshot> => {
+    // For each wallet fetch balances + deposits ONCE in parallel. Both the
+    // per-wallet pending counts AND the global recentDeposits list are then
+    // derived from the same fetched array — we used to re-fetch deposits in
+    // a second pass (limit=5 then limit=3) which doubled the backend round
+    // trips and added ~N extra JWT mints per page load.
+    type DepositedWalletSnapshot = WalletSnapshot & { __deposits: RemoteDeposit[] }
+
+    const walletSnapshots: DepositedWalletSnapshot[] = await Promise.all(
+      wallets.map(async (wallet): Promise<DepositedWalletSnapshot> => {
         const [balances, deposits] = await Promise.all([
           fetchOptional<RemoteMultiChainBalance>(`/api/v2/wallets/${wallet.wallet_id}/balances`),
           fetchOptionalList<RemoteDeposit>(`/api/v2/wallets/${wallet.wallet_id}/deposits?limit=5`),
@@ -166,6 +173,7 @@ export async function GET() {
           lastActivityAt,
           createdAt: wallet.created_at,
           updatedAt: wallet.updated_at,
+          __deposits: depositList,
         }
       }),
     )
@@ -178,25 +186,22 @@ export async function GET() {
         if (balance.token !== "USDC") return
         chainTotals.set(balance.chain, (chainTotals.get(balance.chain) || 0) + parseDecimal(balance.balance))
       })
-    })
-
-    await Promise.all(
-      walletSnapshots.map(async (wallet) => {
-        const deposits = await fetchOptionalList<RemoteDeposit>(`/api/v2/wallets/${wallet.walletId}/deposits?limit=3`)
-        deposits.forEach((deposit) => {
-          recentDeposits.push({
-            walletId: wallet.walletId,
-            walletName: wallet.name,
-            depositId: deposit.deposit_id,
-            amount: deposit.amount,
-            chain: deposit.chain,
-            status: deposit.status,
-            detectedAt: deposit.detected_at || deposit.confirmed_at || deposit.credited_at,
-            txHash: deposit.tx_hash,
-          })
+      // Derive recent deposits from the already-fetched list — no second
+      // round trip. We over-fetched 5 per wallet up front; the UI only
+      // shows 10 across all wallets so the upper bound is fine.
+      wallet.__deposits.forEach((deposit) => {
+        recentDeposits.push({
+          walletId: wallet.walletId,
+          walletName: wallet.name,
+          depositId: deposit.deposit_id,
+          amount: deposit.amount,
+          chain: deposit.chain,
+          status: deposit.status,
+          detectedAt: deposit.detected_at || deposit.confirmed_at || deposit.credited_at,
+          txHash: deposit.tx_hash,
         })
-      }),
-    )
+      })
+    })
 
     const totalUsd = walletSnapshots.reduce((sum, wallet) => sum + parseDecimal(wallet.totalUsd), 0)
     const walletCount = walletSnapshots.length

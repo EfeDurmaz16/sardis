@@ -1,5 +1,6 @@
 import "server-only"
 
+import { cache } from "react"
 import { headers as nextHeaders } from "next/headers"
 import { NextResponse } from "next/server"
 
@@ -7,6 +8,32 @@ import { auth } from "@/lib/auth"
 import { extractListOrThrow } from "@/lib/collection-response"
 
 const DEFAULT_SARDIS_API_BASE_URL = "https://api.sardis.sh"
+
+/**
+ * Mint a fresh better-auth JWT from the inbound session cookie, memoized
+ * for the lifetime of the current React request (via `react.cache`).
+ *
+ * Without this wrapper, every call to `sardisProxyResponse` within a
+ * single server request (e.g. the /api/dashboard/wallets fan-out that
+ * issues ~3×N calls per wallet) re-invokes `auth.api.getToken()`, which
+ * hits the database for the session row and re-signs the JWT. For a
+ * dashboard with 8 wallets that's 26 DB hits and 26 signatures per page
+ * load — easily 4-8 seconds of overhead.
+ *
+ * `react.cache` deduplicates the call per request: the first invocation
+ * actually mints, all subsequent callers receive the same promise.
+ * Different requests still get fresh tokens (cache scope is per-request,
+ * not global), so there's no security downgrade.
+ */
+const getRequestJwt = cache(async (): Promise<string | undefined> => {
+  try {
+    const inboundHeaders = await nextHeaders()
+    const result = await auth.api.getToken({ headers: inboundHeaders })
+    return result?.token
+  } catch {
+    return undefined
+  }
+})
 
 type SardisErrorPayload = {
   detail?: string
@@ -56,25 +83,17 @@ export async function sardisProxyResponse(
 
   // Resolve a user JWT in this order:
   //   1. Explicit `options.userJwt` (caller already minted one)
-  //   2. better-auth `auth.api.getToken({ headers })` — pulls the
-  //      HttpOnly session cookie from the inbound request via Next.js
-  //      `headers()` and asks better-auth to issue a fresh EdDSA JWT
-  //      bound to that session. This is what every dashboard route
-  //      that calls sardisProxyFetch needs by default — without it,
-  //      callers were forgetting to pass userJwt and hitting 401 in
-  //      production (see 2026-04-08 incident).
+  //   2. `getRequestJwt()` — React-cached per-request JWT mint from the
+  //      better-auth session cookie. First call in a request hits
+  //      auth.api.getToken; all subsequent calls reuse the same promise
+  //      so fan-out routes (e.g. /api/dashboard/wallets making 20+ calls)
+  //      only pay the mint cost once.
   //   3. None — throw 401. We never fall back to SARDIS_API_KEY for
   //      user-facing requests because the server-side API key carries
   //      elevated privileges.
   let userJwt = options?.userJwt
   if (!userJwt) {
-    try {
-      const inboundHeaders = await nextHeaders()
-      const result = await auth.api.getToken({ headers: inboundHeaders })
-      userJwt = result?.token
-    } catch {
-      // Fall through to the 401 below.
-    }
+    userJwt = await getRequestJwt()
   }
 
   if (userJwt) {

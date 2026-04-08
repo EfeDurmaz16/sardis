@@ -353,13 +353,28 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
       </button>
 
       <div className="flex items-center gap-1.5 ml-auto">
-        <Button variant="outline" size="sm" className="hidden sm:flex gap-1 text-xs h-8">
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex gap-1 text-xs h-8"
+          onClick={() => router.push("/wallets")}
+        >
           <Plus className="w-3 h-3" /> Add Funds
         </Button>
-        <Button variant="outline" size="sm" className="hidden sm:flex gap-1 text-xs h-8">
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:flex gap-1 text-xs h-8"
+          onClick={() => router.push("/agents/new")}
+        >
           <Plus className="w-3 h-3" /> Create Agent
         </Button>
-        <Button variant="outline" size="sm" className="hidden lg:flex gap-1 text-xs h-8">
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden lg:flex gap-1 text-xs h-8"
+          onClick={() => router.push("/virtual-cards")}
+        >
           <CreditCard className="w-3 h-3" /> Issue Card
         </Button>
 
@@ -433,7 +448,7 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={8}>
               <DropdownMenuItem onClick={() => setPaymentOpen(true)}>New Payment</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/agents")}>Create Agent</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/agents/new")}>Create Agent</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/wallets")}>Add Funds</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/virtual-cards")}>Issue Card</DropdownMenuItem>
             </DropdownMenuContent>
