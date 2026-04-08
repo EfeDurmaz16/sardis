@@ -319,6 +319,7 @@ payment = client.pay(
               { name: "Bridge", domain: "bridge.xyz" },
               { name: "Base", domain: "base.org" },
               { name: "Tempo", domain: "tempo.xyz" },
+              { name: "Arc", domain: "arc.network" },
             ].map((p) => (
               <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} className="h-5 md:h-7" style={{ opacity: 0.85, objectFit: "contain" }} />
             ))}
@@ -432,7 +433,7 @@ payment = client.pay(
           <div className="flex flex-col md:flex-row gap-3">
             {[
               { label: "Frameworks", title: "CrewAI, LangChain, Vercel AI, custom runtimes." },
-              { label: "Multi-chain", title: "Live on Tempo and Base. Polygon, Arbitrum, Optimism coming soon." },
+              { label: "Multi-chain", title: "Live on Tempo and Base. Arc testnet next. Polygon, Arbitrum, Optimism on deck." },
               { label: "Sandbox", title: "Test prompts and policies before funds move." },
             ].map((f) => (
               <BezelCard key={f.label} t={t}>
