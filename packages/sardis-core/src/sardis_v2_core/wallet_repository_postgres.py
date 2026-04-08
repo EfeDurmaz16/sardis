@@ -216,6 +216,50 @@ class PostgresWalletRepository:
             )
             return [self._wallet_from_row(dict(r), str(r["agent_external_id"])) for r in rows]
 
+    async def list_by_owner(
+        self,
+        owner_id: str,
+        agent_repo: object | None = None,  # ignored — we JOIN organizations directly
+        limit: int = 50,
+        offset: int = 0,
+    ) -> builtins.list[Wallet]:
+        """List every wallet whose owning agent belongs to ``owner_id`` (an
+        organization external_id) in a single SQL JOIN — no N+1.
+
+        The abstract WalletRepository defines this method on the in-memory
+        implementation; the routers/wallets.py list endpoint calls it for
+        non-admin principals to scope wallets to the caller's org. The
+        Postgres class was missing the override, so the call site raised
+        AttributeError → 500 on every dashboard wallets fetch.
+
+        We resolve the org via wallets → agents → organizations using the
+        same FK chain wallet_repository_postgres already relies on for the
+        ``list`` query, plus an extra JOIN to organizations for the
+        external_id match.
+        """
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT w.external_id, w.chain_address, w.chain, w.mpc_provider, w.currency,
+                       w.limit_per_tx, w.limit_total, w.addresses, w.account_type,
+                       w.smart_account_address, w.entrypoint_address, w.paymaster_enabled, w.bundler_profile,
+                       w.is_active, w.is_frozen, w.frozen_at, w.frozen_by, w.freeze_reason,
+                       w.created_at, w.updated_at,
+                       a.external_id AS agent_external_id
+                FROM wallets w
+                JOIN agents a ON a.id = w.agent_id
+                JOIN organizations o ON o.id = a.organization_id
+                WHERE o.external_id = $1
+                ORDER BY w.created_at DESC
+                LIMIT $2 OFFSET $3
+                """,
+                owner_id,
+                limit,
+                offset,
+            )
+            return [self._wallet_from_row(dict(r), str(r["agent_external_id"])) for r in rows]
+
     async def get_many(self, wallet_ids: list[str]) -> list[Wallet]:
         """Batch load wallets by external IDs in a single query."""
         if not wallet_ids:
