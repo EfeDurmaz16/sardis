@@ -331,10 +331,9 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     network: string
   } | null>(null)
 
-  // Fetch the first on-chain wallet address once on mount so Add Funds can
-  // open synchronously without an async step in the click handler. Popup
-  // blockers only trust window.open calls that run in the same tick as
-  // the click event — any await between click and open loses the gesture.
+  // Fetch the first on-chain wallet once on mount — we cache BOTH the
+  // address (for display + Stripe fallback) and the wallet_id (for the
+  // Coinbase Onramp backend call which keys off wallet_id).
   useEffect(() => {
     let cancelled = false
     async function loadPrimaryAddress() {
@@ -345,15 +344,16 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
         })
         if (!res.ok) return
         const json = (await res.json()) as {
-          wallets?: Array<{ primaryAddress: string | null; primaryChain: string | null }>
+          wallets?: Array<{ walletId: string; primaryAddress: string | null; primaryChain: string | null }>
         }
         const wallet = (json.wallets || []).find(
           (w) => typeof w.primaryAddress === "string" && w.primaryAddress.length > 0,
         )
-        if (!cancelled && wallet?.primaryAddress) {
+        if (!cancelled && wallet?.primaryAddress && wallet.walletId) {
           const rawChain = wallet.primaryChain || "base"
           const network = rawChain === "base_sepolia" ? "base" : rawChain
           setCachedPrimaryAddress({ address: wallet.primaryAddress, network })
+          setCachedWalletId(wallet.walletId)
         }
       } catch {
         // Silent — Add Funds falls back to routing the user to /wallets.
@@ -363,63 +363,69 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     return () => { cancelled = true }
   }, [])
 
-  // Coinbase Pay (Onramp) is free for USDC on Base — that's the default
-  // funding path. Stripe Link Crypto Onramp has ~5% fees, so we only fall
-  // back to it if Coinbase App ID is not configured. Reference price chart:
+  // Cache the first wallet_id (not just address) for the backend onramp call.
+  const [cachedWalletId, setCachedWalletId] = useState<string | null>(null)
+
+  // Coinbase Onramp now requires a server-minted sessionToken (the old
+  // "raw URL with appId + addresses" flow was deprecated). The backend
+  // already has a /api/v2/wallets/{wallet_id}/onramp handler
+  // (packages/sardis-api/src/sardis_api/routers/wallets.py _get_cdp_onramp_session_token)
+  // that generates an Ed25519 CDP JWT, calls api.developer.coinbase.com/
+  // onramp/v1/token, and returns a pay.coinbase.com URL with the token
+  // baked in. We hit that.
   //
-  //   Coinbase Onramp  — 0% (USDC on Base, CDP project)
-  //   Conduit Pay      — ~0.5-1% spread (Tempo-native)
+  // Coinbase Onramp for USDC on Base is free for the developer and the
+  // buyer pays standard fiat-crypto spread (far lower than Stripe Link's
+  // ~5%). This is the preferred funding path.
+  //
+  // Fee comparison (April 2026, for reference):
+  //   Coinbase Onramp  — 0% dev fee, ~0.5-1% buyer spread
+  //   Conduit Pay      — ~0.5-1% (Tempo-native)
   //   Banxa            — 1-2%
   //   Ramp Network     — 1.5-3%
   //   MoonPay          — 1-4.5%
   //   Stripe Link      — ~5% (preview API)
-  //
-  // Coinbase URL format (per docs.cdp.coinbase.com/onramp):
-  //   https://pay.coinbase.com/buy/select-asset
-  //     ?appId=<CDP_PROJECT_ID>
-  //     &addresses=<json>              ← {"0xABC...":["base"]} url-encoded
-  //     &defaultAssetCode=USDC
-  //     &defaultNetwork=base
-  //     &presetFiatAmount=100
-  //     &fiatCurrency=USD
-  function handleAddFunds() {
-    if (!cachedPrimaryAddress) {
+  async function handleAddFunds() {
+    if (!cachedPrimaryAddress || !cachedWalletId) {
       toast.error("No on-chain wallet ready yet. Visit /wallets to provision one.")
       router.push("/wallets")
       return
     }
-    const coinbaseAppId = process.env.NEXT_PUBLIC_COINBASE_APP_ID || ""
-    const addressesJson = JSON.stringify({
-      [cachedPrimaryAddress.address]: [cachedPrimaryAddress.network],
-    })
-    let url: string
-    let providerLabel: string
-    if (coinbaseAppId) {
-      const params = new URLSearchParams({
-        appId: coinbaseAppId,
-        addresses: addressesJson,
-        defaultAssetCode: "USDC",
-        defaultNetwork: cachedPrimaryAddress.network,
-        presetFiatAmount: "100",
-        fiatCurrency: "USD",
-      })
-      url = `https://pay.coinbase.com/buy/select-asset?${params.toString()}`
-      providerLabel = "Coinbase Pay (free for USDC on Base)"
-    } else {
-      // Fallback: Stripe Link Crypto Onramp. Higher fee (~5%) but works
-      // without a CDP project ID.
-      const params = new URLSearchParams({
-        destination_currency: "usdc",
-        destination_network: cachedPrimaryAddress.network,
-        source_currency: "usd",
-        source_amount: "100.00",
-      })
-      params.append("wallet_addresses[ethereum]", cachedPrimaryAddress.address)
-      url = `https://crypto.link.com?${params.toString()}`
-      providerLabel = "Stripe Crypto Onramp"
+    // window.open SYNCHRONOUSLY in the click handler so Safari/Chrome
+    // popup blockers honor the user gesture. Drop noopener/noreferrer so
+    // we get a real Window reference back — we'll navigate it once the
+    // backend returns the sessionToken URL.
+    const popup = window.open("about:blank", "_blank")
+    if (!popup) {
+      toast.error("Pop-up blocked — allow pop-ups for app.sardis.sh and try again")
+      return
     }
-    window.open(url, "_blank", "noopener,noreferrer")
-    toast.success(`Opening ${providerLabel}`)
+    try {
+      const res = await fetch(`/api/sardis/api/v2/wallets/${cachedWalletId}/onramp`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_chain: cachedPrimaryAddress.network,
+          destination_chain: cachedPrimaryAddress.network,
+          preset_amount: "100",
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { detail?: string; error?: string } | null
+        throw new Error(err?.detail || err?.error || `onramp ${res.status}`)
+      }
+      const body = (await res.json()) as { onramp_url?: string }
+      if (!body.onramp_url) {
+        throw new Error("Backend returned no onramp_url")
+      }
+      popup.location.href = body.onramp_url
+      toast.success("Opening Coinbase Onramp (free for USDC on Base)")
+    } catch (err) {
+      popup.close()
+      const message = err instanceof Error ? err.message : "Failed to start funding flow"
+      toast.error(message)
+    }
   }
 
   const { theme, setTheme } = useTheme()
