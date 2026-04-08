@@ -363,22 +363,63 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     return () => { cancelled = true }
   }, [])
 
+  // Coinbase Pay (Onramp) is free for USDC on Base — that's the default
+  // funding path. Stripe Link Crypto Onramp has ~5% fees, so we only fall
+  // back to it if Coinbase App ID is not configured. Reference price chart:
+  //
+  //   Coinbase Onramp  — 0% (USDC on Base, CDP project)
+  //   Conduit Pay      — ~0.5-1% spread (Tempo-native)
+  //   Banxa            — 1-2%
+  //   Ramp Network     — 1.5-3%
+  //   MoonPay          — 1-4.5%
+  //   Stripe Link      — ~5% (preview API)
+  //
+  // Coinbase URL format (per docs.cdp.coinbase.com/onramp):
+  //   https://pay.coinbase.com/buy/select-asset
+  //     ?appId=<CDP_PROJECT_ID>
+  //     &addresses=<json>              ← {"0xABC...":["base"]} url-encoded
+  //     &defaultAssetCode=USDC
+  //     &defaultNetwork=base
+  //     &presetFiatAmount=100
+  //     &fiatCurrency=USD
   function handleAddFunds() {
     if (!cachedPrimaryAddress) {
       toast.error("No on-chain wallet ready yet. Visit /wallets to provision one.")
       router.push("/wallets")
       return
     }
-    const params = new URLSearchParams({
-      destination_currency: "usdc",
-      destination_network: cachedPrimaryAddress.network,
-      source_currency: "usd",
-      source_amount: "100.00",
+    const coinbaseAppId = process.env.NEXT_PUBLIC_COINBASE_APP_ID || ""
+    const addressesJson = JSON.stringify({
+      [cachedPrimaryAddress.address]: [cachedPrimaryAddress.network],
     })
-    params.append("wallet_addresses[ethereum]", cachedPrimaryAddress.address)
-    const url = `https://crypto.link.com?${params.toString()}`
+    let url: string
+    let providerLabel: string
+    if (coinbaseAppId) {
+      const params = new URLSearchParams({
+        appId: coinbaseAppId,
+        addresses: addressesJson,
+        defaultAssetCode: "USDC",
+        defaultNetwork: cachedPrimaryAddress.network,
+        presetFiatAmount: "100",
+        fiatCurrency: "USD",
+      })
+      url = `https://pay.coinbase.com/buy/select-asset?${params.toString()}`
+      providerLabel = "Coinbase Pay (free for USDC on Base)"
+    } else {
+      // Fallback: Stripe Link Crypto Onramp. Higher fee (~5%) but works
+      // without a CDP project ID.
+      const params = new URLSearchParams({
+        destination_currency: "usdc",
+        destination_network: cachedPrimaryAddress.network,
+        source_currency: "usd",
+        source_amount: "100.00",
+      })
+      params.append("wallet_addresses[ethereum]", cachedPrimaryAddress.address)
+      url = `https://crypto.link.com?${params.toString()}`
+      providerLabel = "Stripe Crypto Onramp"
+    }
     window.open(url, "_blank", "noopener,noreferrer")
-    toast.success("Opening Stripe Crypto Onramp")
+    toast.success(`Opening ${providerLabel}`)
   }
 
   const { theme, setTheme } = useTheme()
