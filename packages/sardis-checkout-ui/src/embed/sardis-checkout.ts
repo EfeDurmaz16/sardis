@@ -15,10 +15,12 @@
  *   <sardis-pay client-secret="abc123..." />
  */
 
-const CHECKOUT_BASE =
-  (typeof window !== "undefined" &&
-    (window as unknown as Record<string, unknown>).__SARDIS_CHECKOUT_URL__) ||
-  "https://checkout.sardis.sh";
+const CHECKOUT_BASE: string =
+  (typeof window !== "undefined"
+    ? ((window as unknown as Record<string, unknown>).__SARDIS_CHECKOUT_URL__ as
+        | string
+        | undefined)
+    : undefined) || "https://checkout.sardis.sh";
 
 interface OpenOptions {
   /** Client secret for the checkout session (preferred) */
