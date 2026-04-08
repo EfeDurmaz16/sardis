@@ -152,6 +152,7 @@ def verify_jwt_token(token: str) -> dict | None:
             )
 
             if not isinstance(payload.get("sub"), str) or not payload["sub"]:
+                _logger.warning("better-auth JWT rejected: empty sub claim")
                 return None
 
             # Normalize: better-auth tokens may not have jti, synthesize one
@@ -159,8 +160,22 @@ def verify_jwt_token(token: str) -> dict | None:
                 payload["jti"] = f"ba_{payload['sub']}_{payload.get('iat', 0)}"
 
             return payload
-        except (pyjwt.ExpiredSignatureError, pyjwt.InvalidTokenError, TypeError, ValueError, Exception):
-            pass
+        except pyjwt.ExpiredSignatureError:
+            _logger.info("better-auth JWT rejected: expired")
+        except pyjwt.InvalidAudienceError as e:
+            _logger.warning("better-auth JWT rejected: audience mismatch — %s", e)
+        except pyjwt.InvalidIssuerError as e:
+            _logger.warning("better-auth JWT rejected: issuer mismatch — %s", e)
+        except pyjwt.PyJWKClientError as e:
+            _logger.error("better-auth JWT rejected: JWKS client error (likely network/fetch) — %s", e)
+        except pyjwt.InvalidTokenError as e:
+            _logger.warning("better-auth JWT rejected: %s — %s", type(e).__name__, e)
+        except (TypeError, ValueError) as e:
+            _logger.warning("better-auth JWT rejected: malformed token — %s: %s", type(e).__name__, e)
+        except Exception as e:  # pragma: no cover  - last-resort visibility
+            _logger.exception("better-auth JWT rejected: unexpected error — %s: %s", type(e).__name__, e)
+    else:
+        _logger.warning("better-auth JWT skipped: _jwks_client is None (BETTER_AUTH_JWKS_URL not set)")
 
     return None
 
