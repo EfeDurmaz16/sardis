@@ -24,8 +24,15 @@ logger = logging.getLogger(__name__)
 
 CIRCLE_W3S_BASE_URL = "https://api.circle.com/v1/w3s"
 
-# Circle blockchain ID mapping
+# Circle blockchain ID mapping.
+#
+# Arc is Circle's own USDC-native L1. Testnet is supported today; the
+# testnet identifier was confirmed against
+# https://developers.circle.com/wallets/supported-blockchains on
+# 2026-04-08. Arc mainnet is on the 2026 roadmap — add the mainnet
+# identifier (expected "ARC") when Circle ships it.
 CIRCLE_BLOCKCHAIN_IDS: dict[str, str] = {
+    "arc_testnet": "ARC-TESTNET",
     "base": "BASE",
     "base_sepolia": "BASE-SEPOLIA",
     "ethereum": "ETH",

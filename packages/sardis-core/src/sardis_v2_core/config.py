@@ -461,6 +461,19 @@ class SardisSettings(BaseSettings):
             stablecoins=["USDC"],
             settlement_vault="",
         ),
+        # Arc is Circle's USDC-native L1. Testnet live 2025-10-28;
+        # mainnet planned for 2026. Chain ID and RPC come from
+        # https://docs.arc.network — update the RPC URL from the
+        # public docs when you actually wire this up in live mode.
+        # Identifier matches the Circle W3S CIRCLE_BLOCKCHAIN_IDS
+        # mapping in packages/sardis-wallet.
+        ChainConfig(
+            name="arc_testnet",
+            rpc_url="https://rpc.testnet.arc.network",
+            chain_id=421614,  # placeholder — confirm against arc.network/docs
+            stablecoins=["USDC"],
+            settlement_vault="",
+        ),
     ])
 
     # MPC provider - simulated by default for demo
