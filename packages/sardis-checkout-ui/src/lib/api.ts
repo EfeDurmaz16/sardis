@@ -9,9 +9,15 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Merge headers explicitly so caller-provided headers (e.g. Authorization)
+  // don't clobber Content-Type via the options spread.
+  const mergedHeaders: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string> | undefined),
+  };
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: mergedHeaders,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -43,9 +49,18 @@ export function getBalance(clientSecret: string) {
 }
 
 export function getOnrampToken(clientSecret: string, walletAddress: string) {
+  // Bearer auth: the client_secret is a session-scoped cryptographic
+  // bearer token (same pattern as Stripe client_secret). The backend
+  // requires it in the Authorization header on this endpoint to
+  // prevent unauthenticated session-token minting (Coinbase CDP
+  // review requirement, 2026-04-08).
   return request<{ session_token: string; onramp_url: string }>(
     `/sessions/client/${clientSecret}/onramp-token`,
-    { method: "POST", body: JSON.stringify({ wallet_address: walletAddress }) },
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${clientSecret}` },
+      body: JSON.stringify({ wallet_address: walletAddress }),
+    },
   );
 }
 

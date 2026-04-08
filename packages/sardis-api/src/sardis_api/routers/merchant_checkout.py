@@ -13,7 +13,7 @@ from datetime import UTC
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sardis_guardrails.transaction_caps import get_transaction_cap_engine
@@ -1094,12 +1094,51 @@ def _generate_cdp_jwt(request_method: str, request_path: str) -> str:
 async def get_onramp_token(
     client_secret: str,
     body: OnrampTokenRequest,
+    authorization: str | None = Header(default=None),
     deps: MerchantCheckoutDependencies = Depends(get_deps),
 ):
-    """Generate a Coinbase Onramp session token for the fund-and-pay flow."""
+    """Generate a Coinbase Onramp session token for the fund-and-pay flow.
+
+    Authentication (added 2026-04-08 per Coinbase CDP review):
+      1. Bearer token required in the Authorization header. The token
+         must equal the session's client_secret. client_secret is a
+         cryptographic 32-byte session-scoped bearer token — the same
+         pattern Stripe uses for checkout sessions.
+      2. Wallet ownership proof: the request body wallet_address must
+         equal the wallet_address that was already verified for this
+         session via an EIP-191 signed message (set during
+         POST /sessions/client/{client_secret}/connect-external).
+
+    Both checks must pass; either failure returns 401 (for auth) or
+    400 (for wallet mismatch / missing wallet). This endpoint cannot
+    mint a Coinbase session token without an authenticated caller
+    who has already proven wallet ownership.
+    """
+    # ── 1. Bearer token authentication ─────────────────────────────
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=(
+                "Missing or invalid Authorization header. Expected: "
+                "Bearer <session client_secret>"
+            ),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    provided_token = authorization.split(" ", 1)[1].strip()
+
+    # Constant-time comparison to prevent timing attacks
+    import hmac as _hmac
+    if not _hmac.compare_digest(provided_token, client_secret):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bearer token does not match session client_secret",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # ── 2. Wallet ownership check (existing) ──────────────────────
     session = await _get_session_by_secret(client_secret, deps)
 
-    # Auth: wallet must be connected and address must match
     if not session.payer_wallet_address:
         raise HTTPException(
             status_code=400,
