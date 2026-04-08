@@ -353,7 +353,14 @@ async def create_onramp_session(
 
     Uses Stripe crypto onramp (primary) with Coinbase Onramp fallback.
     """
-    stripe_key = os.getenv("STRIPE_SECRET_KEY")
+    # Env var compatibility: production backend exposes the key as
+    # STRIPE_API_KEY (per gcloud secrets mapping), older local .env files
+    # and tests use STRIPE_SECRET_KEY. Accept either so the Stripe crypto
+    # onramp path actually runs instead of silently falling back to
+    # Coinbase, which is what was happening in production — STRIPE_SECRET_KEY
+    # was unset, the code skipped the entire Stripe block, and users saw
+    # pay.coinbase.com every time they clicked "Add Funds".
+    stripe_key = os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY")
 
     # Try Stripe crypto onramp first
     if stripe_key:

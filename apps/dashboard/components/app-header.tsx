@@ -307,22 +307,25 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     setPaymentRecipient(""); setPaymentAmount(""); setPaymentChain("Base")
   }
 
-  // Open Stripe Crypto Onramp (crypto.link.com) for the caller's first
-  // on-chain wallet. This is the public Stripe Link Crypto Onramp URL —
-  // no session token, no backend call, no auth. We build the URL with
-  // query params (wallet_addresses[ethereum]=0x..., destination_currency,
-  // destination_network, source_currency) and open it in a new tab. The
-  // user completes the buy in Stripe's hosted UI and the funds land at
-  // the wallet address we pass in.
+  // Open a Stripe Crypto Onramp session for the caller's first on-chain
+  // wallet. Flow:
+  //   1. Sync window.open("about:blank") preserves the user-gesture popup
+  //      allowance — popup blockers reject async window.open.
+  //   2. Fetch /api/dashboard/wallets to find the first wallet with a real
+  //      primary address.
+  //   3. POST /api/sardis/api/v2/onramp/session — backend mints a Stripe
+  //      session via api.stripe.com/v1/crypto/onramp_sessions and returns
+  //      { url, provider }. If Stripe fails (network, missing key, wrong
+  //      API version) backend falls back to Coinbase pay.coinbase.com and
+  //      sets provider="coinbase".
+  //   4. Navigate the popup to the returned URL.
   //
-  // We still need to fetch the user's wallets to pick a funding address,
-  // and we call window.open() SYNCHRONOUSLY on the click first (popup
-  // blockers only trust user-gesture-triggered opens), then navigate the
-  // popup after the wallet lookup resolves.
+  // We intentionally do NOT build a direct crypto.link.com URL with query
+  // params — that endpoint 404s without a server-minted session token, it's
+  // a Stripe-hosted dialog that expects its own session id, not arbitrary
+  // query params.
   async function handleAddFunds() {
     if (fundingInFlight) return
-    // Open the tab synchronously so popup blockers don't swallow it. We'll
-    // point it at the final URL once the wallet lookup finishes below.
     const popup = window.open("about:blank", "_blank", "noopener,noreferrer")
     if (!popup) {
       toast.error("Pop-up blocked — allow pop-ups for app.sardis.sh and try again")
@@ -349,30 +352,32 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
         router.push("/wallets")
         return
       }
-      // Map Sardis chain slugs to Stripe Link Crypto Onramp network codes.
-      const chainToNetwork: Record<string, string> = {
-        base: "base",
-        base_sepolia: "base",
-        ethereum: "ethereum",
-        polygon: "polygon",
-        arbitrum: "arbitrum",
-        optimism: "optimism",
-        solana: "solana",
-      }
-      const network = chainToNetwork[walletWithAddress.primaryChain || "base"] || "base"
-      const params = new URLSearchParams({
-        destination_currency: "usdc",
-        destination_network: network,
-        source_currency: "usd",
-        source_amount: "100.00",
+      // Sardis chain slug → Stripe/Coinbase onramp network label. `base_sepolia`
+      // maps to `base` because onramps only serve mainnet addresses.
+      const primaryChain = walletWithAddress.primaryChain || "base"
+      const network = primaryChain === "base_sepolia" ? "base" : primaryChain
+      const onrampRes = await fetch("/api/sardis/api/v2/onramp/session", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: walletWithAddress.primaryAddress,
+          crypto_currency: "usdc",
+          network,
+          currency: "USD",
+          mode: "hosted",
+        }),
       })
-      // `wallet_addresses[ethereum]` — note Stripe indexes by the base chain
-      // family, not the destination_network field. For all EVM chains pass
-      // the address under `ethereum`; for Solana pass under `solana`.
-      const addressKey = network === "solana" ? "solana" : "ethereum"
-      params.append(`wallet_addresses[${addressKey}]`, walletWithAddress.primaryAddress)
-      popup.location.href = `https://crypto.link.com/?${params.toString()}`
-      toast.success("Opening Stripe Crypto Onramp")
+      if (!onrampRes.ok) {
+        const errPayload = await onrampRes.json().catch(() => null) as { detail?: string; error?: string } | null
+        throw new Error(errPayload?.detail || errPayload?.error || `onramp session failed: ${onrampRes.status}`)
+      }
+      const session = (await onrampRes.json()) as { url?: string; provider?: string }
+      if (!session.url) {
+        throw new Error("onramp session returned no URL")
+      }
+      popup.location.href = session.url
+      toast.success(session.provider === "stripe" ? "Opening Stripe Crypto Onramp" : "Opening Coinbase Onramp")
     } catch (err) {
       popup.close()
       const message = err instanceof Error ? err.message : "Failed to start funding flow"
