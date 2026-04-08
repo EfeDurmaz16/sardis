@@ -69,7 +69,7 @@ const priorityVariant: Record<number, "outline"> = {
 }
 
 export default function FallbackRulesPage() {
-  const { data: ruleData, loading, refetch } = useSardisList<FallbackRule>("api/v2/fallback-policies", "Fallback rules")
+  const { data: ruleData, loading, refetch } = useSardisList<FallbackRule>("api/v2/fallback/rules", "Fallback rules")
   const rules = ruleData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)

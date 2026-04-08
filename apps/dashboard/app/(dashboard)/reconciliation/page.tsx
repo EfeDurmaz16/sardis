@@ -51,7 +51,7 @@ const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ defa
 const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Tooltip })), { ssr: false })
 const Legend = dynamic(() => import("recharts").then((m) => ({ default: m.Legend })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
-import { useSardisList } from "@/hooks/use-sardis"
+import { useSardis } from "@/hooks/use-sardis"
 
 type Discrepancy = {
   txId: string
@@ -79,10 +79,14 @@ const statusConfig: Record<Discrepancy["status"], { variant: "destructive" | "wa
 }
 
 export default function ReconciliationPage() {
-  const { data: reconData, loading, refetch } = useSardisList<ReconciliationEntry>("api/v2/admin/reconciliation", "Reconciliation records")
+  // Backend admin_reconciliation router only exposes /check (POST) and /stats
+  // (GET) — there is no list endpoint for ReconciliationEntry rows. We use
+  // /stats as a heartbeat call so the page renders an empty state instead of
+  // 404'ing. Replace with a proper list endpoint once the backend ships one.
+  const { data: reconData, loading, refetch } = useSardis<{ entries?: ReconciliationEntry[] }>("api/v2/admin/reconciliation/stats")
 
   // Flatten all entries into a single reconciliation view
-  const entry = reconData?.[0] ?? null
+  const entry = reconData?.entries?.[0] ?? null
 
   const discrepancies = entry?.discrepancies ?? []
 

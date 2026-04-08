@@ -48,7 +48,7 @@ const statusConfig: Record<ApprovalRule["status"], { color: string }> = {
 }
 
 export default function ApprovalConfigPage() {
-  const { data: config, loading } = useSardis<ApprovalConfig>("api/v2/approval-config")
+  const { data: config, loading } = useSardis<ApprovalConfig>("api/v2/approvals/config")
   const rules = config?.rules ?? []
 
   const stats = useMemo(() => {
