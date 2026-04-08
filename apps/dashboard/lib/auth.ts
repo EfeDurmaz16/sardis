@@ -4,6 +4,7 @@ import { passkey } from "@better-auth/passkey";
 import { apiKey } from "@better-auth/api-key";
 import { agentAuth } from "@better-auth/agent-auth";
 import type { Capability } from "@better-auth/agent-auth";
+import type { DynamicBaseURLConfig } from "better-auth";
 import { polar, checkout, portal, usage, webhooks } from "@polar-sh/better-auth";
 import { stripe } from "@better-auth/stripe";
 import { Polar } from "@polar-sh/sdk";
@@ -23,6 +24,32 @@ const trustedOrigins = [
   "https://dashboard-wine-alpha-31.vercel.app",
   ...LOCAL_AUTH_ORIGINS,
 ]
+
+/**
+ * Multi-host base URL resolution. MUST remain a DynamicBaseURLConfig —
+ * do NOT flatten to a plain `BETTER_AUTH_URL` string.
+ *
+ * Context: commit 9e8a0dd9 switched this to the dynamic form to fix
+ * the 2026-04-08 cross-subdomain 401 incident where a session cookie
+ * minted on app.sardis.sh was rejected by every request to
+ * dashboard.sardis.sh and sardis.sh. At least one auto-fix / codemod
+ * has silently reverted this back to a plain string; the explicit
+ * type annotation below guarantees the typecheck will fail loudly
+ * instead of shipping a silent 401 regression.
+ *
+ * If you're tempted to simplify this, read the full story in:
+ *   docs/ops/ghost-org-cleanup-2026-04-08.md (gitignored)
+ *   commit 9e8a0dd9 body
+ */
+const BASE_URL_CONFIG: DynamicBaseURLConfig = {
+  fallback: BETTER_AUTH_URL,
+  allowedHosts: [
+    ...PRODUCTION_AUTH_HOSTS,
+    "dashboard-wine-alpha-31.vercel.app",
+    "localhost:3000",
+    "localhost:3005",
+  ],
+}
 
 const passkeyOrigins = process.env.NODE_ENV === "production"
   ? PRODUCTION_AUTH_HOSTS.map((host) => `https://${host}`)
@@ -213,15 +240,7 @@ export const auth = betterAuth({
     connectionTimeoutMillis: 10_000,
     ssl: { rejectUnauthorized: false },
   }),
-  baseURL: {
-    fallback: BETTER_AUTH_URL,
-    allowedHosts: [
-      ...PRODUCTION_AUTH_HOSTS,
-      "dashboard-wine-alpha-31.vercel.app",
-      "localhost:3000",
-      "localhost:3005",
-    ],
-  },
+  baseURL: BASE_URL_CONFIG,
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins,
   advanced: {
