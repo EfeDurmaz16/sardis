@@ -14,6 +14,7 @@ export async function dashboardApiFetch<T>(input: string, init: RequestInit = {}
   const response = await fetch(input, {
     ...init,
     headers,
+    credentials: "include",
     cache: "no-store",
   })
 

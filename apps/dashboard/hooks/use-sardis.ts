@@ -20,7 +20,10 @@ export function useSardis<T>(path: string | null): UseSardisResult<T> {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/api/sardis/${path.replace(/^\//, "")}`)
+      const res = await fetch(`/api/sardis/${path.replace(/^\//, "")}`, {
+        credentials: "include",
+        cache: "no-store",
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => null)
         throw new Error(body?.error || `API returned ${res.status}`)

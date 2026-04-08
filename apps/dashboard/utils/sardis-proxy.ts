@@ -1,6 +1,9 @@
 import "server-only"
 
+import { headers as nextHeaders } from "next/headers"
 import { NextResponse } from "next/server"
+
+import { auth } from "@/lib/auth"
 
 const DEFAULT_SARDIS_API_BASE_URL = "https://api.sardis.sh"
 
@@ -50,12 +53,32 @@ export async function sardisProxyResponse(
   const { baseUrl } = getSardisApiConfig()
   const headers = new Headers(init.headers)
 
-  if (options?.userJwt) {
-    headers.set("Authorization", `Bearer ${options.userJwt}`)
+  // Resolve a user JWT in this order:
+  //   1. Explicit `options.userJwt` (caller already minted one)
+  //   2. better-auth `auth.api.getToken({ headers })` — pulls the
+  //      HttpOnly session cookie from the inbound request via Next.js
+  //      `headers()` and asks better-auth to issue a fresh EdDSA JWT
+  //      bound to that session. This is what every dashboard route
+  //      that calls sardisProxyFetch needs by default — without it,
+  //      callers were forgetting to pass userJwt and hitting 401 in
+  //      production (see 2026-04-08 incident).
+  //   3. None — throw 401. We never fall back to SARDIS_API_KEY for
+  //      user-facing requests because the server-side API key carries
+  //      elevated privileges.
+  let userJwt = options?.userJwt
+  if (!userJwt) {
+    try {
+      const inboundHeaders = await nextHeaders()
+      const result = await auth.api.getToken({ headers: inboundHeaders })
+      userJwt = result?.token
+    } catch {
+      // Fall through to the 401 below.
+    }
+  }
+
+  if (userJwt) {
+    headers.set("Authorization", `Bearer ${userJwt}`)
   } else {
-    // Do not fall back to SARDIS_API_KEY for user-facing requests.
-    // The server-side API key carries elevated privileges and must not
-    // be used to proxy unauthenticated dashboard requests.
     throw new SardisProxyError(
       "Authentication required. No user session found.",
       401,
