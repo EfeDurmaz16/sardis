@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -298,7 +298,6 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
   const [paymentRecipient, setPaymentRecipient] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentChain, setPaymentChain] = useState("Base")
-  const [fundingInFlight, setFundingInFlight] = useState(false)
 
   function handleSendPayment() {
     if (!paymentRecipient || !paymentAmount) { toast.error("Fill in recipient and amount"); return }
@@ -307,84 +306,79 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
     setPaymentRecipient(""); setPaymentAmount(""); setPaymentChain("Base")
   }
 
-  // Open a Stripe Crypto Onramp session for the caller's first on-chain
-  // wallet. Flow:
-  //   1. Sync window.open("about:blank") preserves the user-gesture popup
-  //      allowance — popup blockers reject async window.open.
-  //   2. Fetch /api/dashboard/wallets to find the first wallet with a real
-  //      primary address.
-  //   3. POST /api/sardis/api/v2/onramp/session — backend mints a Stripe
-  //      session via api.stripe.com/v1/crypto/onramp_sessions and returns
-  //      { url, provider }. If Stripe fails (network, missing key, wrong
-  //      API version) backend falls back to Coinbase pay.coinbase.com and
-  //      sets provider="coinbase".
-  //   4. Navigate the popup to the returned URL.
+  // Open Stripe Crypto Onramp directly to crypto.link.com with the caller's
+  // first on-chain wallet address. This mirrors the original flow from the
+  // legacy dashboard (dashboard-next/src/app/(dashboard)/wallets/fund/page.tsx)
+  // which has been shipping in production and is known to work —
+  // crypto.link.com accepts the wallet_addresses[ethereum] query param and
+  // renders its Stripe-hosted buy flow with no server-minted session.
   //
-  // We intentionally do NOT build a direct crypto.link.com URL with query
-  // params — that endpoint 404s without a server-minted session token, it's
-  // a Stripe-hosted dialog that expects its own session id, not arbitrary
-  // query params.
-  async function handleAddFunds() {
-    if (fundingInFlight) return
-    const popup = window.open("about:blank", "_blank", "noopener,noreferrer")
-    if (!popup) {
-      toast.error("Pop-up blocked — allow pop-ups for app.sardis.sh and try again")
+  // Previous attempts tried two flavors that both failed:
+  //   1. window.open("about:blank") + async popup.location.href — browsers
+  //      with `noopener` features return null from window.open, so our
+  //      `if (!popup)` branch false-flagged it as blocked and early-
+  //      returned, leaving the already-opened tab stuck on about:blank.
+  //   2. POST /api/v2/onramp/session — the backend handler was looking at
+  //      STRIPE_SECRET_KEY (unset in prod, the real var is STRIPE_API_KEY)
+  //      and fell through to the Coinbase fallback every time.
+  //
+  // The fix: pre-fetch the wallets lazily once (cached in state), then on
+  // click synchronously build the crypto.link.com URL and call
+  // window.open(url, "_blank") in the same user-gesture tick. No null check
+  // shenanigans, no popup.location.href, no backend round-trip.
+  const [cachedPrimaryAddress, setCachedPrimaryAddress] = useState<{
+    address: string
+    network: string
+  } | null>(null)
+
+  // Fetch the first on-chain wallet address once on mount so Add Funds can
+  // open synchronously without an async step in the click handler. Popup
+  // blockers only trust window.open calls that run in the same tick as
+  // the click event — any await between click and open loses the gesture.
+  useEffect(() => {
+    let cancelled = false
+    async function loadPrimaryAddress() {
+      try {
+        const res = await fetch("/api/dashboard/wallets", {
+          credentials: "include",
+          cache: "no-store",
+        })
+        if (!res.ok) return
+        const json = (await res.json()) as {
+          wallets?: Array<{ primaryAddress: string | null; primaryChain: string | null }>
+        }
+        const wallet = (json.wallets || []).find(
+          (w) => typeof w.primaryAddress === "string" && w.primaryAddress.length > 0,
+        )
+        if (!cancelled && wallet?.primaryAddress) {
+          const rawChain = wallet.primaryChain || "base"
+          const network = rawChain === "base_sepolia" ? "base" : rawChain
+          setCachedPrimaryAddress({ address: wallet.primaryAddress, network })
+        }
+      } catch {
+        // Silent — Add Funds falls back to routing the user to /wallets.
+      }
+    }
+    void loadPrimaryAddress()
+    return () => { cancelled = true }
+  }, [])
+
+  function handleAddFunds() {
+    if (!cachedPrimaryAddress) {
+      toast.error("No on-chain wallet ready yet. Visit /wallets to provision one.")
+      router.push("/wallets")
       return
     }
-    setFundingInFlight(true)
-    try {
-      const walletsRes = await fetch("/api/dashboard/wallets", {
-        credentials: "include",
-        cache: "no-store",
-      })
-      if (!walletsRes.ok) {
-        throw new Error(`wallets fetch failed: ${walletsRes.status}`)
-      }
-      const walletsJson = (await walletsRes.json()) as {
-        wallets?: Array<{ walletId: string; primaryAddress: string | null; primaryChain: string | null }>
-      }
-      const walletWithAddress = (walletsJson.wallets || []).find(
-        (w) => typeof w.primaryAddress === "string" && w.primaryAddress.length > 0,
-      )
-      if (!walletWithAddress || !walletWithAddress.primaryAddress) {
-        popup.close()
-        toast.error("No on-chain wallet found. Create a wallet first.")
-        router.push("/wallets")
-        return
-      }
-      // Sardis chain slug → Stripe/Coinbase onramp network label. `base_sepolia`
-      // maps to `base` because onramps only serve mainnet addresses.
-      const primaryChain = walletWithAddress.primaryChain || "base"
-      const network = primaryChain === "base_sepolia" ? "base" : primaryChain
-      const onrampRes = await fetch("/api/sardis/api/v2/onramp/session", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          wallet_address: walletWithAddress.primaryAddress,
-          crypto_currency: "usdc",
-          network,
-          currency: "USD",
-          mode: "hosted",
-        }),
-      })
-      if (!onrampRes.ok) {
-        const errPayload = await onrampRes.json().catch(() => null) as { detail?: string; error?: string } | null
-        throw new Error(errPayload?.detail || errPayload?.error || `onramp session failed: ${onrampRes.status}`)
-      }
-      const session = (await onrampRes.json()) as { url?: string; provider?: string }
-      if (!session.url) {
-        throw new Error("onramp session returned no URL")
-      }
-      popup.location.href = session.url
-      toast.success(session.provider === "stripe" ? "Opening Stripe Crypto Onramp" : "Opening Coinbase Onramp")
-    } catch (err) {
-      popup.close()
-      const message = err instanceof Error ? err.message : "Failed to start funding flow"
-      toast.error(message)
-    } finally {
-      setFundingInFlight(false)
-    }
+    const params = new URLSearchParams({
+      destination_currency: "usdc",
+      destination_network: cachedPrimaryAddress.network,
+      source_currency: "usd",
+      source_amount: "100.00",
+    })
+    params.append("wallet_addresses[ethereum]", cachedPrimaryAddress.address)
+    const url = `https://crypto.link.com?${params.toString()}`
+    window.open(url, "_blank", "noopener,noreferrer")
+    toast.success("Opening Stripe Crypto Onramp")
   }
 
   const { theme, setTheme } = useTheme()
@@ -439,9 +433,8 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           size="sm"
           className="hidden sm:flex gap-1 text-xs h-8"
           onClick={handleAddFunds}
-          disabled={fundingInFlight}
         >
-          <Plus className="w-3 h-3" /> {fundingInFlight ? "Opening..." : "Add Funds"}
+          <Plus className="w-3 h-3" /> Add Funds
         </Button>
         <Button
           variant="outline"
@@ -531,9 +524,7 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
             <DropdownMenuContent align="end" sideOffset={8}>
               <DropdownMenuItem onClick={() => setPaymentOpen(true)}>New Payment</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/agents/new")}>Create Agent</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleAddFunds} disabled={fundingInFlight}>
-                {fundingInFlight ? "Opening Stripe..." : "Add Funds"}
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddFunds}>Add Funds</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/virtual-cards")}>Issue Card</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
