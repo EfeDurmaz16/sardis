@@ -325,6 +325,18 @@ payment = client.pay(
           </div>
         </div>
         <div className="flex flex-col md:flex-row items-center gap-4 md:gap-5 flex-wrap justify-center">
+          <Eyebrow text="Powered by" t={t} />
+          <div className="flex items-center gap-6 md:gap-9 flex-wrap justify-center">
+            {[
+              { name: "Turnkey", domain: "turnkey.com" },
+              { name: "Coinbase", domain: "coinbase.com" },
+              { name: "Circle", domain: "circle.com" },
+            ].map((p) => (
+              <img key={p.name} src={`https://cdn.brandfetch.io/${p.domain}/w/200/h/40`} alt={p.name} className="h-5 md:h-7" style={{ opacity: 0.85, objectFit: "contain" }} />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-5 flex-wrap justify-center">
           <Eyebrow text="Live integrations" t={t} />
           <div className="flex items-center gap-6 md:gap-9 flex-wrap justify-center">
             {[
@@ -440,17 +452,18 @@ payment = client.pay(
             Compliance your finance team can trust.
           </h2>
           <p style={{ fontSize: 15, color: t.textMuted, lineHeight: "24px", maxWidth: 380 }}>
-            KYC, sanctions, audit trails, and kill switches.
+            KYC, sanctions, audit trails, and kill switches. Non-custodial MPC custody powered by Turnkey — Sardis never holds your keys.
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
           {[
+            { label: "Non-custodial MPC (Turnkey)", status: "live" },
             { label: "KYC-linked identity", status: "active" },
             { label: "Sanctions screening", status: "clear" },
             { label: "Audit trail", status: "recorded" },
             { label: "Agent kill switch", status: "armed" },
           ].map((item, i) => (
-            <div key={i} className="py-4 md:py-5" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < 3 ? `1px solid ${t.border}` : "none" }}>
+            <div key={i} className="py-4 md:py-5" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < 4 ? `1px solid ${t.border}` : "none" }}>
               <span style={{ fontSize: 15, color: t.textMuted }}>{item.label}</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: t.success }}>{item.status}</span>
             </div>
