@@ -410,12 +410,25 @@ def create_cards_router(
         offset: int = Query(default=0, ge=0),
         principal: Principal = Depends(require_principal),
     ):
+        # wallet_id filter (explicit scoping) — existing behavior.
         if wallet_id:
             await _require_wallet_access(wallet_id, principal)
             return await card_repo.get_by_wallet_id(wallet_id)
+        # Admin without a wallet_id filter gets an empty response because
+        # we don't want to dump every card in the system by default.
         if principal.is_admin:
             return []
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="wallet_id_required")
+        # Non-admin, no wallet_id: scope to the caller's organization and
+        # return every card whose owning wallet belongs to that org. This
+        # lets the dashboard render a single "Virtual cards" page without
+        # fanning out one request per wallet. Without this branch the
+        # endpoint used to 400 with "wallet_id_required", which surfaced
+        # on the dashboard as a red error when the cards page first loads.
+        return await card_repo.list_by_org_id(
+            principal.org_id,
+            limit=limit,
+            offset=offset,
+        )
 
     @r.get("/{card_id}", dependencies=auth_deps)
     async def get_card(card_id: str, principal: Principal = Depends(require_principal)):

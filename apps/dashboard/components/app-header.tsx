@@ -298,12 +298,72 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
   const [paymentRecipient, setPaymentRecipient] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
   const [paymentChain, setPaymentChain] = useState("Base")
+  const [fundingInFlight, setFundingInFlight] = useState(false)
 
   function handleSendPayment() {
     if (!paymentRecipient || !paymentAmount) { toast.error("Fill in recipient and amount"); return }
     toast.success(`Payment of $${paymentAmount} to ${paymentRecipient} on ${paymentChain}`)
     setPaymentOpen(false)
     setPaymentRecipient(""); setPaymentAmount(""); setPaymentChain("Base")
+  }
+
+  // Open a Stripe Crypto Onramp session for the caller's first wallet.
+  // The backend (packages/sardis-api/src/sardis_api/routers/onramp.py)
+  // exposes POST /api/v2/onramp/session which provisions a Stripe session
+  // (fallback: Coinbase Onramp) and returns a redirect URL. We resolve the
+  // user's first on-chain wallet via the same /api/dashboard/wallets route
+  // the wallets page uses, then pipe its primary address into the onramp
+  // request and open the redirect in a new tab.
+  async function handleAddFunds() {
+    if (fundingInFlight) return
+    setFundingInFlight(true)
+    try {
+      const walletsRes = await fetch("/api/dashboard/wallets", {
+        credentials: "include",
+        cache: "no-store",
+      })
+      if (!walletsRes.ok) {
+        throw new Error(`wallets fetch failed: ${walletsRes.status}`)
+      }
+      const walletsJson = (await walletsRes.json()) as {
+        wallets?: Array<{ walletId: string; primaryAddress: string | null; primaryChain: string | null }>
+      }
+      const walletWithAddress = (walletsJson.wallets || []).find(
+        (w) => typeof w.primaryAddress === "string" && w.primaryAddress.length > 0,
+      )
+      if (!walletWithAddress || !walletWithAddress.primaryAddress) {
+        toast.error("No on-chain wallet found. Create a wallet first.")
+        router.push("/wallets")
+        return
+      }
+      const onrampRes = await fetch("/api/sardis/api/v2/onramp/session", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: walletWithAddress.primaryAddress,
+          crypto_currency: "USDC",
+          network: walletWithAddress.primaryChain || "base",
+          currency: "USD",
+        }),
+      })
+      if (!onrampRes.ok) {
+        const err = await onrampRes.json().catch(() => null) as { detail?: string; error?: string } | null
+        throw new Error(err?.detail || err?.error || `onramp failed: ${onrampRes.status}`)
+      }
+      const session = (await onrampRes.json()) as { redirect_url?: string; url?: string }
+      const url = session.redirect_url || session.url
+      if (!url) {
+        throw new Error("onramp session returned no redirect URL")
+      }
+      window.open(url, "_blank", "noopener,noreferrer")
+      toast.success("Opening Stripe Crypto Onramp in a new tab")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to start funding flow"
+      toast.error(message)
+    } finally {
+      setFundingInFlight(false)
+    }
   }
 
   const { theme, setTheme } = useTheme()
@@ -357,9 +417,10 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           variant="outline"
           size="sm"
           className="hidden sm:flex gap-1 text-xs h-8"
-          onClick={() => router.push("/wallets")}
+          onClick={handleAddFunds}
+          disabled={fundingInFlight}
         >
-          <Plus className="w-3 h-3" /> Add Funds
+          <Plus className="w-3 h-3" /> {fundingInFlight ? "Opening..." : "Add Funds"}
         </Button>
         <Button
           variant="outline"
@@ -449,7 +510,9 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
             <DropdownMenuContent align="end" sideOffset={8}>
               <DropdownMenuItem onClick={() => setPaymentOpen(true)}>New Payment</DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/agents/new")}>Create Agent</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push("/wallets")}>Add Funds</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddFunds} disabled={fundingInFlight}>
+                {fundingInFlight ? "Opening Stripe..." : "Add Funds"}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => router.push("/virtual-cards")}>Issue Card</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

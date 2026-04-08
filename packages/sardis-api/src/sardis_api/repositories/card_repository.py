@@ -191,6 +191,52 @@ class CardRepository:
                 result.append(d)
             return result
 
+    async def list_by_org_id(
+        self,
+        org_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[dict[str, Any]]:
+        """List every virtual card whose owning wallet's agent belongs to
+        organization ``org_id`` (external_id).
+
+        The cards list endpoint previously required a wallet_id query
+        parameter for non-admin principals, forcing the dashboard to make
+        an N+1 call per wallet to build a org-wide view. This single-query
+        equivalent mirrors the pattern in
+        ``PostgresWalletRepository.list_by_owner`` — wallets → agents →
+        organizations, scoped by ``organizations.external_id``.
+        """
+        if not self._use_postgres():
+            return list(self._cards.values())[offset : offset + limit]
+        pool = await self._get_pool()
+        if pool is None:
+            return []
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT vc.*, w.external_id AS wallet_external_id
+                FROM virtual_cards vc
+                JOIN wallets w ON w.id = vc.wallet_id
+                JOIN agents a ON a.id = w.agent_id
+                JOIN organizations o ON o.id = a.organization_id
+                WHERE o.external_id = $1
+                ORDER BY vc.created_at DESC
+                LIMIT $2 OFFSET $3
+                """,
+                org_id,
+                limit,
+                offset,
+            )
+            result: list[dict[str, Any]] = []
+            for r in rows:
+                d = dict(r)
+                d["wallet_uuid"] = str(d.get("wallet_id"))
+                d["wallet_id"] = str(d.get("wallet_external_id"))
+                d.pop("wallet_external_id", None)
+                result.append(d)
+            return result
+
     async def update_status(
         self, card_id: str, status: str
     ) -> dict[str, Any] | None:
