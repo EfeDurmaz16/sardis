@@ -45,7 +45,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Invoice = {
   id: string
@@ -92,7 +92,7 @@ function formatDate(val: string | null): string {
 }
 
 export default function InvoicesPage() {
-  const { data: invoiceData, loading, refetch } = useSardis<Invoice[]>("api/v2/invoices")
+  const { data: invoiceData, loading, refetch } = useSardisList<Invoice>("api/v2/invoices", "Invoices")
   const invoices = invoiceData ?? []
 
   const [tab, setTab] = useState("all")

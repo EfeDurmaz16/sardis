@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { proxyErrorResponse, sardisProxyFetch } from "@/utils/sardis-proxy"
+import { proxyErrorResponse, sardisProxyFetch, sardisProxyListFetch } from "@/utils/sardis-proxy"
 
 type RemoteAgent = {
   agent_id: string
@@ -19,7 +19,7 @@ type SimulationRequest = {
 
 export async function GET() {
   try {
-    const agents = await sardisProxyFetch<RemoteAgent[]>("/api/v2/agents")
+    const agents = await sardisProxyListFetch<RemoteAgent>("/api/v2/agents")
     return NextResponse.json({
       agents: agents.map((agent) => ({
         agentId: agent.agent_id,

@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type ApprovalStatus = "pending" | "approved" | "rejected"
 
@@ -64,7 +64,7 @@ const riskColor: Record<Approval["riskLevel"], string> = {
 }
 
 export default function ApprovalsPage() {
-  const { data: remoteApprovals, loading, refetch } = useSardis<Approval[]>("api/v2/approvals")
+  const { data: remoteApprovals, loading, refetch } = useSardisList<Approval>("api/v2/approvals", "Approvals")
   const [tab, setTab] = useState("pending")
 
   const approvals = remoteApprovals ?? []

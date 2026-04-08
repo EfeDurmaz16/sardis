@@ -51,7 +51,7 @@ const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ defa
 const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Tooltip })), { ssr: false })
 const Legend = dynamic(() => import("recharts").then((m) => ({ default: m.Legend })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Discrepancy = {
   txId: string
@@ -79,7 +79,7 @@ const statusConfig: Record<Discrepancy["status"], { variant: "destructive" | "wa
 }
 
 export default function ReconciliationPage() {
-  const { data: reconData, loading, refetch } = useSardis<ReconciliationEntry[]>("api/v2/admin/reconciliation")
+  const { data: reconData, loading, refetch } = useSardisList<ReconciliationEntry>("api/v2/admin/reconciliation", "Reconciliation records")
 
   // Flatten all entries into a single reconciliation view
   const entry = reconData?.[0] ?? null

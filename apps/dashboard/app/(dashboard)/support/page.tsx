@@ -54,7 +54,7 @@ import {
   Spinner,
 } from "@phosphor-icons/react"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type SupportTicket = {
   id: string
@@ -79,7 +79,7 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "warni
 }
 
 export default function SupportPage() {
-  const { data: ticketData, loading, refetch } = useSardis<SupportTicket[]>("api/v2/support/tickets")
+  const { data: ticketData, loading, refetch } = useSardisList<SupportTicket>("api/v2/support/tickets", "Support tickets")
 
   const tickets = ticketData ?? []
 

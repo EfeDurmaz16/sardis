@@ -5,6 +5,19 @@ import { apiKeyClient } from "@better-auth/api-key/client";
 import { polarClient } from "@polar-sh/better-auth/client";
 import { stripeClient } from "@better-auth/stripe/client";
 
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ""
+
+const authPlugins = [
+  jwtClient(),
+  passkeyClient(),
+  apiKeyClient(),
+  magicLinkClient(),
+  ...(googleClientId ? [oneTapClient({ clientId: googleClientId })] : []),
+  phoneNumberClient(),
+  polarClient(),
+  stripeClient(),
+]
+
 export const authClient = createAuthClient({
   // Use same-origin for auth requests — the Next.js app serves /api/auth/*
   // directly, so we must match the domain the user is on (dashboard.sardis.sh
@@ -12,18 +25,7 @@ export const authClient = createAuthClient({
   baseURL: typeof window !== "undefined"
     ? window.location.origin
     : (process.env.NEXT_PUBLIC_APP_URL || "https://app.sardis.sh"),
-  plugins: [
-    jwtClient(),
-    passkeyClient(),
-    apiKeyClient(),
-    magicLinkClient(),
-    oneTapClient({
-      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-    }),
-    phoneNumberClient(),
-    polarClient(),
-    stripeClient(),
-  ],
+  plugins: authPlugins,
 });
 
 export const {
@@ -49,4 +51,3 @@ export function useAuth() {
     },
   };
 }
-

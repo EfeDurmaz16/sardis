@@ -35,7 +35,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 import { EmptyState } from "@/components/empty-state"
 
 type VirtualCard = {
@@ -63,7 +63,7 @@ const chainVariant: Record<string, "default" | "secondary" | "outline"> = {
 }
 
 export default function VirtualCardsPage() {
-  const { data, loading, error, refetch } = useSardis<VirtualCard[]>("api/v2/cards")
+  const { data, loading, error, refetch } = useSardisList<VirtualCard>("api/v2/cards", "Cards")
 
   const cards = data ?? []
 

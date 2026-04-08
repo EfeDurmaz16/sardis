@@ -52,7 +52,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type ExceptionStatus = "active" | "resolved" | "escalated" | "retrying"
 
@@ -109,7 +109,7 @@ function formatCreated(val: string | null): string {
 }
 
 export default function ExceptionsPage() {
-  const { data: exceptionData, loading, refetch } = useSardis<ExceptionEntry[]>("api/v2/exceptions")
+  const { data: exceptionData, loading, refetch } = useSardisList<ExceptionEntry>("api/v2/exceptions", "Exceptions")
   const exceptions = exceptionData ?? []
 
   const [tab, setTab] = useState("all")

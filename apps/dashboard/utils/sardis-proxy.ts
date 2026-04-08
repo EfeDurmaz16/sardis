@@ -4,6 +4,7 @@ import { headers as nextHeaders } from "next/headers"
 import { NextResponse } from "next/server"
 
 import { auth } from "@/lib/auth"
+import { extractListOrThrow } from "@/lib/collection-response"
 
 const DEFAULT_SARDIS_API_BASE_URL = "https://api.sardis.sh"
 
@@ -117,6 +118,15 @@ export async function sardisProxyFetch<T>(
   const payload = text ? safeJsonParse(text) : null
 
   return payload as T
+}
+
+export async function sardisProxyListFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options?: { userJwt?: string },
+): Promise<T[]> {
+  const payload = await sardisProxyFetch<unknown>(path, init, options)
+  return extractListOrThrow<T>(payload, `${path} response`)
 }
 
 function safeJsonParse(input: string): unknown {

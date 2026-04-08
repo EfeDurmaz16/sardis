@@ -10,6 +10,24 @@ import { Polar } from "@polar-sh/sdk";
 import Stripe from "stripe";
 import { Pool } from "pg";
 
+const PRODUCTION_AUTH_HOSTS = ["app.sardis.sh", "dashboard.sardis.sh", "sardis.sh"] as const
+const LOCAL_AUTH_ORIGINS = ["http://localhost:3000", "http://localhost:3005"] as const
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim()
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim()
+const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL?.trim() || "https://app.sardis.sh"
+const BETTER_AUTH_RP_ID = process.env.BETTER_AUTH_RP_ID?.trim() || (process.env.NODE_ENV === "production" ? "sardis.sh" : "localhost")
+
+const trustedOrigins = [
+  ...PRODUCTION_AUTH_HOSTS.map((host) => `https://${host}`),
+  "https://dashboard-wine-alpha-31.vercel.app",
+  ...LOCAL_AUTH_ORIGINS,
+]
+
+const passkeyOrigins = process.env.NODE_ENV === "production"
+  ? PRODUCTION_AUTH_HOSTS.map((host) => `https://${host}`)
+  : [...LOCAL_AUTH_ORIGINS]
+
 /**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
  *
@@ -195,17 +213,23 @@ export const auth = betterAuth({
     connectionTimeoutMillis: 10_000,
     ssl: { rejectUnauthorized: false },
   }),
-  baseURL: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+  baseURL: {
+    fallback: BETTER_AUTH_URL,
+    allowedHosts: [
+      ...PRODUCTION_AUTH_HOSTS,
+      "dashboard-wine-alpha-31.vercel.app",
+      "localhost:3000",
+      "localhost:3005",
+    ],
+  },
   secret: process.env.BETTER_AUTH_SECRET,
-  // Accept auth requests from all dashboard domains (same Vercel project)
-  trustedOrigins: [
-    "https://dashboard.sardis.sh",
-    "https://app.sardis.sh",
-    "https://sardis.sh",
-    "https://dashboard-wine-alpha-31.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:3005",
-  ],
+  trustedOrigins,
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: process.env.NODE_ENV === "production",
+      domain: process.env.BETTER_AUTH_COOKIE_DOMAIN?.trim() || "sardis.sh",
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -251,16 +275,18 @@ export const auth = betterAuth({
       },
     },
   },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    },
-  },
+  socialProviders: GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
+    ? {
+        google: {
+          clientId: GOOGLE_CLIENT_ID,
+          clientSecret: GOOGLE_CLIENT_SECRET,
+        },
+      }
+    : {},
   plugins: [
     jwt({
       jwt: {
-        issuer: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+        issuer: BETTER_AUTH_URL,
         audience: "sardis-api",
         expirationTime: "1h",
         definePayload: async ({ user }) => ({
@@ -282,9 +308,9 @@ export const auth = betterAuth({
       },
     }),
     passkey({
-      rpID: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
+      rpID: BETTER_AUTH_RP_ID,
       rpName: "Sardis",
-      origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+      origin: passkeyOrigins,
       schema: {
         passkey: {
           modelName: "ba_passkey",
@@ -414,8 +440,8 @@ export const auth = betterAuth({
        */
       proofOfPresence: {
         enabled: true,
-        rpId: process.env.NODE_ENV === "production" ? "app.sardis.sh" : "localhost",
-        origin: process.env.BETTER_AUTH_URL || "https://app.sardis.sh",
+        rpId: BETTER_AUTH_RP_ID,
+        origin: BETTER_AUTH_URL,
       },
       maxAgentsPerUser: 25,
       agentSessionTTL: 3600,      // 1 hour sliding window

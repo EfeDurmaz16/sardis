@@ -16,7 +16,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Hold = {
   hold_id: string
@@ -39,7 +39,7 @@ const statusConfig: Record<string, { variant: "success" | "warning" | "secondary
 }
 
 export default function HoldsPage() {
-  const { data: remoteHolds, loading, refetch } = useSardis<Hold[]>("api/v2/holds")
+  const { data: remoteHolds, loading, refetch } = useSardisList<Hold>("api/v2/holds", "Holds")
   const holds = remoteHolds ?? []
 
   const activeCount = holds.filter(h => h.status === "active").length

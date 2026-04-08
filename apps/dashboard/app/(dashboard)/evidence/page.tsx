@@ -34,7 +34,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type EvidenceItem = {
   id: string
@@ -54,7 +54,7 @@ const typeFilter: Record<string, string> = {
 }
 
 export default function EvidencePage() {
-  const { data: evidenceData, loading } = useSardis<EvidenceItem[]>("api/v2/evidence")
+  const { data: evidenceData, loading } = useSardisList<EvidenceItem>("api/v2/evidence", "Evidence")
   const evidenceItems = evidenceData ?? []
 
   const [tab, setTab] = useState("all")

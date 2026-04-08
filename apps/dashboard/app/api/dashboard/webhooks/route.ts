@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { proxyErrorResponse, sardisProxyFetch } from "@/utils/sardis-proxy"
+import { proxyErrorResponse, sardisProxyFetch, sardisProxyListFetch } from "@/utils/sardis-proxy"
 
 type RemoteWebhook = {
   subscription_id: string
@@ -27,7 +27,7 @@ type CreateWebhookRequest = {
 export async function GET() {
   try {
     const [webhooks, eventTypes] = await Promise.all([
-      sardisProxyFetch<RemoteWebhook[]>("/api/v2/webhooks"),
+      sardisProxyListFetch<RemoteWebhook>("/api/v2/webhooks"),
       sardisProxyFetch<RemoteWebhookEventTypes>("/api/v2/webhooks/event-types"),
     ])
 

@@ -48,7 +48,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Workflow = {
   name: string
@@ -82,7 +82,7 @@ const templateTriggerMap: Record<string, Workflow["trigger"]> = {
 }
 
 export default function WorkflowsPage() {
-  const { data: workflowData, loading, refetch } = useSardis<Workflow[]>("api/v2/workflow-templates")
+  const { data: workflowData, loading, refetch } = useSardisList<Workflow>("api/v2/workflow-templates", "Workflow templates")
 
   const workflows = workflowData ?? []
 

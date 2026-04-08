@@ -46,7 +46,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type FallbackRule = {
   id: string
@@ -69,7 +69,7 @@ const priorityVariant: Record<number, "outline"> = {
 }
 
 export default function FallbackRulesPage() {
-  const { data: ruleData, loading, refetch } = useSardis<FallbackRule[]>("api/v2/fallback-policies")
+  const { data: ruleData, loading, refetch } = useSardisList<FallbackRule>("api/v2/fallback-policies", "Fallback rules")
   const rules = ruleData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { proxyErrorResponse, sardisProxyFetch } from "@/utils/sardis-proxy"
+import { proxyErrorResponse, sardisProxyFetch, sardisProxyListFetch } from "@/utils/sardis-proxy"
 
 type RemoteWallet = {
   wallet_id: string
@@ -110,11 +110,19 @@ async function fetchOptional<T>(path: string): Promise<T | null> {
   }
 }
 
+async function fetchOptionalList<T>(path: string): Promise<T[]> {
+  try {
+    return await sardisProxyListFetch<T>(path)
+  } catch {
+    return []
+  }
+}
+
 export async function GET() {
   try {
     const [wallets, agents] = await Promise.all([
-      sardisProxyFetch<RemoteWallet[]>("/api/v2/wallets"),
-      fetchOptional<RemoteAgent[]>("/api/v2/agents"),
+      sardisProxyListFetch<RemoteWallet>("/api/v2/wallets"),
+      fetchOptionalList<RemoteAgent>("/api/v2/agents"),
     ])
 
     const agentNameById = new Map((agents || []).map((agent) => [agent.agent_id, agent.name || agent.agent_id]))
@@ -123,11 +131,11 @@ export async function GET() {
       wallets.map(async (wallet): Promise<WalletSnapshot> => {
         const [balances, deposits] = await Promise.all([
           fetchOptional<RemoteMultiChainBalance>(`/api/v2/wallets/${wallet.wallet_id}/balances`),
-          fetchOptional<RemoteDeposit[]>(`/api/v2/wallets/${wallet.wallet_id}/deposits?limit=5`),
+          fetchOptionalList<RemoteDeposit>(`/api/v2/wallets/${wallet.wallet_id}/deposits?limit=5`),
         ])
 
         const { chain, address } = derivePrimaryAddress(wallet.addresses)
-        const depositList = deposits || []
+        const depositList = deposits
         const pendingDeposits = depositList.filter((deposit) => deposit.status !== "credited").length
         const pendingAmountUsd = depositList
           .filter((deposit) => deposit.status !== "credited")
@@ -174,8 +182,8 @@ export async function GET() {
 
     await Promise.all(
       walletSnapshots.map(async (wallet) => {
-        const deposits = await fetchOptional<RemoteDeposit[]>(`/api/v2/wallets/${wallet.walletId}/deposits?limit=3`)
-        ;(deposits || []).forEach((deposit) => {
+        const deposits = await fetchOptionalList<RemoteDeposit>(`/api/v2/wallets/${wallet.walletId}/deposits?limit=3`)
+        deposits.forEach((deposit) => {
           recentDeposits.push({
             walletId: wallet.walletId,
             walletName: wallet.name,

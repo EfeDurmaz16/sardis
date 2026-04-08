@@ -52,7 +52,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 import { EmptyState } from "@/components/empty-state"
 
 type Counterparty = {
@@ -95,7 +95,7 @@ const cpTypeToDisplay: Record<CpType, Counterparty["type"]> = {
 }
 
 export default function CounterpartiesPage() {
-  const { data, loading, error, refetch } = useSardis<Counterparty[]>("api/v2/counterparties")
+  const { data, loading, error, refetch } = useSardisList<Counterparty>("api/v2/counterparties", "Counterparties")
 
   const [tab, setTab] = useState("all")
   const [dialogOpen, setDialogOpen] = useState(false)

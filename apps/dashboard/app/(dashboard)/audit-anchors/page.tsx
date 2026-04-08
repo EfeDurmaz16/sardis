@@ -23,7 +23,7 @@ import {
   CheckCircle,
   Spinner,
 } from "@phosphor-icons/react"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 import { EmptyState } from "@/components/empty-state"
 
 type AuditAnchor = {
@@ -45,7 +45,7 @@ const chainVariant: Record<string, "default" | "secondary" | "outline"> = {
 }
 
 export default function AuditAnchorsPage() {
-  const { data, loading, error, refetch } = useSardis<AuditAnchor[]>("api/v2/ledger/anchors")
+  const { data, loading, error, refetch } = useSardisList<AuditAnchor>("api/v2/ledger/anchors", "Audit anchors")
 
   const anchors = data ?? []
 

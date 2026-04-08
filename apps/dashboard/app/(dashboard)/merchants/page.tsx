@@ -48,7 +48,7 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Merchant = {
   merchant_id: string
@@ -95,7 +95,7 @@ function formatDate(iso: string): string {
 }
 
 export default function MerchantsPage() {
-  const { data: remoteMerchants, loading, refetch } = useSardis<Merchant[]>("api/v2/merchants")
+  const { data: remoteMerchants, loading, refetch } = useSardisList<Merchant>("api/v2/merchants", "Merchants")
   const merchants = remoteMerchants ?? []
 
   const [tab, setTab] = useState("all")

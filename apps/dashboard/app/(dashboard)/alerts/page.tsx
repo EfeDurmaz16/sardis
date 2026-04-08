@@ -47,7 +47,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type AlertRule = {
   id: string
@@ -82,7 +82,7 @@ const conditionLabels: Record<string, string> = {
 }
 
 export default function AlertsPage() {
-  const { data: alertRules, loading, refetch } = useSardis<AlertRule[]>("api/v2/alerts")
+  const { data: alertRules, loading, refetch } = useSardisList<AlertRule>("api/v2/alerts", "Alerts")
   const alerts = alertRules ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)

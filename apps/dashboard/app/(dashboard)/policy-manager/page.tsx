@@ -47,7 +47,7 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Policy = {
   id: string
@@ -107,7 +107,7 @@ function capitalize(val: string): string {
 }
 
 export default function PolicyManagerPage() {
-  const { data: policyData, loading, refetch } = useSardis<Policy[]>("api/v2/policies")
+  const { data: policyData, loading, refetch } = useSardisList<Policy>("api/v2/policies", "Policies")
   const policies = policyData ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)

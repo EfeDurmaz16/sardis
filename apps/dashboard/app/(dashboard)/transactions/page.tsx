@@ -27,7 +27,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Transaction = {
   tx_id: string
@@ -64,7 +64,7 @@ function shortenId(id: string): string {
 const itemsPerPage = 10
 
 export default function TransactionsPage() {
-  const { data: transactions, loading, error } = useSardis<Transaction[]>("api/v2/ledger/recent?limit=200")
+  const { data: transactions, loading, error } = useSardisList<Transaction>("api/v2/ledger/recent?limit=200", "Transactions")
   const txList = transactions ?? []
 
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined)

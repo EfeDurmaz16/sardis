@@ -34,7 +34,7 @@ const Tooltip = dynamic(() => import("recharts").then((m) => ({ default: m.Toolt
 const ResponsiveContainer = dynamic(() => import("recharts").then((m) => ({ default: m.ResponsiveContainer })), { ssr: false })
 const Legend = dynamic(() => import("recharts").then((m) => ({ default: m.Legend })), { ssr: false })
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Anomaly = {
   id: string
@@ -69,7 +69,7 @@ const statusVariant: Record<Anomaly["status"], "destructive" | "warning" | "succ
 }
 
 export default function AnomalyDetectionPage() {
-  const { data: anomalyData, loading } = useSardis<Anomaly[]>("api/v2/anomaly/recent")
+  const { data: anomalyData, loading } = useSardisList<Anomaly>("api/v2/anomaly/recent", "Anomalies")
   const anomalies = anomalyData ?? []
 
   const stats = useMemo(() => {

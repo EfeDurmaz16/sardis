@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { extractListOrThrow } from "@/lib/collection-response"
 
 type UseSardisResult<T> = {
   data: T | null
@@ -9,11 +10,20 @@ type UseSardisResult<T> = {
   refetch: () => void
 }
 
-export function useSardis<T>(path: string | null): UseSardisResult<T> {
+type UseSardisOptions<T> = {
+  normalize?: (payload: unknown) => T
+}
+
+export function useSardis<T>(path: string | null, options: UseSardisOptions<T> = {}): UseSardisResult<T> {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(path !== null)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
+  const normalizeRef = useRef(options.normalize)
+
+  useEffect(() => {
+    normalizeRef.current = options.normalize
+  }, [options.normalize])
 
   const fetchData = useCallback(async () => {
     if (!path) return
@@ -29,7 +39,8 @@ export function useSardis<T>(path: string | null): UseSardisResult<T> {
         throw new Error(body?.error || `API returned ${res.status}`)
       }
       const json = await res.json()
-      if (mountedRef.current) setData(json)
+      const normalized = normalizeRef.current ? normalizeRef.current(json) : (json as T)
+      if (mountedRef.current) setData(normalized)
     } catch (err) {
       if (mountedRef.current) setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
@@ -46,4 +57,9 @@ export function useSardis<T>(path: string | null): UseSardisResult<T> {
   }, [fetchData])
 
   return { data, loading, error, refetch: fetchData }
+}
+export function useSardisList<T>(path: string | null, label = "API response"): UseSardisResult<T[]> {
+  return useSardis<T[]>(path, {
+    normalize: (payload) => extractListOrThrow<T>(payload, label),
+  })
 }

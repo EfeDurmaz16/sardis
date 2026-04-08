@@ -20,7 +20,7 @@ import {
   Spinner, CloudSlash,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardis, useSardisList } from "@/hooks/use-sardis"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -105,7 +105,7 @@ function timeAgo(iso: string): string {
 
 export default function OverviewPage() {
   const { data: metrics, loading: metricsLoading, error: metricsError } = useSardis<DashboardMetrics>("api/v2/dashboard/metrics")
-  const { data: recentTxs, loading: txsLoading } = useSardis<LedgerTransaction[]>("api/v2/ledger/recent?limit=5")
+  const { data: recentTxs, loading: txsLoading } = useSardisList<LedgerTransaction>("api/v2/ledger/recent?limit=5", "Recent transactions")
 
   const [quickStartOpen, setQuickStartOpen] = useState(true)
   const [quickStartSteps, setQuickStartSteps] = useState([

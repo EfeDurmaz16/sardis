@@ -23,7 +23,7 @@ import {
   Terminal,
   Spinner,
 } from "@phosphor-icons/react"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 import { EmptyState } from "@/components/empty-state"
 
 type MppSession = {
@@ -55,7 +55,7 @@ function parseAmount(raw: string): number {
 }
 
 export default function MppSessionsPage() {
-  const { data, loading, error, refetch } = useSardis<MppSession[]>("api/v2/mpp/sessions")
+  const { data, loading, error, refetch } = useSardisList<MppSession>("api/v2/mpp/sessions", "MPP sessions")
 
   const sessions = data ?? []
 

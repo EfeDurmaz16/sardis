@@ -1,5 +1,7 @@
 "use client"
 
+import { extractListOrThrow } from "@/lib/collection-response"
+
 // All Sardis API traffic from the browser MUST go through the same-origin
 // /api/sardis proxy. The proxy mints a fresh better-auth JWT from the session
 // cookie and forwards it to the upstream Sardis API. Calling api.sardis.sh
@@ -113,11 +115,15 @@ async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export function listAgents() {
-  return requestApi<AgentApiRecord[]>("/agents")
+  return requestApi<unknown>("/agents").then((payload) =>
+    extractListOrThrow<AgentApiRecord>(payload, "Agents response"),
+  )
 }
 
 export function listWallets() {
-  return requestApi<WalletApiRecord[]>("/wallets")
+  return requestApi<unknown>("/wallets").then((payload) =>
+    extractListOrThrow<WalletApiRecord>(payload, "Wallets response"),
+  )
 }
 
 export function createAgent(input: CreateAgentInput) {

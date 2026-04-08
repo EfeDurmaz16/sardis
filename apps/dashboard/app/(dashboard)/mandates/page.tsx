@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/context-menu"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/empty-state"
-import { useSardis } from "@/hooks/use-sardis"
+import { useSardisList } from "@/hooks/use-sardis"
 
 type Mandate = {
   mandate_id: string
@@ -83,7 +83,7 @@ const periodVariant: Record<string, "outline"> = {
 }
 
 export default function MandatesPage() {
-  const { data: remoteMandates, loading, refetch } = useSardis<Mandate[]>("api/v2/spending-mandates")
+  const { data: remoteMandates, loading, refetch } = useSardisList<Mandate>("api/v2/spending-mandates", "Mandates")
   const mandates = remoteMandates ?? []
 
   const [dialogOpen, setDialogOpen] = useState(false)
