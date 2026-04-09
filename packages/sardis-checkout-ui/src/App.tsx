@@ -1,21 +1,93 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Link } from "react-router-dom";
 import CheckoutPage from "./pages/CheckoutPage";
 import DemoPage from "./pages/DemoPage";
 
-function RedirectToMain() {
-  window.location.href = "https://sardis.sh";
-  return null;
+/**
+ * Root landing for checkout.sardis.sh. Previously this app redirected
+ * root visits to sardis.sh, which broke the Coinbase CDP review flow
+ * because reviewers had to know the exact /demo path to see anything.
+ * Now the root shows a minimal hero with clear entry points so the
+ * checkout subdomain is self-explanatory.
+ */
+function CheckoutHome() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--checkout-bg)]">
+      <div className="w-full max-w-[540px] bg-white rounded-2xl shadow-sm border border-[var(--checkout-border)] p-8">
+        <div className="space-y-2 mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">Sardis Checkout</h1>
+          <p className="text-sm text-[var(--checkout-muted)]">
+            Stablecoin-native checkout for AI agents and merchants.
+            Non-custodial MPC wallets, on-chain policy enforcement,
+            fiat onramp through Coinbase, zero protocol fees.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <Link
+            to="/demo"
+            className="block w-full text-center px-4 py-3 rounded-lg bg-[var(--checkout-blue)] text-white font-medium hover:opacity-90 transition-opacity"
+          >
+            View Live Demo
+          </Link>
+          <a
+            href="https://sardis.sh"
+            className="block w-full text-center px-4 py-3 rounded-lg border border-[var(--checkout-border)] text-[var(--checkout-fg)] font-medium hover:bg-[var(--checkout-muted-bg)] transition-colors"
+          >
+            Learn about Sardis
+          </a>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-[var(--checkout-border)] text-xs text-[var(--checkout-muted)] space-y-1">
+          <p>
+            <span className="font-mono">/demo</span> — live end-to-end
+            checkout demo with wallet connection and onramp
+          </p>
+          <p>
+            <span className="font-mono">/s/&lt;client_secret&gt;</span> —
+            merchant-initiated checkout session
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 404 fallback for unknown paths. Previously this pushed users to
+ * sardis.sh, which masked misconfigured merchant links as a silent
+ * redirect. Now it shows an explicit not-found message with a clear
+ * link back to the checkout home.
+ */
+function NotFound() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--checkout-bg)]">
+      <div className="w-full max-w-[420px] bg-white rounded-xl shadow-sm border border-[var(--checkout-border)] p-6 text-center space-y-4">
+        <h2 className="text-lg font-semibold">Page not found</h2>
+        <p className="text-sm text-[var(--checkout-muted)]">
+          The checkout link you followed is not valid. Please use the
+          link provided by the merchant, or go back to the checkout home.
+        </p>
+        <Link
+          to="/"
+          className="inline-block px-4 py-2 rounded-lg border border-[var(--checkout-border)] text-sm font-medium hover:bg-[var(--checkout-muted-bg)] transition-colors"
+        >
+          Checkout home
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<CheckoutHome />} />
       <Route path="/demo" element={<DemoPage />} />
       <Route path="/s/:clientSecret" element={<CheckoutPage />} />
       <Route path="/link/:slug" element={<LinkRedirect />} />
       {/* Legacy route: redirect old session URLs */}
       <Route path="/:sessionId" element={<LegacyRedirect />} />
-      <Route path="*" element={<RedirectToMain />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
