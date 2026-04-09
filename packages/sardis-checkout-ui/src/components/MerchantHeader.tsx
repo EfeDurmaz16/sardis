@@ -13,21 +13,20 @@ export default function MerchantHeader({
   currency,
   description,
 }: MerchantHeaderProps) {
+  // When the merchant didn't set a logo, fall back to the Sardis
+  // brand mark rather than a letter avatar. Keeps the checkout UI
+  // feeling professional for demo sessions and unbranded merchants
+  // while real merchant logos still win when set.
+  const displayLogoUrl = logoUrl || "/sardis-logo.svg";
   return (
     <div className="flex flex-col items-center text-center mb-8">
-      {logoUrl ? (
+      <div className="w-12 h-12 rounded-full border border-[var(--checkout-border)] bg-white flex items-center justify-center mb-3 overflow-hidden">
         <img
-          src={logoUrl}
+          src={displayLogoUrl}
           alt={merchantName}
-          className="w-12 h-12 rounded-full mb-3 object-cover"
+          className="w-8 h-8 object-contain text-[var(--checkout-fg)]"
         />
-      ) : (
-        <div className="w-12 h-12 rounded-full bg-[var(--checkout-border)] flex items-center justify-center mb-3">
-          <span className="text-lg font-semibold text-[var(--checkout-secondary)]">
-            {merchantName.charAt(0).toUpperCase()}
-          </span>
-        </div>
-      )}
+      </div>
       <p className="text-sm text-[var(--checkout-secondary)] mb-1">
         {merchantName}
       </p>

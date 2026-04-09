@@ -13,6 +13,16 @@ function CheckoutHome() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--checkout-bg)]">
       <div className="w-full max-w-[540px] bg-white rounded-2xl shadow-sm border border-[var(--checkout-border)] p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <img
+            src="/sardis-logo.svg"
+            alt="Sardis"
+            className="w-10 h-10 text-[var(--checkout-fg)]"
+          />
+          <span className="text-sm font-medium tracking-wide text-[var(--checkout-muted)] uppercase">
+            Sardis
+          </span>
+        </div>
         <div className="space-y-2 mb-6">
           <h1 className="text-2xl font-semibold tracking-tight">Sardis Checkout</h1>
           <p className="text-sm text-[var(--checkout-muted)]">

@@ -19,7 +19,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 const MOCK_SESSION = {
   session_id: "mcs_demo_preview",
   merchant_name: "Sardis Demo Store",
-  merchant_logo_url: null,
+  merchant_logo_url: "/sardis-logo.svg",
   amount: "49.99",
   currency: "USDC",
   description: "Premium Plan — Monthly",

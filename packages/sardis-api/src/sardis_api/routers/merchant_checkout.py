@@ -918,6 +918,10 @@ async def create_test_session(
 
     test_merchant_id = os.getenv("SARDIS_TEST_MERCHANT_ID", "merch_test_staging")
     test_merchant_name = os.getenv("SARDIS_TEST_MERCHANT_NAME", "Sardis Demo Store")
+    test_merchant_logo_url = os.getenv(
+        "SARDIS_TEST_MERCHANT_LOGO_URL",
+        "/sardis-logo.svg",
+    )
     test_description = os.getenv("SARDIS_TEST_SESSION_DESCRIPTION", "Premium Plan — Monthly")
     test_settlement_address = os.getenv(
         "SARDIS_TEST_SETTLEMENT_ADDRESS",
@@ -935,7 +939,7 @@ async def create_test_session(
         metadata={
             "merchant_id": test_merchant_id,
             "merchant_name": test_merchant_name,
-            "merchant_logo_url": None,
+            "merchant_logo_url": test_merchant_logo_url,
             "test_session": True,
             "settlement_address": test_settlement_address,
         },
