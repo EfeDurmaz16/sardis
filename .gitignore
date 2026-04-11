@@ -39,6 +39,8 @@ env/
 .env.production
 .env.sardis
 .env.sardis.*
+.env.mainnet
+.env.vercel
 
 # Testing
 .pytest_cache/
