@@ -18,6 +18,32 @@ import {
   type OnboardingStep,
   updateOnboarding,
 } from "@/lib/sardis-api"
+import { ProfileStep } from "./steps/profile-step"
+import { ApiKeyStep } from "./steps/api-key-step"
+
+export type StepContext = {
+  state: OnboardingState
+  pending: boolean
+  goNext: () => void
+  goSkip: () => void
+  patchMetadata: (patch: Record<string, unknown>) => Promise<void>
+}
+
+type StepRegistryEntry = {
+  hidesWizardContinue?: boolean
+  render: (ctx: StepContext) => React.ReactNode
+}
+
+const STEP_REGISTRY: Partial<Record<OnboardingStep, StepRegistryEntry>> = {
+  profile: {
+    hidesWizardContinue: true,
+    render: (ctx) => <ProfileStep ctx={ctx} />,
+  },
+  api_key: {
+    hidesWizardContinue: true,
+    render: (ctx) => <ApiKeyStep ctx={ctx} />,
+  },
+}
 
 const STEP_LABELS: Record<OnboardingStep, string> = {
   profile: "Profile",
@@ -96,6 +122,26 @@ export function OnboardingWizard({
     void persist(next, { skip: true })
   }, [currentIndex, persist, steps])
 
+  const patchMetadata = useCallback(
+    async (patch: Record<string, unknown>) => {
+      setPending(true)
+      try {
+        const next = await updateOnboarding({ metadata_patch: patch })
+        setState(next)
+      } finally {
+        setPending(false)
+      }
+    },
+    [],
+  )
+
+  const stepCtx: StepContext = useMemo(
+    () => ({ state, pending, goNext, goSkip, patchMetadata }),
+    [state, pending, goNext, goSkip, patchMetadata],
+  )
+
+  const registryEntry = STEP_REGISTRY[currentStep]
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -127,7 +173,7 @@ export function OnboardingWizard({
           </p>
 
           <div className="mt-5">
-            <StepBody step={currentStep} />
+            {registryEntry ? registryEntry.render(stepCtx) : <StepBody step={currentStep} />}
           </div>
         </div>
 
@@ -151,10 +197,12 @@ export function OnboardingWizard({
                 Skip
               </Button>
             )}
-            <Button size="sm" onClick={goNext} disabled={pending}>
-              {isTerminal ? "Finish" : "Continue"}
-              <ArrowRight className="ml-1.5 size-4" weight="regular" />
-            </Button>
+            {!registryEntry?.hidesWizardContinue && (
+              <Button size="sm" onClick={goNext} disabled={pending}>
+                {isTerminal ? "Finish" : "Continue"}
+                <ArrowRight className="ml-1.5 size-4" weight="regular" />
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

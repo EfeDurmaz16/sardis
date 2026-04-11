@@ -11,7 +11,7 @@ import logging
 from datetime import datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
@@ -188,3 +188,82 @@ async def patch_onboarding(
     if refreshed is None:
         raise HTTPException(status_code=500, detail="Failed to reload onboarding row")
     return _row_to_state(dict(refreshed))
+
+
+# ---------------------------------------------------------------------------
+# First-key bootstrap
+# ---------------------------------------------------------------------------
+#
+# The standard POST /api/v2/api-keys endpoint requires an existing API key
+# (Depends(require_api_key)), which creates a chicken-and-egg problem for
+# brand-new dashboard signups: they have a JWT but no key yet. This route
+# is the JWT-authed bootstrap path used exclusively by the onboarding
+# wizard. To prevent it from being used as a generic "mint another key"
+# bypass, it refuses if the org already owns at least one key.
+#
+# Pattern mirrors `_on_kyc_approved` in routers/kyc_onboarding.py, which
+# also runs server-side and calls `api_key_manager.create_key` directly.
+
+
+class BootstrapApiKeyRequest(BaseModel):
+    name: str = Field(default="Default API key", min_length=1, max_length=120)
+
+
+class BootstrapApiKeyResponse(BaseModel):
+    key: str  # Full plaintext key — only returned once
+    key_id: str
+    key_prefix: str
+    name: str
+    mode: str = "test"
+    created_at: datetime
+
+
+@router.post(
+    "/api-keys/bootstrap",
+    response_model=BootstrapApiKeyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def bootstrap_first_api_key(
+    body: BootstrapApiKeyRequest,
+    principal: Principal = Depends(require_principal),
+) -> BootstrapApiKeyResponse:
+    if principal.kind != "jwt":
+        # Bootstrap is for first-time wizard users authenticated via the
+        # better-auth session JWT. API-key callers should use the regular
+        # POST /api/v2/api-keys endpoint.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bootstrap is only available to JWT-authenticated users",
+        )
+
+    from sardis_api.dependencies import get_container
+
+    container = get_container()
+    api_key_mgr = container.api_key_manager
+
+    existing = await api_key_mgr.list_keys(principal.organization_id)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organization already has at least one API key. Use the regular API key endpoints.",
+        )
+
+    full_key, record = await api_key_mgr.create_key(
+        organization_id=principal.organization_id,
+        name=body.name,
+        scopes=["read", "write"],
+        test=True,  # sk_test_ — onboarding bootstrap is always sandbox
+    )
+    logger.info(
+        "onboarding: bootstrapped first sk_test_ key for org %s (key_id=%s)",
+        principal.organization_id,
+        record.key_id,
+    )
+
+    return BootstrapApiKeyResponse(
+        key=full_key,
+        key_id=record.key_id,
+        key_prefix=record.key_prefix,
+        name=record.name,
+        created_at=record.created_at,
+    )

@@ -173,3 +173,19 @@ export function updateOnboarding(patch: OnboardingPatch) {
     body: JSON.stringify(patch),
   })
 }
+
+export type BootstrapApiKeyResponse = {
+  key: string
+  key_id: string
+  key_prefix: string
+  name: string
+  mode: "test"
+  created_at: string
+}
+
+export function bootstrapApiKey(name = "Default API key") {
+  return requestApi<BootstrapApiKeyResponse>("/me/api-keys/bootstrap", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  })
+}
