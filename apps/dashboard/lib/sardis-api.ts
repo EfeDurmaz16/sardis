@@ -77,7 +77,64 @@ export type CreateAgentInput = {
   }
   metadata?: Record<string, unknown>
   create_wallet?: boolean
+  initial_balance?: string
 }
+
+export type SpendingPolicyTemplateId = "conservative" | "balanced" | "developer"
+
+export type SpendingPolicyTemplate = {
+  id: SpendingPolicyTemplateId
+  label: string
+  description: string
+  trust_level: "low" | "medium" | "high"
+  spending_limits: {
+    per_transaction: string
+    daily: string
+    monthly: string
+    total: string
+  }
+}
+
+// Mirrors DEFAULT_LIMITS in packages/sardis-core/src/sardis_v2_core/spending_policy.py.
+// Do not invent new numbers — if you change these, update the backend too.
+export const SPENDING_POLICY_TEMPLATES: SpendingPolicyTemplate[] = [
+  {
+    id: "conservative",
+    label: "Conservative",
+    description: "Tight caps. Good for production agents you are still learning to trust.",
+    trust_level: "low",
+    spending_limits: {
+      per_transaction: "50.00",
+      daily: "100.00",
+      monthly: "1000.00",
+      total: "5000.00",
+    },
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Moderate caps for day-to-day agent operations.",
+    trust_level: "medium",
+    spending_limits: {
+      per_transaction: "500.00",
+      daily: "1000.00",
+      monthly: "10000.00",
+      total: "50000.00",
+    },
+  },
+  {
+    id: "developer",
+    label: "Developer sandbox",
+    description: "Low caps, sandbox only. Use this while you are integrating.",
+    trust_level: "low",
+    spending_limits: {
+      per_transaction: "50.00",
+      daily: "100.00",
+      monthly: "1000.00",
+      total: "5000.00",
+    },
+  },
+]
 
 async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)

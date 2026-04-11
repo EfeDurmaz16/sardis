@@ -21,6 +21,8 @@ import {
 import { ProfileStep } from "./steps/profile-step"
 import { ApiKeyStep } from "./steps/api-key-step"
 import { KycStep } from "./steps/kyc-step"
+import { AgentWalletStep } from "./steps/agent-wallet-step"
+import { SpendingPolicyStep } from "./steps/spending-policy-step"
 
 export type StepContext = {
   state: OnboardingState
@@ -47,6 +49,14 @@ const STEP_REGISTRY: Partial<Record<OnboardingStep, StepRegistryEntry>> = {
   kyc: {
     hidesWizardContinue: true,
     render: (ctx) => <KycStep ctx={ctx} />,
+  },
+  agent_wallet: {
+    hidesWizardContinue: true,
+    render: (ctx) => <AgentWalletStep ctx={ctx} />,
+  },
+  spending_policy: {
+    hidesWizardContinue: true,
+    render: (ctx) => <SpendingPolicyStep ctx={ctx} />,
   },
 }
 
