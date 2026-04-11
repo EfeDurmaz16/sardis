@@ -257,9 +257,6 @@ export default function SupportPage() {
                       Copy ID
                     </ContextMenuItem>
                     <ContextMenuSeparator />
-                    <ContextMenuItem onClick={() => console.log("View ticket", t.id)}>
-                      View
-                    </ContextMenuItem>
                     <ContextMenuItem
                       disabled={t.status === "Resolved"}
                       onClick={() => handleClose(t.id)}
