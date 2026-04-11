@@ -141,6 +141,7 @@ from .routers import groups as groups_router
 from .routers import holds as holds_router
 from .routers import invoices as invoices_router
 from .routers import kyc_onboarding as kyc_onboarding_router
+from .routers import me as me_router
 from .routers import ledger as ledger_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
@@ -1936,6 +1937,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Self-serve KYC initiation and status (developer-facing)
     app.include_router(kyc_onboarding_router.router)
+
+    # Per-user "me" endpoints (onboarding wizard state, etc.)
+    app.include_router(me_router.router)
 
     # GDPR data export (Art. 20 — right to data portability)
     app.include_router(data_export_router.router, tags=["account"])

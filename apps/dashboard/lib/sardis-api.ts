@@ -132,3 +132,44 @@ export function createAgent(input: CreateAgentInput) {
     body: JSON.stringify(input),
   })
 }
+
+// ─── Onboarding wizard ────────────────────────────────────────────────────
+// Mirror of packages/sardis-api/src/sardis_api/routers/me.py — keep step
+// list in sync.
+export const ONBOARDING_STEPS = [
+  "profile",
+  "api_key",
+  "kyc",
+  "agent_wallet",
+  "spending_policy",
+  "sandbox_payment",
+  "tour_ready",
+] as const
+
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
+
+export type OnboardingState = {
+  org_id: string
+  current_step: OnboardingStep
+  completed_at: string | null
+  metadata: Record<string, unknown> & { skipped?: OnboardingStep[] }
+  steps: OnboardingStep[]
+}
+
+export type OnboardingPatch = {
+  current_step?: OnboardingStep
+  skipped?: OnboardingStep[]
+  metadata_patch?: Record<string, unknown>
+  mark_complete?: boolean
+}
+
+export function getOnboarding() {
+  return requestApi<OnboardingState>("/me/onboarding")
+}
+
+export function updateOnboarding(patch: OnboardingPatch) {
+  return requestApi<OnboardingState>("/me/onboarding", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  })
+}
