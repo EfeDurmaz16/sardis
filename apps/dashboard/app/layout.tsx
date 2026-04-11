@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "sonner"
 import { Providers } from "./providers"
 import { CookieConsent } from "@/components/cookie-consent"
+import { PostHogProvider } from "@/components/posthog-provider"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Providers>
             <TooltipProvider>
               {children}
+              <PostHogProvider />
               <CookieConsent />
               <Toaster richColors position="bottom-right" />
             </TooltipProvider>
