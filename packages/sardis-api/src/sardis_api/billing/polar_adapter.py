@@ -201,9 +201,18 @@ class PolarBillingAdapter:
         return self.verify_webhook(body, signature)
 
     def verify_webhook(self, payload: bytes, signature: str) -> bool:
-        """Verify Polar webhook signature."""
+        """Verify Polar webhook signature.
+
+        Fail-closed: raises RuntimeError in non-dev environments when
+        POLAR_WEBHOOK_SECRET is unset so operators see a hard error instead
+        of a silent "invalid signature" 401 for every inbound event.
+        """
         if not POLAR_WEBHOOK_SECRET:
-            logger.warning("POLAR_WEBHOOK_SECRET not set — skipping verification")
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
+            if env in ("prod", "production", "staging"):
+                logger.error("POLAR_WEBHOOK_SECRET not configured in %s", env)
+                raise RuntimeError("POLAR_WEBHOOK_SECRET not configured")
+            logger.warning("POLAR_WEBHOOK_SECRET not set — skipping verification (dev)")
             return False
 
         expected = hmac.new(
