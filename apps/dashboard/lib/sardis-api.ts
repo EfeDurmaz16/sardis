@@ -288,3 +288,52 @@ export function initiateKyc() {
     body: JSON.stringify({}),
   })
 }
+
+// ─── Mandates (single payment authorization + validate) ──────────────────
+// Backed by packages/sardis-api/src/sardis_api/routers/mandates.py.
+
+export type CreateMandateInput = {
+  subject: string // agent_id
+  domain: string
+  amount_minor: number
+  currency?: string
+  recipient: string
+  chain?: string
+  memo?: string
+}
+
+export type MandateRecord = {
+  mandate_id: string
+  subject: string
+  domain: string
+  amount_minor: number
+  currency: string
+  recipient: string
+  chain: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type MandateValidationResult = {
+  mandate_id: string
+  valid: boolean
+  status: string
+  reason: string | null
+  policy_check: { allowed: boolean; reason: string | null } | null
+  compliance_check: { allowed: boolean; reason: string | null } | null
+}
+
+export function createMandate(input: CreateMandateInput) {
+  return requestApi<MandateRecord>("/mandates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export function validateMandate(mandateId: string) {
+  return requestApi<MandateValidationResult>(`/mandates/${mandateId}/validate`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  })
+}

@@ -23,6 +23,7 @@ import { ApiKeyStep } from "./steps/api-key-step"
 import { KycStep } from "./steps/kyc-step"
 import { AgentWalletStep } from "./steps/agent-wallet-step"
 import { SpendingPolicyStep } from "./steps/spending-policy-step"
+import { SandboxPaymentStep } from "./steps/sandbox-payment-step"
 
 export type StepContext = {
   state: OnboardingState
@@ -57,6 +58,10 @@ const STEP_REGISTRY: Partial<Record<OnboardingStep, StepRegistryEntry>> = {
   spending_policy: {
     hidesWizardContinue: true,
     render: (ctx) => <SpendingPolicyStep ctx={ctx} />,
+  },
+  sandbox_payment: {
+    hidesWizardContinue: true,
+    render: (ctx) => <SandboxPaymentStep ctx={ctx} />,
   },
 }
 
