@@ -236,7 +236,7 @@ payment = client.pay(
               { label: "Product", href: "#product" },
               { label: "Docs", href: "https://docs.sardis.sh" },
               { label: "Security", href: "https://docs.sardis.sh/security" },
-              { label: "Pricing", href: "#pricing" },
+              { label: "Pricing", href: "/pricing" },
             ].map((l) => (
               <a key={l.label} href={l.href} style={{ fontSize: 13, color: t.textMuted, cursor: "pointer", textDecoration: "none" }} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{l.label}</a>
             ))}
