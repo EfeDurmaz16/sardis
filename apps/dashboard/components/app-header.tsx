@@ -23,7 +23,9 @@ import {
 import {
   MagnifyingGlass, List, Sun, Moon, Plus, CreditCard, CaretDown, CaretRight,
 } from "@phosphor-icons/react"
-import { Bell } from "@phosphor-icons/react"
+import { Bell, Question } from "@phosphor-icons/react"
+
+import { resetTour, startProductTour } from "@/lib/product-tour"
 
 /* ── Breadcrumb types & route mapping ── */
 
@@ -463,6 +465,19 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           onClick={() => router.push("/virtual-cards")}
         >
           <CreditCard className="w-3 h-3" /> Issue Card
+        </Button>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Replay product tour"
+          onClick={() => {
+            resetTour()
+            void startProductTour()
+          }}
+        >
+          <Question className="w-4 h-4" />
         </Button>
 
         <Popover>

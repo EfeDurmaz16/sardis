@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { AuthRequiredError, getOnboarding, type OnboardingState } from "@/lib/sardis-api"
+import { isTourCompleted, startProductTour } from "@/lib/product-tour"
 import { OnboardingWizard } from "./onboarding-wizard"
 
 /**
@@ -43,7 +44,16 @@ export function OnboardingGate() {
       initialState={state}
       open={open}
       onOpenChange={setOpen}
-      onComplete={() => setOpen(false)}
+      onComplete={() => {
+        setOpen(false)
+        if (!isTourCompleted()) {
+          // Give the wizard dialog a frame to unmount before driver.js
+          // takes over the viewport.
+          setTimeout(() => {
+            void startProductTour()
+          }, 300)
+        }
+      }}
     />
   )
 }

@@ -26,6 +26,7 @@ type NavItem = {
   href: string
   icon: Icon
   badge?: string
+  tourId?: string
 }
 
 type NavSection = {
@@ -38,11 +39,11 @@ type NavSection = {
 const navSections: NavSection[] = [
   {
     items: [
-      { label: "Overview", href: "/", icon: SquaresFour },
-      { label: "Agents", href: "/agents", icon: Robot },
-      { label: "Transactions", href: "/transactions", icon: ArrowsLeftRight },
-      { label: "Mandates", href: "/mandates", icon: ShieldCheck },
-      { label: "Wallets", href: "/wallets", icon: Wallet },
+      { label: "Overview", href: "/", icon: SquaresFour, tourId: "nav-overview" },
+      { label: "Agents", href: "/agents", icon: Robot, tourId: "nav-agents" },
+      { label: "Transactions", href: "/transactions", icon: ArrowsLeftRight, tourId: "nav-ledger" },
+      { label: "Mandates", href: "/mandates", icon: ShieldCheck, tourId: "nav-mandates" },
+      { label: "Wallets", href: "/wallets", icon: Wallet, tourId: "nav-wallets" },
       { label: "Merchants", href: "/merchants", icon: Storefront },
     ],
   },
@@ -102,8 +103,8 @@ const navSections: NavSection[] = [
     items: [
       { label: "Settings", href: "/settings", icon: Gear },
       { label: "Security", href: "/account/security", icon: Lock },
-      { label: "API Keys", href: "/api-keys", icon: Key },
-      { label: "Webhooks", href: "/webhooks", icon: PaperPlaneTilt },
+      { label: "API Keys", href: "/api-keys", icon: Key, tourId: "nav-api-keys" },
+      { label: "Webhooks", href: "/webhooks", icon: PaperPlaneTilt, tourId: "nav-webhooks" },
       { label: "Billing", href: "/billing", icon: CurrencyDollar },
       { label: "Go Live", href: "/go-live", icon: Rocket },
       { label: "Alerts", href: "/alerts", icon: Bell },
@@ -132,6 +133,7 @@ function NavLink({
     <Link
       href={item.href}
       onClick={onNavigate}
+      data-tour-id={item.tourId}
       className={cn(
         "flex items-center gap-2 rounded-md text-[12.5px] text-muted-foreground transition-colors duration-150",
         "hover:bg-accent hover:text-foreground",

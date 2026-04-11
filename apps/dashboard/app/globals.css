@@ -153,3 +153,80 @@
     font-variant-numeric: tabular-nums lining-nums;
   }
 }
+
+/* driver.js product-tour theme. Monokrom grayscale, inherits the dashboard
+   font stack, single-layer shadow. Scoped via .sardis-driver-popover so it
+   only touches our own tour, not any other driver.js instance. */
+.sardis-driver-popover.driver-popover {
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+  padding: 16px;
+  max-width: 320px;
+}
+.sardis-driver-popover .driver-popover-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 6px;
+}
+.sardis-driver-popover .driver-popover-description {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+.sardis-driver-popover .driver-popover-progress-text {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.sardis-driver-popover .driver-popover-footer {
+  margin-top: 12px;
+  gap: 6px;
+}
+.sardis-driver-popover .driver-popover-navigation-btns {
+  gap: 6px;
+}
+.sardis-driver-popover button.driver-popover-btn,
+.sardis-driver-popover button.driver-popover-prev-btn,
+.sardis-driver-popover button.driver-popover-next-btn,
+.sardis-driver-popover button.driver-popover-close-btn {
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: none;
+  box-shadow: none;
+}
+.sardis-driver-popover button.driver-popover-btn:hover,
+.sardis-driver-popover button.driver-popover-prev-btn:hover,
+.sardis-driver-popover button.driver-popover-next-btn:hover,
+.sardis-driver-popover button.driver-popover-close-btn:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.sardis-driver-popover button.driver-popover-next-btn {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}
+.sardis-driver-popover button.driver-popover-next-btn:hover {
+  background: var(--foreground);
+  opacity: 0.9;
+  color: var(--background);
+}
+
+/* z-index: sit above the sidebar (~50) but below the cookie consent banner
+   (which uses 10000) and the Intercom launcher (2147483000+). */
+.driver-overlay,
+.driver-popover {
+  z-index: 9500 !important;
+}
