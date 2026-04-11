@@ -20,6 +20,7 @@ import {
 } from "@/lib/sardis-api"
 import { ProfileStep } from "./steps/profile-step"
 import { ApiKeyStep } from "./steps/api-key-step"
+import { KycStep } from "./steps/kyc-step"
 
 export type StepContext = {
   state: OnboardingState
@@ -42,6 +43,10 @@ const STEP_REGISTRY: Partial<Record<OnboardingStep, StepRegistryEntry>> = {
   api_key: {
     hidesWizardContinue: true,
     render: (ctx) => <ApiKeyStep ctx={ctx} />,
+  },
+  kyc: {
+    hidesWizardContinue: true,
+    render: (ctx) => <KycStep ctx={ctx} />,
   },
 }
 

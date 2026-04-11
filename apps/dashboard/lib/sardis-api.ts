@@ -189,3 +189,45 @@ export function bootstrapApiKey(name = "Default API key") {
     body: JSON.stringify({ name }),
   })
 }
+
+// ─── KYC (Didit) ──────────────────────────────────────────────────────────
+// Backed by packages/sardis-api/src/sardis_api/routers/kyc_onboarding.py.
+// Don't recreate these — they exist already and are used by the wider
+// dashboard KYC pages.
+
+export type KycStatus =
+  | "not_started"
+  | "pending"
+  | "approved"
+  | "declined"
+  | "expired"
+  | "needs_review"
+
+export type KycStatusResponse = {
+  status: KycStatus
+  provider: string | null
+  inquiry_id: string | null
+  verified_at: string | null
+  expires_at: string | null
+  reason: string | null
+  can_retry: boolean
+}
+
+export type KycInitiateResponse = {
+  redirect_url: string | null
+  session_token: string | null
+  inquiry_id: string | null
+  provider: string
+  message: string
+}
+
+export function getKycStatus() {
+  return requestApi<KycStatusResponse>("/kyc/status")
+}
+
+export function initiateKyc() {
+  return requestApi<KycInitiateResponse>("/kyc/initiate", {
+    method: "POST",
+    body: JSON.stringify({}),
+  })
+}
