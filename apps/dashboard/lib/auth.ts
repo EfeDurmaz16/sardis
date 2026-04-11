@@ -56,6 +56,15 @@ const passkeyOrigins = process.env.NODE_ENV === "production"
   : [...LOCAL_AUTH_ORIGINS]
 
 /**
+ * Returns true when the process is running in a production deployment.
+ * Used to hard-fail auth fallbacks that log secrets (OTP codes, reset
+ * URLs, magic links) to stdout when an email/SMS provider is missing.
+ * Dev and preview deploys keep the console fallback for debuggability.
+ */
+const isProductionRuntime = (): boolean =>
+  process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
+
+/**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
  *
  * Each capability maps to a Sardis API operation. The `location` field
@@ -255,6 +264,11 @@ export const auth = betterAuth({
     sendResetPassword: async ({ user, url }) => {
       const RESEND_API_KEY = process.env.RESEND_API_KEY;
       if (!RESEND_API_KEY) {
+        if (isProductionRuntime()) {
+          throw new Error(
+            "[reset-password] RESEND_API_KEY is not configured in production. Refusing to log reset URLs to stdout.",
+          );
+        }
         console.warn("[reset-password] RESEND_API_KEY not set — logging link");
         console.log(`[reset-password] ${user.email}: ${url}`);
         return;
@@ -541,6 +555,11 @@ export const auth = betterAuth({
         // In production, replace with real email delivery.
         const RESEND_API_KEY = process.env.RESEND_API_KEY;
         if (!RESEND_API_KEY) {
+          if (isProductionRuntime()) {
+            throw new Error(
+              "[magic-link] RESEND_API_KEY is not configured in production. Refusing to log magic links to stdout.",
+            );
+          }
           console.warn("[magic-link] RESEND_API_KEY not set — logging link to console");
           console.log(`[magic-link] ${email}: ${url}`);
           return;
@@ -576,6 +595,11 @@ export const auth = betterAuth({
         const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
         const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER;
         if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
+          if (isProductionRuntime()) {
+            throw new Error(
+              "[phone] Twilio credentials are not configured in production. Refusing to log OTP codes to stdout.",
+            );
+          }
           console.warn("[phone] Twilio credentials not set — logging OTP to console");
           console.log(`[phone] ${phone}: ${code}`);
           return;
