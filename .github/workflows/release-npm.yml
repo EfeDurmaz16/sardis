@@ -6,6 +6,7 @@ on:
       - "mcp-v*"
       - "sdk-js-v*"
       - "ai-sdk-v*"
+      - "connect-js-v*"
   workflow_dispatch:
     inputs:
       package:
@@ -16,6 +17,7 @@ on:
           - mcp-server
           - sdk-js
           - ai-sdk
+          - connect-js
       version:
         description: "Version to publish (e.g. 0.2.1 or 0.2.1-rc.1)"
         required: true
@@ -73,6 +75,10 @@ jobs:
                 PACKAGE_KIND="ai-sdk"
                 VERSION="${TAG#ai-sdk-v}"
                 ;;
+              connect-js-v*)
+                PACKAGE_KIND="connect-js"
+                VERSION="${TAG#connect-js-v}"
+                ;;
               *)
                 echo "Unsupported tag format: $TAG"
                 exit 1
@@ -102,6 +108,10 @@ jobs:
             ai-sdk)
               PACKAGE_NAME="@sardis/ai-sdk"
               PACKAGE_DIR="packages/sardis-ai-sdk"
+              ;;
+            connect-js)
+              PACKAGE_NAME="@sardis/connect"
+              PACKAGE_DIR="packages/sardis-connect-js"
               ;;
             *)
               echo "Unsupported package input: $PACKAGE_KIND"
