@@ -622,6 +622,27 @@ async def pay_session(
         ))
         raise HTTPException(status_code=400, detail="Invalid payment request")
 
+    # Update mandate spent_total after successful payment
+    if body.mandate_id and result.get("status") in ("paid", "settled"):
+        try:
+            from sardis_v2_core.database import Database
+            await Database.execute(
+                """
+                UPDATE spending_mandates
+                SET spent_total = spent_total + $1,
+                    updated_at = NOW()
+                WHERE external_id = $2
+                """,
+                session.amount,
+                body.mandate_id,
+            )
+            logger.info(
+                "Mandate %s: spent_total incremented by %s",
+                body.mandate_id, session.amount,
+            )
+        except Exception:
+            logger.exception("Failed to update mandate spent_total for %s", body.mandate_id)
+
     return PaymentResultResponse(
         session_id=result["session_id"],
         status=result["status"],
