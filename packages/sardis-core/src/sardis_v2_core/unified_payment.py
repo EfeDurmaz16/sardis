@@ -40,8 +40,12 @@ class PaymentProtocol(str, Enum):
     """Available payment protocols."""
     AUTO = "auto"       # Sardis picks the best one
     DIRECT = "direct"   # On-chain USDC transfer
-    X402 = "x402"       # HTTP 402 API micropayments
+    X402 = "x402"       # HTTP 402 API micropayments (Coinbase)
     MPP = "mpp"         # Stripe Machine Payments Protocol
+    ACP = "acp"         # OpenAI Agentic Commerce Protocol
+    UCP = "ucp"         # Google Universal Commerce Protocol
+    AP2 = "ap2"         # Google Agent Payment Protocol v2
+    VISA_ICC = "visa_icc"  # Visa Intelligent Commerce Connect
 
 
 class PaymentStatus(str, Enum):
@@ -73,9 +77,15 @@ class MerchantCapabilities:
     supports_direct: bool = False
     supports_x402: bool = False
     supports_mpp: bool = False
+    supports_acp: bool = False      # OpenAI Agentic Commerce Protocol
+    supports_ucp: bool = False      # Google Universal Commerce Protocol
+    supports_ap2: bool = False      # Google Agent Payment Protocol v2
+    supports_visa_icc: bool = False # Visa Intelligent Commerce Connect
     settlement_address: str | None = None  # For direct USDC
     x402_endpoint: str | None = None       # For x402
     mpp_merchant_id: str | None = None     # For MPP/Stripe
+    acp_merchant_url: str | None = None    # For OpenAI ACP
+    ucp_merchant_url: str | None = None    # For Google UCP
 
 
 class UnifiedPaymentClient:
@@ -165,6 +175,10 @@ class UnifiedPaymentClient:
             return await self._pay_x402(to, amount, currency, capabilities, purpose, metadata)
         elif selected == PaymentProtocol.MPP:
             return await self._pay_mpp(to, amount, currency, capabilities, purpose, metadata)
+        elif selected in (PaymentProtocol.ACP, PaymentProtocol.UCP, PaymentProtocol.AP2, PaymentProtocol.VISA_ICC):
+            return await self._pay_protocol_gateway(
+                to, amount, currency, selected, capabilities, purpose, metadata,
+            )
         else:
             return PaymentResult(
                 status=PaymentStatus.FAILED,
@@ -181,19 +195,35 @@ class UnifiedPaymentClient:
     def _select_protocol(
         self, preferred: PaymentProtocol, caps: MerchantCapabilities
     ) -> PaymentProtocol:
-        """Select the best protocol based on preference and capabilities."""
+        """Select the best protocol based on preference and capabilities.
+
+        Priority (highest to lowest):
+        1. MPP — Stripe fiat settlement, lowest friction for merchants
+        2. ACP — OpenAI ecosystem, growing adoption
+        3. UCP — Google ecosystem
+        4. Visa ICC — Card network backed, enterprise trust
+        5. AP2 — Google consortium standard
+        6. x402 — API micropayments, simple
+        7. Direct USDC — Always available, on-chain
+        """
         if preferred != PaymentProtocol.AUTO:
             return preferred
 
-        # Priority: MPP (fiat settlement) > x402 (micropayments) > direct (on-chain)
         if caps.supports_mpp:
             return PaymentProtocol.MPP
+        if caps.supports_acp:
+            return PaymentProtocol.ACP
+        if caps.supports_ucp:
+            return PaymentProtocol.UCP
+        if caps.supports_visa_icc:
+            return PaymentProtocol.VISA_ICC
+        if caps.supports_ap2:
+            return PaymentProtocol.AP2
         if caps.supports_x402:
             return PaymentProtocol.X402
         if caps.supports_direct:
             return PaymentProtocol.DIRECT
 
-        # Fallback to direct — can always send USDC on-chain
         return PaymentProtocol.DIRECT
 
     async def _discover_merchant(self, merchant: str) -> MerchantCapabilities:
@@ -439,6 +469,86 @@ class UnifiedPaymentClient:
             return PaymentResult(
                 status=PaymentStatus.FAILED,
                 protocol=PaymentProtocol.MPP,
+                amount=amount,
+                merchant=to,
+                error=str(e),
+            )
+
+    async def _pay_protocol_gateway(
+        self, to: str, amount: Decimal, currency: str,
+        protocol: PaymentProtocol, caps: MerchantCapabilities,
+        purpose: str | None, metadata: dict | None,
+    ) -> PaymentResult:
+        """Route payment through Sardis protocol gateway.
+
+        Handles ACP (OpenAI), UCP (Google), AP2, and Visa ICC
+        through a unified gateway endpoint. The gateway translates
+        Sardis payment intent into the target protocol format.
+        """
+        import httpx
+
+        protocol_config = {
+            PaymentProtocol.ACP: {
+                "gateway_path": "/api/v2/gateway/acp",
+                "merchant_url_field": "acp_merchant_url",
+            },
+            PaymentProtocol.UCP: {
+                "gateway_path": "/api/v2/gateway/ucp",
+                "merchant_url_field": "ucp_merchant_url",
+            },
+            PaymentProtocol.AP2: {
+                "gateway_path": "/api/v2/ap2/pay",
+                "merchant_url_field": None,
+            },
+            PaymentProtocol.VISA_ICC: {
+                "gateway_path": "/api/v2/gateway/visa-icc",
+                "merchant_url_field": None,
+            },
+        }
+
+        config = protocol_config.get(protocol, {})
+        gateway_path = config.get("gateway_path", f"/api/v2/gateway/{protocol.value}")
+
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{self._api_url}{gateway_path}",
+                    json={
+                        "merchant": to,
+                        "amount": str(amount),
+                        "currency": currency,
+                        "wallet_id": self._wallet_id,
+                        "agent_id": self._agent_id,
+                        "purpose": purpose,
+                        "metadata": metadata or {},
+                    },
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                )
+
+                if resp.status_code in (200, 201):
+                    data = resp.json()
+                    return PaymentResult(
+                        status=PaymentStatus.COMPLETED,
+                        protocol=protocol,
+                        tx_id=data.get("payment_id"),
+                        tx_hash=data.get("tx_hash"),
+                        session_id=data.get("session_id"),
+                        amount=amount,
+                        currency=currency,
+                        merchant=to,
+                    )
+
+                return PaymentResult(
+                    status=PaymentStatus.FAILED,
+                    protocol=protocol,
+                    amount=amount,
+                    merchant=to,
+                    error=f"{protocol.value} gateway error: {resp.status_code}",
+                )
+        except Exception as e:
+            return PaymentResult(
+                status=PaymentStatus.FAILED,
+                protocol=protocol,
                 amount=amount,
                 merchant=to,
                 error=str(e),
