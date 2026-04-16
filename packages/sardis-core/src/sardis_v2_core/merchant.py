@@ -31,13 +31,22 @@ class Merchant:
     logo_url: str | None = None
     webhook_url: str | None = None
     webhook_secret: str = field(default_factory=_generate_webhook_secret)
-    settlement_preference: str = "usdc"  # usdc | fiat
+    settlement_preference: str = "usdc"  # usdc | fiat | stripe_connect
     settlement_wallet_id: str | None = None
     bank_account: dict[str, Any] = field(default_factory=dict)
     mcc_code: str | None = None
     category: str | None = None
     platform_fee_bps: int = 0
     is_active: bool = True
+    # Stripe Connect fields
+    stripe_account_id: str | None = None
+    stripe_onboarding_state: str = "not_started"
+    stripe_charges_enabled: bool = False
+    stripe_payouts_enabled: bool = False
+    stripe_details_submitted: bool = False
+    stripe_disabled_reason: str | None = None
+    stripe_current_deadline: datetime | None = None
+    stripe_last_synced_at: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
@@ -137,7 +146,12 @@ class MerchantRepository:
             SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
                 m.webhook_url, m.webhook_secret, m.settlement_preference,
                 m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
-                m.platform_fee_bps, m.is_active, m.created_at, m.updated_at
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
             FROM merchants m
             LEFT JOIN organizations o ON o.id = m.org_id
             WHERE m.external_id = $1
@@ -154,7 +168,12 @@ class MerchantRepository:
             SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
                 m.webhook_url, m.webhook_secret, m.settlement_preference,
                 m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
-                m.platform_fee_bps, m.is_active, m.created_at, m.updated_at
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
             FROM merchants m
             LEFT JOIN organizations o ON o.id = m.org_id
             WHERE o.external_id = $1
@@ -169,6 +188,10 @@ class MerchantRepository:
         "settlement_preference", "settlement_wallet_id", "bank_account",
         "mcc_code", "category", "platform_fee_bps", "is_active",
         "client_id", "client_secret_hash", "website", "registered_by",
+        "stripe_account_id", "stripe_onboarding_state",
+        "stripe_charges_enabled", "stripe_payouts_enabled",
+        "stripe_details_submitted", "stripe_disabled_reason",
+        "stripe_current_deadline", "stripe_last_synced_at",
     })
 
     async def update_merchant(self, merchant_id: str, **kwargs: Any) -> Merchant | None:
@@ -499,6 +522,14 @@ class MerchantRepository:
             category=row.get("category"),
             platform_fee_bps=row.get("platform_fee_bps", 0),
             is_active=row["is_active"],
+            stripe_account_id=row.get("stripe_account_id"),
+            stripe_onboarding_state=row.get("stripe_onboarding_state", "not_started"),
+            stripe_charges_enabled=row.get("stripe_charges_enabled", False),
+            stripe_payouts_enabled=row.get("stripe_payouts_enabled", False),
+            stripe_details_submitted=row.get("stripe_details_submitted", False),
+            stripe_disabled_reason=row.get("stripe_disabled_reason"),
+            stripe_current_deadline=row.get("stripe_current_deadline"),
+            stripe_last_synced_at=row.get("stripe_last_synced_at"),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )

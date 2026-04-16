@@ -149,6 +149,7 @@ from .routers import marketplace as marketplace_router
 from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
+from .routers import stripe_connect as stripe_connect_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routers import offramp as offramp_router
@@ -2080,10 +2081,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     merchant_repo = MerchantRepository()
     merchant_webhook_service = MerchantWebhookService(merchant_repo=merchant_repo)
 
+    # Initialize Stripe Connect provider for settlement (optional)
+    _stripe_connect_for_settlement = None
+    try:
+        from sardis_v2_core.stripe_connect import StripeConnectProvider
+        _stripe_connect_for_settlement = StripeConnectProvider()
+    except (ImportError, ValueError):
+        pass  # Stripe not configured, skip
+
     settlement_service = SettlementService(
         merchant_repo=merchant_repo,
         offramp_service=None,  # Wire Bridge offramp when configured
         merchant_webhook_service=merchant_webhook_service,
+        stripe_connect_provider=_stripe_connect_for_settlement,
     )
 
     sardis_native_connector = SardisNativeConnector(
@@ -2109,6 +2119,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         checkout_base_url=checkout_base_url,
     )
     app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
+
+    # --- Stripe Connect (Sardis Connect) ---
+    try:
+        from sardis_v2_core.stripe_connect import StripeConnectProvider
+        stripe_connect_provider = StripeConnectProvider()
+        app.dependency_overrides[stripe_connect_router.get_deps] = lambda: stripe_connect_router.StripeConnectDeps(
+            merchant_repo=merchant_repo,
+            stripe_connect_provider=stripe_connect_provider,
+        )
+        app.include_router(stripe_connect_router.router, prefix="/api/v2/merchants", tags=["stripe-connect"])
+        app.include_router(stripe_connect_router.webhook_router, prefix="/api/v2/webhooks", tags=["stripe-connect-webhooks"])
+        logger.info("Stripe Connect router enabled")
+    except (ImportError, ValueError) as e:
+        logger.warning("Stripe Connect not configured, skipping: %s", e)
 
     checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
     app.dependency_overrides[merchant_checkout_router.get_deps] = lambda: merchant_checkout_router.MerchantCheckoutDependencies(

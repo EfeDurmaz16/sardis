@@ -34,11 +34,13 @@ class SettlementService:
         offramp_service: Any | None = None,
         merchant_webhook_service: Any | None = None,
         cpn_adapter: Any | None = None,
+        stripe_connect_provider: Any | None = None,
     ):
         self._merchant_repo = merchant_repo
         self._offramp = offramp_service
         self._webhooks = merchant_webhook_service
         self._cpn_adapter = cpn_adapter
+        self._stripe_connect = stripe_connect_provider
 
     async def settle_session(self, session_id: str) -> None:
         """
@@ -141,6 +143,11 @@ class SettlementService:
                 await self._merchant_repo.update_session(
                     session_id, settlement_status="failed"
                 )
+            return
+
+        # Stripe Connect settlement: transfer to merchant's connected account
+        if merchant.settlement_preference == "stripe_connect":
+            await self._settle_stripe_connect(session_id, session, merchant)
             return
 
         # Fiat settlement via Bridge offramp
@@ -297,6 +304,97 @@ class SettlementService:
                 results["failed"] += 1
 
         return results
+
+    async def _settle_stripe_connect(self, session_id: str, session: Any, merchant: Any) -> None:
+        """
+        Stripe Connect settlement: transfer funds to merchant's connected Stripe account.
+
+        After an agent pays in stablecoin, we transfer the equivalent fiat amount
+        to the merchant's Stripe Express account. Stripe's automatic payout schedule
+        then sends it to their bank. The merchant sees USD, never USDC.
+        """
+        if not self._stripe_connect:
+            logger.error("Settlement: no Stripe Connect provider configured for session %s", session_id)
+            await self._merchant_repo.update_session(session_id, settlement_status="failed")
+            return
+
+        if not merchant.stripe_account_id:
+            logger.error("Settlement: merchant %s has no Stripe Connect account", merchant.merchant_id)
+            await self._merchant_repo.update_session(session_id, settlement_status="failed")
+            return
+
+        if not merchant.stripe_payouts_enabled:
+            logger.error("Settlement: merchant %s Stripe payouts not enabled", merchant.merchant_id)
+            await self._merchant_repo.update_session(session_id, settlement_status="failed")
+            return
+
+        try:
+            from decimal import Decimal
+
+            # Convert stablecoin amount to cents (1 USDC = 100 cents)
+            net = session.net_amount if session.net_amount is not None else session.amount
+            amount_cents = int(net * 100)
+
+            if amount_cents <= 0:
+                logger.error("Settlement: invalid amount for session %s", session_id)
+                await self._merchant_repo.update_session(session_id, settlement_status="failed")
+                return
+
+            # Create transfer to connected account
+            result = await self._stripe_connect.create_transfer(
+                account_id=merchant.stripe_account_id,
+                amount_cents=amount_cents,
+                currency="usd",
+                description=f"Sardis settlement for session {session_id}",
+                metadata={
+                    "sardis_session_id": session_id,
+                    "sardis_merchant_id": merchant.merchant_id,
+                },
+                transfer_group=f"sardis_{session_id}",
+            )
+
+            # Track the payout
+            from sardis_v2_core.database import Database
+            await Database.execute(
+                """
+                INSERT INTO stripe_connect_payouts
+                    (merchant_id, session_id, stripe_transfer_id, amount_cents, currency, status)
+                VALUES (
+                    (SELECT id FROM merchants WHERE external_id = $1),
+                    $2, $3, $4, $5, 'pending'
+                )
+                """,
+                merchant.merchant_id, session_id, result.transfer_id, amount_cents, "usd",
+            )
+
+            await self._merchant_repo.update_session(
+                session_id,
+                status="settled",
+                settlement_status="completed",
+                settlement_tx_hash=result.transfer_id,
+            )
+
+            if self._webhooks and merchant.webhook_url:
+                await self._webhooks.deliver(
+                    merchant=merchant,
+                    event_type="settlement.completed",
+                    payload={
+                        "session_id": session_id,
+                        "amount": str(net),
+                        "currency": "USD",
+                        "settlement_method": "stripe_connect",
+                        "stripe_transfer_id": result.transfer_id,
+                    },
+                )
+
+            logger.info(
+                "Stripe Connect settlement completed for session %s: transfer %s ($%s)",
+                session_id, result.transfer_id, f"{net:.2f}",
+            )
+
+        except Exception:
+            logger.exception("Stripe Connect settlement failed for session %s", session_id)
+            await self._merchant_repo.update_session(session_id, settlement_status="failed")
 
     async def _settle_internal(self, session_id: str, session: Any, merchant: Any) -> None:
         """

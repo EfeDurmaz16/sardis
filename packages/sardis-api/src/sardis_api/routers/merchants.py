@@ -24,7 +24,7 @@ class CreateMerchantRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     logo_url: str | None = None
     webhook_url: str | None = None
-    settlement_preference: str = Field(default="usdc", pattern="^(usdc|fiat)$")
+    settlement_preference: str = Field(default="usdc", pattern="^(usdc|fiat|stripe_connect)$")
     mcc_code: str | None = Field(default=None, max_length=4)
     category: str | None = None
     platform_fee_bps: int = Field(default=0, ge=0, le=500)
@@ -62,6 +62,10 @@ class MerchantResponse(BaseModel):
     category: str | None = None
     platform_fee_bps: int = 0
     is_active: bool = True
+    stripe_account_id: str | None = None
+    stripe_onboarding_state: str = "not_started"
+    stripe_charges_enabled: bool = False
+    stripe_payouts_enabled: bool = False
     created_at: str
     updated_at: str
 
@@ -134,6 +138,10 @@ def _merchant_response(m) -> MerchantResponse:
         category=m.category,
         platform_fee_bps=m.platform_fee_bps,
         is_active=m.is_active,
+        stripe_account_id=m.stripe_account_id,
+        stripe_onboarding_state=m.stripe_onboarding_state,
+        stripe_charges_enabled=m.stripe_charges_enabled,
+        stripe_payouts_enabled=m.stripe_payouts_enabled,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
     )
