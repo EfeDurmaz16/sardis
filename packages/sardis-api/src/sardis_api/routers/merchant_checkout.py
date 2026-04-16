@@ -245,6 +245,8 @@ class CreateSessionRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     embed_origin: str | None = None
     mandate_id: str | None = None
+    escrow: bool = Field(default=False, description="Hold funds in escrow until merchant confirms delivery")
+    escrow_timelock_hours: int = Field(default=72, ge=1, le=720, description="Hours before auto-release from escrow")
 
 
 class SessionResponse(BaseModel):
