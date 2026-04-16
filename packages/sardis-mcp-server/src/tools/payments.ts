@@ -292,6 +292,15 @@ export const paymentToolDefinitions: ToolDefinition[] = [
           type: 'string',
           description: 'Chain to execute on (e.g., "base", "tempo", "polygon"). Defaults to configured chain.',
         },
+        mandate_id: {
+          type: 'string',
+          description: 'Spending mandate ID to validate against. If provided, payment must comply with mandate limits and merchant scope.',
+        },
+        protocol: {
+          type: 'string',
+          enum: ['auto', 'direct', 'x402', 'mpp'],
+          description: 'Payment protocol to use. "auto" picks the best one based on merchant capabilities. Defaults to "auto".',
+        },
       },
       required: ['vendor', 'amount'],
     },
