@@ -303,6 +303,7 @@ class MerchantRepository:
         "payer_wallet_id", "payer_wallet_address", "status", "payment_method",
         "tx_hash", "settlement_tx_hash", "settlement_status", "offramp_id",
         "metadata", "idempotency_key", "platform_fee_amount", "net_amount",
+        "mandate_id",
     })
 
     async def update_session(self, session_id: str, **kwargs: Any) -> None:
