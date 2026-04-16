@@ -273,7 +273,7 @@ payment = client.pay(
           Set spending rules, enforce compliance guardrails, and let your agents transact autonomously. Every payment verified.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-3.5 pt-2 w-full sm:w-auto">
-          <PrimaryCTA label="Get started free" t={t} href="https://app.sardis.sh" />
+          <PrimaryCTA label="Get started free" t={t} href="https://app.sardis.sh/signup" />
           <GhostCTA label="Read the docs" t={t} href="https://docs.sardis.sh" />
         </div>
       </Section>
