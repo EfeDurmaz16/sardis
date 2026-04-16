@@ -20,7 +20,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from .models import PaymentResult, PricedEndpoint, PricingModel, ServiceManifest
+from .models import PaymentResult, PricedEndpoint, PricingModel, ServiceManifest, UsageRecord
 
 logger = logging.getLogger("sardis.connect")
 
@@ -60,6 +60,24 @@ class VerifyResponse(BaseModel):
     currency: str
     payer_id: str | None = None
     error: str | None = None
+
+
+class UsageReportRequest(BaseModel):
+    """Report metered usage for a session."""
+    session_id: str
+    endpoint: str
+    units: int = Field(..., gt=0, description="Number of units consumed (tokens, calls, etc.)")
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class UsageReportResponse(BaseModel):
+    """Usage report confirmation with calculated charge."""
+    session_id: str
+    endpoint: str
+    units: int
+    unit_price: str
+    total_charge: str
+    currency: str
 
 
 class SardisConnect:
@@ -130,6 +148,38 @@ class SardisConnect:
             price=Decimal(str(amount)),
             currency=currency,
             description=description,
+            category=category,
+        )
+        self._endpoints.append(ep)
+        return ep
+
+    def meter(
+        self,
+        path: str,
+        per_unit: Decimal | str = "0.001",
+        unit: str = "token",
+        currency: str = "USD",
+        description: str = "",
+        method: str = "POST",
+        category: str | None = None,
+    ) -> PricedEndpoint:
+        """Register a metered (usage-based) endpoint.
+
+        Instead of a fixed price per call, the agent pays per unit consumed.
+        After the API call, the merchant reports actual usage via /sardis/usage.
+
+        Usage:
+            sardis.meter("/api/generate", per_unit="0.001", unit="token")
+            # Agent uses 1500 tokens → charged $1.50
+        """
+        ep = PricedEndpoint(
+            path=path,
+            method=method,
+            price=Decimal(str(per_unit)),
+            currency=currency,
+            description=description,
+            pricing_model=PricingModel.PER_UNIT,
+            unit_name=unit,
             category=category,
         )
         self._endpoints.append(ep)
@@ -291,6 +341,55 @@ class SardisConnect:
             logger.info("Sardis webhook: %s", event_type)
             # Merchants can override this by subclassing SardisConnect
             return {"status": "ok"}
+
+        @self._router.post("/sardis/usage")
+        async def report_usage(body: UsageReportRequest) -> UsageReportResponse:
+            """Report metered usage for a payment session.
+
+            After an agent uses a metered endpoint, the merchant reports
+            actual usage (e.g., tokens consumed). Sardis calculates the
+            charge and settles based on per-unit pricing.
+
+            Usage:
+                POST /sardis/usage
+                {"session_id": "mcs_xxx", "endpoint": "/api/generate", "units": 1500}
+            """
+            endpoint = self._find_endpoint(body.endpoint)
+            if not endpoint:
+                raise HTTPException(status_code=404, detail="Endpoint not found")
+
+            if endpoint.pricing_model != PricingModel.PER_UNIT:
+                raise HTTPException(status_code=400, detail="Endpoint is not metered")
+
+            unit_price = endpoint.price
+            total = Decimal(str(body.units)) * unit_price
+
+            # Report usage to Sardis API for settlement
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.post(
+                    f"{self._sardis_api}/api/v2/merchant-checkout/sessions/{body.session_id}/usage",
+                    json={
+                        "units": body.units,
+                        "unit_name": endpoint.unit_name or "unit",
+                        "unit_price": str(unit_price),
+                        "total_amount": str(total),
+                        "endpoint": body.endpoint,
+                        "metadata": body.metadata,
+                    },
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                )
+
+                if resp.status_code not in (200, 201):
+                    logger.warning("Usage report failed: %s", resp.text)
+
+            return UsageReportResponse(
+                session_id=body.session_id,
+                endpoint=body.endpoint,
+                units=body.units,
+                unit_price=str(unit_price),
+                total_charge=str(total),
+                currency=endpoint.currency,
+            )
 
     def _find_endpoint(self, path: str) -> PricedEndpoint | None:
         """Find a priced endpoint by path."""

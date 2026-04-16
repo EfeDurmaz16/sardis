@@ -10,7 +10,7 @@ That's it. Your API endpoints can now be discovered and paid for by AI agents.
 """
 
 from sardis_connect.middleware import SardisConnect
-from sardis_connect.models import PricedEndpoint, PricingTier
+from sardis_connect.models import PricedEndpoint, PricingTier, UsageRecord
 
-__all__ = ["SardisConnect", "PricedEndpoint", "PricingTier"]
+__all__ = ["SardisConnect", "PricedEndpoint", "PricingTier", "UsageRecord"]
 __version__ = "0.1.0"

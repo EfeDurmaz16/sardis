@@ -50,6 +50,35 @@ class PricedEndpoint:
 
 
 @dataclass
+class UsageRecord:
+    """A metered usage record for per-unit billing.
+
+    Merchants report usage after the API call completes.
+    Sardis calculates the charge and settles.
+
+    Example:
+        record = UsageRecord(
+            session_id="mcs_xxx",
+            endpoint="/api/generate",
+            units=1500,        # tokens consumed
+            unit_name="token",
+            unit_price=Decimal("0.001"),
+        )
+        # Charge: 1500 * 0.001 = $1.50
+    """
+    session_id: str
+    endpoint: str
+    units: int
+    unit_name: str = "unit"
+    unit_price: Decimal = Decimal("0.001")
+    metadata: dict = field(default_factory=dict)
+
+    @property
+    def total_charge(self) -> Decimal:
+        return Decimal(str(self.units)) * self.unit_price
+
+
+@dataclass
 class PaymentResult:
     """Result of a payment verification."""
     verified: bool
