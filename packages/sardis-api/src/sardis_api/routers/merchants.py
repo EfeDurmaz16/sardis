@@ -266,6 +266,75 @@ async def list_settlements(
     ]
 
 
+# ── Merchant Lookup (for unified payment client) ─────────────────
+
+@router.get("/lookup", response_model=MerchantResponse)
+async def lookup_merchant(
+    domain: str | None = None,
+    name: str | None = None,
+    deps: MerchantDependencies = Depends(get_deps),
+):
+    """Look up a merchant by domain or name.
+
+    Used by the unified payment client for merchant discovery.
+    Agents call this to find if a merchant is registered on Sardis
+    and what payment protocols they support.
+    """
+    if not domain and not name:
+        raise HTTPException(status_code=400, detail="Provide 'domain' or 'name' query parameter")
+
+    from sardis_v2_core.database import Database
+
+    if domain:
+        # Strip protocol and path
+        clean_domain = domain.replace("https://", "").replace("http://", "").split("/")[0]
+        row = await Database.fetchrow(
+            """
+            SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
+                m.webhook_url, m.webhook_secret, m.settlement_preference,
+                m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
+            FROM merchants m
+            LEFT JOIN organizations o ON o.id = m.org_id
+            WHERE m.website ILIKE $1 OR m.website ILIKE $2
+            LIMIT 1
+            """,
+            f"%{clean_domain}%",
+            f"%{clean_domain}%",
+        )
+    else:
+        row = await Database.fetchrow(
+            """
+            SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
+                m.webhook_url, m.webhook_secret, m.settlement_preference,
+                m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
+            FROM merchants m
+            LEFT JOIN organizations o ON o.id = m.org_id
+            WHERE m.name ILIKE $1
+            LIMIT 1
+            """,
+            f"%{name}%",
+        )
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    from sardis_v2_core.merchant import MerchantRepository
+    merchant = MerchantRepository._row_to_merchant(row)
+    return _merchant_response(merchant)
+
+
 # ── Checkout Links Endpoints ──────────────────────────────────────
 
 @router.post("/{merchant_id}/links", response_model=CheckoutLinkResponse, status_code=status.HTTP_201_CREATED)
