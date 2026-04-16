@@ -5,6 +5,7 @@ import { AppSidebar } from "./app-sidebar"
 import { AppHeader } from "./app-header"
 import { CommandPalette } from "./command-palette"
 import { KeyboardShortcuts } from "./keyboard-shortcuts"
+import { OnboardingGate } from "./onboarding/onboarding-gate"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <OnboardingGate />
       <CommandPalette open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen} />
       <KeyboardShortcuts onToggleSidebar={toggleSidebarCollapsed} />
       <AppSidebar

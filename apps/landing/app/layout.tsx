@@ -4,6 +4,9 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "sonner"
+import { CookieConsent } from "@/components/cookie-consent"
+import { PostHogProvider } from "@/components/posthog-provider"
+import { IntercomProvider } from "@/components/intercom-provider"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
@@ -79,28 +82,20 @@ const softwareApplicationJsonLd = {
       name: "Free",
       price: "0",
       priceCurrency: "USD",
-      description: "Sandbox mode, 1 agent, SDK access",
-    },
-    {
-      "@type": "Offer",
-      name: "Dev",
-      price: "49",
-      priceCurrency: "USD",
-      description: "Testnet, 2 agents, 100 tx/mo",
+      description: "Sandbox, 2 agents, testnet only",
     },
     {
       "@type": "Offer",
       name: "Starter",
       price: "199",
       priceCurrency: "USD",
-      description: "Production, 25 agents, unlimited tx",
+      description: "Production, mainnet, 25 agents, unlimited tx",
     },
     {
       "@type": "Offer",
-      name: "Growth",
-      price: "499",
+      name: "Enterprise",
       priceCurrency: "USD",
-      description: "KYB, PEP screening, 100 agents",
+      description: "Unlimited agents, KYB + PEP, custom SLAs",
     },
   ],
   featureList: [
@@ -203,7 +198,7 @@ const faqJsonLd = {
       name: "What is the pricing for Sardis?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Sardis offers a free sandbox tier, Dev at $49/mo (testnet, 2 agents), Starter at $199/mo (production, 25 agents), Growth at $499/mo (100 agents, KYB), and custom Enterprise plans. Stablecoin checkout has 0% merchant fees.",
+        text: "Sardis offers a free sandbox tier (2 agents, testnet), Starter at $199/mo (production, mainnet, 25 agents, unlimited transactions), and custom Enterprise plans (KYB, PEP screening, custom SLAs). Stablecoin checkout has 0% merchant fees.",
       },
     },
   ],
@@ -222,9 +217,9 @@ const productJsonLd = {
   offers: {
     "@type": "AggregateOffer",
     lowPrice: "0",
-    highPrice: "499",
+    highPrice: "199",
     priceCurrency: "USD",
-    offerCount: 5,
+    offerCount: 3,
   },
 }
 
@@ -305,6 +300,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <TooltipProvider>
             {children}
+            <PostHogProvider />
+            <IntercomProvider />
+            <CookieConsent />
             <Toaster richColors position="bottom-right" />
           </TooltipProvider>
         </ThemeProvider>

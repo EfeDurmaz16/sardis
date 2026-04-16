@@ -73,25 +73,27 @@ async def handle_mastercard_webhook(
     even when individual event processing encounters errors.
     """
     webhook_secret = os.environ.get("MASTERCARD_WEBHOOK_SECRET", "")
+    if not webhook_secret:
+        logger.error("MASTERCARD_WEBHOOK_SECRET not configured")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook secret not configured",
+        )
 
     payload = await request.body()
 
-    # Verify signature when secret is configured
-    if webhook_secret:
-        if not x_mastercard_signature:
-            logger.warning("Missing X-Mastercard-Signature header")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing signature",
-            )
-        if not verify_mastercard_signature(payload, x_mastercard_signature, webhook_secret):
-            logger.warning("Mastercard webhook signature verification failed")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid signature",
-            )
-    else:
-        logger.debug("MASTERCARD_WEBHOOK_SECRET not configured — skipping signature check")
+    if not x_mastercard_signature:
+        logger.warning("Missing X-Mastercard-Signature header")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing signature",
+        )
+    if not verify_mastercard_signature(payload, x_mastercard_signature, webhook_secret):
+        logger.warning("Mastercard webhook signature verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid signature",
+        )
 
     # Parse event payload
     try:

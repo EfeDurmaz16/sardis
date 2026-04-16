@@ -236,7 +236,7 @@ payment = client.pay(
               { label: "Product", href: "#product" },
               { label: "Docs", href: "https://docs.sardis.sh" },
               { label: "Security", href: "https://docs.sardis.sh/security" },
-              { label: "Pricing", href: "#pricing" },
+              { label: "Pricing", href: "/pricing" },
             ].map((l) => (
               <a key={l.label} href={l.href} style={{ fontSize: 13, color: t.textMuted, cursor: "pointer", textDecoration: "none" }} {...(l.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{l.label}</a>
             ))}
@@ -273,7 +273,7 @@ payment = client.pay(
           Set spending rules, enforce compliance guardrails, and let your agents transact autonomously. Every payment verified.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-3.5 pt-2 w-full sm:w-auto">
-          <PrimaryCTA label="Get started free" t={t} href="https://app.sardis.sh" />
+          <PrimaryCTA label="Get started free" t={t} href="https://app.sardis.sh/signup" />
           <GhostCTA label="Read the docs" t={t} href="https://docs.sardis.sh" />
         </div>
       </Section>

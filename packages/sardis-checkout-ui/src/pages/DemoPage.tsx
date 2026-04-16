@@ -16,21 +16,6 @@ import TabSwitcher from "@/components/TabSwitcher";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "/api/v2/merchant-checkout";
 
-const MOCK_SESSION = {
-  session_id: "mcs_demo_preview",
-  merchant_name: "Sardis Demo Store",
-  merchant_logo_url: "/sardis-logo.svg",
-  amount: "49.99",
-  currency: "USDC",
-  description: "Premium Plan — Monthly",
-  status: "pending",
-  payment_method: null,
-  payer_wallet_address: null,
-  expires_at: null,
-  embed_origin: null,
-  settlement_address: null,
-};
-
 function getStepForStatus(status: string): CheckoutStep {
   if (status === "paid" || status === "settled") return "success";
   if (status === "expired") return "expired";
@@ -78,6 +63,8 @@ export default function DemoPage() {
   const [liveSecret, setLiveSecret] = useState<string | null>(null);
   const [liveSession, setLiveSession] = useState<SessionDetails | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,17 +90,27 @@ export default function DemoPage() {
       const response = await fetch(`${API_BASE}/create-test-session`, {
         method: "POST",
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        throw new Error(`create-test-session failed (${response.status})`);
+      }
 
       const data = await response.json().catch(() => null);
-      if (!data?.client_secret) return;
+      if (!data?.client_secret) {
+        throw new Error("create-test-session returned no client_secret");
+      }
 
       persistDemoClientSecret(data.client_secret);
-      await loadExistingSession(data.client_secret);
+      const restored = await loadExistingSession(data.client_secret);
+      if (!restored) {
+        throw new Error("Freshly created session is not payable");
+      }
     };
 
     const bootstrap = async () => {
       setLoadingSession(true);
+      setSessionError(null);
+      setLiveSecret(null);
+      setLiveSession(null);
       try {
         const persistedClientSecret = getPersistedDemoClientSecret();
         if (persistedClientSecret) {
@@ -127,8 +124,13 @@ export default function DemoPage() {
         }
 
         await createFreshSession();
-      } catch {
+      } catch (err) {
         clearPersistedDemoClientSecret();
+        if (!cancelled) {
+          setSessionError(
+            err instanceof Error ? err.message : "Unable to create demo session",
+          );
+        }
       } finally {
         if (!cancelled) setLoadingSession(false);
       }
@@ -139,6 +141,10 @@ export default function DemoPage() {
     return () => {
       cancelled = true;
     };
+  }, [retryNonce]);
+
+  const handleRetry = useCallback(() => {
+    setRetryNonce((n) => n + 1);
   }, []);
 
   const handleSuccess = useCallback((r: PaymentResult) => {
@@ -165,86 +171,105 @@ export default function DemoPage() {
     });
   }, []);
 
-  const sessionData = liveSession ?? MOCK_SESSION;
+  const hasSession = !loadingSession && liveSecret !== null && liveSession !== null;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--checkout-bg)]">
       <div className="w-full max-w-[420px] bg-white rounded-xl shadow-sm border border-[var(--checkout-border)] p-6">
-        <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
-          <span className="text-xs font-medium text-amber-700">
-            {liveSecret ? "Staging Mode — Testnet transactions" : "Demo Mode — Session unavailable"}
-          </span>
-        </div>
-
-        <MerchantHeader
-          merchantName={sessionData.merchant_name}
-          logoUrl={sessionData.merchant_logo_url ?? null}
-          amount={sessionData.amount}
-          currency={sessionData.currency}
-          description={sessionData.description}
-        />
-
-        {step === "pay" && (
-          <>
-            <TabSwitcher active={tab} onChange={setTab} />
-
-            {error && (
-              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
-                <p className="text-xs text-red-700">{error}</p>
-              </div>
-            )}
-
-            {loadingSession ? (
-              <div className="flex items-center justify-center py-6">
-                <div className="w-5 h-5 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin" />
-              </div>
-            ) : !liveSecret || !liveSession ? (
-              <div className="px-3 py-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
-                <p className="text-xs text-blue-700">
-                  Staging checkout is temporarily unavailable. Please reload the
-                  page to create a new test session.
-                </p>
-              </div>
-            ) : tab === "wallet" ? (
-              <div className="mt-4">
-                <PayFromWallet
-                  clientSecret={liveSecret}
-                  amount={liveSession.amount}
-                  currency={liveSession.currency}
-                  settlementAddress={liveSession.settlement_address}
-                  verifiedExternalAddress={liveSession.payer_wallet_address}
-                  onExternalWalletConnected={handleExternalWalletConnected}
-                  onSuccess={handleSuccess}
-                  onError={handleError}
-                  onProcessing={handleProcessing}
-                />
-              </div>
-            ) : (
-              <div className="mt-4">
-                <FundAndPay
-                  clientSecret={liveSecret}
-                  amount={liveSession.amount}
-                  currency={liveSession.currency}
-                  settlementAddress={liveSession.settlement_address}
-                  verifiedExternalAddress={liveSession.payer_wallet_address}
-                  onExternalWalletConnected={handleExternalWalletConnected}
-                  onSuccess={handleSuccess}
-                  onError={handleError}
-                  onProcessing={handleProcessing}
-                />
-              </div>
-            )}
-          </>
-        )}
-
-        {step === "processing" && (
-          <div className="flex flex-col items-center py-10">
-            <div className="w-10 h-10 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin mb-4" />
-            <p className="text-sm font-medium">Processing payment...</p>
+        {loadingSession && (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-6 h-6 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin" />
           </div>
         )}
 
-        {step === "success" && result && <SuccessView result={result} />}
+        {!loadingSession && !hasSession && (
+          <div className="py-6">
+            <div className="mb-4 px-3 py-3 rounded-lg bg-red-50 border border-red-200 text-center">
+              <p className="text-sm font-medium text-red-800">
+                Unable to create demo session — please try again later.
+              </p>
+              {sessionError && (
+                <p className="mt-1 text-xs text-red-600/80 break-words">{sessionError}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="w-full py-2 rounded-lg bg-[var(--checkout-blue)] text-white text-sm font-medium hover:opacity-90"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {hasSession && liveSecret && liveSession && (
+          <>
+            <div className="mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-center">
+              <span className="text-xs font-medium text-amber-700">
+                Staging Mode — Testnet transactions
+              </span>
+            </div>
+
+            <MerchantHeader
+              merchantName={liveSession.merchant_name}
+              logoUrl={liveSession.merchant_logo_url ?? null}
+              amount={liveSession.amount}
+              currency={liveSession.currency}
+              description={liveSession.description}
+            />
+
+            {step === "pay" && (
+              <>
+                <TabSwitcher active={tab} onChange={setTab} />
+
+                {error && (
+                  <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                    <p className="text-xs text-red-700">{error}</p>
+                  </div>
+                )}
+
+                {tab === "wallet" ? (
+                  <div className="mt-4">
+                    <PayFromWallet
+                      clientSecret={liveSecret}
+                      amount={liveSession.amount}
+                      currency={liveSession.currency}
+                      settlementAddress={liveSession.settlement_address}
+                      verifiedExternalAddress={liveSession.payer_wallet_address}
+                      onExternalWalletConnected={handleExternalWalletConnected}
+                      onSuccess={handleSuccess}
+                      onError={handleError}
+                      onProcessing={handleProcessing}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <FundAndPay
+                      clientSecret={liveSecret}
+                      amount={liveSession.amount}
+                      currency={liveSession.currency}
+                      settlementAddress={liveSession.settlement_address}
+                      verifiedExternalAddress={liveSession.payer_wallet_address}
+                      onExternalWalletConnected={handleExternalWalletConnected}
+                      onSuccess={handleSuccess}
+                      onError={handleError}
+                      onProcessing={handleProcessing}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {step === "processing" && (
+              <div className="flex flex-col items-center py-10">
+                <div className="w-10 h-10 border-2 border-[var(--checkout-border)] border-t-[var(--checkout-blue)] rounded-full animate-spin mb-4" />
+                <p className="text-sm font-medium">Processing payment...</p>
+              </div>
+            )}
+
+            {step === "success" && result && <SuccessView result={result} />}
+          </>
+        )}
 
         <div className="mt-8 pt-4 border-t border-[var(--checkout-border)] flex items-center justify-between">
           <div className="flex items-center gap-1.5">

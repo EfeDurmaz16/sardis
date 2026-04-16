@@ -24,7 +24,7 @@ class CreateMerchantRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     logo_url: str | None = None
     webhook_url: str | None = None
-    settlement_preference: str = Field(default="usdc", pattern="^(usdc|fiat)$")
+    settlement_preference: str = Field(default="usdc", pattern="^(usdc|fiat|stripe_connect)$")
     mcc_code: str | None = Field(default=None, max_length=4)
     category: str | None = None
     platform_fee_bps: int = Field(default=0, ge=0, le=500)
@@ -62,6 +62,10 @@ class MerchantResponse(BaseModel):
     category: str | None = None
     platform_fee_bps: int = 0
     is_active: bool = True
+    stripe_account_id: str | None = None
+    stripe_onboarding_state: str = "not_started"
+    stripe_charges_enabled: bool = False
+    stripe_payouts_enabled: bool = False
     created_at: str
     updated_at: str
 
@@ -134,6 +138,10 @@ def _merchant_response(m) -> MerchantResponse:
         category=m.category,
         platform_fee_bps=m.platform_fee_bps,
         is_active=m.is_active,
+        stripe_account_id=m.stripe_account_id,
+        stripe_onboarding_state=m.stripe_onboarding_state,
+        stripe_charges_enabled=m.stripe_charges_enabled,
+        stripe_payouts_enabled=m.stripe_payouts_enabled,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
     )
@@ -256,6 +264,75 @@ async def list_settlements(
         for s in sessions
         if s.status in ("paid", "settled")
     ]
+
+
+# ── Merchant Lookup (for unified payment client) ─────────────────
+
+@router.get("/lookup", response_model=MerchantResponse)
+async def lookup_merchant(
+    domain: str | None = None,
+    name: str | None = None,
+    deps: MerchantDependencies = Depends(get_deps),
+):
+    """Look up a merchant by domain or name.
+
+    Used by the unified payment client for merchant discovery.
+    Agents call this to find if a merchant is registered on Sardis
+    and what payment protocols they support.
+    """
+    if not domain and not name:
+        raise HTTPException(status_code=400, detail="Provide 'domain' or 'name' query parameter")
+
+    from sardis_v2_core.database import Database
+
+    if domain:
+        # Strip protocol and path
+        clean_domain = domain.replace("https://", "").replace("http://", "").split("/")[0]
+        row = await Database.fetchrow(
+            """
+            SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
+                m.webhook_url, m.webhook_secret, m.settlement_preference,
+                m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
+            FROM merchants m
+            LEFT JOIN organizations o ON o.id = m.org_id
+            WHERE m.website ILIKE $1 OR m.website ILIKE $2
+            LIMIT 1
+            """,
+            f"%{clean_domain}%",
+            f"%{clean_domain}%",
+        )
+    else:
+        row = await Database.fetchrow(
+            """
+            SELECT m.external_id, o.external_id AS org_ext_id, m.name, m.logo_url,
+                m.webhook_url, m.webhook_secret, m.settlement_preference,
+                m.settlement_wallet_id, m.bank_account, m.mcc_code, m.category,
+                m.platform_fee_bps, m.is_active,
+                m.stripe_account_id, m.stripe_onboarding_state,
+                m.stripe_charges_enabled, m.stripe_payouts_enabled,
+                m.stripe_details_submitted, m.stripe_disabled_reason,
+                m.stripe_current_deadline, m.stripe_last_synced_at,
+                m.created_at, m.updated_at
+            FROM merchants m
+            LEFT JOIN organizations o ON o.id = m.org_id
+            WHERE m.name ILIKE $1
+            LIMIT 1
+            """,
+            f"%{name}%",
+        )
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    from sardis_v2_core.merchant import MerchantRepository
+    merchant = MerchantRepository._row_to_merchant(row)
+    return _merchant_response(merchant)
 
 
 # ── Checkout Links Endpoints ──────────────────────────────────────

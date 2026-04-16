@@ -1,0 +1,31 @@
+{
+  "name": "@sardis/connect",
+  "version": "0.1.0",
+  "description": "Make any API agent-ready in 3 lines. Zero-crypto merchant integration for Sardis.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "payments",
+    "agents",
+    "ai",
+    "merchant",
+    "sardis"
+  ],
+  "license": "MIT",
+  "author": "Sardis Labs <dev@sardis.sh>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EfeDurmaz16/sardis"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^5.3"
+  }
+}

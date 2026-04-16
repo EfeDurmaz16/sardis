@@ -77,7 +77,64 @@ export type CreateAgentInput = {
   }
   metadata?: Record<string, unknown>
   create_wallet?: boolean
+  initial_balance?: string
 }
+
+export type SpendingPolicyTemplateId = "conservative" | "balanced" | "developer"
+
+export type SpendingPolicyTemplate = {
+  id: SpendingPolicyTemplateId
+  label: string
+  description: string
+  trust_level: "low" | "medium" | "high"
+  spending_limits: {
+    per_transaction: string
+    daily: string
+    monthly: string
+    total: string
+  }
+}
+
+// Mirrors DEFAULT_LIMITS in packages/sardis-core/src/sardis_v2_core/spending_policy.py.
+// Do not invent new numbers — if you change these, update the backend too.
+export const SPENDING_POLICY_TEMPLATES: SpendingPolicyTemplate[] = [
+  {
+    id: "conservative",
+    label: "Conservative",
+    description: "Tight caps. Good for production agents you are still learning to trust.",
+    trust_level: "low",
+    spending_limits: {
+      per_transaction: "50.00",
+      daily: "100.00",
+      monthly: "1000.00",
+      total: "5000.00",
+    },
+  },
+  {
+    id: "balanced",
+    label: "Balanced",
+    description: "Moderate caps for day-to-day agent operations.",
+    trust_level: "medium",
+    spending_limits: {
+      per_transaction: "500.00",
+      daily: "1000.00",
+      monthly: "10000.00",
+      total: "50000.00",
+    },
+  },
+  {
+    id: "developer",
+    label: "Developer sandbox",
+    description: "Low caps, sandbox only. Use this while you are integrating.",
+    trust_level: "low",
+    spending_limits: {
+      per_transaction: "50.00",
+      daily: "100.00",
+      monthly: "1000.00",
+      total: "5000.00",
+    },
+  },
+]
 
 async function requestApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
@@ -130,5 +187,153 @@ export function createAgent(input: CreateAgentInput) {
   return requestApi<AgentApiRecord>("/agents", {
     method: "POST",
     body: JSON.stringify(input),
+  })
+}
+
+// ─── Onboarding wizard ────────────────────────────────────────────────────
+// Mirror of packages/sardis-api/src/sardis_api/routers/me.py — keep step
+// list in sync.
+export const ONBOARDING_STEPS = [
+  "profile",
+  "api_key",
+  "kyc",
+  "agent_wallet",
+  "spending_policy",
+  "sandbox_payment",
+  "tour_ready",
+] as const
+
+export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
+
+export type OnboardingState = {
+  org_id: string
+  current_step: OnboardingStep
+  completed_at: string | null
+  metadata: Record<string, unknown> & { skipped?: OnboardingStep[] }
+  steps: OnboardingStep[]
+}
+
+export type OnboardingPatch = {
+  current_step?: OnboardingStep
+  skipped?: OnboardingStep[]
+  metadata_patch?: Record<string, unknown>
+  mark_complete?: boolean
+}
+
+export function getOnboarding() {
+  return requestApi<OnboardingState>("/me/onboarding")
+}
+
+export function updateOnboarding(patch: OnboardingPatch) {
+  return requestApi<OnboardingState>("/me/onboarding", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  })
+}
+
+export type BootstrapApiKeyResponse = {
+  key: string
+  key_id: string
+  key_prefix: string
+  name: string
+  mode: "test"
+  created_at: string
+}
+
+export function bootstrapApiKey(name = "Default API key") {
+  return requestApi<BootstrapApiKeyResponse>("/me/api-keys/bootstrap", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  })
+}
+
+// ─── KYC (Didit) ──────────────────────────────────────────────────────────
+// Backed by packages/sardis-api/src/sardis_api/routers/kyc_onboarding.py.
+// Don't recreate these — they exist already and are used by the wider
+// dashboard KYC pages.
+
+export type KycStatus =
+  | "not_started"
+  | "pending"
+  | "approved"
+  | "declined"
+  | "expired"
+  | "needs_review"
+
+export type KycStatusResponse = {
+  status: KycStatus
+  provider: string | null
+  inquiry_id: string | null
+  verified_at: string | null
+  expires_at: string | null
+  reason: string | null
+  can_retry: boolean
+}
+
+export type KycInitiateResponse = {
+  redirect_url: string | null
+  session_token: string | null
+  inquiry_id: string | null
+  provider: string
+  message: string
+}
+
+export function getKycStatus() {
+  return requestApi<KycStatusResponse>("/kyc/status")
+}
+
+export function initiateKyc() {
+  return requestApi<KycInitiateResponse>("/kyc/initiate", {
+    method: "POST",
+    body: JSON.stringify({}),
+  })
+}
+
+// ─── Mandates (single payment authorization + validate) ──────────────────
+// Backed by packages/sardis-api/src/sardis_api/routers/mandates.py.
+
+export type CreateMandateInput = {
+  subject: string // agent_id
+  domain: string
+  amount_minor: number
+  currency?: string
+  recipient: string
+  chain?: string
+  memo?: string
+}
+
+export type MandateRecord = {
+  mandate_id: string
+  subject: string
+  domain: string
+  amount_minor: number
+  currency: string
+  recipient: string
+  chain: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type MandateValidationResult = {
+  mandate_id: string
+  valid: boolean
+  status: string
+  reason: string | null
+  policy_check: { allowed: boolean; reason: string | null } | null
+  compliance_check: { allowed: boolean; reason: string | null } | null
+}
+
+export function createMandate(input: CreateMandateInput) {
+  return requestApi<MandateRecord>("/mandates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export function validateMandate(mandateId: string) {
+  return requestApi<MandateValidationResult>(`/mandates/${mandateId}/validate`, {
+    method: "POST",
+    body: JSON.stringify({}),
   })
 }

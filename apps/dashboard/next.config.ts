@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
+  redirects: async () => [
+    { source: "/signup", destination: "/auth/sign-up", permanent: false },
+    { source: "/login", destination: "/auth/sign-in", permanent: false },
+  ],
 };
 
 // Only wrap with Sentry when explicitly configured. Keeps dev + CI

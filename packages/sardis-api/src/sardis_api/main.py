@@ -141,6 +141,7 @@ from .routers import groups as groups_router
 from .routers import holds as holds_router
 from .routers import invoices as invoices_router
 from .routers import kyc_onboarding as kyc_onboarding_router
+from .routers import me as me_router
 from .routers import ledger as ledger_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
@@ -148,6 +149,7 @@ from .routers import marketplace as marketplace_router
 from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
+from .routers import stripe_connect as stripe_connect_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routers import offramp as offramp_router
@@ -279,12 +281,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         except Exception as exc:
             logger.warning("OpenTelemetry initialization failed: %s", exc)
 
+    is_production = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower() in ("prod", "production")
+
     app = FastAPI(
         title="Sardis Stablecoin Execution API",
         version=API_VERSION,
-        openapi_url="/api/v2/openapi.json",
-        docs_url="/api/v2/docs",
-        redoc_url="/api/v2/redoc",
+        openapi_url=None if is_production else "/api/v2/openapi.json",
+        docs_url=None if is_production else "/api/v2/docs",
+        redoc_url=None if is_production else "/api/v2/redoc",
         lifespan=lifespan,
         # Disable trailing-slash 307 redirects. The dashboard proxy on
         # app.sardis.sh forwards JWTs in the Authorization header — when
@@ -1935,6 +1939,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Self-serve KYC initiation and status (developer-facing)
     app.include_router(kyc_onboarding_router.router)
 
+    # Per-user "me" endpoints (onboarding wizard state, etc.)
+    app.include_router(me_router.router)
+
     # GDPR data export (Art. 20 — right to data portability)
     app.include_router(data_export_router.router, tags=["account"])
 
@@ -2042,7 +2049,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         pass
 
     # Dev/testnet utility routes - NOT available in production
-    if os.getenv("SARDIS_ENVIRONMENT", "dev").lower() not in ("prod", "production"):
+    if not is_production:
         app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
         logger.info("Dev routes enabled (faucet, etc.)")
 
@@ -2074,10 +2081,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     merchant_repo = MerchantRepository()
     merchant_webhook_service = MerchantWebhookService(merchant_repo=merchant_repo)
 
+    # Initialize Stripe Connect provider for settlement (optional)
+    _stripe_connect_for_settlement = None
+    try:
+        from sardis_v2_core.stripe_connect import StripeConnectProvider
+        _stripe_connect_for_settlement = StripeConnectProvider()
+    except (ImportError, ValueError):
+        pass  # Stripe not configured, skip
+
     settlement_service = SettlementService(
         merchant_repo=merchant_repo,
         offramp_service=None,  # Wire Bridge offramp when configured
         merchant_webhook_service=merchant_webhook_service,
+        stripe_connect_provider=_stripe_connect_for_settlement,
     )
 
     sardis_native_connector = SardisNativeConnector(
@@ -2103,6 +2119,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         checkout_base_url=checkout_base_url,
     )
     app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
+
+    # --- Stripe Connect (Sardis Connect) ---
+    try:
+        from sardis_v2_core.stripe_connect import StripeConnectProvider
+        stripe_connect_provider = StripeConnectProvider()
+        app.dependency_overrides[stripe_connect_router.get_deps] = lambda: stripe_connect_router.StripeConnectDeps(
+            merchant_repo=merchant_repo,
+            stripe_connect_provider=stripe_connect_provider,
+        )
+        app.include_router(stripe_connect_router.router, prefix="/api/v2/merchants", tags=["stripe-connect"])
+        app.include_router(stripe_connect_router.webhook_router, prefix="/api/v2/webhooks", tags=["stripe-connect-webhooks"])
+        logger.info("Stripe Connect router enabled")
+    except (ImportError, ValueError) as e:
+        logger.warning("Stripe Connect not configured, skipping: %s", e)
 
     checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
     app.dependency_overrides[merchant_checkout_router.get_deps] = lambda: merchant_checkout_router.MerchantCheckoutDependencies(

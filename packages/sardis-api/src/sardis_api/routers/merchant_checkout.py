@@ -244,6 +244,9 @@ class CreateSessionRequest(BaseModel):
     cancel_url: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     embed_origin: str | None = None
+    mandate_id: str | None = None
+    escrow: bool = Field(default=False, description="Hold funds in escrow until merchant confirms delivery")
+    escrow_timelock_hours: int = Field(default=72, ge=1, le=720, description="Hours before auto-release from escrow")
 
 
 class SessionResponse(BaseModel):
@@ -284,6 +287,7 @@ class ConnectWalletRequest(BaseModel):
 
 class PayRequest(BaseModel):
     wallet_id: str
+    mandate_id: str | None = None
 
 
 class PaymentResultResponse(BaseModel):
@@ -545,6 +549,67 @@ async def pay_session(
                 },
             )
 
+    # Validate spending mandate if provided
+    if body.mandate_id:
+        try:
+            from sardis_v2_core.spending_mandate import SpendingMandate
+            from sardis_v2_core.database import Database
+
+            mandate_row = await Database.fetchrow(
+                "SELECT * FROM spending_mandates WHERE external_id = $1",
+                body.mandate_id,
+            )
+            if not mandate_row:
+                raise HTTPException(status_code=404, detail="Mandate not found")
+
+            mandate = SpendingMandate(
+                id=mandate_row["external_id"],
+                principal_id=mandate_row.get("principal_id", ""),
+                issuer_id=mandate_row.get("issuer_id", ""),
+                agent_id=mandate_row.get("agent_id"),
+                amount_per_tx=mandate_row.get("amount_per_tx"),
+                amount_daily=mandate_row.get("amount_daily"),
+                amount_total=mandate_row.get("amount_total"),
+                spent_total=mandate_row.get("spent_total", Decimal("0")),
+                merchant_scope=mandate_row.get("merchant_scope", {}),
+                status=mandate_row.get("status", "active"),
+            )
+
+            if not mandate.is_active:
+                raise HTTPException(
+                    status_code=403,
+                    detail={"error": "mandate_inactive", "status": mandate.status.value},
+                )
+
+            # Get merchant name for scope check
+            merchant = await deps.merchant_repo.get_merchant(session.merchant_id)
+            merchant_name = merchant.name if merchant else session.merchant_id
+
+            check = mandate.check_payment(
+                amount=session.amount,
+                merchant=merchant_name,
+            )
+            if not check.approved:
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "error": "mandate_denied",
+                        "reason": check.reason,
+                        "mandate_id": body.mandate_id,
+                    },
+                )
+
+            # Record mandate_id on session
+            await deps.merchant_repo.update_session(
+                session.session_id, mandate_id=body.mandate_id,
+            )
+
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("Mandate validation error for session %s", session.session_id)
+            # Non-mandate errors shouldn't block payment
+
     try:
         result = await deps.sardis_connector.execute_payment(
             session_id=session.session_id,
@@ -558,6 +623,27 @@ async def pay_session(
             tx_id=session.session_id,
         ))
         raise HTTPException(status_code=400, detail="Invalid payment request")
+
+    # Update mandate spent_total after successful payment
+    if body.mandate_id and result.get("status") in ("paid", "settled"):
+        try:
+            from sardis_v2_core.database import Database
+            await Database.execute(
+                """
+                UPDATE spending_mandates
+                SET spent_total = spent_total + $1,
+                    updated_at = NOW()
+                WHERE external_id = $2
+                """,
+                session.amount,
+                body.mandate_id,
+            )
+            logger.info(
+                "Mandate %s: spent_total incremented by %s",
+                body.mandate_id, session.amount,
+            )
+        except Exception:
+            logger.exception("Failed to update mandate spent_total for %s", body.mandate_id)
 
     return PaymentResultResponse(
         session_id=result["session_id"],

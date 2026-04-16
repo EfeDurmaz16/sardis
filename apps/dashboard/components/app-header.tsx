@@ -23,42 +23,9 @@ import {
 import {
   MagnifyingGlass, List, Sun, Moon, Plus, CreditCard, CaretDown, CaretRight,
 } from "@phosphor-icons/react"
-import { Bell } from "@phosphor-icons/react"
+import { Bell, Question } from "@phosphor-icons/react"
 
-// TODO: Wire to real notification API — these are placeholder items
-const notifications = [
-  {
-    message: "Agent #12 exceeded daily spending limit",
-    type: "warning" as const,
-    time: "2m ago",
-  },
-  {
-    message: "Payment to MerchantCo completed",
-    type: "success" as const,
-    time: "15m ago",
-  },
-  {
-    message: "Kill switch deactivated by admin",
-    type: "info" as const,
-    time: "1h ago",
-  },
-  {
-    message: "Anomaly detected: unusual transaction pattern",
-    type: "warning" as const,
-    time: "2h ago",
-  },
-  {
-    message: "New API key created",
-    type: "info" as const,
-    time: "3h ago",
-  },
-]
-
-const dotColor: Record<string, string> = {
-  warning: "bg-amber-500",
-  success: "bg-emerald-500",
-  info: "bg-blue-500",
-}
+import { resetTour, startProductTour } from "@/lib/product-tour"
 
 /* ── Breadcrumb types & route mapping ── */
 
@@ -500,52 +467,32 @@ export function AppHeader({ onMenuClick, onSearchClick }: { onMenuClick?: () => 
           <CreditCard className="w-3 h-3" /> Issue Card
         </Button>
 
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          aria-label="Replay product tour"
+          onClick={() => {
+            resetTour()
+            void startProductTour()
+          }}
+        >
+          <Question className="w-4 h-4" />
+        </Button>
+
         <Popover>
           <PopoverTrigger
             aria-label="Notifications"
-            className={buttonVariants({ variant: "outline", size: "icon", className: "relative" })}
+            className={buttonVariants({ variant: "outline", size: "icon" })}
           >
             <Bell className="w-4 h-4" />
-            {/* TODO: Replace static badge count with real notification count */}
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center">
-              3
-            </span>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0">
-            <div className="flex items-center justify-between px-3 py-2.5 border-b">
+            <div className="flex items-center px-3 py-2.5 border-b">
               <span className="text-sm font-medium">Notifications</span>
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                Mark all read
-              </button>
             </div>
-            <ul className="flex flex-col">
-              {notifications.map((n) => (
-                <li
-                  key={n.message}
-                  className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors"
-                >
-                  <span
-                    className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor[n.type]}`}
-                  />
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="text-sm leading-snug">{n.message}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {n.time}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="border-t px-3 py-2 text-center">
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                View all notifications
-              </button>
+            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+              No new notifications
             </div>
           </PopoverContent>
         </Popover>

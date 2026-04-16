@@ -59,6 +59,32 @@ type Merchant = {
   transaction_count: number
   chains: string[]
   created_at: string
+  stripe_account_id?: string | null
+  stripe_onboarding_state?: string
+  stripe_charges_enabled?: boolean
+  stripe_payouts_enabled?: boolean
+}
+
+type StripeConnectStatus = {
+  merchant_id: string
+  stripe_account_id: string | null
+  onboarding_state: string
+  charges_enabled: boolean
+  payouts_enabled: boolean
+  details_submitted: boolean
+  disabled_reason: string | null
+  current_deadline: string | null
+  requirements_currently_due: string[]
+  requirements_past_due: string[]
+  last_synced_at: string | null
+}
+
+const stripeStateConfig: Record<string, { color: string; label: string }> = {
+  not_started: { color: "bg-muted-foreground", label: "Not Connected" },
+  pending: { color: "bg-warning", label: "Onboarding" },
+  complete: { color: "bg-success", label: "Active" },
+  restricted: { color: "bg-destructive", label: "Restricted" },
+  rejected: { color: "bg-destructive", label: "Rejected" },
 }
 
 const statusConfig: Record<Merchant["status"], { color: string; label: string }> = {
@@ -104,6 +130,55 @@ export default function MerchantsPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
   const [checkoutMerchant, setCheckoutMerchant] = useState<Merchant | null>(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [registerOpen, setRegisterOpen] = useState(false)
+  const [registerLoading, setRegisterLoading] = useState(false)
+  const [connectLoading, setConnectLoading] = useState(false)
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
+
+  async function handleConnectStripe(merchant: Merchant) {
+    setConnectLoading(true)
+    try {
+      const res = await fetch(`/api/sardis/api/v2/merchants/${merchant.merchant_id}/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: "US" }),
+      })
+      if (!res.ok) throw new Error("Failed to start onboarding")
+      const data = await res.json()
+      window.open(data.onboarding_url, "_blank")
+      toast.success("Stripe Connect onboarding opened in new tab")
+      refetch()
+    } catch {
+      toast.error("Failed to start Stripe Connect onboarding")
+    } finally {
+      setConnectLoading(false)
+    }
+  }
+
+  async function fetchStripeStatus(merchant: Merchant) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/merchants/${merchant.merchant_id}/connect/status`)
+      if (!res.ok) return
+      const data = await res.json()
+      setStripeStatus(data)
+    } catch {
+      // silent
+    }
+  }
+
+  async function handleRefreshLink(merchantId: string) {
+    try {
+      const res = await fetch(`/api/sardis/api/v2/merchants/${merchantId}/connect/refresh`, {
+        method: "POST",
+      })
+      if (!res.ok) throw new Error("Failed")
+      const data = await res.json()
+      window.open(data.onboarding_url, "_blank")
+      toast.success("New onboarding link opened")
+    } catch {
+      toast.error("Failed to refresh onboarding link")
+    }
+  }
 
   /* ---------- Computed stats ---------- */
   const totalMerchants = merchants.length
@@ -156,9 +231,12 @@ export default function MerchantsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Merchants</h1>
-        <p className="text-sm text-muted-foreground">Manage merchant accounts and verification status</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Merchants</h1>
+          <p className="text-sm text-muted-foreground">Manage merchant accounts and verification status</p>
+        </div>
+        <Button onClick={() => setRegisterOpen(true)}>Register Merchant</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -296,6 +374,16 @@ export default function MerchantsPage() {
                       <ContextMenuSeparator />
                       <ContextMenuItem onClick={() => setSelectedMerchant(prev => prev?.merchant_id === m.merchant_id ? null : m)}>View Details</ContextMenuItem>
                       <ContextMenuItem onClick={() => { setCheckoutMerchant(m); setCheckoutOpen(true) }}>Create Checkout Link</ContextMenuItem>
+                      <ContextMenuSeparator />
+                      {!m.stripe_account_id ? (
+                        <ContextMenuItem onClick={() => handleConnectStripe(m)}>
+                          Connect Stripe Account
+                        </ContextMenuItem>
+                      ) : (
+                        <ContextMenuItem onClick={() => { setSelectedMerchant(m); fetchStripeStatus(m) }}>
+                          View Stripe Status
+                        </ContextMenuItem>
+                      )}
                     </ContextMenuContent>
                   </ContextMenu>
                 )
@@ -351,9 +439,149 @@ export default function MerchantsPage() {
                 <p className="text-sm">{formatDate(selectedMerchant.created_at)}</p>
               </div>
             </div>
+
+            {/* Stripe Connect Section */}
+            <div className="mt-6 border-t pt-4">
+              <h3 className="text-sm font-medium mb-3">Stripe Connect</h3>
+              {!selectedMerchant.stripe_account_id ? (
+                <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
+                  <div>
+                    <p className="text-sm font-medium">No Stripe account connected</p>
+                    <p className="text-xs text-muted-foreground">Connect a Stripe account to receive fiat settlements</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleConnectStripe(selectedMerchant)}
+                    disabled={connectLoading}
+                  >
+                    {connectLoading ? "Connecting..." : "Connect Stripe"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Account</p>
+                      <p className="text-sm font-mono">{selectedMerchant.stripe_account_id}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      {(() => {
+                        const state = stripeStatus?.onboarding_state ?? selectedMerchant.stripe_onboarding_state ?? "not_started"
+                        const cfg = stripeStateConfig[state] ?? stripeStateConfig.not_started
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-sm">
+                            <span className={`h-1.5 w-1.5 rounded-full ${cfg.color}`} />
+                            {cfg.label}
+                          </span>
+                        )
+                      })()}
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Payouts</p>
+                      <p className="text-sm">
+                        {(stripeStatus?.payouts_enabled ?? selectedMerchant.stripe_payouts_enabled)
+                          ? "Enabled"
+                          : "Disabled"}
+                      </p>
+                    </div>
+                    {stripeStatus?.disabled_reason && (
+                      <div className="col-span-full">
+                        <p className="text-xs text-muted-foreground">Issue</p>
+                        <p className="text-sm text-destructive">{stripeStatus.disabled_reason}</p>
+                      </div>
+                    )}
+                    {stripeStatus?.requirements_past_due && stripeStatus.requirements_past_due.length > 0 && (
+                      <div className="col-span-full">
+                        <p className="text-xs text-muted-foreground">Past Due Requirements</p>
+                        <p className="text-sm text-destructive">{stripeStatus.requirements_past_due.join(", ")}</p>
+                      </div>
+                    )}
+                  </div>
+                  {stripeStatus?.onboarding_state !== "complete" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRefreshLink(selectedMerchant.merchant_id)}
+                    >
+                      Resume Onboarding
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Register Merchant Dialog */}
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Register Merchant</DialogTitle>
+            <DialogDescription>
+              Register a new merchant to start accepting agent payments
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setRegisterLoading(true)
+              const formData = new FormData(e.currentTarget)
+              const business_name = (formData.get("business_name") as string).trim()
+              const website = (formData.get("website") as string).trim()
+              const category = (formData.get("category") as string).trim()
+              const webhook_url = (formData.get("webhook_url") as string).trim()
+              if (!business_name) return
+              try {
+                const res = await fetch("/api/sardis/api/v2/merchants/register", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    business_name,
+                    website: website || undefined,
+                    category: category || undefined,
+                    webhook_url: webhook_url || undefined,
+                  }),
+                })
+                if (!res.ok) throw new Error("Failed")
+                const data = await res.json()
+                toast.success(`Merchant registered: ${data.merchant_id}`)
+                setRegisterOpen(false)
+                refetch()
+              } catch {
+                toast.error("Failed to register merchant")
+              } finally {
+                setRegisterLoading(false)
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Business Name</p>
+              <Input name="business_name" placeholder="Acme Corp" required />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Website</p>
+              <Input name="website" type="url" placeholder="https://example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Category</p>
+              <Input name="category" placeholder="e.g., AI, SaaS, Cloud" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Webhook URL</p>
+              <Input name="webhook_url" type="url" placeholder="https://example.com/webhooks/sardis" />
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+              <Button type="submit" disabled={registerLoading}>
+                {registerLoading ? "Registering..." : "Register"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Checkout Link Dialog */}
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
