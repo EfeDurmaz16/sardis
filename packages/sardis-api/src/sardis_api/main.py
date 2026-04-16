@@ -150,6 +150,9 @@ from .routers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
 from .routers import stripe_connect as stripe_connect_router
+from .routers import service_directory as service_directory_router
+from .routers import compliance_export as compliance_export_router
+from .routers import agent_registry as agent_registry_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routers import offramp as offramp_router
@@ -2143,6 +2146,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(merchant_checkout_router.router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
     app.include_router(merchant_checkout_router.public_router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
+
+    # --- Service Directory, Compliance Export, Agent Registry ---
+    app.include_router(service_directory_router.router)
+    app.include_router(compliance_export_router.router)
+    app.include_router(agent_registry_router.router)
+    app.include_router(agent_registry_router.public_router)
 
     # --- Delegated payment rails routers ---
     app.include_router(credentials_router.router)
