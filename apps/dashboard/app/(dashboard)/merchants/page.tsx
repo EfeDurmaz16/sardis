@@ -130,6 +130,8 @@ export default function MerchantsPage() {
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
   const [checkoutMerchant, setCheckoutMerchant] = useState<Merchant | null>(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [registerOpen, setRegisterOpen] = useState(false)
+  const [registerLoading, setRegisterLoading] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
   const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
 
@@ -229,9 +231,12 @@ export default function MerchantsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Merchants</h1>
-        <p className="text-sm text-muted-foreground">Manage merchant accounts and verification status</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Merchants</h1>
+          <p className="text-sm text-muted-foreground">Manage merchant accounts and verification status</p>
+        </div>
+        <Button onClick={() => setRegisterOpen(true)}>Register Merchant</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -508,6 +513,75 @@ export default function MerchantsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Register Merchant Dialog */}
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Register Merchant</DialogTitle>
+            <DialogDescription>
+              Register a new merchant to start accepting agent payments
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setRegisterLoading(true)
+              const formData = new FormData(e.currentTarget)
+              const business_name = (formData.get("business_name") as string).trim()
+              const website = (formData.get("website") as string).trim()
+              const category = (formData.get("category") as string).trim()
+              const webhook_url = (formData.get("webhook_url") as string).trim()
+              if (!business_name) return
+              try {
+                const res = await fetch("/api/sardis/api/v2/merchants/register", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    business_name,
+                    website: website || undefined,
+                    category: category || undefined,
+                    webhook_url: webhook_url || undefined,
+                  }),
+                })
+                if (!res.ok) throw new Error("Failed")
+                const data = await res.json()
+                toast.success(`Merchant registered: ${data.merchant_id}`)
+                setRegisterOpen(false)
+                refetch()
+              } catch {
+                toast.error("Failed to register merchant")
+              } finally {
+                setRegisterLoading(false)
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Business Name</p>
+              <Input name="business_name" placeholder="Acme Corp" required />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Website</p>
+              <Input name="website" type="url" placeholder="https://example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Category</p>
+              <Input name="category" placeholder="e.g., AI, SaaS, Cloud" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">Webhook URL</p>
+              <Input name="webhook_url" type="url" placeholder="https://example.com/webhooks/sardis" />
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+              <Button type="submit" disabled={registerLoading}>
+                {registerLoading ? "Registering..." : "Register"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Checkout Link Dialog */}
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
