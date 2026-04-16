@@ -57,6 +57,7 @@ dependencies = [
     "pyotp>=2.9",
     "resend>=2.0",
     "PyNaCl>=1.5",
+    "stripe>=7.0.0",
 ]
 
 [project.optional-dependencies]
