@@ -323,7 +323,7 @@ class TestMerchantCheckoutRouterWiring:
     def test_merchant_router_has_endpoints(self):
         from sardis_api.routers.merchants import router
         paths = [r.path for r in router.routes]
-        assert "/" in paths
+        assert "" in paths or "/" in paths  # Root path varies by FastAPI version
         assert "/{merchant_id}" in paths
         assert "/{merchant_id}/bank-account" in paths
         assert "/{merchant_id}/settlements" in paths
