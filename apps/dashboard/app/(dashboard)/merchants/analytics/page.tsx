@@ -42,7 +42,7 @@ function formatUSD(value: number): string {
 }
 
 export default function MerchantAnalyticsPage() {
-  const { data, loading } = useSardis<MerchantAnalytics>("api/v2/analytics/merchants", "Merchant Analytics")
+  const { data, loading } = useSardis<MerchantAnalytics>("api/v2/analytics/merchants")
 
   // Fallback demo data when API not connected
   const analytics: MerchantAnalytics = data ?? {
