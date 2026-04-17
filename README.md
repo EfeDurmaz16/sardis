@@ -89,11 +89,11 @@ Sardis executes **stablecoin payments** (USDC) on **Base** with multi-chain fund
 - **Non-custodial MPC wallets** -- Turnkey integration, zero private key exposure
 - **Natural language spending policies** -- "Max $50/tx, $200/day, SaaS vendors only"
 - **Financial hallucination prevention** -- Policy firewall blocks invalid transactions
-- **9 AI framework integrations** -- MCP, LangChain, OpenAI, Vercel AI, CrewAI, LlamaIndex, Mastra
+- **15+ AI framework integrations** -- LangChain, CrewAI, OpenAI Agents, Claude SDK, Google ADK, A2A, AgentKit, Vercel AI SDK, MCP, and more
 - **Virtual cards (Pilot)** -- Stripe Issuing for agent-controlled fiat payments
 - **Agent-to-agent escrow** -- Cryptographic mandate chain for A2A payments
 - **KYA (Know Your Agent)** -- Trust scoring and behavioral anomaly detection
-- **Base (production) + 4 funding chains** -- Multi-chain funding via CCTP v2
+- **Base + Tempo (production)** -- Multi-chain settlement via CCTP v2, live on Tempo mainnet since March 2026
 - **Double-entry audit ledger** -- Append-only transaction history with cryptographic proofs
 - **Protocol support** -- AP2 and TAP (production), x402 (pilot), UCP and A2A (partial)
 
