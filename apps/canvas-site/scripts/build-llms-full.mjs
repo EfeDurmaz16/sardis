@@ -81,7 +81,11 @@ function stripHtml(s) {
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&");
   // strip tags again after decoding entities to avoid reintroducing HTML-like markup
-  s = s.replace(/<[^>]+>/g, "");
+  // repeat until stable to avoid incomplete multi-character sanitization
+  do {
+    prev = s;
+    s = s.replace(/<[^>]+>/g, "");
+  } while (s !== prev);
   // collapse whitespace
   s = s.replace(/[ \t]+/g, " ");
   s = s.replace(/\n[ \t]+/g, "\n");
