@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://canvas.sardis.sh/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/api-surface</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/architecture</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/checkout</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/cicd</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/compliance</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/credit</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/consumer-surfaces</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/contracts</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/dashboard</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/database</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/demos-examples</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/docs-marketing</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/external</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/integrations</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/osp-integration</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/packages</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/payment-flow</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/policy-engine</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/protocols</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/repo-structure</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/sardis-connect</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/sardis-guard</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/sdks</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/security</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/settlement</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/wallet-mpc</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://canvas.sardis.sh/pages/zk-privacy</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+</urlset>

@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>17 · External Services — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="17 · External Services — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="external"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="external" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Summarize%20the%20external%20services%20Sardis%20depends%20on%20and%20where%20each%20one%20sits%20in%20the%20stack%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fexternal" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Summarize%20the%20external%20services%20Sardis%20depends%20on%20and%20where%20each%20one%20sits%20in%20the%20stack%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fexternal" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>  <section class="hero"> <span class="eyebrow">Canvas 17 · Ops</span> <h1>External Services</h1> <p class="hero-lead">
+Sardis is not a vertical monolith. It is a control plane above a carefully chosen set of
+          third-party services — MPC custody, KYC, sanctions, card issuers, PSPs, ramps, RPC, rails,
+          observability. This canvas enumerates every one, where it's wired, and why it beat its
+          alternative.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">Single source of truth</span>
+Every config class below lives in
+<code>packages/sardis-core/src/sardis_v2_core/config.py</code>. Every env var uses a typed
+          prefix (e.g. <code>TURNKEY_</code>, <code>SARDIS_STRIGA_</code>) so a missing value fails
+          fast at boot, not at the first payment.
+</div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 01 · MPC / Signing</div> <h2>Private keys never live in Sardis.</h2> <p class="text-muted" style="max-width:720px;">
+Every wallet signature routes through an MPC provider. Turnkey is the default;
+            Fireblocks, Circle's Programmable Wallets, and Lit Protocol are pluggable behind the
+            same interface. Canvas <a href="/wallet-mpc">09</a> covers the wallet lifecycle.
+</p> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Turnkey</td><td><code>TurnkeyConfig</code></td><td><code>TURNKEY_</code></td><td>Live (primary)</td><td>Sub-org per tenant, API-signed requests, deterministic HD addressing. Keys never leave Turnkey.</td></tr> <tr><td>Fireblocks</td><td>pluggable</td><td>—</td><td>Interface-ready</td><td>Enterprise alternative; picked on a per-merchant basis when compliance requires SOC2 Type II from the custody provider.</td></tr> <tr><td>Circle Programmable Wallets</td><td>pluggable</td><td>—</td><td>Interface-ready</td><td>Falls out naturally where Circle CPN / Gateway are already wired.</td></tr> <tr><td>Lit Protocol</td><td>pluggable</td><td>—</td><td>Research</td><td>Threshold MPC with policy at the key — future path for "self-custodial agent" narratives.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 02 · KYC / AML</div> <h2>Compliance without a compliance team.</h2> <p class="text-muted" style="max-width:720px;">
+Canvas <a href="/compliance">12</a> has the full flow. Didit won the KYC slot on
+            cost + velocity; Elliptic remains the AML/sanctions screen.
+</p> </div> <table class="data"> <thead><tr><th>Service</th><th>Purpose</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Didit</td><td>KYC (identity verification)</td><td><code>DIDIT_</code></td><td>Live (primary)</td><td>500 free/month, $0.33/check after; YC W26; clean v3 API with x-api-key auth; webhook working end-to-end. Replaced iDenfy (abandoned) and Persona (rejected).</td></tr> <tr><td>Elliptic</td><td>AML + sanctions screening</td><td><code>ELLIPTIC_</code></td><td>Live</td><td>Chain-aware sanctions screening; covers OFAC + sectoral lists; embedded in the Pre-Execution Pipeline as a fail-closed check.</td></tr> <tr><td>Persona</td><td>—</td><td>—</td><td>Rejected</td><td>Priced for enterprise; minimum commit too high for a single-founder startup.</td></tr> <tr><td>iDenfy</td><td>—</td><td>—</td><td>Abandoned</td><td>Earlier integration; replaced by Didit after onboarding friction.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 03 · Card issuing</div> <h2>Virtual cards + agent cards.</h2> <p class="text-muted" style="max-width:720px;">
+Multi-provider by design — <code>CardStackConfig</code> routes between Stripe, Lithic,
+            Rain, Bridge, and Striga. One interface, five issuers. Stripe is the launch default;
+            Lithic stays in sandbox until funding allows the $5M program commit.
+</p> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Stripe Issuing</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live (primary)</td><td>Accessible without $5M program commit; pairs with existing Stripe Connect + Treasury plumbing. <code>stablecoin_issuing_enabled</code> flag flips on the USDC-settled variant.</td></tr> <tr><td>Lithic</td><td><code>LithicConfig</code></td><td><code>LITHIC_</code></td><td>Sandbox</td><td>Deep controls (ASA webhooks, on-card policies). Held back until funding qualifies for the program.</td></tr> <tr><td>Rain</td><td><code>RainConfig</code></td><td><code>RAIN_</code></td><td>Interface-ready</td><td>Stablecoin-native card program; drops in via <code>CardStackConfig</code> with zero core changes.</td></tr> <tr><td>Bridge Cards</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>Multi-rail (ACH/SEPA/PIX/wire) — issuer + funding in one integration.</td></tr> <tr><td>Striga Cards</td><td><code>StrigaConfig</code></td><td><code>SARDIS_STRIGA_</code></td><td>Interface-ready</td><td>EEA issuance with a clean SEPA/vIBAN story; complements Bridge outside the US.</td></tr> <tr><td>Coinbase CDP (on-chain provider)</td><td><code>CoinbaseConfig</code></td><td><code>COINBASE_</code></td><td>Live</td><td>On-chain provider slot — wallets as cards when an agent wants to transact purely on-chain.</td></tr> <tr><td>Card stack router</td><td><code>CardStackConfig</code></td><td><code>SARDIS_CARDS_</code></td><td>Live</td><td>Picks primary / fallback / on-chain provider, with per-org overrides via JSON.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 04 · PSPs &amp; Payment Rails</div> <h2>Money movement beyond crypto.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Stripe Connect</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Merchant payouts (fiat off-ramp, US-first). <code>connected_account_map_json</code> maps tenants to Stripe accounts.</td></tr> <tr><td>Stripe Treasury</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Financial-account-backed balance behind Issuing.</td></tr> <tr><td>Stripe MPP (Tempo)</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Early access since 2026-03-18 launch. Sardis is first-class on Tempo mainnet.</td></tr> <tr><td>Stripe Billing</td><td><code>StripeBillingConfig</code></td><td><code>STRIPE_BILLING_</code></td><td>Ready</td><td>Subscription billing path for the operator-facing product (post Atlas entity).</td></tr> <tr><td>Lightspark (Grid API)</td><td><code>LightsparkConfig</code></td><td><code>SARDIS_LIGHTSPARK_</code></td><td>Sandbox</td><td>Lightning + UMA (<code>uma_domain=sardis.sh</code>) + FX + payouts. Gated by <code>enabled</code> flag.</td></tr> <tr><td>Bridge (multi-rail)</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>One integration for ACH + SEPA + PIX + wire; selects by <code>default_rail</code> + per-feature flags.</td></tr> <tr><td>Striga (EEA banking)</td><td><code>StrigaConfig</code></td><td><code>SARDIS_STRIGA_</code></td><td>Sandbox</td><td>vIBANs, SEPA, Lightning, standing orders, KYC — EEA-native fiat rails.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 05 · On/Off Ramps &amp; Fiat Rails</div> <h2>USD ↔ USDC without writing a bank.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Coinbase CDP Onramp</td><td><code>CoinbaseConfig</code></td><td><code>COINBASE_</code></td><td>Live</td><td>Hosted fiat → USDC onramp, zero infra cost. <code>topup_api_key</code> drives the top-up variant.</td></tr> <tr><td>Bridge Offramp</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>USDC → fiat via ACH/SEPA/PIX.</td></tr> <tr><td>Circle CPN</td><td><code>CircleCPNConfig</code></td><td><code>CIRCLE_CPN_</code></td><td>Live</td><td>Circle Payments Network — funding / payouts; <code>strategy=fiat_first</code> + <code>primary_adapter=circle_cpn</code> by default in <code>FundingRoutingConfig</code>.</td></tr> <tr><td>Circle Gateway</td><td><code>CircleGatewayConfig</code></td><td><code>CIRCLE_GATEWAY_</code></td><td>Gated</td><td>x402 facilitator / nanopayments, enabled via <code>x402_enabled</code>.</td></tr> <tr><td>Stripe (funding)</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Stripe-backed funding for Issuing top-ups.</td></tr> <tr><td>Funding router</td><td><code>FundingRoutingConfig</code></td><td>—</td><td>Live</td><td>Strategy: <code>fiat_first</code> / <code>stablecoin_first</code> / <code>hybrid</code>. Primary + fallback adapters are explicit.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 06 · Chain RPC</div> <h2>Broadcast + read.</h2> <p class="text-muted" style="max-width:720px;">
+RPC endpoints are env-var driven (<code>SARDIS_BASE_RPC_URL</code>, etc.) with public
+            RPC as a fallback. Canvas <a href="/settlement">10</a> covers multi-chain
+            settlement.
+</p> </div> <table class="data"> <thead><tr><th>Service</th><th>Env var</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Alchemy (Base)</td><td><code>SARDIS_BASE_RPC_URL</code></td><td>Live (primary)</td><td>Fast, reliable, free-tier-generous; first choice for Base 8453.</td></tr> <tr><td>Alchemy (Ethereum/Polygon/Arbitrum/Optimism)</td><td><code>SARDIS_&lt;chain&gt;_RPC_URL</code></td><td>Live</td><td>Uniform provider across EVM chains.</td></tr> <tr><td>Tempo RPC</td><td><code>SARDIS_TEMPO_RPC_URL</code> (default <code>rpc.tempo.xyz</code>)</td><td>Live (mainnet 4217)</td><td>First-party Tempo RPC; dedicated executor in <code>sardis-chain/src/sardis_chain/tempo/executor.py</code>.</td></tr> <tr><td>Public RPCs</td><td>fallback list</td><td>Fallback only</td><td>Used if primary RPC fails; never primary in prod.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 07 · Protocol Rails</div> <h2>Card network + credential standards.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Visa TAP</td><td><code>VisaTAPConfig</code></td><td><code>VISA_TAP_</code></td><td>Sandbox</td><td>Token Authentication Protocol — mTLS + TRID, signed tokens for agent identity at card-network level.</td></tr> <tr><td>Mastercard Agent Pay / MDES</td><td><code>MastercardConfig</code></td><td><code>MASTERCARD_</code></td><td>Sandbox</td><td>P12/PKCS12 certificate auth; MDES token provisioning for agent-initiated card transactions.</td></tr> <tr><td>Delegated Credentials</td><td><code>DelegatedCredentialConfig</code></td><td>—</td><td>Interface-ready</td><td>Framework for protocol-layer delegation (beyond AP2 / A2A).</td></tr> <tr><td>x402</td><td><code>X402Config</code></td><td><code>X402_</code></td><td>Gated</td><td><code>enabled</code> / <code>server_enabled</code> / <code>facilitator_enabled</code> toggles; networks <code>base,polygon,ethereum</code>; optional Permit2.</td></tr> <tr><td>ERC-8183</td><td><code>ERC8183Config</code></td><td>—</td><td>Live</td><td>On-chain agent-payment standard; 1% fee cap, USDC-only MVP; canvas 06.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 08 · Database &amp; Cache</div> <h2>Stateful backbone.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Env var</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code></td><td>Live</td><td>Serverless Postgres; 107 migrations applied in order; branching for preview envs.</td></tr> <tr><td>Upstash Redis</td><td><code>SARDIS_REDIS_URL</code></td><td>Live</td><td>Rate-limiter (fail-closed if unreachable in prod), dedup store, replay cache, SSE fanout. Mandatory outside dev.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 09 · Observability</div> <h2>Knowing when something's wrong.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Where it lives</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>PostHog</td><td><code>apps/dashboard</code> (<code>posthog-js</code>), <code>VITE_POSTHOG_KEY</code></td><td>Live</td><td>Product analytics on the dashboard + landing. Funnels, retention, feature flags.</td></tr> <tr><td>Sentry</td><td><code>@sentry/nextjs</code> (dashboard) + Python Sentry in API</td><td>Live</td><td>Errors, performance, session replay. Integrated with Claude Code review via plugin.</td></tr> <tr><td>Intercom</td><td><code>@intercom/messenger-js-sdk</code></td><td>Live</td><td>In-app support chat for operators and merchants.</td></tr> <tr><td>Uptime (internal)</td><td>24 GitHub Actions workflows (<code>uptime*.yml</code>)</td><td>Live</td><td>Periodic health checks of API, landing, dashboard; metrics published as graph artefacts.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 10 · Comms &amp; Auth</div> <h2>Email + identity.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Where it lives</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>Resend</td><td>API notifications + dashboard transactional email</td><td>Live</td><td>Transactional email (receipts, approvals, security alerts). Simple API, modern DX.</td></tr> <tr><td>better-auth</td><td><code>apps/dashboard</code> (v1.5.6) + plugins (<code>passkey</code>, <code>api-key</code>, <code>agent-auth</code>, <code>stripe</code>, <code>polar-sh</code>)</td><td>Live</td><td>EdDSA/JWKS sessions, passkeys, org roles, API-key issuance inside the dashboard.</td></tr> <tr><td>Legacy FastAPI JWT (HS256)</td><td><code>packages/sardis-api</code></td><td>Live</td><td>Dual-path auth for SDK clients; bridged to better-auth via JWKS.</td></tr> <tr><td>Stripe Atlas</td><td>Company entity</td><td>Live (since 2026-03-21)</td><td>Delaware C-corp "Sardis Labs, Inc." formed via Atlas; enables production Stripe + banking relationships.</td></tr> <tr><td>Polar.sh</td><td>Billing (temp until Atlas Stripe clears)</td><td>Live</td><td>Bridge revenue path: Polar now, Stripe once Atlas entity is fully wired.</td></tr> <tr><td>Turnstile + CaptchaFox</td><td>Dashboard sign-up / reset</td><td>Live</td><td>Bot-prevention on public auth endpoints.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Group 11 · Trust Graph</div> <h2>FIDES — decentralized trust signalling.</h2> </div> <table class="data"> <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead> <tbody> <tr><td>FIDES (Sardis protocol)</td><td><code>FidesConfig</code></td><td><code>SARDIS_FIDES_</code></td><td>Live</td><td>Agent + merchant trust graph consulted in the Pre-Execution Pipeline. Fail-closed if unreachable.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Shape</div> <h2>How these services plug into the spine.</h2> <p class="text-muted" style="max-width:720px;">
+Every external dependency is behind an interface in <code>sardis-core</code> so
+            individual providers can be swapped without touching business logic — the Didit-over-Persona
+            swap happened with zero code churn outside the KYC adapter.
+</p> </div> <div class="diagram"> <pre class="mermaid">flowchart LR
+    API["Sardis API / Pre-Execution Pipeline"] --&gt; KYC["Didit"]
+    API --&gt; AML["Elliptic"]
+    API --&gt; FID["FIDES trust graph"]
+    API --&gt; ORCH["PaymentOrchestrator"]
+
+    ORCH --&gt; MPC["Turnkey · Fireblocks · Circle · Lit"]
+    ORCH --&gt; CHAIN["Alchemy / Tempo / public RPC"]
+
+    API --&gt; FUND["Funding router"]
+    FUND --&gt; CCPN["Circle CPN"]
+    FUND --&gt; BRIDGE["Bridge (ACH/SEPA/PIX)"]
+    FUND --&gt; STRIPE["Stripe Treasury + Connect"]
+    FUND --&gt; ONRAMP["Coinbase CDP Onramp"]
+    FUND --&gt; STRIGA["Striga (EEA)"]
+    FUND --&gt; LS["Lightspark (Lightning / UMA)"]
+
+    API --&gt; CARDS["CardStack router"]
+    CARDS --&gt; STR["Stripe Issuing"]
+    CARDS --&gt; LIT["Lithic"]
+    CARDS --&gt; RAIN["Rain"]
+    CARDS --&gt; BRC["Bridge Cards"]
+    CARDS --&gt; STC["Striga Cards"]
+
+    API --&gt; NET["Visa TAP · Mastercard MDES · x402 · ERC-8183"]
+    API --&gt; DB["Neon Postgres"]
+    API --&gt; REDIS["Upstash Redis"]
+
+    DASH["Dashboard · Next.js"] --&gt; BA["better-auth (EdDSA/JWKS)"]
+    DASH --&gt; POLAR["Polar.sh billing"]
+    DASH --&gt; POSTHOG["PostHog"]
+    DASH --&gt; SENTRY["Sentry"]
+    DASH --&gt; INTERCOM["Intercom"]
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Snapshot</div> <h2>Live vs. sandbox vs. interface-ready.</h2> </div> <table class="data"> <thead><tr><th>Status</th><th>Services</th></tr></thead> <tbody> <tr><td>Live (production)</td><td>Turnkey, Didit, Elliptic, Stripe (Issuing + Treasury + Connect + MPP), Coinbase CDP (Onramp), Circle CPN, Alchemy (Base, Ethereum, Polygon, Arbitrum, Optimism), Tempo RPC, Neon, Upstash, better-auth, Polar.sh, PostHog, Sentry, Intercom, Resend, Turnstile, FIDES, ERC-8183.</td></tr> <tr><td>Sandbox / gated</td><td>Lithic, Striga, Lightspark, Visa TAP, Mastercard MDES, x402, Circle Gateway, Bridge Cards.</td></tr> <tr><td>Interface-ready</td><td>Fireblocks, Circle Programmable Wallets, Lit Protocol, Rain, Bridge Offramp.</td></tr> <tr><td>Rejected / retired</td><td>Persona (too expensive), iDenfy (onboarding friction), Lithic production (needs $5M program commit).</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Source of Truth</div> <h2>Go read the code, not this table, before quoting.</h2> </div> <table class="data"> <thead><tr><th>Question</th><th>File</th></tr></thead> <tbody> <tr><td>Complete list of external configs?</td><td><code>packages/sardis-core/src/sardis_v2_core/config.py</code> (<code>grep '^class.*Config'</code>)</td></tr> <tr><td>Chain RPC URLs + chain IDs?</td><td><code>packages/sardis-core/src/sardis_v2_core/config.py</code> → <code>ChainConfig</code> list</td></tr> <tr><td>Token contracts per chain?</td><td><code>packages/sardis-core/src/sardis_v2_core/tokens.py</code></td></tr> <tr><td>Card routing?</td><td><code>CardStackConfig</code> in <code>config.py</code></td></tr> <tr><td>Funding routing?</td><td><code>FundingRoutingConfig</code> in <code>config.py</code></td></tr> <tr><td>Deployed env vars?</td><td>Cloud Run (API) + Vercel (dashboard + landing + checkout) project settings — source of truth.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Follow-ups.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/compliance"> <div class="canvas-card-num">12 · Product</div> <div class="canvas-card-title">Compliance Stack</div> <div class="canvas-card-desc">Didit + Elliptic in the Pre-Execution Pipeline.</div> </a> <a class="canvas-card" href="/wallet-mpc"> <div class="canvas-card-num">09 · Flows</div> <div class="canvas-card-title">Wallet + MPC</div> <div class="canvas-card-desc">Turnkey sub-orgs + signing flow.</div> </a> <a class="canvas-card" href="/settlement"> <div class="canvas-card-num">10 · Flows</div> <div class="canvas-card-title">Settlement &amp; Chains</div> <div class="canvas-card-desc">CCTP v2 + multi-chain + Tempo mainnet.</div> </a> <a class="canvas-card" href="/cicd"> <div class="canvas-card-num">18 · Ops</div> <div class="canvas-card-title">CI/CD</div> <div class="canvas-card-desc">Where these env vars get injected.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>

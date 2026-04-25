@@ -1,0 +1,366 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>08 · Policy Engine — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="08 · Policy Engine — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"> <style is:global>
+    .check-list { display: flex; flex-direction: column; gap: 8px; counter-reset: chk; }
+    .check-item {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--card);
+    }
+    .check-item::before {
+      counter-increment: chk;
+      content: counter(chk, decimal-leading-zero);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      align-self: center;
+    }
+    .check-item .check-title { font-weight: 600; font-size: 13.5px; margin-bottom: 2px; }
+    .check-item .check-desc { font-size: 12.5px; color: var(--text-muted); }
+    .json-block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre;
+      overflow-x: auto;
+      color: var(--text-primary);
+    }
+  </style> <meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="policy-engine"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="policy-engine" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Summarize%20the%20Sardis%20spending%20policy%20engine%20and%20the%20guardrails%20that%20bind%20agent%20authority%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fpolicy-engine" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Summarize%20the%20Sardis%20spending%20policy%20engine%20and%20the%20guardrails%20that%20bind%20agent%20authority%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fpolicy-engine" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>   <section class="hero"> <span class="eyebrow">Canvas 08 · Flows</span> <h1>Policy Engine</h1> <p class="hero-lead">
+The hard part of agent payments isn't access to money — it's controlling authority over money.
+          The policy engine is Sardis's answer: natural-language intent → structured rule → enforced on every
+          transaction, logged with a reason code, anchored on-chain. This canvas walks the whole pipeline.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">TL;DR</span> <code>SpendingPolicy.evaluate()</code> in
+<code>packages/sardis-core/src/sardis_v2_core/spending_policy.py</code> runs twelve checks in a fixed
+          order; the first failure short-circuits with a reason code. Above it sits a natural-language parser
+          (Groq Llama 3.3 70B, regex fallback). Below it sits an approval queue, a decision log, a simulation
+          sandbox, and — for mandates that clear the gate — on-chain enforcement via ERC-8183.
+</div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Thesis</div> <h2>Why "authority" — not "access" — is the problem.</h2> <p class="text-muted" style="max-width:760px;">
+Giving an agent a wallet takes ten minutes. Giving an agent a wallet it <em>cannot misuse</em>
+is the actual product. Every design choice in this engine follows from that.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Access is easy. Revocation is hard.</div> <div class="card-description">
+An MPC signer solves "the agent can pay." It does nothing about "the agent decided to pay
+              $40K to a phishing address at 3am because a jailbreak prompt told it to." Policy is the layer
+              that says no on the agent's behalf, <em>before</em> the signer is even asked.
+</div> </div> <div class="card"> <div class="card-title">Authority must be structured, not trusted.</div> <div class="card-description">
+Natural language ("$500/day on API credits, openai.com only") is the <em>input</em>, not the
+              enforcement. The parser converts intent into a typed <code>SpendingPolicy</code> dataclass with
+              hard caps, allowlists, time windows — data structures that can be evaluated in &lt;1ms on every tx.
+</div> </div> <div class="card"> <div class="card-title">Fail-closed, with a reason.</div> <div class="card-description">
+Every denial returns a machine-readable reason code
+              (<code>per_transaction_limit</code>, <code>merchant_denied</code>, <code>goal_drift_exceeded</code>).
+              No silent rejects, no vague "declined." Agents, operators, and regulators see the same root cause.
+</div> </div> <div class="card"> <div class="card-title">Evidence beats logs.</div> <div class="card-description">
+Every allow and every deny writes a row to the decision log. Batches are Merkle-rooted and
+              anchored by <code>SardisLedgerAnchor.sol</code>. "Trust our logs" is not a defense; a Merkle
+              proof is.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Pipeline</div> <h2>Natural language → structured policy.</h2> <p class="text-muted" style="max-width:760px;">
+Operators type English. Agents hit a typed dataclass. The parser bridges the two and is
+            implemented twice — once as an LLM call, once as a regex fallback — so the stack never hard-fails
+            on a missing API key.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Input (what the operator types)</div> <pre><code>Spend up to $500/day on API credits,
+only to api.openai.com and api.anthropic.com.
+Require human approval above $200.
+Block gambling (MCC 7995) and adult (MCC 5967).</code></pre> </div> <div class="card"> <div class="card-title">Output (what the engine sees)</div> <div class="json-block">SpendingPolicy(
+  agent_id = "agent_123",
+  trust_level = TrustLevel.MEDIUM,
+  limit_per_tx = Decimal("200"),
+  daily_limit = TimeWindowLimit(
+    limit = Decimal("500"),
+    window = "daily",
+    scope = SpendingScope.COMPUTE,
+  ),
+  merchant_rules = [
+    MerchantRule(merchant_id="api.openai.com",   allowed=True),
+    MerchantRule(merchant_id="api.anthropic.com", allowed=True),
+  ],
+  blocked_merchant_categories = ["gambling", "adult"],
+  approval_threshold = Decimal("200"),
+)</div> </div> </div> <div class="grid grid-2 mt-24"> <div class="card"> <div class="card-title">Primary: Groq Llama 3.3 70B</div> <div class="card-description"> <code>NLPolicyParser</code> in <code>nl_policy_parser.py</code>. Uses
+<code>llama-3.3-70b-versatile</code> via the Groq OpenAI-compatible endpoint
+              (<code>https://api.groq.com/openai/v1</code>). ~200ms typical; open-source model so there's no
+              proprietary lock-in on the parsing layer itself. Falls through to OpenAI if
+<code>GROQ_API_KEY</code> is unset and <code>OPENAI_API_KEY</code> is present.
+</div> </div> <div class="card"> <div class="card-title">Fallback: regex parser</div> <div class="card-description"> <code>RegexPolicyParser</code> in the same file. Pattern-matches common phrasings
+              ("$X/day", "only to Y", "block Z") so policy creation still works in airgapped / sandbox
+              environments with no LLM key. Less expressive, but never hallucinates a field. Invariants live
+              in <code>ImmutableParserHardLimits</code> — hard ceilings the LLM can't raise.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Dimensions</div> <h2>What a policy can actually control.</h2> <p class="text-muted" style="max-width:760px;">
+Each field on <code>SpendingPolicy</code> is a lever. Most deployments only touch three or four;
+            the rest exist for edge cases that show up at scale.
+</p> </div> <table class="data"> <thead> <tr><th>Dimension</th><th>Field on SpendingPolicy</th><th>What it controls</th></tr> </thead> <tbody> <tr><td>Per-transaction cap</td><td><code>limit_per_tx</code></td><td>Max single payment. Category-specific overrides via <code>_get_effective_per_tx_limit()</code>.</td></tr> <tr><td>Lifetime cap</td><td><code>limit_total</code> + <code>spent_total</code></td><td>Cumulative ceiling across the policy's lifetime.</td></tr> <tr><td>Daily / weekly / monthly</td><td><code>daily_limit</code>, <code>weekly_limit</code>, <code>monthly_limit</code></td><td><code>TimeWindowLimit</code> objects — rolling windows, race-safe reads from <code>policy_store</code>.</td></tr> <tr><td>Merchant allow / block</td><td><code>merchant_rules</code></td><td>Per-merchant caps, category matching. Case-insensitive — deliberate, prevents casing-trick bypass.</td></tr> <tr><td>MCC blocking</td><td><code>blocked_merchant_categories</code></td><td>4-digit Merchant Category Codes (e.g. 7995 gambling, 5967 adult).</td></tr> <tr><td>Scope restriction</td><td><code>allowed_scopes</code></td><td><code>SpendingScope</code> enum: retail, compute, agent_to_agent, etc. <code>ALL</code> is the wildcard.</td></tr> <tr><td>Chain / token allowlist</td><td><code>allowed_chains</code>, <code>allowed_tokens</code></td><td>Restrict which rails a policy authorizes (e.g. "Base + USDC only").</td></tr> <tr><td>Destination allowlist</td><td><code>allowed_destination_addresses</code> / <code>blocked_destination_addresses</code></td><td>Hard address pins — for treasury sweeps, known suppliers.</td></tr> <tr><td>Approval threshold</td><td><code>approval_threshold</code></td><td>Above this amount, route to human queue instead of auto-approving.</td></tr> <tr><td>Goal-drift guard</td><td><code>max_drift_score</code></td><td>If the agent has drifted from its stated task (<code>goal_drift_detector.py</code>), deny.</td></tr> <tr><td>KYA attestation gate</td><td>(via <code>kya_client</code> arg)</td><td>Require on-chain agent identity attestation before high-value flows.</td></tr> <tr><td>Merchant trust</td><td>(via <code>merchant_trust_service</code>)</td><td>First-seen or low-trust merchants get extra scrutiny regardless of other rules.</td></tr> <tr><td>Pre-auth hold</td><td><code>require_preauth</code>, <code>max_hold_hours</code></td><td>Force a two-step "authorize then capture" instead of a single settlement.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Evaluation</div> <h2>Twelve checks, fixed order, first fail wins.</h2> <p class="text-muted" style="max-width:760px;">
+The order in <code>SpendingPolicy.evaluate()</code> is not arbitrary — cheap local checks run
+            first, DB and on-chain lookups later. Short-circuiting saves latency on the common "just blatantly
+            over the limit" case.
+</p> </div> <div class="check-list"> <div class="check-item"><div><div class="check-title">Amount validation</div><div class="check-desc"><code>amount &gt; 0</code> and <code>fee &gt;= 0</code>. Reason codes: <code>amount_must_be_positive</code>, <code>fee_must_be_non_negative</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Scope allowed</div><div class="check-desc"><code>scope ∈ allowed_scopes</code> (or <code>ALL</code>). Reason: <code>scope_not_allowed</code>.</div></div></div> <div class="check-item"><div><div class="check-title">MCC not blocked</div><div class="check-desc"><code>_check_mcc_policy(mcc_code)</code> — 4-digit category screen.</div></div></div> <div class="check-item"><div><div class="check-title">Per-transaction limit</div><div class="check-desc">Effective cap = min(category override, trust-tier cap, global cap). Reason: <code>per_transaction_limit</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Lifetime cap</div><div class="check-desc">From <code>policy_store</code> in prod, in-memory in dev. Reason: <code>total_limit_exceeded</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Time-window limits</div><div class="check-desc">Daily / weekly / monthly rolling windows. Reasons: <code>daily_limit_exceeded</code>, <code>weekly_limit_exceeded</code>, <code>monthly_limit_exceeded</code>.</div></div></div> <div class="check-item"><div><div class="check-title">On-chain balance</div><div class="check-desc">If <code>rpc_client</code> provided — is the wallet actually fundable? Reason: <code>insufficient_balance</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Merchant rules</div><div class="check-desc">Allowlist, blocklist, per-merchant caps. Reason: <code>merchant_denied</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Goal drift</div><div class="check-desc"><code>drift_score &gt; max_drift_score</code> → deny. Reason: <code>goal_drift_exceeded</code>.</div></div></div> <div class="check-item"><div><div class="check-title">Merchant trust</div><div class="check-desc">First-seen or low-trust merchants fail unless the policy explicitly allows unknown destinations.</div></div></div> <div class="check-item"><div><div class="check-title">Approval threshold</div><div class="check-desc">If <code>amount ≥ approval_threshold</code>: return <code>(True, "requires_approval")</code> and hand off to approval queue.</div></div></div> <div class="check-item"><div><div class="check-title">KYA attestation</div><div class="check-desc">For high-value paths, verify on-chain agent identity via <code>kya_client</code>. No attestation → deny.</div></div></div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Decision tree</div> <h2>What evaluate() looks like as a flowchart.</h2> </div> <div class="diagram"> <pre class="mermaid">flowchart TD
+    A[Payment request] --> B{amount > 0 &amp; fee &gt;= 0?}
+    B -- no --> D1[deny: amount_must_be_positive]
+    B -- yes --> C{scope allowed?}
+    C -- no --> D2[deny: scope_not_allowed]
+    C -- yes --> D{MCC blocked?}
+    D -- yes --> D3[deny: mcc_blocked]
+    D -- no --> E{per-tx cap OK?}
+    E -- no --> D4[deny: per_transaction_limit]
+    E -- yes --> F{lifetime cap OK?}
+    F -- no --> D5[deny: total_limit_exceeded]
+    F -- yes --> G{time-window OK?}
+    G -- no --> D6[deny: daily/weekly/monthly_limit_exceeded]
+    G -- yes --> H{balance sufficient?}
+    H -- no --> D7[deny: insufficient_balance]
+    H -- yes --> I{merchant allowed?}
+    I -- no --> D8[deny: merchant_denied]
+    I -- yes --> J{drift &lt; max?}
+    J -- no --> D9[deny: goal_drift_exceeded]
+    J -- yes --> K{amount &ge; approval_threshold?}
+    K -- yes --> L[requires_approval → queue]
+    K -- no --> M{KYA attested?}
+    M -- no --> D10[deny: kya_required]
+    M -- yes --> N[ALLOW → orchestrator → signer]
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Reason codes</div> <h2>Every denial is explainable.</h2> <p class="text-muted" style="max-width:760px;">
+These strings are the contract between engine, operator dashboard, and the decision log. Don't
+            invent new ones casually — they're indexed, alerted on, and quoted in incident reports.
+</p> </div> <table class="data"> <thead><tr><th>Reason code</th><th>Meaning</th><th>Typical fix</th></tr></thead> <tbody> <tr><td><code>OK</code></td><td>Allowed.</td><td>—</td></tr> <tr><td><code>requires_approval</code></td><td>Allowed if an approver signs off.</td><td>Route to <code>ApprovalService</code>.</td></tr> <tr><td><code>amount_must_be_positive</code></td><td>Bad input.</td><td>SDK-level validation should catch first.</td></tr> <tr><td><code>fee_must_be_non_negative</code></td><td>Bad input.</td><td>Gas estimator bug — investigate.</td></tr> <tr><td><code>scope_not_allowed</code></td><td>Spending category not in allowlist.</td><td>Expand <code>allowed_scopes</code> or re-route request.</td></tr> <tr><td><code>mcc_blocked</code></td><td>Merchant category blocked (e.g. gambling).</td><td>Confirm with operator before unblocking.</td></tr> <tr><td><code>per_transaction_limit</code></td><td>Single payment above cap.</td><td>Raise <code>limit_per_tx</code> or split payment.</td></tr> <tr><td><code>total_limit_exceeded</code></td><td>Lifetime ceiling hit.</td><td>Top up <code>limit_total</code> or rotate policy.</td></tr> <tr><td><code>daily_limit_exceeded</code></td><td>Daily window exhausted.</td><td>Wait for reset or raise window.</td></tr> <tr><td><code>insufficient_balance</code></td><td>Wallet can't cover.</td><td>Fund wallet or route via CCTP.</td></tr> <tr><td><code>merchant_denied</code></td><td>Merchant blocked or not on allowlist.</td><td>Review allowlist.</td></tr> <tr><td><code>goal_drift_exceeded</code></td><td>Agent off-task per drift detector.</td><td>Investigate agent — potential jailbreak or goal-hijack.</td></tr> <tr><td><code>kya_required</code></td><td>No on-chain agent attestation.</td><td>Run KYA onboarding for the agent.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">On-chain enforcement</div> <h2>Spending mandates — from a Python object to an EVM guard.</h2> <p class="text-muted" style="max-width:760px;">
+A policy is off-chain: Sardis trusts itself. A <em>spending mandate</em> is the same policy
+            cryptographically committed — first to Sardis's append-only log via AGIT, then to an on-chain
+            guard via ERC-8183. If Sardis is compromised, the chain still enforces the cap.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Off-chain: AGIT policy chain</div> <div class="card-description"> <code>AgitPolicyEngine</code> in <code>agit_policy_engine.py</code>. Every
+<code>commit_policy()</code> hashes the policy and links it to the prior commit, forming a
+              tamper-evident chain. <code>verify_policy_chain(agent_id)</code> proves the current policy
+              descends from the original — a policy flip doesn't go unnoticed.
+</div> </div> <div class="card"> <div class="card-title">On-chain: ERC-8183 guard</div> <div class="card-description"> <code>ERC8183PolicyGuard</code> in <code>erc8183_policy_guard.py</code>. Before funding or
+              settlement, the guard calls <code>evaluate_funding</code> / <code>submit_funding</code> /
+<code>submit_settlement</code> — the solidity-side hooks reject if the on-chain policy record
+              doesn't match. Caps currently enforced: 1% fee ceiling, USDC-only, trust hooks disabled
+              (post-audit relaxation path).
+</div> </div> <div class="card"> <div class="card-title">Why both?</div> <div class="card-description">
+Off-chain policy runs on every request — cheap, flexible, covers all rails including fiat.
+              On-chain policy is the last line when counterparty trust in Sardis drops to zero (regulator,
+              enterprise treasury, dispute). They agree in the common case; they diverge only when Sardis
+              itself is the attacker, and the on-chain side wins.
+</div> </div> <div class="card"> <div class="card-title">ERC-20 hook surface</div> <div class="card-description">
+The guard publishes three evaluation points on-chain:
+<code>evaluate_funding</code> (pre-transfer sanity), <code>submit_funding</code> (commits
+              the intent to a job), <code>submit_settlement</code> (finalizes the settlement hash).
+              Each raises <code>ERC8183PolicyDenied</code> on mismatch.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Delegation</div> <h2>Parent → child mandate trees.</h2> <p class="text-muted" style="max-width:760px;">
+Real agent systems are multi-agent. A team lead agent hires helpers; a workflow fans out to
+            sub-tasks. Each child needs spending authority — but strictly less than the parent's, never more.
+            That's what <code>mandate_tree.py</code> enforces.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">MandateTreeNode</div> <div class="card-description">
+A node holds the mandate (limits, scopes, expiry) plus a list of children. <code>is_leaf()</code>
+and <code>total_delegated()</code> let callers reason about the tree without walking it manually.
+</div> </div> <div class="card"> <div class="card-title">MandateTreeValidator.validate_delegation()</div> <div class="card-description">
+Invariants: child <code>limit_per_tx</code> ≤ parent's; child <code>total_delegated ≤ parent.limit_total</code>;
+              child expiry ≤ parent expiry; scope must be a subset. Violation → deny. This is the "can't
+              issue more authority than you have" rule, enforced structurally.
+</div> </div> <div class="card"> <div class="card-title">build_mandate_tree()</div> <div class="card-description">
+Reconstructs the full tree from the DB for audit and visualization. The dashboard's mandate
+              view reads from this; investigators reading a decision log can reconstruct the delegation
+              chain that authorized a specific payment.
+</div> </div> <div class="card"> <div class="card-title">Revocation cascades</div> <div class="card-description">
+Revoking a parent mandate invalidates every descendant at the next evaluation. No "zombie
+              sub-agents kept spending after the main agent was killed" story. This matters for incident
+              response.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Approvals</div> <h2>When policy says "maybe."</h2> <p class="text-muted" style="max-width:760px;">
+A request above <code>approval_threshold</code> isn't denied — it's queued. A human operator,
+            a second agent, or a group vote can release it. <code>ApprovalService</code> in
+<code>approval_service.py</code> owns the lifecycle.
+</p> </div> <table class="data"> <thead><tr><th>Method</th><th>What it does</th></tr></thead> <tbody> <tr><td><code>create_approval()</code></td><td>Opens an approval record tied to the pending mandate. Notifies via <code>ApprovalNotifier</code> (Slack / email / webhook).</td></tr> <tr><td><code>approve(approval_id, approver_id)</code></td><td>Marks approved; orchestrator resumes execution on next poll or event.</td></tr> <tr><td><code>deny(approval_id, reason)</code></td><td>Hard deny — decision log captures the human reason. The mandate is archived, not executable.</td></tr> <tr><td><code>cancel(approval_id)</code></td><td>Withdrawn by the agent (e.g. order was rescinded upstream).</td></tr> <tr><td><code>expire_pending()</code></td><td>Cron-called. Approvals have a TTL — stale requests don't execute days later when no one remembers.</td></tr> <tr><td><code>list_pending()</code></td><td>Powers the operator dashboard's approval inbox.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Decision log</div> <h2>Every allow, every deny, one row.</h2> <p class="text-muted" style="max-width:760px;">
+The policy decision log is separate from the payment ledger — it captures policy outcomes
+            whether or not a payment ever executed. A denied request still has to be evidenced: that's how
+            the agent owner proves to a regulator that the system was working, not failing.
+</p> </div> <dl class="defs"> <dt>Table</dt><dd><code>policy_decisions</code> (see canvas 05 · Database).</dd> <dt>Rows written when</dt><dd>Every call into <code>SpendingPolicy.evaluate()</code>, plus every approval transition.</dd> <dt>Fields</dt><dd>agent_id, mandate_id, reason_code, amount, merchant, chain, token, decided_at, approver_id (if any), evidence_hash.</dd> <dt>Anchoring</dt><dd>Batched into Merkle roots by <code>sardis-ledger</code>, anchored via <code>SardisLedgerAnchor.sol</code>.</dd> <dt>Export</dt><dd><code>evidence_export</code> router produces signed, proof-bearing CSV/JSON for audits.</dd> </dl> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Simulation</div> <h2>Test a policy before it enforces anything.</h2> <p class="text-muted" style="max-width:760px;">
+Policy changes are risky: tighten too much, block legitimate spending; loosen too much, invite
+            incidents. The <code>policy_simulation</code> router
+            (<code>packages/sardis-api/src/sardis_api/routers/policy_simulation.py</code>) replays historical
+            traffic against a proposed policy and returns what would have changed — allows that became denies,
+            denies that became allows, new approval routes.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Replay</div> <div class="card-description">
+Takes a time range of real mandates, runs them through the draft policy without touching
+              wallets or chains. Output: diff of outcomes, broken down by reason code.
+</div> </div> <div class="card"> <div class="card-title">What-if</div> <div class="card-description">
+Operator uploads a synthetic batch ("ten $150 API spends, two $2K one-offs"). Engine returns
+              the full evaluation trail — same twelve checks, no side effects.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Incident response</div> <h2>Kill switch — the big red button.</h2> <p class="text-muted" style="max-width:760px;">
+When something is clearly wrong ("every agent is suddenly trying to pay the same new address"),
+            the operator needs one action that stops everything. The emergency router is that action.
+</p> </div> <dl class="defs"> <dt>Router</dt><dd><code>packages/sardis-api/src/sardis_api/routers/emergency.py</code></dd> <dt>Dependency</dt><dd><code>packages/sardis-api/src/sardis_api/kill_switch_dep.py</code> — enforced on every write path.</dd> <dt>Effect</dt><dd>Global flag flips; <code>SpendingPolicy.evaluate()</code> short-circuits to deny with reason <code>kill_switch_active</code>; no new mandates accept; in-flight signatures are aborted at the wallet manager.</dd> <dt>Scope modes</dt><dd>Global, per-tenant, per-agent, per-chain — you don't always want to freeze everyone.</dd> <dt>Audit</dt><dd>Activation, reason, operator identity, and deactivation all log to the decision stream.</dd> <dt>Recovery</dt><dd>Manual — intentionally. Restoring spending after a kill requires explicit operator action, not a timeout.</dd> </dl> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Source of Truth</div> <h2>Files to open when you want to dig in.</h2> </div> <table class="data"> <thead><tr><th>File</th><th>Role</th></tr></thead> <tbody> <tr><td><code>packages/sardis-core/src/sardis_v2_core/spending_policy.py</code></td><td>The engine. <code>SpendingPolicy</code>, <code>TimeWindowLimit</code>, <code>MerchantRule</code>, <code>evaluate()</code>.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/nl_policy_parser.py</code></td><td>Natural-language → typed policy. Groq primary, OpenAI fallback, regex last resort.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/agit_policy_engine.py</code></td><td>AGIT: commits, chain verification, policy history, diff across versions.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/erc8183_policy_guard.py</code></td><td>On-chain guard — evaluate/submit funding + settlement.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/approval_service.py</code></td><td>Approval lifecycle: create, approve, deny, expire.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/mandate_tree.py</code></td><td>Parent/child mandate invariants.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/goal_drift_detector.py</code></td><td>Drift scoring — input to the drift check.</td></tr> <tr><td><code>packages/sardis-core/src/sardis_v2_core/kya_trust_scoring.py</code></td><td>Trust tiers + per-tier caps merged into per-tx limit.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/policy_simulation.py</code></td><td>What-if / replay endpoints.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/emergency.py</code></td><td>Kill-switch activation and status.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/kill_switch_dep.py</code></td><td>FastAPI dependency that enforces the flag on every write.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Follow-ups.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/payment-flow"> <div class="canvas-card-num">07 · Flows</div> <div class="canvas-card-title">Payment Flow</div> <div class="canvas-card-desc">Where policy evaluation sits in the full request path.</div> </a> <a class="canvas-card" href="/wallet-mpc"> <div class="canvas-card-num">09 · Flows</div> <div class="canvas-card-title">Wallet + MPC</div> <div class="canvas-card-desc">What happens after an approved policy hands off to the signer.</div> </a> <a class="canvas-card" href="/settlement"> <div class="canvas-card-num">10 · Flows</div> <div class="canvas-card-title">Settlement &amp; Chains</div> <div class="canvas-card-desc">Which rails the policy is allowed to authorize.</div> </a> <a class="canvas-card" href="/security"> <div class="canvas-card-num">19 · Ops</div> <div class="canvas-card-title">Security Model</div> <div class="canvas-card-desc">Trust boundaries and threat model the policy engine defends.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>

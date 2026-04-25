@@ -1,0 +1,333 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>06 · Smart Contracts — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="06 · Smart Contracts — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"> <style is:global>
+    .stat-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; }
+    .stat-pill {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      background: var(--card);
+      min-width: 160px;
+    }
+    .stat-pill .stat-num { font-size: 22px; font-weight: 600; font-family: var(--font-mono); }
+    .stat-pill .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+    .contract-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 22px;
+      background: var(--card);
+      margin-bottom: 14px;
+    }
+    .contract-block .cb-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .contract-block .cb-name { font-family: var(--font-mono); font-size: 14px; font-weight: 600; }
+    .cb-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .cb-tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      padding: 3px 7px;
+      background: var(--muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: 3px;
+      color: var(--text-secondary);
+    }
+    .cb-tag.warn { background: #fff7e6; border-color: #f0d8a0; color: #7a5a10; }
+    [data-theme="dark"] .cb-tag.warn { background: #332a18; border-color: #554630; color: #e6c070; }
+    .cb-tag.ext { background: var(--muted); }
+    .cb-body { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+    .cb-body .cb-purpose { margin-bottom: 10px; }
+    .cb-body dl.defs { margin-top: 10px; }
+  </style> <meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="contracts"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="contracts" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Summarize%20the%20Sardis%20smart%20contracts%20and%20call%20out%20the%20trust%20and%20upgrade%20assumptions%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcontracts" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Summarize%20the%20Sardis%20smart%20contracts%20and%20call%20out%20the%20trust%20and%20upgrade%20assumptions%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcontracts" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>   <section class="hero"> <span class="eyebrow">Canvas 06 · Backend</span> <h1>Smart Contracts</h1> <p class="hero-lead">
+Sardis is deliberately thin on-chain. The heavy lifting — policy evaluation, mandate
+          verification, KYC, compliance — happens off-chain where it can be iterated safely. On-chain we
+          only deploy what needs public, auditable, tamper-evident behaviour: identity registries, an
+          evidence anchor, an escrow-based job primitive (ERC-8183), and a refund protocol.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">TL;DR</span>
+Nine <code>.sol</code> files live under <code>contracts/src/</code>. Two are deprecated on
+          purpose (<code>SardisPolicyModule</code> → Zodiac Roles; <code>SardisVerifyingPaymaster</code> →
+          Circle Paymaster) — kept for reference, not deployed. The rest implement ERC-8004 (agent
+          identity), ERC-8183 (job escrow), a minimal ledger anchor, and Circle's audited
+<code>RefundProtocol</code> vendored in-tree.
+</div> <div class="stat-row"> <div class="stat-pill"><div class="stat-num">9</div><div class="stat-label">Contracts</div></div> <div class="stat-pill"><div class="stat-num">Foundry</div><div class="stat-label">Build &amp; test</div></div> <div class="stat-pill"><div class="stat-num">0.8.20 – 0.8.24</div><div class="stat-label">Solidity</div></div> <div class="stat-pill"><div class="stat-num">OpenZeppelin</div><div class="stat-label">Primitives</div></div> <div class="stat-pill"><div class="stat-num">ERC-8004 / 8183 / 4337</div><div class="stat-label">Standards</div></div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Principles</div> <h2>Why so little on-chain?</h2> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Prefer audited standards over bespoke contracts</div> <div class="card-description">
+Wallet custody: Safe v1.4.1 (pre-deployed on every EVM chain, $100B+ TVL). Policy module:
+              Zodiac Roles (<code>0x9646fDAD…</code>). Paymaster: Circle Paymaster
+              (<code>0x0578cFB2…</code>). Sardis ships no custom money-handling contract if an audited one
+              fits — zero audit surface at MVP.
+</div> </div> <div class="card"> <div class="card-title">On-chain for evidence, off-chain for decisions</div> <div class="card-description">
+Policy decisions live in Postgres (migration 041) because policies change. What goes on-chain
+              is the <em>Merkle root</em> of a batch of those decisions (<code>SardisLedgerAnchor</code>) —
+              tamper-evidence without tying policy logic to chain latency or upgrade ceremony.
+</div> </div> <div class="card"> <div class="card-title">Standards-compliant identity &amp; reputation</div> <div class="card-description">
+Agent identity is ERC-8004 (ERC-721 token + reputation + validation registries). A wallet can
+              prove "I am agent #42 in this registry" without trusting a Sardis API. Reputation is
+              submitted by clients, signed on-chain, and queryable by any counterparty.
+</div> </div> <div class="card"> <div class="card-title">ERC-8183 for commerce, not custom escrows</div> <div class="card-description">
+Escrow-based agent commerce follows the ERC-8183 spec with a strict state machine and
+              selector-based hooks (<code>IACPHook</code>). Easier for counterparties to integrate than a
+              Sardis-only escrow; easier to audit.
+</div> </div> <div class="card"> <div class="card-title">Hook-dispatch over inheritance</div> <div class="card-description"> <code>SardisJobManager</code> routes hook calls through <code>IACPHook</code> with a gas
+              limit — before-hooks can block, after-hooks are fire-and-forget. Keeps hook failures from
+              griefing the core flow while still letting composability extensions run.
+</div> </div> <div class="card"> <div class="card-title">Apache 2.0 for RefundProtocol</div> <div class="card-description"> <code>RefundProtocol.sol</code> is Circle's audited implementation, vendored in-tree under
+              Apache 2.0 — not a rewrite. The point is to reuse the audit, not re-audit.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">The Catalogue</div> <h2>Every contract, file by file.</h2> <p class="text-muted" style="max-width:720px;">
+Source: <code>contracts/src/</code>. Purpose statements are quoted or paraphrased from each
+            file's NatSpec.
+</p> </div> <!-- SardisLedgerAnchor --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisLedgerAnchor.sol</div> <div class="text-xs text-muted text-mono">contracts/src/SardisLedgerAnchor.sol · Solidity ^0.8.20</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">Production</span> <span class="cb-tag">Ownable</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Stores Merkle roots of audit-log batches for tamper evidence. Minimal by design — the
+              ledger itself stays off-chain in Postgres; only the root crosses the chain boundary.
+<code>anchor(root, anchorId)</code> writes once, never twice; <code>verify(root)</code>
+returns the timestamp (0 if never anchored). This is the contract that makes "trust our
+              logs" obsolete.
+</div> <dl class="defs"> <dt>Key API</dt><dd><code>anchor(bytes32 root, string anchorId)</code> · <code>verify(bytes32) → uint256 timestamp</code></dd> <dt>Event</dt><dd><code>Anchored(bytes32 indexed root, string anchorId, uint256 timestamp)</code></dd> <dt>Upstream</dt><dd><code>sardis-ledger</code> batches → on-chain call from ops service.</dd> </dl> </div> </div> <!-- SardisIdentityRegistry --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisIdentityRegistry.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24 · implements ERC-8004 Identity</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">ERC-8004</span> <span class="cb-tag">ERC-721</span> <span class="cb-tag">EIP-712</span> <span class="cb-tag">ERC-1271</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+ERC-8004 Identity Registry — on-chain agent identity as an ERC-721 token. Global addressing:
+<code>eip155:&#123;chainId&#125;:&#123;registryAddress&#125;#&#123;agentId&#125;</code>. Three <code>register()</code>
+overloads (URI + metadata, URI only, bare). Agent-wallet linking verified via EIP-712
+              signature (EOA) or ERC-1271 (smart contract). Wallet is cleared on token transfer so the new
+              owner has to re-verify.
+</div> <dl class="defs"> <dt>Key API</dt><dd><code>register(...)</code> · <code>setAgentWallet(agentId, wallet, deadline, sig)</code> · <code>setMetadata(agentId, key, value)</code></dd> <dt>Invariant</dt><dd>Reserved key <code>agentWallet</code> cannot be written via <code>setMetadata</code> — only via signed flow.</dd> <dt>Spec</dt><dd><a href="https://eips.ethereum.org/EIPS/eip-8004" target="_blank" rel="noopener">eips.ethereum.org/EIPS/eip-8004</a></dd> </dl> </div> </div> <!-- SardisReputationRegistry --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisReputationRegistry.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24 · implements ERC-8004 Reputation</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">ERC-8004</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Client-submitted on-chain feedback for agents. Each feedback is <code>int128 value</code> +
+              decimals + tags + endpoint + off-chain URI + hash. Revocation is soft (marked, never
+              deleted). Agent owners (or approved operators) can submit response records pointing at
+              their side of the story.
+</div> <dl class="defs"> <dt>Rules</dt><dd>Submitter MUST NOT be the agent owner; valueDecimals in [0, 18]; only original submitter can revoke.</dd> <dt>Linked to</dt><dd><code>SardisIdentityRegistry</code> (ERC-721) — feedback keyed by <code>agentId</code>.</dd> </dl> </div> </div> <!-- SardisValidationRegistry --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisValidationRegistry.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24 · implements ERC-8004 Validation</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">ERC-8004</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Agent owners request validation from a designated validator; the validator responds with a
+              score (0–100). Records are queryable by <code>requestHash</code>. Validators can respond
+              multiple times to update the score.
+</div> <dl class="defs"> <dt>Record shape</dt><dd><code>validatorAddress</code> · <code>agentId</code> · <code>response (uint8)</code> · <code>responseHash</code> · <code>tag</code> · <code>lastUpdate</code>.</dd> <dt>Immutable</dt><dd><code>identityRegistry</code> address is set at construction.</dd> </dl> </div> </div> <!-- SardisJobManager --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisJobManager.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24 · implements ERC-8183</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">ERC-8183</span> <span class="cb-tag">Escrow</span> <span class="cb-tag">ReentrancyGuard</span> <span class="cb-tag">Pausable</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Escrow-based job primitive for agentic commerce. Full ERC-8183 state machine:
+<code>Open → Funded → Submitted → Completed/Rejected/Expired</code> with
+<code>claimRefund</code> on expiry. Hook dispatch through <code>IACPHook</code> — a
+<strong>before</strong> hook called with <code>HOOK_GAS_LIMIT</code> whose revert blocks the
+              action, and a fire-and-forget <strong>after</strong> hook whose revert is ignored. Bounded
+              gas prevents hook-griefing.
+</div> <dl class="defs"> <dt>State machine</dt><dd>Open → Funded (fund) · Open → Rejected (reject) · Funded → Submitted (submit) · Submitted → Completed (complete) · Submitted → Rejected (reject) · Funded/Submitted → Expired (claimRefund).</dd> <dt>Caps (MVP)</dt><dd>1% fee cap, USDC-only, trust hooks disabled post-launch — relaxable post-audit.</dd> <dt>Spec</dt><dd><a href="https://eips.ethereum.org/EIPS/eip-8183" target="_blank" rel="noopener">eips.ethereum.org/EIPS/eip-8183</a></dd> </dl> </div> </div> <!-- SardisJobRegistry --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisJobRegistry.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24</div> </div> <div class="cb-tags"> <span class="cb-tag">MIT</span> <span class="cb-tag">Reputation</span> <span class="cb-tag">Ownable</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+On-chain reputation store for ERC-8183 agents. Tracks completed / rejected jobs, earnings,
+              spending per agent. Only authorized writers (the Job Manager, trusted hooks) can update
+              records. Trust score is computed on-chain in basis points (0–10000):
+<code>baseScore = completed / (completed + rejected) × 10000</code> + up to a 10% volume
+              bonus capped at 10000.
+</div> <dl class="defs"> <dt>Auth model</dt><dd><code>authorizedWriters</code> mapping — only owner can toggle.</dd> <dt>Companion of</dt><dd><code>SardisJobManager</code> — Manager calls into Registry on every complete/reject.</dd> </dl> </div> </div> <!-- RefundProtocol --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">RefundProtocol.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.24 · Circle, vendored</div> </div> <div class="cb-tags"> <span class="cb-tag">Apache 2.0</span> <span class="cb-tag">Circle (audited)</span> <span class="cb-tag">EIP-712</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Circle's <code>RefundProtocol</code>, vendored in-tree. Time-locked payments (up to 180
+              days) with arbiter-enabled early withdrawal authorised by EIP-712 signed
+<code>EarlyWithdrawalByArbiter</code> messages. Sardis uses it for dispute-resolved refunds
+              so neither buyer nor merchant has to trust Sardis custody.
+</div> <dl class="defs"> <dt>Payment struct</dt><dd><code>to · amount · releaseTimestamp · refundTo · withdrawnAmount · refunded</code>.</dd> <dt>Max lockup</dt><dd>180 days (<code>MAX_LOCKUP_SECONDS</code>).</dd> <dt>Why in-tree</dt><dd>Pin version under Sardis build/audit; swap upstream fixes with explicit review.</dd> </dl> </div> </div> <!-- SardisPolicyModule (DEPRECATED) --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisPolicyModule.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.20 · Safe module (reference only)</div> </div> <div class="cb-tags"> <span class="cb-tag warn">Deprecated</span> <span class="cb-tag">MIT</span> <span class="cb-tag">Safe module</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+Safe module that enforces spending policies for AI agent wallets — per-tx + daily limits,
+              co-sign mode (10× limit when co-signed by Sardis), merchant allow/deny lists, token
+              allowlist, pause/unpause.
+<strong>Superseded</strong> by the pre-deployed, audited Zodiac Roles module at
+<code>0x9646fDAD06d3e24444381f44362a3B0eB343D337</code>. Kept for reference; not deployed to
+              mainnet for MVP (no custom audit dependency).
+</div> <dl class="defs"> <dt>Status</dt><dd>Do-not-deploy. Any agent-wallet policy enforcement routes through Zodiac Roles.</dd> </dl> </div> </div> <!-- SardisVerifyingPaymaster (DEPRECATED) --> <div class="contract-block"> <div class="cb-head"> <div> <div class="cb-name">SardisVerifyingPaymaster.sol</div> <div class="text-xs text-muted text-mono">Solidity ^0.8.20 · ERC-4337 paymaster (reference only)</div> </div> <div class="cb-tags"> <span class="cb-tag warn">Deprecated</span> <span class="cb-tag">MIT</span> <span class="cb-tag">ERC-4337</span> </div> </div> <div class="cb-body"> <div class="cb-purpose">
+ERC-4337 verifying paymaster with wallet allowlist, per-op cap, and daily sponsor cap.
+              Validation optionally consumes off-chain verifier signatures in <code>paymasterData</code>.
+<strong>Superseded</strong> by Circle Paymaster
+              (<code>0x0578cFB241215b77442a541325d6A4E6dFE700Ec</code>, permissionless, USDC gas). Kept
+              for reference; not deployed.
+</div> <dl class="defs"> <dt>Today</dt><dd>Primary: Circle Paymaster. Backup: Pimlico (sponsor model).</dd> </dl> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Supporting dirs</div> <h2>Hooks, interfaces, verifiers.</h2> </div> <table class="data"> <thead> <tr><th>Path</th><th>Role</th></tr> </thead> <tbody> <tr><td><code>src/hooks/SardisReputationHook.sol</code></td><td>IACPHook impl that writes into <code>SardisJobRegistry</code> on complete/reject — keeps reputation accounting in-contract.</td></tr> <tr><td><code>src/hooks/SardisTrustHook.sol</code></td><td>IACPHook impl gating ERC-8183 actions on a trust-score threshold from the reputation registry.</td></tr> <tr><td><code>src/interfaces/IACPHook.sol</code></td><td>Selector-based hook dispatch interface — beforeAction, afterAction.</td></tr> <tr><td><code>src/interfaces/IIdentityRegistry.sol</code></td><td>ERC-8004 Identity Registry interface.</td></tr> <tr><td><code>src/interfaces/IReputationRegistry.sol</code></td><td>ERC-8004 Reputation Registry interface.</td></tr> <tr><td><code>src/interfaces/IValidationRegistry.sol</code></td><td>ERC-8004 Validation Registry interface.</td></tr> <tr><td><code>src/interfaces/IJob.sol</code></td><td>ERC-8183 job interface — events, errors, state enum.</td></tr> <tr><td><code>src/interfaces/IJobRegistry.sol</code></td><td>Reputation-writer interface for job outcomes.</td></tr> <tr><td><code>src/verifiers/FundingSufficiencyVerifier.sol</code></td><td>ZK-proof verifier: "agent wallet has at least X without revealing balance."</td></tr> <tr><td><code>src/verifiers/IdentityProofVerifier.sol</code></td><td>ZK-proof verifier for identity attestation without doxxing the agent.</td></tr> <tr><td><code>src/verifiers/MandateComplianceVerifier.sol</code></td><td>ZK-proof verifier proving a transaction complies with a mandate without leaking the mandate body.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Interaction</div> <h2>How the contracts compose.</h2> <p class="text-muted" style="max-width:720px;">
+A job lifecycle touches identity, reputation, the job manager, and — when off-chain evidence
+            needs to be proven later — the ledger anchor.
+</p> </div> <div class="diagram"> <pre class="mermaid">flowchart LR
+    subgraph Identity[ERC-8004 Identity]
+      IR[SardisIdentityRegistry<br/>ERC-721 agent token]
+      RR[SardisReputationRegistry<br/>client feedback]
+      VR[SardisValidationRegistry<br/>validator scores]
+    end
+    subgraph Commerce[ERC-8183 Commerce]
+      JM[SardisJobManager<br/>escrow + state machine]
+      JR[SardisJobRegistry<br/>on-chain reputation]
+      HK[Hooks<br/>Reputation · Trust]
+    end
+    subgraph Refund[Dispute]
+      RP[RefundProtocol<br/>Circle, Apache 2.0]
+    end
+    subgraph Evidence[Audit]
+      LA[SardisLedgerAnchor<br/>Merkle roots]
+    end
+    IR --> RR
+    IR --> VR
+    IR -. agent id .-> JM
+    JM --> HK
+    HK --> JR
+    JM -. dispute .-> RP
+    OFF[sardis-ledger<br/>off-chain batches] --> LA
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Build &amp; test</div> <h2>Toolchain.</h2> </div> <table class="data"> <thead> <tr><th>What</th><th>Command</th><th>Notes</th></tr> </thead> <tbody> <tr><td>Compile</td><td><code>cd contracts &amp;&amp; forge build</code></td><td>Foundry; Solidity 0.8.20–0.8.24.</td></tr> <tr><td>Test</td><td><code>cd contracts &amp;&amp; forge test</code></td><td>Fuzz + invariant tests for Job state machine + anchor.</td></tr> <tr><td>Deps</td><td><code>lib/forge-std</code> · <code>lib/openzeppelin-contracts</code></td><td>Both vendored as git submodules under <code>contracts/lib/</code>.</td></tr> <tr><td>Deploy script</td><td><code>scripts/deploy-mainnet-contracts.sh</code></td><td>Deploys SardisLedgerAnchor + RefundProtocol + ERC-8183 stack (4 contracts) with ERC-8183 caps pre-set.</td></tr> <tr><td>Deploy target</td><td>Base mainnet (primary), Tempo mainnet</td><td>Needs deployer wallet with ~$2–5 ETH on Base, Alchemy API key, BaseScan API key.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">External</div> <h2>Audited contracts we rely on but don't deploy.</h2> </div> <table class="data"> <thead> <tr><th>Contract</th><th>Address</th><th>Why we don't own it</th></tr> </thead> <tbody> <tr><td>Safe Smart Accounts v1.4.1</td><td>Canonical per chain (pre-deployed)</td><td>$100B+ TVL audit — wallet custody.</td></tr> <tr><td>Zodiac Roles</td><td><code>0x9646fDAD06d3e24444381f44362a3B0eB343D337</code></td><td>Audited policy module; avoids Sardis-owned audit dependency.</td></tr> <tr><td>Circle Paymaster</td><td><code>0x0578cFB241215b77442a541325d6A4E6dFE700Ec</code></td><td>Permissionless USDC-as-gas; no deployment needed.</td></tr> <tr><td>Circle CCTP v2</td><td>Unified per chain (Circle)</td><td>Native cross-chain USDC burn/mint.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Follow-ups.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/wallet-mpc"> <div class="canvas-card-num">09 · Flows</div> <div class="canvas-card-title">Wallet + MPC</div> <div class="canvas-card-desc">How the off-chain signing flow reaches Safe smart accounts.</div> </a> <a class="canvas-card" href="/settlement"> <div class="canvas-card-num">10 · Flows</div> <div class="canvas-card-title">Settlement &amp; Chains</div> <div class="canvas-card-desc">CCTP v2 + Tempo + paymaster — what the contracts settle into.</div> </a> <a class="canvas-card" href="/database"> <div class="canvas-card-num">05 · Backend</div> <div class="canvas-card-title">Database Schema</div> <div class="canvas-card-desc">Where <code>merkle_batches</code> come from before they get anchored.</div> </a> <a class="canvas-card" href="/security"> <div class="canvas-card-num">19 · Ops</div> <div class="canvas-card-title">Security Model</div> <div class="canvas-card-desc">Threat model + trust boundaries spanning on-chain and off-chain.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>

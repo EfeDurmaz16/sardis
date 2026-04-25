@@ -1,0 +1,263 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>18 · CI/CD — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="18 · CI/CD — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="cicd"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="cicd" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Summarize%20the%20Sardis%20CI%2FCD%20and%20deployment%20topology%20and%20any%20non-obvious%20release%20choices%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcicd" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Summarize%20the%20Sardis%20CI%2FCD%20and%20deployment%20topology%20and%20any%20non-obvious%20release%20choices%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcicd" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>  <section class="hero"> <span class="eyebrow">Canvas 18 · Ops</span> <h1>CI / CD</h1> <p class="hero-lead">
+Twenty-five GitHub Actions workflows guard the repo. Four classes: tests on every PR,
+          security scans on every push and weekly, deploys on merge to <code>main</code>, publishes on tag.
+          One branch is production (<code>main</code>). Everything else is preview.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">TL;DR</span> <code>main</code> is the only long-lived branch. Every PR runs the full CI matrix (Python,
+          contracts, TS SDK, dashboard, landing) plus security. Merge to <code>main</code> triggers
+          path-scoped deploys: API → Cloud Run <code>us-east1</code>, Dashboard/Landing/Checkout → Vercel.
+          Releases to PyPI and npm fire on version tags. Uptime pings every 10 minutes.
+</div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Overview</div> <h2>Branch strategy and gating.</h2> <p class="text-muted" style="max-width:720px;">
+The default branch is <code>main</code>. PRs against it run the CI and security suites but
+            do not publish. Merges to <code>main</code> trigger the deploy workflows that match changed
+            paths — only the pieces that actually changed redeploy.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">What runs on a PR</div> <div class="card-description"> <code>ci.yml</code> (Python lint+test, contracts strict + gas, TS SDK, dashboard build,
+              landing build), <code>test-api.yml</code> (sardis-api scoped tests), <code>codeql.yml</code>
+(Python + JS/TS), <code>secret-scan.yml</code> (gitleaks), <code>security-scan.yml</code>
+(pip-audit + Trivy + Bandit), <code>fuzz.yml</code> (atheris against spending_policy).
+              Path filters skip irrelevant workflows.
+</div> </div> <div class="card"> <div class="card-title">What runs on merge to main</div> <div class="card-description"> <code>deploy-api-cloudrun.yml</code>, <code>deploy-dashboard.yml</code>,
+<code>deploy-landing.yml</code>, <code>deploy.yml</code> — each gated by a
+<code>paths:</code> filter so a docs-only merge doesn't redeploy the API. Verification step
+              (<code>curl /health</code>) runs after each Cloud Run deploy.
+</div> </div> <div class="card"> <div class="card-title">What runs on a version tag</div> <div class="card-description"> <code>release-python-sdk.yml</code> (PyPI / TestPyPI — <code>py-sdk-v*</code>),
+<code>release-python-integrations.yml</code> (batch publish for langchain/crewai/adk/agent-sdk/connect),
+<code>release-npm.yml</code> (<code>mcp-v*</code>, <code>sdk-js-v*</code>, <code>ai-sdk-v*</code>,
+<code>connect-js-v*</code>), <code>publish.yml</code>, <code>sign-artifacts.yml</code>.
+              Each verifies pyproject/package.json version matches the tag, runs tests, builds, publishes,
+              then smoke-installs from the registry.
+</div> </div> <div class="card"> <div class="card-title">What runs on a schedule</div> <div class="card-description"> <code>monitoring.yml</code> every 10 min (synthetic <code>/health</code> probe +
+              Slack notify on failure); <code>uptime*.yml</code> (<code>uptime</code>,
+<code>uptime-response-time</code>, <code>uptime-graphs</code>, <code>uptime-static-site</code>,
+<code>uptime-summary</code>); <code>nightly-sandbox-e2e.yml</code> 04:20 UTC;
+<code>codeql.yml</code> weekly Monday; <code>scorecard.yml</code> weekly Monday;
+<code>fuzz.yml</code> weekly Saturday.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Pipeline</div> <h2>PR → preview → production.</h2> <p class="text-muted" style="max-width:720px;">
+Simplified view. Not every workflow is shown — see the tables below for full coverage.
+</p> </div> <div class="diagram"> <pre class="mermaid">flowchart LR
+    Dev[Developer branch] --> PR[PR against main]
+    PR --> CI[ci.yml + test-api.yml]
+    PR --> Sec[codeql · secret-scan · security-scan · fuzz]
+    PR --> PrevVercel[Vercel preview URLs]
+    CI --> Gate{All green?}
+    Sec --> Gate
+    Gate -- no --> Dev
+    Gate -- yes --> Merge[Merge to main]
+    Merge --> PathFilter{paths: changed?}
+    PathFilter -- sardis-api --> Cloudbuild[Cloud Build]
+    Cloudbuild --> CloudRun[Cloud Run · us-east1]
+    CloudRun --> HealthCheck[curl /health]
+    PathFilter -- apps/dashboard --> VercelDash[Vercel · app.sardis.sh]
+    PathFilter -- apps/landing --> VercelLand[Vercel · sardis.sh]
+    Tag[Version tag py-sdk-v* / sdk-js-v* / ...] --> ReleaseMatrix[release-python-sdk · release-npm · release-python-integrations]
+    ReleaseMatrix --> Registry[PyPI · npm]
+    Registry --> Smoke[Smoke install from registry]
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">CI</div> <h2>Test workflows.</h2> </div> <table class="data"> <thead> <tr><th>Workflow</th><th>Trigger</th><th>Jobs</th><th>What it proves</th></tr> </thead> <tbody> <tr> <td><code>ci.yml</code></td> <td>push main · PR</td> <td>python-lint-test · idempotency-replay-e2e · contracts-gas · contracts-strict · typescript-sdk · dashboard-build · build-landing</td> <td>ruff + pytest with <code>--cov-fail-under=40</code> on core/api, forge gas ceiling and full strict test suite (solc 0.8.24 pinned), TS SDK + MCP build and tests, dashboard and landing typecheck + build.</td> </tr> <tr> <td><code>test-api.yml</code></td> <td>push main · PR (scoped to <code>sardis-api/</code> and <code>sardis-core/</code>)</td> <td>API Lint &amp; Test</td> <td>Faster feedback loop for API changes: ruff + pytest on api/core with <code>SARDIS_ENVIRONMENT=dev</code>.</td> </tr> <tr> <td><code>ci-integrations.yml</code></td> <td>push main · PR</td> <td>per-framework integration builds</td> <td>Validates that every framework SDK in <code>packages/sardis-*</code> still builds and imports.</td> </tr> <tr> <td>idempotency-replay gate (in <code>ci.yml</code>)</td> <td>PR</td> <td>E2E script <code>scripts/release/idempotency_replay_e2e_check.sh</code></td> <td>Confirms the Phase-3 dedup store and replay cache still refuse to double-execute a payment.</td> </tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Security</div> <h2>Scans and attestations.</h2> <p class="text-muted" style="max-width:720px;">
+Every workflow pins actions by commit SHA, not tag. Default permissions are empty
+            (<code>permissions: &#123;&#125;</code>) and each job declares the minimum it needs.
+</p> </div> <table class="data"> <thead> <tr><th>Workflow</th><th>Trigger</th><th>What it does</th></tr> </thead> <tbody> <tr><td><code>codeql.yml</code></td><td>push · PR · weekly Mon 05:30 UTC</td><td>CodeQL on Python and JavaScript/TypeScript. Uploads SARIF to GitHub Security.</td></tr> <tr><td><code>secret-scan.yml</code></td><td>push · PR</td><td>gitleaks full-history scan (<code>fetch-depth: 0</code>). Fails the run on any detection.</td></tr> <tr><td><code>security-scan.yml</code></td><td>push · PR · weekly Mon 06:00 UTC</td><td>Three jobs: <code>pip-audit</code> (Python deps), Trivy container scan of the built API image (fails on CRITICAL/HIGH, <code>ignore-unfixed</code>), Bandit SAST on <code>sardis/</code> + <code>packages/sardis-api/src</code> + <code>packages/sardis-core/src</code>.</td></tr> <tr><td><code>scorecard.yml</code></td><td>push · weekly Mon 06:00 UTC</td><td>OpenSSF Scorecard → SARIF → uploaded to GitHub Security. Tracks branch protection, token permissions, pinned deps, SAST, signed releases.</td></tr> <tr><td><code>sign-artifacts.yml</code></td><td>release tag</td><td>Produces signed build provenance for published artifacts. Complements npm <code>--provenance</code> in <code>release-npm.yml</code>.</td></tr> <tr><td><code>fuzz.yml</code></td><td>push · PR · weekly Sat 08:00 UTC</td><td>atheris fuzzer against <code>tests/fuzz/fuzz_spending_policy.py</code>, capped at <code>FUZZING_DURATION=60</code>s for PRs.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Deploy</div> <h2>Production deploys.</h2> </div> <table class="data"> <thead> <tr><th>Workflow</th><th>Target</th><th>Path filter</th><th>Notes</th></tr> </thead> <tbody> <tr> <td><code>deploy-api-cloudrun.yml</code></td> <td>Cloud Run · <code>us-east1</code> · service <code>sardis-api</code></td> <td><code>packages/sardis-api/**</code>, <code>sardis-core/**</code>, <code>sardis-chain/**</code></td> <td>GCP OIDC via Workload Identity Federation (no long-lived keys). Build through <code>cloudbuild.yaml</code>, deploy, then <code>curl /health</code> — non-200 fails the run. If <code>GCP_WORKLOAD_IDENTITY_PROVIDER</code> is missing, the job fails loudly with remediation instructions (previously silently skipped).</td> </tr> <tr> <td><code>deploy-dashboard.yml</code></td> <td>Vercel · <code>app.sardis.sh</code></td> <td><code>apps/dashboard/**</code>, <code>packages/ui-web/**</code>, <code>pnpm-lock.yaml</code></td> <td>Build job (typecheck + lint + build) on every PR for preview. Deploy job is <code>if: github.ref == 'refs/heads/main' &amp;&amp; github.event_name == 'push'</code> — prod only.</td> </tr> <tr> <td><code>deploy-landing.yml</code></td> <td>Vercel · <code>sardis.sh</code></td> <td><code>apps/landing/**</code>, <code>packages/ui-web/**</code></td> <td>Same two-job shape as dashboard.</td> </tr> <tr> <td><code>deploy.yml</code></td> <td>(legacy orchestrator / retained)</td> <td>—</td> <td>Broad-spectrum deploy workflow kept for manual <code>workflow_dispatch</code> redeploys.</td> </tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Environments</div> <h2>Where each surface lives.</h2> </div> <table class="data"> <thead> <tr><th>Surface</th><th>Provider</th><th>Project / service</th><th>Host</th></tr> </thead> <tbody> <tr><td>API (sardis-api)</td><td>Cloud Run</td><td>service <code>sardis-api</code> · region <code>us-east1</code></td><td>api.sardis.sh (via LB) · direct Cloud Run URL for health checks</td></tr> <tr><td>Dashboard</td><td>Vercel</td><td><code>VERCEL_PROJECT_ID_DASHBOARD</code></td><td><code>app.sardis.sh</code> + <code>dashboard.sardis.sh</code></td></tr> <tr><td>Landing</td><td>Vercel</td><td><code>VERCEL_PROJECT_ID_LANDING</code></td><td><code>sardis.sh</code></td></tr> <tr><td>Checkout UI</td><td>Vercel</td><td>sardis-checkout-ui</td><td><code>checkout.sardis.sh</code></td></tr> <tr><td>Docs</td><td>Vercel / Pages</td><td>deployed via <code>docs.yml</code></td><td><code>sardis.sh/docs</code></td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Release</div> <h2>Publish to registries.</h2> </div> <table class="data"> <thead> <tr><th>Workflow</th><th>Tag pattern</th><th>Registry</th><th>Guardrails</th></tr> </thead> <tbody> <tr> <td><code>release-python-sdk.yml</code></td> <td><code>py-sdk-v*</code></td> <td>PyPI (or TestPyPI for <code>a</code>/<code>b</code>/<code>rc</code>)</td> <td>Verifies <code>pyproject.toml</code> + <code>__init__.py</code> versions match the tag. Runs <code>pytest</code>, <code>python -m build</code>, <code>twine check</code>, upload, then smoke-installs from the registry with 6-retry backoff.</td> </tr> <tr> <td><code>release-python-integrations.yml</code></td> <td><code>py-langchain-v*</code>, <code>py-crewai-v*</code>, <code>py-adk-v*</code>, <code>py-agent-sdk-v*</code>, <code>py-connect-v*</code></td> <td>PyPI / TestPyPI</td> <td>Same shape as sardis-sdk release: version consistency check, build, twine, upload, smoke install + import check.</td> </tr> <tr> <td><code>release-npm.yml</code></td> <td><code>mcp-v*</code>, <code>sdk-js-v*</code>, <code>ai-sdk-v*</code>, <code>connect-js-v*</code></td> <td>npm (<code>--access public --provenance</code>)</td> <td>Verifies <code>package.json</code> version, runs pnpm tests + typecheck + build, <code>npm pack --dry-run</code>, asserts built artifacts exist (<code>dist/index.js</code> / <code>dist/cli.js</code>), publishes with <code>next</code> or <code>latest</code> dist-tag, smoke installs via <code>npx</code> or dynamic <code>import()</code>.</td> </tr> <tr><td><code>publish.yml</code></td><td>manual + tags</td><td>npm / PyPI</td><td>Umbrella publish orchestrator.</td></tr> <tr><td><code>release-dry-run.yml</code></td><td>PR · workflow_dispatch</td><td>none</td><td>Dry-run of the whole release pipeline — builds, twine check, <code>npm pack --dry-run</code> — without publishing.</td></tr> <tr><td><code>sign-artifacts.yml</code></td><td>release tag</td><td>—</td><td>Signs built artifacts; npm provenance is already set on <code>release-npm.yml</code>.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Monitoring</div> <h2>Synthetic checks from CI.</h2> <p class="text-muted" style="max-width:720px;">
+GitHub Actions is cheap enough that we use it as a second uptime system alongside the
+            application's own health endpoints. Failures Slack us.
+</p> </div> <table class="data"> <thead> <tr><th>Workflow</th><th>Schedule</th><th>What it checks</th></tr> </thead> <tbody> <tr><td><code>monitoring.yml</code></td><td>every 10 min</td><td><code>GET /api/v2/health</code> — asserts 200 + payload <code>status in &#123;ok, healthy, partial&#125;</code>, warns if response time &gt; 2.0s, Slack-webhook notify on failure.</td></tr> <tr><td><code>uptime.yml</code></td><td>scheduled</td><td>Base uptime probe aggregated into the public status page.</td></tr> <tr><td><code>uptime-response-time.yml</code></td><td>scheduled</td><td>Records response-time histograms.</td></tr> <tr><td><code>uptime-graphs.yml</code></td><td>scheduled</td><td>Generates historical graphs rendered on the status site.</td></tr> <tr><td><code>uptime-static-site.yml</code></td><td>scheduled</td><td>Builds and publishes the static status site.</td></tr> <tr><td><code>uptime-summary.yml</code></td><td>scheduled</td><td>Rolls checks into the summary feed.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Nightly + Docs</div> <h2>Long-running and documentation pipelines.</h2> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title"><code>nightly-sandbox-e2e.yml</code></div> <div class="card-description">
+Runs 04:20 UTC. <code>bash scripts/ci/run_nightly_sandbox_smoke.sh</code> against
+<code>SARDIS_SANDBOX_BASE_URL</code>. Gated live E2E behind
+<code>RUN_LIVE_SANDBOX_TESTS=1</code> (set via <code>workflow_dispatch</code> input) —
+              when enabled, exercises Stripe, Lithic, and Coinbase CDP with real sandbox credentials.
+              45-minute timeout.
+</div> </div> <div class="card"> <div class="card-title"><code>docs.yml</code></div> <div class="card-description">
+Builds and deploys the documentation site on changes to <code>docs/</code>. Mirrors the
+              Vercel shape of dashboard/landing: build on PR for preview, deploy on merge to <code>main</code>.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Gotchas</div> <h2>Deploy lessons paid for in incidents.</h2> <p class="text-muted" style="max-width:720px;">
+Things that silently failed at least once and now have permanent fixes in the deploy
+            scripts. Worth knowing before you touch Cloud Run config.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Gunicorn 25.x — use call syntax, not <code>--factory</code></div> <div class="card-description">
+Launch the API as <code>"sardis_api.main:create_app()"</code>. The <code>--factory</code>
+flag was removed in gunicorn 25.x; using it produces a cryptic boot failure that looks
+              like a module-not-found error. Both Docker <code>CMD</code> and
+<code>scripts/deploy-cloudrun.sh</code> encode the call form.
+</div> </div> <div class="card"> <div class="card-title">Install gunicorn + uvicorn inside <code>.venv</code></div> <div class="card-description">
+The container's system Python shouldn't host gunicorn — uv installs into <code>.venv</code>,
+              so gunicorn must live there too. Otherwise Cloud Run boots with the wrong interpreter and
+              the app never binds its port, tripping the startup probe.
+</div> </div> <div class="card"> <div class="card-title">Always <code>gcloud ... --update-env-vars</code>, never <code>--set-env-vars</code></div> <div class="card-description"> <code>--set-env-vars</code> silently wipes every other env var on the service. Use
+<code>--update-env-vars</code> to merge. This is encoded in
+<code>scripts/deploy-cloudrun.sh</code> but matters every time someone pokes Cloud Run by hand.
+</div> </div> <div class="card"> <div class="card-title">Workload Identity Federation, not SA keys</div> <div class="card-description"> <code>deploy-api-cloudrun.yml</code> authenticates through
+<code>google-github-actions/auth</code> with
+<code>GCP_WORKLOAD_IDENTITY_PROVIDER</code> + <code>GCP_SERVICE_ACCOUNT</code>. No
+              JSON key lives in GitHub secrets. If the WIF provider secret is missing, the job
+              fails loudly (older behaviour silently skipped — backend changes never shipped for weeks).
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Related canvases.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/architecture"> <div class="canvas-card-num">01 · System</div> <div class="canvas-card-title">Architecture Overview</div> <div class="canvas-card-desc">The seven-layer stack these pipelines deploy.</div> </a> <a class="canvas-card" href="/security"> <div class="canvas-card-num">19 · Ops</div> <div class="canvas-card-title">Security Model</div> <div class="canvas-card-desc">Trust boundaries, fail-closed defaults, secret handling — all of which CI enforces.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>

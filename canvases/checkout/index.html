@@ -1,0 +1,355 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>11 · Checkout &amp; Merchants — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="11 · Checkout &#38; Merchants — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"> <style is:global>
+    .split-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .split-2 { grid-template-columns: 1fr; } }
+    .product-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 22px 22px 18px;
+      background: var(--card);
+    }
+    .product-card h3 { font-size: 16px; margin: 0 0 4px; }
+    .product-card .product-sub {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+    }
+    .product-card ul { margin: 10px 0 0 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); }
+    .product-card ul li { margin-bottom: 4px; }
+    .step-row {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      background: var(--muted);
+      margin-bottom: 8px;
+    }
+    .step-row .step-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-faint);
+      padding-top: 2px;
+    }
+    .step-row .step-body { font-size: 13px; color: var(--text-secondary); }
+    .step-row .step-body strong { color: var(--text); }
+    .code-inline { font-family: var(--font-mono); font-size: 11.5px; background: var(--muted); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--border-subtle); }
+  </style> <meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="checkout"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="checkout" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Summarize%20Pay%20with%20Sardis%20(checkout)%20and%20its%20non-obvious%20architectural%20choices%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcheckout" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Summarize%20Pay%20with%20Sardis%20(checkout)%20and%20its%20non-obvious%20architectural%20choices%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fcheckout" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>   <section class="hero"> <span class="eyebrow">Canvas 11 · Product</span> <h1>Checkout & Merchants</h1> <p class="hero-lead">
+Two products live here. <strong>Pay with Sardis</strong> is a crypto-native checkout where the
+          customer brings the wallet. <strong>Sardis Connect</strong> is the zero-crypto merchant SDK — the
+          merchant thinks in USD while Sardis handles stablecoins under the hood. Both ride the same
+          session, webhook, and settlement machinery.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">TL;DR</span>
+A merchant creates a <span class="code-inline">merchant_checkout_session</span>. A customer
+          receives a <span class="code-inline">client_secret</span>, opens <span class="code-inline">checkout.sardis.sh</span>
+in an iframe, connects a wallet (or fiat onramps into one), signs a USDC transfer, and Sardis
+          streams the outcome back. All public endpoints are <span class="code-inline">client_secret</span>-scoped
+          so sessions cannot be enumerated and double-pay races cannot land.
+</div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Products</div> <h2>One session engine, two front doors.</h2> <p class="text-muted" style="max-width:720px;">
+Both products create rows in the same <code>merchant_checkout_sessions</code> table and emit
+            the same webhook envelope. The difference is who holds the wallet and where the crypto knobs live.
+</p> </div> <div class="split-2"> <div class="product-card"> <div class="product-sub">Pay with Sardis</div> <h3>Crypto-native checkout — customer brings the wallet.</h3> <p class="text-muted" style="font-size:13px;">
+Drop-in checkout, similar in shape to Stripe Checkout but paying in USDC. Customer connects
+              MetaMask / Coinbase Wallet / any WalletConnect provider, or fiat-onramps into a fresh wallet
+              via Coinbase CDP. Settlement lands on the merchant's configured address (or connected merchant bank
+              account for USD payout).
+</p> <ul> <li><code>checkout.sardis.sh</code> iframe · embed via <code>sardis-checkout.js</code></li> <li>wagmi + viem + WalletConnect v2 + Coinbase Wallet SDK</li> <li>CDP Onramp integrated for fiat-first customers</li> <li>EIP-191 signature binds payer wallet to session</li> <li>SSE stream for real-time status in the merchant UI</li> </ul> </div> <div class="product-card"> <div class="product-sub">Sardis Connect</div> <h3>Zero-crypto merchant SDK — three lines of code.</h3> <p class="text-muted" style="font-size:13px;">
+For API providers who want to charge AI agents without ever touching a chain.
+<code>@sardis/connect</code> wraps an Express/Next.js route, serves a
+<code>/.well-known/sardis.json</code> manifest, and reports usage to Sardis. The merchant
+              sees a USD balance; Sardis handles wallet creation, settlement, and payout.
+</p> <ul> <li><code>packages/sardis-connect</code> (Python) · <code>packages/sardis-connect-js</code> (TS)</li> <li><code>PricedEndpoint</code> / <code>UsageRecord</code> / <code>ServiceManifest</code> models</li> <li>Protocol-agnostic: <code>accepts: ["sardis", "x402", "mpp"]</code></li> <li>Per-call, per-unit, and subscription pricing tiers</li> <li>Payout via connected merchant bank · no wallet UX on the merchant side</li> </ul> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Pay with Sardis · End-to-end</div> <h2>Seven steps from merchant intent to settled USDC.</h2> <p class="text-muted" style="max-width:720px;">
+Every step corresponds to a real endpoint in
+<code>packages/sardis-api/src/sardis_api/routers/merchant_checkout.py</code>. Public endpoints
+            live under the <code>/sessions/client/&#123;client_secret&#125;/...</code> namespace; merchant endpoints
+            require a principal.
+</p> </div> <div> <div class="step-row"> <div class="step-num">01</div> <div class="step-body"> <strong>Merchant creates session.</strong> <code>POST /v1/merchant/checkout/sessions</code> (authenticated with merchant principal) →
+              inserts a row into <code>merchant_checkout_sessions</code> with amount, currency, chain,
+              settlement target, optional <code>idempotency_key</code> and <code>embed_origin</code>.
+              Server generates a <code>client_secret</code> (24 random bytes, base64).
+</div> </div> <div class="step-row"> <div class="step-num">02</div> <div class="step-body"> <strong>Redirect or embed.</strong>
+Merchant either redirects the customer to <code>checkout.sardis.sh/s/&#123;client_secret&#125;</code>
+or calls <code>SardisCheckout.open(&#123; clientSecret &#125;)</code> from the JS embed SDK. The SDK
+              appends <code>?embed_origin=...</code> so the iframe can restrict <code>postMessage</code>.
+</div> </div> <div class="step-row"> <div class="step-num">03</div> <div class="step-body"> <strong>Checkout UI loads session.</strong>
+The Vite/React app at <code>packages/sardis-checkout-ui</code> fetches
+<code>GET /sessions/client/&#123;client_secret&#125;/details</code> — returns the amount, merchant name,
+              and the <code>settlement_address</code> needed for client-side USDC transfers.
+</div> </div> <div class="step-row"> <div class="step-num">04</div> <div class="step-body"> <strong>Wallet connect.</strong>
+Customer connects via wagmi. Two paths converge here:
+              external wallet (<code>POST /connect-external</code>, EIP-191 signature verified server-side)
+              or CDP Onramp (<code>GET /onramp-token</code>, fiat → USDC in a fresh wallet). Either way,
+<code>payer_wallet_address</code> is persisted on the session.
+</div> </div> <div class="step-row"> <div class="step-num">05</div> <div class="step-body"> <strong>Payment.</strong>
+Customer signs a USDC <code>transfer</code> to <code>settlement_address</code>. Frontend
+              submits via viem; server records the tx hash via
+<code>POST /confirm-external-payment</code>. Session flips <code>pending → confirmed</code>.
+</div> </div> <div class="step-row"> <div class="step-num">06</div> <div class="step-body"> <strong>Streaming update.</strong>
+Merchant dashboard (and the iframe itself) subscribes to
+<code>GET /sessions/client/&#123;client_secret&#125;/stream</code> (SSE). Polling fallback at
+<code>.../details</code> exists for clients that can't hold an SSE connection.
+</div> </div> <div class="step-row"> <div class="step-num">07</div> <div class="step-body"> <strong>Settlement + webhook.</strong>
+Background job reconciles the on-chain receipt, computes
+<code>platform_fee_amount</code> and <code>net_amount</code>, flips status to
+<code>settled</code>, and enqueues a <code>checkout.session.settled</code> webhook. Delivery
+              is tracked in <code>merchant_webhook_deliveries</code> keyed by <code>event_id</code> for
+              dedup.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">State machine</div> <h2>Merchant checkout session lifecycle.</h2> <p class="text-muted" style="max-width:720px;">
+The session row moves through a narrow set of states. Every transition is audited; every
+            terminal state triggers a webhook.
+</p> </div> <div class="diagram"> <pre class="mermaid">stateDiagram-v2
+    [*] --> created : POST /merchant/checkout/sessions
+    created --> pending : client loads /s/{client_secret}
+    pending --> expired : TTL elapsed
+    pending --> connected : connect-external (EIP-191 verified)
+    pending --> connected : onramp-token (CDP, payer wallet bound)
+    connected --> confirmed : confirm-external-payment (tx hash)
+    confirmed --> settled : reconciliation job · receipt verified
+    settled --> paid_out : connected merchant bank transfer (if USD payout)
+    pending --> failed : signature / balance / policy rejection
+    confirmed --> failed : tx reverted on-chain
+    settled --> [*]
+    paid_out --> [*]
+    expired --> [*]
+    failed --> [*]
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Hardening</div> <h2>Why public checkout is boring in a good way.</h2> <p class="text-muted" style="max-width:720px;"> <code>packages/sardis-api/migrations/031_checkout_hardening.sql</code> is the migration that
+            turned Pay with Sardis from "it works on the happy path" into something safe to point at the
+            open internet. Polar-inspired; every column earns its keep.
+</p> </div> <table class="data"> <thead> <tr><th>Control</th><th>Column / Table</th><th>What it prevents</th></tr> </thead> <tbody> <tr> <td>Client secret</td> <td><code>merchant_checkout_sessions.client_secret</code> (UNIQUE)</td> <td>Session ID enumeration. Public endpoints use <code>/sessions/client/&#123;client_secret&#125;/...</code>, never the internal UUID.</td> </tr> <tr> <td>Idempotency key</td> <td><code>merchant_checkout_sessions.idempotency_key</code> (UNIQUE, partial)</td> <td>Duplicate session creation on merchant-side retry. DB-level uniqueness, not app-level.</td> </tr> <tr> <td>Row lock on pay</td> <td><code>SELECT ... FOR UPDATE NOWAIT</code> in the pay path</td> <td>Double-pay races when a customer clicks twice or two tabs submit simultaneously.</td> </tr> <tr> <td>Embed origin</td> <td><code>merchant_checkout_sessions.embed_origin</code></td> <td>Clickjacking / hostile iframe. The checkout UI restricts <code>postMessage</code> to the declared origin.</td> </tr> <tr> <td>Webhook dedup</td> <td><code>merchant_webhook_deliveries.event_id</code> (UNIQUE)</td> <td>Double-processing on retries. Merchants can safely use at-least-once delivery.</td> </tr> <tr> <td>Fee transparency</td> <td><code>platform_fee_amount</code> · <code>net_amount</code></td> <td>"Why did I get less than I charged?" support tickets. Full breakdown on every session.</td> </tr> <tr> <td>Reusable links</td> <td><code>merchant_checkout_links</code> table</td> <td>One-off sessions for static storefronts; merchant generates a slug, Sardis creates a fresh session per visitor.</td> </tr> <tr> <td>Payer binding</td> <td><code>payer_wallet_address</code> (migration 033)</td> <td>Wrong-wallet payment. The onramp token endpoint validates the wallet matches the session binding.</td> </tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Embed SDK</div> <h2><code>checkout.sardis.sh/sardis-checkout.js</code></h2> <p class="text-muted" style="max-width:720px;">
+One script tag, one call. Source:
+<code>packages/sardis-checkout-ui/src/embed/sardis-checkout.ts</code>. No framework required;
+            renders an overlay + iframe and listens for <code>postMessage</code> success/cancel events.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Shape of the call</div> <div class="card-description"> <pre class="code-block"><code>&lt;script src="https://checkout.sardis.sh/sardis-checkout.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  SardisCheckout.open(&#123;
+    clientSecret: "abc123...",
+    onSuccess: (&#123; session_id, tx_hash &#125;) =&gt; &#123;...&#125;,
+    onCancel: () =&gt; &#123;...&#125;,
+  &#125;);
+&lt;/script&gt;</code></pre> <code>sessionId</code> is still accepted but deprecated — use <code>clientSecret</code>.
+              The SDK routes to <code>/s/&#123;clientSecret&#125;</code> when present, <code>/&#123;sessionId&#125;</code> for legacy.
+</div> </div> <div class="card"> <div class="card-title">What the SDK does for you</div> <div class="card-description"> <ul style="margin:0; padding-left:18px;"> <li>Injects a full-screen overlay with z-index isolation.</li> <li>Appends <code>?embed_origin=&lt;window.location.origin&gt;</code> so postMessage is origin-restricted.</li> <li>Handles overlay close on success / cancel / escape.</li> <li>Exposes <code>&lt;sardis-pay client-secret="..."&gt;</code> as a web component alternative.</li> <li>Zero runtime dependencies; ~4 KB gzipped.</li> </ul> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Two ways to fund a payment</div> <h2>External wallet · CDP Onramp.</h2> <p class="text-muted" style="max-width:720px;">
+Customers either already own crypto (external wallet path) or don't (CDP Onramp path).
+            Both converge at the same session state: a verified <code>payer_wallet_address</code> with
+            enough USDC to settle.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">External wallet — EIP-191 binding</div> <div class="card-description">
+Frontend: wagmi + viem + WalletConnect v2 + Coinbase Wallet SDK.
+              Flow: <code>GET /connect-params</code> returns the challenge to sign, customer signs with
+              wallet, frontend posts signature to <code>POST /connect-external</code>. Server verifies
+              the EIP-191 signature recovers the claimed address and persists it as
+<code>payer_wallet_address</code>. On pay, customer signs the actual USDC transfer;
+              frontend reports the hash via <code>POST /confirm-external-payment</code>.
+</div> </div> <div class="card"> <div class="card-title">CDP Onramp — fiat to USDC</div> <div class="card-description">
+For customers without crypto. Sardis mints an MPC wallet for the session, calls
+<code>POST api.developer.coinbase.com/onramp/v1/token</code> with a CDP JWT, and returns a
+              hosted <code>pay.coinbase.com/buy/select-asset</code> URL bound to that wallet.
+              The <code>/onramp-token</code> endpoint validates the wallet address matches the
+              session — an attacker cannot redirect funds to a different wallet by tampering with the
+              query string.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Sardis Connect</div> <h2>Three lines of middleware, zero crypto on the merchant side.</h2> <p class="text-muted" style="max-width:720px;">
+Sardis Connect is the opposite philosophy to Pay with Sardis. The merchant never sees a wallet,
+            never sees chain config, never handles stablecoin balances. They wrap their API with
+<code>sardisConnect(&#123; apiKey &#125;)</code>, declare pricing, and get USD in their connected merchant bank
+            account. Sardis absorbs the crypto layer entirely.
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Merchant code — TypeScript</div> <div class="card-description"> <pre class="code-block"><code>import &#123; sardisConnect &#125; from '@sardis/connect';
+const sardis = sardisConnect(&#123; apiKey: 'mch_live_xxx' &#125;);
+app.use(sardis.middleware());</code></pre>
+The middleware reads a priced endpoint manifest, rejects unpaid calls with
+<code>402 Payment Required</code> (x402-compatible), and forwards paid calls to the merchant
+              handler. Protocol-agnostic: one middleware accepts Sardis native, x402, and MPP.
+</div> </div> <div class="card"> <div class="card-title">Service manifest</div> <div class="card-description">
+Served at <code>/.well-known/sardis.json</code> — agents discover pricing via
+<code>ServiceManifest</code>:
+<ul style="margin:6px 0 0; padding-left:18px;"> <li><code>PricedEndpoint(path, method, price, pricing_model)</code></li> <li><code>pricing_model</code>: <code>per_call</code> · <code>per_unit</code> · <code>subscription</code></li> <li><code>UsageRecord</code> for metered billing (report units after the call)</li> <li>Tiered pricing via <code>PricingTier</code></li> </ul> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Risk + merchant-side controls</div> <h2>Trust scoring and the merchant kill switch.</h2> <p class="text-muted" style="max-width:720px;">
+Two pieces of machinery sit next to the session engine: per-merchant trust profiles (Sardis
+            decides how much to trust the merchant) and checkout controls (the merchant decides what
+            shape of payments to accept).
+</p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Merchant trust — migration 045</div> <div class="card-description"> <code>merchant_trust_profiles</code> stores <code>trust_level</code>, a rolling
+<code>trust_score</code> (default 0.3), <code>transaction_count</code>,
+<code>total_volume</code>, and <code>dispute_count</code>. <code>MerchantTrustService</code>
+adjusts approval thresholds: first-seen merchants face stricter KYC + lower velocity caps,
+              merchants with a dispute history get flagged for manual review. Verified merchants
+              (<code>verified_at</code>, <code>verified_by</code>) get the tightest loop.
+</div> </div> <div class="card"> <div class="card-title">Checkout controls router</div> <div class="card-description"> <code>packages/sardis-api/src/sardis_api/routers/checkout_controls.py</code> exposes
+              merchant-side knobs: amount caps, country allowlists, velocity limits, required
+              customer-KYC tier. <code>GET /config</code> / <code>PUT /config</code> for configuration,
+<code>POST /incidents</code> / <code>GET /incidents</code> for the merchant's audit trail of
+              auto-blocked or flagged sessions.
+</div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Endpoint surface</div> <h2>What's actually wired up.</h2> </div> <table class="data"> <thead> <tr><th>Endpoint</th><th>Auth</th><th>Purpose</th></tr> </thead> <tbody> <tr><td><code>POST /v1/merchant/checkout/sessions</code></td><td>Merchant principal</td><td>Create session (idempotent via <code>idempotency_key</code>).</td></tr> <tr><td><code>GET /v1/merchant/checkout/sessions/&#123;id&#125;</code></td><td>Merchant principal</td><td>Inspect session from merchant side.</td></tr> <tr><td><code>GET /sessions/client/&#123;client_secret&#125;/details</code></td><td>Public</td><td>Session detail for the checkout iframe.</td></tr> <tr><td><code>GET /sessions/client/&#123;client_secret&#125;/connect-params</code></td><td>Public</td><td>Challenge for EIP-191 signature.</td></tr> <tr><td><code>POST /sessions/client/&#123;client_secret&#125;/connect-external</code></td><td>Public</td><td>Bind external wallet via EIP-191 signature.</td></tr> <tr><td><code>POST /sessions/client/&#123;client_secret&#125;/pay</code></td><td>Public</td><td>Server-signed pay path (Sardis-managed wallet).</td></tr> <tr><td><code>POST /sessions/client/&#123;client_secret&#125;/confirm-external-payment</code></td><td>Public</td><td>Client-signed USDC transfer; record tx hash.</td></tr> <tr><td><code>GET /sessions/client/&#123;client_secret&#125;/balance</code></td><td>Public</td><td>Live balance read for the funded wallet.</td></tr> <tr><td><code>GET /sessions/client/&#123;client_secret&#125;/stream</code></td><td>Public</td><td>SSE stream for status transitions.</td></tr> <tr><td><code>POST /sessions/client/&#123;client_secret&#125;/onramp-token</code></td><td>Public</td><td>CDP Onramp URL bound to payer wallet.</td></tr> <tr><td><code>POST /merchants/&#123;id&#125;/links</code> · <code>GET /merchants/&#123;id&#125;/links</code></td><td>Merchant principal</td><td>Reusable checkout links (<code>merchant_checkout_links</code>).</td></tr> <tr><td><code>POST /stripe-connect/...</code> (3 routes)</td><td>Merchant principal</td><td>Onboarding + payout target for USD settlement.</td></tr> <tr><td><code>GET/PUT /checkout-controls/config</code></td><td>Merchant principal</td><td>Velocity / country / amount / KYC controls.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Source of truth</div> <h2>Files to grep when something looks off.</h2> </div> <table class="data"> <thead> <tr><th>File</th><th>Why it matters</th></tr> </thead> <tbody> <tr><td><code>packages/sardis-api/src/sardis_api/routers/merchant_checkout.py</code></td><td>All <code>/sessions/...</code> endpoints: create, connect, pay, confirm, stream, onramp.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/checkout.py</code></td><td>Legacy /checkout surface used by older integrations; kept for backwards compat.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/merchants.py</code></td><td>Merchant CRUD + checkout links + settlements lookup.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/checkout_controls.py</code></td><td>Merchant-side controls + incident log.</td></tr> <tr><td><code>packages/sardis-api/src/sardis_api/routers/stripe_connect.py</code></td><td>connected merchant bank onboarding for USD payout.</td></tr> <tr><td><code>packages/sardis-api/migrations/031_checkout_hardening.sql</code></td><td>client_secret · idempotency · embed_origin · checkout_links · webhook_deliveries.</td></tr> <tr><td><code>packages/sardis-api/migrations/033_wallet_verification.sql</code></td><td><code>payer_wallet_address</code> column + <code>external_wallet</code> payment method.</td></tr> <tr><td><code>packages/sardis-api/migrations/045_merchant_trust.sql</code></td><td><code>merchant_trust_profiles</code> scoring table.</td></tr> <tr><td><code>packages/sardis-checkout/src/sardis_checkout/</code></td><td>Orchestrator · sessions · webhooks · settlement · fraud · idempotency · partial payments.</td></tr> <tr><td><code>packages/sardis-checkout-ui/src/</code></td><td>React/Vite checkout UI · <code>CheckoutPage.tsx</code> · <code>embed/sardis-checkout.ts</code>.</td></tr> <tr><td><code>packages/sardis-connect/src/sardis_connect/</code></td><td>Python merchant SDK · models · middleware.</td></tr> <tr><td><code>packages/sardis-connect-js/src/</code></td><td>TypeScript merchant SDK · <code>middleware.ts</code> · <code>types.ts</code>.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Follow-ups.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/compliance"> <div class="canvas-card-num">12 · Product</div> <div class="canvas-card-title">Compliance Stack</div> <div class="canvas-card-desc">KYC (Didit) + AML (Elliptic) — what runs before a checkout session is allowed to settle.</div> </a> <a class="canvas-card" href="/protocols"> <div class="canvas-card-num">13 · Product</div> <div class="canvas-card-title">Protocol Gateway</div> <div class="canvas-card-desc">x402 / MPP / AP2 — the alternate "front doors" Sardis Connect accepts.</div> </a> <a class="canvas-card" href="/settlement"> <div class="canvas-card-num">10 · Flows</div> <div class="canvas-card-title">Settlement & Chains</div> <div class="canvas-card-desc">How USDC lands, how CCTP crosses chains, how payout hits connected merchant bank.</div> </a> <a class="canvas-card" href="/payment-flow"> <div class="canvas-card-num">07 · Flows</div> <div class="canvas-card-title">Payment Flow</div> <div class="canvas-card-desc">The non-checkout agent payment path — same orchestrator, different front door.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>
