@@ -46,14 +46,6 @@ const ORDER = [
 function stripHtml(s) {
   // remove astro frontmatter
   s = s.replace(/^---[\s\S]*?---\s*/, "");
-  // remove <script> and <style> blocks (repeat until stable to avoid
-  // incomplete multi-character sanitization from overlapping constructions)
-  let prev;
-  do {
-    prev = s;
-    s = s.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-    s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
-  } while (s !== prev);
   // mermaid pre blocks — keep textual diagram description-ish content
   s = s.replace(/<pre[^>]*class="mermaid"[^>]*>([\s\S]*?)<\/pre>/gi, "\n[diagram]\n$1\n[/diagram]\n");
   // <br> to newline
@@ -62,8 +54,8 @@ function stripHtml(s) {
   s = s.replace(/<\/(h1|h2|h3|h4|h5|h6|p|section|div|li|tr|td|th|dt|dd|pre|blockquote|article|header|footer|main|aside|figure|figcaption)>/gi, "\n");
   s = s.replace(/<(h1|h2|h3|h4|h5|h6)[^>]*>/gi, "\n\n## ");
   s = s.replace(/<li[^>]*>/gi, "\n- ");
-  // strip remaining tags
-  s = s.replace(/<[^>]+>/g, "");
+  // strip remaining tag delimiters using single-character sanitization
+  s = s.replace(/<|>/g, "");
   // decode common entities (decode &amp; last to avoid double-unescaping)
   s = s
     .replace(/&#123;/g, "{")
@@ -80,11 +72,12 @@ function stripHtml(s) {
     .replace(/&ndash;/g, "–")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&");
-  // strip tags again after decoding entities to avoid reintroducing HTML-like markup
+  // strip tag delimiters again after decoding entities to avoid reintroducing HTML-like markup
   // repeat until stable to avoid incomplete multi-character sanitization
+  let prev;
   do {
     prev = s;
-    s = s.replace(/<[^>]+>/g, "");
+    s = s.replace(/<|>/g, "");
   } while (s !== prev);
   // collapse whitespace
   s = s.replace(/[ \t]+/g, " ");
