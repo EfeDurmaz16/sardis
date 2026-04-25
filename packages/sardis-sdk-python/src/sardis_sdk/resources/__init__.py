@@ -10,6 +10,7 @@ from .cards import AsyncCardsResource, CardsResource
 from .escrow import AsyncEscrowResource, EscrowResource
 from .evidence import AsyncEvidenceResource, EvidenceResource
 from .exceptions import AsyncExceptionsResource, ExceptionsResource
+from .facility_gate import AsyncFacilityGateResource, FacilityGateResource
 from .funding import AsyncFundingResource, FundingResource
 from .fx import AsyncFXResource, FXResource
 from .groups import AsyncGroupsResource, GroupsResource
@@ -34,19 +35,17 @@ from .wallets import AsyncWalletsResource, WalletsResource
 from .webhooks import AsyncWebhooksResource, WebhooksResource
 
 __all__ = [
-    # Agents
     "AgentsResource",
-    # Approvals
     "ApprovalsResource",
     "AsyncAgentsResource",
     "AsyncApprovalsResource",
-    # Base classes
     "AsyncBaseResource",
     "AsyncCardsResource",
     "AsyncEscrowResource",
     "AsyncEvidenceResource",
     "AsyncExceptionsResource",
     "AsyncFXResource",
+    "AsyncFacilityGateResource",
     "AsyncFundingResource",
     "AsyncGroupsResource",
     "AsyncHoldsResource",
@@ -63,50 +62,31 @@ __all__ = [
     "AsyncWalletsResource",
     "AsyncWebhooksResource",
     "BaseResource",
-    # Cards
     "CardsResource",
     "ChainInfo",
-    # Escrow
     "EscrowResource",
-    # Evidence
     "EvidenceResource",
-    # Exceptions
     "ExceptionsResource",
-    # FX
     "FXResource",
-    # Funding
+    "FacilityGateResource",
     "FundingResource",
     "GasEstimate",
-    # Groups
     "GroupsResource",
-    # Holds
     "HoldsResource",
-    # Kill Switch
     "KillSwitchResource",
     "LedgerEntry",
-    # Ledger
     "LedgerResource",
-    # Marketplace
     "MarketplaceResource",
-    # Payment Objects
     "PaymentObjectsResource",
-    # Payments
     "PaymentsResource",
-    # Policies
     "PoliciesResource",
     "Resource",
-    # Simulation
     "SimulationResource",
-    # Subscriptions v2
     "SubscriptionsV2Resource",
     "SyncBaseResource",
     "TransactionStatus",
-    # Transactions
     "TransactionsResource",
-    # Treasury
     "TreasuryResource",
-    # Wallets
     "WalletsResource",
-    # Webhooks
     "WebhooksResource",
 ]
