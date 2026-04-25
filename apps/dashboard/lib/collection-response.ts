@@ -15,6 +15,7 @@ const COMMON_LIST_KEYS = [
   "mandates",
   "merchants",
   "policies",
+  "requests",
   "rules",
   "sessions",
   "tickets",

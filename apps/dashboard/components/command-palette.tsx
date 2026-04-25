@@ -38,6 +38,7 @@ const pages: PageItem[] = [
   { label: "Wallets", href: "/wallets", icon: Wallet },
   { label: "Merchants", href: "/merchants", icon: Storefront },
   { label: "Virtual Cards", href: "/virtual-cards", icon: CreditCard },
+  { label: "Facility Gate", href: "/facility-gate", icon: ShieldCheck },
   { label: "Holds", href: "/holds", icon: Pause },
   { label: "Invoices", href: "/invoices", icon: FileText },
   { label: "Reconciliation", href: "/reconciliation", icon: ArrowsClockwise },
