@@ -1,0 +1,635 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+  body[data-canvas="manifesto"] {
+    font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  body[data-canvas="manifesto"] .manifesto,
+  body[data-canvas="manifesto"] .manifesto h1,
+  body[data-canvas="manifesto"] .manifesto h2,
+  body[data-canvas="manifesto"] .manifesto h3,
+  body[data-canvas="manifesto"] .manifesto p,
+  body[data-canvas="manifesto"] .manifesto li,
+  body[data-canvas="manifesto"] .manifesto header,
+  body[data-canvas="manifesto"] .page-ai-top {
+    font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  body[data-canvas="manifesto"] .manifesto p,
+  body[data-canvas="manifesto"] .manifesto li {
+    font-weight: 500;
+  }
+  body[data-canvas="manifesto"] .manifesto p.lede {
+    font-weight: 500;
+  }
+  body[data-canvas="manifesto"] .manifesto .pull {
+    font-weight: 600;
+  }
+  body[data-canvas="manifesto"] .manifesto h1 { font-weight: 700; }
+  body[data-canvas="manifesto"] .manifesto h2,
+  body[data-canvas="manifesto"] .manifesto h3 { font-weight: 700; }
+
+  body[data-canvas="manifesto"] .page-ai-top {
+    max-width: 948px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .manifesto { max-width: 680px; margin: 0 auto; }
+  .manifesto h2 {
+    margin-top: 52px;
+    margin-bottom: 12px;
+    font-size: 1.18rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+  }
+  .manifesto p {
+    font-size: 16.5px;
+    line-height: 1.75;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+  }
+  .manifesto p.lede {
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+  }
+  .manifesto .pull {
+    margin: 32px 0;
+    padding: 6px 0 6px 20px;
+    border-left: 2px solid var(--primary);
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .manifesto hr {
+    border: 0;
+    border-top: 1px solid var(--border-subtle);
+    margin: 40px 0;
+  }
+  .manifesto .byline {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .manifesto ul { margin: 4px 0 22px 0; padding-left: 22px; }
+  .manifesto li {
+    font-size: 16.5px;
+    line-height: 1.75;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+  .manifesto a { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+  .manifesto a:hover { text-decoration-color: var(--text-primary); }
+  .manifesto .sources {
+    background: var(--muted);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    margin: 40px 0 24px 0;
+    font-size: 14px;
+  }
+  .manifesto .sources p { font-size: 14px; margin-bottom: 8px; }
+  .manifesto .sources li { font-size: 14px; line-height: 1.65; margin-bottom: 4px; }
+  .manifesto .sources a { text-decoration-color: var(--border); }
+  .manifesto .aside {
+    font-size: 15.5px;
+    color: var(--text-secondary);
+    background: transparent;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 18px 0;
+    margin: 24px 0;
+    font-style: italic;
+  }
+  .manifesto-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 680px) 220px;
+    gap: 48px;
+    justify-content: center;
+    align-items: start;
+  }
+  .manifesto-rail {
+    position: sticky;
+    top: 32px;
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+    padding-top: 64px;
+  }
+  .manifesto-rail-track {
+    position: relative;
+    width: 2px;
+    height: auto;
+    background: var(--border-subtle);
+    border-radius: 999px;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+  .manifesto-rail-fill {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 0%;
+    background: linear-gradient(180deg, var(--primary), color-mix(in oklab, var(--primary) 55%, transparent));
+    border-radius: inherit;
+    transition: height 180ms ease;
+  }
+  .manifesto-rail-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .manifesto-rail-link {
+    display: block;
+    border: 0;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    line-height: 1.5;
+    max-width: 180px;
+    transition: color 150ms ease, transform 150ms ease;
+  }
+  .manifesto-rail-link:hover {
+    color: var(--text-primary);
+    opacity: 1;
+    transform: translateX(2px);
+  }
+  .manifesto-rail-link.is-active { color: var(--text-primary); }
+  .manifesto-mobile-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 3px;
+    z-index: 240;
+    background: color-mix(in oklab, var(--border-subtle) 65%, transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+  .manifesto-mobile-progress.is-visible { opacity: 1; }
+  .manifesto-mobile-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--primary);
+    transition: width 140ms linear;
+  }
+  .manifesto h2 { scroll-margin-top: 96px; }
+  @media (max-width: 1080px) {
+    body[data-canvas="manifesto"] .page-ai-top { max-width: 680px; }
+    .manifesto-layout { grid-template-columns: minmax(0, 680px); }
+    .manifesto-rail { display: none; }
+  }
+`;
+---
+
+<Canvas title="The missing substrate for trustworthy agents" currentId="manifesto">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+<div class="manifesto-mobile-progress" data-manifesto-mobile-progress>
+  <div class="manifesto-mobile-progress-fill" data-manifesto-progress-fill></div>
+</div>
+<div class="manifesto-layout">
+<article class="manifesto" data-manifesto-article>
+
+  <header>
+    <span class="eyebrow">Manifesto · April 2026</span>
+    <h1 style="margin-top:12px; margin-bottom:18px; font-size: clamp(2rem, 4vw, 2.4rem); line-height: 1.15; letter-spacing:-0.02em;">
+      The missing substrate for trustworthy agents.
+    </h1>
+    <div class="byline">
+      <span>Efe Baran Durmaz</span>
+      <span aria-hidden="true">·</span>
+      <span>20, writing from Ankara</span>
+    </div>
+  </header>
+
+  <p class="lede">
+    The simplest way I can say it: I think AI agents are being held back,
+    not by models, but by the fact that they cannot be trusted with money.
+    The honest version of that sentence is longer. Here is the longer one.
+  </p>
+
+  <p>
+    AI agents do not just have a capability problem. They have a trust
+    problem.
+  </p>
+
+  <p>
+    A year ago I started thinking about agent autonomy the way an infra
+    person thinks about it. What is the actual, structural thing stopping
+    this from working in production. Models kept getting better every
+    month. Tool calling kept getting better. Browser use kept getting
+    better. And yet every agent demo I watched ended at the same wall: the
+    moment it needed to move money, a human had to step in. The agent could
+    reason about a purchase, negotiate a rate, draft a contract, book a
+    table. It could not actually pay for any of it without a credential
+    somebody had handed it by hand.
+  </p>
+
+  <p>
+    That bottleneck looked small from far away. The closer I looked, the
+    more I thought it was the thing holding back a huge chunk of AI's
+    economic value. An agent that reasons but cannot transact is a very
+    expensive draft. The decision matters only if it lands.
+  </p>
+
+  <p>
+    So I started where most people start. A payment rail wrapper. Something
+    thin. Give an agent a way to move stablecoins, plug in an on-ramp and
+    an off-ramp, call it a day. I was going to be done in a weekend.
+  </p>
+
+  <h2>What changed my mind</h2>
+
+  <p>
+    I never used my own card for any of this. I knew from day one that was
+    the wrong thing to do. But a lot of people did, and are still doing it.
+    Around the same time I started, OpenAI pushed
+    <a href="https://openai.com/index/buy-it-in-chatgpt/" target="_blank" rel="noopener">Buy it in ChatGPT</a>
+    and the whole agentic commerce pitch started getting louder everywhere.
+    That was the signal that the wall was about to get hit. A lot.
+  </p>
+
+  <p>
+    I did not have to wait long to see what that looked like in practice.
+    In February, an OpenAI engineer's
+    <a href="https://www.kucoin.com/news/flash/openclaw-ai-agent-incident-causes-millions-in-user-losses" target="_blank" rel="noopener">OpenClaw-based trading agent</a>
+    got a simple request ("send 4 SOL for medical expenses") and, through
+    a quantity-parsing slip, sent 52.43 million tokens worth something
+    like <strong>$600K</strong>. Nothing was wrong with the model. Nothing
+    was wrong with the request. The failure was at the layer below: the
+    agent had the authority to move everything, and a small misread was
+    enough to trigger it. Mastercard eventually put out a
+    <a href="https://www.mastercard.com/us/en/news-and-trends/stories/2026/openclaw-ai-security-standards.html" target="_blank" rel="noopener">post about OpenClaw and the urgent need for AI security standards</a>.
+    This is a category now, not an incident.
+  </p>
+
+  <p>
+    So I moved up a level. Forget wrapping card rails. Build something
+    agent-shaped: prepaid wallets per agent, on-ramp in, off-ramp out,
+    spend caps, kill switches. Better. Much better than a card. The agent
+    could no longer drain the principal's account because the principal's
+    account was not connected. I spent a good chunk of autumn on that.
+  </p>
+
+  <p>
+    And it was still not enough.
+  </p>
+
+  <p>
+    A prepaid wallet solves the blast-radius problem and not the
+    authorization problem. An agent with a funded wallet can still loop.
+    Can still get prompt-injected. Can still misread a quantity and spend
+    everything in the wallet on one transaction. The wallet shrinks the
+    damage; it does not prevent the class of bug. And the second you cap
+    the wallet, you have given up the very autonomy you were trying to
+    enable. The agent is no longer making real economic decisions, it is
+    just drawing from a small pot you pre-approved.
+  </p>
+
+  <p class="pull">
+    What I wanted was an agent that could act autonomously without me
+    having to pre-decide every decision. What I had built was a leash
+    with a slightly longer rope.
+  </p>
+
+  <h2>Why payments were the sharp edge</h2>
+
+  <p>
+    It is worth being specific, because the shape is not obvious and the
+    existing infra assumes something very different.
+  </p>
+
+  <p>
+    A human makes maybe a dozen deliberate purchases a day. An agent
+    running a single task can make hundreds. A procurement agent polling
+    five suppliers, a research agent hitting paid APIs per query, an infra
+    agent provisioning cloud resources on demand, a trading agent reacting
+    to ticks. All of these look like payment floods compared to human
+    usage. Current estimates put agent-driven transactions at
+    <strong>10x to 1000x human frequency</strong>, with per-transaction
+    amounts often in the cent-to-dollar range rather than tens-to-thousands.
+    Card rails at 2.9% + $0.30 per charge are mathematically dead at this
+    density. ACH at 1 to 3 business days is actually dead, the decision
+    and the settlement live in different economic eras.
+  </p>
+
+  <p>
+    What the rails have to carry is a different shape entirely:
+    sub-second authorization, marginal fees close to zero on
+    high-frequency flows, deterministic finality for small amounts, and
+    escrow semantics when the stakes rise. Nobody is shipping all of that
+    cleanly today. That is why Sardis treats the
+    <a href="/dual-rail">internal ledger as the primary rail</a>
+    and external rails as on/off-ramps. PayPal's shape, applied to
+    machine commerce.
+  </p>
+
+  <h2>The git analogy I could not stop thinking about</h2>
+
+  <p>
+    Around November I started noticing something that felt important. AI
+    adoption inside software is enormous. Engineers give agents write
+    access to their whole codebase and walk away. Trillion-dollar-adjacent
+    industries, finance, healthcare, legal, procurement, are much more
+    cautious. Orders of magnitude more cautious.
+  </p>
+
+  <p>
+    The thing that makes software different is git. Every change is a
+    commit. Every commit is reversible. Every merge is reviewable. Blame
+    goes down to the line. If an agent ships something bad, you revert it.
+    You know exactly what happened and exactly who did it, even when the
+    "who" is a program.
+  </p>
+
+  <p>
+    Outside of software, there is no git. An agent that pays a vendor
+    does not leave a diff. An agent that signs a contract does not leave
+    a rollback path. An agent that moves inventory does not leave a
+    three-way merge. The reason AI has not flooded into these industries
+    is not model capability. It is that the substrate does not let you
+    undo.
+  </p>
+
+  <p>
+    This was the point where I stopped thinking of Sardis as a payments
+    company. Payments were just the sharpest place to see the real
+    problem. The real problem was never how agents move money. It was how
+    non-human actors do irreversible things without requiring blind trust.
+    The general shape is: how does a non-human actor do <em>any</em>
+    consequential thing and leave evidence behind that makes the action
+    safe to allow in the first place.
+  </p>
+
+  <h2>What the thesis actually demands</h2>
+
+  <p>
+    Once I stopped thinking about this as "agent payments," the same set
+    of missing primitives kept reappearing everywhere.
+  </p>
+
+  <p>
+    Trustworthy agents need reviewable state transitions instead of opaque
+    side effects. They need attributable identity instead of "some process
+    somewhere did this." They need approvals as first-class transitions,
+    not ad hoc modal dialogs or settings-page toggles. They need evidence
+    that survives the action. They need delegation and authority to be
+    explicit rather than inferred after the fact.
+  </p>
+
+  <p>
+    And they need all of those things to compose. That is the part people
+    underestimate. It is not enough to have one protocol for tool use,
+    another for communication, another for payments, another for identity,
+    and another for approvals if the shared semantics between them stay
+    implicit. That is where trustworthy systems break back into product
+    glue.
+  </p>
+
+  <p>
+    Agent systems do not just need more APIs. They need a shared trust
+    layer.
+  </p>
+
+  <p class="aside">
+    The names of some of the systems I have built around these primitives
+    are in the references. The point here is not the portfolio. The point
+    is the shape of the missing substrate.
+  </p>
+
+  <h2>Where Sardis sits in all this</h2>
+
+  <p>
+    Sardis is what you build when you realize money is just the most
+    high-stakes version of an irreversible agent action, and the primitive
+    underneath has to be better than "give the agent a credential and
+    hope."
+  </p>
+
+  <p>
+    Sardis is not a card wrapper. It is not a prettier dashboard for
+    agent spend. It is not just a prepaid wallet with stricter limits.
+  </p>
+
+  <p>
+    A payment, in the model I ended up with, is a <em>one-time object</em>.
+    It exists for a single transaction. It is minted when needed, expires
+    in minutes, signed by three parties (principal, issuer, agent), bound
+    to a specific merchant session, drawn from a specific pool of funds.
+    You cannot steal it and use it elsewhere. You cannot replay it. You
+    cannot hold it and spend it next week.
+  </p>
+
+  <p>
+    Underneath the object is a <em>mandate</em>: a signed statement of
+    exactly what the agent is allowed to do. Merchants, categories,
+    amounts per transaction, amounts per period, approval thresholds,
+    currency, rails. Between the mandate and the payment is a policy
+    engine that lives on the execution path, not in a settings page.
+    Every payment that crosses the system, from any SDK, any framework,
+    any protocol, runs through the same twelve checks in the same order.
+    There is no fast lane that bypasses enforcement, because every fast
+    lane I ever let myself build became the bug that mattered.
+  </p>
+
+  <p>
+    The rest of this site is the spec. If you want the details, start at
+    <a href="/protocol-objects">Protocol Objects</a>.
+  </p>
+
+  <h2>Why the layer underneath cannot be owned</h2>
+
+  <p>
+    AI agents are starting to get some of their own primitives:
+    identity, communication, tool use, payments, verification, versioned
+    state. That is good. What is still missing is the layer where these
+    primitives meet. Right now the shared semantics between them are still
+    mostly implicit, hidden inside product-specific assumptions and glue
+    code.
+  </p>
+
+  <p class="pull">
+    The missing layer is not another app. It is shared trust semantics.
+  </p>
+
+  <p>
+    That is part of why I started writing
+    <a href="https://github.com/EfeDurmaz16/oaps" target="_blank" rel="noopener">OAPS</a>,
+    an open standard for agentic primitives: intent, authority, approval,
+    delegation, and evidence, expressed in a form other systems can
+    verify, enforce, and build against. That missing layer is not a
+    detail. It is the control surface. Without it, every company ends up
+    with its own private dialect for trust. The words sound similar. The
+    guarantees are not.
+  </p>
+
+  <p>
+    Without open semantics for authority, agent ecosystems drift into
+    private dialects.
+  </p>
+
+  <p>
+    In parallel, I have been shipping
+    <a href="https://github.com/EfeDurmaz16/osp" target="_blank" rel="noopener">OSP</a>,
+    an open protocol for agent-to-service discovery and provisioning.
+    OAPS and OSP are not where the money is. They are where
+    interoperability either survives or dies.
+  </p>
+
+  <p class="pull">
+    OAPS is the standard. Sardis is the first production implementation
+    of the payment half of it.
+  </p>
+
+  <p>
+    Products should compete on distribution, rails, compliance, developer
+    experience, and regulated posture. But the validation primitive
+    underneath consequential agent action should be open, inspectable,
+    and portable. If the layer that decides what an agent is allowed to
+    do is proprietary, then trust is not infrastructure. It is rented
+    software. A payment authorization layer under a single company's
+    control is a layer that can be deprecated, repriced, bought, or
+    quietly changed. Plumbing does not benefit from brand loyalty.
+  </p>
+
+  <p>
+    This is the one thing I am not willing to trade. Everything else is
+    negotiable.
+  </p>
+
+  <h2>What I think happens next</h2>
+
+  <p>
+    Agent payments is going to consolidate into a small number of serious
+    product companies with real distribution, real bank partnerships, and
+    real regulatory posture. They will do things I am not good at and
+    should not pretend to be good at.
+  </p>
+
+  <p>
+    What I want is for the primitive underneath all of them to be the
+    right shape. One-time payment objects. Signed mandates. Policy on the
+    path. Verifiable by anyone. Owned by no one. If that turns out to be
+    the substrate the ecosystem settles on, I do not care whose logo is
+    in the dashboard. I care that three years from now, when an agent I
+    wrote is spending real money on my behalf while I am asleep, the
+    primitive it is using is one I would have agreed to if I had been
+    awake.
+  </p>
+
+  <p>
+    That is why I am still building. If you are anywhere near this
+    problem, tell me about it.
+    <a href="mailto:efe@sardis.sh">efe@sardis.sh</a>. I would rather
+    compare notes than build parallel versions of the same thing.
+  </p>
+
+  <div class="sources">
+    <p style="font-family: var(--font-mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;">References</p>
+    <ul>
+      <li>OpenAI, <a href="https://openai.com/index/buy-it-in-chatgpt/" target="_blank" rel="noopener">Buy it in ChatGPT</a></li>
+      <li>KuCoin, <a href="https://www.kucoin.com/news/flash/openclaw-ai-agent-incident-causes-millions-in-user-losses" target="_blank" rel="noopener">OpenClaw AI agent incident causes millions in user losses</a></li>
+      <li>Mastercard, <a href="https://www.mastercard.com/us/en/news-and-trends/stories/2026/openclaw-ai-security-standards.html" target="_blank" rel="noopener">OpenClaw and the urgent need for AI security standards</a></li>
+      <li>Cloudflare, <a href="https://blog.cloudflare.com/sandbox-ga/" target="_blank" rel="noopener">Agents have their own computers with Sandboxes GA</a></li>
+      <li>Cloudflare, <a href="https://blog.cloudflare.com/dynamic-workers/" target="_blank" rel="noopener">Sandboxing AI agents, 100x faster (Dynamic Workers)</a></li>
+      <li>Cloudflare, <a href="https://developers.cloudflare.com/changelog/product/agents/" target="_blank" rel="noopener">Agents changelog, Artifacts (git-compatible versioned storage)</a></li>
+      <li>RFC 9421, <a href="https://www.rfc-editor.org/rfc/rfc9421.html" target="_blank" rel="noopener">HTTP Message Signatures</a></li>
+      <li>Efe Durmaz, <a href="https://github.com/EfeDurmaz16/osp" target="_blank" rel="noopener">OSP, Open Service Protocol</a></li>
+      <li>Efe Durmaz, <a href="https://github.com/EfeDurmaz16/oaps" target="_blank" rel="noopener">OAPS, open standards for agentic primitives</a></li>
+    </ul>
+  </div>
+
+  <p style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); margin-top: 40px;">
+    Efe Baran Durmaz · April 2026<br />
+    <a href="https://sardis.sh">sardis.sh</a>
+    · <a href="https://github.com/EfeDurmaz16">github</a>
+    · <a href="/">canvases</a>
+  </p>
+
+</article>
+<aside class="manifesto-rail" aria-label="Manifesto sections" data-manifesto-rail>
+  <div class="manifesto-rail-track" aria-hidden="true">
+    <div class="manifesto-rail-fill" data-manifesto-progress-fill></div>
+  </div>
+  <ol class="manifesto-rail-list" data-manifesto-sections></ol>
+</aside>
+</div>
+<script is:inline>
+  (() => {
+    function slugify(text) {
+      return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    }
+
+    function initManifestoRail() {
+      const article = document.querySelector("[data-manifesto-article]");
+      const rail = document.querySelector("[data-manifesto-rail]");
+      const list = document.querySelector("[data-manifesto-sections]");
+      const fills = Array.from(document.querySelectorAll("[data-manifesto-progress-fill]"));
+      if (!article || !rail || !list || !fills.length) return;
+
+      const headings = Array.from(article.querySelectorAll("h2"));
+      if (!headings.length) return;
+
+      list.innerHTML = "";
+      const links = headings.map((heading, index) => {
+        if (!heading.id) heading.id = slugify(heading.textContent || `section-${index + 1}`);
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.className = "manifesto-rail-link";
+        link.href = `#${heading.id}`;
+        link.textContent = heading.textContent || "";
+        item.appendChild(link);
+        list.appendChild(item);
+        return link;
+      });
+
+      const setProgress = () => {
+        const articleRect = article.getBoundingClientRect();
+        const start = window.scrollY + articleRect.top - 96;
+        const end = start + article.offsetHeight - window.innerHeight * 0.6;
+        const raw = (window.scrollY - start) / Math.max(end - start, 1);
+        const progress = Math.max(0, Math.min(raw, 1));
+        const percent = `${progress * 100}%`;
+        fills.forEach((fill) => {
+          fill.style.width = percent;
+          fill.style.height = percent;
+        });
+
+        const current = headings.findLast((heading) => heading.getBoundingClientRect().top <= 140) || headings[0];
+        links.forEach((link) => {
+          link.classList.toggle("is-active", link.getAttribute("href") === `#${current.id}`);
+        });
+
+        const mobileBar = document.querySelector("[data-manifesto-mobile-progress]");
+        if (mobileBar) {
+          mobileBar.classList.toggle("is-visible", window.innerWidth <= 1080);
+        }
+      };
+
+      setProgress();
+      window.addEventListener("scroll", setProgress, { passive: true });
+      window.addEventListener("resize", setProgress);
+    }
+
+    document.addEventListener("DOMContentLoaded", initManifestoRail);
+    document.addEventListener("astro:page-load", initManifestoRail);
+  })();
+</script>
+</Canvas>

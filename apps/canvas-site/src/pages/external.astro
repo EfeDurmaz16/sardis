@@ -1,0 +1,355 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+---
+
+<Canvas title="17 · External Services — Sardis Canvas" currentId="external">
+
+<section class="hero">
+        <span class="eyebrow">Canvas 17 · Ops</span>
+        <h1>External Services</h1>
+        <p class="hero-lead">
+          Sardis is not a vertical monolith. It is a control plane above a carefully chosen set of
+          third-party services — MPC custody, KYC, sanctions, card issuers, PSPs, ramps, RPC, rails,
+          observability. This canvas enumerates every one, where it's wired, and why it beat its
+          alternative.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">Single source of truth</span>
+          Every config class below lives in
+          <code>packages/sardis-core/src/sardis_v2_core/config.py</code>. Every env var uses a typed
+          prefix (e.g. <code>TURNKEY_</code>, <code>SARDIS_STRIGA_</code>) so a missing value fails
+          fast at boot, not at the first payment.
+        </div>
+      </section>
+
+      <!-- Group 01 MPC -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 01 · MPC / Signing</div>
+          <h2>Private keys never live in Sardis.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every wallet signature routes through an MPC provider. Turnkey is the default;
+            Fireblocks, Circle's Programmable Wallets, and Lit Protocol are pluggable behind the
+            same interface. Canvas <a href="/wallet-mpc">09</a> covers the wallet lifecycle.
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Turnkey</td><td><code>TurnkeyConfig</code></td><td><code>TURNKEY_</code></td><td>Live (primary)</td><td>Sub-org per tenant, API-signed requests, deterministic HD addressing. Keys never leave Turnkey.</td></tr>
+            <tr><td>Fireblocks</td><td>pluggable</td><td>—</td><td>Interface-ready</td><td>Enterprise alternative; picked on a per-merchant basis when compliance requires SOC2 Type II from the custody provider.</td></tr>
+            <tr><td>Circle Programmable Wallets</td><td>pluggable</td><td>—</td><td>Interface-ready</td><td>Falls out naturally where Circle CPN / Gateway are already wired.</td></tr>
+            <tr><td>Lit Protocol</td><td>pluggable</td><td>—</td><td>Research</td><td>Threshold MPC with policy at the key — future path for "self-custodial agent" narratives.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 02 KYC -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 02 · KYC / AML</div>
+          <h2>Compliance without a compliance team.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Canvas <a href="/compliance">12</a> has the full flow. Didit won the KYC slot on
+            cost + velocity; Elliptic remains the AML/sanctions screen.
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Purpose</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Didit</td><td>KYC (identity verification)</td><td><code>DIDIT_</code></td><td>Live (primary)</td><td>500 free/month, $0.33/check after; YC W26; clean v3 API with x-api-key auth; webhook working end-to-end. Replaced iDenfy (abandoned) and Persona (rejected).</td></tr>
+            <tr><td>Elliptic</td><td>AML + sanctions screening</td><td><code>ELLIPTIC_</code></td><td>Live</td><td>Chain-aware sanctions screening; covers OFAC + sectoral lists; embedded in the Pre-Execution Pipeline as a fail-closed check.</td></tr>
+            <tr><td>Persona</td><td>—</td><td>—</td><td>Rejected</td><td>Priced for enterprise; minimum commit too high for a single-founder startup.</td></tr>
+            <tr><td>iDenfy</td><td>—</td><td>—</td><td>Abandoned</td><td>Earlier integration; replaced by Didit after onboarding friction.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 03 Cards -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 03 · Card issuing</div>
+          <h2>Virtual cards + agent cards.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Multi-provider by design — <code>CardStackConfig</code> routes between Stripe, Lithic,
+            Rain, Bridge, and Striga. One interface, five issuers. Stripe is the launch default;
+            Lithic stays in sandbox until funding allows the $5M program commit.
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Stripe Issuing</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live (primary)</td><td>Accessible without $5M program commit; pairs with existing Stripe Connect + Treasury plumbing. <code>stablecoin_issuing_enabled</code> flag flips on the USDC-settled variant.</td></tr>
+            <tr><td>Lithic</td><td><code>LithicConfig</code></td><td><code>LITHIC_</code></td><td>Sandbox</td><td>Deep controls (ASA webhooks, on-card policies). Held back until funding qualifies for the program.</td></tr>
+            <tr><td>Rain</td><td><code>RainConfig</code></td><td><code>RAIN_</code></td><td>Interface-ready</td><td>Stablecoin-native card program; drops in via <code>CardStackConfig</code> with zero core changes.</td></tr>
+            <tr><td>Bridge Cards</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>Multi-rail (ACH/SEPA/PIX/wire) — issuer + funding in one integration.</td></tr>
+            <tr><td>Striga Cards</td><td><code>StrigaConfig</code></td><td><code>SARDIS_STRIGA_</code></td><td>Interface-ready</td><td>EEA issuance with a clean SEPA/vIBAN story; complements Bridge outside the US.</td></tr>
+            <tr><td>Coinbase CDP (on-chain provider)</td><td><code>CoinbaseConfig</code></td><td><code>COINBASE_</code></td><td>Live</td><td>On-chain provider slot — wallets as cards when an agent wants to transact purely on-chain.</td></tr>
+            <tr><td>Card stack router</td><td><code>CardStackConfig</code></td><td><code>SARDIS_CARDS_</code></td><td>Live</td><td>Picks primary / fallback / on-chain provider, with per-org overrides via JSON.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 04 PSPs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 04 · PSPs &amp; Payment Rails</div>
+          <h2>Money movement beyond crypto.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Stripe Connect</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Merchant payouts (fiat off-ramp, US-first). <code>connected_account_map_json</code> maps tenants to Stripe accounts.</td></tr>
+            <tr><td>Stripe Treasury</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Financial-account-backed balance behind Issuing.</td></tr>
+            <tr><td>Stripe MPP (Tempo)</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Early access since 2026-03-18 launch. Sardis is first-class on Tempo mainnet.</td></tr>
+            <tr><td>Stripe Billing</td><td><code>StripeBillingConfig</code></td><td><code>STRIPE_BILLING_</code></td><td>Ready</td><td>Subscription billing path for the operator-facing product (post Atlas entity).</td></tr>
+            <tr><td>Lightspark (Grid API)</td><td><code>LightsparkConfig</code></td><td><code>SARDIS_LIGHTSPARK_</code></td><td>Sandbox</td><td>Lightning + UMA (<code>uma_domain=sardis.sh</code>) + FX + payouts. Gated by <code>enabled</code> flag.</td></tr>
+            <tr><td>Bridge (multi-rail)</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>One integration for ACH + SEPA + PIX + wire; selects by <code>default_rail</code> + per-feature flags.</td></tr>
+            <tr><td>Striga (EEA banking)</td><td><code>StrigaConfig</code></td><td><code>SARDIS_STRIGA_</code></td><td>Sandbox</td><td>vIBANs, SEPA, Lightning, standing orders, KYC — EEA-native fiat rails.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 05 Ramps + fiat -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 05 · On/Off Ramps &amp; Fiat Rails</div>
+          <h2>USD ↔ USDC without writing a bank.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Coinbase CDP Onramp</td><td><code>CoinbaseConfig</code></td><td><code>COINBASE_</code></td><td>Live</td><td>Hosted fiat → USDC onramp, zero infra cost. <code>topup_api_key</code> drives the top-up variant.</td></tr>
+            <tr><td>Bridge Offramp</td><td><code>BridgeCardsConfig</code></td><td><code>BRIDGE_</code></td><td>Interface-ready</td><td>USDC → fiat via ACH/SEPA/PIX.</td></tr>
+            <tr><td>Circle CPN</td><td><code>CircleCPNConfig</code></td><td><code>CIRCLE_CPN_</code></td><td>Live</td><td>Circle Payments Network — funding / payouts; <code>strategy=fiat_first</code> + <code>primary_adapter=circle_cpn</code> by default in <code>FundingRoutingConfig</code>.</td></tr>
+            <tr><td>Circle Gateway</td><td><code>CircleGatewayConfig</code></td><td><code>CIRCLE_GATEWAY_</code></td><td>Gated</td><td>x402 facilitator / nanopayments, enabled via <code>x402_enabled</code>.</td></tr>
+            <tr><td>Stripe (funding)</td><td><code>StripeConfig</code></td><td><code>STRIPE_</code></td><td>Live</td><td>Stripe-backed funding for Issuing top-ups.</td></tr>
+            <tr><td>Funding router</td><td><code>FundingRoutingConfig</code></td><td>—</td><td>Live</td><td>Strategy: <code>fiat_first</code> / <code>stablecoin_first</code> / <code>hybrid</code>. Primary + fallback adapters are explicit.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 06 Chain RPC -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 06 · Chain RPC</div>
+          <h2>Broadcast + read.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            RPC endpoints are env-var driven (<code>SARDIS_BASE_RPC_URL</code>, etc.) with public
+            RPC as a fallback. Canvas <a href="/settlement">10</a> covers multi-chain
+            settlement.
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Env var</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Alchemy (Base)</td><td><code>SARDIS_BASE_RPC_URL</code></td><td>Live (primary)</td><td>Fast, reliable, free-tier-generous; first choice for Base 8453.</td></tr>
+            <tr><td>Alchemy (Ethereum/Polygon/Arbitrum/Optimism)</td><td><code>SARDIS_&lt;chain&gt;_RPC_URL</code></td><td>Live</td><td>Uniform provider across EVM chains.</td></tr>
+            <tr><td>Tempo RPC</td><td><code>SARDIS_TEMPO_RPC_URL</code> (default <code>rpc.tempo.xyz</code>)</td><td>Live (mainnet 4217)</td><td>First-party Tempo RPC; dedicated executor in <code>sardis-chain/src/sardis_chain/tempo/executor.py</code>.</td></tr>
+            <tr><td>Public RPCs</td><td>fallback list</td><td>Fallback only</td><td>Used if primary RPC fails; never primary in prod.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 07 Protocol rails -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 07 · Protocol Rails</div>
+          <h2>Card network + credential standards.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Visa TAP</td><td><code>VisaTAPConfig</code></td><td><code>VISA_TAP_</code></td><td>Sandbox</td><td>Token Authentication Protocol — mTLS + TRID, signed tokens for agent identity at card-network level.</td></tr>
+            <tr><td>Mastercard Agent Pay / MDES</td><td><code>MastercardConfig</code></td><td><code>MASTERCARD_</code></td><td>Sandbox</td><td>P12/PKCS12 certificate auth; MDES token provisioning for agent-initiated card transactions.</td></tr>
+            <tr><td>Delegated Credentials</td><td><code>DelegatedCredentialConfig</code></td><td>—</td><td>Interface-ready</td><td>Framework for protocol-layer delegation (beyond AP2 / A2A).</td></tr>
+            <tr><td>x402</td><td><code>X402Config</code></td><td><code>X402_</code></td><td>Gated</td><td><code>enabled</code> / <code>server_enabled</code> / <code>facilitator_enabled</code> toggles; networks <code>base,polygon,ethereum</code>; optional Permit2.</td></tr>
+            <tr><td>ERC-8183</td><td><code>ERC8183Config</code></td><td>—</td><td>Live</td><td>On-chain agent-payment standard; 1% fee cap, USDC-only MVP; canvas 06.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 08 DB / cache -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 08 · Database &amp; Cache</div>
+          <h2>Stateful backbone.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Env var</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Neon Postgres</td><td><code>DATABASE_URL</code></td><td>Live</td><td>Serverless Postgres; 107 migrations applied in order; branching for preview envs.</td></tr>
+            <tr><td>Upstash Redis</td><td><code>SARDIS_REDIS_URL</code></td><td>Live</td><td>Rate-limiter (fail-closed if unreachable in prod), dedup store, replay cache, SSE fanout. Mandatory outside dev.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 09 Observability -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 09 · Observability</div>
+          <h2>Knowing when something's wrong.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Where it lives</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>PostHog</td><td><code>apps/dashboard</code> (<code>posthog-js</code>), <code>VITE_POSTHOG_KEY</code></td><td>Live</td><td>Product analytics on the dashboard + landing. Funnels, retention, feature flags.</td></tr>
+            <tr><td>Sentry</td><td><code>@sentry/nextjs</code> (dashboard) + Python Sentry in API</td><td>Live</td><td>Errors, performance, session replay. Integrated with Claude Code review via plugin.</td></tr>
+            <tr><td>Intercom</td><td><code>@intercom/messenger-js-sdk</code></td><td>Live</td><td>In-app support chat for operators and merchants.</td></tr>
+            <tr><td>Uptime (internal)</td><td>24 GitHub Actions workflows (<code>uptime*.yml</code>)</td><td>Live</td><td>Periodic health checks of API, landing, dashboard; metrics published as graph artefacts.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 10 Comms / Auth -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 10 · Comms &amp; Auth</div>
+          <h2>Email + identity.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Where it lives</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>Resend</td><td>API notifications + dashboard transactional email</td><td>Live</td><td>Transactional email (receipts, approvals, security alerts). Simple API, modern DX.</td></tr>
+            <tr><td>better-auth</td><td><code>apps/dashboard</code> (v1.5.6) + plugins (<code>passkey</code>, <code>api-key</code>, <code>agent-auth</code>, <code>stripe</code>, <code>polar-sh</code>)</td><td>Live</td><td>EdDSA/JWKS sessions, passkeys, org roles, API-key issuance inside the dashboard.</td></tr>
+            <tr><td>Legacy FastAPI JWT (HS256)</td><td><code>packages/sardis-api</code></td><td>Live</td><td>Dual-path auth for SDK clients; bridged to better-auth via JWKS.</td></tr>
+            <tr><td>Stripe Atlas</td><td>Company entity</td><td>Live (since 2026-03-21)</td><td>Delaware C-corp "Sardis Labs, Inc." formed via Atlas; enables production Stripe + banking relationships.</td></tr>
+            <tr><td>Polar.sh</td><td>Billing (temp until Atlas Stripe clears)</td><td>Live</td><td>Bridge revenue path: Polar now, Stripe once Atlas entity is fully wired.</td></tr>
+            <tr><td>Turnstile + CaptchaFox</td><td>Dashboard sign-up / reset</td><td>Live</td><td>Bot-prevention on public auth endpoints.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 11 FIDES (internal but external-facing) -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 11 · Trust Graph</div>
+          <h2>FIDES — decentralized trust signalling.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Service</th><th>Config class</th><th>Env prefix</th><th>Status</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td>FIDES (Sardis protocol)</td><td><code>FidesConfig</code></td><td><code>SARDIS_FIDES_</code></td><td>Live</td><td>Agent + merchant trust graph consulted in the Pre-Execution Pipeline. Fail-closed if unreachable.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Diagram -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Shape</div>
+          <h2>How these services plug into the spine.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every external dependency is behind an interface in <code>sardis-core</code> so
+            individual providers can be swapped without touching business logic — the Didit-over-Persona
+            swap happened with zero code churn outside the KYC adapter.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+flowchart LR
+    API["Sardis API / Pre-Execution Pipeline"] --&gt; KYC["Didit"]
+    API --&gt; AML["Elliptic"]
+    API --&gt; FID["FIDES trust graph"]
+    API --&gt; ORCH["PaymentOrchestrator"]
+
+    ORCH --&gt; MPC["Turnkey · Fireblocks · Circle · Lit"]
+    ORCH --&gt; CHAIN["Alchemy / Tempo / public RPC"]
+
+    API --&gt; FUND["Funding router"]
+    FUND --&gt; CCPN["Circle CPN"]
+    FUND --&gt; BRIDGE["Bridge (ACH/SEPA/PIX)"]
+    FUND --&gt; STRIPE["Stripe Treasury + Connect"]
+    FUND --&gt; ONRAMP["Coinbase CDP Onramp"]
+    FUND --&gt; STRIGA["Striga (EEA)"]
+    FUND --&gt; LS["Lightspark (Lightning / UMA)"]
+
+    API --&gt; CARDS["CardStack router"]
+    CARDS --&gt; STR["Stripe Issuing"]
+    CARDS --&gt; LIT["Lithic"]
+    CARDS --&gt; RAIN["Rain"]
+    CARDS --&gt; BRC["Bridge Cards"]
+    CARDS --&gt; STC["Striga Cards"]
+
+    API --&gt; NET["Visa TAP · Mastercard MDES · x402 · ERC-8183"]
+    API --&gt; DB["Neon Postgres"]
+    API --&gt; REDIS["Upstash Redis"]
+
+    DASH["Dashboard · Next.js"] --&gt; BA["better-auth (EdDSA/JWKS)"]
+    DASH --&gt; POLAR["Polar.sh billing"]
+    DASH --&gt; POSTHOG["PostHog"]
+    DASH --&gt; SENTRY["Sentry"]
+    DASH --&gt; INTERCOM["Intercom"]
+          </pre>
+        </div>
+      </section>
+
+      <!-- Summary / status -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Snapshot</div>
+          <h2>Live vs. sandbox vs. interface-ready.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Status</th><th>Services</th></tr></thead>
+          <tbody>
+            <tr><td>Live (production)</td><td>Turnkey, Didit, Elliptic, Stripe (Issuing + Treasury + Connect + MPP), Coinbase CDP (Onramp), Circle CPN, Alchemy (Base, Ethereum, Polygon, Arbitrum, Optimism), Tempo RPC, Neon, Upstash, better-auth, Polar.sh, PostHog, Sentry, Intercom, Resend, Turnstile, FIDES, ERC-8183.</td></tr>
+            <tr><td>Sandbox / gated</td><td>Lithic, Striga, Lightspark, Visa TAP, Mastercard MDES, x402, Circle Gateway, Bridge Cards.</td></tr>
+            <tr><td>Interface-ready</td><td>Fireblocks, Circle Programmable Wallets, Lit Protocol, Rain, Bridge Offramp.</td></tr>
+            <tr><td>Rejected / retired</td><td>Persona (too expensive), iDenfy (onboarding friction), Lithic production (needs $5M program commit).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Source of truth -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Source of Truth</div>
+          <h2>Go read the code, not this table, before quoting.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>Question</th><th>File</th></tr></thead>
+          <tbody>
+            <tr><td>Complete list of external configs?</td><td><code>packages/sardis-core/src/sardis_v2_core/config.py</code> (<code>grep '^class.*Config'</code>)</td></tr>
+            <tr><td>Chain RPC URLs + chain IDs?</td><td><code>packages/sardis-core/src/sardis_v2_core/config.py</code> → <code>ChainConfig</code> list</td></tr>
+            <tr><td>Token contracts per chain?</td><td><code>packages/sardis-core/src/sardis_v2_core/tokens.py</code></td></tr>
+            <tr><td>Card routing?</td><td><code>CardStackConfig</code> in <code>config.py</code></td></tr>
+            <tr><td>Funding routing?</td><td><code>FundingRoutingConfig</code> in <code>config.py</code></td></tr>
+            <tr><td>Deployed env vars?</td><td>Cloud Run (API) + Vercel (dashboard + landing + checkout) project settings — source of truth.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/compliance">
+            <div class="canvas-card-num">12 · Product</div>
+            <div class="canvas-card-title">Compliance Stack</div>
+            <div class="canvas-card-desc">Didit + Elliptic in the Pre-Execution Pipeline.</div>
+          </a>
+          <a class="canvas-card" href="/wallet-mpc">
+            <div class="canvas-card-num">09 · Flows</div>
+            <div class="canvas-card-title">Wallet + MPC</div>
+            <div class="canvas-card-desc">Turnkey sub-orgs + signing flow.</div>
+          </a>
+          <a class="canvas-card" href="/settlement">
+            <div class="canvas-card-num">10 · Flows</div>
+            <div class="canvas-card-title">Settlement &amp; Chains</div>
+            <div class="canvas-card-desc">CCTP v2 + multi-chain + Tempo mainnet.</div>
+          </a>
+          <a class="canvas-card" href="/cicd">
+            <div class="canvas-card-num">18 · Ops</div>
+            <div class="canvas-card-title">CI/CD</div>
+            <div class="canvas-card-desc">Where these env vars get injected.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

@@ -1,0 +1,75 @@
+# Sardis — Technical Canvases
+
+> Sardis is the Payment OS for AI agents. These canvases document the architecture end-to-end: 51 monorepo packages, 123 API routers, 107 database migrations, 9 smart contracts, 18 AI framework integrations, the Facility Gate credit control plane, and the agentic payment flow that ties it all together. Live on Base and Tempo mainnet.
+
+## Core thesis
+
+AI agents can reason, but they cannot be trusted with money by default. Sardis inserts a verifiable control plane between an agent's decision and a bank rail — non-custodial MPC wallets below, natural-language spending policies above, an append-only Merkle-anchored audit trail on the side. Every payment runs through a single `PaymentOrchestrator` gate (policy → compliance → mandate → rate limit → anomaly → chain → settlement → audit). Fail-closed by default.
+
+## Start with the manifesto
+
+- [Manifesto](pages/manifesto.html): The missing substrate for trustworthy agents — the thesis, founder journey, and case for an open semantic trust layer beneath agent payments.
+
+## System canvases
+
+- [Architecture Overview](pages/architecture.html): Seven-layer stack — agent surface, API gateway, pre-execution pipeline, protocol verification, orchestration/wallet, settlement, audit/ledger.
+- [Repo Structure](pages/repo-structure.html): Folder-by-folder monorepo tree — apps, packages, contracts, demos, examples.
+- [Packages (51)](pages/packages.html): Every package broken down by group — core platform, checkout, AI integrations, payment providers, SDKs, standards.
+
+## Backend canvases
+
+- [API Surface](pages/api-surface.html): 123 FastAPI routers grouped by domain — auth, wallets, payments, policy, checkout, compliance, ops.
+- [Database Schema](pages/database.html): 107 Postgres migrations covering identity, wallets, mandates, policies, ledger, checkout, compliance, treasury.
+- [Smart Contracts](pages/contracts.html): 9 Solidity contracts — identity registry, policy module, ledger anchor, job manager, verifying paymaster, refund protocol.
+
+## Flow canvases
+
+- [Payment Flow](pages/payment-flow.html): End-to-end sequence — agent SDK call through orchestrator, policy, MPC signing, chain broadcast, receipt, ledger.
+- [Policy Engine](pages/policy-engine.html): 12-check cost-ordered enforcement pipeline, natural-language policy parsing, approval thresholds, kill switch.
+- [Wallet + MPC](pages/wallet-mpc.html): Non-custodial wallet infrastructure — Turnkey primary, Fireblocks/Circle/Lit pluggable, Safe v1.4.1 smart accounts, Tempo keychain.
+- [Settlement & Chains](pages/settlement.html): Multi-chain execution — Base and Tempo mainnet, CCTP v2, fiat rails (Stripe Connect, Striga, Bridge), reconciliation queue.
+
+## Product canvases
+
+- [Checkout & Merchants](pages/checkout.html): Pay with Sardis — customer-facing stablecoin checkout, wagmi + WalletConnect, hardened session model.
+- [Compliance Stack](pages/compliance.html): KYC (Didit), AML (Elliptic), travel rule, SAR, data governance, agent identity attestation.
+- [Protocol Gateway](pages/protocols.html): AP2, Visa TAP, Coinbase x402, Google A2A, Stripe MPP, Mastercard Agent Pay, ERC-8183, ERC-8004 — all as transport adapters into a single policy pipeline.
+- [SDKs & CLIs](pages/sdks.html): Python, TypeScript, CLI (Go + JS), MCP server, n8n node, Telegram bot, spend widget.
+- [AI Framework Integrations](pages/integrations.html): 18 adapters — LangChain, CrewAI, AutoGPT, OpenAI Agents, Claude Agent SDK, Google ADK, A2A, AgentKit, Browser Use, Composio, OpenClaw, Stagehand, Vercel AI, Activepieces, E2B, ChatGPT, MCP, n8n.
+- [Dashboard UI](pages/dashboard.html): 43 Next.js operator pages — policies, approvals, kill switch, evidence, analytics, merchant controls.
+
+## Extended canvases
+
+- [Agent Credit](pages/credit.html): Facility Gate — non-custodial, partner-backed facility access for agents with mandate, policy, evidence, risk, liability, revocation, and audit controls.
+- [Sardis Connect](pages/sardis-connect.html): Zero-crypto merchant SDK — three-line integration, agent pays in stablecoins, merchant receives USD in their Stripe account. Headless by default.
+- [OSP Integration](pages/osp-integration.html): Open Service Protocol — agents discover and provision developer services via `.well-known/osp.json`. Sardis is one of several accepted payment methods.
+- [ZK Privacy Stack](pages/zk-privacy.html): Noir circuits, ZK policy proofs, UCP commerce primitives, agent guardrails.
+- [Sardis Guard](pages/sardis-guard.html): MPP-native intelligence plane — 9 security gates, ML anomaly detection, OFAC screening.
+- [Demos & Examples](pages/demos-examples.html): 9 working demos + 15+ framework-specific examples.
+- [Consumer Surfaces](pages/consumer-surfaces.html): Mobile, spend widget, Telegram bot, Solana program, MPP proxy.
+- [Docs & Marketing](pages/docs-marketing.html): Investor artifacts, audit evidence, ops runbooks.
+
+## Ops canvases
+
+- [External Services](pages/external.html): 25+ third-party integrations — MPC, KYC/AML, PSPs, card issuers, fiat rails, chain RPC, observability.
+- [CI/CD & Deployment](pages/cicd.html): 24+ GitHub Actions workflows — CI, security, deploy to Cloud Run and Vercel, release to PyPI/npm, monitoring.
+- [Security Model](pages/security.html): Trust boundaries, threat model, fail-closed defaults, TDD remediation phases, kill switch, cryptographic evidence export.
+
+## Supported chains
+
+Base (mainnet, chain_id 8453), Tempo (mainnet, chain_id 4217), Ethereum, Polygon, Arbitrum, Optimism. Testnets: Base Sepolia (84532), Tempo Testnet (42429). Supported tokens: USDC, USDC.e (Tempo), USDT, PYUSD, EURC across chains.
+
+## Supported protocols
+
+Google AP2 (Intent + mandate VDCs), Visa TAP (agent identity + HTTP message signatures), Coinbase x402 (HTTP-native stablecoin), Stripe MPP (Merchant Payment Protocol, Tempo settlement), Google A2A + FIDES (agent-to-agent with Ed25519 HTTP sigs), Mastercard Agent Pay (agentic tokens), UCP (Unified Commerce Protocol), OSP (Open Service Protocol). Sardis treats each as a transport adapter feeding into one unified policy evaluation path.
+
+## Companion repositories
+
+- [sardis](https://github.com/EfeDurmaz16/sardis) — main payment OS
+- [osp](https://github.com/EfeDurmaz16/osp) — Open Service Protocol spec + SDKs (Rust, TypeScript, Python, Go)
+- [fides](https://github.com/EfeDurmaz16/fides) — agent identity + trust protocol (Ed25519 DIDs, HTTP message signatures)
+- [agit](https://github.com/EfeDurmaz16/agit) — version control for agent actions (signed commits, rollback, trace)
+
+## Conventions
+
+Every claim is sourced against the live repository. Monokrom grayscale by design — no gradients, no decorative color. Each canvas covers what the system does, why the decision was made, and how to verify it in the code.

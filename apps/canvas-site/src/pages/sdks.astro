@@ -1,0 +1,789 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    .surface-tile {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      background: var(--card);
+    }
+    .surface-tile .surface-label {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .surface-tile .surface-title { font-weight: 600; font-size: 14.5px; margin-bottom: 4px; }
+    .surface-tile .surface-desc { font-size: 12.5px; color: var(--text-muted); }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      background: var(--muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+  `;
+---
+
+<Canvas title="14 · SDKs & CLIs — Sardis Canvas" currentId="sdks">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 14 · Product</span>
+        <h1>SDKs &amp; CLIs</h1>
+        <p class="hero-lead">
+          Nine distinct surfaces ship the same Sardis API to wherever the agent actually lives —
+          a Python script, a Next.js app, a Claude Desktop chat, an n8n workflow, a Telegram
+          conversation, a checkout page, or a terminal. One auth model (<code>sk_</code> API keys),
+          one semantic contract, nine idiomatic entry points.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          The SDK layer is intentionally thin: each binding wraps the same REST surface at
+          <code>api.sardis.sh</code> with types, errors, retries, and pagination. Nothing "clever"
+          happens client-side — policy, mandate, and MPC signing stay server-authoritative.
+          The cleverness lives in how many environments the same API can reach without the
+          developer learning anything new.
+        </div>
+      </section>
+
+      <!-- Surface grid -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Surface Map</div>
+          <h2>Nine packages, one API.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every box below is a real directory under <code>packages/</code>. Version and published
+            artifact columns are pulled from the packages' own manifests.
+          </p>
+        </div>
+        <div class="grid grid-3">
+
+          <div class="surface-tile">
+            <div class="surface-label">01 · Python</div>
+            <div class="surface-title">sardis-sdk</div>
+            <div class="surface-desc">Async-first httpx client. Resources for agents, wallets, mandates, payments, policies, holds, cards, fx, groups.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v1.1.0</span>
+              <span class="chip">PyPI</span>
+              <span class="chip">py ≥3.12</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">02 · TypeScript</div>
+            <div class="surface-title">@sardis/sdk</div>
+            <div class="surface-desc">ESM + CJS + browser bundles. Zod types, 30 resource modules, streaming + interceptors + pagination.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v1.1.0</span>
+              <span class="chip">npm</span>
+              <span class="chip">Node ≥18</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">03 · CLI (Python)</div>
+            <div class="surface-title">sardis-cli</div>
+            <div class="surface-desc">Click-based. 17 command groups: auth, wallets, agents, payments, policies, mandates, holds, cards, chains, fiat, approvals, groups, spending, ledger, demo, init.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v1.0.0</span>
+              <span class="chip">PyPI</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">04 · CLI (Go)</div>
+            <div class="surface-title">sardis (binary)</div>
+            <div class="surface-desc">GoReleaser-built cross-platform binary — darwin/linux/windows × amd64/arm64. Ships with Homebrew tap.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v0.1.0</span>
+              <span class="chip">6 targets</span>
+              <span class="chip">Homebrew</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">05 · CLI (JS)</div>
+            <div class="surface-title">@sardis/cli</div>
+            <div class="surface-desc">npm-installable variant for Node-heavy teams who want the CLI inline with JS toolchains.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">npm</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">06 · MCP Server</div>
+            <div class="surface-title">@sardis/mcp-server</div>
+            <div class="surface-desc">Exposes 50 Sardis tools over Model Context Protocol. Claude Desktop, Cursor, Windsurf.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v1.1.0</span>
+              <span class="chip">50 tools</span>
+              <span class="chip">stdio</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">07 · n8n Node</div>
+            <div class="surface-title">n8n-nodes-sardis</div>
+            <div class="surface-desc">Community node + credential. Drop Sardis actions into any n8n workflow.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">v1.0.0</span>
+              <span class="chip">n8n ≥2.0</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">08 · Spend Widget</div>
+            <div class="surface-title">sardis-spend-widget</div>
+            <div class="surface-desc">Embeddable consumer widget — lets end users approve/deny agent spend in real time from the agent app.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">embed</span>
+            </div>
+          </div>
+
+          <div class="surface-tile">
+            <div class="surface-label">09 · Telegram Bot</div>
+            <div class="surface-title">sardis-telegram-bot</div>
+            <div class="surface-desc">Telegram front-end for approvals, balance checks, kill-switch. For solo ops + on-call.</div>
+            <div class="chip-row mt-16">
+              <span class="chip">Python</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Auth model -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Auth</div>
+          <h2>One API-key model across every surface.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every surface authenticates with a prefixed secret key. Prefix encodes environment and
+            blast radius; <code>require_principal</code> in the API gateway hashes the key (SHA-256),
+            looks up the owning merchant/agent, and attaches a principal to the request for the
+            orchestrator to consume.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Prefix</th><th>Environment</th><th>Use</th><th>Rotation</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sk_live_…</code></td><td>Production</td><td>Real money, real compliance, real rate limits.</td><td>Hot-rotatable from dashboard; old key decays 24h.</td></tr>
+            <tr><td><code>sk_test_…</code></td><td>Sandbox</td><td>Policy &amp; mandate logic end-to-end, but settlement is simulated.</td><td>Self-serve in dashboard.</td></tr>
+            <tr><td><code>sk_dev_…</code></td><td>Local</td><td>Emitted by <code>sardis auth login</code> against local API.</td><td>Never leaves laptop.</td></tr>
+            <tr><td><code>pk_live_…</code></td><td>Public / client</td><td>Checkout, spend widget — rate-limited, read-biased scope only.</td><td>Safe to embed.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Python SDK -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">01 · Python SDK</div>
+          <h2><code>sardis-sdk</code> — async httpx client.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-sdk-python/</code>. Async is the default
+            (<code>AsyncSardisClient</code>); sync exists for scripts. Connection pooling, retry with
+            exponential backoff, token refresh, and typed errors are built-in.
+          </p>
+        </div>
+
+        <h3 class="mt-16">Install &amp; quickstart</h3>
+        <pre><code># install
+pip install sardis-sdk
+# or
+uv add sardis-sdk
+
+# set API key
+export SARDIS_API_KEY=sk_live_…</code></pre>
+
+        <p class="mt-16 text-muted">
+          From <code>packages/sardis-sdk-python/examples/quickstart.py</code> — the canonical flow:
+          create agent → create wallet → parse a natural-language policy → pay → check balance.
+        </p>
+        <pre><code>import asyncio, os
+from sardis_sdk import AsyncSardisClient
+
+async def main():
+    async with AsyncSardisClient(api_key=os.environ["SARDIS_API_KEY"]) as client:
+        agent   = await client.agents.create(name="My First Agent")
+        wallet  = await client.wallets.create(agent_id=agent.agent_id, chain="base")
+
+        policy  = await client.policies.parse(
+            text="Max $100 per transaction, $500 per day, no gambling",
+        )
+        await client.policies.apply(wallet_id=wallet.wallet_id, policy=policy)
+
+        payment = await client.payments.send(
+            wallet_id=wallet.wallet_id,
+            to="merchant_demo",
+            amount="25.00",
+            purpose="API usage - OpenAI",
+        )
+        print(payment.status, payment.tx_id)
+
+        balance = await client.wallets.get_balance(wallet.wallet_id)
+        print(balance.balance, balance.currency)
+
+asyncio.run(main())</code></pre>
+
+        <h3 class="mt-24">Resources exposed on <code>AsyncSardisClient</code></h3>
+        <div class="chip-row">
+          <span class="chip">agents</span>
+          <span class="chip">wallets</span>
+          <span class="chip">payments</span>
+          <span class="chip">policies</span>
+          <span class="chip">mandates</span>
+          <span class="chip">holds</span>
+          <span class="chip">cards</span>
+          <span class="chip">fx</span>
+          <span class="chip">groups</span>
+          <span class="chip">approvals</span>
+          <span class="chip">funding</span>
+          <span class="chip">evidence</span>
+          <span class="chip">escrow</span>
+          <span class="chip">exceptions</span>
+          <span class="chip">kill_switch</span>
+        </div>
+
+        <h3 class="mt-24">Typed error handling</h3>
+        <p class="text-muted">
+          Every error inherits from <code>SardisError</code> — catch the base, or narrow to
+          specifics. Source: <code>packages/sardis-sdk-python/src/sardis_sdk/models/errors.py</code>.
+        </p>
+        <pre><code>from sardis_sdk import (
+    AsyncSardisClient,
+    AuthenticationError,   # 401 — bad or revoked key
+    RateLimitError,        # 429 — quota exceeded (respects Retry-After)
+    ValidationError,       # 400 — malformed request body
+    NotFoundError,         # 404 — unknown wallet / agent / mandate
+    TimeoutError,          # request-level timeout
+    ConnectionError,       # transport failure before response
+    APIError,              # 5xx catchall
+)
+
+try:
+    await client.payments.send(...)
+except RateLimitError as e:
+    await asyncio.sleep(e.retry_after)
+except AuthenticationError:
+    # rotate key and bail
+    raise
+except APIError as e:
+    log.error("sardis %s: %s", e.status_code, e.code)</code></pre>
+      </section>
+
+      <!-- JS SDK -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">02 · TypeScript SDK</div>
+          <h2><code>@sardis/sdk</code> — strict TS, Zod-validated.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-sdk-js/</code>. Ships three bundles from one source —
+            ESM (<code>dist/index.js</code>), CJS (<code>dist/cjs/index.cjs</code>), and a browser
+            build (<code>dist/browser/index.js</code>). Strict TypeScript, Zod runtime validation at
+            boundaries, interceptors, abort signals, and auto-paginators.
+          </p>
+        </div>
+
+        <pre><code>npm i @sardis/sdk
+# or
+pnpm add @sardis/sdk</code></pre>
+
+        <pre><code>import &#123; SardisClient, RateLimitError, AuthenticationError &#125; from "@sardis/sdk";
+
+const client = new SardisClient(&#123; apiKey: process.env.SARDIS_API_KEY! &#125;);
+
+const agent  = await client.agents.create(&#123; name: "My First Agent" &#125;);
+const wallet = await client.wallets.create(&#123; agent_id: agent.agent_id, chain: "base" &#125;);
+
+const policy = await client.policies.parse(&#123;
+  text: "Max $100 per transaction, $500 per day, no gambling",
+&#125;);
+await client.policies.apply(&#123; wallet_id: wallet.wallet_id, policy &#125;);
+
+try &#123;
+  const payment = await client.payments.send(&#123;
+    wallet_id: wallet.wallet_id,
+    to: "merchant_demo",
+    amount: "25.00",
+    purpose: "API usage - OpenAI",
+  &#125;);
+  console.log(payment.status, payment.tx_id);
+&#125; catch (err) &#123;
+  if (err instanceof RateLimitError) &#123;
+    await new Promise(r =&gt; setTimeout(r, err.retryAfter * 1000));
+  &#125; else if (err instanceof AuthenticationError) &#123;
+    throw err;
+  &#125;
+&#125;</code></pre>
+
+        <h3 class="mt-24">Resource modules (<code>src/resources/</code>)</h3>
+        <div class="chip-row">
+          <span class="chip">agents</span>
+          <span class="chip">wallets</span>
+          <span class="chip">payments</span>
+          <span class="chip">policies</span>
+          <span class="chip">mandate-delegation</span>
+          <span class="chip">holds</span>
+          <span class="chip">cards</span>
+          <span class="chip">fx</span>
+          <span class="chip">groups</span>
+          <span class="chip">approvals</span>
+          <span class="chip">kill-switch</span>
+          <span class="chip">ledger</span>
+          <span class="chip">evidence</span>
+          <span class="chip">escrow</span>
+          <span class="chip">treasury</span>
+          <span class="chip">subscriptions-v2</span>
+          <span class="chip">checkout</span>
+          <span class="chip">marketplace</span>
+          <span class="chip">streaming</span>
+          <span class="chip">webhooks</span>
+          <span class="chip">a2a</span>
+          <span class="chip">ucp</span>
+          <span class="chip">simulation</span>
+          <span class="chip">usage</span>
+          <span class="chip">batch</span>
+          <span class="chip">transactions</span>
+          <span class="chip">funding</span>
+          <span class="chip">payment-objects</span>
+        </div>
+
+        <h3 class="mt-24">Auto-pagination</h3>
+        <pre><code>for await (const agent of client.paginate(
+  (params) =&gt; client.agents.list(params),
+  &#123; limit: 100 &#125;,
+)) &#123;
+  console.log(agent.name);
+&#125;</code></pre>
+      </section>
+
+      <!-- Python CLI -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">03 · CLI (Python)</div>
+          <h2><code>sardis-cli</code> — Click-based terminal tool.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-cli/</code>. One command group per resource, thin wrapper
+            around the Python SDK. Config lives in <code>~/.sardis/config.toml</code>
+            (<code>commands/auth.py</code> writes it). See <code>commands/</code> for the full tree.
+          </p>
+        </div>
+
+        <pre><code># install
+pip install sardis-cli
+
+# log in — exchanges email/password or API key for a local token
+sardis auth login
+
+# scaffold a new project (API keys, .env, example agent)
+sardis init my-agent
+
+# list wallets for the current org
+sardis wallet list
+
+# create one
+sardis wallet create --agent ag_123 --chain base
+
+# set a natural-language policy
+sardis policy set --wallet wal_abc \
+  --text "Max $100 per tx, $500/day, no gambling"
+
+# pay
+sardis pay --wallet wal_abc --to merchant_demo --amount 25.00 \
+  --purpose "OpenAI API usage"
+
+# one-command end-to-end demo (uses sandbox)
+sardis demo run</code></pre>
+
+        <h3 class="mt-24">Command groups</h3>
+        <div class="chip-row">
+          <span class="chip">auth</span>
+          <span class="chip">init</span>
+          <span class="chip">agents</span>
+          <span class="chip">wallets</span>
+          <span class="chip">payments</span>
+          <span class="chip">policies</span>
+          <span class="chip">mandates</span>
+          <span class="chip">holds</span>
+          <span class="chip">cards</span>
+          <span class="chip">chains</span>
+          <span class="chip">fiat</span>
+          <span class="chip">approvals</span>
+          <span class="chip">groups</span>
+          <span class="chip">spending</span>
+          <span class="chip">ledger</span>
+          <span class="chip">demo</span>
+        </div>
+      </section>
+
+      <!-- Go CLI -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">04 · CLI (Go)</div>
+          <h2><code>sardis</code> binary — cross-platform release.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-cli-go/</code>. Built with GoReleaser; release metadata at
+            <code>dist/metadata.json</code>. One static binary, six targets, Homebrew tap under
+            <code>dist/homebrew/</code>.
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Target</th><th>Artifact</th></tr></thead>
+          <tbody>
+            <tr><td>darwin / amd64</td><td><code>sardis_darwin_amd64.tar.gz</code></td></tr>
+            <tr><td>darwin / arm64</td><td><code>sardis_darwin_arm64.tar.gz</code></td></tr>
+            <tr><td>linux / amd64</td><td><code>sardis_linux_amd64.tar.gz</code></td></tr>
+            <tr><td>linux / arm64</td><td><code>sardis_linux_arm64.tar.gz</code></td></tr>
+            <tr><td>windows / amd64</td><td><code>sardis_windows_amd64.zip</code></td></tr>
+            <tr><td>windows / arm64</td><td><code>sardis_windows_arm64.zip</code></td></tr>
+          </tbody>
+        </table>
+        <pre class="mt-16"><code># Homebrew (macOS/Linux)
+brew install sardis/tap/sardis
+
+# Verified checksums in dist/checksums.txt and dist/digests.txt
+sardis --version    # v0.1.0</code></pre>
+      </section>
+
+      <!-- JS CLI -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">05 · CLI (JS)</div>
+          <h2><code>@sardis/cli</code> — the npm-native variant.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-cli-js/</code>. Same command surface as the Python CLI,
+            distributed via npm so Node-heavy teams can pin it in <code>package.json</code> and keep
+            their agent toolchain in one registry.
+          </p>
+        </div>
+        <pre><code>npx @sardis/cli auth login
+npx @sardis/cli wallet list
+npx @sardis/cli pay --wallet wal_abc --to merchant_demo --amount 25.00</code></pre>
+      </section>
+
+      <!-- MCP -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">06 · MCP Server</div>
+          <h2><code>@sardis/mcp-server</code> — Claude, Cursor, Windsurf.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-mcp-server/</code>. Implements Model Context Protocol over
+            stdio; exposes 50 Sardis tools to any MCP-aware client. Tool list is declared in the
+            package's <code>mcp</code> manifest (<code>package.json</code>) — truth source below.
+          </p>
+        </div>
+
+        <h3>Claude Desktop config</h3>
+        <p class="text-muted">From <code>CLAUDE_DESKTOP_CONFIG.md</code>. macOS path:
+          <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>.</p>
+        <pre><code>&#123;
+  "mcpServers": &#123;
+    "sardis": &#123;
+      "command": "npx",
+      "args": ["@sardis/mcp-server", "start"],
+      "env": &#123;
+"SARDIS_API_KEY": "your_sardis_api_key",
+        "SARDIS_WALLET_ID": "wal_YOUR_WALLET"
+      &#125;
+    &#125;
+  &#125;
+&#125;</code></pre>
+
+        <p class="text-muted mt-16">
+          Omit the <code>env</code> block to run in simulated mode — no key needed, no funds move,
+          useful for demos and first-touch.
+        </p>
+
+        <h3 class="mt-24">Tools exposed (50)</h3>
+        <p class="text-muted">Grouped by domain. Each one maps to one Sardis REST call.</p>
+
+        <h4 class="mt-16">Wallets &amp; balance</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_get_balance</span>
+          <span class="chip">sardis_get_wallet</span>
+          <span class="chip">sardis_create_wallet</span>
+          <span class="chip">sardis_list_wallets</span>
+          <span class="chip">sardis_fund_wallet</span>
+          <span class="chip">sardis_withdraw</span>
+          <span class="chip">sardis_withdraw_to_bank</span>
+          <span class="chip">sardis_get_funding_status</span>
+          <span class="chip">sardis_get_withdrawal_status</span>
+          <span class="chip">sardis_list_funding_transactions</span>
+        </div>
+
+        <h4 class="mt-16">Agents &amp; groups</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_create_agent</span>
+          <span class="chip">sardis_get_agent</span>
+          <span class="chip">sardis_list_agents</span>
+          <span class="chip">sardis_update_agent</span>
+          <span class="chip">sardis_create_group</span>
+          <span class="chip">sardis_get_group</span>
+          <span class="chip">sardis_list_groups</span>
+          <span class="chip">sardis_add_agent_to_group</span>
+          <span class="chip">sardis_remove_agent_from_group</span>
+          <span class="chip">sardis_get_group_spending</span>
+        </div>
+
+        <h4 class="mt-16">Payments &amp; holds</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_pay</span>
+          <span class="chip">sardis_get_transaction</span>
+          <span class="chip">sardis_list_transactions</span>
+          <span class="chip">sardis_create_hold</span>
+          <span class="chip">sardis_capture_hold</span>
+          <span class="chip">sardis_void_hold</span>
+          <span class="chip">sardis_release_hold</span>
+          <span class="chip">sardis_extend_hold</span>
+          <span class="chip">sardis_get_hold</span>
+          <span class="chip">sardis_list_holds</span>
+        </div>
+
+        <h4 class="mt-16">Policy &amp; compliance</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_check_policy</span>
+          <span class="chip">sardis_validate_limits</span>
+          <span class="chip">sardis_check_compliance</span>
+          <span class="chip">sardis_get_policies</span>
+          <span class="chip">sardis_request_approval</span>
+          <span class="chip">sardis_get_approval_status</span>
+          <span class="chip">sardis_check_approval</span>
+          <span class="chip">sardis_list_pending_approvals</span>
+          <span class="chip">sardis_cancel_approval</span>
+        </div>
+
+        <h4 class="mt-16">Cards</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_issue_card</span>
+          <span class="chip">sardis_create_card</span>
+          <span class="chip">sardis_get_card</span>
+          <span class="chip">sardis_list_cards</span>
+          <span class="chip">sardis_freeze_card</span>
+          <span class="chip">sardis_unfreeze_card</span>
+          <span class="chip">sardis_cancel_card</span>
+        </div>
+
+        <h4 class="mt-16">Spending analytics + sandbox</h4>
+        <div class="chip-row">
+          <span class="chip">sardis_get_spending_summary</span>
+          <span class="chip">sardis_get_spending</span>
+          <span class="chip">sardis_get_spending_by_vendor</span>
+          <span class="chip">sardis_get_spending_by_category</span>
+          <span class="chip">sardis_get_spending_trends</span>
+          <span class="chip">sardis_sandbox_demo</span>
+        </div>
+      </section>
+
+      <!-- n8n -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">07 · n8n Node</div>
+          <h2><code>n8n-nodes-sardis</code> — community node.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/n8n-nodes-sardis/</code>. Ships one node
+            (<code>nodes/Sardis/Sardis.node.ts</code>) plus a credential type
+            (<code>credentials/SardisApi.credentials.ts</code>) that securely stores the API key in
+            n8n's encrypted credential store. Requires <code>n8n-workflow ≥ 2.0</code>.
+          </p>
+        </div>
+        <pre><code># Install inside an n8n instance
+npm i -g n8n-nodes-sardis
+
+# Or add via n8n Community Nodes UI: Settings → Community Nodes → Install
+# Package: n8n-nodes-sardis</code></pre>
+        <p class="text-muted mt-16">
+          Example flow: <code>Gmail → Sardis: Request Approval → Wait → Sardis: Pay</code>.
+          The <code>Sardis</code> node exposes operations for pay, hold, approve, balance,
+          and webhook dispatch so the workflow can stay in one tool.
+        </p>
+      </section>
+
+      <!-- Spend widget -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">08 · Spend Widget</div>
+          <h2><code>sardis-spend-widget</code> — consumer-side approval UI.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-spend-widget/</code>. An embeddable widget that consumer
+            agent apps drop in so the <em>end user</em> — not the agent — confirms spend above a
+            threshold. Uses a <code>pk_live_…</code> publishable key scoped to a single session;
+            sensitive operations still go through the server.
+          </p>
+        </div>
+        <pre><code>&lt;script src="https://widget.sardis.sh/v1/spend.js" async&gt;&lt;/script&gt;
+
+&lt;sardis-spend
+  publishable-key="pk_live_…"
+  session-id="ss_live_abc123"
+  on-approve="handleApprove"
+  on-deny="handleDeny"&gt;
+&lt;/sardis-spend&gt;</code></pre>
+        <p class="text-muted mt-16">
+          The widget subscribes over SSE to spend requests for the session and renders a native-feel
+          approve/deny sheet. Complements the Telegram bot surface for users who live in a browser
+          rather than in chat.
+        </p>
+      </section>
+
+      <!-- Telegram bot -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">09 · Telegram Bot</div>
+          <h2><code>sardis-telegram-bot</code> — on-call surface.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>packages/sardis-telegram-bot/</code>. Python bot that mirrors the
+            approval / balance / kill-switch surface into Telegram. Built for solo operators and
+            on-call rotations who want real-time agent-spend pings in a chat they already have open.
+          </p>
+        </div>
+        <pre><code># typical commands (the bot is side-loaded, not published)
+/balance              # shows wallet balances across chains
+/approvals            # lists pending approvals, with approve/deny buttons
+/kill &lt;wallet&gt;     # pauses all outbound spend for a wallet
+/status               # last 10 ledger decisions</code></pre>
+      </section>
+
+      <!-- Sequence: how surfaces share one API -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Shape</div>
+          <h2>Nine entry points, one pipeline.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Whichever surface originates the call, the request hits the same API gateway and
+            the same <code>PaymentOrchestrator</code>. This is what makes "add a new surface"
+            cheap — the trust model doesn't change.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+flowchart LR
+    PY["Python SDK"] --&gt; API
+    TS["TS SDK"] --&gt; API
+    CLI["sardis-cli (py)"] --&gt; API
+    GO["sardis (go binary)"] --&gt; API
+    JCLI["@sardis/cli"] --&gt; API
+    MCP["@sardis/mcp-server"] --&gt; API
+    N8N["n8n node"] --&gt; API
+    WID["spend-widget"] --&gt; API
+    TG["telegram-bot"] --&gt; API
+    API["api.sardis.sh · require_principal"] --&gt; O["PaymentOrchestrator"]
+    O --&gt; PP["Pre-Execution Pipeline"]
+    PP --&gt; CX["Chain / Wallet / Rails"]
+          </pre>
+        </div>
+      </section>
+
+      <!-- Release cadence -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">10 · Release Cadence</div>
+          <h2>How SDKs actually ship.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Two workflows in <code>.github/workflows/</code> drive publishing. Tag pushes trigger
+            production releases; <code>workflow_dispatch</code> supports manual rc builds with a
+            TestPyPI / npm prerelease toggle. No SDK version leaves CI without green tests.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Workflow</th><th>Triggers</th><th>Targets</th><th>Registries</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>release-python-sdk.yml</code></td>
+              <td>Tag <code>py-sdk-v*</code> or manual dispatch</td>
+              <td><code>packages/sardis-sdk-python</code></td>
+              <td>PyPI (prod) / TestPyPI (prerelease)</td>
+            </tr>
+            <tr>
+              <td><code>release-python-integrations.yml</code></td>
+              <td>Tag <code>py-&lt;integration&gt;-v*</code></td>
+              <td>sardis-langchain, sardis-crewai, sardis-autogpt, …</td>
+              <td>PyPI / TestPyPI</td>
+            </tr>
+            <tr>
+              <td><code>release-npm.yml</code></td>
+              <td>Tag <code>mcp-v*</code>, <code>sdk-js-v*</code>, <code>ai-sdk-v*</code>, <code>connect-js-v*</code></td>
+              <td>MCP server, TS SDK, AI SDK, Connect JS</td>
+              <td>npm</td>
+            </tr>
+            <tr>
+              <td><code>sign-artifacts.yml</code></td>
+              <td>On release builds</td>
+              <td>All published artifacts</td>
+              <td>Sigstore attestations</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Source of truth -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Source of Truth</div>
+          <h2>Files to read if the above drifts.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>File</th><th>Why</th></tr></thead>
+          <tbody>
+            <tr><td><code>packages/sardis-sdk-python/pyproject.toml</code></td><td>Python SDK version, deps, classifiers.</td></tr>
+            <tr><td><code>packages/sardis-sdk-python/src/sardis_sdk/client.py</code></td><td><code>AsyncSardisClient</code> construction, retry, error mapping.</td></tr>
+            <tr><td><code>packages/sardis-sdk-python/examples/quickstart.py</code></td><td>The canonical end-to-end flow.</td></tr>
+            <tr><td><code>packages/sardis-sdk-js/package.json</code></td><td>TS SDK version, bundle exports.</td></tr>
+            <tr><td><code>packages/sardis-sdk-js/src/index.ts</code></td><td>Public surface: client, errors, telemetry, pagination.</td></tr>
+            <tr><td><code>packages/sardis-sdk-js/src/resources/</code></td><td>30 resource modules.</td></tr>
+            <tr><td><code>packages/sardis-cli/src/sardis_cli/commands/</code></td><td>One file per command group.</td></tr>
+            <tr><td><code>packages/sardis-cli-go/dist/metadata.json</code></td><td>GoReleaser build metadata + commit.</td></tr>
+            <tr><td><code>packages/sardis-mcp-server/package.json</code></td><td><code>mcp.tools[]</code> — the real tool list, not this page.</td></tr>
+            <tr><td><code>packages/sardis-mcp-server/CLAUDE_DESKTOP_CONFIG.md</code></td><td>OS-specific config paths + prod/simulated snippets.</td></tr>
+            <tr><td><code>packages/n8n-nodes-sardis/package.json</code></td><td>n8n node + credential registration.</td></tr>
+            <tr><td><code>.github/workflows/release-python-sdk.yml</code></td><td>Python publish logic.</td></tr>
+            <tr><td><code>.github/workflows/release-npm.yml</code></td><td>npm publish logic for 4 packages.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Cross refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/integrations">
+            <div class="canvas-card-num">15 · Product</div>
+            <div class="canvas-card-title">AI Framework Integrations</div>
+            <div class="canvas-card-desc">The 18 framework adapters that sit on top of these SDKs.</div>
+          </a>
+          <a class="canvas-card" href="/api-surface">
+            <div class="canvas-card-num">04 · Backend</div>
+            <div class="canvas-card-title">API Surface</div>
+            <div class="canvas-card-desc">The 123 routers these SDKs call.</div>
+          </a>
+          <a class="canvas-card" href="/dashboard">
+            <div class="canvas-card-num">16 · Product</div>
+            <div class="canvas-card-title">Dashboard UI</div>
+            <div class="canvas-card-desc">Where keys are minted, rotated, and scoped.</div>
+          </a>
+          <a class="canvas-card" href="/cicd">
+            <div class="canvas-card-num">18 · Ops</div>
+            <div class="canvas-card-title">CI/CD</div>
+            <div class="canvas-card-desc">The 24 workflows that ship this surface.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

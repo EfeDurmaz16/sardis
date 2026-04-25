@@ -1,0 +1,559 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    /* Step list */
+    .step {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      background: var(--card);
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+    }
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-faint);
+      line-height: 1.2;
+    }
+    .step-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .step-body { color: var(--text-secondary); font-size: 13.5px; line-height: 1.55; }
+    .step-meta {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .step-meta .failmode { color: var(--warning); }
+  `;
+---
+
+<Canvas title="07 · Payment Flow — Sardis Canvas" currentId="payment-flow">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 07 · Flows</span>
+        <h1>Payment Flow · end-to-end</h1>
+        <p class="hero-lead">
+          One call — <code>sardis.pay(to, amount, reason)</code> — traverses fourteen distinct stages
+          before it returns. This canvas walks every one, with the actual file behind it, the latency
+          budget, and what happens when that stage fails closed.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          Every payment is four things in sequence: <strong>identity</strong> (who is calling),
+          <strong>approval</strong> (is this allowed by policy + compliance + mandate),
+          <strong>execution</strong> (get an MPC signature, broadcast), <strong>receipt</strong> (ledger
+          row, Merkle batch, webhook). Fail-closed at every gate. Budget ≈ 2s p99 excluding chain
+          confirmation.
+        </div>
+      </section>
+
+      <!-- Sequence diagram -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">One request</div>
+          <h2>The full sequence — every actor, every message.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            An agent running in LangChain calls <code>sardis.pay()</code>. The sequence below is what
+            really happens. Each bubble maps to a step in the walkthrough below.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+sequenceDiagram
+    participant A as Agent (LangChain)
+    participant SDK as sardis-sdk-python
+    participant MW as FastAPI Middleware
+    participant RP as require_principal
+    participant O as PaymentOrchestrator
+    participant PP as PreExecutionPipeline
+    participant PV as MandateVerifier
+    participant CE as ChainExecutor
+    participant WM as WalletManager
+    participant TK as Turnkey MPC
+    participant RPC as Alchemy RPC
+    participant CH as Base / Tempo
+    participant LG as sardis-ledger
+    participant AN as LedgerAnchor.sol
+    participant OB as webhook outbox
+
+    A->>SDK: client.payments.create(to, amount, reason)
+    SDK->>MW: POST /v1/payments  Authorization: Bearer sk_…
+    MW->>MW: CORS · HSTS · CSP · rate limit (Redis)
+    MW->>RP: extract principal (API key → agent/org)
+    RP->>O: orchestrator.execute(intent)
+    O->>PP: pipeline.run(intent, principal)
+    PP->>PP: spending_policy ✓
+    PP->>PP: KYC / AML (sardis-compliance) ✓
+    PP->>PP: mandate delegation ✓
+    PP->>PP: rate limit ✓
+    PP->>PP: anomaly score ✓
+    PP->>PV: AP2 / TAP / x402 chain ✓
+    PV-->>PP: verified
+    PP-->>O: ApprovedIntent
+    O->>CE: execute(approved_intent)
+    CE->>CE: choose chain + token + route
+    CE->>WM: request signature (payload)
+    WM->>TK: signPayload(org, sub-org, key)
+    TK-->>WM: signed tx
+    WM-->>CE: signed tx
+    CE->>RPC: eth_sendRawTransaction
+    RPC->>CH: broadcast
+    CH-->>RPC: tx hash
+    RPC-->>CE: receipt
+    CE-->>O: PaymentResult
+    O->>LG: append ledger_entry + policy_decision
+    LG->>AN: Merkle batch → anchor (async)
+    O->>OB: enqueue webhook (outbox)
+    O-->>MW: 200 PaymentResult
+    MW-->>SDK: 200 JSON
+    SDK-->>A: { tx_hash, status, receipt }
+          </pre>
+        </div>
+      </section>
+
+      <!-- Stage 1 — SDK call -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 1 · Agent surface</div>
+          <h2>From Python line to HTTP request.</h2>
+        </div>
+
+        <div class="step">
+          <div class="step-num">01</div>
+          <div>
+            <div class="step-title">Agent calls <code>sardis.pay()</code> or a framework tool.</div>
+            <div class="step-body">
+              In LangChain the agent invokes a <code>PayTool</code> from
+              <code>sardis-langchain/toolkit.py</code>. In the bare Python SDK the call is
+              <code>client.payments.create(to, amount, reason)</code>. In MCP it's a
+              <code>sardis_pay</code> tool call from Claude Desktop / Cursor. All paths converge on the
+              same REST call — no framework gets a privileged fast path.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-sdk-python/src/sardis_sdk/client.py</code></span>
+              <span>file: <code>packages/sardis-langchain/src/sardis_langchain/tools.py</code></span>
+              <span class="failmode">fail: raised on client; no network call yet</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">02</div>
+          <div>
+            <div class="step-title">SDK marshals request, attaches API key.</div>
+            <div class="step-body">
+              Client reads <code>SARDIS_API_KEY</code>, serializes the intent to JSON, sets
+              <code>Authorization: Bearer sk_live_…</code> and an idempotency key. TypeScript SDK does
+              the same via <code>@sardis/sdk</code> with Zod validation.
+            </div>
+            <div class="step-meta">
+              <span>auth: API key HMAC-hashed at rest (SHA-256)</span>
+              <span>idempotency: client-generated uuid, enforced DB-side</span>
+              <span class="failmode">fail: network retry with same idempotency key — safe</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stage 2 — Gateway -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 2 · API gateway</div>
+          <h2>FastAPI receives the request.</h2>
+        </div>
+
+        <div class="step">
+          <div class="step-num">03</div>
+          <div>
+            <div class="step-title">Middleware stack runs — CORS, CSP, HSTS, rate limit.</div>
+            <div class="step-body">
+              Request lands on Cloud Run, enters FastAPI composition root
+              (<code>sardis-api/main.py</code>). Middleware applies canonical prod origins, CSP/HSTS,
+              and the Redis-backed rate limiter. Rate limiter is <strong>fail-closed</strong> in prod —
+              if Redis is unreachable the request is denied.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-api/src/sardis_api/main.py</code></span>
+              <span>env: <code>SARDIS_REDIS_URL</code> required</span>
+              <span class="failmode">fail: 429 on limit; 503 if Redis down</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">04</div>
+          <div>
+            <div class="step-title"><code>require_principal</code> extracts identity.</div>
+            <div class="step-body">
+              Dependency resolver hashes the incoming API key, looks up the principal (org + agent +
+              scopes) from Postgres, attaches it to the request. Better-auth JWTs (EdDSA via JWKS)
+              take the same slot for dashboard-originated calls. Missing/invalid key → 401, no
+              downstream work.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-api/src/sardis_api/routers/pay.py</code></span>
+              <span>principal: org_id, agent_id, scopes[], key_id</span>
+              <span class="failmode">fail: 401 — no orchestrator invocation</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stage 3 — Pre-exec pipeline -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 3 · The single gate</div>
+          <h2>PaymentOrchestrator + PreExecutionPipeline.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every path (wallets, mandates, ap2, pay) funnels through these two files. This is the
+            "policy before execution" invariant at the code level.
+          </p>
+        </div>
+
+        <div class="step">
+          <div class="step-num">05</div>
+          <div>
+            <div class="step-title"><code>PaymentOrchestrator.execute()</code> enters.</div>
+            <div class="step-body">
+              The orchestrator receives the intent + principal. Builds a <code>PipelineContext</code>
+              containing chain, token, mandate refs (if any), agent card, trust graph snapshot. Calls
+              the pipeline.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-core/src/sardis_v2_core/orchestrator.py</code></span>
+              <span>invariant: <code>chain_executor</code> is private — only orchestrator touches it</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">06</div>
+          <div>
+            <div class="step-title">Spending policy check.</div>
+            <div class="step-body">
+              Evaluates natural-language-derived rules against the intent — merchant allowlist, daily
+              cap, per-merchant cap, category block. Returns allow / deny / require_approval. Denial
+              ends the flow here with a reason code that's written to <code>policy_decisions</code>.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-core/src/sardis_v2_core/spending_policy.py</code></span>
+              <span class="failmode">fail-closed: missing policy → deny</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">07</div>
+          <div>
+            <div class="step-title">KYC / AML screen.</div>
+            <div class="step-body">
+              Hits <code>sardis-compliance</code> which calls Didit (KYC status cached) + Elliptic
+              (AML/sanctions). Missing or expired KYC for the principal → deny. Sanctioned
+              counterparty → deny + SAR queue.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-compliance/src/sardis_compliance/kyc.py</code></span>
+              <span>file: <code>sardis_compliance/pep.py</code>, <code>sar.py</code></span>
+              <span class="failmode">fail-closed: compliance provider down → deny</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">08</div>
+          <div>
+            <div class="step-title">Mandate delegation check.</div>
+            <div class="step-body">
+              If the intent references a spending mandate, verifies the delegator's authority is still
+              valid, remaining budget covers the amount, and the mandate hasn't been revoked.
+              Decrements budget atomically via DB row lock.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-api/src/sardis_api/routers/mandate_delegation.py</code></span>
+              <span>SQL: <code>SELECT … FOR UPDATE</code> on mandate row</span>
+              <span class="failmode">fail-closed: race → NOWAIT lock, 409 to caller</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">09</div>
+          <div>
+            <div class="step-title">Rate limiter + anomaly score.</div>
+            <div class="step-body">
+              Per-agent + per-org buckets in Redis. Anomaly model (sardis-guardrails) scores the
+              intent against learned baselines — amount z-score, velocity, new counterparty, unusual
+              time-of-day. Score above threshold routes to approval queue instead of denying.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-guardrails/src/sardis_guardrails/rate_limiter.py</code></span>
+              <span>file: <code>sardis-core/src/sardis_v2_core/anomaly_detection.py</code></span>
+              <span class="failmode">fail: over threshold → approval queue, not denial</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stage 4 — Protocol verification -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 4 · Protocol verification</div>
+          <h2>If the request came in under a standard, verify the chain.</h2>
+        </div>
+
+        <div class="step">
+          <div class="step-num">10</div>
+          <div>
+            <div class="step-title">AP2 / TAP / x402 / A2A mandate chain verification.</div>
+            <div class="step-body">
+              If the intent carries a protocol envelope, the matching verifier walks the mandate chain —
+              Ed25519 / ECDSA-P256 sigs on Intent, Cart, Payment mandates; TTL; replay cache lookup in
+              Redis + Postgres archive. An unverifiable chain ends the flow.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-protocol/src/sardis_protocol/ap2.py</code></span>
+              <span>file: <code>sardis_protocol/x402_settlement.py</code>, <code>erc8122.py</code></span>
+              <span>replay: <code>sardis_protocol/replay_cache_redis.py</code></span>
+              <span class="failmode">fail-closed: invalid sig → deny; replay → 409</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stage 5 — Execution -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 5 · Execution</div>
+          <h2>Chain selection, MPC signing, broadcast.</h2>
+        </div>
+
+        <div class="step">
+          <div class="step-num">11</div>
+          <div>
+            <div class="step-title"><code>ChainExecutor</code> picks chain + token + route.</div>
+            <div class="step-body">
+              Reads the request's target chain (default "base"), selects the token (USDC / EURC /
+              PYUSD), and picks a route — direct transfer, CCTP bridge, paymaster-sponsored. Tempo
+              has its own dedicated executor.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-chain/src/sardis_chain/smart_router.py</code></span>
+              <span>file: <code>sardis-chain/src/sardis_v2_chain/executor.py</code></span>
+              <span>file: <code>sardis_chain/tempo/executor.py</code></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">12</div>
+          <div>
+            <div class="step-title">WalletManager requests an MPC signature.</div>
+            <div class="step-body">
+              <code>sardis-wallet/manager.py</code> hands the payload to the active custody provider
+              (Turnkey default). For Turnkey: organization + sub-org + private key reference. The
+              key never leaves the provider — Sardis receives a signed transaction, not a key.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-wallet/src/sardis_wallet/manager.py</code></span>
+              <span>file: <code>sardis_wallet/tempo_keychain.py</code>, <code>circle_client.py</code></span>
+              <span class="failmode">fail-closed: provider down → 503, no broadcast</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">13</div>
+          <div>
+            <div class="step-title">Broadcast via Alchemy RPC.</div>
+            <div class="step-body">
+              Signed transaction submitted to <code>SARDIS_BASE_RPC_URL</code> (env-driven, Alchemy
+              primary, public RPC fallback). Tempo uses <code>rpc.tempo.xyz</code>. Executor watches
+              for the receipt with bounded retries.
+            </div>
+            <div class="step-meta">
+              <span>provider: Alchemy (Base/Ethereum/Polygon/Arbitrum/Optimism)</span>
+              <span>provider: Tempo public RPC</span>
+              <span class="failmode">fail: receipt timeout → mark pending, reconciler will finalize</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stage 6 — Receipt + audit -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Stage 6 · Receipt + audit</div>
+          <h2>Ledger row, Merkle anchor, webhook.</h2>
+        </div>
+
+        <div class="step">
+          <div class="step-num">14</div>
+          <div>
+            <div class="step-title">Ledger entry + policy decision rows written.</div>
+            <div class="step-body">
+              A single transaction writes <code>ledger_entry</code> (the movement) plus
+              <code>policy_decision</code> (why it was allowed) in Postgres. Both rows reference each
+              other. This is the evidence base for disputes and regulator queries.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-ledger/src/sardis_ledger/models.py</code></span>
+              <span>file: <code>sardis_ledger/hybrid.py</code> (ImmuDB optional)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">15</div>
+          <div>
+            <div class="step-title">Merkle batch → on-chain anchor.</div>
+            <div class="step-body">
+              A background job rolls recent ledger entries into a Merkle tree and anchors the root
+              via <code>SardisLedgerAnchor.sol</code>. After anchoring, any ledger row can be proven
+              to have existed at or before a given block.
+            </div>
+            <div class="step-meta">
+              <span>file: <code>packages/sardis-ledger/src/sardis_ledger/anchor.py</code></span>
+              <span>contract: <code>contracts/src/SardisLedgerAnchor.sol</code></span>
+              <span>async: batched, ~5 min cadence in prod</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-num">16</div>
+          <div>
+            <div class="step-title">Webhook enqueued via outbox; SDK returns receipt.</div>
+            <div class="step-body">
+              Response assembled (<code>PaymentResult</code>), returned up the stack. Webhook for
+              <code>payment.succeeded</code> / <code>payment.denied</code> enters the outbox table —
+              delivered at-least-once by the outbox worker with exponential backoff and event-id
+              dedup.
+            </div>
+            <div class="step-meta">
+              <span>table: <code>webhook_outbox</code></span>
+              <span>dedup: <code>event_id</code> uniqueness + delivery tracking</span>
+              <span class="failmode">fail: delivery 5xx → retry with backoff, alert after N failures</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Latency budget -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Latency budget</div>
+          <h2>Where the 2-second p99 budget goes.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Indicative p99 figures, excluding chain confirmation. Agents wait for the HTTP response;
+            chain finality is tracked asynchronously and surfaced via webhook.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Stage</th><th>p50</th><th>p99</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>01–02 · SDK marshal</td><td>&lt;1 ms</td><td>3 ms</td><td>Local JSON + HTTP; ignored at SLO level.</td></tr>
+            <tr><td>03 · Middleware + rate limit</td><td>5 ms</td><td>25 ms</td><td>Redis round-trip dominates.</td></tr>
+            <tr><td>04 · require_principal</td><td>8 ms</td><td>30 ms</td><td>Postgres principal lookup (cached after first hit).</td></tr>
+            <tr><td>06–09 · Pre-exec pipeline</td><td>40 ms</td><td>180 ms</td><td>Policy eval + compliance cache + anomaly score.</td></tr>
+            <tr><td>10 · Protocol verify (if AP2/TAP)</td><td>12 ms</td><td>60 ms</td><td>Signature verify + replay lookup.</td></tr>
+            <tr><td>11 · Chain selection</td><td>3 ms</td><td>10 ms</td><td>Pure Python; no I/O.</td></tr>
+            <tr><td>12 · MPC signature (Turnkey)</td><td>350 ms</td><td>900 ms</td><td>Largest single slice. Cold org-auth worse.</td></tr>
+            <tr><td>13 · Broadcast (eth_sendRaw)</td><td>120 ms</td><td>400 ms</td><td>Alchemy p99; confirmation is async.</td></tr>
+            <tr><td>14 · Ledger write</td><td>12 ms</td><td>40 ms</td><td>Single Postgres tx.</td></tr>
+            <tr><td>15 · Merkle anchor</td><td>async</td><td>async</td><td>Background job; not on the hot path.</td></tr>
+            <tr><td>16 · Webhook enqueue</td><td>3 ms</td><td>10 ms</td><td>Insert into outbox only.</td></tr>
+            <tr><td><strong>Total (hot path)</strong></td><td><strong>~560 ms</strong></td><td><strong>~1.9 s</strong></td><td>Within the 2s p99 SLO; MPC dominates.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Failure modes -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Failure behaviour</div>
+          <h2>What happens when each stage fails.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Stage</th><th>Mode</th><th>Observable effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Rate limit</td><td>fail-closed</td><td>429; if Redis unreachable in prod → 503 (no silent pass-through).</td></tr>
+            <tr><td>Principal lookup</td><td>fail-closed</td><td>401; no orchestrator entry.</td></tr>
+            <tr><td>Spending policy</td><td>fail-closed</td><td>403 with reason code; <code>policy_decision</code> row written.</td></tr>
+            <tr><td>Compliance (Didit/Elliptic)</td><td>fail-closed</td><td>403; override only via <code>SARDIS_AGIT_FAIL_OPEN=true</code> (dev only).</td></tr>
+            <tr><td>Mandate</td><td>fail-closed</td><td>409 on race (NOWAIT); 403 on insufficient budget.</td></tr>
+            <tr><td>Anomaly</td><td>fail-soft</td><td>Above threshold → approval queue, HTTP 202 <code>pending_approval</code>.</td></tr>
+            <tr><td>Protocol verify</td><td>fail-closed</td><td>403 invalid sig; 409 replay.</td></tr>
+            <tr><td>MPC provider</td><td>fail-closed</td><td>503; no broadcast, no ledger row.</td></tr>
+            <tr><td>Broadcast</td><td>fail-open to reconciler</td><td>Marks pending; reconciliation queue finalizes.</td></tr>
+            <tr><td>Ledger write</td><td>fail-closed</td><td>Whole request rolled back; response 500. Broadcast + ledger share a DB tx where possible.</td></tr>
+            <tr><td>Anchor</td><td>eventual</td><td>Async; delayed batches alerted via ops channel.</td></tr>
+            <tr><td>Webhook delivery</td><td>at-least-once</td><td>Outbox retries with backoff; 5xx after N attempts alerts operator.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Who does what -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Package ownership</div>
+          <h2>Which package owns each stage.</h2>
+        </div>
+        <dl class="defs">
+          <dt>Agent surface</dt><dd>sardis-sdk-python · sardis-sdk-js · sardis-langchain (+ other adapters)</dd>
+          <dt>Gateway</dt><dd>sardis-api · middleware + routers</dd>
+          <dt>Orchestration</dt><dd>sardis-core · orchestrator.py + pre_execution_pipeline.py</dd>
+          <dt>Policy + compliance</dt><dd>sardis-core · spending_policy.py; sardis-compliance; sardis-guardrails</dd>
+          <dt>Protocol verification</dt><dd>sardis-protocol · ap2.py · x402_settlement.py · erc8122.py · replay_cache_redis.py</dd>
+          <dt>Chain execution</dt><dd>sardis-chain · executor.py · smart_router.py · tempo/executor.py</dd>
+          <dt>Wallet + MPC</dt><dd>sardis-wallet · manager.py · tempo_keychain.py · circle_client.py</dd>
+          <dt>Audit</dt><dd>sardis-ledger · anchor.py · immutable.py · hybrid.py · plus SardisLedgerAnchor.sol</dd>
+        </dl>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/policy-engine">
+            <div class="canvas-card-num">08 · Flows</div>
+            <div class="canvas-card-title">Policy Engine</div>
+            <div class="canvas-card-desc">How natural language turns into the deny / allow / queue decisions in steps 06–09.</div>
+          </a>
+          <a class="canvas-card" href="/wallet-mpc">
+            <div class="canvas-card-num">09 · Flows</div>
+            <div class="canvas-card-title">Wallet + MPC</div>
+            <div class="canvas-card-desc">Step 12 expanded — Turnkey orgs, sub-orgs, key rotation, failover.</div>
+          </a>
+          <a class="canvas-card" href="/settlement">
+            <div class="canvas-card-num">10 · Flows</div>
+            <div class="canvas-card-title">Settlement &amp; Chains</div>
+            <div class="canvas-card-desc">Steps 11–13 expanded — CCTP v2, Tempo, paymasters, reconciliation.</div>
+          </a>
+          <a class="canvas-card" href="/protocols">
+            <div class="canvas-card-num">13 · Product</div>
+            <div class="canvas-card-title">Protocol Gateway</div>
+            <div class="canvas-card-desc">Step 10 expanded — AP2, TAP, x402, A2A mandate chains.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>
