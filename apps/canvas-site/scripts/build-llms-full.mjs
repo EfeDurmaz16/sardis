@@ -64,11 +64,10 @@ function stripHtml(s) {
   s = s.replace(/<li[^>]*>/gi, "\n- ");
   // strip remaining tags
   s = s.replace(/<[^>]+>/g, "");
-  // decode common entities
+  // decode common entities (decode &amp; last to avoid double-unescaping)
   s = s
     .replace(/&#123;/g, "{")
     .replace(/&#125;/g, "}")
-    .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
@@ -79,7 +78,8 @@ function stripHtml(s) {
     .replace(/&rdquo;/g, '"')
     .replace(/&mdash;/g, "—")
     .replace(/&ndash;/g, "–")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
   // strip tags again after decoding entities to avoid reintroducing HTML-like markup
   s = s.replace(/<[^>]+>/g, "");
   // collapse whitespace
