@@ -148,7 +148,14 @@
       "sardis_list_groups",
       "sardis_add_agent_to_group",
       "sardis_remove_agent_from_group",
-      "sardis_get_group_spending"
+      "sardis_get_group_spending",
+      "sardis_facility_request",
+      "sardis_facility_attach_evidence",
+      "sardis_facility_authorize",
+      "sardis_facility_execute",
+      "sardis_facility_audit",
+      "sardis_facility_export_audit",
+      "sardis_facility_list_requests"
     ],
     "transport": "stdio",
     "category": "finance",
