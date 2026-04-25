@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>07 · Payment Flow — Sardis Canvas</title><meta name="description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:title" content="07 · Payment Flow — Sardis Canvas"><meta property="og:description" content="Sardis, Payment OS for AI Agents. Technical canvases."><meta property="og:type" content="website"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.svg"><meta name="theme-color" content="#1a1614"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"><script>
+      (function () {
+        function applyTheme() {
+          try {
+            var t = localStorage.getItem("sardis-canvas-theme");
+            if (!t) t = "dark";
+            document.documentElement.setAttribute("data-theme", t);
+          } catch (_) {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+        }
+        applyTheme();
+        // Astro ClientRouter resets html attributes on swap — re-apply on each nav
+        document.addEventListener("astro:after-swap", applyTheme);
+      })();
+    </script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/tokens.css"><link rel="stylesheet" href="/css/base.css"> <style is:global>
+    /* Step list */
+    .step {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      background: var(--card);
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+    }
+    .step-num {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-faint);
+      line-height: 1.2;
+    }
+    .step-title { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .step-body { color: var(--text-secondary); font-size: 13.5px; line-height: 1.55; }
+    .step-meta {
+      margin-top: 10px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .step-meta .failmode { color: var(--warning); }
+  </style> <meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="animate"><script type="module" src="/_astro/ClientRouter.astro_astro_type_script_index_0_lang.Dj9DTIK7.js"></script><style>.astro-route-announcer{position:absolute;left:0;top:0;clip:rect(0 0 0 0);clip-path:inset(50%);overflow:hidden;white-space:nowrap;width:1px;height:1px}@keyframes astroFadeInOut{0%{opacity:1}to{opacity:0}}@keyframes astroFadeIn{0%{opacity:0;mix-blend-mode:plus-lighter}to{opacity:1;mix-blend-mode:plus-lighter}}@keyframes astroFadeOut{0%{opacity:1;mix-blend-mode:plus-lighter}to{opacity:0;mix-blend-mode:plus-lighter}}@keyframes astroSlideFromRight{0%{transform:translate(100%)}}@keyframes astroSlideFromLeft{0%{transform:translate(-100%)}}@keyframes astroSlideToRight{to{transform:translate(100%)}}@keyframes astroSlideToLeft{to{transform:translate(-100%)}}@media(prefers-reduced-motion){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}[data-astro-transition-scope]{animation:none!important}}
+</style><script type="module" src="/_astro/page.CcM-ZRDR.js"></script></head> <body data-canvas="payment-flow"> <button class="mobile-menu-btn" aria-label="Open navigation" data-mobile-menu-btn> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="3" y1="6" x2="21" y2="6"></line> <line x1="3" y1="12" x2="21" y2="12"></line> <line x1="3" y1="18" x2="21" y2="18"></line> </svg> </button> <div class="sidebar-scrim" data-sidebar-scrim></div> <button class="sidebar-open-btn" aria-label="Show navigation" data-sidebar-open> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <polyline points="9 18 15 12 9 6"></polyline> </svg> </button> <div class="canvas-page" data-canvas-page> <aside class="canvas-sidebar" data-canvas-sidebar data-current="payment-flow" data-astro-transition-persist="sardis-sidebar"></aside> <main class="canvas-main"> <aside class="page-ai page-ai-top" aria-label="AI assist"> <div class="page-ai-head"> <span class="eyebrow">AI summary</span> <span class="page-ai-hint">Have a model read this canvas for you.</span> </div> <div class="page-ai-actions"> <button class="ai-btn" data-page-copy type="button"> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect> <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path> </svg> <span data-page-copy-label>Copy this canvas</span> </button> <a class="ai-btn ai-btn-primary" data-page-chatgpt href="https://chatgpt.com/?hints=search&#38;q=Walk%20me%20through%20the%20Sardis%20payment%20flow%20end%20to%20end%20and%20flag%20where%20authority%20is%20checked%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fpayment-flow" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z"></path> </svg> <span>Ask ChatGPT</span> </a> <a class="ai-btn" data-page-claude href="https://claude.ai/new?q=Walk%20me%20through%20the%20Sardis%20payment%20flow%20end%20to%20end%20and%20flag%20where%20authority%20is%20checked%3A%20https%3A%2F%2Fcanvas.sardis.sh%2Fpayment-flow" target="_blank" rel="noopener"> <svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" aria-hidden="true"> <path d="M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z"></path> </svg> <span>Ask Claude</span> </a> </div> </aside>   <section class="hero"> <span class="eyebrow">Canvas 07 · Flows</span> <h1>Payment Flow · end-to-end</h1> <p class="hero-lead">
+One call — <code>sardis.pay(to, amount, reason)</code> — traverses fourteen distinct stages
+          before it returns. This canvas walks every one, with the actual file behind it, the latency
+          budget, and what happens when that stage fails closed.
+</p> </section> <section class="section" style="padding-top:0; border-top:0;"> <div class="callout callout-info"> <span class="callout-title">TL;DR</span>
+Every payment is four things in sequence: <strong>identity</strong> (who is calling),
+<strong>approval</strong> (is this allowed by policy + compliance + mandate),
+<strong>execution</strong> (get an MPC signature, broadcast), <strong>receipt</strong> (ledger
+          row, Merkle batch, webhook). Fail-closed at every gate. Budget ≈ 2s p99 excluding chain
+          confirmation.
+</div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">One request</div> <h2>The full sequence — every actor, every message.</h2> <p class="text-muted" style="max-width:720px;">
+An agent running in LangChain calls <code>sardis.pay()</code>. The sequence below is what
+            really happens. Each bubble maps to a step in the walkthrough below.
+</p> </div> <div class="diagram"> <pre class="mermaid">sequenceDiagram
+    participant A as Agent (LangChain)
+    participant SDK as sardis-sdk-python
+    participant MW as FastAPI Middleware
+    participant RP as require_principal
+    participant O as PaymentOrchestrator
+    participant PP as PreExecutionPipeline
+    participant PV as MandateVerifier
+    participant CE as ChainExecutor
+    participant WM as WalletManager
+    participant TK as Turnkey MPC
+    participant RPC as Alchemy RPC
+    participant CH as Base / Tempo
+    participant LG as sardis-ledger
+    participant AN as LedgerAnchor.sol
+    participant OB as webhook outbox
+
+    A->>SDK: client.payments.create(to, amount, reason)
+    SDK->>MW: POST /v1/payments  Authorization: Bearer sk_…
+    MW->>MW: CORS · HSTS · CSP · rate limit (Redis)
+    MW->>RP: extract principal (API key → agent/org)
+    RP->>O: orchestrator.execute(intent)
+    O->>PP: pipeline.run(intent, principal)
+    PP->>PP: spending_policy ✓
+    PP->>PP: KYC / AML (sardis-compliance) ✓
+    PP->>PP: mandate delegation ✓
+    PP->>PP: rate limit ✓
+    PP->>PP: anomaly score ✓
+    PP->>PV: AP2 / TAP / x402 chain ✓
+    PV-->>PP: verified
+    PP-->>O: ApprovedIntent
+    O->>CE: execute(approved_intent)
+    CE->>CE: choose chain + token + route
+    CE->>WM: request signature (payload)
+    WM->>TK: signPayload(org, sub-org, key)
+    TK-->>WM: signed tx
+    WM-->>CE: signed tx
+    CE->>RPC: eth_sendRawTransaction
+    RPC->>CH: broadcast
+    CH-->>RPC: tx hash
+    RPC-->>CE: receipt
+    CE-->>O: PaymentResult
+    O->>LG: append ledger_entry + policy_decision
+    LG->>AN: Merkle batch → anchor (async)
+    O->>OB: enqueue webhook (outbox)
+    O-->>MW: 200 PaymentResult
+    MW-->>SDK: 200 JSON
+    SDK-->>A: { tx_hash, status, receipt }
+          </pre> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 1 · Agent surface</div> <h2>From Python line to HTTP request.</h2> </div> <div class="step"> <div class="step-num">01</div> <div> <div class="step-title">Agent calls <code>sardis.pay()</code> or a framework tool.</div> <div class="step-body">
+In LangChain the agent invokes a <code>PayTool</code> from
+<code>sardis-langchain/toolkit.py</code>. In the bare Python SDK the call is
+<code>client.payments.create(to, amount, reason)</code>. In MCP it's a
+<code>sardis_pay</code> tool call from Claude Desktop / Cursor. All paths converge on the
+              same REST call — no framework gets a privileged fast path.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-sdk-python/src/sardis_sdk/client.py</code></span> <span>file: <code>packages/sardis-langchain/src/sardis_langchain/tools.py</code></span> <span class="failmode">fail: raised on client; no network call yet</span> </div> </div> </div> <div class="step"> <div class="step-num">02</div> <div> <div class="step-title">SDK marshals request, attaches API key.</div> <div class="step-body">
+Client reads <code>SARDIS_API_KEY</code>, serializes the intent to JSON, sets
+<code>Authorization: Bearer sk_live_…</code> and an idempotency key. TypeScript SDK does
+              the same via <code>@sardis/sdk</code> with Zod validation.
+</div> <div class="step-meta"> <span>auth: API key HMAC-hashed at rest (SHA-256)</span> <span>idempotency: client-generated uuid, enforced DB-side</span> <span class="failmode">fail: network retry with same idempotency key — safe</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 2 · API gateway</div> <h2>FastAPI receives the request.</h2> </div> <div class="step"> <div class="step-num">03</div> <div> <div class="step-title">Middleware stack runs — CORS, CSP, HSTS, rate limit.</div> <div class="step-body">
+Request lands on Cloud Run, enters FastAPI composition root
+              (<code>sardis-api/main.py</code>). Middleware applies canonical prod origins, CSP/HSTS,
+              and the Redis-backed rate limiter. Rate limiter is <strong>fail-closed</strong> in prod —
+              if Redis is unreachable the request is denied.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/main.py</code></span> <span>env: <code>SARDIS_REDIS_URL</code> required</span> <span class="failmode">fail: 429 on limit; 503 if Redis down</span> </div> </div> </div> <div class="step"> <div class="step-num">04</div> <div> <div class="step-title"><code>require_principal</code> extracts identity.</div> <div class="step-body">
+Dependency resolver hashes the incoming API key, looks up the principal (org + agent +
+              scopes) from Postgres, attaches it to the request. Better-auth JWTs (EdDSA via JWKS)
+              take the same slot for dashboard-originated calls. Missing/invalid key → 401, no
+              downstream work.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/routers/pay.py</code></span> <span>principal: org_id, agent_id, scopes[], key_id</span> <span class="failmode">fail: 401 — no orchestrator invocation</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 3 · The single gate</div> <h2>PaymentOrchestrator + PreExecutionPipeline.</h2> <p class="text-muted" style="max-width:720px;">
+Every path (wallets, mandates, ap2, pay) funnels through these two files. This is the
+            "policy before execution" invariant at the code level.
+</p> </div> <div class="step"> <div class="step-num">05</div> <div> <div class="step-title"><code>PaymentOrchestrator.execute()</code> enters.</div> <div class="step-body">
+The orchestrator receives the intent + principal. Builds a <code>PipelineContext</code>
+containing chain, token, mandate refs (if any), agent card, trust graph snapshot. Calls
+              the pipeline.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-core/src/sardis_v2_core/orchestrator.py</code></span> <span>invariant: <code>chain_executor</code> is private — only orchestrator touches it</span> </div> </div> </div> <div class="step"> <div class="step-num">06</div> <div> <div class="step-title">Spending policy check.</div> <div class="step-body">
+Evaluates natural-language-derived rules against the intent — merchant allowlist, daily
+              cap, per-merchant cap, category block. Returns allow / deny / require_approval. Denial
+              ends the flow here with a reason code that's written to <code>policy_decisions</code>.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-core/src/sardis_v2_core/spending_policy.py</code></span> <span class="failmode">fail-closed: missing policy → deny</span> </div> </div> </div> <div class="step"> <div class="step-num">07</div> <div> <div class="step-title">KYC / AML screen.</div> <div class="step-body">
+Hits <code>sardis-compliance</code> which calls Didit (KYC status cached) + Elliptic
+              (AML/sanctions). Missing or expired KYC for the principal → deny. Sanctioned
+              counterparty → deny + SAR queue.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-compliance/src/sardis_compliance/kyc.py</code></span> <span>file: <code>sardis_compliance/pep.py</code>, <code>sar.py</code></span> <span class="failmode">fail-closed: compliance provider down → deny</span> </div> </div> </div> <div class="step"> <div class="step-num">08</div> <div> <div class="step-title">Mandate delegation check.</div> <div class="step-body">
+If the intent references a spending mandate, verifies the delegator's authority is still
+              valid, remaining budget covers the amount, and the mandate hasn't been revoked.
+              Decrements budget atomically via DB row lock.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/routers/mandate_delegation.py</code></span> <span>SQL: <code>SELECT … FOR UPDATE</code> on mandate row</span> <span class="failmode">fail-closed: race → NOWAIT lock, 409 to caller</span> </div> </div> </div> <div class="step"> <div class="step-num">09</div> <div> <div class="step-title">Rate limiter + anomaly score.</div> <div class="step-body">
+Per-agent + per-org buckets in Redis. Anomaly model (sardis-guardrails) scores the
+              intent against learned baselines — amount z-score, velocity, new counterparty, unusual
+              time-of-day. Score above threshold routes to approval queue instead of denying.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-guardrails/src/sardis_guardrails/rate_limiter.py</code></span> <span>file: <code>sardis-core/src/sardis_v2_core/anomaly_detection.py</code></span> <span class="failmode">fail: over threshold → approval queue, not denial</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 4 · Protocol verification</div> <h2>If the request came in under a standard, verify the chain.</h2> </div> <div class="step"> <div class="step-num">10</div> <div> <div class="step-title">AP2 / TAP / x402 / A2A mandate chain verification.</div> <div class="step-body">
+If the intent carries a protocol envelope, the matching verifier walks the mandate chain —
+              Ed25519 / ECDSA-P256 sigs on Intent, Cart, Payment mandates; TTL; replay cache lookup in
+              Redis + Postgres archive. An unverifiable chain ends the flow.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-protocol/src/sardis_protocol/ap2.py</code></span> <span>file: <code>sardis_protocol/x402_settlement.py</code>, <code>erc8122.py</code></span> <span>replay: <code>sardis_protocol/replay_cache_redis.py</code></span> <span class="failmode">fail-closed: invalid sig → deny; replay → 409</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 5 · Execution</div> <h2>Chain selection, MPC signing, broadcast.</h2> </div> <div class="step"> <div class="step-num">11</div> <div> <div class="step-title"><code>ChainExecutor</code> picks chain + token + route.</div> <div class="step-body">
+Reads the request's target chain (default "base"), selects the token (USDC / EURC /
+              PYUSD), and picks a route — direct transfer, CCTP bridge, paymaster-sponsored. Tempo
+              has its own dedicated executor.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-chain/src/sardis_chain/smart_router.py</code></span> <span>file: <code>sardis-chain/src/sardis_v2_chain/executor.py</code></span> <span>file: <code>sardis_chain/tempo/executor.py</code></span> </div> </div> </div> <div class="step"> <div class="step-num">12</div> <div> <div class="step-title">WalletManager requests an MPC signature.</div> <div class="step-body"> <code>sardis-wallet/manager.py</code> hands the payload to the active custody provider
+              (Turnkey default). For Turnkey: organization + sub-org + private key reference. The
+              key never leaves the provider — Sardis receives a signed transaction, not a key.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-wallet/src/sardis_wallet/manager.py</code></span> <span>file: <code>sardis_wallet/tempo_keychain.py</code>, <code>circle_client.py</code></span> <span class="failmode">fail-closed: provider down → 503, no broadcast</span> </div> </div> </div> <div class="step"> <div class="step-num">13</div> <div> <div class="step-title">Broadcast via Alchemy RPC.</div> <div class="step-body">
+Signed transaction submitted to <code>SARDIS_BASE_RPC_URL</code> (env-driven, Alchemy
+              primary, public RPC fallback). Tempo uses <code>rpc.tempo.xyz</code>. Executor watches
+              for the receipt with bounded retries.
+</div> <div class="step-meta"> <span>provider: Alchemy (Base/Ethereum/Polygon/Arbitrum/Optimism)</span> <span>provider: Tempo public RPC</span> <span class="failmode">fail: receipt timeout → mark pending, reconciler will finalize</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 6 · Receipt + audit</div> <h2>Ledger row, Merkle anchor, webhook.</h2> </div> <div class="step"> <div class="step-num">14</div> <div> <div class="step-title">Ledger entry + policy decision rows written.</div> <div class="step-body">
+A single transaction writes <code>ledger_entry</code> (the movement) plus
+<code>policy_decision</code> (why it was allowed) in Postgres. Both rows reference each
+              other. This is the evidence base for disputes and regulator queries.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-ledger/src/sardis_ledger/models.py</code></span> <span>file: <code>sardis_ledger/hybrid.py</code> (ImmuDB optional)</span> </div> </div> </div> <div class="step"> <div class="step-num">15</div> <div> <div class="step-title">Merkle batch → on-chain anchor.</div> <div class="step-body">
+A background job rolls recent ledger entries into a Merkle tree and anchors the root
+              via <code>SardisLedgerAnchor.sol</code>. After anchoring, any ledger row can be proven
+              to have existed at or before a given block.
+</div> <div class="step-meta"> <span>file: <code>packages/sardis-ledger/src/sardis_ledger/anchor.py</code></span> <span>contract: <code>contracts/src/SardisLedgerAnchor.sol</code></span> <span>async: batched, ~5 min cadence in prod</span> </div> </div> </div> <div class="step"> <div class="step-num">16</div> <div> <div class="step-title">Webhook enqueued via outbox; SDK returns receipt.</div> <div class="step-body">
+Response assembled (<code>PaymentResult</code>), returned up the stack. Webhook for
+<code>payment.succeeded</code> / <code>payment.denied</code> enters the outbox table —
+              delivered at-least-once by the outbox worker with exponential backoff and event-id
+              dedup.
+</div> <div class="step-meta"> <span>table: <code>webhook_outbox</code></span> <span>dedup: <code>event_id</code> uniqueness + delivery tracking</span> <span class="failmode">fail: delivery 5xx → retry with backoff, alert after N failures</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Latency budget</div> <h2>Where the 2-second p99 budget goes.</h2> <p class="text-muted" style="max-width:720px;">
+Indicative p99 figures, excluding chain confirmation. Agents wait for the HTTP response;
+            chain finality is tracked asynchronously and surfaced via webhook.
+</p> </div> <table class="data"> <thead> <tr><th>Stage</th><th>p50</th><th>p99</th><th>Notes</th></tr> </thead> <tbody> <tr><td>01–02 · SDK marshal</td><td>&lt;1 ms</td><td>3 ms</td><td>Local JSON + HTTP; ignored at SLO level.</td></tr> <tr><td>03 · Middleware + rate limit</td><td>5 ms</td><td>25 ms</td><td>Redis round-trip dominates.</td></tr> <tr><td>04 · require_principal</td><td>8 ms</td><td>30 ms</td><td>Postgres principal lookup (cached after first hit).</td></tr> <tr><td>06–09 · Pre-exec pipeline</td><td>40 ms</td><td>180 ms</td><td>Policy eval + compliance cache + anomaly score.</td></tr> <tr><td>10 · Protocol verify (if AP2/TAP)</td><td>12 ms</td><td>60 ms</td><td>Signature verify + replay lookup.</td></tr> <tr><td>11 · Chain selection</td><td>3 ms</td><td>10 ms</td><td>Pure Python; no I/O.</td></tr> <tr><td>12 · MPC signature (Turnkey)</td><td>350 ms</td><td>900 ms</td><td>Largest single slice. Cold org-auth worse.</td></tr> <tr><td>13 · Broadcast (eth_sendRaw)</td><td>120 ms</td><td>400 ms</td><td>Alchemy p99; confirmation is async.</td></tr> <tr><td>14 · Ledger write</td><td>12 ms</td><td>40 ms</td><td>Single Postgres tx.</td></tr> <tr><td>15 · Merkle anchor</td><td>async</td><td>async</td><td>Background job; not on the hot path.</td></tr> <tr><td>16 · Webhook enqueue</td><td>3 ms</td><td>10 ms</td><td>Insert into outbox only.</td></tr> <tr><td><strong>Total (hot path)</strong></td><td><strong>~560 ms</strong></td><td><strong>~1.9 s</strong></td><td>Within the 2s p99 SLO; MPC dominates.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Failure behaviour</div> <h2>What happens when each stage fails.</h2> </div> <table class="data"> <thead> <tr><th>Stage</th><th>Mode</th><th>Observable effect</th></tr> </thead> <tbody> <tr><td>Rate limit</td><td>fail-closed</td><td>429; if Redis unreachable in prod → 503 (no silent pass-through).</td></tr> <tr><td>Principal lookup</td><td>fail-closed</td><td>401; no orchestrator entry.</td></tr> <tr><td>Spending policy</td><td>fail-closed</td><td>403 with reason code; <code>policy_decision</code> row written.</td></tr> <tr><td>Compliance (Didit/Elliptic)</td><td>fail-closed</td><td>403; override only via <code>SARDIS_AGIT_FAIL_OPEN=true</code> (dev only).</td></tr> <tr><td>Mandate</td><td>fail-closed</td><td>409 on race (NOWAIT); 403 on insufficient budget.</td></tr> <tr><td>Anomaly</td><td>fail-soft</td><td>Above threshold → approval queue, HTTP 202 <code>pending_approval</code>.</td></tr> <tr><td>Protocol verify</td><td>fail-closed</td><td>403 invalid sig; 409 replay.</td></tr> <tr><td>MPC provider</td><td>fail-closed</td><td>503; no broadcast, no ledger row.</td></tr> <tr><td>Broadcast</td><td>fail-open to reconciler</td><td>Marks pending; reconciliation queue finalizes.</td></tr> <tr><td>Ledger write</td><td>fail-closed</td><td>Whole request rolled back; response 500. Broadcast + ledger share a DB tx where possible.</td></tr> <tr><td>Anchor</td><td>eventual</td><td>Async; delayed batches alerted via ops channel.</td></tr> <tr><td>Webhook delivery</td><td>at-least-once</td><td>Outbox retries with backoff; 5xx after N attempts alerts operator.</td></tr> </tbody> </table> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Package ownership</div> <h2>Which package owns each stage.</h2> </div> <dl class="defs"> <dt>Agent surface</dt><dd>sardis-sdk-python · sardis-sdk-js · sardis-langchain (+ other adapters)</dd> <dt>Gateway</dt><dd>sardis-api · middleware + routers</dd> <dt>Orchestration</dt><dd>sardis-core · orchestrator.py + pre_execution_pipeline.py</dd> <dt>Policy + compliance</dt><dd>sardis-core · spending_policy.py; sardis-compliance; sardis-guardrails</dd> <dt>Protocol verification</dt><dd>sardis-protocol · ap2.py · x402_settlement.py · erc8122.py · replay_cache_redis.py</dd> <dt>Chain execution</dt><dd>sardis-chain · executor.py · smart_router.py · tempo/executor.py</dd> <dt>Wallet + MPC</dt><dd>sardis-wallet · manager.py · tempo_keychain.py · circle_client.py</dd> <dt>Audit</dt><dd>sardis-ledger · anchor.py · immutable.py · hybrid.py · plus SardisLedgerAnchor.sol</dd> </dl> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Go deeper</div> <h2>Follow-ups.</h2> </div> <div class="grid grid-2"> <a class="canvas-card" href="/policy-engine"> <div class="canvas-card-num">08 · Flows</div> <div class="canvas-card-title">Policy Engine</div> <div class="canvas-card-desc">How natural language turns into the deny / allow / queue decisions in steps 06–09.</div> </a> <a class="canvas-card" href="/wallet-mpc"> <div class="canvas-card-num">09 · Flows</div> <div class="canvas-card-title">Wallet + MPC</div> <div class="canvas-card-desc">Step 12 expanded — Turnkey orgs, sub-orgs, key rotation, failover.</div> </a> <a class="canvas-card" href="/settlement"> <div class="canvas-card-num">10 · Flows</div> <div class="canvas-card-title">Settlement &amp; Chains</div> <div class="canvas-card-desc">Steps 11–13 expanded — CCTP v2, Tempo, paymasters, reconciliation.</div> </a> <a class="canvas-card" href="/protocols"> <div class="canvas-card-num">13 · Product</div> <div class="canvas-card-title">Protocol Gateway</div> <div class="canvas-card-desc">Step 10 expanded — AP2, TAP, x402, A2A mandate chains.</div> </a> </div> </section>  </main> </div> <script>
+      // Lazy-load Mermaid only on pages that actually need it. Saves ~500KB for
+      // the roughly half of canvases without diagrams.
+      (function () {
+        let mermaidPromise = null;
+        function loadMermaid() {
+          if (!mermaidPromise) {
+            mermaidPromise = new Promise((resolve) => {
+              const s = document.createElement("script");
+              s.src = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
+              s.async = true;
+              s.onload = () => resolve(window.mermaid);
+              document.head.appendChild(s);
+            });
+          }
+          return mermaidPromise;
+        }
+        function mermaidThemeVars() {
+          const dark = document.documentElement.getAttribute("data-theme") === "dark";
+          if (dark) {
+            return {
+              fontFamily: "Geist Mono, ui-monospace, monospace",
+              background: "#222222",
+              primaryColor: "#2a2a2a",
+              primaryTextColor: "#ededed",
+              primaryBorderColor: "#4a4a4a",
+              secondaryColor: "#2e2e2e",
+              secondaryTextColor: "#ededed",
+              secondaryBorderColor: "#4a4a4a",
+              tertiaryColor: "#282828",
+              tertiaryTextColor: "#ededed",
+              tertiaryBorderColor: "#4a4a4a",
+              lineColor: "#8a8a8a",
+              textColor: "#ededed",
+              mainBkg: "#2a2a2a",
+              secondBkg: "#2e2e2e",
+              noteBkgColor: "#2e2e2e",
+              noteTextColor: "#ededed",
+              noteBorderColor: "#4a4a4a",
+              actorBkg: "#2a2a2a",
+              actorBorder: "#6a6a6a",
+              actorTextColor: "#ededed",
+              actorLineColor: "#8a8a8a",
+              signalColor: "#bbbbbb",
+              signalTextColor: "#ededed",
+              labelBoxBkgColor: "#2a2a2a",
+              labelBoxBorderColor: "#6a6a6a",
+              labelTextColor: "#ededed",
+              loopTextColor: "#ededed",
+              altBackground: "#282828",
+              edgeLabelBackground: "#222222",
+              clusterBkg: "#1f1f1f",
+              clusterBorder: "#4a4a4a",
+              // Flowchart-specific
+              nodeBkg: "#2a2a2a",
+              nodeBorder: "#6a6a6a",
+              nodeTextColor: "#ededed",
+              // State diagram
+              stateBkg: "#2a2a2a",
+              stateLabelColor: "#ededed",
+              // Sequence
+              activationBorderColor: "#8a8a8a",
+              activationBkgColor: "#2a2a2a",
+              sequenceNumberColor: "#111111",
+            };
+          }
+          return {
+            fontFamily: "Geist Mono, ui-monospace, monospace",
+            background: "#ffffff",
+            primaryColor: "#ffffff",
+            primaryTextColor: "#111111",
+            primaryBorderColor: "#d4d4d4",
+            lineColor: "#888888",
+            secondaryColor: "#f7f7f7",
+            tertiaryColor: "#fafafa",
+            noteBkgColor: "#f7f7f7",
+            noteTextColor: "#111111",
+            actorBkg: "#ffffff",
+            actorBorder: "#d4d4d4",
+            actorTextColor: "#111111",
+            signalColor: "#666666",
+            signalTextColor: "#111111",
+          };
+        }
+
+        async function initMermaidIfNeeded() {
+          const nodes = document.querySelectorAll('.mermaid:not([data-processed="true"])');
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          m.initialize({
+            startOnLoad: false,
+            theme: "base",
+            themeVariables: mermaidThemeVars(),
+          });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        async function rerenderMermaidForTheme() {
+          // Theme changed — clear processed flag and re-run mermaid so colors match
+          const nodes = document.querySelectorAll(".mermaid");
+          if (!nodes.length) return;
+          const m = await loadMermaid();
+          if (!m) return;
+          nodes.forEach((n) => {
+            const original = n.getAttribute("data-original-source");
+            if (original != null) {
+              n.textContent = original;
+            } else {
+              // Capture original source once so re-runs work after first render
+              n.setAttribute("data-original-source", n.textContent);
+            }
+            n.removeAttribute("data-processed");
+          });
+          m.initialize({ startOnLoad: false, theme: "base", themeVariables: mermaidThemeVars() });
+          try { m.run({ nodes: Array.from(nodes) }); } catch (_) {}
+        }
+
+        document.addEventListener("DOMContentLoaded", initMermaidIfNeeded);
+        document.addEventListener("astro:page-load", initMermaidIfNeeded);
+        // Listen for theme flips (MutationObserver on data-theme)
+        const mo = new MutationObserver((muts) => {
+          for (const m of muts) {
+            if (m.type === "attributes" && m.attributeName === "data-theme") {
+              rerenderMermaidForTheme();
+            }
+          }
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+      })();
+    </script> <script>
+      // Per-page "Copy this canvas" handler — extracts the main content text
+      // and puts it on the clipboard.
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest("[data-page-copy]");
+        if (!btn) return;
+        e.preventDefault();
+        const label = btn.querySelector("[data-page-copy-label]");
+        const set = (t) => { if (label) label.textContent = t; };
+        const reset = () => { btn.dataset.state = ""; set("Copy this canvas"); };
+        try {
+          const main = document.querySelector(".canvas-main");
+          if (!main) throw new Error("no main");
+          // Clone and remove the AI bar itself from the copy
+          const clone = main.cloneNode(true);
+          clone.querySelectorAll(".page-ai, script, style").forEach((n) => n.remove());
+          const text = (clone.innerText || "").replace(/\n{3,}/g, "\n\n").trim();
+          await navigator.clipboard.writeText(text);
+          btn.dataset.state = "copied";
+          const kb = Math.round(text.length / 1024);
+          set("Copied — " + (kb || "<1") + " KB, paste into any AI");
+          setTimeout(reset, 3000);
+        } catch (_) {
+          btn.dataset.state = "error";
+          set("Couldn't copy");
+          setTimeout(reset, 2000);
+        }
+      });
+    </script> <script src="/js/nav.js?v=4"></script> </body> </html>
