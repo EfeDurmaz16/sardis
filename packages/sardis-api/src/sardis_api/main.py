@@ -132,6 +132,7 @@ from .routers import evidence as evidence_router
 from .routers import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
+from .routers import facility_requests as facility_requests_router
 from .routers import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
 from .routers import funding as funding_router
@@ -198,6 +199,7 @@ except ImportError:
 from sardis_v2_core.agent_groups import AgentGroupRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
 from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.wallet_repository import WalletRepository
@@ -229,6 +231,7 @@ from .providers.lithic_treasury import LithicTreasuryClient
 from .repositories.a2a_trust_repository import A2ATrustRepository
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.enterprise_support_repository import EnterpriseSupportRepository
+from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
@@ -755,6 +758,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.chain_executor = chain_exec
     app.state.wallet_repo = wallet_repo
     app.state.compliance_engine = compliance
+    facility_gate_repo = FacilityGateRepository(dsn=database_url if use_postgres else "memory://")
+    facility_gate_adapter = SimulatedFacilityAdapter()
+    app.state.facility_gate_repo = facility_gate_repo
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")
 
@@ -2043,6 +2049,34 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Simulation API
     app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
+    from sardis_api.services.facility_gate_authority import (
+        RepositoryBackedFacilityMandateResolver,
+        RepositoryBackedFacilityPolicyResolver,
+        RepositoryBackedFacilityRecordResolver,
+    )
+
+    app.dependency_overrides[facility_requests_router.get_deps] = lambda: facility_requests_router.FacilityDependencies(
+        repository=facility_gate_repo,
+        adapter=facility_gate_adapter,
+        approval_service=approval_service,
+        mandate_resolver=RepositoryBackedFacilityMandateResolver(
+            facility_gate_repo,
+            fallback=facility_requests_router.SnapshotBackedFacilityMandateResolver(),
+        ),
+        facility_resolver=RepositoryBackedFacilityRecordResolver(
+            facility_gate_repo,
+            fallback=facility_requests_router.SnapshotBackedFacilityRecordResolver(
+                facility_requests_router._facility_from_snapshot
+            ),
+        ),
+        policy_resolver=RepositoryBackedFacilityPolicyResolver(facility_gate_repo),
+    )
+    app.include_router(facility_requests_router.router, prefix="/api/v2/facility-requests", tags=["facility-gate"])
+    app.include_router(
+        facility_requests_router.provider_webhooks_router,
+        prefix="/api/v2/provider-webhooks",
+        tags=["facility-gate-webhooks"],
+    )
 
     # SSO (SAML/OIDC) authentication
     try:
