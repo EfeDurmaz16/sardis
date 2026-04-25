@@ -51,6 +51,7 @@ const navSections: NavSection[] = [
     title: "Payments",
     items: [
       { label: "Virtual Cards", href: "/virtual-cards", icon: CreditCard },
+      { label: "Facility Gate", href: "/facility-gate", icon: ShieldCheck },
       { label: "Holds", href: "/holds", icon: Pause },
       { label: "Invoices", href: "/invoices", icon: FileText },
       { label: "Reconciliation", href: "/reconciliation", icon: ArrowsClockwise },

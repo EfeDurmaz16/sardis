@@ -69,6 +69,11 @@ const routeBreadcrumbs: Record<string, BreadcrumbItem[]> = {
     { label: "Payments", href: "/" },
     { label: "Virtual Cards", href: "/virtual-cards" },
   ],
+  "/facility-gate": [
+    { label: "Overview", href: "/" },
+    { label: "Payments", href: "/" },
+    { label: "Facility Gate", href: "/facility-gate" },
+  ],
   "/holds": [
     { label: "Overview", href: "/" },
     { label: "Payments", href: "/" },
