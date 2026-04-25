@@ -1,0 +1,264 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+---
+
+<Canvas title="03 · Packages (51) — Sardis Canvas" currentId="packages">
+
+<section class="hero">
+        <span class="eyebrow">Canvas 03 · System</span>
+        <h1>Packages · 51 units of shipped behavior</h1>
+        <p class="hero-lead">
+          A unit ships as a separate package when its boundary is real — a provider that can be swapped,
+          a framework adapter with its own release cadence, or a protocol surface that external auditors
+          will pin to a version. This canvas walks all 51, grouped by purpose.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          Core platform (12 packages) carries every line of money-moving logic. Framework integrations
+          (19) are thin adapters that mostly forward to the Python SDK. Payment providers (6) sit behind
+          uniform interfaces in <code>sardis-core</code>. SDKs + CLIs (6) are the public surface. The
+          rest are experimental or provider-specific shims.
+        </div>
+      </section>
+
+      <!-- Dependency graph -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Dependency shape</div>
+          <h2>How the core packages depend on each other.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Arrows point from consumer to provider. <code>sardis-core</code> is the hub — every other
+            package either imports from it or registers a provider into it. The API package composes
+            everything.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+flowchart LR
+    API[sardis-api] --> CORE[sardis-core]
+    API --> CHAIN[sardis-chain]
+    API --> WALLET[sardis-wallet]
+    API --> PROTO[sardis-protocol]
+    API --> LEDGER[sardis-ledger]
+    API --> COMP[sardis-compliance]
+    API --> CHECK[sardis-checkout]
+    API --> CARDS[sardis-cards]
+    API --> GUARD[sardis-guardrails]
+
+    CHAIN --> CORE
+    WALLET --> CORE
+    PROTO --> CORE
+    LEDGER --> CORE
+    COMP --> CORE
+    CHECK --> CORE
+    CARDS --> CORE
+    GUARD --> CORE
+
+    CHAIN --> WALLET
+    CHECK --> CHAIN
+
+    SDK[sardis-sdk-python] -. HTTP .- API
+    SDKJS[sardis-sdk-js] -. HTTP .- API
+    MCP[sardis-mcp-server] --> SDKJS
+    LC[sardis-langchain] --> SDK
+          </pre>
+        </div>
+      </section>
+
+      <!-- Core platform -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 1 · Core platform</div>
+          <h2>The 12 packages that do the actual work.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            If you removed any of these, the product would stop functioning. These carry domain logic,
+            provider abstractions, and runtime enforcement. All Python, all workspace-local.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files (<code>src/…</code>)</th><th>Purpose — why it's separate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-core</code></td><td><code>config.py</code>, <code>spending_policy.py</code>, <code>orchestrator.py</code>, <code>agit_policy_engine.py</code>, <code>anomaly_detection.py</code></td><td>Domain models, config, policy engine, orchestrator. Every other package imports from here. Split out so downstream can upgrade policy logic without touching transport.</td></tr>
+            <tr><td><code>sardis-api</code></td><td><code>sardis_api/routers/*.py</code>, <code>sardis_v2_api/routes/*.py</code>, <code>main.py</code>, <code>alembic/</code></td><td>FastAPI composition root + 123 routers + 107 Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.</td></tr>
+            <tr><td><code>sardis-chain</code></td><td><code>executor.py</code> (v2), <code>safe_account.py</code>, <code>smart_router.py</code>, <code>cctp_forwarding.py</code>, <code>tempo/executor.py</code></td><td>Multi-chain transaction execution. Dedicated Tempo executor lives here. Isolated from wallet so chain-specific RPC quirks don't leak into signing.</td></tr>
+            <tr><td><code>sardis-wallet</code></td><td><code>manager.py</code>, <code>tempo_keychain.py</code>, <code>tempo_accounts.py</code>, <code>multisig.py</code>, <code>circle_client.py</code>, <code>session_manager.py</code>, <code>key_rotation.py</code></td><td>MPC signing abstraction (Turnkey / Fireblocks / Circle / Lit). Separated because swapping custody providers must be a zero-day change.</td></tr>
+            <tr><td><code>sardis-protocol</code></td><td><code>ap2.py</code>, <code>tap.py</code>, <code>x402_settlement.py</code>, <code>erc8122.py</code>, <code>erc8126.py</code>, <code>replay_cache_redis.py</code>, <code>nonce_registry.py</code></td><td>AP2, TAP, x402, ERC-8122/8126/8033 mandate-chain verifiers + replay protection. Pinned independently so external auditors can version-lock the verifier.</td></tr>
+            <tr><td><code>sardis-ledger</code></td><td><code>anchor.py</code>, <code>immutable.py</code>, <code>models.py</code>, <code>reconciliation.py</code>, <code>hybrid.py</code>, <code>db_engine.py</code></td><td>Append-only audit ledger + Merkle anchoring + ImmuDB hybrid mode. Separate so evidence export can be certified without dragging in the rest of the monorepo.</td></tr>
+            <tr><td><code>sardis-compliance</code></td><td><code>kyc.py</code>, <code>checks.py</code>, <code>pep.py</code>, <code>sar.py</code>, <code>circle_compliance.py</code>, <code>coinbase_verifications.py</code></td><td>KYC (Didit) + AML screening (Elliptic) + PEP + SAR filing. Separated because regulated changes have their own approval cycle.</td></tr>
+            <tr><td><code>sardis-cards</code></td><td><code>service.py</code>, <code>models.py</code>, <code>db_balance.py</code>, <code>db_subscriptions.py</code>, <code>offramp.py</code>, <code>auto_conversion.py</code></td><td>Virtual cards (Stripe Issuing primary, Lithic pending funding). Separated because issuer onboarding is a distinct revenue line.</td></tr>
+            <tr><td><code>sardis-checkout</code></td><td><code>sessions.py</code>, <code>payment_links.py</code>, <code>connectors/sardis_native.py</code>, <code>connectors/stripe.py</code></td><td>"Pay with Sardis" merchant flow — sessions, links, settlement connectors. Own release cycle driven by merchant partner ships.</td></tr>
+            <tr><td><code>sardis-guardrails</code></td><td><code>zen_engine.py</code>, <code>ml_fraud.py</code>, <code>anomaly_tuner.py</code>, <code>rate_limiter.py</code>, <code>fingerprint.py</code>, <code>ft3_taxonomy.py</code></td><td>Runtime guardrails — rule DSL (ZEN), ML anomaly, rate limits, device fingerprint. Loaded into the pre-execution pipeline as pluggable policies.</td></tr>
+            <tr><td><code>sardis-zk-policy</code></td><td><code>src/</code>, <code>python/</code>, <code>Nargo.toml</code>, <code>Prover.toml</code></td><td>Noir-based ZK proof of policy compliance. Separated because Nargo toolchain is independent of Python.</td></tr>
+            <tr><td><code>sardis-zkp</code></td><td><code>circuits/</code>, <code>src/</code>, <code>Nargo.toml</code></td><td>Low-level ZK circuit library — shared between zk-policy and research experiments.</td></tr>
+            <tr><td><code>sardis-ucp</code></td><td><code>capabilities/checkout.py</code>, <code>transports/rest.py</code>, <code>transports/mcp.py</code></td><td>Universal Commerce Protocol — a capability/transport split so the same primitives surface over REST and MCP.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Checkout & merchant -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 2 · Checkout &amp; merchant</div>
+          <h2>Four packages that turn Sardis into a PSP.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            The merchant-facing surface. UI and SDK are both cross-origin embeddable; the Python side
+            handles settlement and policy.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files</th><th>Purpose — why it's separate</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-checkout</code></td><td>(see group 1)</td><td>Core backend — sessions, links, connectors.</td></tr>
+            <tr><td><code>sardis-checkout-ui</code></td><td><code>index.html</code>, <code>package.json</code>, Vite + React + wagmi</td><td>The checkout page users actually see, plus the embed SDK. Served from <code>checkout.sardis.sh</code>. Separate deploy because it's a browser artefact, not a Python module.</td></tr>
+            <tr><td><code>sardis-connect</code></td><td><code>src/sardis_connect/*</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td><td>Sardis Connect — zero-crypto agent-payment onboarding. Separated because Connect has a distinct onboarding flow and its own sales narrative.</td></tr>
+            <tr><td><code>sardis-connect-js</code></td><td><code>src/</code>, <code>package.json</code>, <code>tsconfig.json</code></td><td>JS client for Sardis Connect. Consumed by partner frontends.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- AI framework integrations -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 3 · AI framework integrations</div>
+          <h2>19 adapters — one per place an agent lives.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Each of these wraps the Python or JS SDK in the native shape of a framework — tools,
+            toolkits, nodes, actions, pieces. They're intentionally thin. Real work happens in the core
+            platform; these just speak the local dialect.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files</th><th>Purpose — framework shape</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-langchain</code></td><td><code>toolkit.py</code>, <code>tools.py</code>, <code>callbacks.py</code></td><td>LangChain toolkit — <code>SardisToolkit</code> + per-capability <code>BaseTool</code>s. v1.0.0 on PyPI.</td></tr>
+            <tr><td><code>sardis-crewai</code></td><td><code>src/sardis_crewai/</code></td><td>CrewAI agent tools. Exposes Sardis primitives as <code>BaseTool</code>s for multi-agent crews.</td></tr>
+            <tr><td><code>sardis-autogpt</code></td><td><code>sardis_autogpt/</code></td><td>AutoGPT block integration.</td></tr>
+            <tr><td><code>sardis-openai-agents</code></td><td><code>src/sardis_openai_agents/</code></td><td>OpenAI Agents SDK tool adapter.</td></tr>
+            <tr><td><code>sardis-openai</code></td><td><code>src/sardis_openai/</code></td><td>OpenAI direct — function-calling tool specs + runtime.</td></tr>
+            <tr><td><code>sardis-agent-sdk</code></td><td><code>src/sardis_agent_sdk/</code></td><td>Claude Agent SDK integration.</td></tr>
+            <tr><td><code>sardis-adk</code></td><td><code>src/sardis_adk/</code></td><td>Google Agent Development Kit.</td></tr>
+            <tr><td><code>sardis-a2a</code></td><td><code>src/sardis_a2a/</code></td><td>Google Agent-to-Agent protocol adapter — agents transacting with agents.</td></tr>
+            <tr><td><code>sardis-agentkit</code></td><td><code>src/</code></td><td>Coinbase AgentKit — plug Sardis policies into CDP agents.</td></tr>
+            <tr><td><code>sardis-browser-use</code></td><td><code>src/sardis_browser_use/</code></td><td>Browser Use — guardrails for browsing agents that need to pay.</td></tr>
+            <tr><td><code>sardis-composio</code></td><td><code>openapi.yaml</code>, <code>src/</code></td><td>Composio tool marketplace entry — OpenAPI-described.</td></tr>
+            <tr><td><code>sardis-openclaw</code></td><td><code>clawhub.json</code>, <code>src/</code></td><td>OpenClaw integration.</td></tr>
+            <tr><td><code>sardis-stagehand</code></td><td><code>package.json</code>, TypeScript</td><td>Stagehand / Browserbase integration — JS-native browsing agents.</td></tr>
+            <tr><td><code>sardis-ai-sdk</code></td><td><code>package.json</code>, Vercel AI SDK tools</td><td>Vercel AI SDK adapter — <code>tool()</code> wrappers for Next.js apps.</td></tr>
+            <tr><td><code>sardis-activepieces</code></td><td><code>package.json</code>, TypeScript</td><td>Activepieces piece — no-code workflow automation.</td></tr>
+            <tr><td><code>n8n-nodes-sardis</code></td><td><code>nodes/</code>, <code>credentials/</code></td><td>n8n community node. Non-money triggers only — see memory: money movement postponed.</td></tr>
+            <tr><td><code>sardis-mcp-server</code></td><td><code>src/tools/spending.ts</code>, <code>escrow.ts</code>, <code>fiat.ts</code>, <code>mandates.ts</code>, <code>trust.ts</code>, <code>projects.ts</code></td><td>MCP server — Claude Desktop, Cursor, Windsurf. Each Sardis capability is an MCP tool.</td></tr>
+            <tr><td><code>sardis-gpt</code></td><td><code>openapi-actions.yaml</code>, <code>instructions.md</code></td><td>ChatGPT Custom GPT Actions spec — no runtime, just declarative.</td></tr>
+            <tr><td><code>sardis-e2b</code></td><td><code>e2b.Dockerfile</code>, <code>e2b.toml</code>, <code>examples/</code></td><td>E2B sandbox template — preinstalled Sardis SDK for code-execution agents.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Payment providers -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 4 · Payment providers</div>
+          <h2>Six packages wrapping external payment rails.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Each sits behind a provider interface in <code>sardis-core</code>. Installed only when the
+            downstream deployment needs that rail, so a Base-only deployment doesn't pull in
+            Lightning dependencies.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-coinbase</code></td><td><code>cdp_client.py</code>, <code>x402_client.py</code></td><td>Coinbase CDP + x402 — onramp, wallets-as-a-service, 402-Payment-Required flows.</td></tr>
+            <tr><td><code>sardis-lightspark</code></td><td><code>client.py</code>, <code>uma_registry.py</code>, <code>transfers.py</code>, <code>payouts.py</code></td><td>Lightning Network payments + UMA address registry.</td></tr>
+            <tr><td><code>sardis-striga</code></td><td><code>client.py</code>, <code>kyc.py</code>, <code>swap.py</code>, <code>standing_orders.py</code></td><td>Striga banking/cards — EU vIBANs, SEPA, embedded KYC.</td></tr>
+            <tr><td><code>sardis-mpp</code></td><td><code>client.py</code>, <code>stripe_method.py</code>, <code>services/laso.py</code></td><td>Stripe MPP + Tempo — Merchant Payment Protocol SDK with Sardis policy enforcement.</td></tr>
+            <tr><td><code>sardis-mpp-proxy</code></td><td><code>package.json</code>, TypeScript</td><td>Edge proxy in front of MPP endpoints — caches capability discovery.</td></tr>
+            <tr><td><code>sardis-ramp</code></td><td><code>src/sardis_ramp/</code></td><td>Multi-provider on/off ramp — Coinbase Onramp primary, Striga backup.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- SDKs & CLIs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 5 · SDKs &amp; CLIs</div>
+          <h2>Six packages — the public surface.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Everything a developer installs. These are <em>the</em> API contract — backward-compat
+            guarantees apply only here.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-sdk-python</code></td><td><code>docs/</code>, <code>examples/</code>, <code>pyproject.toml</code></td><td>Full Python SDK — <code>pip install sardis</code> ultimately lands here. Async client + mandates + wallets + MPC.</td></tr>
+            <tr><td><code>sardis-sdk-js</code></td><td><code>__tests__</code>, <code>docs/</code>, <code>examples/</code></td><td>TypeScript SDK — <code>@sardis/sdk</code>. Strict types, Zod validation.</td></tr>
+            <tr><td><code>sardis-cli</code></td><td><code>src/</code>, <code>pyproject.toml</code></td><td>Python CLI — <code>sardis</code> command.</td></tr>
+            <tr><td><code>sardis-cli-go</code></td><td><code>dist/</code></td><td>Go binary CLI — static-linked for ops containers that can't bring a Python runtime.</td></tr>
+            <tr><td><code>sardis-cli-js</code></td><td><code>package.json</code></td><td>Node-based CLI — alternative to Python CLI, bundles alongside <code>@sardis/sdk</code>.</td></tr>
+            <tr><td><code>sardis-ramp-js</code></td><td><code>package.json</code></td><td>Dedicated JS client for the ramp flow — embedded in checkout.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Misc / experimental -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 6 · Misc &amp; experimental</div>
+          <h2>Small packages, specific purposes.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Package</th><th>Key files</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sardis-solana-program</code></td><td><code>package.json</code></td><td>Solana Anchor program for non-EVM settlement experiments.</td></tr>
+            <tr><td><code>sardis-spend-widget</code></td><td><code>node_modules/</code>, widget</td><td>Embeddable "spend meter" widget — merchants and dashboards render agent spending.</td></tr>
+            <tr><td><code>sardis-telegram-bot</code></td><td><code>__pycache__/</code></td><td>Telegram bot — operator notifications + manual approvals.</td></tr>
+            <tr><td><code>ui-web</code></td><td><code>components/</code>, <code>lib/</code>, <code>styles/</code></td><td>Shared UI component library across dashboard + checkout-ui + demos.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/api-surface">
+            <div class="canvas-card-num">04 · Backend</div>
+            <div class="canvas-card-title">API Surface</div>
+            <div class="canvas-card-desc">How <code>sardis-api</code> wires 123 routers on top of these packages.</div>
+          </a>
+          <a class="canvas-card" href="/sdks">
+            <div class="canvas-card-num">14 · Product</div>
+            <div class="canvas-card-title">SDKs &amp; CLIs</div>
+            <div class="canvas-card-desc">Public developer surface — install, auth, core methods.</div>
+          </a>
+          <a class="canvas-card" href="/integrations">
+            <div class="canvas-card-num">15 · Product</div>
+            <div class="canvas-card-title">AI Framework Integrations</div>
+            <div class="canvas-card-desc">How each framework adapter maps Sardis primitives to the framework's shape.</div>
+          </a>
+          <a class="canvas-card" href="/payment-flow">
+            <div class="canvas-card-num">07 · Flows</div>
+            <div class="canvas-card-title">Payment Flow</div>
+            <div class="canvas-card-desc">Which package does what during a real agent payment.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

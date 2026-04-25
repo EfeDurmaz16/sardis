@@ -1,0 +1,495 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    .lifecycle {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .lifecycle-step {
+      padding: 16px 18px;
+      border-right: 1px solid var(--border);
+      background: var(--card);
+    }
+    .lifecycle-step:last-child { border-right: 0; }
+    .lifecycle-step .step-label {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .lifecycle-step .step-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .lifecycle-step .step-desc { font-size: 12px; color: var(--text-muted); }
+  `;
+---
+
+<Canvas title="09 · Wallet + MPC — Sardis Canvas" currentId="wallet-mpc">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 09 · Flows</span>
+        <h1>Wallet + MPC</h1>
+        <p class="hero-lead">
+          Sardis never holds a private key. Every signature is produced by an external MPC provider —
+          Turnkey by default, Fireblocks / Circle / Lit as swap-ins — behind a single abstract port.
+          This canvas maps the interface, the providers, and the signing path from orchestrator to chain.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          <code>MPCSignerPort</code> in <code>packages/sardis-chain/src/sardis_chain/executor.py</code> is the
+          contract. <code>TurnkeyMPCSigner</code>, <code>FailoverMPCSigner</code>, and
+          <code>LocalAccountSigner</code> implement it. Wallet lifecycle is owned by
+          <code>WalletManager</code> in <code>sardis-wallet/manager.py</code>. On EVM chains, wallets are
+          Safe Smart Accounts v1.4.1 (pre-deployed). On Tempo, signing is bespoke via
+          <code>TempoKeychainProvider</code>.
+        </div>
+      </section>
+
+      <!-- Thesis -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Thesis</div>
+          <h2>"Non-custodial" is not a slogan — it's a blast-radius argument.</h2>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Keys never live in Sardis memory</div>
+            <div class="card-description">
+              Not in env vars, not in Redis, not in a service's process memory. Every signature is a remote
+              call to a provider (Turnkey, Fireblocks, Circle, Lit) that holds the key material in HSMs or
+              threshold-split shards. Sardis sees request → signature, never the key.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Blast radius analysis</div>
+            <div class="card-description">
+              If the API server is compromised: attacker gets request metadata, not funds. If the database
+              is exfiltrated: wallet addresses leak, keys don't. If an agent is prompt-injected: the signer
+              still only acts on policy-approved intents. Three independent breaches are required to move
+              money, which is exactly the point.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Pluggable by contract, not by config</div>
+            <div class="card-description">
+              The <code>MPCSignerPort</code> interface has three methods. Any provider that implements them
+              is a drop-in. Turnkey was default; Fireblocks/Circle/Lit are integrated; the port makes
+              migration a config change, not a refactor. Lock-in on custody would be the worst kind of lock-in.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Failover is a first-class concern</div>
+            <div class="card-description">
+              <code>FailoverMPCSigner</code> wraps an ordered list of providers: primary fails → next.
+              Custody providers occasionally have regional outages; we don't want a Turnkey incident to be a
+              Sardis incident. The port makes this tractable.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MPC port -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Interface</div>
+          <h2>The signing port — three methods.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Any MPC provider that implements <code>MPCSignerPort</code> can drive Sardis. That's the whole
+            contract. Everything else — transaction envelopes, chain selection, ERC-4337 userOp hashing — is
+            handled by the executor before it hits the port.
+          </p>
+        </div>
+        <pre><code>class MPCSignerPort(ABC):
+    async def sign_transaction(
+        self, wallet_id: str, tx: TransactionRequest
+    ) -&gt; str: ...                           # returns signed raw tx hex
+
+    async def get_address(
+        self, wallet_id: str, chain: str
+    ) -&gt; str: ...                           # derives the address for a chain
+
+    async def sign_user_operation_hash(
+        self, wallet_id: str, user_op_hash: str
+    ) -&gt; str: ...                           # ERC-4337 userOp signature</code></pre>
+        <p class="text-muted mt-16" style="max-width:760px;">
+          All three calls happen over the network — they're async by design. The caller (<code>ChainExecutor</code>)
+          never assumes key locality.
+        </p>
+      </section>
+
+      <!-- Provider comparison -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Providers</div>
+          <h2>What each implementation actually is.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Provider</th><th>Implementation file</th><th>Key material</th><th>Typical latency</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Turnkey <span class="badge badge-success">default</span></td>
+              <td><code>packages/sardis-wallet/src/sardis_wallet/turnkey_client.py</code>, <code>TurnkeyMPCSigner</code> in <code>executor.py</code></td>
+              <td>HSM-backed, P-256 stamp auth</td>
+              <td>~200–400ms</td>
+              <td>Organization per tenant, sub-org per agent group. Ethereum + Solana signing. Primary production signer.</td>
+            </tr>
+            <tr>
+              <td>Fireblocks</td>
+              <td><code>packages/sardis-chain/src/sardis_chain/fireblocks_signer.py</code></td>
+              <td>Threshold MPC (Fireblocks SGX + network)</td>
+              <td>~600–1200ms</td>
+              <td>Enterprise-grade governance, policy engine on the provider side. Higher latency, richer workflows. Used where the customer mandates it.</td>
+            </tr>
+            <tr>
+              <td>Circle</td>
+              <td><code>packages/sardis-chain/src/sardis_chain/circle_signer.py</code> + <code>sardis-wallet/circle_client.py</code></td>
+              <td>Circle Developer-Controlled Wallets (MPC)</td>
+              <td>~400–800ms</td>
+              <td>Natural pairing for USDC-native flows. Wallet sets = per-tenant scoping.</td>
+            </tr>
+            <tr>
+              <td>Lit Protocol</td>
+              <td><code>packages/sardis-chain/src/sardis_chain/lit_signer.py</code></td>
+              <td>Decentralized threshold (Lit nodes)</td>
+              <td>~800–1500ms</td>
+              <td>Decentralized custody option — trust split across Lit's node set rather than a single provider. Useful for "no single custodian" narratives.</td>
+            </tr>
+            <tr>
+              <td>Simulated</td>
+              <td><code>SimulatedMPCSigner</code> in <code>executor.py</code></td>
+              <td>None — deterministic hex</td>
+              <td>&lt;1ms</td>
+              <td>Dev/test only. Never accepted in a live chain executor — guarded by config.</td>
+            </tr>
+            <tr>
+              <td>Local</td>
+              <td><code>LocalAccountSigner</code> in <code>executor.py</code></td>
+              <td>Local secp256k1 key (env var)</td>
+              <td>&lt;5ms</td>
+              <td>Dev / CI only. Exists because integration tests need a real signature. Not to be used in production — and the config validator refuses it when <code>SARDIS_CHAIN_MODE=live</code>.</td>
+            </tr>
+            <tr>
+              <td>Failover</td>
+              <td><code>FailoverMPCSigner</code> in <code>executor.py</code></td>
+              <td>Wraps others</td>
+              <td>Primary + fallback</td>
+              <td>Tries <code>primary.sign_*()</code>; on provider error, falls through to next. Emits observability event on every failover.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Turnkey model -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Turnkey</div>
+          <h2>The organization model.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Turnkey is multi-tenant by design. Sardis uses that structure as the isolation boundary:
+            one organization per customer / tenant, one sub-organization per agent group, one wallet per agent.
+            Permission grants cascade down; revocation cascades down; nothing cross-cuts.
+          </p>
+        </div>
+        <dl class="defs">
+          <dt>Config</dt><dd><code>TurnkeyConfig</code> in <code>packages/sardis-core/src/sardis_v2_core/config.py</code> (env vars: <code>TURNKEY_API_KEY</code>, <code>TURNKEY_ORGANIZATION_ID</code>).</dd>
+          <dt>Org per tenant</dt><dd>Root organization is Sardis. Each customer onboarded gets a sub-org with its own API user and quorum rules.</dd>
+          <dt>Sub-org per group</dt><dd>Agent groups (<code>agent_groups.py</code>) map to further sub-orgs — keys for one group can't sign for another.</dd>
+          <dt>Wallet per agent</dt><dd>Each <code>Wallet</code> row corresponds to a Turnkey wallet; <code>wallet_id</code> is the Turnkey wallet id.</dd>
+          <dt>Address derivation</dt><dd>Per-chain via <code>TurnkeyMPCSigner.get_address(wallet_id, chain)</code> — one seed → deterministic addresses for every supported chain.</dd>
+          <dt>Stamp auth</dt><dd>Every request is signed with a P-256 "API stamp" — no bearer tokens, no replay. Turnkey rejects stale requests at the edge.</dd>
+          <dt>Verification guard</dt><dd><code>settings.turnkey_configured</code> in <code>config.py</code> must be true in <code>live</code> mode; otherwise chain executor refuses to start.</dd>
+        </dl>
+      </section>
+
+      <!-- Lifecycle -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Lifecycle</div>
+          <h2>From empty slot to retired wallet.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Wallets are stateful: they're created, they sign, sometimes their keys rotate, sometimes they
+            get frozen, eventually some are archived. <code>WalletManager</code> in
+            <code>sardis-wallet/manager.py</code> owns the full lifecycle.
+          </p>
+        </div>
+        <div class="lifecycle">
+          <div class="lifecycle-step">
+            <div class="step-label">01</div>
+            <div class="step-title">create</div>
+            <div class="step-desc"><code>create_turnkey_wallet()</code> / <code>create_circle_wallet()</code>. Row in <code>wallets</code>, wallet record at provider.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">02</div>
+            <div class="step-title">derive</div>
+            <div class="step-desc"><code>derive_address(wallet_id, chain)</code>. Per-chain address cached in DB.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">03</div>
+            <div class="step-title">sign</div>
+            <div class="step-desc">First signing request after policy approval. <code>activity_monitor</code> logs it.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">04</div>
+            <div class="step-title">rotate</div>
+            <div class="step-desc"><code>rotate_wallet_key()</code> / <code>emergency_key_rotation()</code>. New key material, same wallet id.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">05</div>
+            <div class="step-title">freeze</div>
+            <div class="step-desc"><code>is_frozen=TRUE</code> (migration 006). Signing refused pre-flight.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">06</div>
+            <div class="step-title">recover</div>
+            <div class="step-desc"><code>setup_social_recovery()</code> / <code>initiate_recovery()</code> — guardian-quorum path.</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="step-label">07</div>
+            <div class="step-title">archive</div>
+            <div class="step-desc">Wallet retired; history + keys preserved at provider for audit.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Signing sequence -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Signing flow</div>
+          <h2>Orchestrator → Wallet → Provider → Chain.</h2>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+sequenceDiagram
+    participant O as PaymentOrchestrator
+    participant WM as WalletManager
+    participant Ex as ChainExecutor
+    participant P as MPCSignerPort
+    participant TK as Turnkey API
+    participant RPC as Alchemy RPC
+    participant C as Base / Tempo
+
+    O->>WM: request signature for approved intent
+    WM->>WM: load wallet row, is_frozen? kill-switch?
+    WM->>Ex: build TransactionRequest (nonce, gas, chain)
+    Ex->>P: sign_transaction(wallet_id, tx)
+    P->>TK: P-256-stamped request
+    TK-->>P: signed raw tx
+    P-->>Ex: 0x... signed tx
+    Ex->>RPC: broadcast_transaction(signed_tx)
+    RPC->>C: submit
+    C-->>RPC: tx hash + receipt
+    RPC-->>Ex: SubmittedTx
+    Ex-->>O: result, receipt hash
+          </pre>
+        </div>
+      </section>
+
+      <!-- Smart accounts -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Smart accounts</div>
+          <h2>Safe v1.4.1 on every EVM chain.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Agent wallets on EVM are <em>Safe Smart Accounts</em>, not plain EOAs. The singleton is
+            pre-deployed; Sardis deploys a CREATE2 proxy per wallet. This gets us ERC-4337 compatibility,
+            modular policy, and social recovery — without paying audit costs on a bespoke account contract.
+          </p>
+        </div>
+        <dl class="defs">
+          <dt>Helper</dt><dd><code>packages/sardis-chain/src/sardis_chain/safe_account.py</code></dd>
+          <dt>Singleton</dt><dd><code>0x41675C099F32341bf84BFc5382aF534df5C7461a</code> (Safe v1.4.1 canonical, pre-deployed on all major EVM chains)</dd>
+          <dt>4337 module</dt><dd>Safe4337Module — required for UserOp execution</dd>
+          <dt>Deployment</dt><dd>CREATE2 proxy via Safe's canonical ProxyFactory. Address is <em>predictable before deployment</em> via <code>predict_safe_address()</code> — we can share deposit addresses with users before any gas is spent.</dd>
+          <dt>Policy wiring</dt><dd>Zodiac Roles module (<code>zodiac_roles.py</code>) is attached via <code>enableModule</code> in setup — pre-audited, avoids a custom-module audit for MVP.</dd>
+          <dt>ERC-4337 stack</dt><dd><code>packages/sardis-chain/src/sardis_chain/erc4337/</code> — <code>bundler_client.py</code>, <code>entrypoint.py</code>, <code>user_operation.py</code>, <code>paymaster_client.py</code>.</dd>
+        </dl>
+      </section>
+
+      <!-- Paymasters -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Gas</div>
+          <h2>Paymasters — users don't pay ETH.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Asking an agent or merchant to "hold ETH for gas" is a UX dead end. Sardis uses a paymaster on
+            every supported EVM chain so gas is either paid in USDC (Circle) or sponsored (Pimlico).
+          </p>
+        </div>
+        <table class="data">
+          <thead><tr><th>Paymaster</th><th>Model</th><th>Client</th><th>When it's used</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Circle Paymaster v0.8 <span class="badge badge-success">primary</span></td>
+              <td>User pays gas in USDC. Permissionless, no API key.</td>
+              <td><code>CirclePaymasterClient</code> in <code>erc4337/paymaster_client.py</code></td>
+              <td>Default for agent + merchant userOps on Base, Ethereum, Polygon, Arbitrum, Optimism (mainnet + testnet).</td>
+            </tr>
+            <tr>
+              <td>Pimlico</td>
+              <td>Sardis sponsors gas (paid out of operating account).</td>
+              <td><code>PaymasterClient</code> in the same file</td>
+              <td>Fallback when Circle is unavailable, and for flows where the platform picks up gas (onboarding, demos, first-transaction incentives).</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="callout mt-16">
+          <span class="callout-title">Invariant</span>
+          Gas-payment choice is visible in the <code>SubmittedTx</code> metadata and the payment ledger. No
+          silent sponsorship — operators can always tell who paid what.
+        </div>
+      </section>
+
+      <!-- Tempo -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Tempo</div>
+          <h2>Why Tempo needs its own keychain.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Tempo is EVM-compatible at the execution layer but has a different account/permission model —
+            the Keychain precompile at <code>0xAAAAAAAA00000000000000000000000000000000</code> with
+            per-Access-Key spending limits and a custom 86-byte signature format. That's not something a
+            generic ERC-4337 signer handles — it gets its own provider.
+          </p>
+        </div>
+        <dl class="defs">
+          <dt>Provider</dt><dd><code>TempoKeychainProvider</code> in <code>packages/sardis-wallet/src/sardis_wallet/tempo_keychain.py</code></dd>
+          <dt>Executor</dt><dd><code>packages/sardis-chain/src/sardis_chain/tempo/executor.py</code> (dedicated — not shared with EVM executor)</dd>
+          <dt>Account helper</dt><dd><code>packages/sardis-wallet/src/sardis_wallet/tempo_accounts.py</code></dd>
+          <dt>Signature format</dt><dd><code>0x03 || root_address (20 bytes) || inner_secp256k1_sig (65 bytes)</code> — 86 bytes total. Built by <code>build_keychain_signature()</code>.</dd>
+          <dt>Access keys</dt><dd><code>AccessKeyConfig</code> maps Sardis policy directly to on-chain key parameters: <code>token_limits</code>, <code>allowed_targets</code>, <code>max_calls_per_day</code>, <code>expires_at</code>. A Sardis spending policy becomes an on-chain, Tempo-enforced access key.</dd>
+          <dt>Root custody</dt><dd>Root key stays in Turnkey. Access keys are short-lived agent keys provisioned per mandate.</dd>
+          <dt>Fee payment</dt><dd><code>packages/sardis-chain/src/sardis_chain/tempo/fee_payer.py</code> — Tempo's native fee-payer abstraction, USDC/pathUSD gas.</dd>
+        </dl>
+      </section>
+
+      <!-- Freeze -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Freeze</div>
+          <h2>The wallet-level kill switch.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Freeze is narrower than the global kill switch: it targets a single wallet, not the platform.
+            It's the right response when KYC changes, an incident is localized, or a mandate is revoked —
+            without disrupting the rest of the tenant.
+          </p>
+        </div>
+        <dl class="defs">
+          <dt>Columns</dt><dd><code>wallets.is_frozen</code>, <code>frozen_at</code>, <code>frozen_by</code>, <code>freeze_reason</code> — added in migration <code>006_wallet_freeze.sql</code>.</dd>
+          <dt>Enforcement</dt><dd><code>WalletManager</code> checks <code>is_frozen</code> before dispatching to the signer port. Signers never see the request.</dd>
+          <dt>Compliance hook</dt><dd>KYC denial, AML hit, or kill-switch activation can all flip the freeze flag. Every flip is logged with the reason.</dd>
+          <dt>Unfreeze</dt><dd>Explicit operator action, audit-logged. No auto-expiry — a freeze stays a freeze until someone decides otherwise.</dd>
+        </dl>
+      </section>
+
+      <!-- Groups + multisig -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Shared wallets</div>
+          <h2>Agent groups + multisig.</h2>
+          <p class="text-muted" style="max-width:760px;">
+            Not every wallet is for a single agent. Team wallets, treasury wallets, and high-value flows
+            need m-of-n approvals. Sardis supports that at the signer level, not just at the policy level.
+          </p>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Agent groups</div>
+            <div class="card-description">
+              <code>packages/sardis-core/src/sardis_v2_core/agent_groups.py</code>. A group has members,
+              group-level policies, and a shared wallet. Turnkey sub-orgs back the grouping so the custody
+              model agrees with the product model.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Multisig signer logic</div>
+            <div class="card-description">
+              <code>packages/sardis-wallet/src/sardis_wallet/multisig.py</code>. <code>ApprovalThreshold</code>,
+              <code>MultisigSigner</code>, <code>TransactionApproval</code> — collects the required quorum
+              before the MPC signer is asked to produce a final signature.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Social recovery</div>
+            <div class="card-description">
+              <code>setup_social_recovery()</code> / <code>initiate_recovery()</code> on
+              <code>WalletManager</code>. A guardian set can rotate keys if the primary signer is lost —
+              no "the founder died and the keys died with him" failure mode.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Session keys</div>
+            <div class="card-description">
+              <code>session_manager.py</code>. Short-lived signing sessions scoped to specific agent flows.
+              Analogous to Tempo Access Keys but at the platform layer for non-Tempo chains.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key files -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Source of Truth</div>
+          <h2>Files worth reading in order.</h2>
+        </div>
+        <table class="data">
+          <thead><tr><th>File</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/executor.py</code></td><td><code>MPCSignerPort</code>, <code>TurnkeyMPCSigner</code>, <code>FailoverMPCSigner</code>, <code>LocalAccountSigner</code>, <code>ChainExecutor</code>, <code>ChainRPCClient</code>.</td></tr>
+            <tr><td><code>packages/sardis-wallet/src/sardis_wallet/manager.py</code></td><td><code>WalletManager</code> / <code>EnhancedWalletManager</code> — create, rotate, freeze, recover, spend-limit wiring, session mgmt.</td></tr>
+            <tr><td><code>packages/sardis-wallet/src/sardis_wallet/turnkey_client.py</code></td><td>Raw Turnkey client (P-256 stamping, create_wallet, sign_transaction).</td></tr>
+            <tr><td><code>packages/sardis-wallet/src/sardis_wallet/circle_client.py</code></td><td>Circle Developer-Controlled Wallet client.</td></tr>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/fireblocks_signer.py</code></td><td>Fireblocks signer implementation of the port.</td></tr>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/lit_signer.py</code></td><td>Lit Protocol signer implementation.</td></tr>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/safe_account.py</code></td><td>Safe v1.4.1 helpers — setup calldata, CREATE2 prediction.</td></tr>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/erc4337/paymaster_client.py</code></td><td>Circle Paymaster + Pimlico clients.</td></tr>
+            <tr><td><code>packages/sardis-wallet/src/sardis_wallet/tempo_keychain.py</code></td><td>Tempo Access Key provisioning + keychain signature construction.</td></tr>
+            <tr><td><code>packages/sardis-chain/src/sardis_chain/tempo/executor.py</code></td><td>Tempo-specific executor (non-EVM flow).</td></tr>
+            <tr><td><code>packages/sardis-wallet/src/sardis_wallet/multisig.py</code></td><td>m-of-n approval logic for shared wallets.</td></tr>
+            <tr><td><code>packages/sardis-api/migrations/006_wallet_freeze.sql</code></td><td>Freeze columns + index.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/policy-engine">
+            <div class="canvas-card-num">08 · Flows</div>
+            <div class="canvas-card-title">Policy Engine</div>
+            <div class="canvas-card-desc">What the signer refuses to sign when policy says no.</div>
+          </a>
+          <a class="canvas-card" href="/settlement">
+            <div class="canvas-card-num">10 · Flows</div>
+            <div class="canvas-card-title">Settlement &amp; Chains</div>
+            <div class="canvas-card-desc">Where signed transactions actually land.</div>
+          </a>
+          <a class="canvas-card" href="/contracts">
+            <div class="canvas-card-num">06 · Backend</div>
+            <div class="canvas-card-title">Smart Contracts</div>
+            <div class="canvas-card-desc">Safe modules, ERC-8183 guard, ledger anchor.</div>
+          </a>
+          <a class="canvas-card" href="/security">
+            <div class="canvas-card-num">19 · Ops</div>
+            <div class="canvas-card-title">Security Model</div>
+            <div class="canvas-card-desc">Trust boundaries between platform, provider, and chain.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

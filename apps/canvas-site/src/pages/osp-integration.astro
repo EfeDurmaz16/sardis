@@ -1,0 +1,357 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    .pillar {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 18px;
+      background: var(--card);
+    }
+    .pillar-label {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .pillar-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+    .pillar-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+  `;
+---
+
+<Canvas title="21 · OSP Integration — Sardis Canvas" currentId="osp-integration">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 21 · Extended</span>
+        <h1>OSP Integration</h1>
+        <p class="hero-lead">
+          Open Service Protocol (OSP) is an open standard — separate from Sardis — for AI agents to
+          discover, provision, rotate, and deprovision developer services. Sardis is a reference payment rail
+          inside OSP, declared as <code>sardis_wallet</code> in any provider's <code>accepted_payment_methods</code>.
+          This canvas shows the bridge: what OSP is, why Sardis is one of its rails, and the code that wires them.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          <strong>OSP is to service provisioning what MCP is to tool access.</strong> A provider publishes
+          <code>/.well-known/osp.json</code>; an agent calls <code>POST /osp/v1/provision</code>; credentials come back
+          Ed25519-encrypted. OSP is payment-rail agnostic — Sardis plugs in via
+          <code>@sardis/osp-integration</code>, providing the wallet, escrow, ledger, and an MCP server that exposes
+          nine OSP tools to Claude / Cursor / other MCP clients.
+        </div>
+      </section>
+
+      <!-- Why OSP exists -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Motivation</div>
+          <h2>Why OSP exists.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every managed service today has its own proprietary onboarding flow. Agents can't fill signup forms,
+            can't solve CAPTCHAs, can't verify emails. The alternatives are invite-only ecosystems
+            (Stripe Projects, March 2026) or custom-per-provider glue. OSP is the open-standard third path.
+          </p>
+        </div>
+        <div class="grid grid-2">
+          <div class="pillar">
+            <div class="pillar-label">Problem 1</div>
+            <div class="pillar-title">Manual signup is the wrong primitive</div>
+            <div class="pillar-desc">
+              Browsers, CAPTCHAs, email verification — interaction patterns agents cannot automate without
+              brittle scraping. Every new service is bespoke integration work.
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-label">Problem 2</div>
+            <div class="pillar-title">Platform lock-in beats open coordination</div>
+            <div class="pillar-desc">
+              Stripe Projects is invite-only, Stripe-rail-only. OSP is Apache 2.0; any provider can implement it,
+              any agent can consume it, any rail can settle it.
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-label">Problem 3</div>
+            <div class="pillar-title">Reusable credentials don't fit agent threat models</div>
+            <div class="pillar-desc">
+              OSP's core thesis: "Reusable credentials are the wrong primitive. Every service interaction
+              should be a first-class protocol operation — discoverable, provisionable, rotatable, auditable."
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-label">Problem 4</div>
+            <div class="pillar-title">No standard place to settle a bill</div>
+            <div class="pillar-desc">
+              Agents can reason about a service spec but have no universal way to pay for it. OSP declares
+              <code>accepted_payment_methods</code>; Sardis is one of them alongside x402, MPP, Stripe SPT, free.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OSP flow -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Protocol Flow</div>
+          <h2>Discover → provision → rotate → deprovision.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Four operations define the OSP lifecycle. Every provider exposes them under the same URL scheme;
+            every agent speaks the same JSON. Spec lives at <code>~/osp/spec/osp-v1.0.md</code> (v1.1 draft).
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+sequenceDiagram
+    participant A as Agent
+    participant P as Provider (e.g. Supabase)
+    participant S as Sardis (payment rail)
+
+    A->>P: GET /.well-known/osp.json
+    P-->>A: manifest { offerings, tiers, accepted_payment_methods }
+    A->>A: Pick offering + tier + payment_method="sardis_wallet"
+
+    Note over A,S: Escrow leg (optional but recommended)
+    A->>S: EscrowManager.hold(amount, release_condition)
+    S-->>A: escrow_id + signed proof
+
+    A->>P: POST /osp/v1/provision { offering_id, tier_id, agent_public_key, payment_proof: escrow_id }
+    P->>S: verify escrow_id
+    S-->>P: held=true, amount ok
+    P->>P: allocate resource_id
+    P-->>A: { resource_id, credentials (Ed25519-encrypted) }
+
+    Note over A,S: Settlement leg
+    P->>S: release(escrow_id) on successful provision
+    S->>S: ledger append (credit provider, debit agent mandate)
+
+    opt Rotation
+        A->>P: POST /osp/v1/rotate/{resource_id}
+        P-->>A: new encrypted credentials
+    end
+
+    opt Deprovision
+        A->>P: POST /osp/v1/deprovision/{resource_id}
+        P-->>A: receipt
+    end
+          </pre>
+        </div>
+      </section>
+
+      <!-- Where Sardis fits -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">The Bridge</div>
+          <h2>Where Sardis fits in an OSP flow.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            OSP's <code>provision-request.schema.json</code> enumerates seven payment methods:
+            <code>free</code>, <code>sardis_wallet</code>, <code>stripe_spt</code>, <code>x402</code>,
+            <code>mpp</code>, <code>invoice</code>, <code>external</code>. Sardis is the first-class crypto-native rail.
+          </p>
+        </div>
+        <div class="code-block">
+<pre><code>// Provider manifest — /.well-known/osp.json
+&#123;
+  "provider_id": "supabase.com",
+  "offerings": [&#123;
+    "offering_id": "supabase/postgres",
+    "tiers": [
+      &#123; "tier_id": "free", "price": &#123; "amount": "0", "currency": "USD" &#125; &#125;,
+      &#123; "tier_id": "pro",  "price": &#123; "amount": "25", "currency": "USD", "interval": "P1M" &#125; &#125;
+    ]
+  &#125;],
+  "accepted_payment_methods": ["free", "sardis_wallet", "stripe_spt", "x402"]
+&#125;
+</code></pre>
+        </div>
+        <p class="text-muted mt-16" style="max-width:720px;">
+          When the agent sends <code>payment_method: "sardis_wallet"</code>, the <code>payment_proof</code> is a Sardis
+          escrow ID or charge intent. The provider verifies it out-of-band with the Sardis API
+          (<code>/api/v2/escrow/&#123;id&#125;</code>) before allocating the resource. On successful provisioning the escrow
+          releases; on failure the hold is refunded.
+        </p>
+      </section>
+
+      <!-- Sardis integration folder -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">The Package</div>
+          <h2><code>@sardis/osp-integration</code> — three modules.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Lives at <code>~/osp/sardis-integration/</code> (peer to the OSP core, shipped as its own npm
+            package). Three modules, each a clean seam.
+          </p>
+        </div>
+        <div class="grid grid-3">
+          <div class="pillar">
+            <div class="pillar-label">Module · payment/</div>
+            <div class="pillar-title">Wallet · escrow · ledger · charge</div>
+            <div class="pillar-desc">
+              <code>SardisWalletClient</code>, <code>EscrowManager</code>, <code>Ledger</code>, and the typed
+              shapes for <code>SpendingMandate</code>, <code>EscrowHold</code>, <code>ChargeIntent</code>,
+              <code>LedgerEntry</code>. The minimum surface a provider needs to accept <code>sardis_wallet</code>.
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-label">Module · mcp/</div>
+            <div class="pillar-title">Nine OSP tools for MCP clients</div>
+            <div class="pillar-desc">
+              <code>sardis-mcp-server.ts</code> exposes: <code>discover_services</code>,
+              <code>provision_service</code>, <code>deprovision</code>, <code>rotate_credentials</code>,
+              <code>check_status</code>, <code>get_usage</code>, <code>estimate_cost</code>,
+              <code>list_skills</code>, <code>env_generate</code>. Makes Claude/Cursor first-class OSP consumers.
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-label">Module · cli/</div>
+            <div class="pillar-title">Sardis CLI extension</div>
+            <div class="pillar-desc">
+              <code>commands.ts</code> + <code>bridge.ts</code>. Adds <code>sardis osp discover</code>,
+              <code>sardis osp provision</code>, etc. — same bridge as the MCP server, command-line shape. The
+              payment layer is shared.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ed25519 -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Shared Cryptography</div>
+          <h2>Ed25519 everywhere.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Both OSP and Sardis settled on Ed25519 for identity + envelope encryption. This is not coincidence —
+            it means a single agent keypair can simultaneously sign a Sardis mandate, prove identity to an OSP
+            provider, and decrypt the returned credential bundle.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Use case</th><th>Primitive</th><th>Where it lives</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Agent identity (KYA/TAP)</td><td>Ed25519 signature over canonical JSON</td><td>Sardis <code>sardis-protocol</code> (TAP verifier)</td></tr>
+            <tr><td>Spending mandate signature</td><td>Ed25519 signature over mandate hash</td><td>Sardis <code>spending_mandate.py</code></td></tr>
+            <tr><td>OSP provision request signature</td><td>Ed25519 signature over canonical request</td><td>OSP <code>osp-crypto</code> crate</td></tr>
+            <tr><td>OSP credential envelope</td><td>x25519 key agreement → XChaCha20-Poly1305</td><td>OSP <code>credential-bundle.schema.json</code></td></tr>
+            <tr><td>On-chain ledger anchor</td><td>Secp256k1 tx sig, Merkle root payload</td><td>Sardis <code>SardisLedgerAnchor.sol</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Portfolio framing -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Strategic Framing</div>
+          <h2>Two open standards, one author, one platform thesis.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Sardis and OSP are deliberately separate projects. Sardis is a product (fintech rail, VC-fundable).
+            OSP is a standard (Apache 2.0, zero revenue target). They reinforce each other because every OSP
+            provider that accepts <code>sardis_wallet</code> puts Sardis in front of another agent cohort — and
+            every Sardis agent that wants to provision a DB, a logger, a feature flag service gets a clean OSP
+            path to do so.
+          </p>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Sardis — the product layer</div>
+            <div class="card-description">
+              Non-custodial wallet, MPC signing, spending mandates, KYC/AML, on-chain anchor, 15+ framework
+              SDKs. Revenue = platform fee + enterprise compliance tier. Live on Base + Tempo mainnet.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">OSP — the standards layer</div>
+            <div class="card-description">
+              Protocol spec (9,600+ lines, v1.1 draft). Apache 2.0. SDKs in Rust, TypeScript, Python, Go.
+              Rebranded public umbrella: <strong>Pact</strong>. Maximum adoption, zero revenue ambition — the
+              moat is in being the default spec that Sardis (and others) implement.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Current status -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Status · April 2026</div>
+          <h2>Where each side actually is.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Surface</th><th>State</th><th>Location</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>OSP spec</td><td>v1.1 draft · ~9,600 lines · active development</td><td><code>~/osp/spec/osp-v1.0.md</code></td></tr>
+            <tr><td>OSP JSON schemas</td><td>10 schemas (draft 2020-12) + 14 example manifests</td><td><code>~/osp/schemas/</code></td></tr>
+            <tr><td>OSP core (Rust)</td><td>Crates for crypto, manifest, vault, CLI (18 cmds), registry, provider, conformance, SDK</td><td><code>~/osp/osp-core/crates/</code></td></tr>
+            <tr><td>TypeScript SDK</td><td>v0.2.0 · 139 tests</td><td><code>~/osp/reference-implementation/typescript/</code></td></tr>
+            <tr><td>Python SDK</td><td>v0.2.0 · 171 tests</td><td><code>~/osp/reference-implementation/python/</code></td></tr>
+            <tr><td>Go SDK</td><td>Active</td><td><code>~/osp/osp-sdk-go/</code></td></tr>
+            <tr><td>Sardis ↔ OSP bridge</td><td><code>@sardis/osp-integration</code> — payment + MCP + CLI modules</td><td><code>~/osp/sardis-integration/src/</code></td></tr>
+            <tr><td>Sardis MPC-server-for-OSP</td><td>9 tools · MCP-compatible (Claude Desktop, Cursor)</td><td><code>~/osp/sardis-integration/src/mcp/sardis-mcp-server.ts</code></td></tr>
+            <tr><td>Website</td><td>Live — <a href="https://osp.sh" target="_blank" rel="noopener">osp.sh</a></td><td><code>~/osp/website/</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Key files -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Source of Truth</div>
+          <h2>Key files.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>File</th><th>What's in it</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>~/osp/README.md</code></td><td>Pitch, protocol summary, v1.1 feature list, repo layout.</td></tr>
+            <tr><td><code>~/osp/spec/osp-v1.0.md</code></td><td>Full normative spec (v1.1 draft).</td></tr>
+            <tr><td><code>~/osp/schemas/service-manifest.schema.json</code></td><td>The <code>/.well-known/osp.json</code> shape.</td></tr>
+            <tr><td><code>~/osp/schemas/provision-request.schema.json</code></td><td>Defines <code>payment_method</code> enum including <code>sardis_wallet</code>.</td></tr>
+            <tr><td><code>~/osp/schemas/credential-bundle.schema.json</code></td><td>Ed25519-encrypted credential envelope format.</td></tr>
+            <tr><td><code>~/osp/sardis-integration/src/index.ts</code></td><td>Barrel export: payment + mcp + cli modules.</td></tr>
+            <tr><td><code>~/osp/sardis-integration/src/payment/index.ts</code></td><td><code>SardisWalletClient</code>, <code>EscrowManager</code>, <code>Ledger</code>.</td></tr>
+            <tr><td><code>~/osp/sardis-integration/src/payment/types.ts</code></td><td><code>SpendingMandate</code>, <code>EscrowHold</code>, <code>ChargeIntent</code>, <code>LedgerEntry</code>.</td></tr>
+            <tr><td><code>~/osp/sardis-integration/src/mcp/sardis-mcp-server.ts</code></td><td>Nine MCP tools: discover / provision / deprovision / rotate / check / usage / estimate / skills / env.</td></tr>
+            <tr><td><code>~/osp/sardis-integration/src/cli/commands.ts</code></td><td>Sardis CLI subcommands for OSP lifecycle.</td></tr>
+            <tr><td><code>~/osp/reference-implementation/</code></td><td>TS + Python reference SDKs (v0.2.0).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/sardis-connect">
+            <div class="canvas-card-num">20 · Extended</div>
+            <div class="canvas-card-title">Sardis Connect</div>
+            <div class="canvas-card-desc">The inverse wedge: turn any HTTP API into a <code>sardis_wallet</code>-accepting endpoint in three lines.</div>
+          </a>
+          <a class="canvas-card" href="/protocols">
+            <div class="canvas-card-num">13 · Product</div>
+            <div class="canvas-card-title">Protocol Gateway</div>
+            <div class="canvas-card-desc">AP2, TAP, x402, A2A — the other protocols Sardis verifies. OSP sits alongside, focused on provisioning rather than payment.</div>
+          </a>
+          <a class="canvas-card" href="/policy-engine">
+            <div class="canvas-card-num">08 · Flows</div>
+            <div class="canvas-card-title">Policy Engine</div>
+            <div class="canvas-card-desc">The mandate engine that backs every <code>sardis_wallet</code> payment_proof in an OSP provision request.</div>
+          </a>
+          <a class="canvas-card" href="/sdks">
+            <div class="canvas-card-num">14 · Product</div>
+            <div class="canvas-card-title">SDKs &amp; CLIs</div>
+            <div class="canvas-card-desc">Where <code>sardis-mcp-server</code> lives on the Sardis side — the OSP MCP bridge reuses the same transport.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

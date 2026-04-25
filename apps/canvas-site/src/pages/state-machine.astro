@@ -1,0 +1,283 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    .state-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--muted); border: 1px solid var(--border);
+      color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .sp-active { background: #e6f1fb; border-color: #185fa5; color: #0c447c; }
+    .sp-happy { background: #eaf3de; border-color: #3b6d11; color: #27500a; }
+    .sp-escrow { background: #faece7; border-color: #993c1d; color: #712b13; }
+    .sp-dispute { background: #fceaea; border-color: #a32d2d; color: #791f1f; }
+    .sp-term { background: #f1efe8; border-color: #5f5e5a; color: #444441; }
+    [data-theme="dark"] .sp-active { background: #1a2535; border-color: #4a7ab0; color: #a8c7ea; }
+    [data-theme="dark"] .sp-happy { background: #1d2a18; border-color: #5a8a35; color: #b8d89d; }
+    [data-theme="dark"] .sp-escrow { background: #2e1d15; border-color: #b35a38; color: #e0a78d; }
+    [data-theme="dark"] .sp-dispute { background: #2e1818; border-color: #b74a4a; color: #e09a9a; }
+    [data-theme="dark"] .sp-term { background: #2a2a2a; border-color: #555; color: #aaa; }
+  `;
+---
+
+<Canvas title="21 · 22-State Machine — Sardis Canvas" currentId="state-machine">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 21 · Protocol</span>
+        <h1>22-State Machine — one Payment Object's full life.</h1>
+        <p class="hero-lead">
+          Every Payment Object passes through a deterministic state machine covering the happy path, escrow hold,
+          partial settlement, dispute arbitration, FX routing, and fulfillment acknowledgment. 22 states, each with
+          strict allowed transitions and terminal conditions. This is the most comprehensive payment lifecycle
+          spec designed for agent commerce.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          Card networks have one happy path and a dispute process bolted on. Sardis treats every possible
+          outcome — direct settle, escrow hold, timelock release, dispute file, arbitration decision, partial
+          settlement, refund, cancel, failure — as a first-class state with explicit transitions. An agent
+          payment never ends up in an undefined condition.
+        </div>
+      </section>
+
+      <!-- Happy Path -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Happy path · 7 states</div>
+          <h2>Direct settlement — no escrow.</h2>
+        </div>
+        <div class="row row-wrap" style="gap:8px; margin-bottom:20px;">
+          <span class="state-pill sp-active">ISSUED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-active">PRESENTED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-active">VERIFIED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-happy">LOCKED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-happy">SETTLING</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-happy">SETTLED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-happy">FULFILLED</span>
+        </div>
+        <table class="data">
+          <thead><tr><th>State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+          <tbody>
+            <tr><td><code>ISSUED</code></td><td>Payment Object minted by Issuer; cell(s) CLAIMED</td><td>PRESENTED, REVOKED, EXPIRED</td></tr>
+            <tr><td><code>PRESENTED</code></td><td>Agent presented object to merchant</td><td>VERIFIED, FAILED, EXPIRED</td></tr>
+            <tr><td><code>VERIFIED</code></td><td>Merchant verified claims (cleartext / hybrid / ZKP)</td><td>LOCKED, ESCROWED, FAILED</td></tr>
+            <tr><td><code>LOCKED</code></td><td>Funds locked — direct settlement (below escrow threshold)</td><td>SETTLING, CANCELLED</td></tr>
+            <tr><td><code>SETTLING</code></td><td>Settlement executing on chosen rail (may include FX)</td><td>SETTLED, PARTIAL_SETTLED, FAILED</td></tr>
+            <tr><td><code>SETTLED</code></td><td>Full settlement complete</td><td>FULFILLED, DISPUTED, REFUNDED</td></tr>
+            <tr><td><code>FULFILLED</code></td><td>Agent acknowledged receipt of service/good (terminal)</td><td>— terminal —</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Escrow Path -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Escrow path · +5 states</div>
+          <h2>When delivery verification matters.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Transactions above the escrow threshold route through an explicit hold. Merchant sees cryptographic
+            proof of locked funds; agent confirms delivery (or timelock auto-releases); dispute routes to
+            arbitration with one of three outcomes.
+          </p>
+        </div>
+        <div class="row row-wrap" style="gap:8px; margin-bottom:20px;">
+          <span class="state-pill sp-active">VERIFIED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-escrow">ESCROWED</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-escrow">CONFIRMING</span>
+          <span class="text-faint">│ or</span>
+          <span class="state-pill sp-escrow">AUTO_RELEASING</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-happy">RELEASED</span>
+          <span class="text-faint">→ SETTLING → SETTLED → FULFILLED</span>
+        </div>
+        <table class="data">
+          <thead><tr><th>State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+          <tbody>
+            <tr><td><code>ESCROWED</code></td><td>Funds in escrow hold (above threshold)</td><td>CONFIRMING, AUTO_RELEASING, DISPUTING</td></tr>
+            <tr><td><code>CONFIRMING</code></td><td>Agent reviewing delivery from merchant</td><td>RELEASED, DISPUTING</td></tr>
+            <tr><td><code>AUTO_RELEASING</code></td><td>Timelock expired without dispute; auto-releasing to merchant</td><td>RELEASED</td></tr>
+            <tr><td><code>RELEASED</code></td><td>Escrow released to merchant</td><td>SETTLING, DISPUTING (within dispute_window)</td></tr>
+            <tr><td><code>PARTIAL_SETTLED</code></td><td>Partial amount settled (less than locked)</td><td>UNLOCKING, DISPUTED</td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout-warn mt-16">
+          <span class="callout-title">Default escrow timeouts</span>
+          API/SaaS digital delivery = 1h escrow / 24h dispute / 3-day evidence · Software license = 24h / 7d / 5d
+          · Physical goods = 14d / 30d / 7d · B2B services = 30d / 60d / 14d.
+        </div>
+      </section>
+
+      <!-- Dispute Path -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Dispute path · 5 states</div>
+          <h2>Three deterministic outcomes.</h2>
+        </div>
+        <div class="row row-wrap" style="gap:8px; margin-bottom:20px;">
+          <span class="state-pill sp-dispute">DISPUTING</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-dispute">ARBITRATING</span>
+          <span class="text-faint">→</span>
+          <span class="state-pill sp-term">RESOLVED_REFUND</span>
+          <span class="text-faint">│</span>
+          <span class="state-pill sp-term">RESOLVED_RELEASE</span>
+          <span class="text-faint">│</span>
+          <span class="state-pill sp-term">RESOLVED_SPLIT</span>
+        </div>
+        <table class="data">
+          <thead><tr><th>State</th><th>Meaning</th><th>Allowed next</th></tr></thead>
+          <tbody>
+            <tr><td><code>DISPUTING</code></td><td>Dispute filed, evidence collection phase</td><td>ARBITRATING</td></tr>
+            <tr><td><code>ARBITRATING</code></td><td>Arbitration node reviewing submitted evidence</td><td>RESOLVED_REFUND, RESOLVED_RELEASE, RESOLVED_SPLIT</td></tr>
+            <tr><td><code>RESOLVED_REFUND</code></td><td>Full refund to principal (dispute upheld)</td><td>— terminal —</td></tr>
+            <tr><td><code>RESOLVED_RELEASE</code></td><td>Full release to merchant (dispute rejected)</td><td>— terminal —</td></tr>
+            <tr><td><code>RESOLVED_SPLIT</code></td><td>Partial refund + partial release (compromise)</td><td>— terminal —</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Terminal States -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Terminal states · 10</div>
+          <h2>Every object lands somewhere explicit.</h2>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Success outcomes</div>
+            <div class="card-description">
+              <span class="state-pill sp-happy">FULFILLED</span> — agent acknowledged service delivery.<br>
+              <span class="state-pill sp-term">RESOLVED_RELEASE</span> — arbitration ruled for merchant.<br>
+              <span class="state-pill sp-term">UNLOCKED</span> — residual FundingCells returned to AVAILABLE.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Failure outcomes</div>
+            <div class="card-description">
+              <span class="state-pill sp-term">REVOKED</span> — pre-use revocation by principal or issuer.<br>
+              <span class="state-pill sp-term">EXPIRED</span> — expiry time reached before use.<br>
+              <span class="state-pill sp-term">CANCELLED</span> — pre-settlement cancellation → UNLOCKING.<br>
+              <span class="state-pill sp-term">FAILED</span> — processing failure (may retry within mandate.retry_limit).<br>
+              <span class="state-pill sp-term">REFUNDED</span> — post-settlement refund issued.<br>
+              <span class="state-pill sp-term">RESOLVED_REFUND</span> — arbitration ruled for principal.<br>
+              <span class="state-pill sp-term">RESOLVED_SPLIT</span> — arbitration ruled partial.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full diagram -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">All transitions</div>
+          <h2>The full graph.</h2>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+stateDiagram-v2
+    [*] --> ISSUED
+    ISSUED --> PRESENTED
+    ISSUED --> REVOKED
+    ISSUED --> EXPIRED
+    PRESENTED --> VERIFIED
+    PRESENTED --> FAILED
+    PRESENTED --> EXPIRED
+    VERIFIED --> LOCKED: below threshold
+    VERIFIED --> ESCROWED: above threshold
+    VERIFIED --> FAILED
+    LOCKED --> SETTLING
+    LOCKED --> CANCELLED
+    ESCROWED --> CONFIRMING
+    ESCROWED --> AUTO_RELEASING
+    ESCROWED --> DISPUTING
+    CONFIRMING --> RELEASED
+    CONFIRMING --> DISPUTING
+    AUTO_RELEASING --> RELEASED
+    RELEASED --> SETTLING
+    RELEASED --> DISPUTING
+    SETTLING --> SETTLED
+    SETTLING --> PARTIAL_SETTLED
+    SETTLING --> FAILED
+    SETTLED --> FULFILLED
+    SETTLED --> DISPUTED: disputed
+    SETTLED --> REFUNDED
+    PARTIAL_SETTLED --> UNLOCKING
+    PARTIAL_SETTLED --> DISPUTING
+    DISPUTING --> ARBITRATING
+    ARBITRATING --> RESOLVED_REFUND
+    ARBITRATING --> RESOLVED_RELEASE
+    ARBITRATING --> RESOLVED_SPLIT
+    CANCELLED --> UNLOCKING
+    UNLOCKING --> UNLOCKED
+    FULFILLED --> [*]
+    RESOLVED_REFUND --> [*]
+    RESOLVED_RELEASE --> [*]
+    RESOLVED_SPLIT --> [*]
+    REVOKED --> [*]
+    EXPIRED --> [*]
+    UNLOCKED --> [*]
+    FAILED --> [*]
+    REFUNDED --> [*]
+          </pre>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Why this matters</div>
+          <h2>The "undefined ending" problem.</h2>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Card networks</div>
+            <div class="card-description">
+              Happy path + dispute chargeback, bolted on. No state for "settled but not delivered." No state
+              for "partial settlement." Merchant and cardholder reconcile via support tickets; evidence is
+              assembled ad hoc; outcomes depend on issuer discretion.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Sardis</div>
+            <div class="card-description">
+              Every possible outcome is an explicit state with cryptographic evidence at each transition.
+              An agent running thousands of payments per hour needs deterministic end-states to trigger the
+              right downstream workflow — retry, escalate, refund, reconcile — without human judgment in the loop.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Cross-refs</div>
+          <h2>Related canvases.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/protocol-objects">
+            <div class="canvas-card-num">20 · Protocol</div>
+            <div class="canvas-card-title">Protocol Objects (10)</div>
+            <div class="canvas-card-desc">The objects that travel through these states.</div>
+          </a>
+          <a class="canvas-card" href="/payment-flow">
+            <div class="canvas-card-num">07 · Flows</div>
+            <div class="canvas-card-title">Payment Flow</div>
+            <div class="canvas-card-desc">Happy-path sequence expanded to real code references.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

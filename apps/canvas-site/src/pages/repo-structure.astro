@@ -1,0 +1,344 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+---
+
+<Canvas title="02 · Repo Structure — Sardis Canvas" currentId="repo-structure">
+
+<section class="hero">
+        <span class="eyebrow">Canvas 02 · System</span>
+        <h1>Repo Structure</h1>
+        <p class="hero-lead">
+          A map of the Sardis monorepo, every top-level folder, what lives inside, and where to look
+          when you're lost. The stack is pragmatic, not prescriptive: Python where the money logic
+          lives, TypeScript where the browser and SDK consumers are, Solidity for the on-chain parts.
+          Nothing here is load-bearing opinion about what language you should be using.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          Three workspaces (<code>packages/</code>, <code>apps/</code>, <code>contracts/</code>) carry
+          99% of the production code. Everything else is either supporting material (docs, scripts,
+          demos) or build artefacts. If you're reading code, start in <code>packages/sardis-core</code>.
+          If you're running code, start in <code>apps/dashboard</code>. If you're verifying on-chain,
+          start in <code>contracts/src</code>.
+        </div>
+      </section>
+
+      <!-- Stats -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">By the numbers</div>
+          <h2>What's in the tree.</h2>
+        </div>
+        <div class="grid grid-4">
+          <div class="stat"><div class="stat-value">51</div><div class="stat-label">packages</div></div>
+          <div class="stat"><div class="stat-value">2</div><div class="stat-label">Next.js apps</div></div>
+          <div class="stat"><div class="stat-value">9</div><div class="stat-label">Solidity contracts</div></div>
+          <div class="stat"><div class="stat-value">43</div><div class="stat-label">dashboard pages</div></div>
+          <div class="stat"><div class="stat-value">59</div><div class="stat-label">docs folders</div></div>
+          <div class="stat"><div class="stat-value">18</div><div class="stat-label">demos</div></div>
+          <div class="stat"><div class="stat-value">20+</div><div class="stat-label">examples</div></div>
+          <div class="stat"><div class="stat-value">50+</div><div class="stat-label">ops scripts</div></div>
+        </div>
+      </section>
+
+      <!-- Top-level tree -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Top level</div>
+          <h2>The whole repo at a glance.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Trimmed of generated artefacts (<code>node_modules</code>, <code>dist</code>,
+            <code>.venv</code>, lockfiles, cache directories). What's left is what a new contributor
+            should actually care about.
+          </p>
+        </div>
+        <div class="tree">sardis/
+├── <span class="dir">apps/</span>                     <span class="note"># 2 Next.js 16 apps (React 19)</span>
+│   ├── dashboard/            <span class="note"># app.sardis.sh · operator pages</span>
+│   └── landing/              <span class="note"># sardis.sh · marketing + blog</span>
+├── <span class="dir">packages/</span>                 <span class="note"># 51 packages, see canvas 03</span>
+├── <span class="dir">contracts/</span>                <span class="note"># Foundry · Solidity 0.8.24</span>
+├── <span class="dir">docs/</span>                     <span class="note"># architecture, GTM, investor notes</span>
+├── <span class="dir">demos/</span>                    <span class="note"># 18 runnable demos</span>
+├── <span class="dir">examples/</span>                 <span class="note"># 20+ framework-specific examples</span>
+├── <span class="dir">tests/</span>                    <span class="note"># cross-package integration tests</span>
+├── <span class="dir">scripts/</span>                  <span class="note"># ops, deploy, health scripts</span>
+├── pyproject.toml            <span class="file"># uv workspace root</span>
+├── pnpm-workspace.yaml       <span class="file"># pnpm workspace root</span>
+├── Dockerfile                <span class="file"># Cloud Run image</span>
+└── README.md                 <span class="file"># public-facing overview</span></div>
+
+        <details style="margin-top: 16px;">
+          <summary style="cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); padding: 8px 0;">
+            Show secondary folders (api proxies, monitoring, marketplace, legal, playground...)
+          </summary>
+          <div class="tree" style="margin-top: 8px;">├── <span class="dir">api/</span>                      <span class="note"># Vercel API routes (checkout proxy, docs)</span>
+├── <span class="dir">api-proxy/</span>                <span class="note"># Edge proxy for rate-limit-heavy endpoints</span>
+├── <span class="dir">deploy/</span>                   <span class="note"># GCP Cloud Run configs + env templates</span>
+├── <span class="dir">docs-site/</span>                <span class="note"># Docusaurus-style public docs</span>
+├── <span class="dir">canvases/</span>                 <span class="note"># this document, HTML canvases</span>
+├── <span class="dir">research/</span>                 <span class="note"># internal research notes + prototypes</span>
+├── <span class="dir">monitoring/</span>               <span class="note"># Upptime config + uptime badges</span>
+├── <span class="dir">marketplace/</span>              <span class="note"># MCP / Composio / Activepieces submissions</span>
+├── <span class="dir">ops/</span>                      <span class="note"># incident templates + runbooks</span>
+├── <span class="dir">legal/</span>                    <span class="note"># ToS, privacy, DPA drafts</span>
+├── <span class="dir">playground/</span>               <span class="note"># scratchpad, not shipped</span>
+└── <span class="dir">sardis/</span>                   <span class="note"># thin public Python import surface</span></div>
+        </details>
+
+        <details style="margin-top: 12px;">
+          <summary style="cursor: pointer; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); padding: 8px 0;">
+            Show the packages/ expansion (top 12 of 51)
+          </summary>
+          <div class="tree" style="margin-top: 8px;">packages/
+├── sardis-core/          <span class="note"># domain models, policy, orchestrator</span>
+├── sardis-api/           <span class="note"># FastAPI, 123 routers</span>
+├── sardis-chain/         <span class="note"># multi-chain executor + Tempo</span>
+├── sardis-wallet/        <span class="note"># MPC signing abstraction</span>
+├── sardis-protocol/      <span class="note"># AP2 / TAP / x402 verifiers</span>
+├── sardis-ledger/        <span class="note"># append-only audit + Merkle anchor</span>
+├── sardis-compliance/    <span class="note"># KYC (Didit) + AML (Elliptic)</span>
+├── sardis-cards/         <span class="note"># virtual cards (Stripe Issuing)</span>
+├── sardis-checkout/      <span class="note"># Pay with Sardis merchant flow</span>
+├── sardis-checkout-ui/   <span class="note"># checkout.sardis.sh · Vite</span>
+├── sardis-langchain/     <span class="note"># + 17 other framework adapters</span>
+└── ...                   <span class="note"># see canvas 03 for the full list</span></div>
+        </details>
+      </section>
+
+      <!-- apps -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">apps/</div>
+          <h2>Two Next.js apps — one for customers, one for operators.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Both apps are Next.js 16 App Router (React 19) on Vercel Edge. They share design tokens but not state.
+            Dashboard talks to <code>sardis-api</code> via authenticated fetch; landing is static with
+            MDX content.
+          </p>
+        </div>
+
+        <h3 class="mt-24">apps/dashboard — <code>app.sardis.sh</code> / <code>dashboard.sardis.sh</code></h3>
+        <p class="text-muted">Operator console. 43 pages under <code>app/(dashboard)/</code>, auth at <code>app/auth/</code>, public demo at <code>app/demo/</code>, self-service account management at <code>app/account/</code>. See canvas 16 for full page inventory.</p>
+        <div class="tree">apps/dashboard/
+├── app/
+│   ├── <span class="dir">(dashboard)/</span>           <span class="note"># 43 operator pages: agents, wallets, mandates, policies,</span>
+│   │                         <span class="note">#   approvals, kill-switch, live-events, audit-anchors, etc.</span>
+│   ├── account/              <span class="note"># user settings, API keys, billing</span>
+│   ├── api/                  <span class="note"># Next.js route handlers (auth proxy)</span>
+│   ├── auth/                 <span class="note"># better-auth sign-in/up, passkey</span>
+│   ├── demo/                 <span class="note"># public interactive demo (no signup)</span>
+│   ├── layout.tsx            <span class="file"># root layout + providers</span>
+│   └── providers.tsx         <span class="file"># React Query, theme, auth</span></div>
+
+        <h3 class="mt-24">apps/landing — <code>sardis.sh</code></h3>
+        <p class="text-muted">Marketing surface. MDX-driven blog + glossary + compare pages. Fully static with ISR for blog.</p>
+        <div class="tree">apps/landing/
+├── app/
+│   ├── <span class="dir">blog/</span>                  <span class="note"># MDX posts + RSS</span>
+│   ├── <span class="dir">compare/</span>               <span class="note"># vs. Stripe, Crossmint, Privy, etc.</span>
+│   ├── <span class="dir">faq/</span>                   <span class="note"># support FAQ</span>
+│   ├── <span class="dir">glossary/</span>              <span class="note"># agent-economy term definitions</span>
+│   ├── <span class="dir">landing/</span>               <span class="note"># variant landing pages for campaigns</span>
+│   ├── <span class="dir">pricing/</span>               <span class="note"># pricing tiers</span>
+│   ├── llms-full.txt         <span class="file"># structured data for LLM crawlers</span>
+│   ├── llms.txt              <span class="file"># short LLM-friendly summary</span>
+│   ├── robots.ts             <span class="file"># programmatic robots</span>
+│   ├── sitemap.ts            <span class="file"># programmatic sitemap</span>
+│   ├── opengraph-image.tsx   <span class="file"># dynamic OG card</span>
+│   └── page.tsx              <span class="file"># hero + features</span></div>
+      </section>
+
+      <!-- packages -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">packages/</div>
+          <h2>51 packages — the product.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every unit of shipped behavior is a package. Python packages use <code>uv</code>, TypeScript
+            packages use <code>pnpm</code>. Canvas <a href="/packages">03 · Packages</a> has the full
+            breakdown; here's the grouped summary.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Group</th><th>Packages</th><th>Summary</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Core platform</td><td>12</td><td>sardis-core, sardis-api, sardis-chain, sardis-wallet, sardis-protocol, sardis-ledger, sardis-compliance, sardis-cards, sardis-guardrails, sardis-zk-policy, sardis-zkp, sardis-ucp</td></tr>
+            <tr><td>Checkout &amp; merchant</td><td>4</td><td>sardis-checkout, sardis-checkout-ui, sardis-connect, sardis-connect-js</td></tr>
+            <tr><td>AI framework integrations</td><td>15+</td><td>sardis-langchain, crewai, autogpt, openai-agents, openai, agent-sdk, adk, a2a, agentkit, browser-use, composio, openclaw, stagehand, ai-sdk, activepieces, n8n-nodes-sardis, mcp-server, gpt, e2b</td></tr>
+            <tr><td>Payment providers</td><td>6</td><td>sardis-coinbase, sardis-lightspark, sardis-striga, sardis-mpp, sardis-mpp-proxy, sardis-ramp</td></tr>
+            <tr><td>SDKs &amp; CLIs</td><td>6</td><td>sardis-sdk-python, sardis-sdk-js, sardis-cli, sardis-cli-go, sardis-cli-js, sardis-ramp-js</td></tr>
+            <tr><td>Misc / experimental</td><td>8</td><td>sardis-solana-program, sardis-spend-widget, sardis-telegram-bot, ui-web, and a handful of provider-specific shims</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- contracts -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">contracts/</div>
+          <h2>Solidity — the bottom of the stack.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Foundry-based. 9 contracts in <code>src/</code>, plus audit-surface docs and Forge scripts.
+            Full deep-dive in <a href="/contracts">canvas 06</a>.
+          </p>
+        </div>
+        <div class="tree">contracts/
+├── src/
+│   ├── SardisLedgerAnchor.sol        <span class="note"># Merkle-root anchor for audit batches</span>
+│   ├── SardisPolicyModule.sol        <span class="note"># on-chain policy guard (Zodiac-compatible)</span>
+│   ├── SardisIdentityRegistry.sol    <span class="note"># agent identity attestations (ERC-8004)</span>
+│   ├── SardisReputationRegistry.sol  <span class="note"># agent reputation scores</span>
+│   ├── SardisValidationRegistry.sol  <span class="note"># validator attestations</span>
+│   ├── SardisJobManager.sol          <span class="note"># agent-to-agent job lifecycle</span>
+│   ├── SardisJobRegistry.sol         <span class="note"># job registry</span>
+│   ├── SardisVerifyingPaymaster.sol  <span class="note"># ERC-4337 paymaster</span>
+│   ├── RefundProtocol.sol            <span class="note"># Circle RefundProtocol fork</span>
+│   ├── hooks/                        <span class="note"># ERC-8183 trust hooks</span>
+│   ├── interfaces/                   <span class="note"># shared interfaces</span>
+│   └── verifiers/                    <span class="note"># ZK verifier stubs</span>
+├── script/                           <span class="note"># Forge deploy scripts</span>
+├── test/                             <span class="note"># Foundry tests</span>
+├── lib/                              <span class="note"># forge-std, openzeppelin-contracts (submodules)</span>
+├── out/                              <span class="note"># build artefacts</span>
+├── deployments/                      <span class="note"># per-chain deployment records</span>
+├── foundry.toml                      <span class="file"># Foundry config</span>
+├── AUDIT_SURFACE.md                  <span class="file"># explicit audit scope</span>
+└── DEPLOYMENT_GUIDE.md               <span class="file"># mainnet deploy runbook</span></div>
+      </section>
+
+      <!-- Supporting folders -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Supporting</div>
+          <h2>Everything else — what each folder is for.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Folder</th><th>Purpose</th><th>Key files / subfolders</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>api/</code></td><td>Vercel serverless routes — checkout proxy, docs preview, health checks.</td><td><code>index.py</code>, <code>checkout/</code>, <code>dashboard/</code>, <code>landing/</code>, <code>base-chain-rpc/</code></td></tr>
+            <tr><td><code>api-proxy/</code></td><td>Edge proxy in front of rate-limit-heavy endpoints. Offloads Alchemy + Turnkey bursts from Cloud Run.</td><td>Cloudflare Worker source</td></tr>
+            <tr><td><code>deploy/</code></td><td>Deployment configs — GCP Cloud Run YAML, env templates, service specs.</td><td><code>gcp/</code>, <code>env/</code></td></tr>
+            <tr><td><code>scripts/</code></td><td>Ops tooling. Deploy scripts, health checks, data seeds, release gates, outreach pipeline.</td><td><code>deploy-cloudrun.sh</code>, <code>deploy-mainnet-contracts.sh</code>, <code>health_monitor.sh</code>, <code>seed_demo.py</code>, <code>outreach/</code>, <code>audit/</code>, <code>ci/</code></td></tr>
+            <tr><td><code>docs/</code></td><td>Internal + external documentation. Not all of it is public.</td><td><code>architecture/</code>, <code>engineering/</code>, <code>investor/</code>, <code>gtm/</code>, <code>compliance/</code>, <code>runbooks/</code>, <code>security/</code>, <code>plans/</code></td></tr>
+            <tr><td><code>docs-site/</code></td><td>Public documentation site — <code>sardis.sh/docs</code>.</td><td>Markdown + config</td></tr>
+            <tr><td><code>demos/</code></td><td>Runnable end-to-end demos. What a new prospect sees.</td><td><code>mvp_base_sepolia_demo.py</code>, <code>tempo_e2e_demo.py</code>, <code>sardis_connect_e2e_demo.py</code>, <code>sardis-demo-video/</code></td></tr>
+            <tr><td><code>examples/</code></td><td>Small, focused snippets per framework. One concept each.</td><td><code>simple_payment.py</code>, <code>langchain_sardis_agent.py</code>, <code>crewai_finance_team.py</code>, <code>google_adk_agent.py</code>, <code>vercel_ai_payment.ts</code></td></tr>
+            <tr><td><code>tests/</code></td><td>Cross-package integration tests. Per-package unit tests live in the package.</td><td><code>__init__.py</code> (plus integration suites added via pytest config)</td></tr>
+            <tr><td><code>canvases/</code></td><td>This document. HTML canvases describing the system.</td><td><code>index.html</code>, <code>pages/</code>, <code>css/</code>, <code>js/nav.js</code></td></tr>
+            <tr><td><code>research/</code></td><td>Prototypes that may or may not ship. Never imported from production.</td><td>one-off notebooks + drafts</td></tr>
+            <tr><td><code>monitoring/</code></td><td>Upptime-based public status page config.</td><td><code>.upptimerc.yml</code> lives at repo root; dashboards under <code>monitoring/</code></td></tr>
+            <tr><td><code>marketplace/</code></td><td>Submissions to third-party marketplaces — MCP, Composio, Activepieces, ChatGPT Actions.</td><td>per-marketplace folders</td></tr>
+            <tr><td><code>ops/</code></td><td>Runbooks, incident response, on-call handoffs.</td><td><code>docs/on-call.md</code>, incident templates</td></tr>
+            <tr><td><code>legal/</code></td><td>ToS, privacy policy, DPA, MSA drafts.</td><td>legal markdown</td></tr>
+            <tr><td><code>playground/</code></td><td>Scratchpad. Anything here can be deleted.</td><td>—</td></tr>
+            <tr><td><code>sardis/</code></td><td>Thin public Python surface — <code>pip install sardis</code> lands here. Re-exports from <code>sardis-sdk-python</code>.</td><td><code>__init__.py</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Root files -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Root files</div>
+          <h2>Repo-level manifests and gates.</h2>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>File</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>pyproject.toml</code></td><td>uv workspace root. Declares Python members and shared tooling (ruff, pytest, mypy).</td></tr>
+            <tr><td><code>pnpm-workspace.yaml</code></td><td>pnpm workspace root. Declares TypeScript members.</td></tr>
+            <tr><td><code>package.json</code></td><td>Root scripts — test, build, lint across all JS packages.</td></tr>
+            <tr><td><code>Dockerfile</code></td><td>Cloud Run image for <code>sardis-api</code>. gunicorn + uvicorn inside <code>.venv</code>.</td></tr>
+            <tr><td><code>docker-compose.yml</code></td><td>Local stack — API + Postgres + Redis for full-stack dev.</td></tr>
+            <tr><td><code>.env.example</code></td><td>Canonical env var list. Source of truth over CLAUDE.md for env surface.</td></tr>
+            <tr><td><code>.gitleaks.toml</code></td><td>Secret-scan config enforced in CI.</td></tr>
+            <tr><td><code>.pre-commit-config.yaml</code></td><td>pre-commit hooks — ruff, gitleaks, conventional commits.</td></tr>
+            <tr><td><code>CLAUDE.md</code></td><td>Agent instructions. Declared stale-by-design — trust the code.</td></tr>
+            <tr><td><code>AGENTS.md</code></td><td>Parallel agent harness spec.</td></tr>
+            <tr><td><code>README.md</code></td><td>Public-facing overview, quickstart.</td></tr>
+            <tr><td><code>OPERATIONAL_CHECKLIST.md</code></td><td>Pre-production readiness gate.</td></tr>
+            <tr><td><code>LAUNCH_CHECKLIST.md</code></td><td>Launch-day go/no-go list.</td></tr>
+            <tr><td><code>llms.txt</code></td><td>LLM-friendly repo summary.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Dependency mental model -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Mental model</div>
+          <h2>How the workspaces fit together.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Read top-to-bottom for compile order — <code>packages/</code> builds first, <code>apps/</code>
+            consume built artefacts, <code>contracts/</code> are deployed separately and their ABIs are
+            imported back into <code>packages/sardis-chain</code>.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+flowchart TD
+    subgraph Workspaces
+        P[packages/ — 51 libs]
+        A[apps/ — dashboard + landing]
+        C[contracts/ — 9 Solidity]
+    end
+    subgraph Supporting
+        D[docs/, docs-site/]
+        S[scripts/, deploy/]
+        DM[demos/, examples/]
+        T[tests/]
+    end
+
+    C -- ABIs / addresses --> P
+    P -- @sardis/* imports --> A
+    P -- pytest targets --> T
+    DM -- imports --> P
+    S -- deploys --> A
+    S -- deploys --> C
+    S -- deploys --> P
+    D -. describes .-> P
+    D -. describes .-> A
+          </pre>
+        </div>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/packages">
+            <div class="canvas-card-num">03 · System</div>
+            <div class="canvas-card-title">Packages (51)</div>
+            <div class="canvas-card-desc">Every package, what's inside, why it exists as a separate package.</div>
+          </a>
+          <a class="canvas-card" href="/api-surface">
+            <div class="canvas-card-num">04 · Backend</div>
+            <div class="canvas-card-title">API Surface</div>
+            <div class="canvas-card-desc">All 123 FastAPI routers grouped by domain.</div>
+          </a>
+          <a class="canvas-card" href="/contracts">
+            <div class="canvas-card-num">06 · Backend</div>
+            <div class="canvas-card-title">Smart Contracts</div>
+            <div class="canvas-card-desc">Every Solidity source, addresses, deploy pipeline.</div>
+          </a>
+          <a class="canvas-card" href="/dashboard">
+            <div class="canvas-card-num">16 · Product</div>
+            <div class="canvas-card-title">Dashboard UI</div>
+            <div class="canvas-card-desc">All 43 operator pages with purpose and state.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>

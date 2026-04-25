@@ -1,0 +1,971 @@
+---
+import Canvas from "../layouts/Canvas.astro";
+const styles = `
+    .router-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; margin-top: 12px; }
+    .router-chip {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      padding: 6px 9px;
+      background: var(--muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      color: var(--text-secondary);
+    }
+    .stat-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; }
+    .stat-pill {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      background: var(--card);
+      min-width: 160px;
+    }
+    .stat-pill .stat-num { font-size: 26px; font-weight: 600; font-family: var(--font-mono); }
+    .stat-pill .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+    .middleware-stack { display: flex; flex-direction: column; gap: 8px; }
+    .mw-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--card);
+    }
+    .mw-row .mw-name { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; }
+    .mw-row .mw-desc { font-size: 12.5px; color: var(--text-muted); margin-left: 16px; }
+    .mw-row .mw-order { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-right: 12px; }
+  `;
+---
+
+<Canvas title="04 · API Surface — Sardis Canvas" currentId="api-surface">
+<Fragment slot="head">
+  <style is:global set:html={styles}></style>
+</Fragment>
+
+<section class="hero">
+        <span class="eyebrow">Canvas 04 · System</span>
+        <h1>API Surface</h1>
+        <p class="hero-lead">
+          One FastAPI application, 123 routers, grouped by domain. Every router sits behind the same
+          middleware stack (request-id, logging, security headers, rate limit, auth) and — for anything
+          that moves money — funnels into a single <code>PaymentOrchestrator.execute()</code> chokepoint.
+          This canvas is the catalogue.
+        </p>
+      </section>
+
+      <section class="section" style="padding-top:0; border-top:0;">
+        <div class="callout callout-info">
+          <span class="callout-title">TL;DR</span>
+          The surface is large on purpose — every money movement, policy decision, compliance check, and
+          webhook callback gets its own router so the seams are explicit. The surface is also uniform on
+          purpose — every request traverses the same middleware, the same principal extractor, and the same
+          pre-execution pipeline. Wide catalogue, narrow spine.
+        </div>
+        <div class="stat-row">
+          <div class="stat-pill"><div class="stat-num">123</div><div class="stat-label">Routers</div></div>
+          <div class="stat-pill"><div class="stat-num">/api/v2</div><div class="stat-label">Canonical prefix</div></div>
+          <div class="stat-pill"><div class="stat-num">12</div><div class="stat-label">Domain groups</div></div>
+          <div class="stat-pill"><div class="stat-num">10</div><div class="stat-label">Middleware layers</div></div>
+          <div class="stat-pill"><div class="stat-num">RFC 7807</div><div class="stat-label">Error model</div></div>
+        </div>
+      </section>
+
+      <!-- Middleware stack -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">The Spine</div>
+          <h2>Middleware stack — outermost first.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Registered in <code>packages/sardis-api/src/sardis_api/main.py</code>. FastAPI/Starlette
+            middleware executes outermost-registered-first on request, innermost-first on response. If you
+            need to add a cross-cutting concern, add it here, not in a router.
+          </p>
+        </div>
+        <div class="middleware-stack">
+          <div class="mw-row">
+            <div><span class="mw-order">01</span><span class="mw-name">RequestIdMiddleware</span><span class="mw-desc">Assigns <code>x-request-id</code>, propagates through logs and downstream calls.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">02</span><span class="mw-name">StructuredLoggingMiddleware</span><span class="mw-desc">JSON log per request: method, path, status, latency_ms, principal, request_id.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">03</span><span class="mw-name">SecurityHeadersMiddleware</span><span class="mw-desc">CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">04</span><span class="mw-name">RequestBodyLimitMiddleware</span><span class="mw-desc">Rejects payloads over configured byte cap — defends against memory-pressure DoS.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">05</span><span class="mw-name">RateLimitMiddleware</span><span class="mw-desc">Redis-backed token bucket; fail-closed in prod if Redis unreachable (<code>SARDIS_REDIS_URL</code>).</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">06</span><span class="mw-name">TapVerificationMiddleware</span><span class="mw-desc">Verifies Visa TAP agent identity headers (Ed25519 / ECDSA-P256) when enabled.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">07</span><span class="mw-name">X402PaymentMiddleware</span><span class="mw-desc">Implements x402 Payment Required on gated endpoints; verifies on-chain settlement proof.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">08</span><span class="mw-name">UsageMeteringMiddleware</span><span class="mw-desc">Records billable-event rows for Polar; tags by principal + endpoint class.</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">09</span><span class="mw-name">ActivityLoggerMiddleware</span><span class="mw-desc">Write-ahead of every mutating call into the audit log (feeds Canvas 20).</span></div>
+          </div>
+          <div class="mw-row">
+            <div><span class="mw-order">10</span><span class="mw-name">CORSMiddleware</span><span class="mw-desc">Canonical origins: sardis.sh, app.sardis.sh, dashboard.sardis.sh, checkout.sardis.sh + merchant <code>embed_origin</code>.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mermaid: request flow through middleware -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Interaction</div>
+          <h2>One HTTPS request, traced through the stack.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            From the TLS terminator on Cloud Run, through every middleware, into the router body, and
+            (if the route is a money-mover) into the orchestrator.
+          </p>
+        </div>
+        <div class="diagram">
+          <pre class="mermaid" is:raw>
+flowchart TD
+    R[HTTPS request<br/>Cloud Run TLS term] --> MW1[RequestIdMiddleware<br/>x-request-id]
+    MW1 --> MW2[StructuredLoggingMiddleware]
+    MW2 --> MW3[SecurityHeadersMiddleware<br/>CSP / HSTS / Frame-Options]
+    MW3 --> MW4[RequestBodyLimitMiddleware]
+    MW4 --> MW5[RateLimitMiddleware<br/>Redis token bucket]
+    MW5 --> MW6[TapVerificationMiddleware<br/>optional — Visa TAP]
+    MW6 --> MW7[X402PaymentMiddleware<br/>optional — 402 gate]
+    MW7 --> MW8[UsageMetering + ActivityLogger]
+    MW8 --> MW9[CORSMiddleware]
+    MW9 --> DEP[require_principal<br/>API key / JWT / session]
+    DEP --> ROUTE{Router body}
+    ROUTE -->|money-mover| ORCH[PaymentOrchestrator.execute]
+    ROUTE -->|read-only| DB[(Neon Postgres)]
+    ORCH --> PIPE[PreExecutionPipeline<br/>policy · KYC · mandate · rate · anomaly]
+    PIPE --> CHAIN[ChainExecutor → Turnkey MPC → Alchemy RPC]
+    CHAIN --> LED[Ledger append + Merkle anchor]
+    LED --> RESP[HTTP 2xx / RFC 7807 problem+json]
+          </pre>
+        </div>
+      </section>
+
+      <!-- Group 1: Auth & Identity -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 01</div>
+          <h2>Auth &amp; Identity.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Principal establishment — how a caller proves they are allowed to address the API at all. Three
+            principal types coexist: human users (JWT / session), tenant service accounts (API keys
+            <code>sk_live_…</code>), and agents (AGIT identity + signed mandate).
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>auth.py</code></td>
+              <td>Human login, signup, MFA, OAuth, password reset, API-key bootstrap.</td>
+              <td>Public + JWT for protected ops</td>
+              <td><code>POST /login</code> · <code>POST /signup</code> · <code>POST /refresh</code> · <code>GET /google/callback</code> · <code>POST /mfa/setup</code> · <code>POST /api-keys</code></td>
+            </tr>
+            <tr>
+              <td><code>api_keys.py</code></td>
+              <td>Tenant API-key CRUD + scoping + hashed storage (SHA-256).</td>
+              <td>JWT (tenant admin)</td>
+              <td>Create/list/revoke keys; scope by environment (live/test).</td>
+            </tr>
+            <tr>
+              <td><code>agent_identity.py</code></td>
+              <td>AGIT (Agent Identity and Trust) registration — Ed25519/ECDSA-P256.</td>
+              <td>API key</td>
+              <td>Register agent identity, rotate keys, attest.</td>
+            </tr>
+            <tr>
+              <td><code>agent_auth.py</code></td>
+              <td>Signed-request auth for agents calling on their own behalf.</td>
+              <td>AGIT signature</td>
+              <td>Challenge-response + replay cache.</td>
+            </tr>
+            <tr>
+              <td><code>me.py</code></td>
+              <td>Current principal introspection — "whoami" for debugging auth.</td>
+              <td>Any</td>
+              <td><code>GET /me</code> returns principal type, tenant, scopes.</td>
+            </tr>
+            <tr>
+              <td><code>email_verification.py</code></td>
+              <td>Email confirmation flow for new signups.</td>
+              <td>Token link</td>
+              <td>Verify, resend.</td>
+            </tr>
+            <tr>
+              <td><code>credentials.py</code></td>
+              <td>Provider credential vault (Turnkey / Stripe / Didit keys per tenant).</td>
+              <td>JWT (tenant admin)</td>
+              <td>Encrypted at rest; never returned cleartext.</td>
+            </tr>
+            <tr>
+              <td><code>fides_identity.py</code></td>
+              <td>FIDES decentralized trust graph identity lookup.</td>
+              <td>API key</td>
+              <td>Trust score + attestation chain for an agent.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 2: Wallets & Agents -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 02</div>
+          <h2>Wallets &amp; Agents.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Non-custodial MPC wallets plus the agent records that own them. Wallet-facing endpoints never
+            take a private key — signing is deferred to Turnkey (or Fireblocks / Circle) at execution time.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>wallets.py</code></td>
+              <td>Wallet lifecycle + balances + smart-account upgrade + transfer.</td>
+              <td>API key / JWT</td>
+              <td><code>POST /wallets</code> · <code>GET /&#123;id&#125;/balance</code> · <code>GET /&#123;id&#125;/balances</code> · <code>POST /&#123;id&#125;/transfer</code> · <code>POST /&#123;id&#125;/freeze</code> · <code>POST /&#123;id&#125;/upgrade-smart-account</code></td>
+            </tr>
+            <tr>
+              <td><code>agents.py</code></td>
+              <td>Agent CRUD, metadata, owning-tenant linkage.</td>
+              <td>API key</td>
+              <td>Create agent, attach wallet, assign policy.</td>
+            </tr>
+            <tr>
+              <td><code>agent_registry.py</code></td>
+              <td>Public directory of registered agents for discovery / A2A.</td>
+              <td>Mixed</td>
+              <td>Search by capability, name, owner.</td>
+            </tr>
+            <tr>
+              <td><code>agent_heartbeat.py</code></td>
+              <td>Liveness signal — stale agents get KYA-suspended.</td>
+              <td>AGIT signature</td>
+              <td>Periodic ping; last-seen feeds trust score.</td>
+            </tr>
+            <tr>
+              <td><code>agent_activity.py</code></td>
+              <td>Per-agent activity stream (auth events, tx, policy hits).</td>
+              <td>API key</td>
+              <td>Paginated timeline for dashboard.</td>
+            </tr>
+            <tr>
+              <td><code>agent_events.py</code></td>
+              <td>Emit + query structured agent events (used by KYA &amp; anomaly).</td>
+              <td>API key</td>
+              <td>Post event; stream by agent_id.</td>
+            </tr>
+            <tr>
+              <td><code>groups.py</code></td>
+              <td>Agent groups — shared budget + policy inheritance.</td>
+              <td>API key</td>
+              <td>Create group, attach agents, group-level spending cap.</td>
+            </tr>
+            <tr>
+              <td><code>organizations.py</code></td>
+              <td>Tenant (organization) management — users, roles, env scoping.</td>
+              <td>JWT (org admin)</td>
+              <td>Invite member, switch role, rotate org API keys.</td>
+            </tr>
+            <tr>
+              <td><code>holds.py</code></td>
+              <td>Reserve funds against a wallet for a pending charge.</td>
+              <td>API key</td>
+              <td>Create / capture / release.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 3: Payments & Mandates -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 03</div>
+          <h2>Payments &amp; Mandates.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            The core money-movers. Every route here ultimately calls
+            <code>PaymentOrchestrator.execute()</code> — there is no private fast path. A mandate is the
+            delegated authority from a principal to an agent; a payment is what happens when that authority
+            is exercised.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>pay.py</code></td>
+              <td>Single-shot agent payment — the flagship <code>sardis.pay()</code> path.</td>
+              <td>API key + AGIT</td>
+              <td><code>POST /pay</code> — amount, to, reason, optional policy override.</td>
+            </tr>
+            <tr>
+              <td><code>mandates.py</code></td>
+              <td>Spending mandates: create, validate, execute, cancel.</td>
+              <td>API key</td>
+              <td><code>POST /mandates</code> · <code>POST /&#123;id&#125;/validate</code> · <code>POST /&#123;id&#125;/execute</code> · <code>POST /&#123;id&#125;/cancel</code></td>
+            </tr>
+            <tr>
+              <td><code>mandate_delegation.py</code></td>
+              <td>Principal → agent delegation chain, sub-delegation with caps.</td>
+              <td>Signed mandate</td>
+              <td>Issue, revoke, introspect.</td>
+            </tr>
+            <tr>
+              <td><code>mandate_subscriptions.py</code></td>
+              <td>Recurring mandates (subscriptions with budget windows).</td>
+              <td>API key</td>
+              <td>Start / pause / next-renewal.</td>
+            </tr>
+            <tr>
+              <td><code>spending_mandates.py</code></td>
+              <td>Natural-language spending-mandate creation and enforcement.</td>
+              <td>API key</td>
+              <td>Parse NL → structured mandate; bind to agent.</td>
+            </tr>
+            <tr>
+              <td><code>ap2.py</code></td>
+              <td>AP2 (Agent Payment Protocol) mandate-chain verification + execute.</td>
+              <td>AP2 signed chain</td>
+              <td><code>POST /ap2/payments/execute</code> — verifies Intent→Cart→Payment.</td>
+            </tr>
+            <tr>
+              <td><code>batch_payments.py</code></td>
+              <td>Submit many payments in a single request; per-item policy result.</td>
+              <td>API key</td>
+              <td>Atomic batch · per-item settle.</td>
+            </tr>
+            <tr>
+              <td><code>streaming_payments.py</code></td>
+              <td>Micropayment streams (per-second / per-token rates).</td>
+              <td>API key</td>
+              <td>Open stream, tick, close.</td>
+            </tr>
+            <tr>
+              <td><code>payments_refund.py</code></td>
+              <td>Initiate refunds through Circle RefundProtocol + PSP rails.</td>
+              <td>API key</td>
+              <td>Full / partial / dispute-linked.</td>
+            </tr>
+            <tr>
+              <td><code>subscriptions.py</code></td>
+              <td>Merchant subscription billing (Polar adapter).</td>
+              <td>API key</td>
+              <td>Plan CRUD, usage roll-up.</td>
+            </tr>
+            <tr>
+              <td><code>mpp.py</code></td>
+              <td>Stripe Merchant Payment Protocol (MPP) integration for Tempo mainnet.</td>
+              <td>API key</td>
+              <td>MPP quote → pay → receipt.</td>
+            </tr>
+            <tr>
+              <td><code>swap.py</code></td>
+              <td>Token swaps via DEX router (Tempo, Base).</td>
+              <td>API key</td>
+              <td>Quote, execute, slippage-protect.</td>
+            </tr>
+            <tr>
+              <td><code>payment_objects.py</code></td>
+              <td>Canonical payment object retrieval (ID → full record + state machine).</td>
+              <td>API key</td>
+              <td>Read by id, filter by status.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 4: Policy & Compliance -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 04</div>
+          <h2>Policy &amp; Compliance.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            The gate. Natural-language policies in, structured enforcement out. KYC via Didit, sanctions via
+            Elliptic, KYA (Know Your Agent) implemented internally. Every rejection is audited with a reason
+            code.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>policies.py</code></td>
+              <td>Spending policy CRUD, preview, apply, history, recommendations.</td>
+              <td>API key (+ MPP gate on parse/check)</td>
+              <td><code>POST /parse</code> · <code>POST /preview</code> · <code>POST /apply</code> · <code>POST /check</code> · <code>GET /templates</code> · <code>GET /&#123;agent&#125;/history</code></td>
+            </tr>
+            <tr>
+              <td><code>policy_analytics.py</code></td>
+              <td>Aggregate policy-decision metrics (allow rate, top denied reason codes).</td>
+              <td>JWT</td>
+              <td>Trend by agent, by reason.</td>
+            </tr>
+            <tr>
+              <td><code>policy_simulation.py</code></td>
+              <td>Dry-run a candidate policy against historical traffic.</td>
+              <td>JWT</td>
+              <td>Replay window, impact report.</td>
+            </tr>
+            <tr>
+              <td><code>fallback_policies.py</code></td>
+              <td>Safety-net policies applied when a primary policy errors.</td>
+              <td>JWT</td>
+              <td>Global deny-cap, max-amount backstop.</td>
+            </tr>
+            <tr>
+              <td><code>approvals.py</code> · <code>approval_config.py</code></td>
+              <td>Human-in-the-loop approval queue for over-threshold agent requests.</td>
+              <td>JWT</td>
+              <td>Create request, approve / reject, notify via webhook.</td>
+            </tr>
+            <tr>
+              <td><code>compliance.py</code></td>
+              <td>KYC verify, KYA register/check/suspend, sanctions screen.</td>
+              <td>JWT / API key</td>
+              <td><code>POST /kyc/verify</code> · <code>GET /kyc/&#123;agent&#125;</code> · <code>POST /kya/register</code> · <code>POST /sanctions/screen</code> · <code>POST /sanctions/block</code></td>
+            </tr>
+            <tr>
+              <td><code>kyc_onboarding.py</code></td>
+              <td>Didit session bootstrap → webhook → <code>sk_live_</code> issuance.</td>
+              <td>JWT</td>
+              <td><code>POST /kyc/initiate</code>.</td>
+            </tr>
+            <tr>
+              <td><code>compliance_export.py</code></td>
+              <td>Regulated evidence bundles (PDF + JSON + Merkle proof).</td>
+              <td>JWT (admin)</td>
+              <td>Export by date range / agent.</td>
+            </tr>
+            <tr>
+              <td><code>trust.py</code></td>
+              <td>FIDES trust-graph mutation (upvote, revoke, peer-attest).</td>
+              <td>AGIT signature</td>
+              <td>Graph ops + local trust score.</td>
+            </tr>
+            <tr>
+              <td><code>anomaly.py</code></td>
+              <td>Anomaly detector scoring + rule tuning.</td>
+              <td>JWT</td>
+              <td>Score a request, tune threshold.</td>
+            </tr>
+            <tr>
+              <td><code>erc8183.py</code></td>
+              <td>ERC-8183 policy-guard hooks for on-chain enforcement.</td>
+              <td>API key</td>
+              <td>Guard check, USDC cap, fee cap.</td>
+            </tr>
+            <tr>
+              <td><code>guardrails</code> (via <code>sardis-guardrails</code>)</td>
+              <td>Agent guardrail presets referenced from <code>policies.py</code>.</td>
+              <td>API key</td>
+              <td>Template by persona (buyer, trader, ops).</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 5: Checkout & Merchant -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 05</div>
+          <h2>Checkout &amp; Merchant.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            "Pay with Sardis" — the consumer-facing checkout. Public endpoints auth by <code>client_secret</code>
+            (never session id); merchant management endpoints auth by <code>require_principal</code>.
+            Hardened against double-pay via <code>SELECT … FOR UPDATE NOWAIT</code> and DB-unique
+            idempotency keys.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>checkout.py</code></td>
+              <td>Low-level checkout object CRUD + public status read.</td>
+              <td>Public (client_secret) / API key</td>
+              <td><code>POST /checkout</code> · <code>GET /&#123;id&#125;</code> · <code>GET /payment-methods</code></td>
+            </tr>
+            <tr>
+              <td><code>merchant_checkout.py</code></td>
+              <td>Merchant-scoped checkout sessions, SSE stream, links.</td>
+              <td>Merchant API key / public link</td>
+              <td>Create session, <code>/stream</code> SSE, reusable checkout link, external-wallet confirm.</td>
+            </tr>
+            <tr>
+              <td><code>checkout_controls.py</code></td>
+              <td>Per-merchant checkout controls (min/max amount, allowed tokens).</td>
+              <td>Merchant JWT</td>
+              <td>Upsert controls.</td>
+            </tr>
+            <tr>
+              <td><code>merchants.py</code></td>
+              <td>Merchant account CRUD, settlement address, embed_origin.</td>
+              <td>JWT</td>
+              <td>Create merchant, rotate keys.</td>
+            </tr>
+            <tr>
+              <td><code>secure_checkout.py</code></td>
+              <td>Step-up auth + SCA-style challenges for high-value sessions.</td>
+              <td>Session token</td>
+              <td>Start challenge, verify.</td>
+            </tr>
+            <tr>
+              <td><code>invoices.py</code></td>
+              <td>Invoice issuance + stable payment link.</td>
+              <td>API key</td>
+              <td>Create, mark paid on settlement.</td>
+            </tr>
+            <tr>
+              <td><code>receipts.py</code></td>
+              <td>Canonical receipt retrieval (rendered + JSON).</td>
+              <td>Public (receipt_id)</td>
+              <td>Signed URL for the PDF.</td>
+            </tr>
+            <tr>
+              <td><code>escrow_disputes.py</code></td>
+              <td>Dispute flow backed by Circle RefundProtocol.</td>
+              <td>API key</td>
+              <td>Open, respond, resolve.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 6: Cards -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 06</div>
+          <h2>Cards.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Virtual-card issuance for agents, via Stripe Issuing (primary, live-ready) and Lithic
+            (sandbox; blocked on $5M funding requirement). Cards are policy-gated at auth time — every
+            transaction hits <code>PreExecutionPipeline</code> before Stripe approves.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>cards.py</code></td><td>Card issuance, freeze/unfreeze, limits, PAN reveal.</td><td>API key</td><td>Create card, update limits, freeze.</td></tr>
+            <tr><td><code>virtual_cards.py</code></td><td>Ephemeral single-use cards for one-off merchant payments.</td><td>API key</td><td>Mint + auto-destroy on settle.</td></tr>
+            <tr><td><code>stablecoin_cards.py</code></td><td>USDC-funded cards — wallet balance backs the card float.</td><td>API key</td><td>Link wallet to card, auto-top-up.</td></tr>
+            <tr><td><code>partner_card_webhooks.py</code></td><td>Inbound auth/clearing hooks from Stripe / Lithic.</td><td>HMAC signature</td><td>Authorize, clear, reverse.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 7: Ramps & Treasury -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 07</div>
+          <h2>Ramps &amp; Treasury.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            On/off-ramps, FX, and operator-level treasury functions. Coinbase Onramp (hosted, free) is
+            default; Stripe Connect + Striga + Bridge handle the bank-rail side; Lightspark wires up
+            Lightning for instant micro-settlement.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>onramp.py</code></td><td>Fiat → USDC flow (Coinbase Onramp URL signing).</td><td>API key</td><td>Token issuance, address validation.</td></tr>
+            <tr><td><code>offramp.py</code></td><td>USDC → fiat payout (Stripe / Striga / Bridge).</td><td>API key</td><td>Quote, initiate, status.</td></tr>
+            <tr><td><code>ramp.py</code></td><td>Unified ramp router (on + off, provider-agnostic).</td><td>API key</td><td>Provider select by region.</td></tr>
+            <tr><td><code>fiat_rails.py</code></td><td>Raw fiat rail ops (ACH, SEPA, PIX, FPS).</td><td>API key</td><td>Create payout, track status.</td></tr>
+            <tr><td><code>stripe_connect.py</code></td><td>Stripe Connect account onboarding + payouts.</td><td>JWT</td><td>Create account link, check status.</td></tr>
+            <tr><td><code>striga.py</code></td><td>Striga vIBAN issuance + SEPA in/out.</td><td>API key</td><td>Create vIBAN, withdraw.</td></tr>
+            <tr><td><code>bridge.py</code></td><td>Bridge multi-rail router (ACH / SEPA / PIX).</td><td>API key</td><td>Transfer, track.</td></tr>
+            <tr><td><code>lightspark.py</code></td><td>Lightning Network send/receive.</td><td>API key</td><td>Pay invoice, create invoice.</td></tr>
+            <tr><td><code>treasury.py</code> · <code>treasury_ops.py</code></td><td>Treasury balances, rebalancing, liquidity ops.</td><td>JWT (admin)</td><td>Move between pools, FX hedge.</td></tr>
+            <tr><td><code>fx.py</code></td><td>Spot rates + conversion quotes.</td><td>API key</td><td>Quote, lock, execute.</td></tr>
+            <tr><td><code>currency.py</code></td><td>Currency + token metadata registry.</td><td>Public</td><td>List supported tokens per chain.</td></tr>
+            <tr><td><code>funding.py</code> · <code>funding_capabilities.py</code> · <code>stripe_funding.py</code></td><td>Merchant funding sources + capabilities matrix.</td><td>JWT</td><td>Attach source, check capabilities.</td></tr>
+            <tr><td><code>faucet.py</code></td><td>Testnet faucet for Base Sepolia / Tempo testnet.</td><td>API key (rate-limited)</td><td>Drip USDC to dev wallet.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 8: Ledger & Audit -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 08</div>
+          <h2>Ledger &amp; Audit.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Append-only ledger — every decision (allow / deny / error) is a row. Batches are Merkle-rooted
+            and anchored on-chain via <code>SardisLedgerAnchor.sol</code>. Regulators get cryptographic
+            evidence, not trust-our-logs.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ledger.py</code></td>
+              <td>Query ledger entries + Merkle-path verification.</td>
+              <td>JWT / API key</td>
+              <td><code>GET /entries</code> · <code>GET /entries/&#123;tx_id&#125;</code> · <code>GET /entries/&#123;tx_id&#125;/verify</code> · <code>GET /recent</code> · <code>GET /stats</code></td>
+            </tr>
+            <tr><td><code>audit_anchors.py</code></td><td>On-chain anchor batch visibility (batch id → tx hash).</td><td>JWT</td><td>List batches, verify anchor.</td></tr>
+            <tr><td><code>evidence.py</code> · <code>evidence_export.py</code></td><td>Evidence bundle builder (decisions + mandate chain + receipts).</td><td>JWT (admin)</td><td>Build by tx, export zip.</td></tr>
+            <tr><td><code>data_export.py</code></td><td>Tenant-scope bulk export (GDPR / SOC2).</td><td>JWT (admin)</td><td>Start job, download when ready.</td></tr>
+            <tr><td><code>attestation.py</code></td><td>Issue attestation envelope — signed claim about a decision.</td><td>API key</td><td>Create, verify.</td></tr>
+            <tr><td><code>transactions.py</code></td><td>Canonical transaction list view for dashboard.</td><td>JWT</td><td>Filter by status / agent / date.</td></tr>
+            <tr><td><code>settlements.py</code></td><td>Settlement batch records (fiat + on-chain).</td><td>JWT</td><td>Batch detail, reconciliation status.</td></tr>
+            <tr><td><code>outcomes.py</code></td><td>Final-state outcome store (succeeded / refunded / disputed).</td><td>API key</td><td>Read by payment_id.</td></tr>
+            <tr><td><code>reports.py</code></td><td>Pre-computed financial reports (daily / monthly).</td><td>JWT</td><td>Fetch, schedule.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 9: Protocol-specific -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 09</div>
+          <h2>Protocol Gateways — AP2 / A2A / x402 / ACP / SPT / CPN.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Sardis is the universal payment layer for the agent economy — which means speaking every
+            emerging protocol. Each router here adapts one external standard to the same internal
+            orchestrator.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notable endpoints</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>x402.py</code></td>
+              <td>HTTP 402 Payment Required — verify + settle + challenge issuance.</td>
+              <td>x402 payload</td>
+              <td><code>POST /verify</code> · <code>POST /settle</code> · <code>GET /settlements/&#123;payment_id&#125;</code> · <code>POST /dry-run</code> · <code>POST /challenges</code></td>
+            </tr>
+            <tr><td><code>ap2.py</code></td><td>Google/Visa/Mastercard AP2 — Intent→Cart→Payment chain.</td><td>AP2 signed chain</td><td><code>POST /payments/execute</code>.</td></tr>
+            <tr><td><code>a2a.py</code> · <code>a2a_payments.py</code></td><td>Google Agent-to-Agent protocol — discovery + payment.</td><td>A2A identity + API key</td><td>Public discovery router + authed payment router.</td></tr>
+            <tr><td><code>acp.py</code></td><td>Agent Commerce Protocol adapter.</td><td>ACP signature</td><td>Quote + purchase.</td></tr>
+            <tr><td><code>spt.py</code></td><td>Stripe Payment Token protocol.</td><td>API key</td><td>Token exchange.</td></tr>
+            <tr><td><code>cpn.py</code> · <code>cpn_webhooks.py</code></td><td>Commercial Payment Network router + inbound hooks.</td><td>Mixed</td><td>Send + reconcile.</td></tr>
+            <tr><td><code>mvp.py</code></td><td>Minimal demo/path-of-least-resistance endpoints for demos.</td><td>API key</td><td>Quick pay for pitches.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 10: Webhooks -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 10</div>
+          <h2>Webhooks — inbound &amp; outbound.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Inbound webhooks (partners → Sardis) are signature-verified with HMAC or provider-specific
+            schemes and deduped by <code>event_id</code>. Outbound webhooks (Sardis → merchant) use an
+            outbox pattern with at-least-once delivery and per-delivery tracking.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Direction</th><th>Signer</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>webhooks.py</code></td><td>Outbound</td><td>Sardis HMAC</td><td>Merchant endpoint configuration, delivery log, replay.</td></tr>
+            <tr><td><code>stripe_webhooks.py</code></td><td>Inbound</td><td>Stripe signing secret</td><td>Payment intents, charge events, Issuing authorizations.</td></tr>
+            <tr><td><code>stripe_spt_webhooks.py</code></td><td>Inbound</td><td>Stripe</td><td>SPT-specific event types.</td></tr>
+            <tr><td><code>mastercard_webhooks.py</code></td><td>Inbound</td><td>Mastercard</td><td>AP2 card-network callbacks.</td></tr>
+            <tr><td><code>visa_tap_webhooks.py</code></td><td>Inbound</td><td>Visa TAP</td><td>TAP identity and auth events.</td></tr>
+            <tr><td><code>partner_card_webhooks.py</code></td><td>Inbound</td><td>HMAC</td><td>Stripe Issuing / Lithic card auths.</td></tr>
+            <tr><td><code>cpn_webhooks.py</code></td><td>Inbound</td><td>Partner-specific</td><td>CPN network callbacks.</td></tr>
+            <tr><td><code>polar_webhook.py</code></td><td>Inbound</td><td>Polar</td><td>Billing lifecycle (until Stripe Atlas).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 11: Admin & Ops -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 11</div>
+          <h2>Admin &amp; Operations.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Platform-operator surface. Separate from tenant APIs — these endpoints require a Sardis-internal
+            JWT and are scoped to ops / SRE / support roles. The kill switch here is the one Elizabeth Yin
+            and regulators want to see.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th><th>Auth</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>admin.py</code></td><td>General admin surface (tenant search, impersonate in support mode).</td><td>Ops JWT</td><td>Audit-logged.</td></tr>
+            <tr><td><code>admin_reconciliation.py</code></td><td>Manual reconciliation tools for settlement mismatches.</td><td>Ops JWT</td><td>Compare ledger vs. provider ledger.</td></tr>
+            <tr><td><code>emergency.py</code></td><td>Emergency stop (kill-switch) for tenant / agent / chain.</td><td>Ops JWT + MFA</td><td>Fail-closed; propagates across regions.</td></tr>
+            <tr><td><code>enterprise_support.py</code></td><td>Named-contact support routes for enterprise tier.</td><td>Ops JWT</td><td>Ticket create / escalate.</td></tr>
+            <tr><td><code>alerts.py</code> · <code>ws_alerts.py</code></td><td>Alert rules + WebSocket stream for dashboards.</td><td>JWT</td><td>Rule CRUD, live stream.</td></tr>
+            <tr><td><code>reliability.py</code></td><td>SRE-facing SLO data + feature flags.</td><td>Ops JWT</td><td>Error budget, flag toggles.</td></tr>
+            <tr><td><code>sandbox.py</code></td><td>Test-environment management for merchants.</td><td>JWT</td><td>Provision, reset.</td></tr>
+            <tr><td><code>simulation.py</code></td><td>Traffic replay + chaos simulation.</td><td>Ops JWT</td><td>Replay window, fault inject.</td></tr>
+            <tr><td><code>execution_modes.py</code></td><td>Switch chain mode (live / simulate / dry-run).</td><td>Ops JWT</td><td>Tenant-scoped.</td></tr>
+            <tr><td><code>environment_templates.py</code></td><td>Pre-baked env bundles for onboarding.</td><td>Ops JWT</td><td>Clone to new tenant.</td></tr>
+            <tr><td><code>workflow_templates.py</code></td><td>Reusable workflow (policy + wallet + mandate) templates.</td><td>JWT</td><td>Instantiate per tenant.</td></tr>
+            <tr><td><code>billing.py</code></td><td>Billing state (Polar today, Stripe post-Atlas).</td><td>JWT</td><td>Read invoice, usage.</td></tr>
+            <tr><td><code>usage.py</code></td><td>Raw usage-metering data.</td><td>JWT</td><td>Drill-down by endpoint class.</td></tr>
+            <tr><td><code>plugins.py</code></td><td>Plugin registry / enable / disable.</td><td>Ops JWT</td><td>Tenant opt-in plugins.</td></tr>
+            <tr><td><code>service_directory.py</code></td><td>Internal service catalog for A2A discovery.</td><td>Mixed</td><td>Register, list.</td></tr>
+            <tr><td><code>marketplace.py</code></td><td>Marketplace listings (agents / policies / templates).</td><td>Mixed</td><td>List, install.</td></tr>
+            <tr><td><code>counterparties.py</code></td><td>Known counterparty registry.</td><td>JWT</td><td>Tag, flag, whitelist.</td></tr>
+            <tr><td><code>notifications.py</code></td><td>Multi-channel notification fanout (email, Slack, webhook).</td><td>JWT</td><td>Rule CRUD.</td></tr>
+            <tr><td><code>dev.py</code></td><td>Dev-only helpers (seed data, principal impersonation).</td><td>Dev mode only</td><td>Disabled in prod.</td></tr>
+            <tr><td><code>exceptions.py</code></td><td>Central exception handlers → RFC 7807 problem+json.</td><td>n/a</td><td>Wired via <code>app.add_exception_handler</code>.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Group 12: Analytics & Events -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Group 12</div>
+          <h2>Analytics, Metrics &amp; Live Events.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Read-side infrastructure: dashboard metrics, SDK telemetry, event streams. Event-stream
+            endpoints use Server-Sent Events (SSE) with polling fallback; alerts use a WebSocket.
+          </p>
+        </div>
+        <table class="data">
+          <thead>
+            <tr><th>Router</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>analytics.py</code></td><td>Tenant analytics (spend by agent, success rate, policy hit rate).</td></tr>
+            <tr><td><code>dashboard_metrics.py</code></td><td>Pre-aggregated numbers for the dashboard cards.</td></tr>
+            <tr><td><code>metrics.py</code></td><td>Raw time-series metrics (Prometheus-compatible).</td></tr>
+            <tr><td><code>sdk_metrics.py</code></td><td>SDK-side telemetry ingest (install count, version, error).</td></tr>
+            <tr><td><code>event_stream.py</code></td><td>SSE event stream per tenant + agent.</td></tr>
+            <tr><td><code>mpp_demo.py</code></td><td>MPP demo-day endpoints for Tempo launch (2026-03-18).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Everything else as chips -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Full catalogue</div>
+          <h2>All 123 routers.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Source: <code>ls packages/sardis-api/src/sardis_api/routers/</code> on 2026-04-19. If this list
+            and the filesystem disagree, trust the filesystem and open a fix.
+          </p>
+        </div>
+        <div class="router-grid">
+          <span class="router-chip">a2a.py</span>
+          <span class="router-chip">a2a_payments.py</span>
+          <span class="router-chip">acp.py</span>
+          <span class="router-chip">admin.py</span>
+          <span class="router-chip">admin_reconciliation.py</span>
+          <span class="router-chip">agent_activity.py</span>
+          <span class="router-chip">agent_auth.py</span>
+          <span class="router-chip">agent_events.py</span>
+          <span class="router-chip">agent_heartbeat.py</span>
+          <span class="router-chip">agent_identity.py</span>
+          <span class="router-chip">agent_registry.py</span>
+          <span class="router-chip">agents.py</span>
+          <span class="router-chip">alerts.py</span>
+          <span class="router-chip">analytics.py</span>
+          <span class="router-chip">anomaly.py</span>
+          <span class="router-chip">ap2.py</span>
+          <span class="router-chip">api_keys.py</span>
+          <span class="router-chip">approval_config.py</span>
+          <span class="router-chip">approvals.py</span>
+          <span class="router-chip">attestation.py</span>
+          <span class="router-chip">audit_anchors.py</span>
+          <span class="router-chip">auth.py</span>
+          <span class="router-chip">batch_payments.py</span>
+          <span class="router-chip">billing.py</span>
+          <span class="router-chip">bridge.py</span>
+          <span class="router-chip">cards.py</span>
+          <span class="router-chip">checkout.py</span>
+          <span class="router-chip">checkout_controls.py</span>
+          <span class="router-chip">compliance.py</span>
+          <span class="router-chip">compliance_export.py</span>
+          <span class="router-chip">counterparties.py</span>
+          <span class="router-chip">cpn.py</span>
+          <span class="router-chip">cpn_webhooks.py</span>
+          <span class="router-chip">credentials.py</span>
+          <span class="router-chip">currency.py</span>
+          <span class="router-chip">dashboard_metrics.py</span>
+          <span class="router-chip">data_export.py</span>
+          <span class="router-chip">dev.py</span>
+          <span class="router-chip">email_verification.py</span>
+          <span class="router-chip">emergency.py</span>
+          <span class="router-chip">enterprise_support.py</span>
+          <span class="router-chip">environment_templates.py</span>
+          <span class="router-chip">erc8183.py</span>
+          <span class="router-chip">escrow_disputes.py</span>
+          <span class="router-chip">event_stream.py</span>
+          <span class="router-chip">evidence.py</span>
+          <span class="router-chip">evidence_export.py</span>
+          <span class="router-chip">exceptions.py</span>
+          <span class="router-chip">execution_modes.py</span>
+          <span class="router-chip">fallback_policies.py</span>
+          <span class="router-chip">faucet.py</span>
+          <span class="router-chip">fiat_rails.py</span>
+          <span class="router-chip">fides_identity.py</span>
+          <span class="router-chip">funding.py</span>
+          <span class="router-chip">funding_capabilities.py</span>
+          <span class="router-chip">fx.py</span>
+          <span class="router-chip">groups.py</span>
+          <span class="router-chip">holds.py</span>
+          <span class="router-chip">invoices.py</span>
+          <span class="router-chip">kyc_onboarding.py</span>
+          <span class="router-chip">ledger.py</span>
+          <span class="router-chip">lightspark.py</span>
+          <span class="router-chip">mandate_delegation.py</span>
+          <span class="router-chip">mandate_subscriptions.py</span>
+          <span class="router-chip">mandates.py</span>
+          <span class="router-chip">marketplace.py</span>
+          <span class="router-chip">mastercard_webhooks.py</span>
+          <span class="router-chip">me.py</span>
+          <span class="router-chip">merchant_checkout.py</span>
+          <span class="router-chip">merchants.py</span>
+          <span class="router-chip">metrics.py</span>
+          <span class="router-chip">mpp.py</span>
+          <span class="router-chip">mpp_demo.py</span>
+          <span class="router-chip">mvp.py</span>
+          <span class="router-chip">notifications.py</span>
+          <span class="router-chip">offramp.py</span>
+          <span class="router-chip">onchain_payments.py</span>
+          <span class="router-chip">onramp.py</span>
+          <span class="router-chip">organizations.py</span>
+          <span class="router-chip">outcomes.py</span>
+          <span class="router-chip">partner_card_webhooks.py</span>
+          <span class="router-chip">pay.py</span>
+          <span class="router-chip">payment_objects.py</span>
+          <span class="router-chip">payments_refund.py</span>
+          <span class="router-chip">plugins.py</span>
+          <span class="router-chip">polar_webhook.py</span>
+          <span class="router-chip">policies.py</span>
+          <span class="router-chip">policy_analytics.py</span>
+          <span class="router-chip">policy_simulation.py</span>
+          <span class="router-chip">ramp.py</span>
+          <span class="router-chip">receipts.py</span>
+          <span class="router-chip">reliability.py</span>
+          <span class="router-chip">reports.py</span>
+          <span class="router-chip">sandbox.py</span>
+          <span class="router-chip">sdk_metrics.py</span>
+          <span class="router-chip">secure_checkout.py</span>
+          <span class="router-chip">service_directory.py</span>
+          <span class="router-chip">settlements.py</span>
+          <span class="router-chip">simulation.py</span>
+          <span class="router-chip">spending_mandates.py</span>
+          <span class="router-chip">spt.py</span>
+          <span class="router-chip">stablecoin_cards.py</span>
+          <span class="router-chip">streaming_payments.py</span>
+          <span class="router-chip">striga.py</span>
+          <span class="router-chip">stripe_connect.py</span>
+          <span class="router-chip">stripe_funding.py</span>
+          <span class="router-chip">stripe_spt_webhooks.py</span>
+          <span class="router-chip">stripe_webhooks.py</span>
+          <span class="router-chip">subscriptions.py</span>
+          <span class="router-chip">swap.py</span>
+          <span class="router-chip">transactions.py</span>
+          <span class="router-chip">treasury.py</span>
+          <span class="router-chip">treasury_ops.py</span>
+          <span class="router-chip">trust.py</span>
+          <span class="router-chip">usage.py</span>
+          <span class="router-chip">virtual_cards.py</span>
+          <span class="router-chip">visa_tap_webhooks.py</span>
+          <span class="router-chip">wallets.py</span>
+          <span class="router-chip">webhooks.py</span>
+          <span class="router-chip">workflow_templates.py</span>
+          <span class="router-chip">ws_alerts.py</span>
+          <span class="router-chip">x402.py</span>
+        </div>
+      </section>
+
+      <!-- Error model -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Contract</div>
+          <h2>Error model — RFC 7807 problem+json.</h2>
+          <p class="text-muted" style="max-width:720px;">
+            Every non-2xx response conforms to <a href="https://datatracker.ietf.org/doc/html/rfc7807" target="_blank" rel="noopener">RFC 7807</a>.
+            Clients key off <code>type</code> (stable URI) and <code>code</code> (enum) — not the HTTP
+            status alone, and definitely not the <code>title</code> string.
+          </p>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-title">Shape</div>
+            <div class="card-description">
+              Every error carries: <code>type</code> (URI ref), <code>title</code> (short human), <code>status</code>
+              (HTTP code), <code>detail</code> (human detail), <code>code</code> (machine enum),
+              <code>request_id</code> (for grep'ing logs), and when applicable <code>reason_code</code>
+              (policy engine) or <code>retry_after</code> (rate limit).
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Categories</div>
+            <dl class="defs">
+              <dt><code>400</code> validation_error</dt><dd>Pydantic schema mismatch — array of field errors in <code>errors[]</code>.</dd>
+              <dt><code>401</code> auth_required</dt><dd>Missing / malformed principal. <code>WWW-Authenticate</code> set.</dd>
+              <dt><code>403</code> policy_denied</dt><dd>Pre-execution pipeline rejection. <code>reason_code</code> names the gate.</dd>
+              <dt><code>409</code> conflict</dt><dd>Idempotency collision or state-machine violation.</dd>
+              <dt><code>422</code> mandate_invalid</dt><dd>AP2 / TAP / mandate chain verification failed.</dd>
+              <dt><code>429</code> rate_limited</dt><dd>Redis token-bucket refusal. <code>retry_after</code> in seconds.</dd>
+              <dt><code>500</code> internal</dt><dd>Unclassified — always carries <code>request_id</code>.</dd>
+              <dt><code>503</code> unavailable</dt><dd>Dependency fail-closed (Redis, KYA, FIDES).</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cross-refs -->
+      <section class="section">
+        <div class="section-header">
+          <div class="eyebrow">Go deeper</div>
+          <h2>Follow-ups.</h2>
+        </div>
+        <div class="grid grid-2">
+          <a class="canvas-card" href="/architecture">
+            <div class="canvas-card-num">01 · System</div>
+            <div class="canvas-card-title">Architecture Overview</div>
+            <div class="canvas-card-desc">How the API layer fits in the seven-layer stack.</div>
+          </a>
+          <a class="canvas-card" href="/payment-flow">
+            <div class="canvas-card-num">07 · Flows</div>
+            <div class="canvas-card-title">Payment Flow</div>
+            <div class="canvas-card-desc">One request traced through every router and orchestrator call.</div>
+          </a>
+          <a class="canvas-card" href="/policy-engine">
+            <div class="canvas-card-num">08 · Flows</div>
+            <div class="canvas-card-title">Policy Engine</div>
+            <div class="canvas-card-desc">What <code>/policies/parse</code> and <code>/policies/check</code> actually do.</div>
+          </a>
+          <a class="canvas-card" href="/multi-protocol-gateway">
+            <div class="canvas-card-num">13 · Surface</div>
+            <div class="canvas-card-title">Multi-Protocol Gateway</div>
+            <div class="canvas-card-desc">Deep dive on AP2 / A2A / x402 / ACP / SPT adapters.</div>
+          </a>
+        </div>
+      </section>
+</Canvas>
