@@ -10,6 +10,7 @@ Importable Grafana dashboard templates for all Sardis Prometheus metrics (`sardi
 | `payments.json` | `sardis-payments` | Payment volume, success/failure ratio, execution latency, breakdown by chain and token |
 | `policy-engine.json` | `sardis-policy-engine` | Policy check rate, denial rate, denial reasons, spike alerts, approval queue depth |
 | `cards.json` | `sardis-cards` | Card transaction volume, decline rate by provider, decline reasons, provider breakdown |
+| `facility-gate.json` | `sardis-facility-gate` | Facility Gate decisions, manual review backlog, adapter failures, exceptions, revocations, projection drift |
 | `infrastructure.json` | `sardis-infrastructure` | DB query latency, active connections, cache hit rate, RPC call rates, MPC signing duration |
 
 ## Import Instructions
@@ -69,6 +70,10 @@ scrape_configs:
 
 ## Alert Rule Examples
 
+Facility Gate has an importable Prometheus rule file at
+`monitoring/facility-gate-prometheus-rules.yml`. Use that file for pilot
+alerting if your backend accepts Prometheus-compatible rules.
+
 Paste these into Grafana **Alerting → Alert Rules** (or into your `prometheus/rules.yml`):
 
 ```yaml
@@ -119,4 +124,44 @@ groups:
           severity: warning
         annotations:
           summary: "Cache hit rate < 70%"
+
+      - alert: FacilityGateAdapterExecutionFailure
+        expr: increase(sardis_facility_adapter_events_total{operation="execute",status="failed"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: facility_gate
+        annotations:
+          summary: "Facility Gate adapter execution failed"
+          runbook: "docs/design-partner/facility-gate/incident-runbook.md"
+
+      - alert: FacilityGateRevocationPropagationFailure
+        expr: increase(sardis_facility_adapter_events_total{operation="revoke",status="failed"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: facility_gate
+        annotations:
+          summary: "Facility Gate revocation propagation failed"
+          runbook: "docs/design-partner/facility-gate/incident-runbook.md"
+
+      - alert: FacilityGateManualReviewBacklog
+        expr: sardis_facility_manual_review_queue_depth > 25
+        for: 15m
+        labels:
+          severity: warning
+          component: facility_gate
+        annotations:
+          summary: "Facility Gate manual-review backlog above threshold"
+          runbook: "docs/design-partner/facility-gate/incident-runbook.md"
+
+      - alert: FacilityGateProjectionDrift
+        expr: sardis_facility_projection_drift_count > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: facility_gate
+        annotations:
+          summary: "Facility Gate projection drift detected by replay verification"
+          runbook: "docs/design-partner/facility-gate/incident-runbook.md"
 ```

@@ -260,3 +260,109 @@ rules:
     channels: [slack-ops]
     labels:
       component: api
+
+  # ── Facility Gate ────────────────────────────────────────────
+  - name: facility_gate_exception_spike
+    description: Facility Gate exception events are increasing and need operator review
+    source: sardis_api
+    condition: increase(sardis_facility_exceptions_total[10m]) > 3
+    for: 5m
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: facility_gate
+      surface: exceptions
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_adapter_execute_failures
+    description: Facility Gate adapter execution failures indicate simulator/provider execution risk
+    source: sardis_api
+    condition: increase(sardis_facility_adapter_events_total{operation="execute",status="failed"}[10m]) > 0
+    for: 0s
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: facility_gate
+      surface: adapter
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_revocation_propagation_failure
+    description: Facility Gate adapter revocation failed after a revocation event
+    source: sardis_api
+    condition: increase(sardis_facility_adapter_events_total{operation="revoke",status="failed"}[5m]) > 0
+    for: 0s
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: facility_gate
+      surface: revocation
+    annotations:
+      impact: "Previously approved authority may remain usable at the execution adapter."
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_manual_review_backlog
+    description: Facility Gate step-up/manual-review queue exceeds pilot operating threshold
+    source: sardis_api
+    condition: sardis_facility_manual_review_queue_depth > 25
+    for: 15m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: facility_gate
+      surface: approvals
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_denial_spike
+    description: Facility Gate denial decisions increased sharply; check policy drift, stale authority, or probing
+    source: sardis_api
+    condition: increase(sardis_facility_decisions_total{verdict="denied"}[15m]) > 20
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: facility_gate
+      surface: decisioning
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_step_up_spike
+    description: Facility Gate step-up volume increased sharply; review evidence quality and approval fatigue
+    source: sardis_api
+    condition: increase(sardis_facility_decisions_total{verdict="step_up_required"}[15m]) > 20
+    for: 5m
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: facility_gate
+      surface: approvals
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_projection_drift_detected
+    description: Facility Gate replay verification detected request-state projection drift
+    source: sardis_api
+    condition: sardis_facility_projection_drift_count > 0
+    for: 0s
+    severity: critical
+    channels: [slack-ops, pagerduty]
+    labels:
+      component: facility_gate
+      surface: projections
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
+
+  - name: facility_gate_duplicate_idempotency_anomaly
+    description: Facility Gate duplicate idempotency patterns exceeded pilot threshold
+    source: facility_gate_replay
+    condition: facility_gate_duplicate_idempotency_anomaly_count > 0
+    for: 0s
+    severity: warning
+    channels: [slack-ops]
+    labels:
+      component: facility_gate
+      surface: idempotency
+    annotations:
+      runbook: docs/design-partner/facility-gate/incident-runbook.md
