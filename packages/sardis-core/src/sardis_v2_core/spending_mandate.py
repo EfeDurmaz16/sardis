@@ -126,6 +126,13 @@ class SpendingMandate:
     allowed_chains: list[str] | None = None
     allowed_tokens: list[str] | None = None
 
+    # Facility / credit authority
+    # SECURITY: Existing spend authority does not imply borrowing/draw authority.
+    facility_authority_allowed: bool = False
+    allowed_facility_ids: list[str] = field(default_factory=list)
+    facility_max_draw: Decimal | None = None
+    facility_scope: dict[str, Any] = field(default_factory=dict)
+
     # Time
     valid_from: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
@@ -160,6 +167,10 @@ class SpendingMandate:
             "allowed_rails": sorted(self.allowed_rails),
             "allowed_chains": sorted(self.allowed_chains) if self.allowed_chains else None,
             "allowed_tokens": sorted(self.allowed_tokens) if self.allowed_tokens else None,
+            "facility_authority_allowed": self.facility_authority_allowed,
+            "allowed_facility_ids": sorted(self.allowed_facility_ids),
+            "facility_max_draw": str(self.facility_max_draw) if self.facility_max_draw else None,
+            "facility_scope": self.facility_scope,
             "approval_threshold": str(self.approval_threshold) if self.approval_threshold else None,
             "approval_mode": self.approval_mode.value,
         }
@@ -283,6 +294,64 @@ class SpendingMandate:
             approved=True,
             reason="Mandate check passed",
             requires_approval=requires_approval,
+            mandate_id=self.id,
+            mandate_version=self.version,
+        )
+
+    def check_facility_draw(
+        self,
+        amount: Decimal,
+        facility_id: str,
+        merchant: str | None = None,
+        category: str | None = None,
+        rail: str | None = None,
+    ) -> MandateCheckResult:
+        """Check whether this mandate explicitly allows a facility draw.
+
+        This intentionally does not reuse ``check_payment`` alone. A mandate
+        that allows prepaid/card spending must still opt in to creating a
+        partner-backed repayment obligation.
+        """
+        base = self.check_payment(amount=amount, merchant=merchant, rail=rail)
+        if not base.approved:
+            return base
+        if not self.facility_authority_allowed:
+            return MandateCheckResult(
+                approved=False,
+                reason="Mandate does not delegate facility draw authority",
+                error_code="MANDATE_FACILITY_AUTHORITY_REQUIRED",
+                mandate_id=self.id,
+                mandate_version=self.version,
+            )
+        if self.allowed_facility_ids and facility_id not in self.allowed_facility_ids:
+            return MandateCheckResult(
+                approved=False,
+                reason=f"Facility {facility_id} is not permitted by mandate",
+                error_code="MANDATE_FACILITY_NOT_ALLOWED",
+                mandate_id=self.id,
+                mandate_version=self.version,
+            )
+        if self.facility_max_draw is not None and amount > self.facility_max_draw:
+            return MandateCheckResult(
+                approved=False,
+                reason=f"Amount {amount} exceeds mandate facility draw limit {self.facility_max_draw}",
+                error_code="MANDATE_FACILITY_DRAW_EXCEEDED",
+                mandate_id=self.id,
+                mandate_version=self.version,
+            )
+        allowed_categories = self.facility_scope.get("allowed_categories") or []
+        if category and allowed_categories and category not in allowed_categories:
+            return MandateCheckResult(
+                approved=False,
+                reason=f"Category {category} is not permitted for facility draws",
+                error_code="MANDATE_FACILITY_CATEGORY_NOT_ALLOWED",
+                mandate_id=self.id,
+                mandate_version=self.version,
+            )
+        return MandateCheckResult(
+            approved=True,
+            reason="Facility draw authority check passed",
+            requires_approval=base.requires_approval,
             mandate_id=self.id,
             mandate_version=self.version,
         )

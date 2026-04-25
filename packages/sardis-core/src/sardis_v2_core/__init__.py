@@ -96,6 +96,28 @@ from .config_validation import (
 from .config_validation import (
     TurnkeyConfig as TurnkeyConfigModel,
 )
+from .facility_gate import (
+    Facility,
+    FacilityAuthorizationDecision,
+    FacilityDecision,
+    FacilityEventType,
+    FacilityEvidenceRef,
+    FacilityExecutionAdapter,
+    FacilityLimit,
+    FacilityRail,
+    FacilityRequest,
+    FacilityRevocation,
+    FacilityRevocationScope,
+    FacilityRiskAssessment,
+    FacilityRiskTier,
+    FacilityStatus,
+    FacilityType,
+    LiabilityAssignment,
+    SimulatedFacilityAdapter,
+    build_facility_decision,
+    evaluate_facility_policy,
+    score_facility_request,
+)
 
 # New enterprise-quality modules
 from .constants import (
