@@ -46,9 +46,14 @@ const ORDER = [
 function stripHtml(s) {
   // remove astro frontmatter
   s = s.replace(/^---[\s\S]*?---\s*/, "");
-  // remove <script> and <style> blocks
-  s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
-  s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
+  // remove <script> and <style> blocks (repeat until stable to avoid
+  // incomplete multi-character sanitization from overlapping constructions)
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+    s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
+  } while (s !== prev);
   // mermaid pre blocks — keep textual diagram description-ish content
   s = s.replace(/<pre[^>]*class="mermaid"[^>]*>([\s\S]*?)<\/pre>/gi, "\n[diagram]\n$1\n[/diagram]\n");
   // <br> to newline
