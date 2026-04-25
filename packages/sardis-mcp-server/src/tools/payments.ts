@@ -24,6 +24,7 @@ interface PaymentResult {
 }
 
 interface LedgerEntry {
+  [key: string]: unknown;
   id?: string;
   payment_id?: string;
   status?: string;

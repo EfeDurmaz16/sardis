@@ -62,6 +62,7 @@ export const mandateToolDefinitions: ToolDefinition[] = [
         },
         agent_id: { type: 'string', description: 'Filter by agent ID' },
       },
+      required: [],
     },
   },
   {
@@ -101,23 +102,24 @@ export const mandateToolDefinitions: ToolDefinition[] = [
 ];
 
 // Tool handlers
-async function handleCreateMandate(args: Record<string, unknown>): Promise<ToolResult> {
+async function handleCreateMandate(args: unknown): Promise<ToolResult> {
+  const input = args as Record<string, unknown>;
   const config = getConfig();
 
   const body: Record<string, unknown> = {
-    purpose_scope: args.purpose,
-    amount_per_tx: args.amount_per_tx,
-    amount_daily: args.amount_daily,
-    amount_monthly: args.amount_monthly,
-    amount_total: args.amount_total,
-    approval_threshold: args.approval_threshold,
-    approval_mode: args.approval_mode || 'auto',
-    allowed_rails: args.allowed_rails || ['card', 'usdc', 'bank'],
-    agent_id: args.agent_id,
+    purpose_scope: input.purpose,
+    amount_per_tx: input.amount_per_tx,
+    amount_daily: input.amount_daily,
+    amount_monthly: input.amount_monthly,
+    amount_total: input.amount_total,
+    approval_threshold: input.approval_threshold,
+    approval_mode: input.approval_mode || 'auto',
+    allowed_rails: input.allowed_rails || ['card', 'usdc', 'bank'],
+    agent_id: input.agent_id,
   };
 
-  if (args.allowed_merchants) {
-    body.merchant_scope = { allowed: args.allowed_merchants };
+  if (input.allowed_merchants) {
+    body.merchant_scope = { allowed: input.allowed_merchants };
   }
 
   if (!config.apiKey) {
@@ -131,8 +133,8 @@ async function handleCreateMandate(args: Record<string, unknown>): Promise<ToolR
             _simulated: true,
             _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
             id,
-            purpose: args.purpose,
-            amount_per_tx: args.amount_per_tx,
+            purpose: input.purpose,
+            amount_per_tx: input.amount_per_tx,
             status: 'active',
             message: `Spending mandate created (simulated). Connect an API key for real mandates.`,
           }, null, 2),
@@ -152,7 +154,8 @@ async function handleCreateMandate(args: Record<string, unknown>): Promise<ToolR
   };
 }
 
-async function handleListMandates(args: Record<string, unknown>): Promise<ToolResult> {
+async function handleListMandates(args: unknown): Promise<ToolResult> {
+  const input = args as Record<string, unknown>;
   const config = getConfig();
 
   if (!config.apiKey) {
@@ -173,8 +176,8 @@ async function handleListMandates(args: Record<string, unknown>): Promise<ToolRe
 
   let url = '/api/v2/spending-mandates';
   const params: string[] = [];
-  if (args.status) params.push(`status_filter=${args.status}`);
-  if (args.agent_id) params.push(`agent_id=${args.agent_id}`);
+  if (input.status) params.push(`status_filter=${input.status}`);
+  if (input.agent_id) params.push(`agent_id=${input.agent_id}`);
   if (params.length) url += `?${params.join('&')}`;
 
   const mandates = await apiRequest<Record<string, unknown>[]>('GET', url);
@@ -193,7 +196,8 @@ async function handleListMandates(args: Record<string, unknown>): Promise<ToolRe
   };
 }
 
-async function handleRevokeMandate(args: Record<string, unknown>): Promise<ToolResult> {
+async function handleRevokeMandate(args: unknown): Promise<ToolResult> {
+  const input = args as Record<string, unknown>;
   const config = getConfig();
 
   if (!config.apiKey) {
@@ -203,29 +207,30 @@ async function handleRevokeMandate(args: Record<string, unknown>): Promise<ToolR
         text: JSON.stringify({
           _simulated: true,
           _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
-          mandate_id: args.mandate_id,
+          mandate_id: input.mandate_id,
           status: 'revoked',
-          message: `Mandate ${args.mandate_id} revoked (simulated).`,
+          message: `Mandate ${input.mandate_id} revoked (simulated).`,
         }, null, 2),
       }],
     };
   }
 
-  await apiRequest<Record<string, unknown>>('POST', `/api/v2/spending-mandates/${args.mandate_id}/revoke`, {
-    reason: args.reason || 'Revoked via MCP',
+  await apiRequest<Record<string, unknown>>('POST', `/api/v2/spending-mandates/${input.mandate_id}/revoke`, {
+    reason: input.reason || 'Revoked via MCP',
   });
 
   return {
     content: [
       {
         type: 'text',
-        text: `🚫 Mandate ${args.mandate_id} permanently revoked.\nReason: ${args.reason || 'Revoked via MCP'}\n\nAll future payments under this mandate are now blocked.`,
+        text: `🚫 Mandate ${input.mandate_id} permanently revoked.\nReason: ${input.reason || 'Revoked via MCP'}\n\nAll future payments under this mandate are now blocked.`,
       },
     ],
   };
 }
 
-async function handleCheckMandate(args: Record<string, unknown>): Promise<ToolResult> {
+async function handleCheckMandate(args: unknown): Promise<ToolResult> {
+  const input = args as Record<string, unknown>;
   const config = getConfig();
 
   if (!config.apiKey) {
@@ -236,9 +241,9 @@ async function handleCheckMandate(args: Record<string, unknown>): Promise<ToolRe
           text: JSON.stringify({
             _simulated: true,
             _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
-            amount: args.amount,
+            amount: input.amount,
             authorized: true,
-            message: `Payment of $${args.amount} would be authorized (simulated). Connect an API key for real mandate validation.`,
+            message: `Payment of $${input.amount} would be authorized (simulated). Connect an API key for real mandate validation.`,
           }, null, 2),
         },
       ],
@@ -246,10 +251,10 @@ async function handleCheckMandate(args: Record<string, unknown>): Promise<ToolRe
   }
 
   // Get the mandate details to check locally
-  const mandate = await apiRequest<Record<string, unknown>>('GET', `/api/v2/spending-mandates/${args.mandate_id}`);
+  const mandate = await apiRequest<Record<string, unknown>>('GET', `/api/v2/spending-mandates/${input.mandate_id}`);
 
   const perTx = mandate.amount_per_tx ? parseFloat(mandate.amount_per_tx as string) : Infinity;
-  const amount = args.amount as number;
+  const amount = input.amount as number;
   const status = mandate.status as string;
 
   if (status !== 'active') {

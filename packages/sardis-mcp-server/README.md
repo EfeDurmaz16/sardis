@@ -25,7 +25,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "sk_live_your_api_key_here"
+        "SARDIS_API_KEY": "your_sardis_api_key"
       }
     }
   }
@@ -43,7 +43,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "sk_live_your_api_key_here"
+        "SARDIS_API_KEY": "your_sardis_api_key"
       }
     }
   }
@@ -61,7 +61,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "sk_live_your_api_key_here"
+        "SARDIS_API_KEY": "your_sardis_api_key"
       }
     }
   }
@@ -79,7 +79,7 @@ Install the [MCP Extension](https://marketplace.visualstudio.com/items?itemName=
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "sk_live_your_api_key_here"
+        "SARDIS_API_KEY": "your_sardis_api_key"
       }
     }
   }
@@ -95,7 +95,7 @@ claude mcp add sardis -- npx -y @sardis/mcp-server
 Then set your API key:
 
 ```bash
-export SARDIS_API_KEY=sk_live_your_api_key_here
+export SARDIS_API_KEY=your_sardis_api_key
 ```
 
 ### ChatGPT
@@ -106,7 +106,7 @@ export SARDIS_API_KEY=sk_live_your_api_key_here
 4. Enter:
    - **Name**: `sardis`
    - **Command**: `npx -y @sardis/mcp-server`
-   - **Environment Variable**: `SARDIS_API_KEY=sk_live_your_api_key_here`
+   - **Environment Variable**: `SARDIS_API_KEY=your_sardis_api_key`
 
 ---
 
@@ -136,6 +136,18 @@ export SARDIS_API_KEY=sk_live_your_api_key_here
 | `sardis_create_card` | Create a virtual card with spending limits |
 | `sardis_freeze_card` | Temporarily freeze a card |
 | `sardis_cancel_card` | Permanently cancel a card |
+
+### Facility Gate
+
+| Tool | Description |
+|------|-------------|
+| `sardis_facility_request` | Create a mandate-aware facility access request |
+| `sardis_facility_attach_evidence` | Attach evidence references and hashes to a request |
+| `sardis_facility_authorize` | Evaluate mandate, policy, risk, evidence, and revocation state |
+| `sardis_facility_execute` | Execute an approved authorization through the configured adapter |
+| `sardis_facility_audit` | Fetch audit reconstruction for a facility request |
+| `sardis_facility_export_audit` | Export the immutable request-level audit packet |
+| `sardis_facility_list_requests` | List visible Facility Gate requests |
 
 ### Policy
 

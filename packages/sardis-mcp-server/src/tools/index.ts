@@ -32,6 +32,7 @@ import { fundingToolDefinitions, fundingToolHandlers } from './funding.js';
 import { escrowToolDefinitions, escrowToolHandlers } from './escrow.js';
 import { proxyToolDefinitions, proxyToolHandlers } from './proxy.js';
 import { projectToolDefinitions, projectToolHandlers } from './projects.js';
+import { facilityGateToolDefinitions, facilityGateToolHandlers } from './facility-gate.js';
 
 // Handlers below are intentionally blocked for agent-facing use and excluded
 // from the aggregate registry to keep definition/handler parity.
@@ -78,6 +79,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...escrowToolDefinitions,
   ...proxyToolDefinitions,
   ...projectToolDefinitions,
+  ...facilityGateToolDefinitions,
 ];
 
 /**
@@ -108,6 +110,7 @@ export const allToolHandlers: Record<string, ToolHandler> = {
   ...escrowToolHandlers,
   ...proxyToolHandlers,
   ...projectToolHandlers,
+  ...facilityGateToolHandlers,
 };
 
 /**
@@ -280,6 +283,15 @@ export const toolCategories = {
     'sardis_preview_paid_api',
   ],
   projects: ['sardis_discover_services', 'sardis_provision_service', 'sardis_list_provisioned'],
+  facilityGate: [
+    'sardis_facility_request',
+    'sardis_facility_attach_evidence',
+    'sardis_facility_authorize',
+    'sardis_facility_execute',
+    'sardis_facility_audit',
+    'sardis_facility_export_audit',
+    'sardis_facility_list_requests',
+  ],
 } as const;
 
 /**
