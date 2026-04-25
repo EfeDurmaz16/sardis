@@ -80,6 +80,8 @@ function stripHtml(s) {
     .replace(/&mdash;/g, "—")
     .replace(/&ndash;/g, "–")
     .replace(/&nbsp;/g, " ");
+  // strip tags again after decoding entities to avoid reintroducing HTML-like markup
+  s = s.replace(/<[^>]+>/g, "");
   // collapse whitespace
   s = s.replace(/[ \t]+/g, " ");
   s = s.replace(/\n[ \t]+/g, "\n");
