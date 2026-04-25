@@ -271,6 +271,54 @@ payment_execution_duration_seconds = Histogram(
     buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0),
 )
 
+# Facility Gate metrics
+facility_decisions_total = Counter(
+    "sardis_facility_decisions_total",
+    "Facility Gate authorization decisions",
+    ["verdict", "reason", "risk_tier"],
+)
+
+facility_adapter_events_total = Counter(
+    "sardis_facility_adapter_events_total",
+    "Facility Gate adapter operations",
+    ["provider", "operation", "status"],
+)
+
+facility_revocations_total = Counter(
+    "sardis_facility_revocations_total",
+    "Facility Gate revocations",
+    ["scope"],
+)
+
+facility_exceptions_total = Counter(
+    "sardis_facility_exceptions_total",
+    "Facility Gate exception events",
+    ["reason"],
+)
+
+facility_manual_review_queue_depth = Gauge(
+    "sardis_facility_manual_review_queue_depth",
+    "Facility Gate requests awaiting step-up/manual review",
+)
+
+facility_projection_replay_runs_total = Counter(
+    "sardis_facility_projection_replay_runs_total",
+    "Facility Gate projection replay runs",
+    ["mode", "status"],
+)
+
+facility_projection_drift_count = Gauge(
+    "sardis_facility_projection_drift_count",
+    "Facility Gate request-state projection drift count from the most recent replay verification",
+    ["organization_id"],
+)
+
+facility_projection_rebuilt_count = Gauge(
+    "sardis_facility_projection_rebuilt_count",
+    "Facility Gate request projections rebuilt or checked by the most recent replay run",
+    ["organization_id"],
+)
+
 
 # Metrics helper functions
 def record_payment(chain: str, token: str, amount_usd: float, status: str) -> None:
@@ -400,6 +448,55 @@ def record_payment_execution_latency(*, rail: str, outcome: str, duration_second
         rail=rail_value,
         outcome=outcome_value,
     ).observe(max(float(duration_seconds), 0.0))
+
+
+def record_facility_decision(*, verdict: str, reason: str | None, risk_tier: str | None) -> None:
+    """Record Facility Gate decision metrics."""
+    facility_decisions_total.labels(
+        verdict=str(verdict or "unknown").strip().lower() or "unknown",
+        reason=str(reason or "none").strip().lower() or "none",
+        risk_tier=str(risk_tier or "unknown").strip().lower() or "unknown",
+    ).inc()
+
+
+def record_facility_adapter_event(*, provider: str, operation: str, status: str) -> None:
+    """Record Facility Gate adapter operation outcomes."""
+    facility_adapter_events_total.labels(
+        provider=str(provider or "unknown").strip().lower() or "unknown",
+        operation=str(operation or "unknown").strip().lower() or "unknown",
+        status=str(status or "unknown").strip().lower() or "unknown",
+    ).inc()
+
+
+def record_facility_revocation(*, scope: str) -> None:
+    """Record Facility Gate revocations by scope."""
+    facility_revocations_total.labels(scope=str(scope or "unknown").strip().lower() or "unknown").inc()
+
+
+def record_facility_exception(*, reason: str) -> None:
+    """Record Facility Gate exception events."""
+    facility_exceptions_total.labels(reason=str(reason or "unknown").strip().lower() or "unknown").inc()
+
+
+def set_facility_manual_review_queue_depth(count: int) -> None:
+    """Update Facility Gate manual-review queue depth."""
+    facility_manual_review_queue_depth.set(max(int(count), 0))
+
+
+def record_facility_projection_replay(
+    *,
+    organization_id: str,
+    dry_run: bool,
+    rebuilt: int,
+    drifted: int,
+) -> None:
+    """Record Facility Gate replay/backfill verification metrics."""
+    org_value = str(organization_id or "unknown").strip() or "unknown"
+    mode = "dry_run" if dry_run else "apply"
+    status = "drift_detected" if int(drifted) > 0 else "ok"
+    facility_projection_replay_runs_total.labels(mode=mode, status=status).inc()
+    facility_projection_rebuilt_count.labels(organization_id=org_value).set(max(int(rebuilt), 0))
+    facility_projection_drift_count.labels(organization_id=org_value).set(max(int(drifted), 0))
 
 
 if metrics_auth_required():
