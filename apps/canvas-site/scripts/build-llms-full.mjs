@@ -51,7 +51,7 @@ function stripHtml(s) {
   let prev;
   do {
     prev = s;
-    s = s.replace(/<script[\s\S]*?<\/script>/gi, "");
+    s = s.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
     s = s.replace(/<style[\s\S]*?<\/style>/gi, "");
   } while (s !== prev);
   // mermaid pre blocks — keep textual diagram description-ish content
