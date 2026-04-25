@@ -1,7 +1,7 @@
 """subscription execution fields
 
-Revision ID: 023
-Revises: 022
+Revision ID: 027
+Revises: 026
 Create Date: 2026-02-26 00:00:00.000000
 """
 
@@ -10,8 +10,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision: str = "023"
-down_revision: str | None = "022"
+revision: str = "027"
+down_revision: str | None = "026"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -22,11 +22,11 @@ def _run_sql_file(filename: str) -> None:
 
 
 def upgrade() -> None:
-    _run_sql_file("023_subscription_execution_fields.sql")
+    _run_sql_file("027_subscription_execution_fields.sql")
     op.execute(
         """
         INSERT INTO schema_migrations (version, description)
-        VALUES ('023', 'Subscription execution fields')
+        VALUES ('027', 'Subscription execution fields')
         ON CONFLICT (version) DO NOTHING
         """
     )
@@ -41,4 +41,3 @@ def downgrade() -> None:
     op.execute("ALTER TABLE subscriptions DROP COLUMN IF EXISTS chain")
     op.execute("ALTER TABLE subscriptions DROP COLUMN IF EXISTS token")
     op.execute("ALTER TABLE subscriptions DROP COLUMN IF EXISTS destination_address")
-
