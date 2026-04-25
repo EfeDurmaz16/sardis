@@ -86,7 +86,7 @@ def upgrade() -> None:
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('NOW()')),
     )
     op.create_index('idx_audit_entity', 'audit_logs', ['entity_type', 'entity_id'])
-    op.create_index('idx_audit_created', 'audit_logs', ['created_at'])
+    op.create_index('idx_ledger_audit_logs_created', 'audit_logs', ['created_at'])
 
     # Ledger: Row Locks
     op.create_table(

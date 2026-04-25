@@ -22,6 +22,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Enable UUID extension
     op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
 
     # Organizations
     op.create_table(
@@ -89,7 +90,11 @@ def upgrade() -> None:
         sa.Column('limit_per_tx', sa.Numeric(20, 6), server_default='100'),
         sa.Column('limit_total', sa.Numeric(20, 6), server_default='1000'),
         sa.Column('require_preauth', sa.Boolean, server_default='false'),
-        sa.Column('allowed_scopes', postgresql.ARRAY(sa.String), server_default="ARRAY['all']"),
+        sa.Column(
+            'allowed_scopes',
+            postgresql.ARRAY(sa.String),
+            server_default=sa.text("ARRAY['all']::varchar[]"),
+        ),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('NOW()')),
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('NOW()')),
     )
@@ -242,7 +247,7 @@ def upgrade() -> None:
         sa.Column('organization_id', sa.String(64), nullable=False),
         sa.Column('url', sa.String(2048), nullable=False),
         sa.Column('secret', sa.String(64), nullable=False),
-        sa.Column('events', postgresql.ARRAY(sa.String), server_default="ARRAY[]::VARCHAR[]"),
+        sa.Column('events', postgresql.ARRAY(sa.String), server_default=sa.text("ARRAY[]::varchar[]")),
         sa.Column('is_active', sa.Boolean, server_default='true'),
         sa.Column('total_deliveries', sa.Integer, server_default='0'),
         sa.Column('successful_deliveries', sa.Integer, server_default='0'),
@@ -283,7 +288,7 @@ def upgrade() -> None:
         sa.Column('key_hash', sa.String(64), nullable=False),
         sa.Column('organization_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('organizations.id'), nullable=False),
         sa.Column('name', sa.String(255)),
-        sa.Column('scopes', postgresql.ARRAY(sa.String), server_default="ARRAY['read']"),
+        sa.Column('scopes', postgresql.ARRAY(sa.String), server_default=sa.text("ARRAY['read']::varchar[]")),
         sa.Column('rate_limit', sa.Integer, server_default='100'),
         sa.Column('is_active', sa.Boolean, server_default='true'),
         sa.Column('expires_at', sa.TIMESTAMP(timezone=True)),
@@ -315,6 +320,7 @@ def upgrade() -> None:
     op.create_table(
         'schema_migrations',
         sa.Column('version', sa.String(20), primary_key=True),
+        sa.Column('description', sa.Text),
         sa.Column('applied_at', sa.TIMESTAMP(timezone=True), server_default=sa.text('NOW()')),
     )
 
