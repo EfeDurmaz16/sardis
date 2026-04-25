@@ -35,6 +35,7 @@ class TestClientInitialization:
         assert hasattr(client, "holds")
         assert hasattr(client, "webhooks")
         assert hasattr(client, "marketplace")
+        assert hasattr(client, "facility_gate")
         assert hasattr(client, "transactions")
         assert hasattr(client, "ledger")
         assert hasattr(client, "wallets")

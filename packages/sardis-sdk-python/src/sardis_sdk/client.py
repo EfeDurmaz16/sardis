@@ -73,6 +73,7 @@ if TYPE_CHECKING:
     from .resources.escrow import AsyncEscrowResource, EscrowResource
     from .resources.evidence import AsyncEvidenceResource, EvidenceResource
     from .resources.exceptions import AsyncExceptionsResource, ExceptionsResource
+    from .resources.facility_gate import AsyncFacilityGateResource, FacilityGateResource
     from .resources.funding import AsyncFundingResource, FundingResource
     from .resources.fx import AsyncFXResource, FXResource
     from .resources.groups import AsyncGroupsResource, GroupsResource
@@ -659,6 +660,7 @@ class AsyncSardisClient(BaseClient):
         self._evidence: AsyncEvidenceResource | None = None
         self._simulation: AsyncSimulationResource | None = None
         self._exceptions: AsyncExceptionsResource | None = None
+        self._facility_gate: AsyncFacilityGateResource | None = None
         self._payment_objects: AsyncPaymentObjectsResource | None = None
         self._funding: AsyncFundingResource | None = None
         self._fx: AsyncFXResource | None = None
@@ -827,6 +829,14 @@ class AsyncSardisClient(BaseClient):
             from .resources.exceptions import AsyncExceptionsResource
             self._exceptions = AsyncExceptionsResource(self)
         return self._exceptions
+
+    @property
+    def facility_gate(self) -> AsyncFacilityGateResource:
+        """Access the Facility Gate resource."""
+        if self._facility_gate is None:
+            from .resources.facility_gate import AsyncFacilityGateResource
+            self._facility_gate = AsyncFacilityGateResource(self)
+        return self._facility_gate
 
     @property
     def payment_objects(self) -> AsyncPaymentObjectsResource:
@@ -1207,6 +1217,7 @@ class SardisClient(BaseClient):
         self._evidence: EvidenceResource | None = None
         self._simulation: SimulationResource | None = None
         self._exceptions: ExceptionsResource | None = None
+        self._facility_gate: FacilityGateResource | None = None
         self._payment_objects: PaymentObjectsResource | None = None
         self._funding: FundingResource | None = None
         self._fx: FXResource | None = None
@@ -1375,6 +1386,14 @@ class SardisClient(BaseClient):
             from .resources.exceptions import ExceptionsResource
             self._exceptions = ExceptionsResource(self)
         return self._exceptions
+
+    @property
+    def facility_gate(self) -> FacilityGateResource:
+        """Access the Facility Gate resource."""
+        if self._facility_gate is None:
+            from .resources.facility_gate import FacilityGateResource
+            self._facility_gate = FacilityGateResource(self)
+        return self._facility_gate
 
     @property
     def payment_objects(self) -> PaymentObjectsResource:

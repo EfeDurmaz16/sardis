@@ -74,6 +74,33 @@ captured = await client.holds.capture(hold.hold_id, amount=Decimal("95.00"))
 voided = await client.holds.void(hold.hold_id)
 ```
 
+### Facility Gate
+
+Create, authorize, execute, and audit programmable facility access requests:
+
+```python
+request = await client.facility_gate.create_request({
+    "agent_id": "agent_123",
+    "facility_id": "fac_123",
+    "mandate_id": "mandate_123",
+    "amount": "2400.00",
+    "currency": "USD",
+    "merchant": {"name": "Example Cloud", "category": "cloud"},
+    "purpose": "cloud infrastructure expansion",
+})
+
+await client.facility_gate.attach_evidence(
+    request["request_id"],
+    [{"evidence_type": "task_log", "hash": "sha256:..."}],
+)
+decision = await client.facility_gate.authorize(request["request_id"])
+
+if decision["verdict"] == "approved":
+    execution = await client.facility_gate.execute(request["request_id"])
+
+audit_packet = await client.facility_gate.export_audit(request["request_id"])
+```
+
 ### Webhooks
 
 Manage webhook subscriptions for real-time events:
