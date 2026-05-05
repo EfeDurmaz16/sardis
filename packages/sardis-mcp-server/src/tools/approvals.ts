@@ -31,7 +31,7 @@ interface ApprovalRequest {
   vendor: string;
   amount: number;
   purpose: string;
-  status: 'pending' | 'approved' | 'denied' | 'expired';
+  status: 'pending' | 'simulated_pending' | 'approved' | 'denied' | 'expired';
   urgency: 'low' | 'medium' | 'high';
   requested_by: string;
   reviewed_by?: string;
@@ -149,7 +149,7 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
             reason: parsed.data.reason,
             purpose: parsed.data.purpose,
             card_limit: parsed.data.card_limit,
-            status: 'pending',
+            status: 'simulated_pending',
             urgency: parsed.data.urgency || 'medium',
             requested_by: config.agentId || 'agent_simulated',
             created_at: new Date().toISOString(),

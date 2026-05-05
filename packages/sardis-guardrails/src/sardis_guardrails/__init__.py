@@ -115,7 +115,7 @@ except ImportError:
     FraudAction = None  # type: ignore[assignment,misc]
     FraudRuleResult = None  # type: ignore[assignment,misc]
 
-__version__ = "0.1.0"
+__version__ = "1.1.0"
 
 __all__ = [
     # Circuit Breaker

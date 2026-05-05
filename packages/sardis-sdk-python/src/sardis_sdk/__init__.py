@@ -31,7 +31,7 @@ Quick Start:
 from __future__ import annotations
 
 # Version
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # Core clients
 # Bulk operations
