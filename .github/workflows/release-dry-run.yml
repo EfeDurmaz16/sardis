@@ -112,9 +112,9 @@ jobs:
           set -euo pipefail
           OUT="/tmp/sardis-npm-dry-run"
           mkdir -p "$OUT"
-          pnpm --filter @sardis/mcp-server pack --pack-destination "$OUT"
-          pnpm --filter @sardis/sdk pack --pack-destination "$OUT"
-          pnpm --filter @sardis/ai-sdk pack --pack-destination "$OUT"
+          pnpm --dir packages/sardis-mcp-server pack --pack-destination "$OUT"
+          pnpm --dir packages/sardis-sdk-js pack --pack-destination "$OUT"
+          pnpm --dir packages/sardis-ai-sdk pack --pack-destination "$OUT"
           ls -la "$OUT"
 
       - name: Local install smoke check from tarballs
