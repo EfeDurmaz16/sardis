@@ -104,7 +104,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@8789b3e21e6c11b2697f5eb56eddae542f746c10 # v1
         with:
-          version: stable
+          version: v1.7.0
           cache: false
 
       - name: Run gas ceiling tests
@@ -133,7 +133,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@8789b3e21e6c11b2697f5eb56eddae542f746c10 # v1
         with:
-          version: stable
+          version: v1.7.0
           cache: false
 
       - name: Pre-install solc 0.8.24
