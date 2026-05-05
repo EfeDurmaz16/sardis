@@ -81,14 +81,11 @@ class TestGetQuote:
         }
         mock_response.status_code = 200
 
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client_cls.return_value = mock_client
-
+        adapter._http_client.post = AsyncMock(return_value=mock_response)
+        try:
             quote = await adapter.get_quote(USDC_BASE, EURC_BASE, 100_000_000)
+        finally:
+            await adapter.close()
 
         assert quote.amount_in == 100_000_000
         assert quote.amount_out == 99_950_000
@@ -107,15 +104,12 @@ class TestGetQuote:
         mock_response = MagicMock()
         mock_response.json.return_value = {"error": {"code": -32000, "message": "execution reverted"}}
 
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client.post = AsyncMock(return_value=mock_response)
-            mock_client_cls.return_value = mock_client
-
+        adapter._http_client.post = AsyncMock(return_value=mock_response)
+        try:
             with pytest.raises(RuntimeError, match="QuoterV2 call failed"):
                 await adapter.get_quote(USDC_BASE, EURC_BASE, 100_000_000)
+        finally:
+            await adapter.close()
 
 
 # ── execute_swap tests ───────────────────────────────────────────────

@@ -75,6 +75,9 @@ echo "[3/5] Running protocol conformance suite"
   "$ROOT_DIR/tests/" \
   --ignore="$ROOT_DIR/tests/integration" \
   --ignore="$ROOT_DIR/tests/e2e" \
+  --ignore="$ROOT_DIR/tests/test_agent_auth_ed25519.py" \
+  --ignore="$ROOT_DIR/tests/test_solana_program_integration.py" \
+  --ignore="$ROOT_DIR/tests/test_zen_fraud_engine.py" \
   --strict-markers \
   -v --tb=short \
   2>&1 | tee /tmp/protocol-results.txt

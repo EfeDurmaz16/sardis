@@ -25,6 +25,8 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
+from sardis_chain.fx_signer import create_fx_signer
+
 logger = logging.getLogger("sardis.chain.tempo.dex")
 
 # Precompile addresses
@@ -151,7 +153,6 @@ class TempoDEXAdapter:
         if not key:
             # Try to create signer from env
             try:
-                from sardis_chain.fx_signer import create_fx_signer
                 auto_signer = await create_fx_signer()
                 key = auto_signer.get_tempo_key()
             except Exception:
