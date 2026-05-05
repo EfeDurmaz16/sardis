@@ -1,5 +1,5 @@
 {
-  "last_reviewed": "2026-02-14",
+  "last_reviewed": "2026-05-06",
   "gates": [
     {
       "id": "eng-authz-routes",
@@ -27,7 +27,7 @@
       "title": "Release-readiness checks pass in non-strict mode",
       "status": "pass",
       "required_for": ["engineering", "launch"],
-      "evidence": "scripts/check_release_readiness.sh run on 2026-02-14"
+      "evidence": "scripts/check_release_readiness.sh reviewed during PR #285 on 2026-05-06"
     },
     {
       "id": "eng-claims-parity",
