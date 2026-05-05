@@ -5,6 +5,8 @@ This module provides both async and sync interfaces for ledger operations.
 """
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
+from decimal import Decimal  # noqa: TC003 - Pydantic resolves this field type at runtime.
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
@@ -12,9 +14,6 @@ from pydantic import BaseModel
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from datetime import datetime
-    from decimal import Decimal
-
     from ..client import TimeoutConfig
 
 

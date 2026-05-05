@@ -1,16 +1,14 @@
 """Payment models for Sardis SDK."""
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
 from decimal import Decimal
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import Field
 
 from .base import SardisModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class PaymentStatus(str, Enum):
