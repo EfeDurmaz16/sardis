@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "sardis"
 version = "1.1.0"
-description = "Payment OS for the Agent Economy — non-custodial MPC wallets with natural language spending policies for AI agents"
+description = "Open-source financial authority layer for AI agents with non-custodial wallets, signed mandates, and policy-gated execution"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
