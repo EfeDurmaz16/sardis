@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Sardis</h1>
-  <p><strong>Payment OS for the Agent Economy</strong></p>
-  <p>AI agents can reason, but they cannot be trusted with money. Sardis is how they earn that trust.</p>
+  <p><strong>Open-source financial authority layer for AI agents</strong></p>
+  <p>Sardis lets agents transact only through signed mandates, deterministic policy checks, approval paths, revocation, and audit evidence before any wallet, card, stablecoin, payment API, or provider rail is used.</p>
 
   <p>
     <a href="https://sardis.sh">Website</a> ·
@@ -339,7 +339,7 @@ See [LICENSE.txt](LICENSE.txt) for full details.
 
 <div align="center">
   <p>
-    <strong>Sardis</strong> — The Payment OS for the Agent Economy
+    <strong>Sardis</strong> — open-source financial authority layer for AI agents
     <br/>
     Non-Custodial | MCP Native | Financial Hallucination Prevention
   </p>
