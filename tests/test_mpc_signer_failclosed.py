@@ -10,7 +10,6 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from sardis_chain.executor import ChainExecutor, SimulatedMPCSigner
 
 

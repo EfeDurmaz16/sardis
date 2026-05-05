@@ -11,7 +11,7 @@ Version: 0.3.1
 
 from typing import Any
 
-__version__ = "0.3.1"
+__version__ = "1.0.0"
 
 
 def create_app(*args: Any, **kwargs: Any):

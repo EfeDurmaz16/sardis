@@ -77,8 +77,8 @@ async def register_agent(
     Creates a public profile that merchants and other agents can verify.
     Combines with KYA (Know Your Agent) attestation for trust scoring.
     """
+
     from sardis_v2_core.database import Database
-    import json
 
     agent_id = f"agent_{__import__('secrets').token_hex(12)}"
 

@@ -96,28 +96,6 @@ from .config_validation import (
 from .config_validation import (
     TurnkeyConfig as TurnkeyConfigModel,
 )
-from .facility_gate import (
-    Facility,
-    FacilityAuthorizationDecision,
-    FacilityDecision,
-    FacilityEventType,
-    FacilityEvidenceRef,
-    FacilityExecutionAdapter,
-    FacilityLimit,
-    FacilityRail,
-    FacilityRequest,
-    FacilityRevocation,
-    FacilityRevocationScope,
-    FacilityRiskAssessment,
-    FacilityRiskTier,
-    FacilityStatus,
-    FacilityType,
-    LiabilityAssignment,
-    SimulatedFacilityAdapter,
-    build_facility_decision,
-    evaluate_facility_policy,
-    score_facility_request,
-)
 
 # New enterprise-quality modules
 from .constants import (
@@ -219,6 +197,28 @@ from .exceptions import (
     exception_from_compliance_error,
     exception_from_mpc_error,
     get_exception_class,
+)
+from .facility_gate import (
+    Facility,
+    FacilityAuthorizationDecision,
+    FacilityDecision,
+    FacilityEventType,
+    FacilityEvidenceRef,
+    FacilityExecutionAdapter,
+    FacilityLimit,
+    FacilityRail,
+    FacilityRequest,
+    FacilityRevocation,
+    FacilityRevocationScope,
+    FacilityRiskAssessment,
+    FacilityRiskTier,
+    FacilityStatus,
+    FacilityType,
+    LiabilityAssignment,
+    SimulatedFacilityAdapter,
+    build_facility_decision,
+    evaluate_facility_policy,
+    score_facility_request,
 )
 from .funding_cell import VALID_CELL_TRANSITIONS, CellStatus, FundingCell
 from .funding_commitment import (
@@ -754,4 +754,4 @@ from .sub_ledger import (
     SubLedgerTxType,
 )
 
-__version__ = "0.3.0"
+__version__ = "1.1.0"

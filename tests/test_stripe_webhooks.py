@@ -21,7 +21,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_api.routers.stripe_webhooks import (
     ISSUING_EVENTS,
     TREASURY_EVENTS,
@@ -29,7 +28,6 @@ from sardis_api.routers.stripe_webhooks import (
     router,
     verify_stripe_signature,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

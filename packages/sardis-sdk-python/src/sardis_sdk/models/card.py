@@ -1,12 +1,9 @@
 """Virtual card models for Sardis SDK."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
 
 from .base import SardisModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class Card(SardisModel):
@@ -41,4 +38,3 @@ class SimulateCardPurchaseResponse(SardisModel):
     transaction: CardTransaction
     policy: dict
     card: Card
-

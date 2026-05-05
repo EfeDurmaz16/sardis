@@ -266,6 +266,14 @@ class NonceManager:
         lock = self._get_lock(address_lower)
 
         async with lock:
+            cached_nonce = self._nonces.get(address_lower)
+            if cached_nonce is not None:
+                nonce_key = self._nonce_key(address_lower, cached_nonce)
+                existing_tx = self._nonce_to_tx.get(nonce_key)
+                pending = self._pending_txs.get(existing_tx) if existing_tx else None
+                if pending and not (pending.receipt and pending.receipt.is_final):
+                    raise NonceConflictError(address_lower, cached_nonce, existing_tx)
+
             nonce = await self._get_nonce_unlocked(address_lower, rpc_client)
 
             # Check for existing transaction at this nonce
@@ -600,12 +608,12 @@ class NonceManager:
 
         # Calculate bumped prices (minimum 10% increase from original)
         new_priority_fee = max(
-            int(original_tx.priority_fee * bump_multiplier),
-            int(current_priority_fee * 1.1),
+            int(original_tx.priority_fee * bump_multiplier) + 1,
+            int(current_priority_fee * 1.1) + 1,
         )
         new_max_fee = max(
-            int(original_tx.gas_price * bump_multiplier),
-            int(current_gas_price * 1.1),
+            int(original_tx.gas_price * bump_multiplier) + 1,
+            int(current_gas_price * 1.1) + 1,
         )
 
         logger.info(

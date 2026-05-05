@@ -21,22 +21,20 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers.payments_refund import router
 from sardis_v2_core.refund import Refund, RefundService, RefundStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _make_principal(**overrides) -> Principal:
-    defaults = dict(
-        kind="api_key",
-        organization_id="org_test_001",
-        scopes=["*"],
-    )
+    defaults = {
+        "kind": "api_key",
+        "organization_id": "org_test_001",
+        "scopes": ["*"],
+    }
     defaults.update(overrides)
     return Principal(**defaults)
 
@@ -47,19 +45,19 @@ def _make_refund(
     status: RefundStatus = RefundStatus.COMPLETED,
     **kwargs,
 ) -> Refund:
-    defaults = dict(
-        refund_id="rfd_test001",
-        payment_id=payment_id,
-        org_id="org_test_001",
-        amount=amount,
-        currency="USDC",
-        reason="Customer request",
-        status=status,
-        reverse_tx_hash="0xsim_abc123",
-        error=None,
-        created_at=datetime(2026, 1, 1, tzinfo=UTC),
-        completed_at=datetime(2026, 1, 1, 0, 0, 1, tzinfo=UTC),
-    )
+    defaults = {
+        "refund_id": "rfd_test001",
+        "payment_id": payment_id,
+        "org_id": "org_test_001",
+        "amount": amount,
+        "currency": "USDC",
+        "reason": "Customer request",
+        "status": status,
+        "reverse_tx_hash": "0xsim_abc123",
+        "error": None,
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "completed_at": datetime(2026, 1, 1, 0, 0, 1, tzinfo=UTC),
+    }
     defaults.update(kwargs)
     return Refund(**defaults)
 

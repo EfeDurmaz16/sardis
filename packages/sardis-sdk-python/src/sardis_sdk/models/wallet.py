@@ -1,15 +1,12 @@
 """Wallet models for Sardis SDK."""
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from .base import SardisModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class TokenLimit(SardisModel):

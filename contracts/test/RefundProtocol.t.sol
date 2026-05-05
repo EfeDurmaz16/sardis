@@ -351,13 +351,7 @@ contract RefundProtocolReentrancyTest is Test {
 
         // Configure reentrancy: during the transfer in withdraw(), try to call pay() again
         reentrantToken.setReentrancyCallback(
-            address(protocol),
-            abi.encodeWithSelector(
-                RefundProtocol.pay.selector,
-                recipient,
-                50e6,
-                refundTo
-            )
+            address(protocol), abi.encodeWithSelector(RefundProtocol.pay.selector, recipient, 50e6, refundTo)
         );
 
         // Give the token contract some balance to attempt the reentrant pay
@@ -392,13 +386,7 @@ contract RefundProtocolReentrancyTest is Test {
 
         // Configure reentrancy on the transfer inside earlyWithdrawByArbiter
         reentrantToken.setReentrancyCallback(
-            address(protocol),
-            abi.encodeWithSelector(
-                RefundProtocol.pay.selector,
-                recipient,
-                10e6,
-                refundTo
-            )
+            address(protocol), abi.encodeWithSelector(RefundProtocol.pay.selector, recipient, 10e6, refundTo)
         );
         reentrantToken.mint(address(reentrantToken), 10e6);
         vm.prank(address(reentrantToken));
@@ -434,8 +422,7 @@ contract RefundProtocolReentrancyTest is Test {
 
         // Now set up reentrancy for the next pay() call
         reentrantToken.setReentrancyCallback(
-            address(protocol),
-            abi.encodeWithSelector(RefundProtocol.refundByRecipient.selector, 0)
+            address(protocol), abi.encodeWithSelector(RefundProtocol.refundByRecipient.selector, 0)
         );
 
         // The reentrant refundByRecipient should fail because msg.sender would be the token,

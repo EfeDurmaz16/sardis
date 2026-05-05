@@ -22,12 +22,11 @@ os.environ.setdefault("DATABASE_URL", "memory://")
 
 import pytest
 from sardis_v2_core.spending_mandate import (
+    VALID_TRANSITIONS,
     ApprovalMode,
     MandateStatus,
     SpendingMandate,
-    VALID_TRANSITIONS,
 )
-
 
 # ── Mandate Core Tests ────────────────────────────────────────────
 
@@ -270,11 +269,11 @@ class TestNLParserSecurity:
 
     def test_hard_limit_per_tx(self):
         from sardis_v2_core.nl_policy_parser import NLPolicyParser
-        assert NLPolicyParser.MAX_PER_TX == Decimal("100000")
+        assert Decimal("100000") == NLPolicyParser.MAX_PER_TX
 
     def test_hard_limit_daily(self):
         from sardis_v2_core.nl_policy_parser import NLPolicyParser
-        assert NLPolicyParser.MAX_DAILY == Decimal("500000")
+        assert Decimal("500000") == NLPolicyParser.MAX_DAILY
 
     def test_input_length_limit(self):
         from sardis_v2_core.nl_policy_parser import NLPolicyParser

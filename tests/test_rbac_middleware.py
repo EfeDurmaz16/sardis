@@ -32,8 +32,6 @@ for _pkg in ("sardis-core", "sardis-api"):
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_v2_core.organizations import OrgMember
-
 from sardis_api.middleware.rbac import (
     RBACMiddleware,
     get_org_context,
@@ -42,7 +40,7 @@ from sardis_api.middleware.rbac import (
     require_permission,
     require_role,
 )
-
+from sardis_v2_core.organizations import OrgMember
 
 # ---------------------------------------------------------------------------
 # Fake OrganizationManager

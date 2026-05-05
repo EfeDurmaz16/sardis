@@ -558,20 +558,18 @@ class TestComplianceEngineAuditTrail:
 
     @pytest.mark.asyncio
     async def test_preflight_creates_audit_entry(self, engine):
-        """Test that preflight creates audit entries.
-
-        The compliance engine now creates entries for each check phase
-        (sanctions screening + baseline rules), so we expect 2 entries.
-        """
+        """Test that preflight creates a single audit entry with phase metadata."""
         mandate = create_test_mandate()
         result = await engine.preflight(mandate)
 
         assert result.audit_id is not None
 
-        # Check audit store — one entry per check phase
+        # Check audit store — one preflight decision with screening metadata.
         audits = await engine.get_audit_history(mandate.mandate_id)
-        assert len(audits) == 2
+        assert len(audits) == 1
         assert all(a.mandate_id == mandate.mandate_id for a in audits)
+        assert audits[0].metadata["sanctions_screening"] == "skipped"
+        assert audits[0].metadata["sanctions_screening_reason"] == "sanctions_service_not_configured"
 
     @pytest.mark.asyncio
     async def test_preflight_records_denial(self, engine):
@@ -596,8 +594,3 @@ class TestComplianceEngineAuditTrail:
 
         recent = await engine.get_recent_audits(3)
         assert len(recent) == 3
-
-
-
-
-

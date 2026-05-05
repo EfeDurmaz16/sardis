@@ -87,13 +87,12 @@ class TestStripeBillingService:
 
     def test_invalid_plan_raises(self):
         """Creating a subscription with an invalid plan should raise."""
+        import asyncio
+
         from sardis_api.services.stripe_billing import StripeBillingService
         svc = StripeBillingService()
         with pytest.raises(ValueError, match="Invalid plan"):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(
-                svc.create_subscription("org_test", "invalid_plan")
-            )
+            asyncio.run(svc.create_subscription("org_test", "invalid_plan"))
 
     @pytest.mark.asyncio
     async def test_get_invoices_empty_without_stripe(self):

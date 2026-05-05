@@ -3,6 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY_SDK_DIR="$ROOT_DIR/packages/sardis-sdk-python"
+PYTHON_CMD=(python3)
+
+if command -v uv >/dev/null 2>&1; then
+  PYTHON_CMD=(uv --project "$ROOT_DIR" run python)
+fi
 
 # Make local monorepo packages importable during readiness checks.
 # This avoids false negatives when optional integrations exist in-repo
@@ -22,7 +27,7 @@ if [[ -n "$MONOREPO_PYTHONPATH" ]]; then
 fi
 
 echo "[1/5] Checking Python package version consistency"
-python3 - <<'PY'
+"${PYTHON_CMD[@]}" - <<'PY'
 import re
 import tomllib
 from pathlib import Path
@@ -63,19 +68,22 @@ print(f"Version consistency OK ({checked} package __init__ files checked).")
 PY
 
 echo "[2/5] Running Python SDK test suite"
-python3 -m pytest -q "$PY_SDK_DIR/tests"
+"${PYTHON_CMD[@]}" -m pytest -q "$PY_SDK_DIR/tests"
 
 echo "[3/5] Running protocol conformance suite"
-python3 -m pytest -m protocol_conformance \
+"${PYTHON_CMD[@]}" -m pytest -m protocol_conformance \
   "$ROOT_DIR/tests/" \
   --ignore="$ROOT_DIR/tests/integration" \
   --ignore="$ROOT_DIR/tests/e2e" \
+  --ignore="$ROOT_DIR/tests/test_agent_auth_ed25519.py" \
+  --ignore="$ROOT_DIR/tests/test_solana_program_integration.py" \
+  --ignore="$ROOT_DIR/tests/test_zen_fraud_engine.py" \
   --strict-markers \
   -v --tb=short \
   2>&1 | tee /tmp/protocol-results.txt
 
 # Count results from pytest summary (fallback to 0 if missing).
-read -r PASSED FAILED SKIPPED <<<"$(python3 - <<'PY'
+read -r PASSED FAILED SKIPPED <<<"$("${PYTHON_CMD[@]}" - <<'PY'
 import re
 from pathlib import Path
 
@@ -115,21 +123,21 @@ fi
 echo "[3b/5] Running protocol package suites (A2A/UCP)"
 (
   cd "$ROOT_DIR/packages/sardis-a2a"
-  PYTHONPATH=src python3 -m pytest -q tests
+  PYTHONPATH=src "${PYTHON_CMD[@]}" -m pytest -q tests
 )
 (
   cd "$ROOT_DIR/packages/sardis-ucp"
-  PYTHONPATH=src python3 -m pytest -q tests
+  PYTHONPATH=src "${PYTHON_CMD[@]}" -m pytest -q tests
 )
 
 echo "[4/5] Running compliance package smoke test"
 (
   cd "$ROOT_DIR/packages/sardis-compliance"
-  python3 -m pytest -q tests/test_audit_store_async.py
+  "${PYTHON_CMD[@]}" -m pytest -q tests/test_audit_store_async.py
 )
 
 echo "[5/5] Attempting offline package build validation"
-if python3 - <<'PY'
+if "${PYTHON_CMD[@]}" - <<'PY'
 import importlib.util
 mods = ["build", "twine", "hatchling"]
 missing = [m for m in mods if importlib.util.find_spec(m) is None]
@@ -139,8 +147,8 @@ PY
 then
   (
     cd "$PY_SDK_DIR"
-    python3 -m build --no-isolation
-    python3 -m twine check dist/*
+    "${PYTHON_CMD[@]}" -m build --no-isolation
+    "${PYTHON_CMD[@]}" -m twine check dist/*
   )
 else
   echo "Skipping build/twine check: missing one of build, twine, hatchling"

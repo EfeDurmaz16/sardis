@@ -61,7 +61,7 @@ describe('Approval Tools', () => {
 
         const parsed = JSON.parse(result.content[0].text);
         expect(parsed.approval_id).toBeDefined();
-        expect(parsed.status).toBeDefined();
+        expect(parsed.status).toBe('pending');
       });
 
       it('should support different action types', async () => {
@@ -114,7 +114,7 @@ describe('Approval Tools', () => {
         expect(result.isError).toBeFalsy();
 
         const parsed = JSON.parse(result.content[0].text);
-        expect(Array.isArray(parsed)).toBe(true);
+        expect(Array.isArray(parsed.approvals)).toBe(true);
       });
 
       it('should filter by action type', async () => {

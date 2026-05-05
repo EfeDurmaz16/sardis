@@ -140,11 +140,9 @@ contract MandateComplianceVerifierTest is Test {
 
     // ============ Fuzz Tests ============
 
-    function testFuzz_verify_alwaysReverts(
-        bytes32 mandateCommitment,
-        bytes32 paymentCommitment,
-        bytes calldata proof
-    ) public {
+    function testFuzz_verify_alwaysReverts(bytes32 mandateCommitment, bytes32 paymentCommitment, bytes calldata proof)
+        public
+    {
         vm.expectRevert("ZK verification not implemented - deploy with real Noir circuits");
         verifier.verify(mandateCommitment, paymentCommitment, proof);
     }

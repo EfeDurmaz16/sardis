@@ -45,8 +45,8 @@ def run_simulation():
         purpose="GPT-4 API call",
     )
     result = tx.execute()
-    print(f"   To: openai:api")
-    print(f"   Amount: $5 USDC")
+    print("   To: openai:api")
+    print("   Amount: $5 USDC")
     print(f"   Status: {result.status.value}")
     print(f"   TX: {result.tx_hash}")
     print()
@@ -59,9 +59,9 @@ def run_simulation():
         purpose="Claude API call",
     )
     result2 = tx2.execute()
-    print(f"3. Second payment:")
-    print(f"   To: anthropic:claude")
-    print(f"   Amount: $3 USDC")
+    print("3. Second payment:")
+    print("   To: anthropic:claude")
+    print("   Amount: $3 USDC")
     print(f"   Status: {result2.status.value}")
     print()
 
@@ -119,18 +119,18 @@ def run_production():
             merchant_scope={"allowed": ["openai.com", "anthropic.com"]},
         )
         print(f"4. Mandate created: {mandate.mandate_id}")
-        print(f"   Per-tx: $10, Daily: $50")
+        print("   Per-tx: $10, Daily: $50")
         print()
 
         # Fund wallet (testnet)
         print("5. Fund your wallet on Base Sepolia:")
         print(f"   Address: {wallet.address}")
-        print(f"   Faucet: https://faucet.circle.com/ (select Base Sepolia, USDC)")
+        print("   Faucet: https://faucet.circle.com/ (select Base Sepolia, USDC)")
         print()
 
         print("6. Once funded, make a payment:")
         print(f'   client.pay(wallet_id="{wallet.wallet_id}",')
-        print(f'              to="openai.com", amount="5.00")')
+        print('              to="openai.com", amount="5.00")')
 
     except ImportError:
         print("Full SDK not found. Install: pip install sardis-sdk")

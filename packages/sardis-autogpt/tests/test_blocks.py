@@ -12,23 +12,18 @@ Covers:
 """
 from __future__ import annotations
 
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from sardis_autogpt.blocks import (
     BLOCKS,
     BlockCategory,
     SardisBalanceBlock,
     SardisBalanceBlockInput,
-    SardisBalanceBlockOutput,
     SardisPayBlock,
     SardisPayBlockInput,
-    SardisPayBlockOutput,
     SardisPolicyCheckBlock,
     SardisPolicyCheckBlockInput,
-    SardisPolicyCheckBlockOutput,
     _cached_clients,
     _normalize_response,
     _normalize_status,
@@ -36,7 +31,6 @@ from sardis_autogpt.blocks import (
     _validate_hex_address,
     _validate_wallet_id,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures

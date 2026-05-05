@@ -18,17 +18,15 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_api.routers.onramp import (
+    _CHAIN_TO_STRIPE_NETWORK,
     StripeOnrampLinkResponse,
     StripeOnrampSessionRequest,
     StripeOnrampSessionResponse,
     StripeOnrampWebhookEvent,
-    _CHAIN_TO_STRIPE_NETWORK,
     _get_client_ip,
     _verify_stripe_onramp_signature,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -235,7 +233,6 @@ class TestGetClientIp:
 
 try:
     from fastapi.testclient import TestClient
-
     from sardis_api.main import create_app
 
     _APP_AVAILABLE = True

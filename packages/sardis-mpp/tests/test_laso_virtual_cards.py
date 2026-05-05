@@ -18,9 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sardis_mpp.services.laso import (
-    LASO_MAX_CARD_AMOUNT,
     LASO_MAX_DAILY_CARDS,
-    LASO_MIN_CARD_AMOUNT,
     LasoBalance,
     LasoCard,
     LasoCardNotReady,
@@ -29,7 +27,6 @@ from sardis_mpp.services.laso import (
     LasoPayment,
     LasoPaymentRequired,
 )
-
 
 # ── LasoCard dataclass ──────────────────────────────────────────────
 

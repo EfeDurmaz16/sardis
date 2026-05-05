@@ -10,6 +10,10 @@ Production-grade middleware components:
 - Exception handling (RFC 7807)
 - Webhook signature verification
 """
+from .activity_logger import (
+    ACTIVITY_EXEMPT_PREFIXES,
+    ActivityLoggerMiddleware,
+)
 from .auth import (
     APIKey,
     APIKeyManager,
@@ -40,6 +44,10 @@ from .logging import (
     request_start_time_var,
     setup_logging,
 )
+from .mpp_gate import (
+    add_mpp_receipt_header,
+    mpp_gate,
+)
 from .rate_limit import RateLimitConfig, RateLimitMiddleware
 from .security import (
     API_VERSION,
@@ -60,14 +68,6 @@ from .tap import (
 from .usage_metering import (
     EXEMPT_PREFIXES,
     UsageMeteringMiddleware,
-)
-from .activity_logger import (
-    ACTIVITY_EXEMPT_PREFIXES,
-    ActivityLoggerMiddleware,
-)
-from .mpp_gate import (
-    add_mpp_receipt_header,
-    mpp_gate,
 )
 from .x402 import (
     X402MiddlewareConfig,

@@ -10,8 +10,6 @@ import json
 from decimal import Decimal
 from unittest.mock import MagicMock
 
-import pytest
-
 
 def test_package_imports():
     import sardis_langchain

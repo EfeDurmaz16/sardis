@@ -15,11 +15,7 @@ contract FundingSufficiencyVerifier {
     /// @param paymentAmount The required payment amount (public input)
     /// @param cellsCommitment Poseidon hash of the funding cells (public input)
     /// @param proof The zero-knowledge proof bytes
-    function verify(uint256 paymentAmount, bytes32 cellsCommitment, bytes calldata proof)
-        external
-        pure
-        returns (bool)
-    {
+    function verify(uint256 paymentAmount, bytes32 cellsCommitment, bytes calldata proof) external pure returns (bool) {
         // Suppress unused variable warnings
         paymentAmount;
         cellsCommitment;

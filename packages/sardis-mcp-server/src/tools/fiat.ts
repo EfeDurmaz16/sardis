@@ -138,7 +138,9 @@ function serialize(result: unknown): ToolResult {
 }
 
 function serializeSimulated(result: unknown): ToolResult {
-  const data = typeof result === 'object' && result !== null
+  const data = Array.isArray(result)
+    ? { _simulated: true, _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.', data: result }
+    : typeof result === 'object' && result !== null
     ? { _simulated: true, _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.', ...result as Record<string, unknown> }
     : { _simulated: true, _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.', data: result };
   return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };

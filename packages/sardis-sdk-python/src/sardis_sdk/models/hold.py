@@ -1,16 +1,13 @@
 """Hold (pre-authorization) models for Sardis SDK."""
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
+from decimal import Decimal  # noqa: TC003 - Pydantic resolves this field type at runtime.
 from enum import Enum
-from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from .base import SardisModel
-
-if TYPE_CHECKING:
-    from datetime import datetime
-    from decimal import Decimal
 
 
 class HoldStatus(str, Enum):

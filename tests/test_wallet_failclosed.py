@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # DEFECT 1: Circle entity secret must not be sent unencrypted
 # ---------------------------------------------------------------------------
@@ -57,8 +56,8 @@ class TestCircleEntitySecretEncryption:
     def test_build_cipher_succeeds_with_valid_rsa_key(self, monkeypatch):
         """With a valid RSA public key, encryption should succeed."""
         try:
-            from cryptography.hazmat.primitives.asymmetric import rsa
             from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
         except ImportError:
             pytest.skip("cryptography package not installed")
 
@@ -258,8 +257,8 @@ class TestHealthCheckHonestStatus:
     async def test_full_health_report_reflects_unknown_mpc(self):
         """Full wallet health check should reflect unknown MPC status."""
         from sardis_wallet.health_check import (
-            HealthChecker,
             HealthCheckConfig,
+            HealthChecker,
             HealthStatus,
         )
 

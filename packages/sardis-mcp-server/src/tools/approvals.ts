@@ -31,7 +31,7 @@ interface ApprovalRequest {
   vendor: string;
   amount: number;
   purpose: string;
-  status: 'pending' | 'approved' | 'denied' | 'expired';
+  status: 'pending' | 'simulated_pending' | 'approved' | 'denied' | 'expired';
   urgency: 'low' | 'medium' | 'high';
   requested_by: string;
   reviewed_by?: string;
@@ -189,8 +189,6 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
       // Deterministic status for simulated mode — never use Math.random() for financial state
-      const status: ApprovalRequest['status'] = 'pending';
-
       return {
         content: [{
           type: 'text',

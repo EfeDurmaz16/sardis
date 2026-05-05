@@ -329,7 +329,6 @@ class SettlementService:
             return
 
         try:
-            from decimal import Decimal
 
             # Convert stablecoin amount to cents (1 USDC = 100 cents)
             net = session.net_amount if session.net_amount is not None else session.amount

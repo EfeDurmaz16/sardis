@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, optional_principal, require_principal
+from sardis_api.authz import Principal, optional_principal
 from sardis_api.middleware.mpp_gate import mpp_gate
 
 logger = logging.getLogger(__name__)

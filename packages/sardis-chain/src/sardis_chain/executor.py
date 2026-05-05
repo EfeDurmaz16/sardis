@@ -2411,7 +2411,7 @@ class ChainExecutor:
                 logger.warning(f"Gas warning for {mandate.mandate_id}: {warning}")
             gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
         else:
-            logger.info(f"Skipping gas protection for Tempo chain (stablecoin gas model)")
+            logger.info("Skipping gas protection for Tempo chain (stablecoin gas model)")
 
         # Nonce management
         nonce = await self._nonce_manager.reserve_nonce(sender_address, rpc)
@@ -2782,7 +2782,7 @@ class ChainExecutor:
                 )
             gas_estimate = self._gas_protection.cap_gas_price(gas_estimate, chain)
         else:
-            logger.info(f"Skipping gas protection for Tempo (stablecoin gas)")
+            logger.info("Skipping gas protection for Tempo (stablecoin gas)")
 
         # Log gas estimation
         self._chain_logger.log_gas_estimation(

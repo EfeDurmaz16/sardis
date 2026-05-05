@@ -224,7 +224,7 @@ describe('Protocol Conformance', () => {
       expect(statusResult.isError).toBeFalsy();
       const status = JSON.parse(statusResult.content[0].text);
       expect(status.approval_id).toBe(request.approval_id);
-      expect(['pending', 'approved', 'denied']).toContain(status.status);
+      expect(['pending', 'simulated_pending', 'approved', 'denied']).toContain(status.status);
     });
   });
 

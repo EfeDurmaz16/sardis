@@ -31,7 +31,7 @@ Quick Start:
 from __future__ import annotations
 
 # Version
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # Core clients
 # Bulk operations
@@ -56,14 +56,6 @@ from .client import (
     SardisClient,
     TimeoutConfig,
     TokenInfo,
-)
-
-# Telemetry
-from .telemetry import (
-    AsyncSardisTelemetry,
-    SardisTelemetry,
-    TelemetryConfig,
-    TelemetryEvent,
 )
 
 # Models
@@ -208,6 +200,14 @@ from .resources.fx import AsyncFXResource, FXResource
 from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
 from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource, SubscriptionsV2Resource
 
+# Telemetry
+from .telemetry import (
+    AsyncSardisTelemetry,
+    SardisTelemetry,
+    TelemetryConfig,
+    TelemetryEvent,
+)
+
 __all__ = [
     "APIError",
     # Agent models
@@ -223,6 +223,7 @@ __all__ = [
     "AsyncPaginator",
     "AsyncPaymentObjectsResource",
     "AsyncSardisClient",
+    "AsyncSardisTelemetry",
     "AsyncSubscriptionsV2Resource",
     # Authentication errors
     "AuthenticationError",
@@ -318,6 +319,7 @@ __all__ = [
     "SardisError",
     # Base models
     "SardisModel",
+    "SardisTelemetry",
     # Server errors
     "ServerError",
     # Marketplace models
@@ -335,8 +337,6 @@ __all__ = [
     # Telemetry
     "TelemetryConfig",
     "TelemetryEvent",
-    "SardisTelemetry",
-    "AsyncSardisTelemetry",
     "TimeoutConfig",
     "TimeoutError",
     "Token",

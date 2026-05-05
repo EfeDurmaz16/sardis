@@ -20,10 +20,13 @@ require_match() {
   local pattern="$1"
   local file="$2"
   local message="$3"
-  if ! rg -q "$pattern" "$file"; then
-    echo "[issuer-compliance-pack][fail] $message ($file)"
-    failures=$((failures + 1))
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$file" && return 0
+  elif grep -Eq "$pattern" "$file"; then
+    return 0
   fi
+  echo "[issuer-compliance-pack][fail] $message ($file)"
+  failures=$((failures + 1))
 }
 
 require_file "docs/design-partner/compliance-pack/README.md"
@@ -58,4 +61,3 @@ if [[ "$failures" -gt 0 ]]; then
 fi
 
 echo "[issuer-compliance-pack] pass"
-

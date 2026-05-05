@@ -97,6 +97,14 @@ class SardisToolClient {
     return (await response.json()) as T
   }
 
+  async protocolRequest<T>(
+    method: string,
+    path: string,
+    body?: unknown
+  ): Promise<T> {
+    return this.request<T>(method, path, body)
+  }
+
   private async getEffectiveAgentId(): Promise<string> {
     if (this.agentId) return this.agentId
     if (this.resolvedAgentId) return this.resolvedAgentId
@@ -567,7 +575,7 @@ tokens that can be presented for verification and on-chain settlement.`,
         currency: z.string().default('USDC'),
       }),
       execute: async (params) =>
-        client.request('POST', '/api/v2/payment-objects/mint', params),
+        client.protocolRequest('POST', '/api/v2/payment-objects/mint', params),
     }),
 
     sardis_get_fx_quote: tool({
@@ -580,7 +588,7 @@ Returns the exchange rate and expected output amount.`,
         chain: z.string().default('tempo'),
       }),
       execute: async (params) =>
-        client.request('POST', '/api/v2/fx/quote', params),
+        client.protocolRequest('POST', '/api/v2/fx/quote', params),
     }),
 
     sardis_create_subscription: tool({
@@ -594,7 +602,7 @@ Supports daily, weekly, monthly, quarterly, or annual billing cycles.`,
         currency: z.string().default('USDC'),
       }),
       execute: async (params) =>
-        client.request('POST', '/api/v2/mandate-subscriptions', params),
+        client.protocolRequest('POST', '/api/v2/mandate-subscriptions', params),
     }),
 
     sardis_create_escrow: tool({
@@ -607,7 +615,7 @@ delivery is confirmed or the timelock expires (auto-release).`,
         timelock_hours: z.number().default(72),
       }),
       execute: async (params) =>
-        client.request('POST', '/api/v2/escrow', params),
+        client.protocolRequest('POST', '/api/v2/escrow', params),
     }),
   }
 }

@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
 

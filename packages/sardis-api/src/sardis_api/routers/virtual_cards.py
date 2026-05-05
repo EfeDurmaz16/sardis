@@ -22,7 +22,7 @@ import hashlib
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -156,7 +156,7 @@ def _generate_sandbox_card(
     request parameters so repeated identical calls get the same card.
     """
     card_id = f"sandbox_card_{uuid.uuid4().hex[:12]}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Deterministic but obviously-fake card number (Visa test prefix 4000 00)
     seed = hashlib.sha256(f"{card_id}{amount}{now.isoformat()[:10]}".encode()).hexdigest()
     card_number = f"4000 00{seed[:2]} {seed[2:6]} {seed[6:10]}"

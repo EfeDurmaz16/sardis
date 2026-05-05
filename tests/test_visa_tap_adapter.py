@@ -260,7 +260,7 @@ class TestVisaTAPAdapter:
             consent_id="dcns_real",
         )
         request = _make_visa_request()
-        with pytest.raises(NotImplementedError, match="MockVisaTAPAdapter"):
+        with pytest.raises(NotImplementedError, match="requires partnership credentials"):
             await adapter.execute(request, cred)
 
     @pytest.mark.asyncio
@@ -290,7 +290,7 @@ class TestVisaTAPAdapter:
     @pytest.mark.asyncio
     async def test_provision_raises_not_implemented(self):
         adapter = VisaTAPAdapter(api_key="k", certificate_path="/c.pem", trid="TRID")
-        with pytest.raises(NotImplementedError, match="MockVisaTAPAdapter"):
+        with pytest.raises(NotImplementedError, match="requires partnership credentials"):
             await adapter.provision_credential(
                 org_id="org_1",
                 agent_id="agent_1",

@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Stub mandates — same pattern as test_pay_phase2_routing.py
 # ---------------------------------------------------------------------------

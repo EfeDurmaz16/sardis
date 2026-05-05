@@ -135,7 +135,7 @@ from .zodiac_roles import (
     policy_to_role_config,
 )
 
-__version__ = "0.4.0"
+__version__ = "1.1.0"
 
 __all__ = [
     # Version

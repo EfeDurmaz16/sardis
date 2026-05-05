@@ -17,10 +17,10 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from .models import PaymentResult, PricedEndpoint, PricingModel, ServiceManifest, UsageRecord
+from .models import PricedEndpoint, PricingModel, ServiceManifest
 
 logger = logging.getLogger("sardis.connect")
 

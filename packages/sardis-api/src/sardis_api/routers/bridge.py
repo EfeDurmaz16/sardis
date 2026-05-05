@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -15,7 +14,6 @@ from sardis_chain.bridge import (
     CHAIN_NAMES,
     USDC_ADDRESSES,
     BridgeProvider,
-    BridgeQuote,
     CrossChainBridge,
 )
 from sardis_chain.executor import CHAIN_CONFIGS, ChainExecutor, TransactionRequest

@@ -97,6 +97,9 @@ addopts = "-v --import-mode=importlib"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+exclude = [
+    "contracts/lib",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "B", "C4", "UP", "N", "SIM"]
@@ -129,7 +132,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/__init__.py" = ["F401", "F811"]
+"**/__init__.py" = ["F401", "F811", "RUF022"]
+"packages/sardis-sdk-python/src/sardis_sdk/__init__.py" = ["F401", "F811", "RUF022"]
+"packages/sardis-gpt/__init__.py" = ["N999"]
 "tests/**" = ["F401", "F811", "F841", "E722", "B007", "N802"]
 "demos/**" = ["F401", "F841"]
 "examples/**" = ["F401", "F841"]
