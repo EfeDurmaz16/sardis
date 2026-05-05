@@ -18,6 +18,11 @@ if [[ "$strict_mode" == "1" || "$strict_mode" == "true" ]]; then
   echo "[ops-readiness] strict routing mode enabled"
 fi
 
+python_cmd=(python3)
+if command -v uv >/dev/null 2>&1; then
+  python_cmd=(uv run python)
+fi
+
 require_file() {
   local file="$1"
   if [[ ! -f "$file" ]]; then
@@ -30,10 +35,13 @@ require_match() {
   local pattern="$1"
   local file="$2"
   local message="$3"
-  if ! rg -q "$pattern" "$file"; then
-    echo "[ops-readiness][fail] $message ($file)"
-    failures=$((failures + 1))
+  if command -v rg >/dev/null 2>&1; then
+    rg -q "$pattern" "$file" && return 0
+  elif grep -Eq "$pattern" "$file"; then
+    return 0
   fi
+  echo "[ops-readiness][fail] $message ($file)"
+  failures=$((failures + 1))
 }
 
 require_file "docs/design-partner/ops-slo-alerts-rollback-runbook.md"
@@ -61,14 +69,14 @@ require_match 'SEV-1' docs/design-partner/incident-response-247-drill.md "incide
 require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "reconciliation chaos doc must define SLOs"
 
 echo "[ops-readiness] running alert routing smoke tests"
-python3 -m pytest -q \
+"${python_cmd[@]}" -m pytest -q \
   packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_uses_severity_channel_map \
   packages/sardis-core/tests/test_alert_channels.py::test_dispatcher_cooldown_suppresses_duplicate \
   packages/sardis-core/tests/test_alert_channels.py::test_pagerduty_channel_send_success \
   packages/sardis-core/tests/test_alert_channels.py::test_pagerduty_channel_send_fails_on_non_success_status
 
 echo "[ops-readiness] generating ops evidence artifact"
-python3 scripts/release/generate_ops_readiness_evidence.py \
+"${python_cmd[@]}" scripts/release/generate_ops_readiness_evidence.py \
   --drill-evidence docs/audits/evidence/turnkey-outage-drill-latest.json \
   --output docs/audits/evidence/ops-readiness-latest.json \
   $strict_arg
