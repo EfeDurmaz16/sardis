@@ -6,6 +6,8 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 
+process.env.SARDIS_TELEMETRY_ENABLED = 'false';
+
 // Mock API responses
 export const mockResponses = {
     health: {
@@ -187,6 +189,9 @@ export const handlers = [
     }),
     http.post('https://api.sardis.sh/api/v2/agents/:id/wallet', () => {
         return HttpResponse.json(mockResponses.agentWallet);
+    }),
+    http.post(/\/api\/v2\/agents\/auto-register$/, () => {
+        return HttpResponse.json({ registered: true });
     }),
 
     // API v2 Wallets
