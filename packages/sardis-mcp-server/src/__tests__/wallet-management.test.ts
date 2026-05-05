@@ -91,7 +91,7 @@ describe('Wallet Management Tools', () => {
         expect(result.isError).toBeFalsy();
 
         const parsed = JSON.parse(result.content[0].text);
-        expect(Array.isArray(parsed)).toBe(true);
+        expect(Array.isArray(parsed.wallets)).toBe(true);
       });
 
       it('should filter by chain', async () => {

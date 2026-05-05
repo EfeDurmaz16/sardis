@@ -28,7 +28,7 @@ from sardis import SardisClient
 
 @pytest.fixture()
 def sardis_client() -> SardisClient:
-    return SardisClient(api_key="sk_test_demo")
+    return SardisClient(api_key="test_demo")
 
 
 @pytest.fixture()
@@ -61,10 +61,10 @@ class TestToolDefinitions:
     """Verify tool definitions match the Anthropic tool_use schema."""
 
     def test_all_tools_count(self):
-        assert len(ALL_TOOLS) == 6
+        assert len(ALL_TOOLS) == 10
 
     def test_read_only_tools_count(self):
-        assert len(READ_ONLY_TOOLS) == 3
+        assert len(READ_ONLY_TOOLS) == 4
 
     def test_tool_names_set(self):
         assert {
@@ -74,6 +74,10 @@ class TestToolDefinitions:
             "sardis_set_policy",
             "sardis_list_transactions",
             "sardis_create_hold",
+            "sardis_mint_payment",
+            "sardis_get_fx_quote",
+            "sardis_create_subscription",
+            "sardis_create_escrow",
         } == TOOL_NAMES
 
     @pytest.mark.parametrize("tool", ALL_TOOLS)
@@ -274,7 +278,7 @@ class TestSardisToolkit:
 
     def test_get_tools_returns_all(self, toolkit: SardisToolkit):
         tools = toolkit.get_tools()
-        assert len(tools) == 6
+        assert len(tools) == 10
 
     def test_get_tools_read_only(self, sardis_client: SardisClient, wallet):
         toolkit = SardisToolkit(
@@ -283,7 +287,7 @@ class TestSardisToolkit:
             read_only=True,
         )
         tools = toolkit.get_tools()
-        assert len(tools) == 3
+        assert len(tools) == 4
         names = {t["name"] for t in tools}
         assert "sardis_pay" not in names
         assert "sardis_check_balance" in names

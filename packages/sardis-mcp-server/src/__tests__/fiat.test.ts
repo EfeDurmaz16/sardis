@@ -132,7 +132,7 @@ describe('Fiat Tools', () => {
         expect(result.isError).toBeFalsy();
 
         const parsed = JSON.parse(result.content[0].text);
-        expect(Array.isArray(parsed)).toBe(true);
+        expect(Array.isArray(parsed.data)).toBe(true);
       });
 
       it('should filter by type', async () => {

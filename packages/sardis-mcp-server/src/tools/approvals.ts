@@ -189,8 +189,6 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
       // Deterministic status for simulated mode — never use Math.random() for financial state
-      const status: ApprovalRequest['status'] = 'pending';
-
       return {
         content: [{
           type: 'text',
@@ -202,7 +200,7 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
             vendor: 'Example Vendor',
             amount: 500,
             purpose: 'Service payment',
-            status: 'simulated_pending',
+            status: 'pending',
             urgency: 'medium',
             requested_by: 'agent_simulated',
             created_at: new Date(Date.now() - 3600000).toISOString(),

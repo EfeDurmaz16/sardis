@@ -47,4 +47,4 @@ Repository = "https://github.com/EfeDurmaz16/sardis"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sardis_crewai"]
+packages = ["sardis_crewai"]

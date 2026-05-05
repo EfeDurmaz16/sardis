@@ -3,15 +3,45 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_api.routers.email_verification import _token_store
-
 
 @pytest.fixture(autouse=True)
-def clear_token_store():
-    """Reset in-memory token store between tests."""
-    _token_store.clear()
-    yield
-    _token_store.clear()
+def fake_email_verification_db(monkeypatch):
+    """Provide the DB-backed token store expected by the router."""
+    token_rows: dict[str, dict] = {}
+
+    class FakeConnection:
+        async def execute(self, sql: str, *args):
+            if "INSERT INTO email_verification_tokens" in sql:
+                user_id, token_hash, expires_at = args
+                token_rows[token_hash] = {
+                    "user_id": user_id,
+                    "expires_at": expires_at,
+                    "used_at": None,
+                }
+            elif "UPDATE email_verification_tokens SET used_at" in sql:
+                token_rows[args[0]]["used_at"] = True
+
+        async def fetchrow(self, _sql: str, token_hash: str):
+            return token_rows.get(token_hash)
+
+    class FakeAcquire:
+        async def __aenter__(self):
+            return FakeConnection()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakePool:
+        def acquire(self):
+            return FakeAcquire()
+
+    async def fake_get_pool():
+        return FakePool()
+
+    from sardis_v2_core.database import Database
+
+    monkeypatch.setattr(Database, "get_pool", fake_get_pool)
+    yield token_rows
 
 
 # ---------------------------------------------------------------------------
@@ -57,8 +87,8 @@ async def test_send_requires_authentication(client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_with_valid_token(client):
-    """A token written directly into the store can be confirmed successfully."""
+async def test_confirm_with_valid_token(client, fake_email_verification_db):
+    """A token written directly into the DB store can be confirmed successfully."""
     import hashlib
     import secrets
     from datetime import UTC, datetime, timedelta
@@ -66,7 +96,7 @@ async def test_confirm_with_valid_token(client):
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-    _token_store[token_hash] = {
+    fake_email_verification_db[token_hash] = {
         "user_id": "usr_test_abc123",
         "expires_at": datetime.now(UTC) + timedelta(hours=24),
         "used_at": None,
@@ -81,7 +111,7 @@ async def test_confirm_with_valid_token(client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_with_expired_token_returns_400(client):
+async def test_confirm_with_expired_token_returns_400(client, fake_email_verification_db):
     """Confirming an expired token returns 400."""
     import hashlib
     import secrets
@@ -90,7 +120,7 @@ async def test_confirm_with_expired_token_returns_400(client):
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-    _token_store[token_hash] = {
+    fake_email_verification_db[token_hash] = {
         "user_id": "usr_test_expired",
         "expires_at": datetime.now(UTC) - timedelta(seconds=1),  # already expired
         "used_at": None,
@@ -115,7 +145,7 @@ async def test_confirm_with_invalid_token_returns_400(client):
 
 
 @pytest.mark.asyncio
-async def test_confirm_already_used_token_returns_400(client):
+async def test_confirm_already_used_token_returns_400(client, fake_email_verification_db):
     """Confirming a token that was already used returns 400."""
     import hashlib
     import secrets
@@ -124,7 +154,7 @@ async def test_confirm_already_used_token_returns_400(client):
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
-    _token_store[token_hash] = {
+    fake_email_verification_db[token_hash] = {
         "user_id": "usr_test_used",
         "expires_at": datetime.now(UTC) + timedelta(hours=24),
         "used_at": datetime.now(UTC),  # already used
