@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clean_acp_state():
     """Reset in-memory ACP state between tests."""
-    from sardis_api.routers.acp import _sessions, _delegate_tokens
+    from sardis_api.routers.acp import _delegate_tokens, _sessions
     _sessions.clear()
     _delegate_tokens.clear()
     yield

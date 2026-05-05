@@ -14,7 +14,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # 1. Lightspark Grid — all endpoints → 501
 # ---------------------------------------------------------------------------

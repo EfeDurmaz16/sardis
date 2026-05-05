@@ -16,7 +16,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
-from sardis_api.authz import Principal, optional_principal, require_admin_principal, require_principal
+from sardis_api.authz import (
+    Principal,
+    optional_principal,
+    require_admin_principal,
+    require_principal,
+)
 from sardis_api.middleware.mpp_gate import mpp_gate
 from sardis_api.webhook_replay import run_with_replay_protection
 

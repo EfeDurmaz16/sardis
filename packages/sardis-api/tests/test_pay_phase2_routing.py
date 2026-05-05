@@ -18,7 +18,6 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from pydantic import BaseModel
 
-
 # ---------------------------------------------------------------------------
 # Stub mandates — the real ones require many VC/proof fields.
 # pay.py constructs them with simplified kwargs; we mock the classes

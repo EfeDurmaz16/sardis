@@ -34,9 +34,10 @@ class CreateInvoiceRequest(BaseModel):
     @field_validator('amount')
     @classmethod
     def validate_amount(cls, v: str) -> str:
-        from decimal import Decimal as D, InvalidOperation
+        from decimal import Decimal, InvalidOperation
+
         try:
-            d = D(v)
+            d = Decimal(v)
             if d <= 0:
                 raise ValueError("Amount must be positive")
             return v

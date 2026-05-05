@@ -625,7 +625,9 @@ async def lifespan(app: FastAPI):
                 else:
                     _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
                     if _env in ("dev", "test", "development"):
-                        from sardis_v2_core.delegated_adapters.mastercard_agent_pay import MockMastercardAgentPayAdapter
+                        from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+                            MockMastercardAgentPayAdapter,
+                        )
                         adapter = MockMastercardAgentPayAdapter()
                         delegated_registry.register(CredentialNetwork.MASTERCARD_AGENT_PAY, adapter)
                         logger.info("Mastercard: using mock adapter (dev/test only)")

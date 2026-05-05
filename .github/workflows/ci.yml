@@ -143,7 +143,7 @@ jobs:
           chmod +x ~/.svm/0.8.24/solc-0.8.24
 
       - name: Enforce formatting
-        run: forge fmt --check
+        run: forge fmt --check src test script
 
       - name: Build contracts
         run: forge build --sizes -vv

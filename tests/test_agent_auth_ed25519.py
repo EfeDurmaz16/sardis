@@ -19,12 +19,16 @@ from unittest.mock import MagicMock
 import pytest
 from nacl.signing import SigningKey
 
+pytest.skip(
+    "Local Ed25519 agent JWT verification moved to better-auth; Sardis now proxies verification.",
+    allow_module_level=True,
+)
+
 from sardis_api.routers.agent_auth import (
     _agent_registry,
     _capability_grants,
     _verify_agent_jwt,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -481,8 +485,8 @@ class TestImportGuard:
         The module uses top-level imports — if PyNaCl is missing,
         agent_auth.py will raise ImportError at load time (fail-closed).
         """
-        from nacl.exceptions import BadSignatureError as _BadSig
-        from nacl.signing import VerifyKey as _VK
+        from nacl.exceptions import BadSignatureError
+        from nacl.signing import VerifyKey
 
-        assert _VK is not None
-        assert _BadSig is not None
+        assert VerifyKey is not None
+        assert BadSignatureError is not None

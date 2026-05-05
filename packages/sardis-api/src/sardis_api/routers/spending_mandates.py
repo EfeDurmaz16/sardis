@@ -10,9 +10,8 @@ import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
-
 from typing import Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field

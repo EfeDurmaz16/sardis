@@ -4,7 +4,6 @@ import json
 from types import SimpleNamespace
 
 import pytest
-
 from sardis_openai.handler import SardisToolHandler
 
 

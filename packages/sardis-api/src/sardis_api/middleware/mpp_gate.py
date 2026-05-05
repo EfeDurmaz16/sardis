@@ -20,7 +20,7 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
@@ -182,7 +182,6 @@ def mpp_gate(
             )
 
             if isinstance(result, Challenge):
-                from starlette.responses import Response as StarletteResponse
                 # Raise a special exception that carries the full Response
                 raise _Mpp402(
                     response=_challenge_response(

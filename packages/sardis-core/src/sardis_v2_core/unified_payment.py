@@ -230,8 +230,6 @@ class UnifiedPaymentClient:
         """Discover merchant capabilities via /.well-known/sardis.json or API."""
         import httpx
 
-        caps = MerchantCapabilities(merchant=merchant)
-
         # Try sardis.json discovery
         if "." in merchant and not merchant.startswith("0x"):
             url = f"https://{merchant}" if not merchant.startswith("http") else merchant

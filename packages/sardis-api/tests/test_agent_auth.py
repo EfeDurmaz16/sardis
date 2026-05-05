@@ -19,7 +19,6 @@ from decimal import Decimal
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -467,7 +466,10 @@ def test_capability_grant_to_mandate():
 
 def test_mandate_roundtrip():
     """Mandate -> grant -> mandate roundtrip preserves key fields."""
-    from sardis_api.routers.agent_auth import mandate_to_capability_grant, capability_grant_to_mandate
+    from sardis_api.routers.agent_auth import (
+        capability_grant_to_mandate,
+        mandate_to_capability_grant,
+    )
 
     original = {
         "id": "mandate_rt1",

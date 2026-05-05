@@ -36,9 +36,10 @@ class ProvisionCredentialRequest(BaseModel):
     def validate_amount_fields(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        from decimal import Decimal as D, InvalidOperation
+        from decimal import Decimal, InvalidOperation
+
         try:
-            d = D(v)
+            d = Decimal(v)
             if d <= 0:
                 raise ValueError("Amount must be positive")
             return v

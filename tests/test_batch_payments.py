@@ -19,7 +19,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-
 from sardis_api.authz import Principal, require_principal
 from sardis_api.routers.batch_payments import (
     BatchPaymentRequest,
@@ -28,17 +27,16 @@ from sardis_api.routers.batch_payments import (
     router,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _make_principal(**overrides) -> Principal:
-    defaults = dict(
-        kind="api_key",
-        organization_id="org_test_001",
-        scopes=["*"],
-    )
+    defaults = {
+        "kind": "api_key",
+        "organization_id": "org_test_001",
+        "scopes": ["*"],
+    }
     defaults.update(overrides)
     return Principal(**defaults)
 

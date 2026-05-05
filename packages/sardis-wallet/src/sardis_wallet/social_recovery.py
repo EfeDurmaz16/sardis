@@ -16,9 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import hmac
 import logging
-import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta

@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("sardis.api.service_directory")
@@ -165,10 +165,10 @@ async def register_service(body: RegisterServiceRequest):
     Called automatically by sardis-connect when a merchant starts their server.
     Can also be called manually via the API.
     """
-    from sardis_v2_core.database import Database
-
     import json
     import uuid
+
+    from sardis_v2_core.database import Database
 
     service_id = str(uuid.uuid4())
 

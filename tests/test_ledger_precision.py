@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Static analysis: ensure float() is not used on financial fields
 # ---------------------------------------------------------------------------

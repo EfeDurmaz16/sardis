@@ -23,7 +23,6 @@ os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_purposes_only_3
 import pytest
 from sardis_v2_core.merchant import Merchant, MerchantCheckoutSession
 
-
 # ── Fixtures ──────────────────────────────────────────────────────
 
 
@@ -528,6 +527,7 @@ class TestMerchantResponseStripeFields:
 
     def test_settlement_preference_rejects_invalid(self):
         from pydantic import ValidationError
+
         from sardis_api.routers.merchants import CreateMerchantRequest
         with pytest.raises(ValidationError):
             CreateMerchantRequest(name="Test", settlement_preference="bitcoin")

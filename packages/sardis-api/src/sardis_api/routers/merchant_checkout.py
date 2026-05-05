@@ -552,8 +552,8 @@ async def pay_session(
     # Validate spending mandate if provided
     if body.mandate_id:
         try:
-            from sardis_v2_core.spending_mandate import SpendingMandate
             from sardis_v2_core.database import Database
+            from sardis_v2_core.spending_mandate import SpendingMandate
 
             mandate_row = await Database.fetchrow(
                 "SELECT * FROM spending_mandates WHERE external_id = $1",

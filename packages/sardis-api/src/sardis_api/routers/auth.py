@@ -766,9 +766,10 @@ async def register_user(request: Request, body: RegisterRequest):
 
         # Persist token to DB (best-effort)
         try:
-            from sardis_v2_core.database import Database
             import hashlib
             from datetime import timedelta
+
+            from sardis_v2_core.database import Database
 
             token_hash = hashlib.sha256(verification_token.encode()).hexdigest()
             expires_at = datetime.now(UTC) + timedelta(hours=24)

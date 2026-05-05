@@ -238,13 +238,13 @@ class TestMastercardAgentPayAdapter:
         )
         adapter = MastercardAgentPayAdapter(consumer_key="ck_test", encryption=enc)
         request = _make_request()
-        with pytest.raises(NotImplementedError, match="MDES Agent Pay API not yet available"):
+        with pytest.raises(NotImplementedError, match="requires partnership credentials"):
             await adapter.execute(request, cred)
 
     @pytest.mark.asyncio
     async def test_provision_raises_not_implemented(self):
         adapter = MastercardAgentPayAdapter(consumer_key="ck_test")
-        with pytest.raises(NotImplementedError, match="MDES tokenization API not yet available"):
+        with pytest.raises(NotImplementedError, match="requires partnership credentials"):
             await adapter.provision_credential(
                 org_id="org_1",
                 agent_id="agent_1",
@@ -310,8 +310,8 @@ def _compute_sig(secret: str, payload: bytes) -> str:
 class TestMastercardWebhookHandler:
 
     @pytest.mark.asyncio
-    async def test_webhook_returns_200_no_secret_configured(self, test_client):
-        """When MASTERCARD_WEBHOOK_SECRET is not set, webhook still returns 200."""
+    async def test_webhook_returns_500_no_secret_configured(self, test_client):
+        """When MASTERCARD_WEBHOOK_SECRET is not set, webhook fails closed."""
         payload = json.dumps({
             "type": "TOKEN_ACTIVE",
             "id": "evt_mc_001",
@@ -323,8 +323,7 @@ class TestMastercardWebhookHandler:
             content=payload,
             headers={"Content-Type": "application/json"},
         )
-        assert response.status_code == 200
-        assert response.json() == {"received": True}
+        assert response.status_code == 500
 
     @pytest.mark.asyncio
     async def test_webhook_valid_signature(self, test_client, monkeypatch):
@@ -386,8 +385,11 @@ class TestMastercardWebhookHandler:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_webhook_token_lifecycle_event(self, test_client):
+    async def test_webhook_token_lifecycle_event(self, test_client, monkeypatch):
         """Token lifecycle events are handled and return 200."""
+        secret = "test_mc_webhook_secret"
+        monkeypatch.setenv("MASTERCARD_WEBHOOK_SECRET", secret)
+
         for event_type in ["TOKEN_CREATED", "TOKEN_ACTIVE", "TOKEN_SUSPENDED",
                            "TOKEN_DELETED", "TOKEN_EXPIRED"]:
             payload = json.dumps({
@@ -395,17 +397,21 @@ class TestMastercardWebhookHandler:
                 "id": f"evt_mc_{event_type.lower()}",
                 "data": {"tokenUniqueReference": "mc_tur_abc"},
             }).encode()
+            sig = _compute_sig(secret, payload)
 
             response = await test_client.post(
                 "/mastercard/webhooks",
                 content=payload,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "X-Mastercard-Signature": sig},
             )
             assert response.status_code == 200, f"Failed for event_type={event_type}"
 
     @pytest.mark.asyncio
-    async def test_webhook_authorization_events(self, test_client):
+    async def test_webhook_authorization_events(self, test_client, monkeypatch):
         """Authorization result events are handled and return 200."""
+        secret = "test_mc_webhook_secret"
+        monkeypatch.setenv("MASTERCARD_WEBHOOK_SECRET", secret)
+
         for event_type in ["AUTHORIZATION_APPROVED", "AUTHORIZATION_DECLINED",
                            "AUTHORIZATION_REVERSED"]:
             payload = json.dumps({
@@ -416,35 +422,45 @@ class TestMastercardWebhookHandler:
                     "authorizationCode": "CODE123",
                 },
             }).encode()
+            sig = _compute_sig(secret, payload)
 
             response = await test_client.post(
                 "/mastercard/webhooks",
                 content=payload,
-                headers={"Content-Type": "application/json"},
+                headers={"Content-Type": "application/json", "X-Mastercard-Signature": sig},
             )
             assert response.status_code == 200, f"Failed for event_type={event_type}"
 
     @pytest.mark.asyncio
-    async def test_webhook_unknown_event_type_still_200(self, test_client):
+    async def test_webhook_unknown_event_type_still_200(self, test_client, monkeypatch):
         """Unknown event types are silently ignored and return 200."""
+        secret = "test_mc_webhook_secret"
+        monkeypatch.setenv("MASTERCARD_WEBHOOK_SECRET", secret)
+
         payload = json.dumps({
             "type": "UNKNOWN_FUTURE_EVENT",
             "id": "evt_mc_unknown",
         }).encode()
+        sig = _compute_sig(secret, payload)
 
         response = await test_client.post(
             "/mastercard/webhooks",
             content=payload,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json", "X-Mastercard-Signature": sig},
         )
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_webhook_invalid_json_returns_400(self, test_client):
+    async def test_webhook_invalid_json_returns_400(self, test_client, monkeypatch):
         """Malformed JSON payload returns 400."""
+        secret = "test_mc_webhook_secret"
+        monkeypatch.setenv("MASTERCARD_WEBHOOK_SECRET", secret)
+        payload = b"not valid json {{{"
+        sig = _compute_sig(secret, payload)
+
         response = await test_client.post(
             "/mastercard/webhooks",
-            content=b"not valid json {{{",
-            headers={"Content-Type": "application/json"},
+            content=payload,
+            headers={"Content-Type": "application/json", "X-Mastercard-Signature": sig},
         )
         assert response.status_code == 400

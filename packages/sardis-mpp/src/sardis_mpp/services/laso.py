@@ -38,7 +38,7 @@ import asyncio
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -135,7 +135,7 @@ class LasoMPPService:
 
     def _check_daily_limits(self, amount: Decimal) -> None:
         """Enforce Laso daily issuance limits before making API call."""
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
         if self._last_reset != today:
             self._cards_issued_today = 0
             self._daily_amount = Decimal("0")
@@ -310,7 +310,7 @@ class LasoMPPService:
             status=data.get("status", "processing"),
             card_type=card_type,
             billing_address=data.get("billing_address", {}),
-            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            created_at=data.get("created_at", datetime.now(UTC).isoformat()),
         )
 
     async def _poll_card_ready(

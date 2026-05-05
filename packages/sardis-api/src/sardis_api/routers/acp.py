@@ -28,12 +28,10 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.models.acp import (
     ACP_API_VERSION,
-    ACPAddress,
     ACPCheckoutSessionResponse,
     ACPCheckoutStatus,
     ACPCompleteCheckoutRequest,
@@ -683,7 +681,8 @@ async def complete_checkout_session(
         # Try to verify via chain executor
         try:
             from sardis_chain.executor import ChainExecutor
-            executor = ChainExecutor()
+
+            ChainExecutor()
             # Verification would check tx receipt, amount, recipient
             logger.info(
                 "ACP crypto payment: tx=%s chain=%s token=%s",

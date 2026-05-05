@@ -58,14 +58,6 @@ from .client import (
     TokenInfo,
 )
 
-# Telemetry
-from .telemetry import (
-    AsyncSardisTelemetry,
-    SardisTelemetry,
-    TelemetryConfig,
-    TelemetryEvent,
-)
-
 # Models
 from .models.agent import Agent, AgentCreate, AgentUpdate, CreateAgentRequest
 from .models.base import (
@@ -208,6 +200,14 @@ from .resources.fx import AsyncFXResource, FXResource
 from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
 from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource, SubscriptionsV2Resource
 
+# Telemetry
+from .telemetry import (
+    AsyncSardisTelemetry,
+    SardisTelemetry,
+    TelemetryConfig,
+    TelemetryEvent,
+)
+
 __all__ = [
     "APIError",
     # Agent models
@@ -223,6 +223,7 @@ __all__ = [
     "AsyncPaginator",
     "AsyncPaymentObjectsResource",
     "AsyncSardisClient",
+    "AsyncSardisTelemetry",
     "AsyncSubscriptionsV2Resource",
     # Authentication errors
     "AuthenticationError",
@@ -318,6 +319,7 @@ __all__ = [
     "SardisError",
     # Base models
     "SardisModel",
+    "SardisTelemetry",
     # Server errors
     "ServerError",
     # Marketplace models
@@ -335,8 +337,6 @@ __all__ = [
     # Telemetry
     "TelemetryConfig",
     "TelemetryEvent",
-    "SardisTelemetry",
-    "AsyncSardisTelemetry",
     "TimeoutConfig",
     "TimeoutError",
     "Token",

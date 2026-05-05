@@ -5,10 +5,10 @@ is degraded, or becomes unsafe. Operators configure narrow rail-pair rules.
 """
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import UTC, datetime
-import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field

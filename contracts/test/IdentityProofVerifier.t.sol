@@ -36,9 +36,8 @@ contract IdentityProofVerifierTest is Test {
         // Warp to a realistic timestamp so subtraction doesn't underflow
         vm.warp(1_700_000_000);
         // Simulate an expired proof by embedding a past timestamp in the commitment
-        bytes32 identityCommitment = keccak256(
-            abi.encodePacked(address(0xBEEF), uint256(1), uint256(block.timestamp - 365 days))
-        );
+        bytes32 identityCommitment =
+            keccak256(abi.encodePacked(address(0xBEEF), uint256(1), uint256(block.timestamp - 365 days)));
         uint8 requiredKyaLevel = 2;
         bytes memory proof = hex"00112233";
 
