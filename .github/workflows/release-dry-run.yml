@@ -62,10 +62,19 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Python deps for readiness scripts
+      - name: Set up uv
+        uses: astral-sh/setup-uv@e4db8464a088ece1b920f60402e813ea4de65b8f # v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+            packages/**/pyproject.toml
+
+      - name: Install Python dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install build twine hatchling
+          uv sync
+          uv pip install build twine hatchling
 
       - name: Install JS dependencies
         run: pnpm install --no-frozen-lockfile
