@@ -60,3 +60,36 @@ Expected operating posture:
 
 If `allow_auto_merge` is `false`, Dependabot PRs may be rebased and checked, but
 GitHub will reject `gh pr merge --auto`.
+
+Actions workflow permissions must also allow auto-approval:
+
+```bash
+gh api repos/EfeDurmaz16/sardis/actions/permissions/workflow \
+  --jq '{default_workflow_permissions,can_approve_pull_request_reviews}'
+```
+
+Expected:
+
+- `default_workflow_permissions`: `write`
+- `can_approve_pull_request_reviews`: `true`
+
+## Auto-Approval Policy
+
+`.github/workflows/dependabot-auto-merge.yml` uses
+`dependabot/fetch-metadata` to classify the update before mutating the PR.
+
+Automatically approved and auto-merged after required checks pass:
+
+- `version-update:semver-patch`
+- `version-update:semver-minor`
+
+Not automatically approved:
+
+- major updates
+- unknown update types
+- draft PRs
+- non-Dependabot PRs
+
+The workflow enables GitHub native auto-merge with squash merge and branch
+deletion. It does not bypass branch protection; required checks still decide
+when the merge actually lands.

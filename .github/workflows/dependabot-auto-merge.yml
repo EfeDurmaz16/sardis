@@ -15,14 +15,54 @@ permissions:
 
 jobs:
   enable-auto-merge:
-    name: Enable auto-merge for Dependabot PRs
+    name: Approve and enable auto-merge for Dependabot PRs
     if: >-
       github.actor == 'dependabot[bot]' &&
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Enable squash auto-merge
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide whether update is safe to auto-merge
+        id: policy
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_TYPE: ${{ steps.metadata.outputs.dependency-type }}
+        run: |
+          set -euo pipefail
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch|version-update:semver-minor)
+              echo "allowed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "allowed=false" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+          echo "update_type=$UPDATE_TYPE" >> "$GITHUB_OUTPUT"
+          echo "dependency_type=$DEPENDENCY_TYPE" >> "$GITHUB_OUTPUT"
+
+      - name: Explain skipped update
+        if: steps.policy.outputs.allowed != 'true'
+        run: |
+          echo "::notice::Skipping Dependabot auto-merge for update_type=${{ steps.policy.outputs.update_type }} dependency_type=${{ steps.policy.outputs.dependency_type }}"
+
+      - name: Approve safe Dependabot update
+        if: steps.policy.outputs.allowed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge "$PR_URL" --auto --squash --delete-branch
+        run: |
+          gh pr review "$PR_URL" --approve \
+            --body "Automated approval for Dependabot ${{ steps.policy.outputs.update_type }} update after metadata policy check."
+
+      - name: Enable squash auto-merge
+        if: steps.policy.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr merge "$PR_URL" --auto --squash --delete-branch
