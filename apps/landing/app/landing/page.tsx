@@ -1,29 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { Plus_Jakarta_Sans } from "next/font/google"
-import { motion } from "framer-motion"
 import Link from "next/link"
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" })
-
-/* ── Scroll-triggered fade-up ── */
-function useInView() {
-  const ref = useRef<HTMLElement>(null)
-  const [inView, setInView] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect() } },
-      { threshold: 0.1 }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  return { ref, inView }
-}
 
 function Section({ children, className, ...props }: React.HTMLAttributes<HTMLElement>) {
   return (
@@ -199,7 +181,10 @@ function BezelCard({ children, t }: { children: React.ReactNode; t: typeof light
 export default function LandingPage() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const isDark = mounted && resolvedTheme === "dark"
   const t = isDark ? dark : light
