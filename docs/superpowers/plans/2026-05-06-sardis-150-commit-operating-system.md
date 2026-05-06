@@ -35,6 +35,26 @@ The weakness is not lack of code. The weakness is operating clarity:
 8. **Package release story is too broad for early users.** The priority should be a minimal install path and one convincing integration path, then expand outward.
 9. **Open-core boundary needs enforcement.** Docs describe boundaries, but package naming, exports, and README structure should make it impossible to misunderstand what is OSS vs commercial.
 10. **There is no single "repo cockpit."** A maintainer should be able to run one command and see PR queue, CI health, release gate state, stale docs, generated drift, and live endpoints.
+11. **The public repo leaks founder-ops context.** Investor decks, outreach lists, planning drafts, visa/contact artifacts, and personal follow-up notes do not belong in the long-term open-source checkout. A developer cloning Sardis should see product, architecture, security, examples, packages, and contribution material, not private fundraising or relationship history.
+
+## Public Repository Surface Decision
+
+The open-source Sardis repo should be treated as a developer-facing project, not as a founder operating folder. The canonical GitHub surface should be narrow:
+
+- `README.md`, `ROADMAP.md`, `CONTRIBUTING.md`, `SECURITY.md`, license, changelog.
+- `docs/architecture`, only for current product architecture and protocol/payment-control-plane mechanics.
+- `docs/product`, only for public product positioning, roadmap, caveats, and design-partner critical path.
+- `docs/security`, only for public disclosure, threat model, policy/signing invariants, and safe operational posture.
+- `docs/sdk`, `docs/api`, `docs/guides`, and `examples` when they are useful to external developers.
+- `packages`, `apps`, `contracts`, `scripts`, and CI needed to build, test, and ship the open-source system.
+
+Everything else should be reduced aggressively:
+
+- Investor decks, PDFs, HTML decks, IC memos, YC drafts, angel lists, meeting prep, and follow-up answers should leave the public repo. If historical retention is needed, move them to `~/sardis-archive/investor/`, not to normal GitHub docs.
+- Outreach CSVs, contact lists, prospecting drafts, and private GTM notes should leave the repo and move to `~/sardis-archive/outreach/`.
+- Old planning docs should either become one canonical `ROADMAP.md` / `docs/product/design-partner-critical-path.md` entry or move to `~/sardis-archive/planning/`.
+- Local-only files such as visa PDFs, Safari exports, contact CSVs, screenshots, video/mobile exports, and personal session dumps should move to `~/sardis-archive/local-artifacts/` and be blocked by `.gitignore`.
+- `docs/operations` should stay only if it is needed by external contributors or production operators. Internal founder ops should move out.
 
 ## 150 Atomic Commits
 
@@ -92,15 +112,15 @@ The weakness is not lack of code. The weakness is operating clarity:
 
 ### Track 5: Docs Provenance And Cleanup
 
-- [ ] Commit 41: Add frontmatter/provenance schema for docs: canonical, generated, historical, draft, investor, runbook.
+- [ ] Commit 41: Add frontmatter/provenance schema for docs: canonical, generated, historical, draft, private-founder-ops, runbook.
 - [ ] Commit 42: Add `scripts/audit/docs_provenance_check.py`.
 - [ ] Commit 43: Apply provenance to root launch/readiness docs.
 - [ ] Commit 44: Apply provenance to `docs/design-partner`.
-- [ ] Commit 45: Apply provenance to investor docs.
+- [ ] Commit 45: Inventory investor/outreach/planning docs and classify each as public-canonical, archive-to-home, or delete-from-repo.
 - [ ] Commit 46: Apply provenance to generated canvases.
 - [ ] Commit 47: Add generated-output source mapping for `llms.txt` and canvases.
 - [ ] Commit 48: Add stale generated artifact check.
-- [ ] Commit 49: Archive or mark old duplicate pitch decks as historical.
+- [ ] Commit 49: Remove investor decks, YC drafts, angel/outreach lists, and relationship-specific fundraising material from the public GitHub tree after copying retained files to `~/sardis-archive/`.
 - [ ] Commit 50: Add `docs/INDEX.md` as the canonical docs entrypoint.
 
 ### Track 6: Package Release Hygiene
@@ -209,16 +229,16 @@ The weakness is not lack of code. The weakness is operating clarity:
 
 ### Track 14: Archive And Noise Reduction
 
-- [ ] Commit 131: Add archive policy: archive before delete, preserve provenance.
-- [ ] Commit 132: Move old outreach drafts into `docs/archive` or mark as draft.
-- [ ] Commit 133: Move old investor HTML/PDF duplicates into historical grouping.
-- [ ] Commit 134: Mark old canvases as generated/historical where applicable.
-- [ ] Commit 135: Remove checked-in local build caches.
-- [ ] Commit 136: Add CI check preventing `.tsbuildinfo`, `_astro`, `.next`, and similar generated outputs.
-- [ ] Commit 137: Consolidate duplicate launch checklists into one index.
-- [ ] Commit 138: Consolidate duplicate readiness scripts or document why each exists.
-- [ ] Commit 139: Add `docs/archive/README.md`.
-- [ ] Commit 140: Add cleanup report with before/after file counts.
+- [ ] Commit 131: Create `~/sardis-archive/{investor,outreach,planning,local-artifacts,generated}/README.md` with retention rules and move plan.
+- [ ] Commit 132: Copy retained investor decks, YC drafts, angel notes, meeting prep, and follow-up answers from the repo/worktree into `~/sardis-archive/investor/`.
+- [ ] Commit 133: Copy retained outreach CSVs, contact lists, prospecting drafts, and private GTM notes into `~/sardis-archive/outreach/`.
+- [ ] Commit 134: Copy retained old planning docs into `~/sardis-archive/planning/` and collapse public planning to `ROADMAP.md` plus one design-partner critical-path doc.
+- [ ] Commit 135: Copy local-only artifacts such as visa PDFs, Safari exports, screenshots, videos, contact CSVs, and session dumps into `~/sardis-archive/local-artifacts/`.
+- [ ] Commit 136: Delete or remove from tracking public-repo copies of private investor, outreach, planning, and local artifact files.
+- [ ] Commit 137: Tighten `.gitignore` to block local founder-ops artifacts: `contact*.csv`, visa PDFs, browser exports, screenshots, videos, session exports, `*.tsbuildinfo`, `_astro`, `.next`, and generated app build output.
+- [ ] Commit 138: Add a CI check preventing private founder-ops paths and generated build artifacts from re-entering the repo.
+- [ ] Commit 139: Consolidate duplicate launch/readiness checklists into one public index and move internal variants to the home archive.
+- [ ] Commit 140: Add cleanup report with before/after file counts, deleted public paths, archived local paths, and the final public docs tree.
 
 ### Track 15: Commercial Focus And OSS Signal
 
