@@ -17,7 +17,10 @@ export function CookieConsent() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (getCookieConsent() === null) setVisible(true)
+    const frame = requestAnimationFrame(() => {
+      if (getCookieConsent() === null) setVisible(true)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   const decide = (value: CookieConsentValue) => {

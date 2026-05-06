@@ -110,7 +110,10 @@ function SardisLogo({ color, size = 20 }: { color: string; size?: number }) {
 export default function PricingPage() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   const isDark = mounted && resolvedTheme === "dark"
   const t = isDark ? dark : light
 
