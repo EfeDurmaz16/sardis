@@ -5,6 +5,7 @@
 
   <p>
     <a href="https://sardis.sh">Website</a> ·
+    <a href="https://sardis.sh/manifesto">Manifesto</a> ·
     <a href="https://sardis.sh/docs">Docs</a> ·
     <a href="https://sardis.sh/playground">Playground</a> ·
     <a href="https://sardis.sh/enterprise">Enterprise</a>
@@ -55,11 +56,13 @@ npm install @sardis/ai-sdk
 
 ## 🤔 What is Sardis?
 
-Sardis gives AI agents **non-custodial MPC wallets** with **natural language spending policies**. It prevents financial hallucinations—agents accidentally spending $10k instead of $100—with a real-time policy firewall that validates every transaction before execution.
+Sardis is the open-source financial authority layer for AI agents. It sits between autonomous agents and money-moving systems so every consequential financial action is checked against a mandate, policy decision, approval path, revocation path, and audit packet before execution.
 
-Your Claude agent, LangChain workflow, or autonomous bot gets its own wallet with programmable guardrails: "Max $100/day on cloud services, only approved vendors, no gambling." The agent cannot override these policies.
+Sardis is not a card wrapper, prepaid wallet, or rail-specific payment app. It governs the authority to spend across stablecoin wallets, card programs, fiat payment APIs, x402-style HTTP payments, AP2/TAP mandates, provider-hosted wallets, and simulator rails.
 
-Sardis executes **stablecoin payments** (USDC) on **Base** with multi-chain funding via CCTP v2 (Ethereum, Polygon, Arbitrum, Optimism). Virtual cards are available in pilot via Stripe Issuing.
+The core primitive is verifiable authority before an agent can spend, subscribe, purchase, refund, settle, or trigger paid usage. Customers can bring their own providers; Sardis enforces the authority layer above them without needing to custody funds or become the merchant of record.
+
+The deeper thesis is that agents do not just have a capability problem; they have a trust problem. Sardis treats money as the sharpest version of a broader substrate problem: how non-human actors perform consequential actions with explicit authority, reviewable state transitions, and durable evidence.
 
 ---
 
