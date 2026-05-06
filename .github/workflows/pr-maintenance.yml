@@ -1,0 +1,42 @@
+name: PR Maintenance Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * 1-5"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  report:
+    name: Open PR queue report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Generate Markdown report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/pr_maintenance.py --repo "${{ github.repository }}" > pr-maintenance-report.md
+          cat pr-maintenance-report.md
+
+      - name: Generate JSON report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/pr_maintenance.py --repo "${{ github.repository }}" --json > pr-maintenance-report.json
+          python3 -m json.tool pr-maintenance-report.json >/dev/null
+
+      - name: Upload PR maintenance report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr-maintenance-report
+          path: |
+            pr-maintenance-report.md
+            pr-maintenance-report.json
