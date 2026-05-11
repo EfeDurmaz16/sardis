@@ -57,7 +57,7 @@ protocols = [
     "sardis-a2a>=1.0.0",
     "sardis-ucp>=1.0.0",
 ]
-checkout = ["sardis-checkout>=1.0.0"]
+checkout = ["sardis-checkout>=1.1.0"]
 # Framework integrations
 crewai = ["sardis-crewai>=1.0.0"]
 langchain = ["sardis-langchain>=1.0.0"]
