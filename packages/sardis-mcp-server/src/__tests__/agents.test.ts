@@ -76,6 +76,7 @@ describe('Agent Tools', () => {
         expect(result.isError).toBeFalsy();
 
         const parsed = JSON.parse(result.content[0].text);
+        expect(parsed._simulated).toBe(true);
         expect(Array.isArray(parsed.agents)).toBe(true);
       });
 

@@ -99,7 +99,7 @@ logger = logging.getLogger("sardis_sdk")
 T = TypeVar("T")
 
 # SDK Version
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 
 class LogLevel(str, Enum):

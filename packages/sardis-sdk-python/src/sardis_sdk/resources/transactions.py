@@ -5,7 +5,7 @@ This module provides both async and sync interfaces for transaction operations.
 """
 from __future__ import annotations
 
-from decimal import Decimal  # noqa: TC003 - Pydantic resolves this field type at runtime.
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel

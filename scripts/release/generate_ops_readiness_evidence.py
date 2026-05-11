@@ -12,10 +12,10 @@ from pathlib import Path
 from typing import Any
 
 RUNBOOK_FILES = [
-    "docs/design-partner/ops-slo-alerts-rollback-runbook.md",
-    "docs/design-partner/mainnet-proof-and-rollback-runbook.md",
-    "docs/design-partner/incident-response-247-drill.md",
-    "docs/design-partner/reconciliation-load-chaos-slos.md",
+    "docs/runbooks/ops-readiness.md",
+    "docs/production-runbook.md",
+    "docs/runbooks/incident-response.md",
+    "docs/runbooks/rollback.md",
 ]
 
 

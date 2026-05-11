@@ -39,6 +39,7 @@ env/
 .env.production
 .env.sardis
 .env.sardis.*
+.env.mainnet
 
 # Testing
 .pytest_cache/
@@ -111,14 +112,22 @@ pitch-deck/
 /docs/*
 !/docs/README.md
 !/docs/PRODUCTION_DEPLOYMENT.md
-!/docs/marketing/
-!/docs/design-partner/
-!/docs/design-partner/staging-hardening-checklist.json
+!/docs/production-runbook.md
 !/docs/audits/
 !/docs/quickstart/
 !/docs/docs/
 !/docs/cdp/
+!/docs/runbooks/
+/docs/runbooks/*
+!/docs/runbooks/incident-response.md
+!/docs/runbooks/ops-readiness.md
+!/docs/runbooks/rollback.md
 /demos/sardis-demo-video/
+docs/marketing/
+docs/investor/
+docs/design-partner/
+docs/outreach/
+docs/plans/
 
 # Root-level internal files
 AUDIT_SUMMARY*.md
@@ -137,10 +146,18 @@ SARDIS_TECHNICAL_AUDIT_REPORT.md
 TESTING_GUIDE.md
 YC_APPLICATION.md
 yc_draft.md
+yc-*.md
 comprehensive_analysis.md
 comprehensive_strategic_analysis_2026.md
 DEMO_VIDEO_SCRIPT.md
 PRODUCTION_DEPLOYMENT_GUIDE.md
+LAUNCH_CHECKLIST.md
+OPERATIONAL_CHECKLIST.md
+investor-*.txt
+contact*.csv
+session-export-*.md
+Nonimmigrant Visa*.pdf
+Safari Export*.zip
 
 # Staging env files (secrets)
 .env.staging.*
@@ -199,6 +216,7 @@ site/
 sardis-*.png
 landing-*.png
 t54-homepage.png
+facility-credit-*.png
 
 # MCP config (local)
 .mcp.json
@@ -219,7 +237,7 @@ gv-team.md
 # Long-sprint agent artifacts
 .agent-progress*.json
 .agent-issues*.json
-.claude/ralph-loop.local.md
+.claude/
 
 # AI tool configs (not ours)
 .adal/
@@ -259,3 +277,23 @@ AGENTS.md
 .projects/*
 !.projects/state.json
 .env
+
+# Public repo cleanup boundaries
+drafts/
+mobile/
+video/out/
+brand/
+*.tsbuildinfo
+*.mp4
+apps/canvas-site/_astro/
+apps/canvas-site/css/
+apps/canvas-site/js/
+apps/canvas-site/*/index.html
+apps/canvas-site/index.html
+apps/canvas-site/llms-full.txt
+apps/canvas-site/llms.txt
+apps/canvas-site/robots.txt
+apps/canvas-site/sitemap.xml
+apps/landing/app/landing-alt/
+apps/landing/app/manifesto/
+apps/landing/app/manifesto.txt/
