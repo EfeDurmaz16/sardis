@@ -7,6 +7,24 @@ cd "$ROOT_DIR"
 echo "[issuer-compliance-pack] validating warm-issuing compliance assets"
 
 failures=0
+strict_mode="${SARDIS_STRICT_RELEASE_GATES:-0}"
+environment="$(echo "${SARDIS_ENVIRONMENT:-dev}" | tr '[:upper:]' '[:lower:]')"
+if [[ "$environment" == "prod" || "$environment" == "production" ]]; then
+  strict_mode=1
+fi
+
+if [[ ! -d "docs/design-partner/compliance-pack" ]]; then
+  echo "[issuer-compliance-pack] skipping private design-partner compliance pack (not present in public repo)"
+  if [[ "$strict_mode" == "1" || "$strict_mode" == "true" ]]; then
+    echo "[issuer-compliance-pack][fail] strict mode requires design-partner compliance pack"
+    exit 1
+  fi
+  if ! rg -q 'SARDIS_ISSUING_LIVE_ENABLED' packages/sardis-api/src/sardis_api/routers/cards.py; then
+    echo "[issuer-compliance-pack][fail] cards router must enforce explicit issuing live toggle"
+    exit 1
+  fi
+  exit 0
+fi
 
 require_file() {
   local file="$1"

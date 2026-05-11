@@ -47,23 +47,23 @@
       "max_rpo_sec": 0.0
     }
   },
-  "generated_at": "2026-03-04T08:04:31.359810+00:00",
+  "generated_at": "2026-05-11T20:17:08.552723+00:00",
   "runbooks": [
     {
-      "path": "docs/design-partner/ops-slo-alerts-rollback-runbook.md",
-      "sha256": "ec7eee41c4136c3dbdeecea7c066ec7ed58f552d080b80370e764f85bd4cd6ee"
+      "path": "docs/runbooks/ops-readiness.md",
+      "sha256": "6f92e9dfd80a567f6223cdd1310fcf89049796a52d387746a441180141fd25da"
     },
     {
-      "path": "docs/design-partner/mainnet-proof-and-rollback-runbook.md",
-      "sha256": "e399b1adfb8044fb3155362062c5f04b8c75a7e2c6121693496707bb0cc98441"
+      "path": "docs/production-runbook.md",
+      "sha256": "30d659de4731402d2b1dcdc6eb9166fd93309e6ea95c176bbb318bb57d47aa37"
     },
     {
-      "path": "docs/design-partner/incident-response-247-drill.md",
-      "sha256": "c7a437b8c51dfc946f36f92bae8ae9733a73b68644f75c334e319fa883e0cba5"
+      "path": "docs/runbooks/incident-response.md",
+      "sha256": "2e50cc35788398bf3798f28939f31c39b363e94037f554c5d7c1ce13ebba6efe"
     },
     {
-      "path": "docs/design-partner/reconciliation-load-chaos-slos.md",
-      "sha256": "ec31fe818f924a9ad6a4dee5ec3dfbaae764842fb390eb6c585f1d2734512de9"
+      "path": "docs/runbooks/rollback.md",
+      "sha256": "8d11e2f6ca9912be55239e6f0c6e9c951c51b8decd1dc930eeb92a4d81c8615f"
     }
   ]
 }

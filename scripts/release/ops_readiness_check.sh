@@ -44,10 +44,10 @@ require_match() {
   failures=$((failures + 1))
 }
 
-require_file "docs/design-partner/ops-slo-alerts-rollback-runbook.md"
-require_file "docs/design-partner/mainnet-proof-and-rollback-runbook.md"
-require_file "docs/design-partner/incident-response-247-drill.md"
-require_file "docs/design-partner/reconciliation-load-chaos-slos.md"
+require_file "docs/runbooks/ops-readiness.md"
+require_file "docs/production-runbook.md"
+require_file "docs/runbooks/incident-response.md"
+require_file "docs/runbooks/rollback.md"
 require_file "docs/audits/evidence/turnkey-outage-drill-latest.json"
 require_file "scripts/health_monitor.sh"
 require_file ".github/workflows/monitoring.yml"
@@ -56,17 +56,17 @@ require_match 'schedule:' .github/workflows/monitoring.yml "monitoring workflow 
 require_match 'SLACK_WEBHOOK_URL' .github/workflows/monitoring.yml "monitoring workflow must support slack alerting"
 require_match 'api/v2/health' .github/workflows/monitoring.yml "monitoring workflow must check API health endpoint"
 
-require_match 'SLO' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must define SLOs"
-require_match 'Rollback' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must define rollback procedures"
-require_match 'Cloud Run' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include API rollback"
-require_match 'Vercel' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must include frontend rollback"
-require_match 'SARDIS_ALERT_SEVERITY_CHANNELS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document severity routing"
-require_match 'SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document cooldown tuning"
-require_match 'PAGERDUTY_ROUTING_KEY' docs/design-partner/ops-slo-alerts-rollback-runbook.md "ops runbook must document PagerDuty routing"
-require_match 'PagerDuty' docs/design-partner/incident-response-247-drill.md "incident drill doc must include PagerDuty escalation path"
-require_match 'Mainnet' docs/design-partner/mainnet-proof-and-rollback-runbook.md "mainnet proof runbook must be explicit"
-require_match 'SEV-1' docs/design-partner/incident-response-247-drill.md "incident drill doc must define severity tiers"
-require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "reconciliation chaos doc must define SLOs"
+require_match 'SLO' docs/runbooks/ops-readiness.md "ops runbook must define SLOs"
+require_match 'Rollback' docs/runbooks/ops-readiness.md "ops runbook must define rollback procedures"
+require_match 'Cloud Run' docs/runbooks/ops-readiness.md "ops runbook must include API rollback"
+require_match 'Vercel' docs/runbooks/ops-readiness.md "ops runbook must include frontend rollback"
+require_match 'SARDIS_ALERT_SEVERITY_CHANNELS_JSON' docs/runbooks/ops-readiness.md "ops runbook must document severity routing"
+require_match 'SARDIS_ALERT_CHANNEL_COOLDOWNS_JSON' docs/runbooks/ops-readiness.md "ops runbook must document cooldown tuning"
+require_match 'PAGERDUTY_ROUTING_KEY' docs/runbooks/ops-readiness.md "ops runbook must document PagerDuty routing"
+require_match 'PagerDuty' docs/runbooks/ops-readiness.md "ops runbook must include PagerDuty escalation path"
+require_match 'production' docs/production-runbook.md "production runbook must be explicit"
+require_match 'P0' docs/runbooks/incident-response.md "incident runbook must define severity tiers"
+require_match 'SLO' docs/runbooks/ops-readiness.md "reconciliation chaos doc must define SLOs"
 
 echo "[ops-readiness] running alert routing smoke tests"
 "${python_cmd[@]}" -m pytest -q \

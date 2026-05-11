@@ -1,7 +1,7 @@
 """Webhook models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
+from datetime import datetime
 from enum import Enum
 from typing import Any
 

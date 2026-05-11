@@ -1,8 +1,8 @@
 """Hold (pre-authorization) models for Sardis SDK."""
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 - Pydantic resolves this field type at runtime.
-from decimal import Decimal  # noqa: TC003 - Pydantic resolves this field type at runtime.
+from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 
 from pydantic import Field

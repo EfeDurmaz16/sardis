@@ -169,6 +169,12 @@ export const handlers = [
     }),
 
     // Agents - Default handlers (can be overridden in tests)
+    http.post('*/api/v2/agents/auto-register', () => {
+        return HttpResponse.json({
+            agent_id: 'agent_auto_registered',
+            status: 'registered',
+        });
+    }),
     http.get('https://api.sardis.sh/api/v2/agents', () => {
         return HttpResponse.json([mockResponses.agent]);
     }),

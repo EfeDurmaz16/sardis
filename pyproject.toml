@@ -81,9 +81,9 @@ dev = [
 
 [project.urls]
 Homepage = "https://sardis.sh"
-Documentation = "https://sardis.sh/docs"
+Documentation = "https://docs.sardis.sh"
 Repository = "https://github.com/EfeDurmaz16/sardis"
-Changelog = "https://sardis.sh/docs/changelog"
+Changelog = "https://docs.sardis.sh/changelog"
 
 [tool.hatch.build.targets.wheel]
 packages = ["sardis"]

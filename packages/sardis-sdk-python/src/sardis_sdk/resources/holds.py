@@ -5,6 +5,7 @@ This module provides both async and sync interfaces for hold (pre-authorization)
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from ..models.hold import (
@@ -15,8 +16,6 @@ from ..models.hold import (
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from decimal import Decimal
-
     from ..client import TimeoutConfig
 
 

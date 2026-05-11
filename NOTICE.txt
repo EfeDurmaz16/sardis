@@ -1,2 +1,2 @@
-Sardis - Programmable Payment Rails for AI Agents
-Copyright (c) 2025 Efe Baran Durmaz
+Sardis - Open-source financial authority layer for AI agents
+Copyright (c) 2026 Sardis Labs, Inc.

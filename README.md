@@ -6,7 +6,7 @@
   <p>
     <a href="https://sardis.sh">Website</a> ·
     <a href="https://sardis.sh/manifesto">Manifesto</a> ·
-    <a href="https://sardis.sh/docs">Docs</a> ·
+    <a href="https://docs.sardis.sh">Docs</a> ·
     <a href="https://sardis.sh/playground">Playground</a> ·
     <a href="https://sardis.sh/enterprise">Enterprise</a>
   </p>
@@ -14,13 +14,38 @@
   <p>
     <a href="https://www.npmjs.com/package/@sardis/mcp-server"><img src="https://img.shields.io/npm/v/@sardis/mcp-server?label=npm%20%40sardis%2Fmcp-server" alt="npm version"></a>
     <a href="https://pypi.org/project/sardis/"><img src="https://img.shields.io/pypi/v/sardis?label=PyPI%20sardis" alt="PyPI version"></a>
-    <a href="LICENSE.txt"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
     <a href="https://github.com/EfeDurmaz16/sardis/stargazers"><img src="https://img.shields.io/github/stars/EfeDurmaz16/sardis?style=social" alt="GitHub stars"></a>
     <a href="https://github.com/EfeDurmaz16/sardis/commits/main"><img src="https://img.shields.io/github/last-commit/EfeDurmaz16/sardis" alt="Last commit"></a>
     <a href="https://securityscorecards.dev/viewer/?uri=github.com/EfeDurmaz16/sardis"><img src="https://api.securityscorecards.dev/projects/github.com/EfeDurmaz16/sardis/badge" alt="OpenSSF Scorecard"></a>
     <a href="https://discord.gg/XMA9JwDJ"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   </p>
 </div>
+
+---
+
+## What Sardis Is
+
+Sardis is the open-source financial authority layer for AI agents. It sits between autonomous agents and money-moving systems so every consequential financial action is checked against a mandate, policy decision, approval path, revocation path, and audit packet before execution.
+
+Sardis is not a card wrapper, prepaid wallet, or rail-specific payment app. It governs the authority to spend across stablecoin wallets, card programs, fiat payment APIs, x402-style HTTP payments, AP2/TAP mandates, provider-hosted wallets, and simulator rails.
+
+The core primitive is verifiable authority before an agent can spend, subscribe, purchase, refund, settle, or trigger paid usage. Customers can bring their own providers; Sardis enforces the authority layer above them without needing to custody funds or become the merchant of record.
+
+The deeper thesis is that agents do not just have a capability problem; they have a trust problem. Sardis treats money as the sharpest version of a broader substrate problem: how non-human actors perform consequential actions with explicit authority, reviewable state transitions, and durable evidence.
+
+| Layer | Open source | Hosted / commercial |
+|-------|-------------|---------------------|
+| Authority model | Mandates, policies, approvals, revocation, audit packets | Same semantics with managed org, RBAC, SSO, retention, and support |
+| Provider execution | Adapter interfaces, simulator, BYO credentials | Managed credential vault, webhook handling, alerts, provider routing |
+| Developer surface | SDKs, MCP server, examples, protocol adapters | Hosted dashboard, approval inbox, compliance workflows, audit export |
+
+Read the boundaries:
+
+- [Open-core model](OPEN_CORE.md)
+- [Provider abstraction](PROVIDER_ABSTRACTION.md)
+- [Legal and compliance disclaimer](DISCLAIMER.md)
+- [Agent authority demo](examples/agent-authority-demo/)
 
 ---
 
@@ -54,15 +79,20 @@ npm install @sardis/ai-sdk
 
 ---
 
-## 🤔 What is Sardis?
+## What Problems Sardis Solves
 
-Sardis is the open-source financial authority layer for AI agents. It sits between autonomous agents and money-moving systems so every consequential financial action is checked against a mandate, policy decision, approval path, revocation path, and audit packet before execution.
+AI agents can draft invoices, call paid APIs, buy tools, book travel, issue refunds, subscribe to services, and interact with merchants. The missing layer is not only "payments." It is the authority system that decides whether the agent was allowed to do the financial action in the first place.
 
-Sardis is not a card wrapper, prepaid wallet, or rail-specific payment app. It governs the authority to spend across stablecoin wallets, card programs, fiat payment APIs, x402-style HTTP payments, AP2/TAP mandates, provider-hosted wallets, and simulator rails.
+Sardis provides:
 
-The core primitive is verifiable authority before an agent can spend, subscribe, purchase, refund, settle, or trigger paid usage. Customers can bring their own providers; Sardis enforces the authority layer above them without needing to custody funds or become the merchant of record.
+- **Mandates** -- who delegated authority to the agent, for what scope, under which limits.
+- **Policy firewall** -- deterministic checks before execution or signing.
+- **Approvals** -- step-up flows for high-risk, high-value, or ambiguous actions.
+- **Revocation** -- stop future execution when authority changes.
+- **Provider adapters** -- route approved actions to wallets, cards, stablecoins, payment APIs, or simulators.
+- **Audit packets** -- immutable evidence for operators, customers, partners, and reviewers.
 
-The deeper thesis is that agents do not just have a capability problem; they have a trust problem. Sardis treats money as the sharpest version of a broader substrate problem: how non-human actors perform consequential actions with explicit authority, reviewable state transitions, and durable evidence.
+Sardis can route approved actions to provider adapters. Live-money deployments depend on the configured provider account, jurisdiction, compliance program, and customer policy.
 
 ---
 
@@ -70,33 +100,34 @@ The deeper thesis is that agents do not just have a capability problem; they hav
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Spending Policy Engine | **Production** | Deterministic NL-to-policy, atomic spend tracking |
-| AP2 Mandate Verification | **Production** | Full mandate chain verification with evidence |
-| USDC Payments (Base) | **Production** | Non-custodial MPC wallet execution |
-| Policy Attestation API | **Production** | Signed attestation envelopes with Ed25519 |
-| PreExecutionPipeline | **Production** | Composable hook chain with fail-closed defaults |
+| Spending Policy Engine | **Implemented** | Deterministic NL-to-policy, atomic spend tracking |
+| AP2 Mandate Verification | **Implemented** | Full mandate chain verification with evidence |
+| Provider Adapter Model | **Implemented** | Rail-agnostic execution contract and simulator-first semantics |
+| Policy Attestation API | **Implemented** | Signed attestation envelopes with Ed25519 |
+| PreExecutionPipeline | **Implemented** | Composable hook chain with fail-closed defaults |
 | Hosted Checkout | **Pilot** | Merchant checkout flows with session security |
 | ERC-8183 Agentic Jobs | **Pilot** | On-chain job escrow (conservative caps: 1% fee, USDC-only) |
 | x402 Protocol | **Pilot** | HTTP-native micropayments |
-| Virtual Cards (Stripe Issuing) | **Pilot** | Agent-controlled virtual card issuance |
+| Card Provider Adapters | **Pilot** | Provider-backed virtual card execution behind explicit capability checks |
+| Stablecoin Provider Adapters | **Pilot** | Provider-backed stablecoin execution behind explicit capability checks |
 | Multi-chain (Polygon, Arbitrum) | **Experimental** | Chain routing implemented, not production-tested |
 | UCP MCP Transport | **Experimental** | Partial implementation |
 | FIDES Trust Graph | **Experimental** | DID-based trust federation |
 
-> **Status key:** **Production** = deployed, tested, load-bearing. **Pilot** = functional with design partners, conservative limits. **Experimental** = code exists, not production-tested.
+> **Status key:** **Implemented** = code and tests exist in the public repository. **Pilot** = functional with conservative limits and active hardening. **Experimental** = code exists, not production-tested.
 
 ---
 
 ## Key Features
 
-- **Non-custodial MPC wallets** -- Turnkey integration, zero private key exposure
-- **Natural language spending policies** -- "Max $50/tx, $200/day, SaaS vendors only"
-- **Financial hallucination prevention** -- Policy firewall blocks invalid transactions
+- **Provider-neutral authority layer** -- govern cards, wallets, stablecoins, payment APIs, x402, AP2, TAP, and simulator rails
+- **Mandates and spending policy** -- "Max $50/tx, $200/day, SaaS vendors only"
+- **Pre-execution policy firewall** -- fail-closed checks before signing, issuing, paying, refunding, or settling
+- **Approval and revocation flows** -- step-up before risky actions, kill switch when authority changes
+- **Provider adapter contract** -- capability declarations, idempotency, signed webhooks, revocation windows, audit fields
 - **15+ AI framework integrations** -- LangChain, CrewAI, OpenAI Agents, Claude SDK, Google ADK, A2A, AgentKit, Vercel AI SDK, MCP, and more
-- **Virtual cards (Pilot)** -- Stripe Issuing for agent-controlled fiat payments
 - **Agent-to-agent escrow** -- Cryptographic mandate chain for A2A payments
 - **KYA (Know Your Agent)** -- Trust scoring and behavioral anomaly detection
-- **Base + Tempo (production)** -- Multi-chain settlement via CCTP v2, live on Tempo mainnet since March 2026
 - **Double-entry audit ledger** -- Append-only transaction history with cryptographic proofs
 - **Protocol support** -- AP2 and TAP (production), x402 (pilot), UCP and A2A (partial)
 
@@ -155,7 +186,7 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-**That's it.** Your agent now has a wallet with spending limits.
+**That's it.** Your agent now has a bounded financial authority surface instead of unconstrained payment access.
 
 ---
 
@@ -173,13 +204,13 @@ Add to your `claude_desktop_config.json`:
 | **LlamaIndex** | `sardis` | `pip install sardis` |
 | **Mastra** | `@sardis/sdk` | `npm install @sardis/sdk` |
 
-All frameworks use the same policy engine and MPC wallet infrastructure.
+All frameworks use the same policy engine, mandate model, provider adapters, and audit semantics.
 
 ---
 
 ## Architecture
 
-Every payment follows a **single execution path** through the `PaymentOrchestrator`. There are no alternative code paths that bypass policy checks.
+Every financial action follows a **single authority path** before execution. There are no alternative code paths that bypass policy checks.
 
 ```
                          AI AGENT
@@ -188,7 +219,7 @@ Every payment follows a **single execution path** through the `PaymentOrchestrat
                      MCP / SDK
                           |
             ┌─────────────┴─────────────┐
-            │    PaymentOrchestrator     │
+            │  FinancialActionOrchestrator│
             │    (single entry point)    │
             └─────────────┬─────────────┘
                           |
@@ -207,15 +238,15 @@ Every payment follows a **single execution path** through the `PaymentOrchestrat
             └─────────────┬─────────────┘
                           |
             ┌─────────────┴─────────────┐
-            │   MPC SIGNING (Turnkey)   │
-            │   Non-custodial keys      │
+            │   PROVIDER ADAPTER        │
+            │   Cards / wallets / APIs  │
             └─────────────┬─────────────┘
                           |
                +──────────┴──────────+
                |                     |
-         On-Chain Rails         Fiat Rails
-         USDC on Base          Virtual Cards
-         (+ CCTP v2 funding)   (Stripe Issuing)
+         Stablecoin Rails      Fiat / Card Rails
+         Wallet providers      Payment providers
+         x402 / AP2 / TAP      BYO provider acct
                |                     |
          ┌─────┴─────┐         ┌────┴────┐
          │  LEDGER   │         │  LEDGER │
@@ -226,7 +257,7 @@ Every payment follows a **single execution path** through the `PaymentOrchestrat
 
 **Key design principles:**
 - **Fail-closed** -- Default deny on all policy, compliance, and security checks
-- **Non-custodial** -- Private keys never stored; MPC signing via Turnkey
+- **Provider-neutral** -- Sardis governs execution without requiring one custody, wallet, card, or payment provider
 - **Audit everything** -- Append-only ledger with signed attestation envelopes for every decision
 
 ---
@@ -243,7 +274,7 @@ sardis/
 │   ├── sardis-wallet/      # Wallet management, MPC
 │   ├── sardis-ledger/      # Append-only audit trail
 │   ├── sardis-compliance/  # KYC (iDenfy) + AML (Elliptic)
-│   ├── sardis-cards/       # Virtual cards (Stripe Issuing)
+│   ├── sardis-cards/       # Card provider adapter experiments
 │   ├── sardis-mcp-server/  # MCP server for Claude/Cursor
 │   ├── sardis-sdk-python/  # Full Python SDK
 │   ├── sardis-sdk-js/      # TypeScript SDK
@@ -255,14 +286,14 @@ sardis/
 │       ├── SardisWalletFactory.sol
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
-├── dashboard/              # React admin dashboard
-├── landing/                # Marketing website
-├── mobile/                 # React Native companion app
+├── apps/
+│   ├── dashboard/          # React admin dashboard
+│   ├── landing/            # Public website
+│   └── canvas-site/        # Technical canvas source
 ├── playground/             # Interactive demo sandbox
 ├── examples/               # Usage examples
 ├── demos/                  # Demo applications
-├── docs/                   # Documentation
-│   └── marketing/          # GTM content and strategies
+├── docs/                   # Public technical documentation
 └── tests/                  # Integration tests
 ```
 
@@ -270,14 +301,14 @@ sardis/
 
 ## 📚 Documentation
 
-- **[Getting Started Guide](https://sardis.sh/docs/getting-started)** — First payment in 5 minutes
-- **[API Reference](https://sardis.sh/docs/api)** — Complete endpoint documentation
-- **[MCP Server Setup](https://sardis.sh/docs/mcp)** — Claude Desktop integration
-- **[Policy Language](https://sardis.sh/docs/policies)** — Write spending rules in plain English
-- **[Chain Support](https://sardis.sh/docs/chains)** — Supported networks and tokens
-- **[Framework Guides](https://sardis.sh/docs/frameworks)** — LangChain, OpenAI, Vercel AI SDK
-- **[Security Model](https://sardis.sh/docs/security)** — MPC architecture and threat model
-- **[Compliance](https://sardis.sh/docs/compliance)** — KYC/AML/SAR framework
+- **[Getting Started Guide](https://docs.sardis.sh/getting-started)** — First payment in 5 minutes
+- **[API Reference](https://docs.sardis.sh/api)** — Complete endpoint documentation
+- **[MCP Server Setup](https://docs.sardis.sh/mcp)** — Claude Desktop integration
+- **[Policy Language](https://docs.sardis.sh/policies)** — Write spending rules in plain English
+- **[Chain Support](https://docs.sardis.sh/chains)** — Supported networks and tokens
+- **[Framework Guides](https://docs.sardis.sh/frameworks)** — LangChain, OpenAI, Vercel AI SDK
+- **[Security Model](https://docs.sardis.sh/security)** — MPC architecture and threat model
+- **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
 
 ---
@@ -315,7 +346,7 @@ uvicorn sardis_api.main:create_app --factory --port 8000
 ## 🔗 Links
 
 - **Website**: [sardis.sh](https://sardis.sh)
-- **Documentation**: [sardis.sh/docs](https://sardis.sh/docs)
+- **Documentation**: [docs.sardis.sh](https://docs.sardis.sh)
 - **Playground**: [sardis.sh/playground](https://sardis.sh/playground)
 - **GitHub**: [github.com/EfeDurmaz16/sardis](https://github.com/EfeDurmaz16/sardis)
 - **Discord**: [discord.gg/XMA9JwDJ](https://discord.gg/XMA9JwDJ)
@@ -325,29 +356,25 @@ uvicorn sardis_api.main:create_app --factory --port 8000
 
 ---
 
-## 📄 License
+## 📄 License And Open-Core Boundary
 
-This project uses an **open-core licensing model**:
+The public repository is licensed under the terms in [LICENSE](LICENSE). See [OPEN_CORE.md](OPEN_CORE.md) for the product boundary between the open-source authority layer and the hosted Sardis Cloud operations layer.
 
-- **MIT License** — SDKs, MCP Server, Integration Adapters, CLI tools
-  - `sardis` (Python meta-package)
-  - `@sardis/sdk`, `@sardis/mcp-server`, `@sardis/ai-sdk`
-  - All integration adapters and examples
+The intended split is:
 
-- **Proprietary** — Core banking infrastructure, policy engine internals, MPC node management
-
-See [LICENSE.txt](LICENSE.txt) for full details.
+- **Open source** -- mandate semantics, policy evaluation, provider interfaces, simulator providers, SDKs, protocol adapters, examples, and audit schemas.
+- **Hosted / commercial** -- dashboard, RBAC/SSO, approval inbox, managed provider credentials, webhook operations, compliance workflows, audit retention, alerts, and support.
 
 ---
 
 <div align="center">
   <p>
-    <strong>Sardis</strong> — open-source financial authority layer for AI agents
+    <strong>Sardis</strong> -- Open-source financial authority for AI agents
     <br/>
-    Non-Custodial | MCP Native | Financial Hallucination Prevention
+    Mandates | Provider Adapters | Approvals | Revocation | Audit
   </p>
   <p>
-    Built with ❤️ for the AI agent ecosystem
+    Built for the AI agent ecosystem
     <br/>
     &copy; 2026 Efe Baran Durmaz
   </p>

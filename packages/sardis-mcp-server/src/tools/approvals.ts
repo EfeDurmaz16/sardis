@@ -200,7 +200,7 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
             vendor: 'Example Vendor',
             amount: 500,
             purpose: 'Service payment',
-            status: 'simulated_pending',
+            status,
             urgency: 'medium',
             requested_by: 'agent_simulated',
             created_at: new Date(Date.now() - 3600000).toISOString(),
