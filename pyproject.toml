@@ -76,7 +76,7 @@ dev = [
     "pytest-cov>=4.1",
     "hypothesis>=6.112",
     "mypy>=1.8",
-    "ruff>=0.2",
+    "ruff>=0.15.12",
 ]
 
 [project.urls]
@@ -149,7 +149,7 @@ dev = [
     "pytest-cov>=4.1",
     "hypothesis>=6.112",
     "mypy>=1.8",
-    "ruff>=0.2",
+    "ruff>=0.15.12",
     # Required by root-level tests that import from sardis-api, sardis-chain, etc.
     "fastapi>=0.115,<1.0",
     "starlette>=0.41",
