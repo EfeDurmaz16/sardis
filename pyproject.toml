@@ -53,7 +53,7 @@ cards = ["sardis-cards>=1.0.0"]
 ramp = ["sardis-ramp>=1.0.0"]
 api = ["sardis-api>=1.0.0"]
 protocols = [
-    "sardis-protocol>=1.0.0",
+    "sardis-protocol>=1.1.0",
     "sardis-a2a>=1.0.0",
     "sardis-ucp>=1.0.0",
 ]
