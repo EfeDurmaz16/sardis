@@ -1,4 +1,4 @@
-# Dependabot configuration for automated dependency updates
+# Dependabot configuration for security-focused dependency updates
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 
 version: 2
@@ -11,7 +11,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    # Keep root workspace version updates quiet while preserving security updates.
+    # Keep version-update PR noise quiet while preserving security updates.
     open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
@@ -40,7 +40,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -64,7 +65,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -93,7 +95,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -118,7 +121,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -143,7 +147,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -168,7 +173,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 3
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -194,7 +200,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 3
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -220,7 +227,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -238,7 +246,8 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 3
+    # Keep version-update PR noise quiet while preserving security updates.
+    open-pull-requests-limit: 0
     reviewers:
       - "sardis-maintainers"
     labels:
@@ -249,8 +258,5 @@ updates:
       include: "scope"
 
 # Security-focused settings
-# Dependabot will automatically:
-# - Create PRs for security updates immediately (not just weekly)
-# - Prioritize security updates over regular updates
-# - Group minor/patch updates to reduce PR noise
-# - Auto-merge patch updates (if auto-merge is enabled in repo settings)
+# Dependabot security updates remain controlled by GitHub security settings.
+# The entries above intentionally suppress scheduled version-update PR noise.
