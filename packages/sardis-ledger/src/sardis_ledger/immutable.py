@@ -410,8 +410,8 @@ class ImmutableAuditTrail:
             from immudb import ImmudbClient
         except ImportError:
             raise ImportError(
-                "immudb-py is required for immutable audit trail. "
-                "Install with: pip install sardis-ledger[immudb]"
+                "An immudb Python client is required for immutable audit trail. "
+                "Install and review a compatible client explicitly before enabling immudb mode."
             )
 
         self._client = ImmudbClient(

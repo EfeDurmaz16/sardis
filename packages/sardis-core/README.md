@@ -26,7 +26,7 @@ pip install sardis-core
 ### Optional Dependencies
 
 ```bash
-# For natural language policy parsing (OpenAI-powered)
+# For natural language policy parsing (OpenAI-compatible SDK)
 pip install sardis-core[nl-parser]
 
 # For Redis-based spending tracking

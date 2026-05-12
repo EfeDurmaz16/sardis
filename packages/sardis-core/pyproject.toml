@@ -51,7 +51,6 @@ ml = [
     "scipy>=1.11",
 ]
 nl-parser = [
-    "instructor>=1.0",
     "openai>=1.0",
 ]
 spending-tracker = [
@@ -69,7 +68,6 @@ dev = [
     "ruff>=0.1",
 ]
 all = [
-    "instructor>=1.0",
     "openai>=1.0",
     "redis>=5.0",
 ]

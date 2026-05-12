@@ -29,7 +29,8 @@ pip install sardis-ledger
 # PostgreSQL async support
 pip install sardis-ledger[postgres]
 
-# immudb for verified immutability
+# immudb adapter surface. The extra is intentionally dependency-free until
+# immudb-py removes its no-patch python-ecdsa dependency.
 pip install sardis-ledger[immudb]
 
 # Blockchain anchoring
@@ -169,6 +170,11 @@ for disc in report.discrepancies:
 ```
 
 ### Immutable Audit Trail (with immudb)
+
+The immudb adapter requires an immudb Python client at runtime. Sardis does not
+install `immudb-py` transitively because its current dependency chain includes
+`python-ecdsa`, which has an open GitHub security advisory without a patched
+release. Install a reviewed immudb client explicitly before enabling this mode.
 
 ```python
 from sardis_ledger import create_audit_trail, ImmutableConfig

@@ -45,7 +45,8 @@ postgres = [
     "asyncpg>=0.28.0",
 ]
 immudb = [
-    "immudb-py>=1.5.0",
+    # immudb-py currently depends on python-ecdsa, which has an open no-patch GHSA.
+    # Keep the extra name stable, but do not install the vulnerable client transitively.
 ]
 anchoring = [
     "web3>=6.0.0",

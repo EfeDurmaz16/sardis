@@ -141,6 +141,8 @@ ignore = [
 
 [tool.uv.sources]
 sardis-cli = { path = "packages/sardis-cli", editable = true }
+sardis-core = { path = "packages/sardis-core", editable = true }
+sardis-ledger = { path = "packages/sardis-ledger", editable = true }
 
 [dependency-groups]
 dev = [
