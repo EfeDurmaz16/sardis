@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-
 from sardis_api.routers import agent_auth
 from sardis_api.routers.agent_auth import _verify_agent_jwt
 

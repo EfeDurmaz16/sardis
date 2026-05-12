@@ -117,6 +117,7 @@ ignore = [
     "PLR0915",  # too many statements
     "PLR0911",  # too many return statements
     "UP035",    # deprecated import
+    "TC003",    # Pydantic models need runtime stdlib type symbols for model rebuilds
 ]
 
 [tool.ruff.lint.per-file-ignores]

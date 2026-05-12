@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 
 const STORAGE_KEY = "sardis:cookie-consent"
@@ -14,11 +14,7 @@ export function getCookieConsent(): CookieConsentValue | null {
 }
 
 export function CookieConsent() {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    if (getCookieConsent() === null) setVisible(true)
-  }, [])
+  const [visible, setVisible] = useState(() => getCookieConsent() === null)
 
   const decide = (value: CookieConsentValue) => {
     window.localStorage.setItem(STORAGE_KEY, value)

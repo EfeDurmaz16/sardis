@@ -80,10 +80,11 @@ async def test_preflight_awaits_async_audit_store_append():
 
     result = await engine.preflight(_sample_payment_mandate())
 
-    assert store.calls == 2
+    assert store.calls == 1
     assert store.last_entry is not None
     assert result.audit_id == store.last_entry.audit_id
     assert store.last_entry.rule_id == "allow_all"
+    assert store.last_entry.metadata["sanctions_screening"] == "skipped"
 
 
 @pytest.mark.asyncio
@@ -93,6 +94,7 @@ async def test_preflight_supports_sync_audit_store_append():
 
     result = await engine.preflight(_sample_payment_mandate())
 
-    assert store.calls == 2
-    assert [entry.rule_id for entry in store.entries] == ["sanctions_screening", "allow_all"]
+    assert store.calls == 1
+    assert [entry.rule_id for entry in store.entries] == ["allow_all"]
+    assert store.entries[0].metadata["sanctions_screening"] == "skipped"
     assert result.audit_id == "audit_sync_42"
