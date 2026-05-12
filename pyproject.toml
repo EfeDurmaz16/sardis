@@ -71,7 +71,7 @@ all = [
     "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout,guardrails]",
 ]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.23",
     "pytest-cov>=4.1",
     "hypothesis>=6.112",
@@ -144,7 +144,7 @@ sardis-cli = { path = "packages/sardis-cli", editable = true }
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.23",
     "pytest-cov>=4.1",
     "hypothesis>=6.112",
