@@ -4,6 +4,35 @@
 version: 2
 
 updates:
+  # Root JavaScript workspace and lockfile
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Keep root workspace version updates quiet while preserving security updates.
+    open-pull-requests-limit: 0
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "workspace"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      root-npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   # Python dependencies (uv)
   - package-ecosystem: "pip"
     directory: "/"
@@ -84,7 +113,7 @@ updates:
 
   # Landing page
   - package-ecosystem: "npm"
-    directory: "/landing"
+    directory: "/apps/landing"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -109,7 +138,7 @@ updates:
 
   # Dashboard
   - package-ecosystem: "npm"
-    directory: "/dashboard"
+    directory: "/apps/dashboard"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -126,6 +155,58 @@ updates:
       include: "scope"
     groups:
       dashboard-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Shared web UI package
+  - package-ecosystem: "npm"
+    directory: "/packages/ui-web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "frontend"
+      - "ui-web"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      ui-web-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # Checkout UI package
+  - package-ecosystem: "npm"
+    directory: "/packages/sardis-checkout-ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "sardis-maintainers"
+    labels:
+      - "dependencies"
+      - "typescript"
+      - "frontend"
+      - "checkout-ui"
+    commit-message:
+      prefix: "fix(deps)"
+      include: "scope"
+    groups:
+      checkout-ui-minor-patch:
         patterns:
           - "*"
         update-types:

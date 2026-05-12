@@ -1,7 +1,5 @@
 packages:
   - 'apps/*'
   - 'packages/*'
-  - 'landing'
-  - 'dashboard'
   - 'demos/*'
   - 'docs-site'
