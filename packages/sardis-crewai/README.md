@@ -10,6 +10,14 @@ Build multi-agent financial workflows where AI agents can make real payments, en
 pip install sardis-crewai
 ```
 
+The base package keeps the Sardis tool surface usable without installing the
+full CrewAI runtime. Install the runtime extra when you want CrewAI's own
+`Agent`, `Crew`, and task orchestration classes in the same environment:
+
+```bash
+pip install "sardis-crewai[crewai]"
+```
+
 ## Quick Start
 
 ### Using Individual Tools
