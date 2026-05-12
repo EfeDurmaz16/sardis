@@ -7785,6 +7785,7 @@ dev = [
     { name = "greenlet" },
     { name = "hypothesis" },
     { name = "mypy" },
+    { name = "numpy" },
     { name = "prometheus-client" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyjwt" },
@@ -7795,6 +7796,7 @@ dev = [
     { name = "python-multipart" },
     { name = "respx" },
     { name = "ruff" },
+    { name = "scipy" },
     { name = "sqlalchemy" },
     { name = "starlette" },
     { name = "web3" },
@@ -7822,11 +7824,11 @@ requires-dist = [
     { name = "sardis-cli", editable = "packages/sardis-cli" },
     { name = "sardis-compliance", marker = "extra == 'compliance'", specifier = ">=1.0.0" },
     { name = "sardis-composio", marker = "extra == 'composio'", specifier = ">=1.0.0" },
-    { name = "sardis-core", specifier = ">=1.0.0" },
+    { name = "sardis-core", editable = "packages/sardis-core" },
     { name = "sardis-crewai", marker = "extra == 'crewai'", specifier = ">=1.0.0" },
     { name = "sardis-guardrails", marker = "extra == 'guardrails'", specifier = ">=1.0.0" },
     { name = "sardis-langchain", marker = "extra == 'langchain'", specifier = ">=1.0.0" },
-    { name = "sardis-ledger", marker = "extra == 'ledger'", specifier = ">=1.0.0" },
+    { name = "sardis-ledger", marker = "extra == 'ledger'", editable = "packages/sardis-ledger" },
     { name = "sardis-openai-agents", marker = "extra == 'openai-agents'", specifier = ">=1.0.0" },
     { name = "sardis-protocol", marker = "extra == 'protocols'", specifier = ">=1.0.0" },
     { name = "sardis-ramp", marker = "extra == 'ramp'", specifier = ">=1.0.0" },
@@ -7843,6 +7845,7 @@ dev = [
     { name = "greenlet", specifier = ">=3.0,<4.0" },
     { name = "hypothesis", specifier = ">=6.112" },
     { name = "mypy", specifier = ">=1.8" },
+    { name = "numpy", specifier = ">=2.0" },
     { name = "prometheus-client", specifier = ">=0.20" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1,<4.0" },
     { name = "pyjwt", specifier = ">=2.12.0" },
@@ -7853,6 +7856,7 @@ dev = [
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "respx", specifier = ">=0.22.0" },
     { name = "ruff", specifier = ">=0.2" },
+    { name = "scipy", specifier = ">=1.11" },
     { name = "sqlalchemy", specifier = ">=2.0,<3.0" },
     { name = "starlette", specifier = ">=0.41" },
     { name = "web3", specifier = ">=6.0" },
@@ -8042,8 +8046,8 @@ wheels = [
 
 [[package]]
 name = "sardis-core"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-core" }
 dependencies = [
     { name = "aiohttp" },
     { name = "apscheduler" },
@@ -8052,12 +8056,33 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pynacl" },
-    { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2c/43/78a0b81d36ae70c5a5f37efba3a5a070bdaee2c6a087e5d0ef703b50b99b/sardis_core-1.0.0.tar.gz", hash = "sha256:802c4d43a8ff8a63201a57c58f938f7a26b9c8d11aef5e7f294dbf95bb1990c3", size = 347822, upload-time = "2026-03-08T12:07:05.861Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/35/1d44c2f13721d30c02e89cd0f6dda2ac04dfb5b800bed19ac5b908e5b9b7/sardis_core-1.0.0-py3-none-any.whl", hash = "sha256:5c08a20329b24b28ce717780a8a3a0bae5750c60b94805b4ee78a11da6f17ccc", size = 368448, upload-time = "2026-03-08T12:07:03.986Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.8" },
+    { name = "apscheduler", specifier = ">=3.10" },
+    { name = "asyncpg", specifier = ">=0.29" },
+    { name = "cryptography", specifier = ">=41.0" },
+    { name = "hypothesis", marker = "extra == 'dev'", specifier = ">=6.112" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "openai", marker = "extra == 'all'", specifier = ">=1.0" },
+    { name = "openai", marker = "extra == 'nl-parser'", specifier = ">=1.0" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pydantic-settings", specifier = ">=2.0" },
+    { name = "pynacl", specifier = ">=1.5" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "redis", marker = "extra == 'all'", specifier = ">=5.0" },
+    { name = "redis", marker = "extra == 'spending-tracker'", specifier = ">=5.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "scipy", marker = "extra == 'all'", specifier = ">=1.11" },
+    { name = "scipy", marker = "extra == 'dev'", specifier = ">=1.11" },
+    { name = "scipy", marker = "extra == 'ml'", specifier = ">=1.11" },
+    { name = "temporalio", marker = "extra == 'temporal'", specifier = ">=1.4" },
 ]
+provides-extras = ["ml", "nl-parser", "spending-tracker", "temporal", "dev", "all"]
 
 [[package]]
 name = "sardis-crewai"
@@ -8101,16 +8126,25 @@ wheels = [
 
 [[package]]
 name = "sardis-ledger"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-ledger" }
 dependencies = [
     { name = "sardis-core" },
-    { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ca/7b/86633d3e9493195e4eb58b2dcee5534db841c7cbf62e64b374e16b7900d1/sardis_ledger-1.0.0.tar.gz", hash = "sha256:f4c0852c09c78d267203548faf5b72f1af0cfa4c8f2418418c0b1a89efcb3e18", size = 73889, upload-time = "2026-03-08T12:07:35.088Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/ad/bff8a5acb1e6f552f56f7d0b4c91d040c149e654cbeaf010b33ffed59130/sardis_ledger-1.0.0-py3-none-any.whl", hash = "sha256:eb982243c5d873afde95520481fa8df19b0a49da8c262f05c9aa1ef54a30e540", size = 71108, upload-time = "2026-03-08T12:07:33.53Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", marker = "extra == 'postgres'", specifier = ">=0.28.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis-core", specifier = ">=0.1.0" },
+    { name = "sardis-ledger", extras = ["postgres", "immudb", "anchoring", "dev"], marker = "extra == 'all'" },
+    { name = "web3", marker = "extra == 'anchoring'", specifier = ">=6.0.0" },
 ]
+provides-extras = ["postgres", "immudb", "anchoring", "dev", "all"]
 
 [[package]]
 name = "sardis-openai-agents"

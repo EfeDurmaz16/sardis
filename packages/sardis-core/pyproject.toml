@@ -51,7 +51,6 @@ ml = [
     "scipy>=1.11",
 ]
 nl-parser = [
-    "instructor>=1.0",
     "openai>=1.0",
 ]
 spending-tracker = [
@@ -67,11 +66,12 @@ dev = [
     "hypothesis>=6.112",
     "mypy>=1.7",
     "ruff>=0.1",
+    "scipy>=1.11",
 ]
 all = [
-    "instructor>=1.0",
     "openai>=1.0",
     "redis>=5.0",
+    "scipy>=1.11",
 ]
 
 [project.urls]

@@ -131,3 +131,64 @@ def test_regex_parser_writes_audit_event() -> None:
     last = events[-1]
     assert last["action"] == "regex_parse"
     assert last["parser_type"] == "regex"
+
+
+def test_llm_parser_uses_openai_compatible_json_response_without_instructor() -> None:
+    class _Message:
+        content = """
+        ```json
+        {
+          "name": "AWS daily limit",
+          "description": "spend max $100 per day on AWS",
+          "spending_limits": [
+            {
+              "vendor_pattern": "aws",
+              "max_amount": 100.0,
+              "period": "daily",
+              "currency": "USD"
+            }
+          ],
+          "category_restrictions": null,
+          "time_restrictions": null,
+          "requires_approval_above": null,
+          "global_daily_limit": null,
+          "global_monthly_limit": null,
+          "is_active": true
+        }
+        ```
+        """
+
+    class _Choice:
+        message = _Message()
+
+    class _Completion:
+        choices = [_Choice()]
+
+    class _Completions:
+        def __init__(self) -> None:
+            self.kwargs = None
+
+        def create(self, **kwargs):
+            self.kwargs = kwargs
+            return _Completion()
+
+    class _Chat:
+        def __init__(self) -> None:
+            self.completions = _Completions()
+
+    class _Client:
+        def __init__(self) -> None:
+            self.chat = _Chat()
+
+    parser = _parser_without_clients()
+    parser.model = "test-model"
+    parser.temperature = 0.1
+    parser._sync_client = _Client()
+
+    extracted = parser.parse_sync("spend max $100 per day on AWS")
+
+    assert extracted.spending_limits[0].vendor_pattern == "aws"
+    assert extracted.spending_limits[0].max_amount == 100.0
+    kwargs = parser._sync_client.chat.completions.kwargs
+    assert kwargs["response_format"] == {"type": "json_object"}
+    assert "response_model" not in kwargs

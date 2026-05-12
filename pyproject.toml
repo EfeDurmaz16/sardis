@@ -141,6 +141,8 @@ ignore = [
 
 [tool.uv.sources]
 sardis-cli = { path = "packages/sardis-cli", editable = true }
+sardis-core = { path = "packages/sardis-core", editable = true }
+sardis-ledger = { path = "packages/sardis-ledger", editable = true }
 
 [dependency-groups]
 dev = [
@@ -163,4 +165,6 @@ dev = [
     "PyJWT>=2.12.0",
     "respx>=0.22.0",
     "PyNaCl>=1.5",
+    "numpy>=2.0",
+    "scipy>=1.11",
 ]
