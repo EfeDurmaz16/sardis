@@ -45,7 +45,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-chain = ["sardis-chain>=1.0.0"]
+chain = ["sardis-chain>=1.1.0"]
 compliance = ["sardis-compliance>=1.0.0"]
 ledger = ["sardis-ledger>=1.0.0"]
 wallet = ["sardis-wallet>=1.0.0"]
