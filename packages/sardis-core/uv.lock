@@ -1295,6 +1295,7 @@ dependencies = [
 all = [
     { name = "openai" },
     { name = "redis" },
+    { name = "scipy" },
 ]
 dev = [
     { name = "hypothesis" },
@@ -1303,6 +1304,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "scipy" },
 ]
 ml = [
     { name = "scipy" },
@@ -1336,6 +1338,8 @@ requires-dist = [
     { name = "redis", marker = "extra == 'all'", specifier = ">=5.0" },
     { name = "redis", marker = "extra == 'spending-tracker'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "scipy", marker = "extra == 'all'", specifier = ">=1.11" },
+    { name = "scipy", marker = "extra == 'dev'", specifier = ">=1.11" },
     { name = "scipy", marker = "extra == 'ml'", specifier = ">=1.11" },
     { name = "temporalio", marker = "extra == 'temporal'", specifier = ">=1.4" },
 ]
