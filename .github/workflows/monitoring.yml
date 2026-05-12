@@ -26,14 +26,14 @@ jobs:
           fi
 
           HEALTH_STATUS=$(python3 - "$TMP" <<'PY'
-import json
-import sys
-from pathlib import Path
+          import json
+          import sys
+          from pathlib import Path
 
-payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-print(str(payload.get("status", "")).lower())
-PY
-)
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          print(str(payload.get("status", "")).lower())
+          PY
+          )
           echo "Health payload status: $HEALTH_STATUS"
           if [ "$HEALTH_STATUS" != "ok" ] && [ "$HEALTH_STATUS" != "healthy" ] && [ "$HEALTH_STATUS" != "partial" ]; then
             echo "::error::API health payload status unacceptable: $HEALTH_STATUS"
