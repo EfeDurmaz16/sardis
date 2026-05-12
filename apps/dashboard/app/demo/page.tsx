@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 
 const DEMO_AGENTS = [
@@ -146,7 +147,7 @@ export default function DemoPage() {
           <span style={{ fontWeight: 700, fontSize: 16 }}>Sardis</span>
           <span style={{ color: "rgba(253,251,247,0.3)", fontSize: 13 }}>Interactive Demo</span>
         </div>
-        <a
+        <Link
           href="/auth/sign-up"
           style={{
             background: "#FDFBF7",
@@ -159,7 +160,7 @@ export default function DemoPage() {
           }}
         >
           Sign Up Free
-        </a>
+        </Link>
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
@@ -393,7 +394,7 @@ export default function DemoPage() {
           <p style={{ color: "rgba(253,251,247,0.3)", fontSize: 14, marginBottom: 16 }}>
             This is a simulation. Sign up to connect real wallets and process live payments.
           </p>
-          <a
+          <Link
             href="/auth/sign-up"
             style={{
               background: "#FDFBF7",
@@ -406,7 +407,7 @@ export default function DemoPage() {
             }}
           >
             Get Started Free
-          </a>
+          </Link>
         </div>
       </div>
     </div>

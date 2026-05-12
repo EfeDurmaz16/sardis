@@ -189,6 +189,12 @@ export const approvalToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
     if (!config.apiKey || config.mode === 'simulated') {
       // Deterministic status for simulated mode — never use Math.random() for financial state
+      const status = parsed.data.approval_id.includes('approved')
+        ? 'approved'
+        : parsed.data.approval_id.includes('denied')
+          ? 'denied'
+          : 'pending';
+
       return {
         content: [{
           type: 'text',

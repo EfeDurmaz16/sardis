@@ -18,6 +18,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim()
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET?.trim()
 const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL?.trim() || "https://app.sardis.sh"
 const BETTER_AUTH_RP_ID = process.env.BETTER_AUTH_RP_ID?.trim() || (process.env.NODE_ENV === "production" ? "sardis.sh" : "localhost")
+const BUILD_ONLY_BETTER_AUTH_SECRET =
+  "sardis-build-only-better-auth-secret-do-not-use-in-production"
 
 const trustedOrigins = [
   ...PRODUCTION_AUTH_HOSTS.map((host) => `https://${host}`),
@@ -63,6 +65,19 @@ const passkeyOrigins = process.env.NODE_ENV === "production"
  */
 const isProductionRuntime = (): boolean =>
   process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
+
+const resolveBetterAuthSecret = (): string => {
+  const configuredSecret = process.env.BETTER_AUTH_SECRET?.trim()
+  if (configuredSecret) {
+    return configuredSecret
+  }
+
+  if (process.env.VERCEL_ENV === "production") {
+    throw new Error("BETTER_AUTH_SECRET is required in production deployments.")
+  }
+
+  return BUILD_ONLY_BETTER_AUTH_SECRET
+}
 
 /**
  * Sardis capability definitions for the Agent Auth Protocol (§4).
@@ -250,7 +265,7 @@ export const auth = betterAuth({
     ssl: { rejectUnauthorized: false },
   }),
   baseURL: BASE_URL_CONFIG,
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: resolveBetterAuthSecret(),
   trustedOrigins,
   advanced: {
     crossSubDomainCookies: {

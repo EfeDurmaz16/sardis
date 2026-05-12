@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
 RUNBOOK_FILES = [
     "docs/runbooks/ops-readiness.md",
     "docs/production-runbook.md",
@@ -109,7 +111,7 @@ def main() -> None:
 
     runbooks = []
     for file_path in RUNBOOK_FILES:
-        path = Path(file_path)
+        path = ROOT_DIR / file_path
         if not path.exists():
             raise SystemExit(f"[ops-evidence][fail] missing runbook: {file_path}")
         runbooks.append(
