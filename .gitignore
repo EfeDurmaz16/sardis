@@ -296,4 +296,6 @@ apps/canvas-site/robots.txt
 apps/canvas-site/sitemap.xml
 apps/landing/app/landing-alt/
 apps/landing/app/manifesto/
+!apps/landing/app/manifesto/
+!apps/landing/app/manifesto/page.tsx
 apps/landing/app/manifesto.txt/

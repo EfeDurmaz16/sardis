@@ -17,13 +17,6 @@
       ]
     }
   ],
-  "redirects": [
-    {
-      "source": "/manifesto",
-      "destination": "https://www.sardis.sh/manifesto",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ]
