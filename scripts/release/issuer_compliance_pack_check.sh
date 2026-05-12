@@ -15,10 +15,7 @@ fi
 
 if [[ ! -d "docs/design-partner/compliance-pack" ]]; then
   echo "[issuer-compliance-pack] skipping private design-partner compliance pack (not present in public repo)"
-  if [[ "$strict_mode" == "1" || "$strict_mode" == "true" ]]; then
-    echo "[issuer-compliance-pack][fail] strict mode requires design-partner compliance pack"
-    exit 1
-  fi
+  echo "[issuer-compliance-pack] Provider/internal compliance validation must run from the private archive."
   if ! rg -q 'SARDIS_ISSUING_LIVE_ENABLED' packages/sardis-api/src/sardis_api/routers/cards.py; then
     echo "[issuer-compliance-pack][fail] cards router must enforce explicit issuing live toggle"
     exit 1

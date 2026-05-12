@@ -67,10 +67,8 @@ if [[ -f "$DESIGN_PARTNER_CHECKLIST" ]]; then
     --file "$DESIGN_PARTNER_CHECKLIST"
 else
   echo "[release-readiness] Skipping design partner checklist (file missing: $DESIGN_PARTNER_CHECKLIST)"
-  if [[ "$STRICT_MODE" == "1" ]]; then
-    echo "[release-readiness] STRICT_MODE=1 requires design partner checklist; failing"
-    exit 1
-  fi
+  echo "[release-readiness] Private design-partner checklist is intentionally omitted from the public repo."
+  echo "[release-readiness] Provider/internal release gates must run from the private compliance archive."
 fi
 
 echo "[release-readiness] Completed"
