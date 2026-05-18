@@ -125,8 +125,8 @@ from .routers import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routers import checkout as checkout_router
 from .routers import checkout_controls as checkout_controls_router
-from .routers import compliance as compliance_router
-from .routers import compliance_export as compliance_export_router
+from .routes.compliance import compliance as compliance_router
+from .routes.compliance import compliance_export as compliance_export_router
 from .routers import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routers import credentials as credentials_router
@@ -150,7 +150,7 @@ from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
 from .routers import invoices as invoices_router
-from .routers import kyc_onboarding as kyc_onboarding_router
+from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router

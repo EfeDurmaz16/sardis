@@ -1,18 +1,9 @@
 """Tests for self-serve KYC initiation and status endpoints."""
 from __future__ import annotations
 
-import os
+from types import SimpleNamespace
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-async def _unset_idenfy_key(monkeypatch) -> None:
-    """Remove the iDenfy API key from the environment."""
-    monkeypatch.delenv("SARDIS_IDENFY_API_KEY", raising=False)
 
 
 # ---------------------------------------------------------------------------
@@ -21,28 +12,41 @@ async def _unset_idenfy_key(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_initiate_returns_503_without_idenfy_key(client, monkeypatch):
-    """POST /kyc/initiate returns 503 when SARDIS_IDENFY_API_KEY is not set."""
-    monkeypatch.delenv("SARDIS_IDENFY_API_KEY", raising=False)
+async def test_initiate_returns_503_without_didit_key(client, monkeypatch):
+    """POST /kyc/initiate returns 503 when DIDIT_API_KEY is not set."""
+    monkeypatch.delenv("DIDIT_API_KEY", raising=False)
+    monkeypatch.setattr("sardis_api.routes.compliance.kyc_onboarding._didit_provider", None)
 
     resp = await client.post("/api/v2/kyc/initiate")
     assert resp.status_code == 503
     body = resp.json()
-    assert "SARDIS_IDENFY_API_KEY" in body.get("detail", "")
+    assert "DIDIT_API_KEY" in body.get("detail", "")
 
 
 @pytest.mark.asyncio
-async def test_initiate_returns_redirect_when_key_configured(client, monkeypatch):
-    """POST /kyc/initiate returns redirect_url and session_token when key is set."""
-    monkeypatch.setenv("SARDIS_IDENFY_API_KEY", "test_key_abc123")
+async def test_initiate_returns_redirect_when_didit_provider_configured(client, monkeypatch):
+    """POST /kyc/initiate returns redirect_url and session_token when provider is configured."""
+
+    class FakeDiditProvider:
+        async def create_inquiry(self, _request):
+            return SimpleNamespace(
+                inquiry_id="ses_test_123",
+                session_token="didit_session_token",
+                redirect_url="https://verification.didit.me/session/ses_test_123",
+            )
+
+    monkeypatch.setattr(
+        "sardis_api.routes.compliance.kyc_onboarding._get_didit_provider",
+        lambda: FakeDiditProvider(),
+    )
 
     resp = await client.post("/api/v2/kyc/initiate")
     assert resp.status_code == 200
     body = resp.json()
     assert body["redirect_url"] is not None
-    assert "idenfy.com" in body["redirect_url"]
+    assert "didit.me" in body["redirect_url"]
     assert body["session_token"] is not None
-    assert body["provider"] == "idenfy"
+    assert body["provider"] == "didit"
     assert body["message"] != ""
 
 

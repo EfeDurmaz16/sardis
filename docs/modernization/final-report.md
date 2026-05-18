@@ -80,6 +80,8 @@
 - Kept stateful policy compatibility modules as module aliases so legacy imports and monkeypatch targets resolve to the same implementation module object.
 - Moved evidence route implementations to `sardis_api.routes.evidence`: evidence capture, evidence export, audit anchors, and attestation proof APIs now share one evidence domain.
 - Kept stateful evidence compatibility modules as module aliases and hardened attestation approval timestamp serialization for string or datetime-backed rows.
+- Moved compliance route implementations to `sardis_api.routes.compliance`: compliance APIs, compliance export, and Didit KYC onboarding now share one regulatory-control domain.
+- Updated KYC onboarding tests from stale iDenfy assumptions to the current Didit provider contract and fake-provider boundary.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
 ## What Was Deleted
@@ -161,7 +163,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical moves are now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, inbound provider callback route code lives under `sardis_api.routes.providers`, the pay/ledger/transaction/payment route code lives under `sardis_api.routes.money_movement`, mandate/AP2/MVP/approval route code lives under `sardis_api.routes.authority`, wallet/card/treasury/funding/ramp/on-chain/onramp route code lives under `sardis_api.routes.wallets`, policy definition/simulation/analytics/fallback route code lives under `sardis_api.routes.policy`, and evidence/audit/attestation route code lives under `sardis_api.routes.evidence`, while the old `sardis_api.routers` paths remain as compatibility wrappers or aliases during the migration.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical moves are now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, inbound provider callback route code lives under `sardis_api.routes.providers`, the pay/ledger/transaction/payment route code lives under `sardis_api.routes.money_movement`, mandate/AP2/MVP/approval route code lives under `sardis_api.routes.authority`, wallet/card/treasury/funding/ramp/on-chain/onramp route code lives under `sardis_api.routes.wallets`, policy definition/simulation/analytics/fallback route code lives under `sardis_api.routes.policy`, evidence/audit/attestation route code lives under `sardis_api.routes.evidence`, and compliance/KYC route code lives under `sardis_api.routes.compliance`, while the old `sardis_api.routers` paths remain as compatibility wrappers or aliases during the migration.
 
 ## Test, Build, And Lint Results
 
@@ -319,6 +321,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.evidence`, `evidence_export`, `audit_anchors`, and `attestation` imports resolve to the same module objects as the new `sardis_api.routes.evidence.*` imports.
 - `uv run pytest packages/sardis-api/tests/test_attestation_endpoint.py packages/sardis-api/tests/test_evidence_export.py -q` passed after moving evidence routes and aligning stale attestation assertions: 9 tests.
 - `pnpm check:openapi` passed after the evidence route move: 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/routes/compliance packages/sardis-api/src/sardis_api/routers/compliance.py packages/sardis-api/src/sardis_api/routers/compliance_export.py packages/sardis-api/src/sardis_api/routers/kyc_onboarding.py packages/sardis-api/src/sardis_api/main.py packages/sardis-api/tests/test_compliance_kya_api.py packages/sardis-api/tests/test_compliance_audit_api.py packages/sardis-api/tests/test_didit_webhook.py packages/sardis-api/tests/test_kyc_onboarding.py` passed after moving compliance/KYC routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.compliance`, `compliance_export`, and `kyc_onboarding` imports resolve to the same module objects as the new `sardis_api.routes.compliance.*` imports.
+- `uv run pytest packages/sardis-api/tests/test_compliance_kya_api.py packages/sardis-api/tests/test_compliance_audit_api.py packages/sardis-api/tests/test_didit_webhook.py packages/sardis-api/tests/test_kyc_onboarding.py -q` passed after moving compliance/KYC routes and aligning stale KYC provider tests: 38 tests.
+- `pnpm check:openapi` passed after the compliance route move: 540 paths and 592 schemas.
 
 Notes:
 
@@ -354,7 +360,7 @@ Notes:
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
-- Continue physical route placement cleanup by moving compliance and KYC surfaces into domain packages with temporary compatibility wrappers or aliases.
+- Continue physical route placement cleanup by moving agents, identity, auth, admin, operations, and miscellaneous contributor-tool surfaces into domain packages with temporary compatibility wrappers or aliases.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.
