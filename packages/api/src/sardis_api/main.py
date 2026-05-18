@@ -99,6 +99,11 @@ from .routes.accounts import auth
 from .routes.accounts import email_verification as email_verification_router
 from .routes.accounts import groups as groups_router
 from .routes.accounts import me as me_router
+from .routes.commerce import checkout as checkout_router
+from .routes.commerce import checkout_controls as checkout_controls_router
+from .routes.commerce import invoices as invoices_router
+from .routes.commerce import merchant_checkout as merchant_checkout_router
+from .routes.commerce import merchants as merchants_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
@@ -126,8 +131,6 @@ from .routes.money_movement import transactions as transactions_router
 from .routers import billing as billing_router
 from .routers import bridge as bridge_router
 from .routes.wallets import cards as cards_router
-from .routers import checkout as checkout_router
-from .routers import checkout_controls as checkout_controls_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routers import counterparties as counterparties_router
@@ -150,14 +153,11 @@ from .routes.policy import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routers import invoices as invoices_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
-from .routers import merchant_checkout as merchant_checkout_router
-from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
