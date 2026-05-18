@@ -48,11 +48,20 @@
 ## 5. Architecture Restructuring
 
 - Goal: Shrink `create_app` into maintainable registrars.
-- Files likely affected: `packages/sardis-api/src/sardis_api/main.py`, new `packages/sardis-api/src/sardis_api/bootstrap/*`.
-- Implementation notes: Start with pure middleware registration, then router groups. Keep route prefixes unchanged.
+- Files likely affected: `packages/sardis-api/src/sardis_api/main.py`, new `packages/sardis-api/src/sardis_api/bootstrap/*`, route-domain modules under `packages/sardis-api/src/sardis_api/routes/*`.
+- Implementation notes: Start with pure middleware registration, then router groups. Keep route prefixes unchanged. Continue route-domain migration before any package-directory rename.
 - Risk: Medium-high.
 - Rollback plan: Revert each extraction commit independently.
 - Validation command: `uv run pytest packages/sardis-api/tests/ -q`.
+
+### 5a. Package Path Simplification
+
+- Goal: Reduce contributor-visible path repetition by renaming the monorepo API package directory from `packages/sardis-api` to `packages/api` while keeping the Python import package `sardis_api`.
+- Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and any path references to `packages/sardis-api`.
+- Implementation notes: Do not remove `src/sardis_api`; it is the stable Python import package and the standard `src` layout. Perform this as a dedicated migration after route-domain cleanup, using `docs/modernization/package-path-simplification.md` as the source of truth.
+- Risk: High.
+- Rollback plan: Revert the directory rename commit and path-reference updates together.
+- Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agent_auth.py packages/api/tests/test_agent_events_and_holds_wiring.py -q`.
 
 ## 6. Language/Framework/Runtime Migrations
 

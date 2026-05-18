@@ -21,6 +21,11 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 - inbound provider webhook callbacks from Stripe, card issuers, CPN, TAP, and
   other payment networks
 
+The repeated-looking path prefix is tracked separately in
+`docs/modernization/package-path-simplification.md`. The short version: keep
+the Python import package `src/sardis_api`, but plan a later dedicated rename
+from `packages/sardis-api` to `packages/api`.
+
 ## Naming Principles
 
 1. Public HTTP paths stay stable unless a migration plan explicitly changes
@@ -93,6 +98,10 @@ below it:
 - `routing/<domain>.py` for FastAPI registration/wiring
 - old `routers/` files only as temporary compatibility wrappers while imports
   migrate
+
+The package directory itself should eventually become `packages/api`, but that
+rename touches workspace, CI, Docker, OpenAPI, and docs paths. It should happen
+as a separate migration after the route tree is easier to reason about.
 
 ## Target Layout
 

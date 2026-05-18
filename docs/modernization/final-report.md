@@ -87,6 +87,7 @@
 - Moved FIDES identity, agent-auth, and trust route implementations into `sardis_api.routes.identity` so identity and authority code is not mixed with payment protocol adapters.
 - Added deterministic local Agent Auth behavior for dev/test/local environments so OSS contributors can run agent-auth tests without a dashboard Better Auth service.
 - Moved agent activity, agent events, and agent heartbeat route implementations into `sardis_api.routes.agents` so agent lifecycle telemetry is no longer mixed into the flat router bucket.
+- Added a package path simplification decision: keep the Python import package `src/sardis_api`, but plan a later dedicated `packages/sardis-api` to `packages/api` directory migration.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
