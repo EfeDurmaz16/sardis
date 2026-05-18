@@ -8,11 +8,15 @@ The public repository should not contain private commercial planning, hiring, in
 
 The following categories are private by default:
 
+- `docs/audits/evidence/` - generated operational/provider readiness evidence and latest-run artifacts
 - `docs/cdp/` - commercial/customer-development drafts
 - `docs/compliance/soc2/` - company-specific compliance policies, runbooks, and audit-readiness material
+- `docs/gtm/` - GTM planning and execution material
 - `docs/hiring/` - internal hiring materials
 - `docs/investor/` - investor decks, diligence reports, and internal fundraising material
 - `docs/ops/` - company-specific operational status and environment audit material
+- `docs/outbound/` - outbound targeting, prospecting, and campaign material
+- `docs/outreach/` - private outreach drafts and applications
 - `docs/partnerships/` - partner-development and LOI drafts
 - `docs/sales/` - sales prospecting and outreach strategy
 - `docs/yc/` - accelerator application drafts

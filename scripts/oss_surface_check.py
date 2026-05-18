@@ -8,10 +8,14 @@ import sys
 
 
 BLOCKED_PREFIXES = (
+    "docs/audits/evidence/",
     "docs/cdp/",
+    "docs/gtm/",
     "docs/hiring/",
     "docs/investor/",
     "docs/ops/",
+    "docs/outbound/",
+    "docs/outreach/",
     "docs/partnerships/",
     "docs/sales/",
     "docs/compliance/soc2/",
