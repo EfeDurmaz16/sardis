@@ -1125,20 +1125,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # --- Striga routes (EEA cards, vIBAN, SEPA) ---
     if settings.striga.enabled:
-        from .routers import striga as striga_router
+        from .routes.providers import striga as striga_router
         app.include_router(striga_router.router, prefix="/api/v2", tags=["striga"])
         logger.info("Striga routes enabled")
 
     # --- Lightspark Grid routes (UMA, payouts, FX) ---
     if settings.lightspark.enabled:
-        from .routers import lightspark as lightspark_router
+        from .routes.providers import lightspark as lightspark_router
         app.include_router(lightspark_router.router, prefix="/api/v2", tags=["lightspark-grid"])
         logger.info("Lightspark Grid routes enabled")
 
     # --- Unified fiat rails routes ---
     if settings.striga.enabled or settings.lightspark.enabled:
-        from .routers import currency as currency_router
-        from .routers import fiat_rails as fiat_rails_router
+        from .routes.providers import currency as currency_router
+        from .routes.providers import fiat_rails as fiat_rails_router
         app.include_router(fiat_rails_router.router, prefix="/api/v2", tags=["fiat-rails"])
         app.include_router(currency_router.router, prefix="/api/v2", tags=["currency"])
         logger.info("Fiat rails and currency routes enabled")

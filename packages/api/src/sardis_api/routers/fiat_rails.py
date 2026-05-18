@@ -1,63 +1,12 @@
-"""Unified fiat rails — provider-agnostic SEPA, ACH, RTP, Wire interface."""
-from __future__ import annotations
+"""Compatibility import for provider-backed fiat rail routes.
 
-import logging
+New code should import from `sardis_api.routes.providers.fiat_rails`.
+"""
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+import sys
 
-logger = logging.getLogger(__name__)
+from sardis_api.routes.providers import fiat_rails as _implementation
 
-router = APIRouter(prefix="/fiat-rails", tags=["fiat-rails"])
-
-
-class FiatPayoutRequest(BaseModel):
-    wallet_id: str
-    amount_cents: int
-    currency: str
-    rail: str  # sepa, ach, rtp, fednow, wire
-    destination: dict  # iban/bic or account_id
-    reference: str = ""
-
-
-class FiatPayoutQuoteRequest(BaseModel):
-    amount_cents: int
-    currency: str
-    rail: str
-    destination_country: str = "US"
-
-
-def _not_implemented() -> HTTPException:
-    return HTTPException(
-        status_code=501,
-        detail={
-            "error": "not_implemented",
-            "message": "Fiat rails integration is not yet available. Requires Lightspark Grid (SARDIS_LIGHTSPARK_API_KEY) or Striga (SARDIS_STRIGA_API_KEY) configuration.",
-        },
-    )
-
-
-@router.post("/payout")
-async def create_fiat_payout(req: FiatPayoutRequest):
-    """
-    Create a fiat payout — routes to the appropriate provider.
-
-    Routing logic:
-    - EUR + SEPA -> Striga
-    - USD + RTP/FedNow -> Grid
-    - USD + ACH -> Grid or Bridge (compare fees)
-    - USD + Wire -> Grid
-    """
-    raise _not_implemented()
-
-
-@router.post("/quote")
-async def get_fiat_payout_quote(req: FiatPayoutQuoteRequest):
-    """Get a quote for a fiat payout across available rails."""
-    raise _not_implemented()
-
-
-@router.get("/rails")
-async def list_available_rails():
-    """List all available fiat payment rails."""
-    raise _not_implemented()
+_legacy_name = __name__
+globals().update({key: value for key, value in _implementation.__dict__.items() if key != "__name__"})
+sys.modules[_legacy_name] = _implementation

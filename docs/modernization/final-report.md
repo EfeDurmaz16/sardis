@@ -75,6 +75,7 @@
 - Moved core wallet lifecycle, balance, transfer, and x402 wallet routes to `sardis_api.routes.wallets.wallets` with a temporary compatibility wrapper under `sardis_api.routers`.
 - Updated wallet x402 and remaining wallet source-inspection tests to use the real wallet-domain implementation module.
 - Moved inbound provider callback routes to `sardis_api.routes.providers`: Stripe, Stripe SPT, Mastercard, Visa TAP, partner card, CPN, and Polar callbacks now sit apart from outbound customer webhook subscriptions.
+- Moved feature-flagged provider and fiat rail adapter routes to `sardis_api.routes.providers`: Striga, Lightspark Grid, currency, and unified fiat rails now sit with provider integrations instead of the flat router bucket.
 - Updated `sardis_api.main` and partner-card webhook tests to import provider callback implementations from the new provider-domain package.
 - Moved policy route implementations to `sardis_api.routes.policy`: policy definitions, policy simulation, policy analytics, and fallback policy APIs now share one control-plane policy domain.
 - Kept stateful policy compatibility modules as module aliases so legacy imports and monkeypatch targets resolve to the same implementation module object.
