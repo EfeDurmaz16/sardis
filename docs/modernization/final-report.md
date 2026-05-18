@@ -430,6 +430,11 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.admin` and `sardis_api.routers.admin_reconciliation` resolve to the same module objects as `sardis_api.routes.admin.control` and `sardis_api.routes.admin.reconciliation`.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved admin routes remain mounted at `/api/v2/admin/stats`, `/api/v2/admin/rate-limit/status`, `/api/v2/admin/reconciliation/check`, and `/api/v2/admin/reconciliation/stats`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving admin routes. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routes/commerce/secure_checkout.py packages/api/src/sardis_api/routers/secure_checkout.py packages/api/src/sardis_api/main.py packages/api/tests/test_secure_checkout_wiring.py packages/api/tests/test_secure_checkout_job_repository.py packages/api/tests/test_secure_checkout_risk_response.py` passed after moving secure checkout routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.secure_checkout` resolves to the same module object as `sardis_api.routes.commerce.secure_checkout`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_secure_checkout_wiring.py packages/api/tests/test_secure_checkout_job_repository.py packages/api/tests/test_secure_checkout_risk_response.py -q` passed after moving secure checkout routes: 8 tests.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved secure checkout route remains mounted at `/api/v2/checkout/secure/jobs`.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving secure checkout routes. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 

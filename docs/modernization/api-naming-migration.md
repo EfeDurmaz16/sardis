@@ -81,6 +81,7 @@ Completed so far:
 | `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py`, `routers/dev.py`, `routers/sandbox.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, no-signup sandbox playground, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
 | `routers/billing.py`, `routers/usage.py`, `routers/subscriptions.py` implementations | `routes/billing/*` with compatibility module aliases in `routers/` | Groups subscription, checkout, billing provider, webhook, recurring subscription, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
 | `routers/admin.py`, `routers/admin_reconciliation.py` implementations | `routes/admin/control.py` and `routes/admin/reconciliation.py` with compatibility module aliases in `routers/` | Makes privileged operations easier to find without repeating `admin/admin.py`, and keeps admin rate-limit helpers close to admin-only reconciliation surfaces. |
+| `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` with a compatibility module alias in `routers/` | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls, leaving the legacy router bucket with compatibility wrappers only. |
 
 The external API remains unchanged:
 
@@ -167,6 +168,7 @@ sardis_api/
     commerce/
       checkout.py
       checkout_controls.py
+      secure_checkout.py
       merchant_checkout.py
       merchants.py
       invoices.py
@@ -261,9 +263,8 @@ moved to `sardis_api/routes/<domain>/...`.
 12. Billing and usage: completed for `billing` and `usage`.
 13. Provider and fiat rail adapters: completed for `striga`, `lightspark`,
    `currency`, and `fiat_rails`.
-14. Admin and miscellaneous contributor tools: completed for `admin` and
-   `admin_reconciliation`; remaining high-coupling surface is
-   `secure_checkout`.
+14. Admin and high-coupling checkout surfaces: completed for `admin`,
+   `admin_reconciliation`, and `secure_checkout`.
 
 ## Validation Required For Each Move
 
