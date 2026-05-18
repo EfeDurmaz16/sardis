@@ -23,6 +23,8 @@
 - Fixed stale deploy workflow app paths from `landing`/`dashboard` to `apps/landing`/`apps/dashboard` and added pnpm setup for those jobs.
 - Replaced legacy Vercel `npm install --legacy-peer-deps` install commands with workspace-aligned pnpm frozen installs.
 - Added package README entrypoints for experimental and private-candidate packages that previously had tracked source but no README.
+- Mapped every tracked Python `sardis-*` package to a local editable `[tool.uv.sources]` entry so contributor checks exercise the checkout instead of published packages with matching names.
+- Documented the Python local-source verification command in `docs/development.md`.
 
 ## What Was Deleted
 
@@ -64,7 +66,7 @@ Before: Sardis had a viable monorepo stack, but modernization work lacked a comm
 
 After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
 
-Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, and JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs.
+Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, and uv resolves repo-local Sardis Python packages from editable checkout paths.
 
 ## Test, Build, And Lint Results
 
@@ -81,6 +83,9 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `pnpm --filter @sardis/checkout-ui build` passed.
 - `uv run pytest packages/sardis-zk-policy/tests -q` passed: 31 tests.
 - JSON parse check passed for `package.json`, `apps/landing/vercel.json`, and `apps/dashboard/vercel.json`.
+- `uv lock --check` passed after adding the complete local editable Python source map.
+- `uv run --extra api python - <<'PY' ... direct_url.json ...` verified `sardis-api`, `sardis-chain`, `sardis-compliance`, `sardis-ledger`, and `sardis-sdk` install from local editable `file://` sources.
+- `uv run pytest packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 5 tests.
 
 Notes:
 
@@ -90,7 +95,6 @@ Notes:
 ## Remaining Risks
 
 - Money-moving routes still need replay tests and a unified execution service.
-- Python local-source resolution can still drift to published PyPI packages.
 - Database migration history remains split between Alembic and raw SQL.
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root.
 - Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
@@ -104,7 +108,7 @@ Notes:
 - Add replay tests for `/api/v2/pay` and batch payments.
 - Standardize provider webhook replay protection.
 - Harden checkout nonce/replay binding.
-- Patch Python local package source resolution or introduce a uv workspace policy.
+- Convert remaining Pydantic class-based config and deprecated FastAPI `regex` usage before Pydantic/FastAPI upgrades turn warnings into failures.
 - Add an OpenAPI snapshot/diff command before router refactors.
 - Create the private `sardis-product` or `sardis-cloud` repo and move dashboard/product surfaces out of the OSS contribution path.
 
@@ -133,3 +137,4 @@ Notes:
 - `fcf01d86 docs: update modernization final report`
 - `8c5be376 chore: make OSS tooling installs deterministic`
 - `3f0716c1 docs: document experimental and private-candidate packages`
+- `b3cee4d4 chore(python): map Sardis packages to local uv sources`
