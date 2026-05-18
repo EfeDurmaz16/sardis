@@ -106,8 +106,6 @@ from .routes.operations import event_stream as event_stream_router
 from .routes.operations import metrics as metrics_router
 from .routes.operations import reliability as reliability_router
 from .routes.operations import ws_alerts as ws_alerts_router
-from .routes.admin import control as admin_router
-from .routes.admin import reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
 from .routes.agents import agent_events as agent_events_router
 from .routes.agents import agent_heartbeat as agent_heartbeat_router
@@ -137,7 +135,6 @@ from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routes.authority import credentials as credentials_router
 from .routes.developer import dev as dev_router
-from .routes.operations import emergency as emergency_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.commerce import escrow_disputes as escrow_disputes_router
@@ -226,6 +223,7 @@ from .routing.accounts import (
     register_account_self_service_routes,
     register_auth_routes,
 )
+from .routing.admin import register_admin_routes
 from .routing.authority import register_authority_routes
 from .routing.developer import register_webhook_subscriptions
 from .routing.money_movement import register_pay_endpoint
@@ -1904,15 +1902,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(analytics_router.router)
     app.include_router(metrics_router.router)
 
-    # SECURITY: Admin endpoints have much stricter rate limits (10/min vs 100/min)
-    app.include_router(admin_router.router, prefix="/api/v2/admin", tags=["admin"])
-    app.include_router(
-        admin_reconciliation_router.router,
-        prefix="/api/v2/admin/reconciliation",
-        tags=["admin", "reconciliation"],
-    )
-    # Emergency freeze-all (admin-only, always enabled)
-    app.include_router(emergency_router.router)
+    register_admin_routes(app)
 
     # Billing & usage metering
     app.include_router(billing_router.router)

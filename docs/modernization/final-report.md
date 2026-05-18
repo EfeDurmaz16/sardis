@@ -58,6 +58,7 @@
 - Added `sardis_api.routing.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `sardis_api.main`.
 - Added `sardis_api.routing.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `sardis_api.main` while preserving the approval service handoff needed by later payment/provider routes.
 - Added `sardis_api.routing.accounts` account-domain registrars and moved auth, email verification, groups, API keys, current-user state, and data export wiring out of `sardis_api.main` without changing route order.
+- Added `sardis_api.routing.admin.register_admin_routes` and moved admin control, reconciliation, and emergency-freeze wiring out of `sardis_api.main`.
 - Repaired stale authority/payment policy tests by replacing brittle implementation-string assertions with current orchestrator/control-plane boundary checks and fixed FastAPI dependency overrides in the mandates router tests.
 - Started the physical route placement migration by moving the outbound webhook subscription implementation to `sardis_api.routes.developer.webhook_subscriptions`.
 - Kept `sardis_api.routers.webhook_subscriptions` as a temporary compatibility import while new code moves to domain-grouped `routes/<domain>/...` modules.
@@ -450,6 +451,9 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `python3 -m compileall -q packages/api/src/sardis_api/routing/accounts.py packages/api/src/sardis_api/main.py packages/api/tests/test_signup.py packages/api/tests/test_auth_admin_failopen.py packages/api/tests/test_auth_jwt_issuer.py packages/api/tests/test_auth_oauth_csrf.py` passed after extracting account route registration.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_signup.py packages/api/tests/test_auth_admin_failopen.py packages/api/tests/test_auth_jwt_issuer.py packages/api/tests/test_auth_oauth_csrf.py packages/api/tests/test_email_verification.py -q` passed after extracting account route registration: 28 passed, 1 skipped.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting account route registration. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routing/admin.py packages/api/src/sardis_api/main.py packages/api/src/sardis_api/routes/admin packages/api/src/sardis_api/routes/operations/emergency.py` passed after extracting admin route registration.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified admin routes remain mounted at `/api/v2/admin/stats`, `/api/v2/admin/reconciliation/check`, and `/api/v2/admin/emergency/status`.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting admin route registration. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 
