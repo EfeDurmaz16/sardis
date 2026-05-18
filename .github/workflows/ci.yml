@@ -70,6 +70,9 @@ jobs:
           uv run pytest packages/sardis-ledger/tests/ -v --tb=short
           uv run pytest packages/sardis-chain/tests/ -v --tb=short
 
+      - name: Check OpenAPI route contract snapshot
+        run: uv run python packages/sardis-api/scripts/generate_openapi.py --check
+
   idempotency-replay-e2e:
     name: Idempotency Replay E2E
     runs-on: ubuntu-latest
