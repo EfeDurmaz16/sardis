@@ -28,7 +28,7 @@ Read:
 
 ```bash
 uv sync
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ## Common Checks

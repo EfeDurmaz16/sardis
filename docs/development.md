@@ -14,7 +14,7 @@ This guide describes the public OSS development loop for Sardis.
 
 ```bash
 uv sync
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 Use local package sources where available. Do not rely on published Sardis packages while developing repo-local changes.
@@ -39,6 +39,16 @@ Required public checks should cover:
 - Secret scanning and dependency review.
 
 Hosted dashboard, managed deployment, customer operations, and private provider workflows should not be required for normal external contributions.
+
+## Updating JavaScript Dependencies
+
+The default contributor install is frozen. If you intentionally need to update `pnpm-lock.yaml`, use:
+
+```bash
+pnpm run bootstrap:mutable
+```
+
+Commit lockfile changes separately from implementation changes when possible.
 
 ## Adding Dependencies
 

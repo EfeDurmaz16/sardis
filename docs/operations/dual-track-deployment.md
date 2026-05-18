@@ -55,8 +55,8 @@ SARDIS_BILLING_PROVIDER=polar             # Or stripe after incorporation
 
 ### Design Partner Onboarding Runbook
 
-**Step 1: Sign LOI** (before any technical work)
-- Use the LOI template from `docs/sales/outreach-emails-top5.md`
+**Step 1: Sign agreement** (before any technical work)
+- Use the current private company agreement template; sales and LOI drafts are intentionally not tracked in the public OSS repository.
 - Get: signed LOI, logo permission, integration commitment
 - Give: 6 months free Growth tier, priority support, co-marketing
 

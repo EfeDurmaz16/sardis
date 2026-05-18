@@ -147,7 +147,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run release quality gates
         shell: bash

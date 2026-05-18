@@ -8,7 +8,8 @@
   },
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "bootstrap": "pnpm install --no-frozen-lockfile",
+    "bootstrap": "pnpm install --frozen-lockfile",
+    "bootstrap:mutable": "pnpm install --no-frozen-lockfile",
     "bootstrap:ci": "pnpm install --frozen-lockfile",
     "bootstrap:js": "bash ./scripts/bootstrap_js_env.sh",
     "bootstrap:js:install": "bash ./scripts/bootstrap_js_env.sh --install",

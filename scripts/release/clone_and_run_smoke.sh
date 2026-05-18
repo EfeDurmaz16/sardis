@@ -24,7 +24,7 @@ if [[ "${1:-}" != "--no-install" ]]; then
   python3 -m pip install .
 
   echo "[clone-smoke] installing Node workspace dependencies"
-  pnpm install --no-frozen-lockfile
+  pnpm install --frozen-lockfile
 else
   echo "[clone-smoke] skipping dependency installation (--no-install)"
 fi

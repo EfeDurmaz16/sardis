@@ -39,7 +39,7 @@ else
   echo "  To enable:"
   echo "    pnpm run bootstrap:js:install"
   echo "  or manual:"
-  echo "    pnpm install --no-frozen-lockfile"
+  echo "    pnpm install --frozen-lockfile"
 fi
 
 if [[ "$STRICT_MODE" == "1" && "$node_checks_skipped" == "1" ]]; then
