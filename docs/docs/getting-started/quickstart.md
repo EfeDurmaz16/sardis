@@ -5,7 +5,8 @@ Get your first agent payment running in 5 minutes.
 ## Prerequisites
 
 - Python 3.10+ or Node.js 18+
-- A Sardis API key ([Sign up free](https://app.sardis.sh/signup) then create a key at [API Keys](https://app.sardis.sh/api-keys))
+- No API key is required for simulation/sandbox examples.
+- For live hosted or self-hosted API calls, set `SARDIS_API_KEY` and `SARDIS_API_URL` from your deployment.
 
 ## Step 1: Install
 
@@ -23,12 +24,17 @@ Get your first agent payment running in 5 minutes.
 
 ## Step 2: Create a Wallet
 
+For a no-key simulation, run `python examples/quickstart_5min.py` from the
+repository checkout. The SDK snippets below use a live hosted or self-hosted
+API deployment.
+
 === "Python"
 
     ```python
+    import os
     from sardis import SardisClient
 
-    client = SardisClient(api_key="sk_test_...")
+    client = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
 
     wallet = client.wallets.create(
         name="my-first-agent",
@@ -44,7 +50,10 @@ Get your first agent payment running in 5 minutes.
     ```typescript
     import { SardisClient } from '@sardis/sdk';
 
-    const client = new SardisClient({ apiKey: 'sk_test_...' });
+    const client = new SardisClient({
+      apiKey: process.env.SARDIS_API_KEY!,
+      baseUrl: process.env.SARDIS_API_URL,
+    });
 
     const wallet = await client.wallets.create({
       name: 'my-first-agent',

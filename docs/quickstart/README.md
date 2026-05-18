@@ -18,14 +18,12 @@ Every Sardis integration follows the same 5 steps:
 
 ---
 
-## Option A: Dashboard (No Code)
+## Option A: Local Simulation (No Hosted Account)
 
-1. Sign up at [sardis.sh/signup](https://sardis.sh/signup)
-2. Complete the onboarding wizard — it creates an Agent, a Wallet, and a
-   default Policy in one flow
-3. Go to **Sandbox → Make a test payment** and fill in any amount up to $100
-4. Open **Evidence** in the sidebar to see the ledger entry, policy verdict,
-   and transaction receipt
+1. Install the local package or run from the repository checkout.
+2. Run `python examples/quickstart_5min.py`.
+3. Inspect the simulated wallet balance, payment result, and transaction hash.
+4. Move to the SDK or REST examples below when you need live API calls.
 
 No API key is required for sandbox mode.
 
@@ -184,7 +182,9 @@ try {
 
 ## Option D: REST API (cURL)
 
-Replace `sk_...` with your API key and substitute IDs returned by each step.
+For a live API deployment, replace `sk_...` with an API key from that
+deployment and substitute IDs returned by each step. Simulation-first
+contributors can skip this section.
 
 ```bash
 # 1. Create Agent
