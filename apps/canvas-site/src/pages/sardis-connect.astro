@@ -390,13 +390,13 @@ app.use(sardis.middleware());
           </thead>
           <tbody>
             <tr><td>Who calls it</td><td>An AI agent, programmatically</td><td>A human buyer, in a browser</td></tr>
-            <tr><td>UI</td><td>None — JSON over HTTP</td><td>Hosted React checkout at <code>checkout.sardis.sh</code></td></tr>
+            <tr><td>UI</td><td>None — JSON over HTTP</td><td>Product-private hosted checkout client backed by public session APIs</td></tr>
             <tr><td>Discovery</td><td><code>/.well-known/sardis.json</code> on the merchant domain</td><td>Merchant-issued checkout link / embedded button</td></tr>
             <tr><td>Payer source</td><td>Agent's Sardis wallet + signed mandate</td><td>External wallet (WalletConnect, Coinbase, MetaMask) or Sardis <code>wal_…</code></td></tr>
             <tr><td>Auth</td><td>Merchant <code>mch_live_…</code> key + session <code>client_secret</code></td><td>Session <code>client_secret</code>; merchant endpoints use <code>require_principal</code></td></tr>
             <tr><td>Settlement</td><td>Bank rail → USD</td><td>Same settlement engine; Stripe/Striga/Bridge</td></tr>
             <tr><td>Typical ticket</td><td>$0.001 – $10 per call</td><td>$5 – $500 per order</td></tr>
-            <tr><td>SDK</td><td><code>sardis-connect</code> (py) + <code>@sardis/connect</code> (js)</td><td><code>sardis-checkout-ui</code> + embed SDK</td></tr>
+            <tr><td>SDK</td><td><code>sardis-connect</code> (py) + <code>@sardis/connect</code> (js)</td><td>Hosted client package lives in the private product repo</td></tr>
             <tr><td>Canvas</td><td>This page</td><td>Canvas 11 · Checkout &amp; Merchants</td></tr>
           </tbody>
         </table>
@@ -435,7 +435,7 @@ app.use(sardis.middleware());
           <a class="canvas-card" href="/checkout">
             <div class="canvas-card-num">11 · Product</div>
             <div class="canvas-card-title">Checkout &amp; Merchants</div>
-            <div class="canvas-card-desc">The buyer-facing sibling of Connect. Hosted checkout UI, embed SDK, merchant dashboard.</div>
+            <div class="canvas-card-desc">The buyer-facing sibling of Connect. Public session API, webhook, and settlement contract.</div>
           </a>
           <a class="canvas-card" href="/osp-integration">
             <div class="canvas-card-num">21 · Extended</div>

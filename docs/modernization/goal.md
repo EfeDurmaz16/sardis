@@ -2,7 +2,7 @@
 
 ## Product Understanding
 
-Sardis appears to be an open-source financial authority layer for AI agents. The repository combines a payment/control-plane API, policy-gated execution flows, wallets, agent mandates, approval and evidence records, protocol integrations, SDKs, dashboards, docs, static public surfaces, and smart-contract or ZK-adjacent experiments.
+Sardis appears to be an open-source financial authority layer for AI agents. The public repository combines a payment/control-plane API, policy-gated execution flows, wallets, agent mandates, approval and evidence records, protocol integrations, SDKs, docs, static public surfaces, and smart-contract or ZK-adjacent experiments. Hosted dashboard and product UI source belong in the private product repo.
 
 The durable product behavior to preserve is:
 
@@ -17,8 +17,8 @@ The durable product behavior to preserve is:
 - Python core package at `sardis/`.
 - FastAPI backend in `packages/sardis-api/src/sardis_api`, with a large `main.py` composition root, many routers, middleware, repositories, services, and lifecycle jobs.
 - Python packages under `packages/sardis-*`, including core, API, chain, ledger, wallet, compliance, protocol, integrations, and agent-framework adapters.
-- TypeScript packages for SDKs and integrations under `packages/sardis-sdk-js`, `packages/sardis-ai-sdk`, `packages/sardis-connect-js`, `packages/sardis-mcp-server`, `packages/ui-web`, and workflow adapters.
-- Next.js apps in `apps/dashboard` and `apps/landing`, plus an Astro canvas site in `apps/canvas-site`, a `docs-site`, static `canvases`, and serverless `api`/`api-proxy` folders.
+- TypeScript packages for SDKs and integrations under `packages/sardis-sdk-js`, `packages/sardis-ai-sdk`, `packages/sardis-connect-js`, `packages/sardis-mcp-server`, and workflow adapters.
+- Public apps in `apps/landing` and `apps/canvas-site`, plus a `docs-site`, generated static `canvases`, and serverless `api`/`api-proxy` folders.
 - Solidity/Foundry contracts in `contracts/`.
 - Noir policy circuit in `packages/sardis-zk-policy`.
 - PostgreSQL schema history exists in both Alembic migrations and raw SQL migrations under `packages/sardis-api`.
@@ -26,7 +26,7 @@ The durable product behavior to preserve is:
 
 ## Target Architecture Principles
 
-- Keep the product as a boring, explicit monorepo: Python backend/domain packages, TypeScript frontend/SDK packages, contracts, docs, examples.
+- Keep the OSS repo as a boring, explicit monorepo: Python backend/domain packages, TypeScript SDK/integration packages, contracts, docs, examples.
 - Make the API composition root declarative and domain-oriented instead of a multi-thousand-line bootstrap file.
 - Treat payment, policy, signing, auth, idempotency, webhooks, billing, and evidence as safety-sensitive domains with explicit tests and fail-closed defaults.
 - Prefer one package-manager story per ecosystem: root `uv.lock` for Python and root `pnpm-lock.yaml` for JavaScript unless a package is intentionally standalone.
@@ -37,7 +37,7 @@ The durable product behavior to preserve is:
 
 ## Quality Bar
 
-- A new contributor can identify the canonical backend, dashboard, landing app, SDKs, migrations, and validation commands quickly.
+- A new contributor can identify the canonical backend, public apps, SDKs, migrations, and validation commands quickly.
 - Critical payment and auth paths have focused regression tests.
 - Generated files, local caches, package manager byproducts, and stale prototype folders are either ignored, archived, or intentionally documented.
 - The default validation path is documented and runnable without private credentials.
@@ -48,7 +48,7 @@ The durable product behavior to preserve is:
 
 - Public package names and import paths unless a versioned deprecation plan exists.
 - Current `/api/v2` API contract and production auth/session semantics.
-- Better Auth multi-host handling in `apps/dashboard/lib/auth.ts`.
+- Public API/session compatibility for product clients, without keeping hosted product UI source in the OSS repo.
 - PostgreSQL migration compatibility and existing schema migration history.
 - Security guards that require Redis/Postgres/JWKS in production-like environments.
 - SDK examples and public docs that are still accurate.
@@ -56,7 +56,7 @@ The durable product behavior to preserve is:
 ## Rewrite Candidates
 
 - Small internal composition modules inside `packages/sardis-api/src/sardis_api` may be extracted from `main.py`.
-- Duplicate frontend API clients should converge on one same-origin/proxy-aware client or generated SDK wrapper.
+- Product/frontend API clients should converge on generated SDK/OpenAPI contracts outside the OSS protocol repo, with public SDK contracts kept stable.
 - Prototype/demo integrations should be moved behind clearer examples or archived if not maintained.
 - Raw SQL and Alembic migration duplication should be reconciled through a documented canonical path.
 

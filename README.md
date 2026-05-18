@@ -290,7 +290,6 @@ sardis/
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
 ├── apps/
-│   ├── dashboard/          # Hosted product dashboard, private-candidate
 │   ├── landing/            # Public website source
 │   └── canvas-site/        # Technical canvas source
 ├── playground/             # Interactive demo sandbox

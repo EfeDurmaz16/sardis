@@ -21,8 +21,9 @@ Sardis should use a clean open-core split:
 
 | Area | Current paths | Destination |
 | --- | --- | --- |
-| Hosted dashboard | `apps/dashboard/` | Private product repo after extraction plan is complete. |
-| Checkout UI if used as product surface | `packages/sardis-checkout-ui/` | Private product repo unless it becomes a public embeddable widget. |
+| Hosted dashboard | `apps/dashboard/` | Removed from public tracking; recover into private product repo from history if needed. |
+| Checkout UI if used as product surface | `packages/sardis-checkout-ui/` | Removed from public tracking unless it becomes a public embeddable widget. |
+| Hosted product design system | `packages/ui-web/` | Removed from public tracking unless Sardis intentionally publishes a public UI package. |
 | Managed dashboard deployment workflows | Product-only dashboard deploy jobs | Private product repo or manually triggered internal workflow; public OSS CI/CD should not deploy the hosted dashboard. |
 | GTM and sales material | `docs/sales/`, `scripts/gtm/`, `scripts/outreach/` | Private product/commercial repo. |
 | Investor, YC, diligence, hiring, partnership drafts | `docs/cdp/`, `docs/hiring/`, `docs/partnerships/`, `docs/yc/` | Private company repo. |

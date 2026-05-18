@@ -352,10 +352,10 @@ sequenceDiagram
           <div class="card">
             <div class="card-title">Control plane — "decide the policy"</div>
             <div class="card-description">
-              Dashboard + policy manager + approvals + kill switch + trust registry + webhooks +
+              Policy manager + approvals + kill switch + trust registry + webhooks +
               live events. Async, eventually consistent, human-in-the-loop friendly.
-              Owned by <code>apps/dashboard</code>, <code>sardis-core</code> policy modules,
-              event streaming routers.
+              The hosted dashboard is private product code; the public repo keeps the API,
+              policy modules, event streaming routers, and integration contracts.
             </div>
             <dl class="defs mt-16">
               <dt>Latency budget</dt><dd>~5s to UI from event bus</dd>
@@ -386,7 +386,7 @@ sequenceDiagram
             <tr><td><code>packages/sardis-protocol/src/sardis_v2_protocol/ap2.py</code></td><td>4 · Verification</td><td>AP2 mandate-chain verifier — Intent → Cart → Payment signatures.</td></tr>
             <tr><td><code>packages/sardis-ledger</code></td><td>7 · Audit</td><td>Append-only ledger + Merkle batching. Feeds on-chain anchor.</td></tr>
             <tr><td><code>contracts/src/SardisLedgerAnchor.sol</code></td><td>7 · Audit</td><td>On-chain anchor for Merkle-rooted evidence batches.</td></tr>
-            <tr><td><code>apps/dashboard/app/(dashboard)</code></td><td>Control plane</td><td>43 operator pages — policies, approvals, kill switch, live events.</td></tr>
+            <tr><td><code>packages/sardis-api/src/sardis_api/routers</code></td><td>Control plane API</td><td>Policy, approval, kill-switch, live-event, and merchant/session routes.</td></tr>
           </tbody>
         </table>
       </section>
@@ -403,9 +403,7 @@ sequenceDiagram
           </thead>
           <tbody>
             <tr><td>API (sardis-api)</td><td>Cloud Run</td><td>us-central1</td><td>Gunicorn + uvicorn inside Docker; 300s timeout; Fluid-compute-equivalent concurrency.</td></tr>
-            <tr><td>Dashboard (apps/dashboard)</td><td>Vercel</td><td>Edge</td><td>Next.js 16 App Router (React 19); fluid compute for RSC; <code>app.sardis.sh</code> + <code>dashboard.sardis.sh</code>.</td></tr>
             <tr><td>Landing (apps/landing)</td><td>Vercel</td><td>Edge</td><td>Next.js; <code>sardis.sh</code>; static + incremental for blog/compare pages.</td></tr>
-            <tr><td>Checkout UI (sardis-checkout-ui)</td><td>Vercel</td><td>Edge</td><td><code>checkout.sardis.sh</code>. Embeddable SDK served from same origin.</td></tr>
             <tr><td>Database</td><td>Neon Postgres</td><td>us-east</td><td>Serverless; 107 migrations applied in order; branching for preview envs.</td></tr>
             <tr><td>Cache / rate-limit / dedup</td><td>Upstash Redis</td><td>global</td><td>Required in prod (<code>SARDIS_REDIS_URL</code>); rate limiter fail-closed if unreachable.</td></tr>
             <tr><td>MPC signing</td><td>Turnkey API</td><td>Provider</td><td>Organization + sub-org per tenant; keys never leave Turnkey.</td></tr>

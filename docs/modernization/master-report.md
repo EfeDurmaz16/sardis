@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Sardis is a substantial monorepo, not a thin prototype. The current stack remains viable: Python/FastAPI for the backend and domain packages, TypeScript/Next.js for product surfaces and SDKs, Foundry for contracts, and uv/pnpm for package management. The modernization priority is not a full rewrite. It is boundary cleanup, generated-artifact hygiene, canonical migration policy, API contract protection, auth consistency, and incremental extraction from oversized bootstrap files.
+Sardis is a substantial monorepo, not a thin prototype. The current OSS stack remains viable: Python/FastAPI for the backend and domain packages, TypeScript for SDKs/integrations, Foundry for contracts, and uv/pnpm for package management. Hosted dashboard and product UI source have been moved out of the public surface. The modernization priority is boundary cleanup, generated-artifact hygiene, canonical migration policy, API contract protection, auth consistency at the public API boundary, and incremental extraction from oversized bootstrap files.
 
 ## Biggest Technical Risks
 
@@ -17,7 +17,7 @@ Sardis is a substantial monorepo, not a thin prototype. The current stack remain
 
 ## Biggest Product Risks
 
-- Auth or billing changes can regress production login, checkout, or usage metering.
+- Auth or billing changes in the private product repo can regress production login, checkout, or usage metering if public API contracts drift.
 - Payment policy enforcement can behave differently in dev/test than production.
 - Public docs can overstate unfinished or stale capabilities if multiple surfaces drift.
 - SDK/API contract drift can break integrations.
@@ -25,9 +25,9 @@ Sardis is a substantial monorepo, not a thin prototype. The current stack remain
 
 ## Duplicate Code Map
 
-- Frontend API transport/types: `apps/dashboard/lib/sardis-api.ts`, `apps/landing/lib/sardis-api.ts`.
+- Product/private API transport types should be generated from the public OpenAPI/SDK contract instead of mirrored by hand.
 - Migration systems: `packages/sardis-api/alembic/versions`, `packages/sardis-api/migrations`.
-- Public docs/canvas surfaces: `apps/landing`, `apps/canvas-site`, `docs-site`, `canvases`.
+- Public docs/canvas surfaces: `apps/landing`, `apps/canvas-site`, `docs-site`, generated `canvases`.
 - Spending-policy defaults: frontend constants mirror backend values manually.
 
 ## Dead Code Map
@@ -42,7 +42,7 @@ Deletion requires proof. Current candidates:
 ## Bad Abstraction Map
 
 - App bootstrap acts as service container, router registry, middleware registry, feature-flag evaluator, and integration factory.
-- Frontend clients combine transport, records, policy templates, onboarding constants, and response parsing.
+- Product clients can combine transport, records, policy templates, onboarding constants, and response parsing unless they are generated from public contracts.
 - Migration abstractions are split between Python Alembic and hand-authored SQL.
 
 ## Dependency Risk Map
@@ -56,7 +56,7 @@ Deletion requires proof. Current candidates:
 - Production fail-closed startup behavior.
 - Webhook signature/replay coverage by provider.
 - OpenAPI contract snapshots.
-- Frontend auth strategy parity.
+- Product auth strategy parity across private dashboard and public API contracts.
 - Database migration reconciliation against empty Postgres.
 - Idempotency mismatch handling across Redis and DB fallback.
 - Checkout mandate fail-closed behavior.
@@ -65,7 +65,7 @@ Deletion requires proof. Current candidates:
 ## Rewrite Candidates
 
 - API bootstrap modules.
-- Frontend API client/auth adapters.
+- Product API client/auth adapters in the private product repo.
 - Migration runner policy and reconciliation harness.
 
 ## Migration Candidates
@@ -74,11 +74,11 @@ Deletion requires proof. Current candidates:
 - Add repo inventory and modernization validation scripts.
 - Add OpenAPI snapshot/diff gate.
 - Split FastAPI registration by domain.
-- Move frontend shared types to SDK/generated contract layer.
+- Move product shared types to SDK/generated contract layer.
 
 ## Stable Modules
 
-- `apps/dashboard/lib/auth.ts` multi-host Better Auth configuration.
+- Public `/api/v2` and SDK contracts consumed by the private dashboard/product clients.
 - Existing `/api/v2` route behavior.
 - Existing raw SQL migration history until reconciliation.
 - Production guards in `packages/sardis-api/src/sardis_api/lifespan.py`.
@@ -95,6 +95,6 @@ Deletion requires proof. Current candidates:
 - `packages/sardis-api/src/sardis_api/bootstrap/` for middleware, services, routers, and production guards.
 - `packages/sardis-api/src/sardis_api/domains/<domain>/` for cohesive payment, policy, wallet, billing, webhook, evidence, and facility modules over time.
 - Root-managed `uv` and `pnpm` validation for monorepo development.
-- SDK/generated-contract shared types used by apps.
+- SDK/generated-contract shared types used by private product apps and public examples.
 - Canonical migration runner with drift tests.
 - Clear docs map: landing for product/public writing, docs-site for developer docs, canvases only as generated/published artifacts if still needed.

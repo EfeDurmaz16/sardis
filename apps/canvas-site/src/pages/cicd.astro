@@ -18,8 +18,8 @@ import Canvas from "../layouts/Canvas.astro";
         <div class="callout callout-info">
           <span class="callout-title">TL;DR</span>
           <code>main</code> is the only long-lived branch. Every PR runs the full CI matrix (Python,
-          contracts, TS SDK, dashboard, landing) plus security. Merge to <code>main</code> triggers
-          path-scoped deploys: API → Cloud Run <code>us-east1</code>, Dashboard/Landing/Checkout → Vercel.
+          contracts, TS SDK, and landing) plus security. Merge to <code>main</code> triggers
+          path-scoped deploys: API → Cloud Run <code>us-east1</code>, Landing → Vercel.
           Releases to PyPI and npm fire on version tags. Uptime pings every 10 minutes.
         </div>
       </section>
@@ -39,7 +39,7 @@ import Canvas from "../layouts/Canvas.astro";
           <div class="card">
             <div class="card-title">What runs on a PR</div>
             <div class="card-description">
-              <code>ci.yml</code> (Python lint+test, contracts strict + gas, TS SDK, dashboard build,
+              <code>ci.yml</code> (Python lint+test, contracts strict + gas, TS SDK,
               landing build), <code>test-api.yml</code> (sardis-api scoped tests), <code>codeql.yml</code>
               (Python + JS/TS), <code>secret-scan.yml</code> (gitleaks), <code>security-scan.yml</code>
               (pip-audit + Trivy + Bandit), <code>fuzz.yml</code> (atheris against spending_policy).
@@ -49,8 +49,8 @@ import Canvas from "../layouts/Canvas.astro";
           <div class="card">
             <div class="card-title">What runs on merge to main</div>
             <div class="card-description">
-              <code>deploy-api-cloudrun.yml</code>, <code>deploy-dashboard.yml</code>,
-              <code>deploy-landing.yml</code>, <code>deploy.yml</code> — each gated by a
+              <code>deploy-api-cloudrun.yml</code>, <code>deploy-landing.yml</code>,
+              <code>deploy.yml</code> — each gated by a
               <code>paths:</code> filter so a docs-only merge doesn't redeploy the API. Verification step
               (<code>curl /health</code>) runs after each Cloud Run deploy.
             </div>
@@ -104,7 +104,6 @@ flowchart LR
     PathFilter -- sardis-api --> Cloudbuild[Cloud Build]
     Cloudbuild --> CloudRun[Cloud Run · us-east1]
     CloudRun --> HealthCheck[curl /health]
-    PathFilter -- apps/dashboard --> VercelDash[Vercel · app.sardis.sh]
     PathFilter -- apps/landing --> VercelLand[Vercel · sardis.sh]
     Tag[Version tag py-sdk-v* / sdk-js-v* / ...] --> ReleaseMatrix[release-python-sdk · release-npm · release-python-integrations]
     ReleaseMatrix --> Registry[PyPI · npm]
@@ -127,8 +126,8 @@ flowchart LR
             <tr>
               <td><code>ci.yml</code></td>
               <td>push main · PR</td>
-              <td>python-lint-test · idempotency-replay-e2e · contracts-gas · contracts-strict · typescript-sdk · dashboard-build · build-landing</td>
-              <td>ruff + pytest with <code>--cov-fail-under=40</code> on core/api, forge gas ceiling and full strict test suite (solc 0.8.24 pinned), TS SDK + MCP build and tests, dashboard and landing typecheck + build.</td>
+              <td>python-lint-test · idempotency-replay-e2e · contracts-gas · contracts-strict · typescript-sdk · build-landing</td>
+              <td>ruff + pytest with <code>--cov-fail-under=40</code> on core/api, forge gas ceiling and full strict test suite (solc 0.8.24 pinned), TS SDK + MCP build and tests, landing typecheck + build.</td>
             </tr>
             <tr>
               <td><code>test-api.yml</code></td>
@@ -195,16 +194,10 @@ flowchart LR
               <td>GCP OIDC via Workload Identity Federation (no long-lived keys). Build through <code>cloudbuild.yaml</code>, deploy, then <code>curl /health</code> — non-200 fails the run. If <code>GCP_WORKLOAD_IDENTITY_PROVIDER</code> is missing, the job fails loudly with remediation instructions (previously silently skipped).</td>
             </tr>
             <tr>
-              <td><code>deploy-dashboard.yml</code></td>
-              <td>Vercel · <code>app.sardis.sh</code></td>
-              <td><code>apps/dashboard/**</code>, <code>packages/ui-web/**</code>, <code>pnpm-lock.yaml</code></td>
-              <td>Build job (typecheck + lint + build) on every PR for preview. Deploy job is <code>if: github.ref == 'refs/heads/main' &amp;&amp; github.event_name == 'push'</code> — prod only.</td>
-            </tr>
-            <tr>
               <td><code>deploy-landing.yml</code></td>
               <td>Vercel · <code>sardis.sh</code></td>
-              <td><code>apps/landing/**</code>, <code>packages/ui-web/**</code></td>
-              <td>Same two-job shape as dashboard.</td>
+              <td><code>apps/landing/**</code>, <code>pnpm-lock.yaml</code></td>
+              <td>Build job (typecheck + lint + build) on every PR for preview. Deploy job is <code>if: github.ref == 'refs/heads/main' &amp;&amp; github.event_name == 'push'</code> — prod only.</td>
             </tr>
             <tr>
               <td><code>deploy.yml</code></td>
@@ -228,9 +221,7 @@ flowchart LR
           </thead>
           <tbody>
             <tr><td>API (sardis-api)</td><td>Cloud Run</td><td>service <code>sardis-api</code> · region <code>us-east1</code></td><td>api.sardis.sh (via LB) · direct Cloud Run URL for health checks</td></tr>
-            <tr><td>Dashboard</td><td>Vercel</td><td><code>VERCEL_PROJECT_ID_DASHBOARD</code></td><td><code>app.sardis.sh</code> + <code>dashboard.sardis.sh</code></td></tr>
             <tr><td>Landing</td><td>Vercel</td><td><code>VERCEL_PROJECT_ID_LANDING</code></td><td><code>sardis.sh</code></td></tr>
-            <tr><td>Checkout UI</td><td>Vercel</td><td>sardis-checkout-ui</td><td><code>checkout.sardis.sh</code></td></tr>
             <tr><td>Docs</td><td>Vercel / Pages</td><td>deployed via <code>docs.yml</code></td><td><code>sardis.sh/docs</code></td></tr>
           </tbody>
         </table>
@@ -318,7 +309,7 @@ flowchart LR
             <div class="card-title"><code>docs.yml</code></div>
             <div class="card-description">
               Builds and deploys the documentation site on changes to <code>docs/</code>. Mirrors the
-              Vercel shape of dashboard/landing: build on PR for preview, deploy on merge to <code>main</code>.
+              Vercel shape of the public landing app: build on PR for preview, deploy on merge to <code>main</code>.
             </div>
           </div>
         </div>

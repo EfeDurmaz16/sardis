@@ -35,9 +35,8 @@ OnboardingStep = Literal[
     "tour_ready",
 ]
 
-# Canonical step order. Mirrored verbatim in
-# apps/dashboard/components/onboarding/onboarding-wizard.tsx — keep
-# the two lists in sync when adding/removing steps.
+# Canonical step order. Product clients should mirror this list and keep
+# their onboarding UI in sync when adding/removing steps.
 ONBOARDING_STEPS: tuple[OnboardingStep, ...] = (
     "profile",
     "api_key",

@@ -38,12 +38,12 @@
 
 ## 4. Duplication Removal
 
-- Goal: Replace obvious duplicate API client and constants.
-- Files likely affected: `apps/dashboard/lib/sardis-api.ts`, `apps/landing/lib/sardis-api.ts`, `packages/sardis-sdk-js`.
-- Implementation notes: Extract shared types first, then transport.
+- Goal: Replace obvious duplicate API client and constants across public SDKs and private product clients.
+- Files likely affected: `packages/sardis-sdk-js`, OpenAPI snapshots, and private product repo clients after split.
+- Implementation notes: Extract shared public types first, then point private product clients at generated SDK/OpenAPI contracts.
 - Risk: Medium.
 - Rollback plan: Revert per-client extraction commit.
-- Validation command: `pnpm --filter @sardis/app-dashboard typecheck` and `pnpm --filter @sardis/app-landing typecheck`.
+- Validation command: `pnpm --filter @sardis/sdk-js typecheck` plus private product repo typecheck after migration.
 
 ## 5. Architecture Restructuring
 

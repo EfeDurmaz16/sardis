@@ -8,6 +8,7 @@ import sys
 
 
 BLOCKED_PREFIXES = (
+    "apps/dashboard/",
     "docs/audits/evidence/",
     "docs/cdp/",
     "docs/compliance/",
@@ -23,6 +24,8 @@ BLOCKED_PREFIXES = (
     "docs/superpowers/",
     "docs/compliance/soc2/",
     "docs/yc/",
+    "packages/sardis-checkout-ui/",
+    "packages/ui-web/",
     "scripts/gtm/",
     "scripts/investor",
     "scripts/outreach/",

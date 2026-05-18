@@ -21,7 +21,7 @@ import Canvas from "../layouts/Canvas.astro";
           Three workspaces (<code>packages/</code>, <code>apps/</code>, <code>contracts/</code>) carry
           99% of the production code. Everything else is either supporting material (docs, scripts,
           demos) or build artefacts. If you're reading code, start in <code>packages/sardis-core</code>.
-          If you're running code, start in <code>apps/dashboard</code>. If you're verifying on-chain,
+          If you're running the public site, start in <code>apps/landing</code>. If you're verifying on-chain,
           start in <code>contracts/src</code>.
         </div>
       </section>
@@ -33,10 +33,9 @@ import Canvas from "../layouts/Canvas.astro";
           <h2>What's in the tree.</h2>
         </div>
         <div class="grid grid-4">
-          <div class="stat"><div class="stat-value">51</div><div class="stat-label">packages</div></div>
-          <div class="stat"><div class="stat-value">2</div><div class="stat-label">Next.js apps</div></div>
+          <div class="stat"><div class="stat-value">39</div><div class="stat-label">public package dirs</div></div>
+          <div class="stat"><div class="stat-value">1</div><div class="stat-label">public Next.js app</div></div>
           <div class="stat"><div class="stat-value">9</div><div class="stat-label">Solidity contracts</div></div>
-          <div class="stat"><div class="stat-value">43</div><div class="stat-label">dashboard pages</div></div>
           <div class="stat"><div class="stat-value">59</div><div class="stat-label">docs folders</div></div>
           <div class="stat"><div class="stat-value">18</div><div class="stat-label">demos</div></div>
           <div class="stat"><div class="stat-value">20+</div><div class="stat-label">examples</div></div>
@@ -56,12 +55,12 @@ import Canvas from "../layouts/Canvas.astro";
           </p>
         </div>
         <div class="tree">sardis/
-├── <span class="dir">apps/</span>                     <span class="note"># 2 Next.js 16 apps (React 19)</span>
-│   ├── dashboard/            <span class="note"># app.sardis.sh · operator pages</span>
-│   └── landing/              <span class="note"># sardis.sh · marketing + blog</span>
-├── <span class="dir">packages/</span>                 <span class="note"># 51 packages, see canvas 03</span>
+├── <span class="dir">apps/</span>                     <span class="note"># public apps: landing + canvas source</span>
+│   ├── landing/              <span class="note"># sardis.sh · marketing + blog</span>
+│   └── canvas-site/          <span class="note"># canvas.sardis.sh source</span>
+├── <span class="dir">packages/</span>                 <span class="note"># public protocol, SDK, integration packages</span>
 ├── <span class="dir">contracts/</span>                <span class="note"># Foundry · Solidity 0.8.24</span>
-├── <span class="dir">docs/</span>                     <span class="note"># architecture, GTM, investor notes</span>
+├── <span class="dir">docs/</span>                     <span class="note"># architecture, governance, OSS contribution docs</span>
 ├── <span class="dir">demos/</span>                    <span class="note"># 18 runnable demos</span>
 ├── <span class="dir">examples/</span>                 <span class="note"># 20+ framework-specific examples</span>
 ├── <span class="dir">tests/</span>                    <span class="note"># cross-package integration tests</span>
@@ -79,13 +78,9 @@ import Canvas from "../layouts/Canvas.astro";
 ├── <span class="dir">api-proxy/</span>                <span class="note"># Edge proxy for rate-limit-heavy endpoints</span>
 ├── <span class="dir">deploy/</span>                   <span class="note"># GCP Cloud Run configs + env templates</span>
 ├── <span class="dir">docs-site/</span>                <span class="note"># Docusaurus-style public docs</span>
-├── <span class="dir">canvases/</span>                 <span class="note"># this document, HTML canvases</span>
-├── <span class="dir">research/</span>                 <span class="note"># internal research notes + prototypes</span>
+├── <span class="dir">canvases/</span>                 <span class="note"># generated canvas HTML artefacts</span>
 ├── <span class="dir">monitoring/</span>               <span class="note"># Upptime config + uptime badges</span>
 ├── <span class="dir">marketplace/</span>              <span class="note"># MCP / Composio / Activepieces submissions</span>
-├── <span class="dir">ops/</span>                      <span class="note"># incident templates + runbooks</span>
-├── <span class="dir">legal/</span>                    <span class="note"># ToS, privacy, DPA drafts</span>
-├── <span class="dir">playground/</span>               <span class="note"># scratchpad, not shipped</span>
 └── <span class="dir">sardis/</span>                   <span class="note"># thin public Python import surface</span></div>
         </details>
 
@@ -103,7 +98,6 @@ import Canvas from "../layouts/Canvas.astro";
 ├── sardis-compliance/    <span class="note"># KYC (Didit) + AML (Elliptic)</span>
 ├── sardis-cards/         <span class="note"># virtual cards (Stripe Issuing)</span>
 ├── sardis-checkout/      <span class="note"># Pay with Sardis merchant flow</span>
-├── sardis-checkout-ui/   <span class="note"># checkout.sardis.sh · Vite</span>
 ├── sardis-langchain/     <span class="note"># + 17 other framework adapters</span>
 └── ...                   <span class="note"># see canvas 03 for the full list</span></div>
         </details>
@@ -113,26 +107,12 @@ import Canvas from "../layouts/Canvas.astro";
       <section class="section">
         <div class="section-header">
           <div class="eyebrow">apps/</div>
-          <h2>Two Next.js apps — one for customers, one for operators.</h2>
+          <h2>Public apps — docs and developer-facing surfaces.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Both apps are Next.js 16 App Router (React 19) on Vercel Edge. They share design tokens but not state.
-            Dashboard talks to <code>sardis-api</code> via authenticated fetch; landing is static with
-            MDX content.
+            The hosted product dashboard moved to the private product repo. The public repo keeps
+            the open developer surfaces: the landing site and the technical canvas source.
           </p>
         </div>
-
-        <h3 class="mt-24">apps/dashboard — <code>app.sardis.sh</code> / <code>dashboard.sardis.sh</code></h3>
-        <p class="text-muted">Operator console. 43 pages under <code>app/(dashboard)/</code>, auth at <code>app/auth/</code>, public demo at <code>app/demo/</code>, self-service account management at <code>app/account/</code>. See canvas 16 for full page inventory.</p>
-        <div class="tree">apps/dashboard/
-├── app/
-│   ├── <span class="dir">(dashboard)/</span>           <span class="note"># 43 operator pages: agents, wallets, mandates, policies,</span>
-│   │                         <span class="note">#   approvals, kill-switch, live-events, audit-anchors, etc.</span>
-│   ├── account/              <span class="note"># user settings, API keys, billing</span>
-│   ├── api/                  <span class="note"># Next.js route handlers (auth proxy)</span>
-│   ├── auth/                 <span class="note"># better-auth sign-in/up, passkey</span>
-│   ├── demo/                 <span class="note"># public interactive demo (no signup)</span>
-│   ├── layout.tsx            <span class="file"># root layout + providers</span>
-│   └── providers.tsx         <span class="file"># React Query, theme, auth</span></div>
 
         <h3 class="mt-24">apps/landing — <code>sardis.sh</code></h3>
         <p class="text-muted">Marketing surface. MDX-driven blog + glossary + compare pages. Fully static with ISR for blog.</p>
@@ -156,11 +136,11 @@ import Canvas from "../layouts/Canvas.astro";
       <section class="section">
         <div class="section-header">
           <div class="eyebrow">packages/</div>
-          <h2>51 packages — the product.</h2>
+          <h2>Public packages — the protocol and integration surface.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Every unit of shipped behavior is a package. Python packages use <code>uv</code>, TypeScript
-            packages use <code>pnpm</code>. Canvas <a href="/packages">03 · Packages</a> has the full
-            breakdown; here's the grouped summary.
+            Python packages use <code>uv</code>, TypeScript packages use <code>pnpm</code>. The hosted
+            product UI packages moved private; the public package tree focuses on protocol logic,
+            SDKs, framework adapters, and OSS verification surfaces.
           </p>
         </div>
         <table class="data">
@@ -169,11 +149,11 @@ import Canvas from "../layouts/Canvas.astro";
           </thead>
           <tbody>
             <tr><td>Core platform</td><td>12</td><td>sardis-core, sardis-api, sardis-chain, sardis-wallet, sardis-protocol, sardis-ledger, sardis-compliance, sardis-cards, sardis-guardrails, sardis-zk-policy, sardis-zkp, sardis-ucp</td></tr>
-            <tr><td>Checkout &amp; merchant</td><td>4</td><td>sardis-checkout, sardis-checkout-ui, sardis-connect, sardis-connect-js</td></tr>
+            <tr><td>Checkout &amp; merchant</td><td>3</td><td>sardis-checkout, sardis-connect, sardis-connect-js</td></tr>
             <tr><td>AI framework integrations</td><td>15+</td><td>sardis-langchain, crewai, autogpt, openai-agents, openai, agent-sdk, adk, a2a, agentkit, browser-use, composio, openclaw, stagehand, ai-sdk, activepieces, n8n-nodes-sardis, mcp-server, gpt, e2b</td></tr>
             <tr><td>Payment providers</td><td>6</td><td>sardis-coinbase, sardis-lightspark, sardis-striga, sardis-mpp, sardis-mpp-proxy, sardis-ramp</td></tr>
             <tr><td>SDKs &amp; CLIs</td><td>6</td><td>sardis-sdk-python, sardis-sdk-js, sardis-cli, sardis-cli-go, sardis-cli-js, sardis-ramp-js</td></tr>
-            <tr><td>Misc / experimental</td><td>8</td><td>sardis-solana-program, sardis-spend-widget, sardis-telegram-bot, ui-web, and a handful of provider-specific shims</td></tr>
+            <tr><td>Misc / experimental</td><td>7</td><td>sardis-solana-program, sardis-spend-widget, sardis-telegram-bot, and provider-specific shims</td></tr>
           </tbody>
         </table>
       </section>
@@ -232,7 +212,7 @@ import Canvas from "../layouts/Canvas.astro";
             <tr><td><code>demos/</code></td><td>Runnable end-to-end demos. What a new prospect sees.</td><td><code>mvp_base_sepolia_demo.py</code>, <code>tempo_e2e_demo.py</code>, <code>sardis_connect_e2e_demo.py</code>, <code>sardis-demo-video/</code></td></tr>
             <tr><td><code>examples/</code></td><td>Small, focused snippets per framework. One concept each.</td><td><code>simple_payment.py</code>, <code>langchain_sardis_agent.py</code>, <code>crewai_finance_team.py</code>, <code>google_adk_agent.py</code>, <code>vercel_ai_payment.ts</code></td></tr>
             <tr><td><code>tests/</code></td><td>Cross-package integration tests. Per-package unit tests live in the package.</td><td><code>__init__.py</code> (plus integration suites added via pytest config)</td></tr>
-            <tr><td><code>canvases/</code></td><td>This document. HTML canvases describing the system.</td><td><code>index.html</code>, <code>pages/</code>, <code>css/</code>, <code>js/nav.js</code></td></tr>
+            <tr><td><code>canvases/</code></td><td>Generated HTML canvases describing the public system.</td><td><code>index.html</code>, generated route folders, <code>css/</code>, <code>js/nav.js</code></td></tr>
             <tr><td><code>research/</code></td><td>Prototypes that may or may not ship. Never imported from production.</td><td>one-off notebooks + drafts</td></tr>
             <tr><td><code>monitoring/</code></td><td>Upptime-based public status page config.</td><td><code>.upptimerc.yml</code> lives at repo root; dashboards under <code>monitoring/</code></td></tr>
             <tr><td><code>marketplace/</code></td><td>Submissions to third-party marketplaces — MCP, Composio, Activepieces, ChatGPT Actions.</td><td>per-marketplace folders</td></tr>
@@ -334,10 +314,10 @@ flowchart TD
             <div class="canvas-card-title">Smart Contracts</div>
             <div class="canvas-card-desc">Every Solidity source, addresses, deploy pipeline.</div>
           </a>
-          <a class="canvas-card" href="/dashboard">
-            <div class="canvas-card-num">16 · Product</div>
-            <div class="canvas-card-title">Dashboard UI</div>
-            <div class="canvas-card-desc">All 43 operator pages with purpose and state.</div>
+          <a class="canvas-card" href="/security">
+            <div class="canvas-card-num">19 · Ops</div>
+            <div class="canvas-card-title">Security Model</div>
+            <div class="canvas-card-desc">Trust boundaries, fail-closed defaults, and public security posture.</div>
           </a>
         </div>
       </section>

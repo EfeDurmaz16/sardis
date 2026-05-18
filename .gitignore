@@ -139,6 +139,9 @@ docs/plans/
 docs/compliance/
 docs/runbooks/
 docs/superpowers/
+apps/dashboard/
+packages/sardis-checkout-ui/
+packages/ui-web/
 
 # Root-level internal files
 AUDIT_SUMMARY*.md

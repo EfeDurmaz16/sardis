@@ -51,10 +51,9 @@ const styles = `
         <span class="eyebrow">Canvas 11 · Product</span>
         <h1>Checkout & Merchants</h1>
         <p class="hero-lead">
-          Two products live here. <strong>Pay with Sardis</strong> is a crypto-native checkout where the
-          customer brings the wallet. <strong>Sardis Connect</strong> is the zero-crypto merchant SDK — the
-          merchant thinks in USD while Sardis handles stablecoins under the hood. Both ride the same
-          session, webhook, and settlement machinery.
+          The public repo keeps the checkout session engine, hardening migrations, API routes, and
+          merchant SDK contracts. Hosted browser checkout UI and embed implementation live in the
+          private product repo until Sardis deliberately publishes that widget as a stable OSS surface.
         </p>
       </section>
 
@@ -62,9 +61,9 @@ const styles = `
         <div class="callout callout-info">
           <span class="callout-title">TL;DR</span>
           A merchant creates a <span class="code-inline">merchant_checkout_session</span>. A customer
-          receives a <span class="code-inline">client_secret</span>, opens <span class="code-inline">checkout.sardis.sh</span>
-          in an iframe, connects a wallet (or fiat onramps into one), signs a USDC transfer, and Sardis
-          streams the outcome back. All public endpoints are <span class="code-inline">client_secret</span>-scoped
+          receives a <span class="code-inline">client_secret</span>, presents it to a checkout client,
+          connects a wallet or uses a managed wallet path, signs a USDC transfer, and Sardis streams
+          the outcome back. All public endpoints are <span class="code-inline">client_secret</span>-scoped
           so sessions cannot be enumerated and double-pay races cannot land.
         </div>
       </section>
@@ -90,9 +89,9 @@ const styles = `
               account for USD payout).
             </p>
             <ul>
-              <li><code>checkout.sardis.sh</code> iframe · embed via <code>sardis-checkout.js</code></li>
-              <li>wagmi + viem + WalletConnect v2 + Coinbase Wallet SDK</li>
-              <li>CDP Onramp integrated for fiat-first customers</li>
+              <li>Client-secret-scoped API for browser or server checkout clients</li>
+              <li>External wallet confirmation and server-managed payment paths</li>
+              <li>Optional onramp integration for fiat-first customers</li>
               <li>EIP-191 signature binds payer wallet to session</li>
               <li>SSE stream for real-time status in the merchant UI</li>
             </ul>
@@ -144,16 +143,15 @@ const styles = `
             <div class="step-num">02</div>
             <div class="step-body">
               <strong>Redirect or embed.</strong>
-              Merchant either redirects the customer to <code>checkout.sardis.sh/s/&#123;client_secret&#125;</code>
-              or calls <code>SardisCheckout.open(&#123; clientSecret &#125;)</code> from the JS embed SDK. The SDK
-              appends <code>?embed_origin=...</code> so the iframe can restrict <code>postMessage</code>.
+              Merchant passes the <code>client_secret</code> to a checkout client. Hosted UI is product-private;
+              the public contract is the client-secret-scoped session API and the webhook/SSE contract.
             </div>
           </div>
           <div class="step-row">
             <div class="step-num">03</div>
             <div class="step-body">
-              <strong>Checkout UI loads session.</strong>
-              The Vite/React app at <code>packages/sardis-checkout-ui</code> fetches
+              <strong>Checkout client loads session.</strong>
+              A browser, mobile, or server checkout client fetches
               <code>GET /sessions/client/&#123;client_secret&#125;/details</code> — returns the amount, merchant name,
               and the <code>settlement_address</code> needed for client-side USDC transfers.
             </div>
@@ -181,7 +179,7 @@ const styles = `
             <div class="step-num">06</div>
             <div class="step-body">
               <strong>Streaming update.</strong>
-              Merchant dashboard (and the iframe itself) subscribes to
+              Merchant systems and checkout clients subscribe to
               <code>GET /sessions/client/&#123;client_secret&#125;/stream</code> (SSE). Polling fallback at
               <code>.../details</code> exists for clients that can't hold an SSE connection.
             </div>
@@ -265,7 +263,7 @@ stateDiagram-v2
             <tr>
               <td>Embed origin</td>
               <td><code>merchant_checkout_sessions.embed_origin</code></td>
-              <td>Clickjacking / hostile iframe. The checkout UI restricts <code>postMessage</code> to the declared origin.</td>
+              <td>Clickjacking / hostile iframe. Hosted clients must restrict <code>postMessage</code> to the declared origin.</td>
             </tr>
             <tr>
               <td>Webhook dedup</td>
@@ -291,42 +289,37 @@ stateDiagram-v2
         </table>
       </section>
 
-      <!-- Embed SDK -->
+      <!-- Hosted client boundary -->
       <section class="section">
         <div class="section-header">
-          <div class="eyebrow">Embed SDK</div>
-          <h2><code>checkout.sardis.sh/sardis-checkout.js</code></h2>
+          <div class="eyebrow">Hosted client boundary</div>
+          <h2>What remains private vs. public.</h2>
           <p class="text-muted" style="max-width:720px;">
-            One script tag, one call. Source:
-            <code>packages/sardis-checkout-ui/src/embed/sardis-checkout.ts</code>. No framework required;
-            renders an overlay + iframe and listens for <code>postMessage</code> success/cancel events.
+            The public repo documents and tests the backend contract. The hosted React checkout client,
+            visual design, and embeddable script are product code and should be recovered into the
+            private product repo from git history if needed.
           </p>
         </div>
         <div class="grid grid-2">
           <div class="card">
-            <div class="card-title">Shape of the call</div>
+            <div class="card-title">Public contract</div>
             <div class="card-description">
-              <pre class="code-block"><code>&lt;script src="https://checkout.sardis.sh/sardis-checkout.js"&gt;&lt;/script&gt;
-&lt;script&gt;
-  SardisCheckout.open(&#123;
-    clientSecret: "abc123...",
-    onSuccess: (&#123; session_id, tx_hash &#125;) =&gt; &#123;...&#125;,
-    onCancel: () =&gt; &#123;...&#125;,
-  &#125;);
-&lt;/script&gt;</code></pre>
-              <code>sessionId</code> is still accepted but deprecated — use <code>clientSecret</code>.
-              The SDK routes to <code>/s/&#123;clientSecret&#125;</code> when present, <code>/&#123;sessionId&#125;</code> for legacy.
+              <ul style="margin:0; padding-left:18px;">
+                <li>Session creation and lookup endpoints.</li>
+                <li>Client-secret-scoped public session operations.</li>
+                <li>SSE status stream and webhook event envelope.</li>
+                <li>Database idempotency, deduplication, and settlement state.</li>
+              </ul>
             </div>
           </div>
           <div class="card">
-            <div class="card-title">What the SDK does for you</div>
+            <div class="card-title">Private product surface</div>
             <div class="card-description">
               <ul style="margin:0; padding-left:18px;">
-                <li>Injects a full-screen overlay with z-index isolation.</li>
-                <li>Appends <code>?embed_origin=&lt;window.location.origin&gt;</code> so postMessage is origin-restricted.</li>
-                <li>Handles overlay close on success / cancel / escape.</li>
-                <li>Exposes <code>&lt;sardis-pay client-secret="..."&gt;</code> as a web component alternative.</li>
-                <li>Zero runtime dependencies; ~4 KB gzipped.</li>
+                <li>Hosted browser checkout UI.</li>
+                <li>Embeddable script and web component.</li>
+                <li>Conversion, analytics, branding, and merchant dashboard loops.</li>
+                <li>Provider-specific wallet UX decisions.</li>
               </ul>
             </div>
           </div>
@@ -494,7 +487,6 @@ app.use(sardis.middleware());</code></pre>
             <tr><td><code>packages/sardis-api/migrations/033_wallet_verification.sql</code></td><td><code>payer_wallet_address</code> column + <code>external_wallet</code> payment method.</td></tr>
             <tr><td><code>packages/sardis-api/migrations/045_merchant_trust.sql</code></td><td><code>merchant_trust_profiles</code> scoring table.</td></tr>
             <tr><td><code>packages/sardis-checkout/src/sardis_checkout/</code></td><td>Orchestrator · sessions · webhooks · settlement · fraud · idempotency · partial payments.</td></tr>
-            <tr><td><code>packages/sardis-checkout-ui/src/</code></td><td>React/Vite checkout UI · <code>CheckoutPage.tsx</code> · <code>embed/sardis-checkout.ts</code>.</td></tr>
             <tr><td><code>packages/sardis-connect/src/sardis_connect/</code></td><td>Python merchant SDK · models · middleware.</td></tr>
             <tr><td><code>packages/sardis-connect-js/src/</code></td><td>TypeScript merchant SDK · <code>middleware.ts</code> · <code>types.ts</code>.</td></tr>
           </tbody>

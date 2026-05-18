@@ -94,7 +94,6 @@ sardis/
 │   ├── sardis-striga/      # Striga banking/cards
 │   ├── sardis-mpp/         # Stripe MPP + Tempo (Merchant Payment Protocol)
 │   ├── sardis-ramp/        # On/off ramp providers
-│   └── sardis-checkout-ui/ # Pay with Sardis frontend (React/Vite)
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol

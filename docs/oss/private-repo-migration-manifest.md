@@ -8,6 +8,7 @@ The public repository should not contain private commercial planning, hiring, in
 
 The following categories are private by default:
 
+- `apps/dashboard/` - hosted product dashboard, auth, RBAC, billing, onboarding, approval inbox, and operator workflows
 - `docs/audits/evidence/` - generated operational/provider readiness evidence and latest-run artifacts
 - `docs/audits/claims-evidence.md`, `docs/audits/control-testing-cadence-q1-2026.md`, `docs/audits/final-remediation-report.md`, `docs/audits/prelaunch-remediation-plan.md` - launch/company readiness evidence and remediation history
 - `docs/cdp/` - commercial/customer-development drafts
@@ -27,6 +28,8 @@ The following categories are private by default:
 - `docs/yc/` - accelerator application drafts
 - `api/*/*.json` - generated uptime and response-time snapshots
 - `contracts/broadcast/` - generated Foundry broadcast/deployment artifacts
+- `packages/sardis-checkout-ui/` - hosted checkout product UI and embed surface until it is intentionally published as a stable OSS widget
+- `packages/ui-web/` - hosted product design-system package
 - `scripts/check_design_partner_readiness.py`, `scripts/investor_demo_flow.py`, and private release gates under `scripts/release/` - design-partner, investor-demo, provider certification, SOC2, ops-readiness, formal audit evidence, and GA-prep automation
 - `scripts/gtm/` - GTM automation and lead workflow scripts
 

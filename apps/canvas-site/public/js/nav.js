@@ -213,14 +213,6 @@
       href: "/integrations",
     },
     {
-      id: "dashboard",
-      num: "16",
-      group: "Product",
-      title: "Dashboard UI",
-      desc: "43 Next.js pages.",
-      href: "/dashboard",
-    },
-    {
       id: "external",
       num: "17",
       group: "Ops",

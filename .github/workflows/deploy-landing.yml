@@ -5,13 +5,11 @@ on:
     branches: [main]
     paths:
       - 'apps/landing/**'
-      - 'packages/ui-web/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
   pull_request:
     paths:
       - 'apps/landing/**'
-      - 'packages/ui-web/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
 

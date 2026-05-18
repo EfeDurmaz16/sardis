@@ -74,14 +74,14 @@ Status meanings:
 | `apps/landing/` | Public website source; can stay public but should not block OSS protocol CI. |
 | `apps/canvas-site/` | Public content/canvas source; generated outputs should be checked for drift. |
 
-## Private Candidates
+## Moved Private
 
 | Path | Reason |
 | --- | --- |
-| `apps/dashboard/` | Hosted product surface: auth, org, billing, approval inbox, onboarding, and admin flows. |
-| `packages/sardis-checkout-ui/` | Product UI unless intentionally published as a stable embeddable OSS component. |
-| `packages/ui-web/` | Hosted product design system unless intentionally published as a public UI package. |
-| Product-only deployment and monitoring workflows | Keep out of public OSS CI/CD; dashboard deploy workflows belong in the private product repo. |
+| `apps/dashboard/` | Hosted product surface: auth, org, billing, approval inbox, onboarding, and admin flows. Removed from public tracking; restore in the private product repo from history if needed. |
+| `packages/sardis-checkout-ui/` | Product checkout UI and embed surface. Removed from public tracking until intentionally published as a stable OSS widget. |
+| `packages/ui-web/` | Hosted product design system. Removed from public tracking unless Sardis intentionally publishes a public UI package. |
+| Product-only deployment and monitoring workflows | Kept out of public OSS CI/CD; dashboard/product deploy workflows belong in the private product repo. |
 
 ## Archive Candidates
 
