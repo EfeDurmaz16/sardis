@@ -56,6 +56,7 @@ Completed so far:
 | `routers/wallets.py` implementation | `routes/wallets/wallets.py` with a compatibility wrapper in `routers/` | Completes the first wallet-domain placement pass by moving core wallet lifecycle, balance, transfer, and x402 wallet routes into the same domain. |
 | `routers/stripe_webhooks.py`, `routers/stripe_spt_webhooks.py`, `routers/mastercard_webhooks.py`, `routers/visa_tap_webhooks.py`, `routers/partner_card_webhooks.py`, `routers/cpn_webhooks.py`, `routers/polar_webhook.py` implementations | `routes/providers/*` with compatibility wrappers in `routers/` | Separates inbound provider callback handling from outbound customer webhook subscription APIs. |
 | `routers/policies.py`, `routers/policy_simulation.py`, `routers/policy_analytics.py`, `routers/fallback_policies.py` implementations | `routes/policy/*` with compatibility module aliases in `routers/` | Moves policy definition, simulation, analytics, and fallback policy APIs into a control-plane policy domain while preserving stateful legacy import targets. |
+| `routers/evidence.py`, `routers/evidence_export.py`, `routers/audit_anchors.py`, `routers/attestation.py` implementations | `routes/evidence/*` with compatibility module aliases in `routers/` | Groups evidence capture, export, audit anchors, and attestation proof APIs under one evidence domain while preserving stateful legacy import targets. |
 
 The external API remains unchanged:
 
@@ -164,9 +165,10 @@ moved to `sardis_api/routes/<domain>/...`.
    `stripe_spt_webhooks`, `mastercard_webhooks`, `visa_tap_webhooks`,
    `partner_card_webhooks`, `cpn_webhooks`, and `polar_webhook`.
 5. Policy, compliance, and evidence: completed for `policies`,
-   `policy_simulation`, `policy_analytics`, and `fallback_policies`;
+   `policy_simulation`, `policy_analytics`, `fallback_policies`, `evidence`,
+   `evidence_export`, `audit_anchors`, and `attestation`;
    remaining files are `compliance`, `compliance_export`, `kyc_onboarding`,
-   `evidence`, `evidence_export`, `audit_anchors`, and `attestation`.
+   and related compliance surfaces.
 6. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
    `agent_activity`, `agent_events`, `agent_heartbeat`, `fides_identity`,
    `auth`, `email_verification`, `me`, `organizations`, `groups`, and

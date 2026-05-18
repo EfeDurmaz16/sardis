@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers import evidence_export
+from sardis_api.routes.evidence import evidence_export
 
 
 def _build_client() -> TestClient:

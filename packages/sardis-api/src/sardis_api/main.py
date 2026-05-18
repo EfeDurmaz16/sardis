@@ -105,8 +105,8 @@ from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
 from .routers import auth
 from .routers import api_keys as api_keys_router
-from .routers import attestation as attestation_router
-from .routers import audit_anchors as audit_anchors_router
+from .routes.evidence import attestation as attestation_router
+from .routes.evidence import audit_anchors as audit_anchors_router
 from .routes.money_movement import batch_payments as batch_payments_router
 from .routes.money_movement import fx as fx_router
 from .routes.money_movement import holds as holds_router
@@ -139,8 +139,8 @@ from .routers import enterprise_support as enterprise_support_router
 from .routers import environment_templates as environment_templates_router
 from .routers import escrow_disputes as escrow_disputes_router
 from .routers import event_stream as event_stream_router
-from .routers import evidence as evidence_router
-from .routers import evidence_export as evidence_export_router
+from .routes.evidence import evidence as evidence_router
+from .routes.evidence import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
 from .routers import facility_requests as facility_requests_router

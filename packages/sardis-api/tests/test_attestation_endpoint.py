@@ -13,7 +13,7 @@ from sardis_v2_core.attestation_envelope import (
 )
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.attestation import router
+from sardis_api.routes.evidence.attestation import router
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -147,6 +147,9 @@ def test_build_attestation_to_dict():
         "policy_rules_applied",
         "evidence_chain",
         "ap2_mandate_ref",
+        "origin_hash",
+        "action_description_hash",
+        "approval_timestamp",
         "verification_report",
         "signature",
     }
