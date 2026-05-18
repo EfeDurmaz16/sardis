@@ -36,12 +36,13 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 
 ## First Migration Step
 
-Completed in this pass:
+Completed so far:
 
 | Old file | New state | Reason |
 | --- | --- | --- |
 | `routers/webhooks.py` | `routers/webhook_subscriptions.py` | The module manages outbound webhook subscriptions and delivery logs, not all webhook handling. |
 | `routers/agent_identity.py` | deleted | The router was not imported or registered in the app and overlapped with the newer FIDES identity surface. |
+| `main.py` inline webhook subscription registration | `routing/developer.py::register_webhook_subscriptions` | Starts separating route registration by API audience/domain before moving 120+ router files. |
 
 The external API remains unchanged:
 
@@ -99,9 +100,10 @@ sardis_api/
       reliability.py
 ```
 
-This should happen after `sardis_api.main` is split into router registration
+This should continue after `sardis_api.main` is split into router registration
 functions. Moving 120+ files before extracting registration would create a large
-rename diff without enough architectural payoff.
+rename diff without enough architectural payoff. The first extracted registrar is
+`sardis_api.routing.developer.register_webhook_subscriptions`.
 
 ## Validation Required For Each Move
 

@@ -89,7 +89,6 @@ from sardis_v2_core.cache import create_cache_service
 from sardis_v2_core.holds import HoldsRepository
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.orchestrator import PaymentOrchestrator
-from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 from sardis_wallet.manager import WalletManager
 
 from .routers import a2a as a2a_router
@@ -187,7 +186,6 @@ from .routers import treasury_ops as treasury_ops_router
 from .routers import usage as usage_router
 from .routers import virtual_cards as virtual_cards_router
 from .routers import wallets as wallets_router
-from .routers import webhook_subscriptions as webhook_subscriptions_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
@@ -236,6 +234,7 @@ from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
+from .routing.developer import register_webhook_subscriptions
 from .services.recurring_billing import RecurringBillingService
 
 # Configure structured logging
@@ -850,14 +849,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("Approvals router not yet available (dependencies not complete)")
 
-    webhook_repo = WebhookRepository(dsn=database_url if use_postgres else "memory://")
-    webhook_service = WebhookService(repository=webhook_repo)
-    app.dependency_overrides[webhook_subscriptions_router.get_deps] = lambda: webhook_subscriptions_router.WebhookDependencies(  # type: ignore[arg-type]
-        repository=webhook_repo,
-        service=webhook_service,
+    webhook_service = register_webhook_subscriptions(
+        app,
+        dsn=database_url if use_postgres else "memory://",
     )
-    app.include_router(webhook_subscriptions_router.router, prefix="/api/v2/webhooks")
-    app.state.webhook_service = webhook_service
 
     redis_url = (
         os.getenv("SARDIS_REDIS_URL")
