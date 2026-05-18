@@ -32,6 +32,7 @@
 - Added `pnpm check:openapi`, fixed local OpenAPI generation imports/env setup, and documented the check in the public development loop.
 - Removed duplicate OpenAPI/runtime routes by keeping the canonical MPP router mount and canonical bridge quote router.
 - Made the OpenAPI check fail when FastAPI emits duplicate operation ID warnings.
+- Added a checked-in OpenAPI route contract snapshot and `pnpm openapi:update` for reviewed API surface changes.
 
 ## What Was Deleted
 
@@ -118,6 +119,9 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routers/swap.py` passed.
 - Strict `pnpm check:openapi` passed after making duplicate operation ID warnings fatal: 540 paths and 592 schemas.
 - `python3 -m compileall -q packages/sardis-api/scripts/generate_openapi.py` passed after strict OpenAPI warning detection.
+- `pnpm openapi:update` generated `packages/sardis-api/openapi/openapi.routes.snapshot.json`: 600 route operations across 540 OpenAPI paths.
+- `pnpm check:openapi` passed twice against the checked route snapshot.
+- `python3 -m compileall -q packages/sardis-api/scripts/generate_openapi.py` passed after adding snapshot compare/update modes.
 
 Notes:
 
@@ -141,7 +145,7 @@ Notes:
 - Standardize provider webhook replay protection.
 - Harden checkout nonce/replay binding.
 - Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
-- Add a checked-in API snapshot/diff gate after the current generated OpenAPI surface is reviewed.
+- Review duplicate Pydantic model class names before considering a full component-schema snapshot instead of the current stable route-level snapshot.
 - Create the private `sardis-product` or `sardis-cloud` repo and move dashboard/product surfaces out of the OSS contribution path.
 
 ## Next 30 Days
@@ -184,3 +188,5 @@ Notes:
 - `ee121646 fix(api): remove duplicate OpenAPI routes`
 - `00835504 docs: record OpenAPI duplicate route cleanup`
 - `0b970a44 chore(api): fail OpenAPI check on duplicate operations`
+- `34ffe33d docs: record strict OpenAPI check`
+- `02d9cccd chore(api): add OpenAPI route snapshot gate`
