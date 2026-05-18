@@ -106,8 +106,6 @@ from .routes.operations import event_stream as event_stream_router
 from .routes.operations import metrics as metrics_router
 from .routes.operations import reliability as reliability_router
 from .routes.operations import ws_alerts as ws_alerts_router
-from .routes.evidence import attestation as attestation_router
-from .routes.evidence import audit_anchors as audit_anchors_router
 from .routes.money_movement import batch_payments as batch_payments_router
 from .routes.money_movement import fx as fx_router
 from .routes.money_movement import holds as holds_router
@@ -133,8 +131,6 @@ from .routes.developer import dev as dev_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.commerce import escrow_disputes as escrow_disputes_router
-from .routes.evidence import evidence as evidence_router
-from .routes.evidence import evidence_export as evidence_export_router
 from .routes.operations import exceptions as exceptions_router
 from .routes.operations import execution_modes as execution_modes_router
 from .routes.authority import facility_requests as facility_requests_router
@@ -222,6 +218,7 @@ from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
 from .routing.developer import register_webhook_subscriptions
+from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
 from .routing.money_movement import register_pay_endpoint
 from .services.recurring_billing import RecurringBillingService
 
@@ -977,33 +974,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(enterprise_support_router.router)
 
-    # Audit anchors - blockchain-anchored audit trail
-    try:
-        from sardis_ledger.anchor import AnchorChainProvider, AnchorConfig, LedgerAnchor
-        anchor_chain = os.getenv("SARDIS_ANCHOR_CHAIN", "base")
-        anchor_config = AnchorConfig(chain=anchor_chain)
-        # Wire real chain provider if contract address is configured
-        chain_provider = None
-        if anchor_config.contract_address and chain_exec:
-            chain_provider = AnchorChainProvider(
-                chain_executor=chain_exec,
-                chain=anchor_chain,
-            )
-            logger.info(
-                "Audit anchor chain provider wired: chain=%s, contract=%s",
-                anchor_chain, anchor_config.contract_address,
-            )
-        anchor_service = LedgerAnchor(config=anchor_config, chain_provider=chain_provider)
-        app.dependency_overrides[audit_anchors_router.get_anchor_deps] = (
-            lambda: audit_anchors_router.AnchorDependencies(
-                anchor_service=anchor_service,
-                ledger_store=ledger_store,
-            )
-        )
-        logger.info("Audit anchor service initialized (chain_provider=%s)", "real" if chain_provider else "simulated")
-    except ImportError:
-        logger.warning("sardis-ledger anchor module not available, audit anchoring disabled")
-    app.include_router(audit_anchors_router.router)
+    register_audit_anchor_routes(
+        app,
+        chain_executor=chain_exec,
+        ledger_store=ledger_store,
+    )
 
     app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
@@ -1932,12 +1907,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # SDK install metrics (public)
     app.include_router(sdk_metrics_router.router)
 
-    # Evidence/audit trail API
-    app.include_router(evidence_router.router, prefix="/api/v2/evidence", tags=["evidence"])
-    app.include_router(evidence_export_router.router, prefix="/api/v2/evidence/export", tags=["evidence-export"])
-
-    # Attestation envelope API
-    app.include_router(attestation_router.router, prefix="/api/v2", tags=["attestation"])
+    register_evidence_routes(app)
 
     # Simulation API
     app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
