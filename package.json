@@ -31,11 +31,12 @@
     "check:live-chain:strict": "STRICT_MODE=1 bash ./scripts/check_live_chain_conformance.sh",
     "check:release-readiness": "bash ./scripts/check_release_readiness.sh",
     "check:release-readiness:strict": "STRICT_MODE=1 bash ./scripts/check_release_readiness.sh",
-    "check:modernization": "python3 scripts/repo_inventory.py && python3 scripts/stale_api_path_check.py",
+    "check:modernization": "python3 scripts/repo_inventory.py && python3 scripts/stale_api_path_check.py && python3 scripts/root_test_inventory.py --check",
     "check:openapi": "uv run python packages/server-api/scripts/generate_openapi.py --check",
     "openapi:update": "uv run python packages/server-api/scripts/generate_openapi.py --update-snapshot",
     "check:oss-surface": "python3 scripts/oss_surface_check.py && python3 scripts/stale_api_path_check.py",
     "check:packages": "python3 scripts/package_maturity_check.py",
+    "check:root-tests": "python3 scripts/root_test_inventory.py --check",
     "repo:prs": "python3 scripts/pr_maintenance.py",
     "repo:prs:json": "python3 scripts/pr_maintenance.py --json",
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase"

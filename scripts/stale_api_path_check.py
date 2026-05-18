@@ -26,6 +26,8 @@ IGNORED_PREFIXES = (
     "tests/",
     "docs/modernization/api-naming-migration.md",
     "docs/modernization/package-path-simplification.md",
+    "docs/oss/root-test-migration.md",
+    "scripts/root_test_inventory.py",
     "scripts/stale_api_path_check.py",
 )
 

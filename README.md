@@ -314,6 +314,7 @@ sardis/
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
 - **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
 - **[Development Guide](docs/development.md)** — Local setup and contribution checks
+- **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
 
 ---
 
@@ -342,6 +343,7 @@ pnpm install --frozen-lockfile
 # Run fast OSS checks
 python3 scripts/repo_inventory.py
 python3 scripts/oss_surface_check.py
+python3 scripts/stale_api_path_check.py
 pnpm --filter @sardis/sdk typecheck
 
 # Start local API server

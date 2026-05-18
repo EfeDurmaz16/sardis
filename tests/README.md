@@ -28,3 +28,10 @@ Before re-enabling any root test in CI, move it to the owning package's
 
 Do not add new tests to this root directory unless the test genuinely spans
 multiple packages and has no clearer package owner.
+
+For the migration inventory and owner-bucket rules, see:
+
+```text
+docs/oss/root-test-migration.md
+docs/oss/testing.md
+```
