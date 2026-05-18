@@ -363,7 +363,7 @@ class TestStripeSPTAdapterCheckHealth:
 
 def _build_spt_test_app(webhook_secret: str) -> TestClient:
     """Build a minimal FastAPI app with the SPT webhook router."""
-    from sardis_api.routers.stripe_spt_webhooks import router
+    from sardis_server.routes.providers.stripe_spt_webhooks import router
 
     app = FastAPI()
     app.include_router(router)
@@ -383,7 +383,7 @@ class TestStripeSPTWebhookHandler:
         os.environ.pop("STRIPE_SPT_WEBHOOK_SECRET", None)
 
     def _client(self) -> TestClient:
-        from sardis_api.routers.stripe_spt_webhooks import router
+        from sardis_server.routes.providers.stripe_spt_webhooks import router
         app = FastAPI()
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False)
@@ -441,7 +441,7 @@ class TestStripeSPTWebhookHandler:
         assert resp.json() == {"received": True}
 
     def test_missing_signature_returns_400(self):
-        from sardis_api.routers.stripe_spt_webhooks import router
+        from sardis_server.routes.providers.stripe_spt_webhooks import router
         app = FastAPI()
         app.include_router(router)
         client = TestClient(app, raise_server_exceptions=False)
@@ -463,7 +463,7 @@ class TestStripeSPTWebhookHandler:
 
     def test_missing_webhook_secret_returns_500(self):
         os.environ.pop("STRIPE_SPT_WEBHOOK_SECRET", None)
-        from sardis_api.routers.stripe_spt_webhooks import router
+        from sardis_server.routes.providers.stripe_spt_webhooks import router
         app = FastAPI()
         app.include_router(router)
         client = TestClient(app, raise_server_exceptions=False)

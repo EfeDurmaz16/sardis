@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.middleware.tap import (
+from sardis_server.middleware.tap import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
 )
@@ -114,7 +114,7 @@ class TestTapFailOpenDev:
 
     def test_dev_verify_fn_returns_true_without_jwks(self):
         """In dev, verify_fn returns True when no JWKS provider (bypass)."""
-        from sardis_api.middleware.tap import TapMiddlewareConfig, TapVerificationMiddleware
+        from sardis_server.middleware.tap import TapMiddlewareConfig, TapVerificationMiddleware
 
         config = TapMiddlewareConfig(fail_open_in_dev=True)
         middleware = TapVerificationMiddleware(None, config=config)
@@ -126,7 +126,7 @@ class TestTapFailOpenDev:
 
     def test_dev_verify_fn_rejects_when_fail_open_disabled(self):
         """In dev with fail_open_in_dev=False, verify_fn returns False."""
-        from sardis_api.middleware.tap import TapMiddlewareConfig, TapVerificationMiddleware
+        from sardis_server.middleware.tap import TapMiddlewareConfig, TapVerificationMiddleware
 
         config = TapMiddlewareConfig(fail_open_in_dev=False)
         middleware = TapVerificationMiddleware(None, config=config)
