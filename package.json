@@ -28,6 +28,7 @@
     "check:live-chain:strict": "STRICT_MODE=1 bash ./scripts/check_live_chain_conformance.sh",
     "check:release-readiness": "bash ./scripts/check_release_readiness.sh",
     "check:release-readiness:strict": "STRICT_MODE=1 bash ./scripts/check_release_readiness.sh",
+    "check:modernization": "python3 scripts/repo_inventory.py",
     "repo:prs": "python3 scripts/pr_maintenance.py",
     "repo:prs:json": "python3 scripts/pr_maintenance.py --json",
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase"

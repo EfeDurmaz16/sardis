@@ -114,6 +114,8 @@ pitch-deck/
 !/docs/PRODUCTION_DEPLOYMENT.md
 !/docs/production-runbook.md
 !/docs/audits/
+!/docs/modernization/
+!/docs/modernization/**
 !/docs/quickstart/
 !/docs/docs/
 !/docs/cdp/
