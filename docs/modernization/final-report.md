@@ -39,6 +39,8 @@
 - Made public quickstart entrypoints simulation-first by removing hosted dashboard signup as a prerequisite for contributor onboarding.
 - Removed generated audit evidence/latest-run artifacts from public tracking and expanded the OSS surface check to block audit evidence, outbound, outreach, and GTM paths.
 - Removed generated uptime/response-time JSON snapshots and Foundry broadcast artifacts from public source tracking, then ignored them going forward.
+- Removed hosted production, compliance, runbook, design-partner, investor-demo, and private release-gate material from public tracking.
+- Reworked release readiness into a public OSS gate covering SDKs, MCP, landing, Python protocol tests, OSS surface, and OpenAPI route snapshot validation.
 
 ## What Was Deleted
 
@@ -59,6 +61,8 @@
 - Deleted tracked company-specific SOC2/ops docs from `docs/compliance/soc2/` and `docs/ops/`.
 - Deleted generated/private operational evidence under `docs/audits/evidence/`.
 - Deleted generated uptime/response-time snapshots under `api/*/*.json` and generated Foundry deployment artifacts under `contracts/broadcast/`.
+- Deleted hosted production/compliance/runbook docs and private launch/remediation docs from public tracking.
+- Deleted private release/design-partner scripts that depended on private evidence artifacts.
 
 ## What Was Rewritten
 
@@ -155,6 +159,11 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `python3 scripts/oss_surface_check.py` passed after generated deployment artifact cleanup.
 - `python3 -m compileall -q api/index.py` passed after removing generated monitoring snapshots.
 - `git diff --check` passed after generated deployment artifact cleanup.
+- `python3 scripts/oss_surface_check.py` passed after removing private production/compliance/runbook docs.
+- Tracked private docs scan returned no matches for compliance, runbooks, superpowers, deployment guides, production runbooks, design-partner operations, or removed audit/remediation docs.
+- `bash -n scripts/check_release_readiness.sh scripts/release/readiness_check.sh` passed after converting release readiness to public-only.
+- `pnpm run check:release-readiness` passed after removing private release gates from the public path.
+- `git diff --check` passed after the release-readiness cleanup.
 
 Notes:
 
@@ -168,6 +177,7 @@ Notes:
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
 - Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
 - Dashboard deployment automation has been removed from the public OSS repo, but the dashboard source still needs history-preserving extraction when the private product repo is created.
+- Private production, compliance, and provider-certification gates now need to live in the future private product/compliance repository; the public gate intentionally does not prove hosted production readiness.
 - Canvas and LLM exports still need registry-driven regeneration.
 - Webhook replay protection remains uneven across provider routers.
 - Checkout nonce/replay hardening remains to be completed.
@@ -236,3 +246,7 @@ Notes:
 - `5ded7702 chore: remove generated audit evidence from public surface`
 - `85fb48af docs: record audit evidence cleanup`
 - `0a1ed87d chore: remove generated deployment artifacts`
+- `aff751a8 docs: record generated artifact cleanup`
+- `7c560f5a chore: remove private production docs from public surface`
+- `e6cc469f chore: make release readiness public-only`
+- `218695ad chore: keep readiness wrapper executable`
