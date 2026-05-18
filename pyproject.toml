@@ -86,7 +86,7 @@ Repository = "https://github.com/EfeDurmaz16/sardis"
 Changelog = "https://docs.sardis.sh/changelog"
 
 [tool.hatch.build.targets.wheel]
-packages = ["sardis"]
+packages = ["src/sardis"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

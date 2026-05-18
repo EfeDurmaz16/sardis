@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir uv
 
 # Copy workspace files
 COPY pyproject.toml README.md uv.lock* ./
-COPY sardis/ ./sardis/
+COPY src/ ./src/
 COPY packages/ ./packages/
 
 # Install dependencies with uv
@@ -41,7 +41,7 @@ RUN pip install --no-cache-dir uv
 
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/sardis /app/sardis
+COPY --from=builder /app/src /app/src
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 

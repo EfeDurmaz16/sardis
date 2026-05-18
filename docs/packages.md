@@ -15,7 +15,7 @@ Status meanings:
 
 | Path | Why it exists | Required before stable |
 | --- | --- | --- |
-| `sardis/` | Root Python client facade for the public SDK. | Keep examples aligned with real imports. |
+| `src/sardis/` | Root Python client facade for the public SDK. | Keep examples aligned with real imports. |
 | `packages/sardis-core/` | Domain models, shared primitives, and configuration. | Ensure all local packages resolve from workspace sources. |
 | `packages/server-api/` | Reference FastAPI implementation for public API contracts. | Split hosted-only routes from protocol/reference routes. |
 | `packages/sardis-protocol/` | AP2/TAP/mandate verification plus x402 protocol primitives. | Add conformance fixtures and versioned schemas. |

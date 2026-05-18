@@ -115,6 +115,8 @@
 - Renamed the deployable FastAPI/reference API package directory from `packages/api` to `packages/server-api` so contributors can distinguish it from protocol schemas, generated clients, or generic API artifacts at a glance.
 - Updated CI, Docker, Vercel/serverless entrypoints, package source mappings, OpenAPI scripts, migration scripts, tests, docs, and generated public canvas references to the new `packages/server-api` path.
 - Adjusted local/serverless startup paths so `sardis.main` resolves to the server package rather than the root simulation SDK package when launching the API.
+- Moved the root public Python client facade from `sardis/` to `src/sardis/` so the repository root no longer shadows the server package's `sardis.main` import.
+- Updated root package build metadata, Docker copy paths, version consistency checks, package docs, and security scope references for the new root `src` layout.
 
 ## What Was Deleted
 
@@ -203,6 +205,8 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
 
 Latest path-layout pass: the deployable API package now lives at `packages/server-api`, while the Python import package remains `sardis` and the distribution name remains `sardis-api`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
+
+Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/server-api/src/sardis` during local import probes.
 
 ## Test, Build, And Lint Results
 

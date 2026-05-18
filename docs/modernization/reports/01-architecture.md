@@ -13,7 +13,7 @@
 
 ### Medium: Backend still mixes v1, v2, and prototype naming
 
-- Evidence: `packages/server-api/src/sardis/main.py` registers both `/api/v1/auth` and `/api/v2/auth`; it also imports `sardis_v2_core` throughout. Root package exists at `sardis/`.
+- Evidence: `packages/server-api/src/sardis/main.py` registers both `/api/v1/auth` and `/api/v2/auth`; it also imports `sardis_v2_core` throughout. The public Python client facade now lives at `src/sardis/`.
 - Impact: Contributors cannot quickly infer which domain package is canonical.
 - Recommended action: Document canonical surfaces and create a deprecation map before renaming packages.
 - Action type: Migration.

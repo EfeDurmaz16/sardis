@@ -271,7 +271,7 @@ Every financial action follows a **single authority path** before execution. The
 sardis/
 ├── packages/               # Core monorepo packages
 │   ├── sardis-core/        # Domain models, config, database
-│   ├── api/                # FastAPI reference API implementation
+│   ├── server-api/         # FastAPI reference API implementation
 │   ├── sardis-chain/       # Blockchain execution, chain routing
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
@@ -283,7 +283,7 @@ sardis/
 │   ├── sardis-sdk-js/      # TypeScript SDK
 │   ├── sardis-cli/         # Command-line tool
 │   └── sardis-checkout/    # Merchant checkout flows
-├── sardis/                 # Simple Python SDK (public interface)
+├── src/sardis/             # Simple Python SDK (public interface)
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol

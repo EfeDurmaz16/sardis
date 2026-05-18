@@ -63,6 +63,15 @@
 - Rollback plan: Revert the directory rename commit and path-reference updates together.
 - Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_agent_auth.py packages/server-api/tests/test_agent_events_and_holds_wiring.py -q`.
 
+### 5b. Root Python Client Src Layout
+
+- Goal: Remove repo-root import shadowing by moving the public Python client facade from `sardis/` to `src/sardis/` while preserving `from sardis import SardisClient`.
+- Exact files likely affected: root `pyproject.toml`, root `Dockerfile`, `scripts/release/version_consistency_check.sh`, README, package docs, security docs, and root SDK tests.
+- Implementation notes: Keep the package name `sardis`; only move the source directory into the standard Python `src` layout.
+- Risk: Medium.
+- Rollback plan: Revert the directory move and package metadata update together.
+- Validation command: `uv run python -c 'from sardis import SardisClient; print(SardisClient)' && PYTHONPATH=packages/server-api/src uv run python -c 'from sardis.main import create_app; print(create_app)'`.
+
 ## 6. Language/Framework/Runtime Migrations
 
 - Goal: Avoid full rewrite unless future evidence changes.

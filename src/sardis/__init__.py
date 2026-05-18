@@ -18,7 +18,7 @@ The SardisClient works in two modes:
    provided, operations delegate to the Sardis platform.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # ---------------------------------------------------------------------------
 # Quick-start / simulation classes (always available)

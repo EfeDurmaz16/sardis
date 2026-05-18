@@ -45,12 +45,12 @@ sardis/
 │       ├── competitor-analysis.md
 │       ├── developer-advocacy.md
 │       └── launch-coordinator.md
-├── sardis/                 # Simple Python SDK (public interface)
+├── src/sardis/             # Simple Python SDK (public interface)
 ├── packages/               # Core monorepo packages (⚠️ list below may be stale — run `ls packages/` for truth)
 │   │
 │   │ ── Core platform ──
 │   ├── sardis-core/        # Domain models, config, database, spending policy
-│   ├── sardis-api/         # FastAPI REST endpoints (47+ routers)
+│   ├── server-api/         # FastAPI reference API implementation
 │   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
 │   ├── sardis-protocol/    # AP2 / TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain

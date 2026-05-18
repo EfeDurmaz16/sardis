@@ -42,7 +42,7 @@ The following are in scope for security reports:
 - Smart Contracts (`contracts/`)
 - Wallet Management (`packages/sardis-wallet`)
 - Chain Execution (`packages/sardis-chain`)
-- SDKs (`packages/sardis-sdk-python`, `packages/sardis-sdk-js`, `sardis/`)
+- SDKs (`packages/sardis-sdk-python`, `packages/sardis-sdk-js`, `src/sardis/`)
 - MCP Server (`packages/sardis-mcp-server`)
 
 ### Out of Scope

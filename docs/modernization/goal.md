@@ -14,7 +14,7 @@ The durable product behavior to preserve is:
 
 ## Current Architecture Summary
 
-- Python core package at `sardis/`.
+- Python public client facade at `src/sardis/`.
 - FastAPI backend in `packages/server-api/src/sardis`, with a large `main.py` composition root, many routers, middleware, repositories, services, and lifecycle jobs.
 - Python packages under `packages/sardis-*`, including core, API, chain, ledger, wallet, compliance, protocol, integrations, and agent-framework adapters.
 - TypeScript packages for SDKs and integrations under `packages/sardis-sdk-js`, `packages/sardis-ai-sdk`, `packages/sardis-connect-js`, `packages/sardis-mcp-server`, and workflow adapters.
