@@ -71,6 +71,7 @@ Completed so far:
 | `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
 | `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, and invoice APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
 | `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, dashboard metrics, and Prometheus collectors together under one operations domain. |
+| `routers/enterprise_support.py` implementation | `routes/developer/enterprise_support.py` with a compatibility module alias in `routers/` | Moves contributor/developer support ticketing out of the flat router bucket while preserving the existing enterprise support HTTP path. |
 
 The external API remains unchanged:
 
@@ -169,6 +170,7 @@ sardis_api/
       mastercard_callbacks.py
     developer/
       api_keys.py
+      enterprise_support.py
       webhook_subscriptions.py
       usage.py
       sdk_metrics.py
@@ -225,10 +227,12 @@ moved to `sardis_api/routes/<domain>/...`.
 10. Operations and observability: completed for `analytics`, `alerts`,
    `ws_alerts`, `event_stream`, `reports`, `reliability`, and
    `dashboard_metrics`, and `metrics`.
-11. Admin and miscellaneous contributor tools: `admin`,
+11. Developer and contributor-facing tools: completed for
+   `webhook_subscriptions` and `enterprise_support`.
+12. Admin and miscellaneous contributor tools: `admin`,
    `admin_reconciliation`, `usage`, `notifications`, `sandbox`, `dev`,
    `plugins`, `workflow_templates`,
-   `environment_templates`, and `enterprise_support`.
+   and `environment_templates`.
 
 ## Validation Required For Each Move
 

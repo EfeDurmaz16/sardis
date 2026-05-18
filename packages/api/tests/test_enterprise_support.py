@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.repositories.enterprise_support_repository import EnterpriseSupportRepository
-from sardis_api.routers.enterprise_support import (
+from sardis_api.routes.developer.enterprise_support import (
     EnterpriseSupportDependencies,
     get_deps,
     router,
@@ -80,6 +80,7 @@ def test_support_profile_and_ticket_lifecycle(monkeypatch):
 
 
 def test_support_write_scope_required():
+    """Default SLA plan must be valid without env-specific enterprise overrides."""
     repo = EnterpriseSupportRepository(dsn=None)
     deps = EnterpriseSupportDependencies(support_repo=repo)
     app = _build_app(deps=deps, principal_fn=_viewer_principal)
@@ -100,4 +101,3 @@ def test_support_write_scope_required():
     ack = client.post(f"/api/v2/enterprise/support/tickets/{ticket_id}/acknowledge")
     assert ack.status_code == 403
     assert ack.json()["detail"] == "support_write_scope_required"
-

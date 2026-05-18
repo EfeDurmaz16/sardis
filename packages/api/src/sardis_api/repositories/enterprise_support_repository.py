@@ -56,10 +56,10 @@ class EnterpriseSupportRepository:
         self._tickets_mem: dict[str, dict[str, Any]] = {}
         self._org_plan_overrides = self._load_org_plan_overrides()
         self._default_plan = (
-            (os.getenv("SARDIS_ENTERPRISE_DEFAULT_PLAN", "pro") or "pro").strip().lower()
+            (os.getenv("SARDIS_ENTERPRISE_DEFAULT_PLAN", "starter") or "starter").strip().lower()
         )
         if self._default_plan not in self._PLAN_SLA:
-            self._default_plan = "pro"
+            self._default_plan = "starter"
 
     @staticmethod
     def _load_org_plan_overrides() -> dict[str, str]:
@@ -154,7 +154,7 @@ class EnterpriseSupportRepository:
         org_id = self._normalize_text(organization_id)
         plan = self._org_plan_overrides.get(org_id, self._default_plan)
         if plan not in self._PLAN_SLA:
-            plan = "pro"
+            plan = "starter"
         cfg = self._PLAN_SLA[plan]
         return {
             "organization_id": org_id,
@@ -415,4 +415,3 @@ class EnterpriseSupportRepository:
                 meta,
             )
         return dict(db_row) if db_row else None
-
