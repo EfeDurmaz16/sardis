@@ -120,27 +120,25 @@ pitch-deck/
 !/docs/README.md
 !/docs/development.md
 !/docs/packages.md
-!/docs/PRODUCTION_DEPLOYMENT.md
-!/docs/production-runbook.md
 !/docs/audits/
+docs/audits/*
+!docs/audits/smart-contract-formal-audit-plan.md
+!docs/audits/sql-query-composition-review.md
 !/docs/modernization/
 !/docs/modernization/**
 !/docs/oss/
 !/docs/oss/**
 !/docs/quickstart/
 !/docs/docs/
-!/docs/cdp/
-!/docs/runbooks/
-/docs/runbooks/*
-!/docs/runbooks/incident-response.md
-!/docs/runbooks/ops-readiness.md
-!/docs/runbooks/rollback.md
 /demos/sardis-demo-video/
 docs/marketing/
 docs/investor/
 docs/design-partner/
 docs/outreach/
 docs/plans/
+docs/compliance/
+docs/runbooks/
+docs/superpowers/
 
 # Root-level internal files
 AUDIT_SUMMARY*.md

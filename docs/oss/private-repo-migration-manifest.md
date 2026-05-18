@@ -9,8 +9,11 @@ The public repository should not contain private commercial planning, hiring, in
 The following categories are private by default:
 
 - `docs/audits/evidence/` - generated operational/provider readiness evidence and latest-run artifacts
+- `docs/audits/claims-evidence.md`, `docs/audits/control-testing-cadence-q1-2026.md`, `docs/audits/final-remediation-report.md`, `docs/audits/prelaunch-remediation-plan.md` - launch/company readiness evidence and remediation history
 - `docs/cdp/` - commercial/customer-development drafts
+- `docs/compliance/` - company compliance, FinCEN, SOC2, and incident-response program material
 - `docs/compliance/soc2/` - company-specific compliance policies, runbooks, and audit-readiness material
+- `docs/DEPLOYMENT-GUIDE-V2.md`, `docs/PRODUCTION_DEPLOYMENT.md`, `docs/production-runbook.md`, `docs/operations/dual-track-deployment.md` - hosted Sardis production deployment and design-partner operations
 - `docs/gtm/` - GTM planning and execution material
 - `docs/hiring/` - internal hiring materials
 - `docs/investor/` - investor decks, diligence reports, and internal fundraising material
@@ -18,7 +21,9 @@ The following categories are private by default:
 - `docs/outbound/` - outbound targeting, prospecting, and campaign material
 - `docs/outreach/` - private outreach drafts and applications
 - `docs/partnerships/` - partner-development and LOI drafts
+- `docs/runbooks/` - hosted production runbooks unless rewritten as generic public templates
 - `docs/sales/` - sales prospecting and outreach strategy
+- `docs/superpowers/` - local/internal agent operating plans
 - `docs/yc/` - accelerator application drafts
 - `api/*/*.json` - generated uptime and response-time snapshots
 - `contracts/broadcast/` - generated Foundry broadcast/deployment artifacts

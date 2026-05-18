@@ -10,6 +10,7 @@ import sys
 BLOCKED_PREFIXES = (
     "docs/audits/evidence/",
     "docs/cdp/",
+    "docs/compliance/",
     "docs/gtm/",
     "docs/hiring/",
     "docs/investor/",
@@ -17,7 +18,9 @@ BLOCKED_PREFIXES = (
     "docs/outbound/",
     "docs/outreach/",
     "docs/partnerships/",
+    "docs/runbooks/",
     "docs/sales/",
+    "docs/superpowers/",
     "docs/compliance/soc2/",
     "docs/yc/",
     "scripts/gtm/",
@@ -26,8 +29,16 @@ BLOCKED_PREFIXES = (
 
 BLOCKED_FILES = {
     "docs/business-plan.md",
+    "docs/DEPLOYMENT-GUIDE-V2.md",
     "docs/investor-list.xlsx",
     "docs/investor-proof-memo-march-2026.md",
+    "docs/PRODUCTION_DEPLOYMENT.md",
+    "docs/production-runbook.md",
+    "docs/operations/dual-track-deployment.md",
+    "docs/audits/claims-evidence.md",
+    "docs/audits/control-testing-cadence-q1-2026.md",
+    "docs/audits/final-remediation-report.md",
+    "docs/audits/prelaunch-remediation-plan.md",
 }
 
 
