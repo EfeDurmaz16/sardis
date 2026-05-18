@@ -8,8 +8,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_api.domains.delegated_executor import DelegatedExecutionAdapter
-from sardis_api.domains.multi_modal_executor import MultiModalExecutionAdapter
+from sardis_server.domains.delegated_executor import DelegatedExecutionAdapter
+from sardis_server.domains.multi_modal_executor import MultiModalExecutionAdapter
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
 from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
 from sardis_v2_core.delegated_credential import (

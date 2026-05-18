@@ -5,7 +5,7 @@ API Entegrasyon Testi
 Bu script, Sardis API'nin temel endpointlerini test eder.
 
 Kullanım:
-    1. API sunucusunu başlat: uvicorn sardis_api.main:create_app --factory --port 8000
+    1. API sunucusunu başlat: uvicorn sardis_server.main:create_app --factory --port 8000
     2. Bu scripti çalıştır: python tests/integration/test_api_integration.py
 
 Gereksinimler:
@@ -135,11 +135,10 @@ async def run_all_tests():
 
 if __name__ == "__main__":
     print("\n⚠️  Not: API sunucusunun çalıştığından emin olun!")
-    print("   Başlatmak için: uvicorn sardis_api.main:create_app --factory --port 8000\n")
+    print("   Başlatmak için: uvicorn sardis_server.main:create_app --factory --port 8000\n")
 
     success = asyncio.run(run_all_tests())
     sys.exit(0 if success else 1)
-
 
 
 
