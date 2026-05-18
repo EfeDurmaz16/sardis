@@ -153,7 +153,7 @@ from .routers import exceptions as exceptions_router
 from .routers import execution_modes as execution_modes_router
 from .routers import facility_requests as facility_requests_router
 from .routes.policy import fallback_policies as fallback_policies_router
-from .routers import faucet as faucet_router
+from .routes.developer import faucet as faucet_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
@@ -175,7 +175,7 @@ from .routers import sandbox as sandbox_router
 from .routes.developer import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
 from .routes.commerce import service_directory as service_directory_router
-from .routers import simulation as simulation_router
+from .routes.developer import simulation as simulation_router
 from .routes.protocol import spt as spt_router
 from .routers import stripe_connect as stripe_connect_router
 from .routers import stripe_funding as stripe_funding_router
