@@ -5,7 +5,7 @@ import inspect
 
 
 def test_a2a_messages_verify_signature_before_dispatch():
-    from sardis_api.routers import a2a
+    from sardis_api.routes.protocol import a2a
 
     source = inspect.getsource(a2a)
     assert "_verify_a2a_message_signature" in source
@@ -14,7 +14,7 @@ def test_a2a_messages_verify_signature_before_dispatch():
 
 
 def test_a2a_messages_have_replay_protection():
-    from sardis_api.routers import a2a
+    from sardis_api.routes.protocol import a2a
 
     source = inspect.getsource(a2a)
     assert "run_with_replay_protection" in source

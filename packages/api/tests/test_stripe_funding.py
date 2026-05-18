@@ -12,7 +12,7 @@ from sardis_api.routes.operations.metrics import (
     funding_failover_events_total,
     funding_provider_attempts_total,
 )
-from sardis_api.routers.stripe_funding import (
+from sardis_api.routes.providers.stripe_funding import (
     StripeFundingDeps,
     get_deps,
     router,

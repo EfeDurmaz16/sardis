@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.spending_policy import SpendingPolicy
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers import secure_checkout
+from sardis_api.routes.commerce import secure_checkout
 
 
 class _WalletRepo:
@@ -976,7 +976,7 @@ def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
     mock_client.__aexit__.return_value = None
     mock_client.post.return_value = mock_response
 
-    with patch("sardis_api.routers.secure_checkout.httpx.AsyncClient", return_value=mock_client):
+    with patch("sardis_api.routes.commerce.secure_checkout.httpx.AsyncClient", return_value=mock_client):
         executed = client.post(
             f"/api/v2/checkout/secure/jobs/{job_id}/execute",
             json={"approval_id": "appr_ok"},

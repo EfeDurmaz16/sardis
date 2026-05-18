@@ -397,7 +397,7 @@ async def test_constraint_rail_restriction(client: AsyncClient):
 
 def test_mandate_to_capability_grant():
     """Spending mandate converts to capability grant with correct constraints."""
-    from sardis_api.routers.agent_auth import mandate_to_capability_grant
+    from sardis_api.routes.identity.agent_auth import mandate_to_capability_grant
 
     mandate = {
         "id": "mandate_abc123",
@@ -436,7 +436,7 @@ def test_mandate_to_capability_grant():
 
 def test_capability_grant_to_mandate():
     """Capability grant converts back to mandate shape."""
-    from sardis_api.routers.agent_auth import capability_grant_to_mandate
+    from sardis_api.routes.identity.agent_auth import capability_grant_to_mandate
 
     grant = {
         "capability": "payment",
@@ -466,7 +466,7 @@ def test_capability_grant_to_mandate():
 
 def test_mandate_roundtrip():
     """Mandate -> grant -> mandate roundtrip preserves key fields."""
-    from sardis_api.routers.agent_auth import (
+    from sardis_api.routes.identity.agent_auth import (
         capability_grant_to_mandate,
         mandate_to_capability_grant,
     )

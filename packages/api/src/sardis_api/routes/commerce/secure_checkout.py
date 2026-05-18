@@ -1342,7 +1342,7 @@ async def _dispatch_security_alert(
     try:
         from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
-        from sardis_api.routers.alerts import dispatch_alert
+        from sardis_api.routes.operations.alerts import dispatch_alert
 
         alert = Alert(
             alert_type=AlertType.POLICY_VIOLATION,

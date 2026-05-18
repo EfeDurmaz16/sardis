@@ -39,7 +39,7 @@ def test_mandates_router_has_two_orchestrated_execution_paths():
 
 
 def test_a2a_routes_record_spend_after_control_plane_success():
-    source = _source("sardis_api.routers.a2a")
+    source = _source("sardis_api.routes.protocol.a2a")
     assert source.count("ControlPlane(") >= 2
     assert source.count(".submit(") >= 2
     assert source.count("async_record_spend") >= 2

@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from sardis_v2_core.exception_workflows import ExceptionType
 
-from sardis_api.routers import exceptions as exceptions_router
+from sardis_api.routes.operations import exceptions as exceptions_router
 
 
 @dataclass

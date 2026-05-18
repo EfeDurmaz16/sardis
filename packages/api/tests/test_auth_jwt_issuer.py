@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import jwt as pyjwt
 
-from sardis_api.routers import auth
+from sardis_api.routes.accounts import auth
 
 
 def test_internal_jwt_tokens_include_issuer_and_audience():

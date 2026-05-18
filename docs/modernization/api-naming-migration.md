@@ -84,6 +84,10 @@ Completed so far:
 | `routers/admin.py`, `routers/admin_reconciliation.py` implementations | `routes/admin/control.py` and `routes/admin/reconciliation.py` with compatibility module aliases in `routers/` | Makes privileged operations easier to find without repeating `admin/admin.py`, and keeps admin rate-limit helpers close to admin-only reconciliation surfaces. |
 | `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` with a compatibility module alias in `routers/` | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls, leaving the legacy router bucket with compatibility wrappers only. |
 
+Final cleanup: after internal imports and tests were migrated to
+`sardis_api.routes.<domain>`, the temporary `sardis_api.routers` compatibility
+package was removed. The HTTP API paths remain unchanged.
+
 The external API remains unchanged:
 
 ```text
@@ -112,12 +116,11 @@ below it:
 
 - `routes/<domain>/...` for HTTP route modules
 - `routing/<domain>.py` for FastAPI registration/wiring
-- old `routers/` files only as temporary compatibility wrappers while imports
-  migrate
+- no legacy `routers/` bucket in the active source tree
 
 The package directory itself has already been simplified to `packages/api`.
-Further path cleanup should happen inside the Python package by moving active
-implementation modules out of the legacy flat `routers/` bucket.
+Further path cleanup should happen inside the Python package by extracting
+domain registrars from `main.py`, not by reintroducing flat router buckets.
 
 ## Target Layout
 
@@ -225,9 +228,9 @@ are `sardis_api.routing.developer.register_webhook_subscriptions`,
 
 ## Recommended Move Order
 
-Proceed bucket-by-bucket. Each bucket should leave a temporary compatibility
-wrapper in `sardis_api/routers/` until internal imports and downstream users have
-moved to `sardis_api/routes/<domain>/...`.
+Proceed bucket-by-bucket. The temporary compatibility wrappers were used during
+the migration and then removed after internal imports moved to
+`sardis_api.routes.<domain>`.
 
 1. Authority: completed for `mandates`, `ap2`, `mvp`, `approvals`, and
    `approval_config`.

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.credentials import router
+from sardis_api.routes.authority.credentials import router
 
 
 class _Credential:

@@ -13,7 +13,7 @@ from sardis_v2_core.spending_mandate import SpendingMandate
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.routers import facility_requests
+from sardis_api.routes.authority import facility_requests
 from sardis_api.services.facility_gate_authority import (
     InMemoryFacilityMandateResolver,
     RepositoryBackedFacilityMandateResolver,

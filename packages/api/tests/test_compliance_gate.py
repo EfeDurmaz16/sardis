@@ -420,7 +420,7 @@ class TestComplianceInRouters:
     def test_a2a_has_compliance_in_both_paths(self):
         import inspect
 
-        from sardis_api.routers import a2a
+        from sardis_api.routes.protocol import a2a
         source = inspect.getsource(a2a)
         assert source.count("ComplianceAdapter") >= 2
         assert source.count("ControlPlane(") >= 2

@@ -73,17 +73,17 @@ class TestA2APayPathPolicyEnforcement:
     """A2A routes use the control plane with the policy adapter."""
 
     def test_a2a_uses_policy_engine_adapter_for_pay_and_messages(self) -> None:
-        source = _source("sardis_api.routers.a2a")
+        source = _source("sardis_api.routes.protocol.a2a")
         assert source.count("ControlPlane(") >= 2
         assert source.count("PolicyEngineAdapter(deps.wallet_manager)") >= 2
         assert source.count("wallet_manager_not_configured") >= 2
 
     def test_a2a_records_spend_after_successful_paths(self) -> None:
-        source = _source("sardis_api.routers.a2a")
+        source = _source("sardis_api.routes.protocol.a2a")
         assert source.count("async_record_spend") >= 2
 
     def test_a2a_denials_are_fail_closed(self) -> None:
-        source = _source("sardis_api.routers.a2a")
+        source = _source("sardis_api.routes.protocol.a2a")
         assert "IntentStatus.REJECTED" in source
         assert "policy_denied" in source
         assert "HTTP_403_FORBIDDEN" in source
