@@ -34,6 +34,7 @@
 - Made the OpenAPI check fail when FastAPI emits duplicate operation ID warnings.
 - Added a checked-in OpenAPI route contract snapshot and `pnpm openapi:update` for reviewed API surface changes.
 - Added the OpenAPI route snapshot check to the required `Python Lint & Test` CI path so public PRs cannot drift API route contracts accidentally.
+- Removed public dashboard deployment workflows from OSS CI/CD while keeping API and landing deployment paths intact.
 
 ## What Was Deleted
 
@@ -50,6 +51,7 @@
   - `monitoring/`
   - `ops/grafana/`
 - Deleted generated Solana local-validator ledger/keypair artifacts under `packages/sardis-solana-program/.anchor/test-ledger/`.
+- Deleted `.github/workflows/deploy-dashboard.yml`; hosted dashboard deployment belongs in the future private product repo.
 
 ## What Was Rewritten
 
@@ -126,6 +128,10 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `uv run python packages/sardis-api/scripts/generate_openapi.py --check` passed after wiring the route snapshot check into CI.
 - `python3 scripts/oss_surface_check.py` passed after wiring the route snapshot check into CI.
 - `git diff --check` passed after wiring the route snapshot check into CI.
+- YAML parse smoke passed for `.github/workflows/deploy.yml` and `.github/workflows/ci.yml` after removing dashboard deploy jobs.
+- Public CI/CD dashboard deploy reference scan returned no matches for dashboard deploy secrets or hosted dashboard deploy URLs in `.github/workflows`, `docs/packages.md`, and `docs/oss/public-private-boundary.md`.
+- `python3 scripts/oss_surface_check.py` passed after removing dashboard deploy workflows.
+- `git diff --check` passed after removing dashboard deploy workflows.
 
 Notes:
 
@@ -138,6 +144,7 @@ Notes:
 - Database migration history remains split between Alembic and raw SQL.
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
 - Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
+- Dashboard deployment automation has been removed from the public OSS repo, but the dashboard source still needs history-preserving extraction when the private product repo is created.
 - Canvas and LLM exports still need registry-driven regeneration.
 - Webhook replay protection remains uneven across provider routers.
 - Checkout nonce/replay hardening remains to be completed.
@@ -196,3 +203,5 @@ Notes:
 - `02d9cccd chore(api): add OpenAPI route snapshot gate`
 - `1c9d52f3 docs: record OpenAPI snapshot gate`
 - `16cad813 ci: enforce OpenAPI route snapshot`
+- `a34a3573 docs: record OpenAPI CI gate`
+- `6acd44ec ci: remove dashboard deploy workflows`
