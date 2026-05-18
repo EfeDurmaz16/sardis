@@ -81,8 +81,7 @@ Status meanings:
 | `apps/dashboard/` | Hosted product surface: auth, org, billing, approval inbox, onboarding, and admin flows. |
 | `packages/sardis-checkout-ui/` | Product UI unless intentionally published as a stable embeddable OSS component. |
 | `packages/ui-web/` | Hosted product design system unless intentionally published as a public UI package. |
-| `.github/workflows/deploy-dashboard.yml` | Product deployment path. |
-| Product-only deployment and monitoring workflows | Should not be required for OSS contribution checks. |
+| Product-only deployment and monitoring workflows | Keep out of public OSS CI/CD; dashboard deploy workflows belong in the private product repo. |
 
 ## Archive Candidates
 

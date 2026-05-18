@@ -23,7 +23,7 @@ Sardis should use a clean open-core split:
 | --- | --- | --- |
 | Hosted dashboard | `apps/dashboard/` | Private product repo after extraction plan is complete. |
 | Checkout UI if used as product surface | `packages/sardis-checkout-ui/` | Private product repo unless it becomes a public embeddable widget. |
-| Managed deployment workflows | `.github/workflows/deploy-dashboard.yml`, product-only deploy jobs | Private product repo or manually triggered internal workflow. |
+| Managed dashboard deployment workflows | Product-only dashboard deploy jobs | Private product repo or manually triggered internal workflow; public OSS CI/CD should not deploy the hosted dashboard. |
 | GTM and sales material | `docs/sales/`, `scripts/gtm/`, `scripts/outreach/` | Private product/commercial repo. |
 | Investor, YC, diligence, hiring, partnership drafts | `docs/cdp/`, `docs/hiring/`, `docs/partnerships/`, `docs/yc/` | Private company repo. |
 | Production compliance operations | SOC2 evidence, go/no-go evidence, internal runbooks | Private compliance repo unless sanitized into public templates. |
