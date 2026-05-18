@@ -1,4 +1,4 @@
-"""Webhook API routes for subscription management and delivery logs."""
+"""Outbound webhook subscription API routes and delivery logs."""
 from __future__ import annotations
 
 import ipaddress
@@ -8,10 +8,18 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sardis_v2_core.webhooks import (
+    DeliveryAttempt,
+    EventType,
+    WebhookEvent,
+    WebhookRepository,
+    WebhookService,
+    WebhookSubscription,
+)
 
 from sardis_api.middleware.auth import APIKey, require_api_key
 
-_logger = logging.getLogger("sardis.api.webhooks")
+_logger = logging.getLogger("sardis.api.webhook_subscriptions")
 
 
 def _validate_webhook_url(url: str) -> str:
@@ -67,14 +75,6 @@ def _validate_webhook_url(url: str) -> str:
         )
 
     return url
-from sardis_v2_core.webhooks import (
-    DeliveryAttempt,
-    EventType,
-    WebhookEvent,
-    WebhookRepository,
-    WebhookService,
-    WebhookSubscription,
-)
 
 router = APIRouter(tags=["webhooks"])
 

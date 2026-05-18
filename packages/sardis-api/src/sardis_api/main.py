@@ -187,7 +187,7 @@ from .routers import treasury_ops as treasury_ops_router
 from .routers import usage as usage_router
 from .routers import virtual_cards as virtual_cards_router
 from .routers import wallets as wallets_router
-from .routers import webhooks as webhooks_router
+from .routers import webhook_subscriptions as webhook_subscriptions_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
@@ -852,11 +852,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     webhook_repo = WebhookRepository(dsn=database_url if use_postgres else "memory://")
     webhook_service = WebhookService(repository=webhook_repo)
-    app.dependency_overrides[webhooks_router.get_deps] = lambda: webhooks_router.WebhookDependencies(  # type: ignore[arg-type]
+    app.dependency_overrides[webhook_subscriptions_router.get_deps] = lambda: webhook_subscriptions_router.WebhookDependencies(  # type: ignore[arg-type]
         repository=webhook_repo,
         service=webhook_service,
     )
-    app.include_router(webhooks_router.router, prefix="/api/v2/webhooks")
+    app.include_router(webhook_subscriptions_router.router, prefix="/api/v2/webhooks")
     app.state.webhook_service = webhook_service
 
     redis_url = (
