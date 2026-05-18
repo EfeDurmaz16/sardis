@@ -18,7 +18,7 @@ Status meanings:
 | `sardis/` | Root Python client facade for the public SDK. | Keep examples aligned with real imports. |
 | `packages/sardis-core/` | Domain models, shared primitives, and configuration. | Ensure all local packages resolve from workspace sources. |
 | `packages/sardis-api/` | Reference FastAPI implementation for public API contracts. | Split hosted-only routes from protocol/reference routes. |
-| `packages/sardis-protocol/` | AP2/TAP/mandate verification semantics. | Add conformance fixtures and versioned schemas. |
+| `packages/sardis-protocol/` | AP2/TAP/mandate verification plus x402 protocol primitives. | Add conformance fixtures and versioned schemas. |
 | `packages/sardis-ledger/` | Append-only audit/evidence ledger primitives. | Add tamper-evidence and replay fixtures. |
 | `packages/sardis-sdk-python/` | Python SDK package. | Keep smoke tests and quickstarts current. |
 | `packages/sardis-sdk-js/` | TypeScript SDK package. | Keep build, typecheck, and tests in required CI. |
@@ -50,7 +50,7 @@ Status meanings:
 | `packages/sardis-coinbase/` | Coinbase-related adapter work. | Verify current API docs before changing dependency surface. |
 | `packages/sardis-lightspark/` | Lightspark/Grid-related adapter work. | Confirm provider state and sandbox viability. |
 | `packages/sardis-striga/` | Striga adapter work. | Reassess after provider status changes. |
-| `packages/sardis-mpp/` | MPP protocol experiments. | Add contract tests or mark archive. |
+| `packages/sardis-mpp/` | Policy-governed MPP client and payment-method adapters. | Add contract tests for policy-before-payment and receipt recording. |
 | `packages/sardis-connect/` | Python connect package. | Clarify overlap with JS connect package. |
 | `packages/sardis-connect-js/` | JS connect package. | Clarify embed versus SDK boundary. |
 | `packages/sardis-zk-policy/` | ZK policy experiments. | Add reproducible proving/verifying dev setup. |

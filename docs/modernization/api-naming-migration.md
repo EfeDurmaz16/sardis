@@ -58,6 +58,7 @@ Completed so far:
 | `routers/policies.py`, `routers/policy_simulation.py`, `routers/policy_analytics.py`, `routers/fallback_policies.py` implementations | `routes/policy/*` with compatibility module aliases in `routers/` | Moves policy definition, simulation, analytics, and fallback policy APIs into a control-plane policy domain while preserving stateful legacy import targets. |
 | `routers/evidence.py`, `routers/evidence_export.py`, `routers/audit_anchors.py`, `routers/attestation.py` implementations | `routes/evidence/*` with compatibility module aliases in `routers/` | Groups evidence capture, export, audit anchors, and attestation proof APIs under one evidence domain while preserving stateful legacy import targets. |
 | `routers/compliance.py`, `routers/compliance_export.py`, `routers/kyc_onboarding.py` implementations | `routes/compliance/*` with compatibility module aliases in `routers/` | Moves regulatory controls, compliance exports, and Didit KYC onboarding into one compliance domain while preserving stateful legacy import targets. |
+| `routers/x402.py`, `routers/mpp.py`, `routers/mpp_demo.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Groups payment protocol adapters together while keeping x402 and MPP as separate packages and request flows. |
 
 The external API remains unchanged:
 
@@ -169,11 +170,14 @@ moved to `sardis_api/routes/<domain>/...`.
    `policy_simulation`, `policy_analytics`, `fallback_policies`, `evidence`,
    `evidence_export`, `audit_anchors`, `attestation`, `compliance`,
    `compliance_export`, and `kyc_onboarding`.
-6. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
+6. Protocol adapters: completed for `x402`, `mpp`, and `mpp_demo`; remaining
+   protocol-like files include `a2a`, `a2a_payments`, `acp`, `erc8183`, `spt`,
+   `trust`, and `fides_identity`.
+7. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
    `agent_activity`, `agent_events`, `agent_heartbeat`, `fides_identity`,
    `auth`, `email_verification`, `me`, `organizations`, `groups`, and
    `api_keys`.
-7. Admin, operations, observability, and miscellaneous contributor tools:
+8. Admin, operations, observability, and miscellaneous contributor tools:
    `admin`, `admin_reconciliation`, `analytics`, `metrics`,
    `dashboard_metrics`, `alerts`, `ws_alerts`, `event_stream`, `reports`,
    `data_export`, `usage`, `notifications`, `sandbox`, `dev`, `reliability`,

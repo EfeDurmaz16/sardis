@@ -187,7 +187,7 @@ from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
-from .routers import x402 as x402_router
+from .routes.protocol import x402 as x402_router
 
 from sardis_v2_core.agent_groups import AgentGroupRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
@@ -1111,12 +1111,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
     # --- MPP (Machine Payments Protocol) routes ---
-    from .routers import mpp as mpp_router
+    from .routes.protocol import mpp as mpp_router
     app.include_router(mpp_router.router, prefix="/api/v2/mpp", tags=["mpp"])
     logger.info("MPP routes enabled")
 
     # --- MPP Demo (paid API for Stripe team demo) ---
-    from .routers import mpp_demo as mpp_demo_router
+    from .routes.protocol import mpp_demo as mpp_demo_router
     app.include_router(mpp_demo_router.router, prefix="/api/v2/demo", tags=["mpp-demo"])
     logger.info("MPP demo routes enabled")
 

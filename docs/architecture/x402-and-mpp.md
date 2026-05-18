@@ -1,0 +1,93 @@
+# x402 and MPP in Sardis
+
+Sardis treats x402 and MPP as protocol adapters into the same policy,
+execution, and evidence control plane. They are not separate products.
+
+## Current Boundary
+
+| Surface | Role | Code owner |
+| --- | --- | --- |
+| `packages/sardis-protocol/src/sardis_protocol/x402*.py` | x402 challenge, verification, ERC-3009, and settlement primitives. | Protocol package |
+| `packages/sardis-api/src/sardis_api/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
+| `packages/sardis-mpp/` | Sardis policy-governed MPP client, session helpers, payment records, and payment methods. | MPP package |
+| `packages/sardis-api/src/sardis_api/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
+
+## Request Flow Difference
+
+### x402
+
+x402 is direct HTTP-native payment. The server returns an x402 payment
+challenge and the client retries with a payment signature.
+
+```text
+client -> protected endpoint
+server -> 402 + PaymentRequired challenge
+client -> retry with PAYMENT-SIGNATURE
+Sardis -> verify x402 payload, enforce policy, settle, emit evidence
+server -> response + PAYMENT-RESPONSE receipt
+```
+
+Use x402 when the API already wants direct pay-per-request behavior and the
+payment method is stablecoin-oriented.
+
+### MPP
+
+MPP is machine-payment negotiation. The server returns a `WWW-Authenticate`
+challenge and the client retries with `Authorization: Payment ...`.
+
+```text
+client -> protected endpoint
+server -> 402 + WWW-Authenticate challenge
+client -> retry with Authorization: Payment ...
+Sardis -> validate credential, enforce policy, record receipt
+server -> response + optional Payment-Receipt
+```
+
+Use MPP when the payment method is negotiated or method-agnostic: Tempo, Stripe
+SPT, Lightning, or another MPP-compatible method.
+
+## Package Decision
+
+Keep x402 and MPP as separate packages because their public APIs and wire
+formats are different:
+
+- x402 belongs in `sardis-protocol` because it is a protocol primitive Sardis
+  can verify, settle, and compose with AP2/TAP.
+- MPP belongs in `sardis-mpp` because it wraps `pympp`, payment methods, and
+  client-side HTTP transport behavior.
+
+The API should group their HTTP routes together under
+`sardis_api.routes.protocol` because contributors looking for protocol
+adapters should not search the legacy flat `routers/` directory.
+
+## Shared Sardis Invariant
+
+Both flows must eventually pass through the same Sardis invariants:
+
+1. Policy checks happen before payment execution or settlement.
+2. Payment receipts are recorded with enough context for audit and replay
+   analysis.
+3. Public API paths remain stable unless an explicit API migration is approved.
+4. Middleware and facilitator/session APIs stay separate:
+   - middleware protects Sardis-hosted endpoints
+   - facilitator/session routes expose protocol management APIs
+
+## Migration Direction
+
+Short term:
+
+- Keep compatibility aliases under `sardis_api.routers`.
+- Keep public routes stable: `/api/v2/x402`, `/api/v2/mpp`, and `/api/v2/demo`.
+- Move all protocol route implementations into `sardis_api.routes.protocol`.
+
+Later:
+
+- Add a small internal adapter interface for paid request protocols:
+  `PaidRequestChallenge`, `PaidRequestCredential`, `PaidRequestReceipt`, and
+  `PaidRequestAdapter`.
+- Implement `X402Adapter` and `MPPAdapter` against that interface only after the
+  duplicate behavior is clear.
+- Add conformance tests that prove both adapters call policy before execution
+  and produce evidence records.
