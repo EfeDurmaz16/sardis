@@ -435,6 +435,11 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_secure_checkout_wiring.py packages/api/tests/test_secure_checkout_job_repository.py packages/api/tests/test_secure_checkout_risk_response.py -q` passed after moving secure checkout routes: 8 tests.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved secure checkout route remains mounted at `/api/v2/checkout/secure/jobs`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving secure checkout routes. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routes/authority/facility_requests.py packages/api/src/sardis_api/routers/facility_requests.py packages/api/src/sardis_api/main.py packages/api/tests/test_facility_requests_router.py` passed after moving facility authority routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.facility_requests` resolves to the same module object as `sardis_api.routes.authority.facility_requests`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_facility_requests_router.py -q` passed after moving facility routes: 31 tests.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved facility routes remain mounted at `/api/v2/facility-requests` and `/api/v2/provider-webhooks/{provider}/facility-gate`.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving facility routes. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 

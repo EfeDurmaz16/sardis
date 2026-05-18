@@ -151,7 +151,7 @@ from .routes.evidence import evidence as evidence_router
 from .routes.evidence import evidence_export as evidence_export_router
 from .routes.operations import exceptions as exceptions_router
 from .routes.operations import execution_modes as execution_modes_router
-from .routers import facility_requests as facility_requests_router
+from .routes.authority import facility_requests as facility_requests_router
 from .routes.policy import fallback_policies as fallback_policies_router
 from .routes.developer import faucet as faucet_router
 from .routes.wallets import funding as funding_router
