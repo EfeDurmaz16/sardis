@@ -24,6 +24,7 @@ BLOCKED_PREFIXES = (
     "docs/compliance/soc2/",
     "docs/yc/",
     "scripts/gtm/",
+    "scripts/investor",
     "scripts/outreach/",
 )
 
@@ -39,6 +40,22 @@ BLOCKED_FILES = {
     "docs/audits/control-testing-cadence-q1-2026.md",
     "docs/audits/final-remediation-report.md",
     "docs/audits/prelaunch-remediation-plan.md",
+    "scripts/check_design_partner_readiness.py",
+    "scripts/release/compliance_execution_check.sh",
+    "scripts/release/demo_proof_assets_check.sh",
+    "scripts/release/demo_proof_check.sh",
+    "scripts/release/drill_metrics_check.sh",
+    "scripts/release/ga_prep_check.sh",
+    "scripts/release/generate_enterprise_ga_readiness_artifact.py",
+    "scripts/release/generate_ops_readiness_evidence.py",
+    "scripts/release/generate_provider_live_lane_artifact.py",
+    "scripts/release/generate_soc2_evidence_manifest.py",
+    "scripts/release/issuer_compliance_pack_check.sh",
+    "scripts/release/mainnet_ops_drill_check.sh",
+    "scripts/release/ops_readiness_check.sh",
+    "scripts/release/provider_live_lane_cert_check.sh",
+    "scripts/release/smart_contract_audit_check.sh",
+    "scripts/release/validate_drill_metrics.py",
 }
 
 

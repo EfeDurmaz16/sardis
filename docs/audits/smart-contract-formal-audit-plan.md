@@ -34,9 +34,9 @@
 2. Submit code + threat model + invariants to audit firm.
 3. Track findings in remediation issue set.
 4. Patch, re-test, and produce final report + checksum.
-5. Update `docs/audits/evidence/smart-contract-audit-latest.json`.
-6. Pass `scripts/release/smart_contract_audit_check.sh`.
+5. Store the signed report, checksum, and latest status in the private compliance archive.
+6. Keep the public contract test gate green with `bash scripts/release/contracts_strict_check.sh`.
 
 ## Release Gate
-- Non-strict/dev: `planned|in_progress|completed` accepted.
-- Strict/prod: only `completed` accepted.
+- Public OSS: contract formatting, build, and test gates must pass.
+- Private production release: signed third-party audit evidence must be complete before Enterprise GA.

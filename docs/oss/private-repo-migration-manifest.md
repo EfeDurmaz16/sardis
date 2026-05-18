@@ -27,6 +27,7 @@ The following categories are private by default:
 - `docs/yc/` - accelerator application drafts
 - `api/*/*.json` - generated uptime and response-time snapshots
 - `contracts/broadcast/` - generated Foundry broadcast/deployment artifacts
+- `scripts/check_design_partner_readiness.py`, `scripts/investor_demo_flow.py`, and private release gates under `scripts/release/` - design-partner, investor-demo, provider certification, SOC2, ops-readiness, formal audit evidence, and GA-prep automation
 - `scripts/gtm/` - GTM automation and lead workflow scripts
 
 ## Follow-Up

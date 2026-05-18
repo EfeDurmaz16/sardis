@@ -30,8 +30,6 @@ if command -v pnpm >/dev/null 2>&1 && [[ -d "$ROOT_DIR/node_modules" ]] && [[ "$
     pnpm run build:ts-sdks
     pnpm run typecheck:landing
     pnpm run build:landing
-    pnpm run typecheck:dashboard
-    pnpm run build:dashboard
   )
 else
   node_checks_skipped=1
@@ -50,25 +48,13 @@ fi
 echo "[release-readiness] Running Python SDK + protocol checks"
 "$ROOT_DIR/scripts/check_python_release_readiness.sh"
 
-echo "[release-readiness] Running ops readiness checks (SLO/alerts/pager/drill)"
-"$ROOT_DIR/scripts/release/ops_readiness_check.sh"
+echo "[release-readiness] Running OSS surface check"
+python3 "$ROOT_DIR/scripts/oss_surface_check.py"
 
-echo "[release-readiness] Running issuer warm-integration compliance pack checks"
-"$ROOT_DIR/scripts/release/issuer_compliance_pack_check.sh"
-
-echo "[release-readiness] Running smart-contract formal audit gate"
-"$ROOT_DIR/scripts/release/smart_contract_audit_check.sh"
-
-echo "[release-readiness] Verifying design partner checklist (engineering scope)"
-DESIGN_PARTNER_CHECKLIST="$ROOT_DIR/docs/design-partner/staging-hardening-checklist.json"
-if [[ -f "$DESIGN_PARTNER_CHECKLIST" ]]; then
-  python3 "$ROOT_DIR/scripts/check_design_partner_readiness.py" \
-    --scope engineering \
-    --file "$DESIGN_PARTNER_CHECKLIST"
-else
-  echo "[release-readiness] Skipping design partner checklist (file missing: $DESIGN_PARTNER_CHECKLIST)"
-  echo "[release-readiness] Private design-partner checklist is intentionally omitted from the public repo."
-  echo "[release-readiness] Provider/internal release gates must run from the private compliance archive."
-fi
+echo "[release-readiness] Running OpenAPI route snapshot check"
+(
+  cd "$ROOT_DIR"
+  uv run python packages/sardis-api/scripts/generate_openapi.py --check
+)
 
 echo "[release-readiness] Completed"
