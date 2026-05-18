@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import asyncio
 from decimal import Decimal
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sardis_chain.executor import (
     CHAIN_CONFIGS,
@@ -14,6 +15,7 @@ from sardis_chain.executor import (
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stablecoin_event
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 router = APIRouter(dependencies=[Depends(require_principal)], tags=["transactions"])
 
@@ -290,8 +292,33 @@ async def list_chain_tokens(chain: str):
 
 @router.post("/batch", response_model=BatchTransferResponse)
 async def batch_transfer(
-    request: BatchTransferRequest,
+    body: BatchTransferRequest,
+    request: Request,
     deps: TransactionDependencies = Depends(get_deps),
+    principal: Principal = Depends(require_principal),
+):
+    idem_key = get_idempotency_key(request)
+    if idem_key:
+        async def _execute_idempotent() -> tuple[int, Any]:
+            response = await _execute_batch_transfer(body=body, deps=deps)
+            return status.HTTP_200_OK, response.model_dump(mode="json")
+
+        return await run_idempotent(
+            request=request,
+            principal=principal,
+            operation="transactions.batch",
+            key=idem_key,
+            payload=body.model_dump(mode="json"),
+            fn=_execute_idempotent,
+        )
+
+    return await _execute_batch_transfer(body=body, deps=deps)
+
+
+async def _execute_batch_transfer(
+    *,
+    body: BatchTransferRequest,
+    deps: TransactionDependencies,
 ):
     """
     Execute multiple transfers in a batch.
@@ -311,29 +338,29 @@ async def batch_transfer(
     from sardis_v2_core.mandates import PaymentMandate, VCProof
 
     # Validate inputs
-    if not request.transfers:
+    if not body.transfers:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one transfer required",
         )
 
-    if len(request.transfers) > 100:
+    if len(body.transfers) > 100:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Maximum 100 transfers per batch",
         )
 
-    if request.chain not in CHAIN_CONFIGS:
+    if body.chain not in CHAIN_CONFIGS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported chain: {request.chain}",
+            detail=f"Unsupported chain: {body.chain}",
         )
 
-    supported_tokens = STABLECOIN_ADDRESSES.get(request.chain, {})
-    if request.token not in supported_tokens:
+    supported_tokens = STABLECOIN_ADDRESSES.get(body.chain, {})
+    if body.token not in supported_tokens:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Token {request.token} not supported on {request.chain}",
+            detail=f"Token {body.token} not supported on {body.chain}",
         )
 
     # Generate batch ID
@@ -341,17 +368,17 @@ async def batch_transfer(
 
     # Build mandates up-front
     mandates_with_transfers: list[tuple[int, BatchTransferItem, PaymentMandate]] = []
-    for idx, transfer in enumerate(request.transfers):
+    for idx, transfer in enumerate(body.transfers):
         proof = VCProof(
-            verification_method=f"did:key:{request.wallet_id}#key-1",
+            verification_method=f"did:key:{body.wallet_id}#key-1",
             created=f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
             proof_value=f"batch_transfer_{batch_id}_{idx}",
         )
         mandate = PaymentMandate(
             mandate_id=f"{batch_id}_tx_{idx}",
             mandate_type="payment",
-            issuer=request.wallet_id,
-            subject=request.wallet_id,
+            issuer=body.wallet_id,
+            subject=body.wallet_id,
             expires_at=int(time.time()) + 300,
             nonce=f"{batch_id}_{idx}",
             proof=proof,
@@ -359,8 +386,8 @@ async def batch_transfer(
             purpose="batch_transfer",
             destination=transfer.destination,
             amount_minor=int(transfer.amount),
-            token=request.token,
-            chain=request.chain,
+            token=body.token,
+            chain=body.chain,
             audit_hash=f"batch_{batch_id}_{idx}",
         )
         mandates_with_transfers.append((idx, transfer, mandate))
@@ -400,10 +427,10 @@ async def batch_transfer(
 
     return BatchTransferResponse(
         batch_id=batch_id,
-        wallet_id=request.wallet_id,
-        chain=request.chain,
-        token=request.token,
-        total_transfers=len(request.transfers),
+        wallet_id=body.wallet_id,
+        chain=body.chain,
+        token=body.token,
+        total_transfers=len(body.transfers),
         successful=successful,
         failed=failed,
         results=results,
