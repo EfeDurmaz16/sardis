@@ -68,7 +68,7 @@ Completed so far:
 | `routers/fides_identity.py`, `routers/agent_auth.py`, `routers/trust.py` implementations | `routes/identity/*` with compatibility module aliases in `routers/` | Separates identity, trust, and agent-authority routes from payment protocol adapters and the legacy flat router bucket. |
 | `routers/agent_activity.py`, `routers/agent_events.py`, `routers/agent_heartbeat.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Groups agent lifecycle telemetry and heartbeat routes before moving the larger agent registry/lifecycle files. |
 | `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
-| `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, and API keys away from the flat router bucket and away from protocol identity/trust routes. |
+| `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
 | `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, and invoice APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
 | `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, dashboard metrics, and Prometheus collectors together under one operations domain. |
 
@@ -133,6 +133,7 @@ sardis_api/
       groups.py
       api_keys.py
       organizations.py
+      data_export.py
     agents/
       agents.py
       agent_registry.py
@@ -218,15 +219,15 @@ moved to `sardis_api/routes/<domain>/...`.
 8. Agent lifecycle and account routes: completed for `agents`,
    `agent_registry`, `agent_activity`, `agent_events`, `agent_heartbeat`,
    `auth`, `email_verification`, `me`, `groups`, `api_keys`, and
-   `organizations`.
+   `organizations`, and `data_export`.
 9. Commerce and checkout: completed for `checkout`, `checkout_controls`,
    `merchant_checkout`, `merchants`, and `invoices`.
 10. Operations and observability: completed for `analytics`, `alerts`,
    `ws_alerts`, `event_stream`, `reports`, `reliability`, and
    `dashboard_metrics`, and `metrics`.
 11. Admin and miscellaneous contributor tools: `admin`,
-   `admin_reconciliation`, `data_export`, `usage`, `notifications`,
-   `sandbox`, `dev`, `plugins`, `workflow_templates`,
+   `admin_reconciliation`, `usage`, `notifications`, `sandbox`, `dev`,
+   `plugins`, `workflow_templates`,
    `environment_templates`, and `enterprise_support`.
 
 ## Validation Required For Each Move

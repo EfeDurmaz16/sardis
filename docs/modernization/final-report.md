@@ -87,7 +87,7 @@
 - Moved FIDES identity, agent-auth, and trust route implementations into `sardis_api.routes.identity` so identity and authority code is not mixed with payment protocol adapters.
 - Added deterministic local Agent Auth behavior for dev/test/local environments so OSS contributors can run agent-auth tests without a dashboard Better Auth service.
 - Moved agent activity, agent events, and agent heartbeat route implementations into `sardis_api.routes.agents` so agent lifecycle telemetry is no longer mixed into the flat router bucket.
-- Moved account route implementations into `sardis_api.routes.accounts`: auth, email verification, current-account state, groups, organizations, and API keys now sit in a contributor-readable account domain with compatibility wrappers under `sardis_api.routers`.
+- Moved account route implementations into `sardis_api.routes.accounts`: auth, email verification, current-account state, groups, organizations, API keys, and GDPR account export now sit in a contributor-readable account domain with compatibility wrappers under `sardis_api.routers`.
 - Moved commerce route implementations into `sardis_api.routes.commerce`: checkout, checkout controls, merchant checkout, merchants, and invoices now share one contributor-readable domain with compatibility wrappers under `sardis_api.routers`.
 - Moved operational route implementations into `sardis_api.routes.operations`: analytics, alerts, websocket alerts, event stream, reports, reliability, dashboard metrics, and Prometheus metrics now share one contributor-readable operations domain.
 - Added and executed a package path simplification decision: keep the Python import package `src/sardis_api`, but rename the monorepo package directory from `packages/sardis-api` to `packages/api`.
