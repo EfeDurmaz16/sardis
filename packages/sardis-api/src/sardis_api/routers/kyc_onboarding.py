@@ -252,7 +252,7 @@ async def handle_kyc_webhook(request: Request) -> dict:
     - HMAC-SHA256 signature verification (constant-time comparison)
     - Timestamp freshness check (±300 seconds)
     - Raw body read before JSON parsing
-    - Raw body logged on signature failures
+    - Raw body never logged; only a SHA-256 payload hash is logged/stored
 
     Idempotency:
     - Same (session_id, status) pair is not reprocessed
@@ -262,6 +262,7 @@ async def handle_kyc_webhook(request: Request) -> dict:
     """
     # ---- 1. Read raw body BEFORE any parsing ----
     body_bytes = await request.body()
+    payload_hash = hashlib.sha256(body_bytes).hexdigest()
 
     # ---- 2. Verify HMAC-SHA256 signature ----
     webhook_secret = os.getenv("DIDIT_WEBHOOK_SECRET", "").strip()
@@ -272,8 +273,8 @@ async def handle_kyc_webhook(request: Request) -> dict:
     signature = request.headers.get("X-Signature-V2", "")
     if not signature:
         logger.warning(
-            "Didit webhook received without X-Signature-V2 header. Body: %s",
-            body_bytes[:500],
+            "Didit webhook received without X-Signature-V2 header: payload_hash=%s",
+            payload_hash,
         )
         raise HTTPException(status_code=401, detail="Missing webhook signature.")
 
@@ -316,8 +317,8 @@ async def handle_kyc_webhook(request: Request) -> dict:
 
         if not hmac.compare_digest(signature, expected_sig):
             logger.warning(
-                "Didit webhook signature mismatch. Body: %s",
-                body_bytes[:1000],
+                "Didit webhook signature mismatch: payload_hash=%s",
+                payload_hash,
             )
             raise HTTPException(status_code=401, detail="Invalid webhook signature.")
     except json.JSONDecodeError as exc:
@@ -347,7 +348,7 @@ async def handle_kyc_webhook(request: Request) -> dict:
     )
 
     if not session_id:
-        logger.warning("Didit webhook missing session_id: payload=%s", payload)
+        logger.warning("Didit webhook missing session_id: payload_hash=%s", payload_hash)
         return {"status": "ignored", "reason": "no session_id"}
 
     logger.info(
@@ -379,7 +380,12 @@ async def handle_kyc_webhook(request: Request) -> dict:
             status="approved",
             verified_at=verified_at,
             reason=None,
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
         # Side-effects: update ba_user, generate API key
         reference_id = vendor_data or ""
@@ -396,21 +402,36 @@ async def handle_kyc_webhook(request: Request) -> dict:
             inquiry_id=session_id,
             status="declined",
             reason=reason,
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     elif mapped_status == "pending_review":
         await _update_kyc_status(
             inquiry_id=session_id,
             status="needs_review",
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     elif mapped_status == "in_progress":
         await _update_kyc_status(
             inquiry_id=session_id,
             status="pending",
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     elif mapped_status == "abandoned":
@@ -419,7 +440,12 @@ async def handle_kyc_webhook(request: Request) -> dict:
             inquiry_id=session_id,
             status="expired",
             reason="Session abandoned by user",
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     elif mapped_status == "expired":
@@ -428,7 +454,12 @@ async def handle_kyc_webhook(request: Request) -> dict:
             status="expired",
             reason="Session expired",
             expires_at=now,
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     else:
@@ -436,7 +467,12 @@ async def handle_kyc_webhook(request: Request) -> dict:
         await _update_kyc_status(
             inquiry_id=session_id,
             status="pending",
-            metadata={"webhook_status": status_raw, "vendor_data": vendor_data, **payload},
+            metadata=_safe_webhook_metadata(
+                payload_hash=payload_hash,
+                status_raw=status_raw,
+                vendor_data=vendor_data,
+                payload=payload,
+            ),
         )
 
     # ---- 8. Send KYC status email notification (fire-and-forget) ----
@@ -710,6 +746,26 @@ def _map_didit_webhook_status(raw_status: str) -> str:
         "kyc expired": "expired",
     }
     return mapping.get(normalized, "unknown")
+
+
+def _safe_webhook_metadata(
+    *,
+    payload_hash: str,
+    status_raw: str,
+    vendor_data: str,
+    payload: dict,
+) -> dict[str, str | None]:
+    """Return non-sensitive Didit webhook metadata for durable storage."""
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    return {
+        "provider": "didit",
+        "payload_hash": payload_hash,
+        "webhook_status": status_raw,
+        "vendor_data": vendor_data,
+        "session_id": payload.get("session_id") or data.get("id"),
+        "workflow_id": payload.get("workflow_id") or data.get("workflow_id"),
+        "verification_id": payload.get("verification_id") or data.get("verification_id"),
+    }
 
 
 # In-memory idempotency set for environments without a database.

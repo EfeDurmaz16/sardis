@@ -59,7 +59,7 @@ async def _db_get_idempotency(key: str) -> dict | None:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT response_status, response_body
+                SELECT response_status, response_body, request_hash
                 FROM idempotency_records
                 WHERE idempotency_key = $1 AND expires_at > now()
                 """,
@@ -69,13 +69,14 @@ async def _db_get_idempotency(key: str) -> dict | None:
                 return {
                     "status_code": row["response_status"],
                     "body": row["response_body"] if isinstance(row["response_body"], dict) else json.loads(row["response_body"]),
+                    "request_hash": row["request_hash"],
                 }
     except Exception as e:
         _logger.debug("DB idempotency lookup failed for key=%s: %s", key, e)
     return None
 
 
-async def _db_set_idempotency(key: str, status_code: int, body: Any) -> None:
+async def _db_set_idempotency(key: str, request_hash: str, status_code: int, body: Any) -> None:
     """Write-through: persist idempotency record to DB."""
     try:
         from sardis_v2_core.database import get_pool
@@ -84,11 +85,12 @@ async def _db_set_idempotency(key: str, status_code: int, body: Any) -> None:
         async with pool.acquire() as conn:
             await conn.execute(
                 """
-                INSERT INTO idempotency_records (idempotency_key, response_status, response_body)
-                VALUES ($1, $2, $3::jsonb)
+                INSERT INTO idempotency_records (idempotency_key, request_hash, response_status, response_body)
+                VALUES ($1, $2, $3, $4::jsonb)
                 ON CONFLICT (idempotency_key) DO NOTHING
                 """,
                 key,
+                request_hash,
                 status_code,
                 json.dumps(jsonable_encoder(body), default=str),
             )
@@ -122,12 +124,17 @@ async def run_idempotent(
         # No Redis — use DB-only path
         db_record = await _db_get_idempotency(db_key)
         if db_record:
+            if db_record.get("request_hash") != req_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="idempotency_key_reuse_different_payload",
+                )
             return JSONResponse(
                 status_code=db_record["status_code"],
                 content=db_record["body"],
             )
         status_code, body = await fn()
-        await _db_set_idempotency(db_key, status_code, body)
+        await _db_set_idempotency(db_key, req_hash, status_code, body)
         return JSONResponse(status_code=status_code, content=jsonable_encoder(body))
 
     lock_resource = _cache_key(principal.organization_id, operation, key, "lock")
@@ -154,6 +161,11 @@ async def run_idempotent(
         # Redis miss — check DB fallback
         db_record = await _db_get_idempotency(db_key)
         if db_record:
+            if db_record.get("request_hash") != req_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="idempotency_key_reuse_different_payload",
+                )
             return JSONResponse(
                 status_code=db_record["status_code"],
                 content=db_record["body"],
@@ -195,7 +207,7 @@ async def run_idempotent(
         record = IdempotencyRecord(status_code=status_code, body=jsonable_encoder(body), request_hash=req_hash)
         await cache.set(record_key, json.dumps(record.__dict__, default=str), ttl=ttl_seconds)
         # Write-through to DB for durability
-        await _db_set_idempotency(db_key, status_code, body)
+        await _db_set_idempotency(db_key, req_hash, status_code, body)
         return JSONResponse(status_code=status_code, content=record.body)
     finally:
         await cache.release_lock(lock_resource, owner)

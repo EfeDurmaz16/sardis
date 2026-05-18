@@ -102,6 +102,68 @@ async def test_webhook_valid_signature_approved(app, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_webhook_stores_safe_metadata_without_raw_payload(app, monkeypatch):
+    """KYC webhook metadata must not persist raw provider PII/document payloads."""
+    monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
+
+    from sardis_api.routers import kyc_onboarding
+
+    kyc_onboarding._idempotency_cache.clear()
+    updates: list[dict] = []
+
+    async def fake_update_kyc_status(**kwargs):
+        updates.append(kwargs)
+
+    async def fake_on_kyc_approved(user_id: str, organization_id: str | None) -> None:
+        return None
+
+    monkeypatch.setattr(kyc_onboarding, "_update_kyc_status", fake_update_kyc_status)
+    monkeypatch.setattr(kyc_onboarding, "_on_kyc_approved", fake_on_kyc_approved)
+
+    payload = {
+        **_build_didit_payload(
+            session_id="ses_safe_metadata",
+            status="Approved",
+            vendor_data="user_safe_metadata",
+        ),
+        "document_number": "123456789",
+        "first_name": "Sensitive",
+        "data": {
+            "id": "ses_safe_metadata",
+            "status": "Approved",
+            "document_number": "987654321",
+            "workflow_id": "wf_nested",
+        },
+    }
+    signature = _sign_payload(payload)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        resp = await client.post(
+            "/api/v2/kyc/webhook",
+            content=json.dumps(payload),
+            headers={
+                "Content-Type": "application/json",
+                "X-Signature-V2": signature,
+                "X-Timestamp": str(int(time.time())),
+            },
+        )
+
+    assert resp.status_code == 200
+    assert updates
+    metadata = updates[0]["metadata"]
+    assert metadata["provider"] == "didit"
+    assert metadata["payload_hash"]
+    assert metadata["session_id"] == "ses_safe_metadata"
+    assert metadata["workflow_id"] == "wf_test"
+    assert "document_number" not in metadata
+    assert "first_name" not in metadata
+    assert "data" not in metadata
+
+
+@pytest.mark.asyncio
 async def test_webhook_valid_signature_declined(app, monkeypatch):
     """POST /api/v2/kyc/webhook with Declined status processes correctly."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
