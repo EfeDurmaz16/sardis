@@ -53,6 +53,7 @@ Status meanings:
 | `packages/sardis-connect/` | Python connect package. | Clarify overlap with JS connect package. |
 | `packages/sardis-connect-js/` | JS connect package. | Clarify embed versus SDK boundary. |
 | `packages/sardis-zk-policy/` | ZK policy experiments. | Add reproducible proving/verifying dev setup. |
+| `packages/sardis-zkp/` | Experimental ZK proof circuits for identity, mandate, and funding proofs. | Add reproducible proving/verifying dev setup and fixtures. |
 | `packages/sardis-guardrails/` | Guardrails integration. | Add real examples and tests. |
 | `packages/sardis-adk/` | Google ADK integration. | Refresh against current ADK docs before publication. |
 | `packages/sardis-agentkit/` | AgentKit integration. | Refresh against current AgentKit docs before publication. |
@@ -79,6 +80,7 @@ Status meanings:
 | --- | --- |
 | `apps/dashboard/` | Hosted product surface: auth, org, billing, approval inbox, onboarding, and admin flows. |
 | `packages/sardis-checkout-ui/` | Product UI unless intentionally published as a stable embeddable OSS component. |
+| `packages/ui-web/` | Hosted product design system unless intentionally published as a public UI package. |
 | `.github/workflows/deploy-dashboard.yml` | Product deployment path. |
 | Product-only deployment and monitoring workflows | Should not be required for OSS contribution checks. |
 
@@ -86,6 +88,7 @@ Status meanings:
 
 | Path | Reason |
 | --- | --- |
+| Empty shell directories such as `packages/sardis-cli-go/`, `packages/sardis-cli-js/`, `packages/sardis-mpp-proxy/`, `packages/sardis-ramp-js/`, `packages/sardis-spend-widget/`, `packages/sardis-stagehand/`, and `packages/sardis-telegram-bot/` | No tracked source surface today; add code only with a clear maintainer-approved package goal. |
 | Generated uptime and response-time artifacts under `api/` | Generated monitoring output should not be source unless intentionally versioned. |
 | Generated `llms-full.txt` outputs | Keep generated docs reproducible from source or stop tracking generated copies. |
 | Duplicate provider planning docs | Keep public templates, move company-specific provider strategy private. |
