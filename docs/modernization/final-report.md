@@ -45,6 +45,10 @@
 - Removed dashboard/product UI scripts, Dependabot entries, landing deploy path filters, stale canvas dashboard pages, and product UI references from public canvas docs.
 - Regenerated tracked canvas HTML and LLM exports from the updated public canvas source.
 - Made `apps/canvas-site/scripts/build-llms-full.mjs` deterministic by removing per-build timestamp churn from generated `llms-full.txt`.
+- Fixed the docs-site chat route dependency declaration so `@sardis/docs` builds from a clean contributor install.
+- Added `scripts/package_maturity_check.py` and wired it into `pnpm run verify` so every tracked public package must have both a README and an active `docs/packages.md` entry.
+- Removed remaining private/live ops scripts from the public repo and blocked them from re-entering through `scripts/oss_surface_check.py`.
+- Replaced private deployment runbook references with a public-safe self-hosting/deployment guide and added a tracked `cloudbuild.yaml` so the Cloud Run workflow is self-contained.
 
 ## What Was Deleted
 
@@ -73,6 +77,26 @@
   - `packages/sardis-checkout-ui/`
   - `apps/canvas-site/src/pages/dashboard.astro`
   - `canvases/dashboard/index.html`
+- Deleted private/live ops scripts from public tracking:
+  - `scripts/bootstrap_staging_api_key.sh`
+  - `scripts/check_demo_deploy_readiness.sh`
+  - `scripts/demo-mainnet-e2e.py`
+  - `scripts/deploy-cloudrun.sh`
+  - `scripts/deploy-demo-testnet.sh`
+  - `scripts/deploy-mainnet-contracts.sh`
+  - `scripts/deploy-mainnet.sh`
+  - `scripts/deploy-sardis-connect.sh`
+  - `scripts/deploy_gcp_cloudrun_staging.sh`
+  - `scripts/generate_phase2_targets.mjs`
+  - `scripts/generate_staging_secrets.sh`
+  - `scripts/health_monitor.sh`
+  - `scripts/monitor_contracts.sh`
+  - `scripts/onboard_partner.sh`
+  - `scripts/setup-monitoring.sh`
+  - `scripts/setup-production.sh`
+  - `scripts/submit_ecosystem_prs.sh`
+  - `scripts/verify-mainnet.sh`
+  - `scripts/yc_wow_demo.py`
 
 ## What Was Rewritten
 
@@ -101,6 +125,8 @@ Before: Sardis had a viable monorepo stack, but modernization work lacked a comm
 After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, hosted product UI source has been removed from the public contribution path, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
 
 Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, uv resolves repo-local Sardis Python packages from editable checkout paths, and the first Pydantic/FastAPI upgrade blockers have been removed from core/API config surfaces.
+
+Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
 ## Test, Build, And Lint Results
 
@@ -182,6 +208,15 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `git ls-files | rg '^(apps/dashboard|packages/ui-web|packages/sardis-checkout-ui)/'` returned no matches after product UI extraction.
 - `git diff --cached --check` passed after product UI extraction.
 - `pnpm run check:release-readiness` passed after product UI extraction.
+- `pnpm --filter @sardis/docs build` initially exposed a missing `zod` dependency in the docs-site chat route; after declaring the dependency it passed and generated 86 static docs pages.
+- `pnpm --filter canvas-site build` passed after replacing private script references in canvas source.
+- `rsync -a --delete apps/canvas-site/dist/ canvases/` refreshed tracked canvas output after the private ops script cleanup.
+- `python3 scripts/package_maturity_check.py` passed: 41 tracked package directories are documented and have README.md.
+- `python3 -m compileall -q scripts/oss_surface_check.py scripts/package_maturity_check.py` passed.
+- `pnpm run verify` passed after adding the package maturity gate.
+- `pnpm --filter @sardis/app-landing typecheck` passed after the private ops script cleanup.
+- `pnpm --filter @sardis/app-landing build` passed after the private ops script cleanup.
+- `git diff --check` and `git diff --cached --check` passed after the private ops script cleanup.
 
 Notes:
 
@@ -195,6 +230,7 @@ Notes:
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
 - Public/private repo hygiene still needs actual private-repo creation and history-preserving recovery of dashboard/product surfaces from git history.
 - Dashboard deployment automation and source are no longer in the public OSS repo; the private product repo must recreate its CI/CD from the moved history.
+- Private staging/mainnet/demo/partner/monitoring automation is no longer in the public OSS repo; the private product/cloud repo needs a clean replacement from history or fresh infrastructure-as-code.
 - Private production, compliance, and provider-certification gates now need to live in the future private product/compliance repository; the public gate intentionally does not prove hosted production readiness.
 - Canvas and LLM exports are regenerated from source, but still need a single typed registry so route order, nav, sitemap, and LLM dumps cannot drift.
 - Webhook replay protection remains uneven across provider routers.
@@ -209,6 +245,7 @@ Notes:
 - Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
 - Review duplicate Pydantic model class names before considering a full component-schema snapshot instead of the current stable route-level snapshot.
 - Create the private `sardis-product` or `sardis-cloud` repo and recover dashboard/product surfaces from this repo's history.
+- Recreate private staging/mainnet/demo/partner/monitoring automation in the private repo with explicit owner, secret, and environment boundaries.
 
 ## Next 30 Days
 
@@ -218,6 +255,7 @@ Notes:
 - Generate canvas sitemap, nav, route order, and `llms-full.txt` from one typed registry.
 - Classify each integration package as core, supported, experimental, or demo.
 - Raise critical-domain test coverage and add mypy as a staged CI gate.
+- Add a CI job that runs `pnpm --filter @sardis/docs build` so docs dependency drift is caught before merge.
 
 ## Commits Created
 
@@ -258,6 +296,9 @@ Notes:
 - `6acd44ec ci: remove dashboard deploy workflows`
 - `ece27ef4 docs: record dashboard deploy cleanup`
 - `5706d1c5 chore: remove private ops docs from public surface`
+- `e753d904 fix(docs): declare docs chat schema dependency`
+- `106f499c chore: enforce package maturity docs`
+- `904bf3fa chore: remove private ops scripts from public surface`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
