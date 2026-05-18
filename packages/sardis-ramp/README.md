@@ -15,7 +15,7 @@ from sardis_ramp import SardisFiatRamp, BankAccount
 
 # Initialize
 ramp = SardisFiatRamp(
-    sardis_api_key="sk_...",
+    sardis_key="sk_...",
     bridge_api_key="bridge_..."
 )
 

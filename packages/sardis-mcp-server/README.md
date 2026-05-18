@@ -25,7 +25,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "your_sardis_api_key"
+        "SARDIS_API_KEY": "your_sardis_key"
       }
     }
   }
@@ -43,7 +43,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "your_sardis_api_key"
+        "SARDIS_API_KEY": "your_sardis_key"
       }
     }
   }
@@ -61,7 +61,7 @@ Enable AI agents to execute secure payments, manage wallets, and enforce spendin
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "your_sardis_api_key"
+        "SARDIS_API_KEY": "your_sardis_key"
       }
     }
   }
@@ -79,7 +79,7 @@ Install the [MCP Extension](https://marketplace.visualstudio.com/items?itemName=
       "command": "npx",
       "args": ["-y", "@sardis/mcp-server"],
       "env": {
-        "SARDIS_API_KEY": "your_sardis_api_key"
+        "SARDIS_API_KEY": "your_sardis_key"
       }
     }
   }
@@ -95,7 +95,7 @@ claude mcp add sardis -- npx -y @sardis/mcp-server
 Then set your API key:
 
 ```bash
-export SARDIS_API_KEY=your_sardis_api_key
+export SARDIS_API_KEY=your_sardis_key
 ```
 
 ### ChatGPT
@@ -106,7 +106,7 @@ export SARDIS_API_KEY=your_sardis_api_key
 4. Enter:
    - **Name**: `sardis`
    - **Command**: `npx -y @sardis/mcp-server`
-   - **Environment Variable**: `SARDIS_API_KEY=your_sardis_api_key`
+   - **Environment Variable**: `SARDIS_API_KEY=your_sardis_key`
 
 ---
 

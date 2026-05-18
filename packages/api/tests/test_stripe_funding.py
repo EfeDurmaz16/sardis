@@ -7,12 +7,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sardis_v2_core.funding import FundingRequest, FundingResult
 
-from sardis_api.authz import Principal, require_principal
-from sardis_api.routes.operations.metrics import (
+from sardis.authz import Principal, require_principal
+from sardis.routes.operations.metrics import (
     funding_failover_events_total,
     funding_provider_attempts_total,
 )
-from sardis_api.routes.providers.stripe_funding import (
+from sardis.routes.providers.stripe_funding import (
     StripeFundingDeps,
     get_deps,
     router,

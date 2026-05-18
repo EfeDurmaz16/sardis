@@ -4,8 +4,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sardis_compliance import create_kya_service
 
-from sardis_api.authz import Principal, require_admin_principal, require_principal
-from sardis_api.routes.compliance.compliance import ComplianceDependencies, get_deps, router
+from sardis.authz import Principal, require_admin_principal, require_principal
+from sardis.routes.compliance.compliance import ComplianceDependencies, get_deps, router
 
 
 class _KYCService:

@@ -15,8 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "sardis-core" / "src"))
 
-from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.services.facility_gate_replay import FacilityGateReplayService
+from sardis.repositories.facility_gate_repository import FacilityGateRepository
+from sardis.services.facility_gate_replay import FacilityGateReplayService
 
 
 async def _run() -> None:

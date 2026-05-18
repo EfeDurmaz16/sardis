@@ -2,11 +2,11 @@
 
 ## Problem
 
-The API package uses a standard Python `src` layout, but the routing layer has
-grown into a flat directory:
+The API package uses a standard Python `src` layout. The legacy routing layer
+had grown into a flat directory:
 
 ```text
-packages/api/src/sardis_api/routers/*.py
+packages/api/src/sardis/routers/*.py
 ```
 
 That path is technically normal for Python packaging, but the last segment is
@@ -22,9 +22,10 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
   other payment networks
 
 The repeated-looking path prefix is tracked separately in
-`docs/modernization/package-path-simplification.md`. The short version: keep
-the Python import package `src/sardis_api`; the monorepo package directory has
-already been simplified from `packages/sardis-api` to `packages/api`.
+`docs/modernization/package-path-simplification.md`. The short version: the
+current contributor path is `packages/api/src/sardis/...`; both the old
+`packages/sardis-api` package directory and the old `sardis_api` import package
+name have been removed.
 
 ## Naming Principles
 
@@ -89,7 +90,7 @@ Completed so far:
 | `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` with a compatibility module alias in `routers/` | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls, leaving the legacy router bucket with compatibility wrappers only. |
 
 Final cleanup: after internal imports and tests were migrated to
-`sardis_api.routes.<domain>`, the temporary `sardis_api.routers` compatibility
+`sardis.routes.<domain>`, the temporary `sardis.routers` compatibility
 package was removed. The HTTP API paths remain unchanged.
 
 The external API remains unchanged:
@@ -103,7 +104,7 @@ The external API remains unchanged:
 The concrete contributor pain is path roaming. A file like:
 
 ```text
-packages/api/src/sardis_api/routers/webhook_subscriptions.py
+packages/api/src/sardis/routers/webhook_subscriptions.py
 ```
 
 is long, repeats API/package concepts, and hides the business domain in a flat
@@ -111,10 +112,10 @@ is long, repeats API/package concepts, and hides the business domain in a flat
 shorter mental paths:
 
 ```text
-packages/api/src/sardis_api/routes/developer/webhook_subscriptions.py
+packages/api/src/sardis/routes/developer/webhook_subscriptions.py
 ```
 
-The top-level Python package still uses `src/sardis_api` because that is the
+The top-level Python package still uses `src/sardis` because that is the
 standard packaging boundary. The part we should actively simplify is everything
 below it:
 
@@ -132,7 +133,7 @@ The long-term target is to replace the flat router directory with grouped route
 domains:
 
 ```text
-sardis_api/
+sardis/
   routes/
     admin/
       control.py
@@ -223,18 +224,18 @@ sardis_api/
       ws_alerts.py
 ```
 
-This should continue after `sardis_api.main` is split into router registration
+This should continue after `sardis.main` is split into router registration
 functions. Moving 120+ files before extracting registration would create a large
 rename diff without enough architectural payoff. The first extracted registrars
-are `sardis_api.routing.developer.register_webhook_subscriptions`,
-`sardis_api.routing.money_movement.register_pay_endpoint`, and
-`sardis_api.routing.authority.register_authority_routes`.
+are `sardis.routing.developer.register_webhook_subscriptions`,
+`sardis.routing.money_movement.register_pay_endpoint`, and
+`sardis.routing.authority.register_authority_routes`.
 
 ## Recommended Move Order
 
 Proceed bucket-by-bucket. The temporary compatibility wrappers were used during
 the migration and then removed after internal imports moved to
-`sardis_api.routes.<domain>`.
+`sardis.routes.<domain>`.
 
 1. Authority: completed for `mandates`, `ap2`, `mvp`, `approvals`, and
    `approval_config`.
@@ -280,7 +281,7 @@ the migration and then removed after internal imports moved to
 Run these commands after each route move:
 
 ```bash
-python3 -m compileall -q packages/api/src/sardis_api
+python3 -m compileall -q packages/api/src/sardis
 pnpm check:openapi
 uv run pytest packages/api/tests -q
 ```
@@ -288,7 +289,7 @@ uv run pytest packages/api/tests -q
 For small route-only moves, the minimum acceptable validation is:
 
 ```bash
-python3 -m compileall -q packages/api/src/sardis_api
+python3 -m compileall -q packages/api/src/sardis
 pnpm check:openapi
 ```
 

@@ -69,7 +69,7 @@ async def test_webhook_valid_signature_approved(app, monkeypatch):
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
     # Clear the in-memory idempotency cache between tests
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(
@@ -106,7 +106,7 @@ async def test_webhook_stores_safe_metadata_without_raw_payload(app, monkeypatch
     """KYC webhook metadata must not persist raw provider PII/document payloads."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance import kyc_onboarding
+    from sardis.routes.compliance import kyc_onboarding
 
     kyc_onboarding._idempotency_cache.clear()
     updates: list[dict] = []
@@ -168,7 +168,7 @@ async def test_webhook_valid_signature_declined(app, monkeypatch):
     """POST /api/v2/kyc/webhook with Declined status processes correctly."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(
@@ -204,7 +204,7 @@ async def test_webhook_valid_signature_in_review(app, monkeypatch):
     """POST /api/v2/kyc/webhook with 'In Review' status maps to pending_review."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(
@@ -243,7 +243,7 @@ async def test_webhook_invalid_signature_returns_401(app, monkeypatch):
     """POST /api/v2/kyc/webhook with wrong signature returns 401."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(session_id="ses_bad_sig")
@@ -392,7 +392,7 @@ async def test_webhook_idempotent_reprocessing(app, monkeypatch):
     """Sending the same (session_id, status) twice returns already_processed on the second call."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(
@@ -442,7 +442,7 @@ async def test_webhook_different_status_same_session_is_processed(app, monkeypat
     """Same session_id with different status should be processed (not deduped)."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     ts = str(int(time.time()))
@@ -497,7 +497,7 @@ async def test_webhook_no_timestamp_header_still_works(app, monkeypatch):
     """When X-Timestamp is absent, the request should still be processed."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(
@@ -535,7 +535,7 @@ async def test_webhook_abandoned_status(app, monkeypatch):
     """Abandoned status is correctly mapped."""
     monkeypatch.setenv("DIDIT_WEBHOOK_SECRET", WEBHOOK_SECRET)
 
-    from sardis_api.routes.compliance.kyc_onboarding import _idempotency_cache
+    from sardis.routes.compliance.kyc_onboarding import _idempotency_cache
     _idempotency_cache.clear()
 
     payload = _build_didit_payload(

@@ -15,7 +15,7 @@ COPY packages/ ./packages/
 # Install dependencies with uv
 RUN uv sync --frozen --no-dev
 
-# Install monorepo packages (editable) so sardis_api and its transitive deps
+# Install monorepo packages (editable) so sardis and its transitive deps
 # are importable with matching runtime dependencies inside the venv.
 RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-core \
@@ -70,7 +70,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Run with gunicorn + uvicorn workers for production concurrency.
 # SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
 CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
-    gunicorn "sardis_api.main:create_app()" \
+    gunicorn "sardis.main:create_app()" \
     -w ${SARDIS_WORKERS:-4} \
     -k uvicorn.workers.UvicornWorker \
     -b 0.0.0.0:${PORT} \

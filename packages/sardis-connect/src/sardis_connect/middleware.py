@@ -104,7 +104,7 @@ class SardisConnect:
         service_description: str = "API endpoints available for agent payments",
         base_url: str | None = None,
         endpoints: list[PricedEndpoint] | None = None,
-        sardis_api_url: str | None = None,
+        sardis_url: str | None = None,
         webhook_secret: str | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("SARDIS_MERCHANT_API_KEY", "")
@@ -113,7 +113,7 @@ class SardisConnect:
         self._service_description = service_description
         self._base_url = base_url or os.environ.get("SARDIS_CONNECT_BASE_URL", "")
         self._endpoints: list[PricedEndpoint] = endpoints or []
-        self._sardis_api = sardis_api_url or os.environ.get("SARDIS_API_URL", _SARDIS_API_DEFAULT)
+        self._sardis = sardis_url or os.environ.get("SARDIS_API_URL", _SARDIS_API_DEFAULT)
         self._webhook_secret = webhook_secret or os.environ.get("SARDIS_WEBHOOK_SECRET", "")
 
         self._router = APIRouter(tags=["sardis-connect"])
@@ -250,7 +250,7 @@ class SardisConnect:
             # Create checkout session via Sardis API
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(
-                    f"{self._sardis_api}/api/v2/merchant-checkout/sessions",
+                    f"{self._sardis}/api/v2/merchant-checkout/sessions",
                     json={
                         "merchant_id": self._merchant_id,
                         "amount": amount,
@@ -294,7 +294,7 @@ class SardisConnect:
             """
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.get(
-                    f"{self._sardis_api}/api/v2/merchant-checkout/sessions/{body.session_id}",
+                    f"{self._sardis}/api/v2/merchant-checkout/sessions/{body.session_id}",
                     headers={"Authorization": f"Bearer {self._api_key}"},
                 )
 
@@ -367,7 +367,7 @@ class SardisConnect:
             # Report usage to Sardis API for settlement
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(
-                    f"{self._sardis_api}/api/v2/merchant-checkout/sessions/{body.session_id}/usage",
+                    f"{self._sardis}/api/v2/merchant-checkout/sessions/{body.session_id}/usage",
                     json={
                         "units": body.units,
                         "unit_name": endpoint.unit_name or "unit",
@@ -438,7 +438,7 @@ class SardisPaywall:
 
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                f"{self._sardis._sardis_api}/api/v2/merchant-checkout/sessions/{session_id}",
+                f"{self._sardis._sardis}/api/v2/merchant-checkout/sessions/{session_id}",
                 headers={"Authorization": f"Bearer {self._sardis._api_key}"},
             )
             if resp.status_code != 200:

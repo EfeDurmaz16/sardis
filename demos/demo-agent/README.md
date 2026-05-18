@@ -194,7 +194,7 @@ pip install -e ../../packages/sardis-sdk-python
 ```bash
 # Start the Sardis API server first:
 cd ../../packages/api
-uvicorn sardis_api.main:app --port 8000
+uvicorn sardis.main:app --port 8000
 ```
 
 **Running in simulation mode**

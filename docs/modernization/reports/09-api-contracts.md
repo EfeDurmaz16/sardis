@@ -4,7 +4,7 @@
 
 ### High: Public API surface is very broad
 
-- Evidence: `packages/api/src/sardis_api/routers/` contains well over 100 router modules, and `main.py` registers many under `/api/v2`.
+- Evidence: `packages/api/src/sardis/routers/` contains well over 100 router modules, and `main.py` registers many under `/api/v2`.
 - Impact: Any cleanup can accidentally change public routes.
 - Recommended action: Generate and commit an OpenAPI snapshot for contract diffing before route refactors.
 - Action type: Tests/tooling.

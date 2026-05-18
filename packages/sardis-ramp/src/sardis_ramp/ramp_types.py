@@ -112,7 +112,7 @@ class PaymentResult:
 @dataclass
 class RampConfig:
     """Configuration for the fiat ramp."""
-    sardis_api_key: str
+    sardis_key: str
     bridge_api_key: str
     environment: Literal["sandbox", "production"] = "sandbox"
     default_chain: str = "base"

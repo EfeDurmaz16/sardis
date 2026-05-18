@@ -5,8 +5,8 @@ from decimal import Decimal
 
 from sardis_v2_core.cache import create_cache_service
 
-from sardis_api.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
-from sardis_api.routes.commerce.secure_checkout import RepositoryBackedSecureCheckoutStore
+from sardis.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
+from sardis.routes.commerce.secure_checkout import RepositoryBackedSecureCheckoutStore
 
 
 def _sample_job(intent_id: str = "intent_repo_1") -> dict:

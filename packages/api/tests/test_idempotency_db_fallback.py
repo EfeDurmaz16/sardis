@@ -4,8 +4,8 @@ import pytest
 from fastapi import HTTPException
 from fastapi.requests import Request
 
-from sardis_api.authz import Principal
-from sardis_api import idempotency
+from sardis.authz import Principal
+from sardis import idempotency
 
 
 class _AppState:

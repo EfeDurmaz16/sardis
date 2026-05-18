@@ -15,7 +15,7 @@ def _reload_tracker_without_key():
     with patch.dict("os.environ", {}, clear=False):
         import os
         os.environ.pop("POSTHOG_API_KEY", None)
-        from sardis_api.analytics import posthog_tracker
+        from sardis.analytics import posthog_tracker
         return posthog_tracker
 
 

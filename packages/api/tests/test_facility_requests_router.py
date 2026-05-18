@@ -11,10 +11,10 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
 from sardis_v2_core.spending_mandate import SpendingMandate
 
-from sardis_api.authz import Principal, require_principal
-from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.routes.authority import facility_requests
-from sardis_api.services.facility_gate_authority import (
+from sardis.authz import Principal, require_principal
+from sardis.repositories.facility_gate_repository import FacilityGateRepository
+from sardis.routes.authority import facility_requests
+from sardis.services.facility_gate_authority import (
     InMemoryFacilityMandateResolver,
     RepositoryBackedFacilityMandateResolver,
     RepositoryBackedFacilityPolicyResolver,

@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_api.authz import require_principal
-from sardis_api.routes.money_movement.batch_payments import router
+from sardis.authz import require_principal
+from sardis.routes.money_movement.batch_payments import router
 
 
 class FakeCache:

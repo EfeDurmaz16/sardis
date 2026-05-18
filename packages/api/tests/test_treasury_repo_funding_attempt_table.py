@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_api.repositories.treasury_repository import TreasuryRepository
+from sardis.repositories.treasury_repository import TreasuryRepository
 
 
 class _FakeConn:

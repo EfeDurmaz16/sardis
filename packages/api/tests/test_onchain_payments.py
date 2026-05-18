@@ -9,9 +9,9 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.policy_attestation import compute_policy_hash
 from sardis_v2_core.spending_policy import SpendingPolicy
 
-import sardis_api.routes.wallets.onchain_payments as onchain_payments_router
-from sardis_api.authz import Principal, require_principal
-from sardis_api.routes.wallets.onchain_payments import (
+import sardis.routes.wallets.onchain_payments as onchain_payments_router
+from sardis.authz import Principal, require_principal
+from sardis.routes.wallets.onchain_payments import (
     OnChainPaymentDependencies,
     get_deps,
     router,

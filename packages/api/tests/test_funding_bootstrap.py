@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sardis_v2_core.config import SardisSettings
 
-from sardis_api.main import create_app
+from sardis.authz import Principal, require_principal
+from sardis.main import create_app
 
 
 def test_funding_router_bootstraps_with_bridge_only() -> None:
@@ -26,12 +27,15 @@ def test_funding_router_bootstraps_with_bridge_only() -> None:
     )
 
     app = create_app(settings=settings)
+    app.dependency_overrides[require_principal] = lambda: Principal(
+        kind="api_key",
+        organization_id="org_demo",
+        scopes=["*"],
+        api_key=None,
+    )
     client = TestClient(app)
 
-    response = client.get(
-        "/api/v2/stripe/funding/issuing/topups/routing-plan",
-        headers={"X-API-Key": "test-api-key-placeholder"},
-    )
+    response = client.get("/api/v2/stripe/funding/issuing/topups/routing-plan")
 
     assert response.status_code == 200
     payload = response.json()

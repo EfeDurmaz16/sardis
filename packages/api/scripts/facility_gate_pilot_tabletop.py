@@ -23,7 +23,7 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 for _package in (
-    "sardis-api",
+    "api",
     "sardis-core",
     "sardis-protocol",
     "sardis-ledger",
@@ -45,15 +45,15 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
 from sardis_v2_core.spending_mandate import SpendingMandate
 
-from sardis_api.authz import Principal, require_principal
-from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.routers import facility_requests
-from sardis_api.services.facility_gate_authority import (
+from sardis.authz import Principal, require_principal
+from sardis.repositories.facility_gate_repository import FacilityGateRepository
+from sardis.routes.authority import facility_requests
+from sardis.services.facility_gate_authority import (
     RepositoryBackedFacilityMandateResolver,
     RepositoryBackedFacilityPolicyResolver,
     RepositoryBackedFacilityRecordResolver,
 )
-from sardis_api.services.facility_gate_replay import FacilityGateReplayService
+from sardis.services.facility_gate_replay import FacilityGateReplayService
 
 
 @dataclass(frozen=True)

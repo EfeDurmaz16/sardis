@@ -2,7 +2,7 @@
 MVP demo: TAP issuance -> AP2 mandate sign -> validate -> execute USDC on Base Sepolia -> deterministic receipt.
 
 Prereqs:
-- Run Sardis API locally: uvicorn sardis_api.main:create_app --factory
+- Run Sardis API locally: uvicorn sardis.main:create_app --factory
 - Set env:
     SARDIS_CHAIN_MODE=live
     SARDIS_CHAINS__0__NAME=base_sepolia

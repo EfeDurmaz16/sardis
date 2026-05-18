@@ -157,7 +157,7 @@ pnpm --filter @sardis/sdk build      # Build SDK
 pnpm --filter @sardis/sdk test       # Test SDK
 
 # API Server
-uvicorn sardis_api.main:create_app --factory --port 8000
+uvicorn sardis.main:create_app --factory --port 8000
 
 # Smart Contracts
 cd contracts && forge build          # Compile
@@ -245,7 +245,7 @@ UPSTASH_REDIS_URL=...        # Caching
 3. Update SDK types
 
 ### Creating a New API Endpoint
-1. Add route in `packages/api/src/sardis_api/routes/`
+1. Add route in `packages/api/src/sardis/routes/`
 2. Add request/response models
 3. Add tests
 4. Update OpenAPI docs

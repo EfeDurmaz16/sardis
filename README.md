@@ -345,7 +345,7 @@ python3 scripts/oss_surface_check.py
 pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
-uvicorn sardis_api.main:create_app --factory --port 8000
+uvicorn sardis.main:create_app --factory --port 8000
 ```
 
 ---

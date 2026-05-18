@@ -3,8 +3,8 @@ from __future__ import annotations
 import pytest
 from sardis_v2_core.facility_gate import FacilityEventType
 
-from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.services.facility_gate_limits import FacilityGateLimiter, FacilityLimitThresholds
+from sardis.repositories.facility_gate_repository import FacilityGateRepository
+from sardis.services.facility_gate_limits import FacilityGateLimiter, FacilityLimitThresholds
 
 
 async def _append_request(repo: FacilityGateRepository, idx: int, *, verdict: str | None = None) -> None:

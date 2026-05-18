@@ -1483,7 +1483,7 @@ tdDomain models, config, policy engine, orchestrator. Every other package import
 
 trtdcodesardis-api/code
 tdcodesardis_api/routers/*.py/code, codesardis_v2_api/routes/*.py/code, codemain.py/code, codealembic//code
-tdFastAPI composition root + 123 routers + 107 Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.
+tdFastAPI composition root, domain route modules, route registrars, and Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.
 
 trtdcodesardis-chain/code
 tdcodeexecutor.py/code (v2), codesafe_account.py/code, codesmart_router.py/code, codecctp_forwarding.py/code, codetempo/executor.py/code

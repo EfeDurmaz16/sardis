@@ -97,7 +97,7 @@ def _create_test_app(
     orchestrator_fail: Exception | None = None,
 ) -> FastAPI:
     """Create a FastAPI app with the mandates router and mocked deps."""
-    from sardis_api.routes.authority import mandates as mandates_mod
+    from sardis.routes.authority import mandates as mandates_mod
 
     app = FastAPI()
 
@@ -153,7 +153,7 @@ def _create_test_app(
 
     # Build stored mandate in fake DB
     pm = _make_payment_mandate()
-    from sardis_api.routes.authority.mandates import StoredMandate
+    from sardis.routes.authority.mandates import StoredMandate
     stored = StoredMandate(
         mandate_id="mandate_test001",
         mandate=pm,
@@ -186,16 +186,16 @@ def _create_test_app(
 def client_with_mandate():
     """Client with a valid mandate in the fake DB."""
     app = _create_test_app(mandate_exists=True)
-    from sardis_api.routes.authority import mandates as mandates_mod
+    from sardis.routes.authority import mandates as mandates_mod
 
     # Apply patches and disable auth
     with (
         patch.object(mandates_mod, "_get_mandate", app._test_patches["get"]),
         patch.object(mandates_mod, "_save_mandate", app._test_patches["save"]),
-        patch("sardis_api.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
-        patch("sardis_api.routes.authority.mandates.require_kill_switch_clear", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_transaction_caps", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
+        patch("sardis.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
+        patch("sardis.routes.authority.mandates.require_kill_switch_clear", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_transaction_caps", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
         patch.object(mandates_mod, "validate_wallet_not_frozen", return_value=(True, "OK")),
     ):
         yield TestClient(app)
@@ -205,15 +205,15 @@ def client_with_mandate():
 def client_no_mandate():
     """Client with no mandate in the fake DB."""
     app = _create_test_app(mandate_exists=False)
-    from sardis_api.routes.authority import mandates as mandates_mod
+    from sardis.routes.authority import mandates as mandates_mod
 
     with (
         patch.object(mandates_mod, "_get_mandate", app._test_patches["get"]),
         patch.object(mandates_mod, "_save_mandate", app._test_patches["save"]),
-        patch("sardis_api.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
-        patch("sardis_api.routes.authority.mandates.require_kill_switch_clear", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_transaction_caps", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
+        patch("sardis.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
+        patch("sardis.routes.authority.mandates.require_kill_switch_clear", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_transaction_caps", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
     ):
         yield TestClient(app)
 
@@ -223,15 +223,15 @@ def client_policy_deny():
     """Client where orchestrator raises PolicyViolationError."""
     from sardis_v2_core.orchestrator import PolicyViolationError
     app = _create_test_app(orchestrator_fail=PolicyViolationError("per_transaction_limit", mandate_id="mandate_test001"))
-    from sardis_api.routes.authority import mandates as mandates_mod
+    from sardis.routes.authority import mandates as mandates_mod
 
     with (
         patch.object(mandates_mod, "_get_mandate", app._test_patches["get"]),
         patch.object(mandates_mod, "_save_mandate", app._test_patches["save"]),
-        patch("sardis_api.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
-        patch("sardis_api.routes.authority.mandates.require_kill_switch_clear", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_transaction_caps", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
+        patch("sardis.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
+        patch("sardis.routes.authority.mandates.require_kill_switch_clear", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_transaction_caps", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
         patch.object(mandates_mod, "validate_wallet_not_frozen", return_value=(True, "OK")),
     ):
         yield TestClient(app)
@@ -241,15 +241,15 @@ def client_policy_deny():
 def client_already_executed():
     """Client with an already-executed mandate."""
     app = _create_test_app(mandate_exists=True, mandate_status="executed")
-    from sardis_api.routes.authority import mandates as mandates_mod
+    from sardis.routes.authority import mandates as mandates_mod
 
     with (
         patch.object(mandates_mod, "_get_mandate", app._test_patches["get"]),
         patch.object(mandates_mod, "_save_mandate", app._test_patches["save"]),
-        patch("sardis_api.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
-        patch("sardis_api.routes.authority.mandates.require_kill_switch_clear", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_transaction_caps", lambda: None),
-        patch("sardis_api.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
+        patch("sardis.routes.authority.mandates.require_principal", lambda: MagicMock(is_admin=True, organization_id="org_1")),
+        patch("sardis.routes.authority.mandates.require_kill_switch_clear", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_transaction_caps", lambda: None),
+        patch("sardis.routes.authority.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
     ):
         yield TestClient(app)
 

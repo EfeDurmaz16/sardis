@@ -89,7 +89,7 @@ EXPOSE ${PORT}
 
 # Run with gunicorn for production
 # Workers = (2 * CPU cores) + 1, but we use env var for flexibility
-CMD ["sh", "-c", "gunicorn sardis_api.main:create_app --factory -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --access-logfile - --error-logfile - --capture-output"]
+CMD ["sh", "-c", "gunicorn sardis.main:create_app --factory -w ${GUNICORN_WORKERS:-4} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:${PORT} --access-logfile - --error-logfile - --capture-output"]
 
 
 # -----------------------------------------------------------------------------
@@ -114,4 +114,4 @@ RUN pip install --no-cache-dir \
 USER sardis
 
 # Use uvicorn for development (auto-reload)
-CMD ["uvicorn", "sardis_api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "sardis.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]

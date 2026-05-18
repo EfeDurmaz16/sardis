@@ -21,9 +21,9 @@ def _source(module_name: str) -> str:
 @pytest.mark.parametrize(
     "module_name",
     [
-        "sardis_api.routes.authority.mandates",
-        "sardis_api.routes.authority.mvp",
-        "sardis_api.routes.wallets.wallets",
+        "sardis.routes.authority.mandates",
+        "sardis.routes.authority.mvp",
+        "sardis.routes.wallets.wallets",
     ],
 )
 def test_payment_orchestrator_routes_execute_mandate_chains(module_name):
@@ -34,18 +34,18 @@ def test_payment_orchestrator_routes_execute_mandate_chains(module_name):
 
 
 def test_mandates_router_has_two_orchestrated_execution_paths():
-    source = _source("sardis_api.routes.authority.mandates")
+    source = _source("sardis.routes.authority.mandates")
     assert source.count("execute_chain") >= 2
 
 
 def test_a2a_routes_record_spend_after_control_plane_success():
-    source = _source("sardis_api.routes.protocol.a2a")
+    source = _source("sardis.routes.protocol.a2a")
     assert source.count("ControlPlane(") >= 2
     assert source.count(".submit(") >= 2
     assert source.count("async_record_spend") >= 2
 
 
 def test_ap2_records_compliance_and_uses_orchestrator_boundary():
-    source = _source("sardis_api.routes.authority.ap2")
+    source = _source("sardis.routes.authority.ap2")
     assert "_append_compliance_decision_audit" in source
     assert "execute_chain" in source

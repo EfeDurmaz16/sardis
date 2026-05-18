@@ -403,7 +403,7 @@ class TestComplianceInRouters:
     def test_mandates_has_compliance(self):
         import inspect
 
-        from sardis_api.routes.authority import mandates
+        from sardis.routes.authority import mandates
         source = inspect.getsource(mandates)
         assert "compliance" in source
         assert "preflight" in source
@@ -411,7 +411,7 @@ class TestComplianceInRouters:
     def test_mvp_has_compliance(self):
         import inspect
 
-        from sardis_api.routes.authority import mvp
+        from sardis.routes.authority import mvp
         source = inspect.getsource(mvp)
         assert "compliance" in source
         assert "payment_orchestrator" in source
@@ -420,7 +420,7 @@ class TestComplianceInRouters:
     def test_a2a_has_compliance_in_both_paths(self):
         import inspect
 
-        from sardis_api.routes.protocol import a2a
+        from sardis.routes.protocol import a2a
         source = inspect.getsource(a2a)
         assert source.count("ComplianceAdapter") >= 2
         assert source.count("ControlPlane(") >= 2
@@ -428,7 +428,7 @@ class TestComplianceInRouters:
     def test_wallets_has_compliance(self):
         import inspect
 
-        import sardis_api.routes.wallets.wallets as wallets
+        import sardis.routes.wallets.wallets as wallets
         source = inspect.getsource(wallets)
         assert "compliance" in source
         assert "payment_orchestrator" in source
@@ -437,7 +437,7 @@ class TestComplianceInRouters:
     def test_mandates_has_validation_and_execution_compliance_paths(self):
         import inspect
 
-        from sardis_api.routes.authority import mandates
+        from sardis.routes.authority import mandates
         source = inspect.getsource(mandates)
         assert "preflight" in source
         assert "payment_orchestrator" in source

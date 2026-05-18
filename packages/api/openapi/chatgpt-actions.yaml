@@ -24,11 +24,11 @@ servers:
     description: Production API
 
 security:
-  - sardis_api_key: []
+  - sardis_key: []
 
 components:
   securitySchemes:
-    sardis_api_key:
+    sardis_key:
       type: http
       scheme: bearer
       bearerFormat: sk_...

@@ -321,7 +321,7 @@ class TestSardisNativeConnector:
 
 class TestMerchantCheckoutRouterWiring:
     def test_merchant_router_has_endpoints(self):
-        from sardis_api.routes.commerce.merchants import router
+        from sardis.routes.commerce.merchants import router
         paths = [r.path for r in router.routes]
         assert "" in paths or "/" in paths  # Root path varies by FastAPI version
         assert "/{merchant_id}" in paths
@@ -330,7 +330,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/{merchant_id}/links" in paths
 
     def test_checkout_router_has_endpoints(self):
-        from sardis_api.routes.commerce.merchant_checkout import public_router, router
+        from sardis.routes.commerce.merchant_checkout import public_router, router
         auth_paths = [r.path for r in router.routes]
         public_paths = [r.path for r in public_router.routes]
 
@@ -347,7 +347,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/links/{slug}" in public_paths
 
     def test_main_wires_merchant_routers(self):
-        main_path = Path(__file__).parent.parent / "src" / "sardis_api" / "main.py"
+        main_path = Path(__file__).parent.parent / "src" / "sardis" / "main.py"
         source = main_path.read_text()
         assert "merchants_router" in source
         assert "merchant_checkout_router" in source
@@ -355,7 +355,7 @@ class TestMerchantCheckoutRouterWiring:
 
 class TestMerchantCheckoutSandboxSessions:
     def _build_public_client(self):
-        from sardis_api.routes.commerce import merchant_checkout
+        from sardis.routes.commerce import merchant_checkout
 
         app = FastAPI()
         app.include_router(merchant_checkout.public_router)
@@ -367,7 +367,7 @@ class TestMerchantCheckoutSandboxSessions:
         return TestClient(app)
 
     def test_create_test_session_requires_explicit_sandbox(self, monkeypatch):
-        from sardis_api.routes.commerce import merchant_checkout
+        from sardis.routes.commerce import merchant_checkout
 
         merchant_checkout._DEMO_SESSIONS_FALLBACK.clear()
         monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
@@ -387,7 +387,7 @@ class TestMerchantCheckoutSandboxSessions:
         assert merchant_checkout._DEMO_SESSIONS_FALLBACK == {}
 
     def test_create_test_session_allows_explicit_sandbox_fallback(self, monkeypatch):
-        from sardis_api.routes.commerce import merchant_checkout
+        from sardis.routes.commerce import merchant_checkout
 
         merchant_checkout._DEMO_SESSIONS_FALLBACK.clear()
         monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
@@ -409,7 +409,7 @@ class TestMerchantCheckoutMandateSafety:
     @pytest.mark.asyncio
     async def test_mandate_validation_errors_fail_closed(self, monkeypatch):
         from fastapi import HTTPException
-        from sardis_api.routes.commerce import merchant_checkout
+        from sardis.routes.commerce import merchant_checkout
         from sardis_v2_core.database import Database
 
         session = _make_session(
@@ -595,24 +595,24 @@ class TestCheckoutLinks:
 
 class TestRequestValidation:
     def test_create_session_requires_positive_amount(self):
-        from sardis_api.routes.commerce.merchant_checkout import CreateSessionRequest
+        from sardis.routes.commerce.merchant_checkout import CreateSessionRequest
         with pytest.raises(Exception):
             CreateSessionRequest(merchant_id="merch_123", amount=Decimal("-10"))
 
     def test_create_session_defaults(self):
-        from sardis_api.routes.commerce.merchant_checkout import CreateSessionRequest
+        from sardis.routes.commerce.merchant_checkout import CreateSessionRequest
         req = CreateSessionRequest(merchant_id="merch_123", amount=Decimal("25.50"))
         assert req.currency == "USDC"
         assert req.metadata == {}
         assert req.embed_origin is None
 
     def test_create_merchant_validates_settlement_preference(self):
-        from sardis_api.routes.commerce.merchants import CreateMerchantRequest
+        from sardis.routes.commerce.merchants import CreateMerchantRequest
         with pytest.raises(Exception):
             CreateMerchantRequest(name="Test", settlement_preference="bitcoin")
 
     def test_create_merchant_fee_bounds(self):
-        from sardis_api.routes.commerce.merchants import CreateMerchantRequest
+        from sardis.routes.commerce.merchants import CreateMerchantRequest
         with pytest.raises(Exception):
             CreateMerchantRequest(name="Test", platform_fee_bps=600)
 
@@ -640,7 +640,7 @@ class _FakeRedisClient:
 class TestDemoSessionPersistence:
     @pytest.fixture(autouse=True)
     def clear_demo_sessions(self):
-        from sardis_api.routes.commerce import merchant_checkout as merchant_checkout_router
+        from sardis.routes.commerce import merchant_checkout as merchant_checkout_router
 
         merchant_checkout_router._DEMO_SESSIONS_FALLBACK.clear()
         yield
@@ -656,7 +656,7 @@ class TestDemoSessionPersistence:
 
     @pytest.mark.asyncio
     async def test_save_demo_session_falls_back_when_redis_write_times_out(self, monkeypatch: pytest.MonkeyPatch):
-        from sardis_api.routes.commerce import merchant_checkout as merchant_checkout_router
+        from sardis.routes.commerce import merchant_checkout as merchant_checkout_router
 
         session = _make_session(metadata={"test_session": True})
         monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
@@ -673,7 +673,7 @@ class TestDemoSessionPersistence:
 
     @pytest.mark.asyncio
     async def test_load_demo_session_falls_back_when_redis_read_times_out(self, monkeypatch: pytest.MonkeyPatch):
-        from sardis_api.routes.commerce import merchant_checkout as merchant_checkout_router
+        from sardis.routes.commerce import merchant_checkout as merchant_checkout_router
 
         session = _make_session(metadata={"test_session": True})
         monkeypatch.setenv("SARDIS_ENVIRONMENT", "dev")
@@ -693,13 +693,13 @@ class TestDemoSessionPersistence:
         assert loaded.client_secret == session.client_secret
 
     def test_create_merchant_valid(self):
-        from sardis_api.routes.commerce.merchants import CreateMerchantRequest
+        from sardis.routes.commerce.merchants import CreateMerchantRequest
         req = CreateMerchantRequest(name="Test Shop", settlement_preference="fiat", platform_fee_bps=100)
         assert req.name == "Test Shop"
         assert req.settlement_preference == "fiat"
 
     def test_create_checkout_link_slug_validation(self):
-        from sardis_api.routes.commerce.merchants import CreateCheckoutLinkRequest
+        from sardis.routes.commerce.merchants import CreateCheckoutLinkRequest
         # Valid slug
         req = CreateCheckoutLinkRequest(amount=Decimal("5.00"), slug="coffee-5usd")
         assert req.slug == "coffee-5usd"

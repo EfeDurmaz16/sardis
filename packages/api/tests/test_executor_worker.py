@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from sardis_api.executor_worker import (
+from sardis.executor_worker import (
     SecureCheckoutCompletionClient,
     canonical_dispatch_payload_bytes,
     create_executor_worker_app,
@@ -139,7 +139,7 @@ async def test_completion_client_retries_and_succeeds():
     mock_cm.__aenter__.return_value = mock_http
     mock_cm.__aexit__.return_value = None
 
-    with patch("sardis_api.executor_worker.httpx.AsyncClient", return_value=mock_cm):
+    with patch("sardis.executor_worker.httpx.AsyncClient", return_value=mock_cm):
         result = await completion_client.complete_job(
             job_id="scj_worker_1",
             status_value="completed",
@@ -170,7 +170,7 @@ async def test_completion_client_returns_failure_after_retries():
     mock_cm.__aenter__.return_value = mock_http
     mock_cm.__aexit__.return_value = None
 
-    with patch("sardis_api.executor_worker.httpx.AsyncClient", return_value=mock_cm):
+    with patch("sardis.executor_worker.httpx.AsyncClient", return_value=mock_cm):
         result = await completion_client.complete_job(
             job_id="scj_worker_1",
             status_value="failed",

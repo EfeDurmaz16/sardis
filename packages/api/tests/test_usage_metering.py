@@ -9,8 +9,8 @@ from httpx import ASGITransport, AsyncClient
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
-from sardis_api.billing.config import PLAN_LIMITS, BillingConfig
-from sardis_api.middleware.usage_metering import (
+from sardis.billing.config import PLAN_LIMITS, BillingConfig
+from sardis.middleware.usage_metering import (
     EXEMPT_PREFIXES,
     UsageMeteringMiddleware,
     _usage_counters,

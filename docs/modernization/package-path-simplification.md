@@ -2,86 +2,87 @@
 
 ## Problem
 
-The previous API implementation path was technically valid but hard to
-navigate:
-
-```text
-packages/sardis-api/src/sardis_api/...
-```
-
-The repetition comes from two different naming layers:
-
-- `packages/sardis-api/` was the monorepo package directory and PyPI
-  distribution boundary.
-- `src/sardis_api/` is the Python import package, required because Python
-  imports use underscores rather than hyphens.
-- `src/` is the standard Python source layout used to avoid accidental imports
-  from the repository root.
-
-The Python package name `sardis_api` should stay stable. The directory
-`packages/sardis-api` was the part that could be simplified.
-
-## Decision
-
-Do not collapse or remove `src/sardis_api`.
-
-Rename the monorepo package directory from:
-
-```text
-packages/sardis-api/
-```
-
-to:
-
-```text
-packages/api/
-```
-
-The resulting contributor path would be:
+The API implementation path went through two readability cleanups. The first
+removed the old monorepo package-directory repetition. The remaining problem
+was the import package itself:
 
 ```text
 packages/api/src/sardis_api/...
 ```
 
-This removes one visible `sardis-api` repetition while preserving the stable
-Python import path and the standard `src` layout.
+That path was technically valid Python packaging, but it forced contributors to
+read "API" twice:
+
+- `packages/api/` is already the monorepo API package boundary.
+- `src/sardis_api/` repeated that boundary in the import package name.
+- `src/` is still the standard Python source layout used to avoid accidental
+  imports from the repository root.
+
+For a contributor, the important name is Sardis. The package boundary already
+says API, so the Python import package should not repeat it.
+
+## Decision
+
+Do not collapse or remove `src`; keep the standard Python source layout.
+
+Rename the API import package from:
+
+```text
+packages/api/src/sardis_api/
+```
+
+to:
+
+```text
+packages/api/src/sardis/
+```
+
+This removes the repeated API naming while keeping a short, natural import path:
+
+```python
+from sardis.main import create_app
+```
+
+The earlier monorepo directory rename from `packages/sardis-api/` to
+`packages/api/` remains in place.
 
 ## Execution Notes
 
-The package directory is referenced by build, validation, Docker, OpenAPI, and
-workspace configuration. The rename therefore must update:
+The import package is referenced by build, validation, Docker, OpenAPI, and
+tests. The rename therefore updated:
 
-- root `pyproject.toml` editable workspace mapping
-- root `package.json` OpenAPI scripts
-- API Dockerfile and local compose paths
+- `packages/api/pyproject.toml` wheel and coverage source settings
+- API Dockerfiles and local server commands
 - CI workflows and deployment jobs
 - package docs and README examples
-- tests that add `packages/api/src` to `PYTHONPATH`
+- tests and scripts that import the API package
 - generated OpenAPI commands and package-local scripts
 
-This was intentionally executed as its own atomic package-layout commit with a
-broad reference update and validation pass.
+This was intentionally executed as its own atomic package-root commit with a
+broad reference update and validation pass. The HTTP API path contract is not
+part of this rename and must stay stable.
 
 ## Migration Shape
 
-The migration sequence is:
+The migration sequence was:
 
-1. Add a compatibility note in docs that `packages/sardis-api` was renamed to
-   `packages/api`.
-2. Rename the directory with `git mv packages/sardis-api packages/api`.
-3. Update root workspace mappings and scripts.
-4. Update CI/workflows, Docker, OpenAPI, and docs references.
-5. Run the full API validation suite and OpenAPI snapshot check.
-6. Leave the Python import path as `sardis_api`.
+1. Confirm the old `sardis_api` import package is internal to this repo surface.
+2. Rename the package root with `git mv packages/api/src/sardis_api packages/api/src/sardis`.
+3. Update imports, startup commands, packaging config, docs, and tests from
+   `sardis_api` to `sardis`.
+4. Remove the unused `sardis_v2_api` prototype package.
+5. Run compile, focused tests, OpenAPI, package maturity, and whitespace checks.
 
 ## Validation
 
-Minimum validation for the directory rename:
+Minimum validation for the import-package rename:
 
 ```bash
-python3 scripts/package_maturity_check.py
+python3 -m compileall -q packages/api/src/sardis packages/api/scripts/generate_openapi.py api/index.py
+PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_funding_bootstrap.py packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_facility_requests_router.py -q
 pnpm check:openapi
-PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agent_auth.py packages/api/tests/test_agent_events_and_holds_wiring.py -q
+python3 scripts/package_maturity_check.py
+git diff --check
 ```
 
 Recommended broader validation:
@@ -97,10 +98,10 @@ uv run pytest packages/api/tests -q
 The contributor-facing API path is now:
 
 ```text
-packages/api/src/sardis_api/...
+packages/api/src/sardis/...
 ```
 
-Remaining path cleanup should focus below `src/sardis_api`: continue moving
-active route implementations out of the legacy flat `routers/` bucket into
-domain-grouped `routes/<domain>/` modules, while keeping compatibility wrappers
-until imports have migrated.
+Remaining path cleanup should focus below `src/sardis`: continue moving route
+registration and bootstrap concerns out of the oversized `main.py` into domain
+registrars and bootstrap modules. The legacy `routers/` bucket and the unused
+`sardis_v2_api` package have been removed.

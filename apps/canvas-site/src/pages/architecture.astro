@@ -169,7 +169,7 @@ const styles = `
             <div class="layer-label">Layer 2 · API Gateway</div>
             <div class="layer-title">FastAPI · 123 routers · auth + rate limit + CSP</div>
             <div class="layer-desc">
-              Composition root: <code>packages/api/src/sardis_api/main.py</code>. Every router is grouped
+              Composition root: <code>packages/api/src/sardis/main.py</code>. Every router is grouped
               by domain (auth, wallets, payments, policy, checkout, compliance, ops). CSP/HSTS/CORS enforced
               at middleware; principal extraction in <code>require_principal</code>; rate limits Redis-backed.
             </div>
@@ -380,13 +380,13 @@ sequenceDiagram
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/config.py</code></td><td>Everything</td><td>The canonical configuration. Every env var, every provider toggle, every chain config. If you want to know what's live, start here.</td></tr>
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/orchestrator.py</code></td><td>3 · Gate</td><td><code>PaymentOrchestrator</code> — the single chokepoint through which wallets, mandates, ap2, pay all flow.</td></tr>
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/spending_policy.py</code></td><td>3 · Gate</td><td>The policy engine. Natural-language input → structured policy → enforcement at runtime.</td></tr>
-            <tr><td><code>packages/api/src/sardis_api/main.py</code></td><td>2 · Gateway</td><td>FastAPI composition root. Shows all 123 routers wired up with middleware.</td></tr>
+            <tr><td><code>packages/api/src/sardis/main.py</code></td><td>2 · Gateway</td><td>FastAPI composition root. Shows all 123 routers wired up with middleware.</td></tr>
             <tr><td><code>packages/sardis-chain/src/sardis_v2_chain/executor.py</code></td><td>5 · Execution</td><td>Chain selection, RPC submission, receipt parsing. Multi-chain orchestration lives here.</td></tr>
             <tr><td><code>packages/sardis-wallet/src/sardis_wallet/manager.py</code></td><td>5 · Execution</td><td>Wallet lifecycle + MPC signing. Where Turnkey/Fireblocks/Circle is abstracted.</td></tr>
             <tr><td><code>packages/sardis-protocol/src/sardis_v2_protocol/ap2.py</code></td><td>4 · Verification</td><td>AP2 mandate-chain verifier — Intent → Cart → Payment signatures.</td></tr>
             <tr><td><code>packages/sardis-ledger</code></td><td>7 · Audit</td><td>Append-only ledger + Merkle batching. Feeds on-chain anchor.</td></tr>
             <tr><td><code>contracts/src/SardisLedgerAnchor.sol</code></td><td>7 · Audit</td><td>On-chain anchor for Merkle-rooted evidence batches.</td></tr>
-            <tr><td><code>packages/api/src/sardis_api/routers</code></td><td>Control plane API</td><td>Policy, approval, kill-switch, live-event, and merchant/session routes.</td></tr>
+            <tr><td><code>packages/api/src/sardis/routers</code></td><td>Control plane API</td><td>Policy, approval, kill-switch, live-event, and merchant/session routes.</td></tr>
           </tbody>
         </table>
       </section>

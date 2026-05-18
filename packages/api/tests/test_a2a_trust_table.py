@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sardis_api.routes.protocol import a2a
+from sardis.routes.protocol import a2a
 
 
 def test_a2a_trust_table_disabled_allows_relation(monkeypatch):

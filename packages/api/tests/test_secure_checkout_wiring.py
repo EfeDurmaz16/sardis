@@ -4,7 +4,7 @@ import inspect
 
 
 def test_main_wires_secure_checkout_router_with_flag():
-    from sardis_api import main
+    from sardis import main
 
     source = inspect.getsource(main)
     assert "secure_checkout_router.get_deps" in source

@@ -7,7 +7,7 @@ import json
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_api.routes.wallets.cpn import CPNDependencies, get_deps, public_router
+from sardis.routes.wallets.cpn import CPNDependencies, get_deps, public_router
 
 
 class _FakeTreasuryRepo:
