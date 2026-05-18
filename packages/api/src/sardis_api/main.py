@@ -94,11 +94,6 @@ from sardis_wallet.manager import WalletManager
 from .routes.protocol import a2a as a2a_router
 from .routes.protocol import a2a_payments as a2a_payments_router
 from .routes.protocol import acp as acp_router
-from .routes.accounts import api_keys as api_keys_router
-from .routes.accounts import auth
-from .routes.accounts import email_verification as email_verification_router
-from .routes.accounts import groups as groups_router
-from .routes.accounts import me as me_router
 from .routes.commerce import checkout as checkout_router
 from .routes.commerce import checkout_controls as checkout_controls_router
 from .routes.commerce import invoices as invoices_router
@@ -141,7 +136,6 @@ from .routes.compliance import compliance_export as compliance_export_router
 from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routes.authority import credentials as credentials_router
-from .routes.accounts import data_export as data_export_router
 from .routes.developer import dev as dev_router
 from .routes.operations import emergency as emergency_router
 from .routes.developer import enterprise_support as enterprise_support_router
@@ -189,7 +183,6 @@ from .routes.wallets import wallets as wallets_router
 from .routes.developer import workflow_templates as workflow_templates_router
 from .routes.protocol import x402 as x402_router
 
-from sardis_v2_core.agent_groups import AgentGroupRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
@@ -228,6 +221,11 @@ from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
+from .routing.accounts import (
+    register_account_group_routes,
+    register_account_self_service_routes,
+    register_auth_routes,
+)
 from .routing.authority import register_authority_routes
 from .routing.developer import register_webhook_subscriptions
 from .routing.money_movement import register_pay_endpoint
@@ -837,9 +835,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(marketplace_router.router, prefix="/api/v2/marketplace")
 
-    app.include_router(auth.router, prefix="/api/v1/auth")
-    app.include_router(auth.router, prefix="/api/v2/auth")
-    app.include_router(email_verification_router.router, prefix="/api/v2/auth", tags=["auth"])
+    register_auth_routes(app)
 
     configured_on_chain_provider = (
         (settings.cards.on_chain_provider or os.getenv("SARDIS_CARDS_ON_CHAIN_PROVIDER", "")).strip().lower()
@@ -1807,13 +1803,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         app.dependency_overrides[fides_identity_router.get_agent_repo] = lambda: agent_repo
         app.include_router(fides_identity_router.router, prefix="/api/v2", tags=["fides-identity"])
 
-    group_repo = AgentGroupRepository(dsn="memory://")
-    app.dependency_overrides[groups_router.get_deps] = lambda: groups_router.GroupDependencies(  # type: ignore[arg-type]
-        group_repo=group_repo,
-    )
-    app.include_router(groups_router.router, prefix="/api/v2/groups", tags=["groups"])
-
-    app.include_router(api_keys_router.router, prefix="/api/v2/api-keys", tags=["api-keys"])
+    register_account_group_routes(app)
 
     # Checkout routes (Agentic Checkout - Pivot D)
     from sardis_checkout.connectors.stripe import StripeConnector
@@ -1895,11 +1885,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Self-serve KYC initiation and status (developer-facing)
     app.include_router(kyc_onboarding_router.router)
 
-    # Per-user "me" endpoints (onboarding wizard state, etc.)
-    app.include_router(me_router.router)
-
-    # GDPR data export (Art. 20 — right to data portability)
-    app.include_router(data_export_router.router, tags=["account"])
+    register_account_self_service_routes(app)
 
     app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
 
