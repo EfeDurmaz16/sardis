@@ -108,6 +108,7 @@ from .routes.operations import alerts as alerts_router
 from .routes.operations import analytics as analytics_router
 from .routes.operations import dashboard_metrics as dashboard_metrics_router
 from .routes.operations import event_stream as event_stream_router
+from .routes.operations import metrics as metrics_router
 from .routes.operations import reliability as reliability_router
 from .routes.operations import ws_alerts as ws_alerts_router
 from .routers import admin as admin_router
@@ -160,7 +161,6 @@ from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
-from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router

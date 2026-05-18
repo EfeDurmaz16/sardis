@@ -22,7 +22,7 @@ from sardis_v2_core.confidence_router import (
 )
 
 from sardis_api.authz import require_principal
-from sardis_api.routers.metrics import record_approval, set_approval_queue_depth
+from sardis_api.routes.operations.metrics import record_approval, set_approval_queue_depth
 
 logger = logging.getLogger(__name__)
 

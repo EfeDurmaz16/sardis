@@ -70,7 +70,7 @@ Completed so far:
 | `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
 | `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, and API keys away from the flat router bucket and away from protocol identity/trust routes. |
 | `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, and invoice APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
-| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, and dashboard metrics routes together while intentionally deferring `metrics.py` because collector functions are imported by many runtime modules. |
+| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, dashboard metrics, and Prometheus collectors together under one operations domain. |
 
 The external API remains unchanged:
 
@@ -180,7 +180,6 @@ sardis_api/
       reliability.py
       reports.py
       ws_alerts.py
-      reliability.py
 ```
 
 This should continue after `sardis_api.main` is split into router registration
@@ -224,10 +223,10 @@ moved to `sardis_api/routes/<domain>/...`.
    `merchant_checkout`, `merchants`, and `invoices`.
 10. Operations and observability: completed for `analytics`, `alerts`,
    `ws_alerts`, `event_stream`, `reports`, `reliability`, and
-   `dashboard_metrics`. Keep `metrics` as a separate stateful collector move.
+   `dashboard_metrics`, and `metrics`.
 11. Admin and miscellaneous contributor tools: `admin`,
-   `admin_reconciliation`, `metrics`, `data_export`, `usage`,
-   `notifications`, `sandbox`, `dev`, `plugins`, `workflow_templates`,
+   `admin_reconciliation`, `data_export`, `usage`, `notifications`,
+   `sandbox`, `dev`, `plugins`, `workflow_templates`,
    `environment_templates`, and `enterprise_support`.
 
 ## Validation Required For Each Move

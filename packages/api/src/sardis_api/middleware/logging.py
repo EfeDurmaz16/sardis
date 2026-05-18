@@ -167,7 +167,7 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
 
     def _record_metrics(self, *, method: str, path: str, status_code: int, duration_ms: float) -> None:
         try:
-            from sardis_api.routers.metrics import (
+            from sardis_api.routes.operations.metrics import (
                 record_http_request,
                 record_payment_execution_latency,
             )

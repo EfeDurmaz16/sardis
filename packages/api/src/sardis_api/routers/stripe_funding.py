@@ -20,7 +20,7 @@ from sardis_v2_core.funding import (
 from sardis_api.authz import Principal, require_principal
 from sardis_api.canonical_state_machine import normalize_stripe_issuing_funding_event
 from sardis_api.idempotency import get_idempotency_key, run_idempotent
-from sardis_api.routers.metrics import (
+from sardis_api.routes.operations.metrics import (
     record_funding_attempt,
     record_funding_failover_result,
 )

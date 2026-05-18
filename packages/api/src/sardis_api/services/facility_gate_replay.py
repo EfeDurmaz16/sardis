@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.routers.metrics import record_facility_projection_replay
+from sardis_api.routes.operations.metrics import record_facility_projection_replay
 
 
 @dataclass(frozen=True)

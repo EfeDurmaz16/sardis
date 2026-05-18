@@ -36,7 +36,7 @@ from sardis_v2_core.facility_gate import (
 
 from sardis_api.authz import Principal, require_principal
 from sardis_api.repositories.facility_gate_repository import FacilityGateRepository
-from sardis_api.routers.metrics import (
+from sardis_api.routes.operations.metrics import (
     record_facility_adapter_event,
     record_facility_decision,
     record_facility_exception,

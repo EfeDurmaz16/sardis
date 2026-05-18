@@ -151,7 +151,7 @@ async def lifespan(app: FastAPI):
             )
 
             async def _recurring_billing_job() -> None:
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 runner = getattr(app.state, "recurring_billing_runner", None)
                 if runner is None:
@@ -179,7 +179,7 @@ async def lifespan(app: FastAPI):
             )
 
             async def _treasury_reconciliation_job() -> None:
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 repo = getattr(app.state, "treasury_repo", None)
                 if repo is None:
@@ -236,7 +236,7 @@ async def lifespan(app: FastAPI):
 
             async def _treasury_retry_returns_job() -> None:
                 from .providers.lithic_treasury import CreatePaymentRequest
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 repo = getattr(app.state, "treasury_repo", None)
                 lithic_client = getattr(app.state, "lithic_treasury_client", None)
@@ -293,7 +293,7 @@ async def lifespan(app: FastAPI):
                     logger.exception("Treasury retry job failed: %s", e)
 
             async def _canonical_reconciliation_guard_job() -> None:
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 canonical_repo = getattr(app.state, "canonical_ledger_repo", None)
                 if canonical_repo is None:
@@ -381,7 +381,7 @@ async def lifespan(app: FastAPI):
             # ── Merchant settlement background jobs ──────────────────
             async def _settlement_status_poller() -> None:
                 """Poll Bridge for processing settlement status updates (every 5 min)."""
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 svc = getattr(app.state, "settlement_service", None)
                 if svc is None:
@@ -401,7 +401,7 @@ async def lifespan(app: FastAPI):
 
             async def _settlement_retry_job() -> None:
                 """Retry failed per-tx settlements as batch (hourly)."""
-                from .routers.metrics import background_jobs_total
+                from .routes.operations.metrics import background_jobs_total
 
                 svc = getattr(app.state, "settlement_service", None)
                 if svc is None:

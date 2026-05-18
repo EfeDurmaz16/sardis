@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException, status
 
-from sardis_api.routers.metrics import record_agent_payment_rate_limit
+from sardis_api.routes.operations.metrics import record_agent_payment_rate_limit
 
 logger = logging.getLogger(__name__)
 
