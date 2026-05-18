@@ -5,8 +5,8 @@ to the better-auth agent-auth plugin running on the dashboard service.  Sardis-s
 business logic (capability execution, constraint validation, mandate mapping) stays here.
 
 Endpoints:
-  GET  /.well-known/agent-configuration  — Redirect to better-auth discovery
-  GET  /api/v2/capability/list            — Available capabilities (proxied from better-auth)
+  GET  /.well-known/agent-configuration  — Local discovery or Better Auth redirect
+  GET  /api/v2/capability/list            — Local capabilities or Better Auth proxy
   POST /api/v2/capability/execute         — Execute a capability (Sardis business logic)
   POST /api/v2/agent/register             — Proxy to better-auth agent registration
   GET  /api/v2/agent/status               — Proxy to better-auth agent status
@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import logging
 import os
+import base64
+import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -41,9 +43,143 @@ router = APIRouter(tags=["agent-auth"])
 # ---------------------------------------------------------------------------
 BETTER_AUTH_URL = os.getenv("BETTER_AUTH_URL", "https://app.sardis.sh")
 PROVIDER_URL = os.getenv("SARDIS_API_URL", "https://api.sardis.sh")
+LOCAL_AGENT_AUTH_ENVS = {"dev", "development", "test", "testing", "local"}
 
 # Shared httpx client — created lazily to avoid import-time side effects.
 _http_client: httpx.AsyncClient | None = None
+_local_agents: dict[str, dict] = {}
+_local_grants: dict[str, list[dict]] = {}
+
+
+def _use_local_agent_auth() -> bool:
+    """Use deterministic local Agent Auth when dashboard auth is unavailable.
+
+    Public OSS tests and local development should not depend on app.sardis.sh.
+    Production/staging still proxy to Better Auth unless explicitly overridden.
+    """
+    mode = os.getenv("SARDIS_AGENT_AUTH_MODE", "").strip().lower()
+    if mode == "proxy":
+        return False
+    if mode == "local":
+        return True
+    env = os.getenv("SARDIS_ENVIRONMENT", "development").strip().lower()
+    return env in LOCAL_AGENT_AUTH_ENVS
+
+
+def _now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _capability_definition(capability: str) -> dict:
+    return {
+        "id": capability,
+        "name": capability,
+        "description": f"Sardis {capability} capability",
+        "schema": {
+            "input": {"type": "object"},
+            "output": {"type": "object"},
+        },
+    }
+
+
+def _local_discovery_document() -> dict:
+    return {
+        "provider": {
+            "name": "Sardis Payment OS",
+            "url": PROVIDER_URL,
+        },
+        "supported_modes": ["delegated", "autonomous"],
+        "algorithms": ["Ed25519"],
+        "capabilities": sorted(KNOWN_CAPABILITIES),
+        "approval_methods": ["device_authorization", "policy_approval"],
+        "endpoints": {
+            "capability_list": "/api/v2/capability/list",
+            "capability_execute": "/api/v2/capability/execute",
+            "agent_register": "/api/v2/agent/register",
+            "agent_status": "/api/v2/agent/status",
+            "agent_revoke": "/api/v2/agent/revoke",
+        },
+        "x-fides-compatible": True,
+        "x-sardis-mandate-support": True,
+    }
+
+
+def _local_capability_list() -> dict:
+    capabilities = [_capability_definition(cap) for cap in sorted(KNOWN_CAPABILITIES)]
+    return {"capabilities": capabilities, "total": len(capabilities)}
+
+
+def _local_agent_registration(body: AgentRegistrationRequest, principal: Principal) -> dict:
+    if body.mode not in {"delegated", "autonomous"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported mode: {body.mode}")
+    if body.algorithm != "Ed25519":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported algorithm: {body.algorithm}",
+        )
+    unknown = sorted(set(body.capabilities_requested) - KNOWN_CAPABILITIES)
+    if unknown:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown capabilities: {unknown}",
+        )
+
+    now = _now_iso()
+    agent_id = f"agent_auth_{uuid4().hex[:12]}"
+    grants = [
+        {
+            "grant_id": f"grant_{uuid4().hex[:12]}",
+            "agent_id": agent_id,
+            "capability": capability,
+            "status": "active",
+            "constraints": None,
+            "granted_at": now,
+            "expires_at": None,
+        }
+        for capability in body.capabilities_requested
+    ]
+    agent = {
+        "agent_id": agent_id,
+        "org_id": principal.organization_id,
+        "status": "active",
+        "mode": body.mode,
+        "public_key": body.public_key,
+        "algorithm": body.algorithm,
+        "capabilities": grants,
+        "created_at": now,
+        "last_active_at": None,
+    }
+    _local_agents[agent_id] = agent
+    _local_grants[agent_id] = grants
+    return agent
+
+
+def _decode_unverified_agent_jwt(token: str) -> dict | None:
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        data = json.loads(base64.urlsafe_b64decode(payload.encode()))
+    except Exception:
+        return None
+    exp = data.get("exp")
+    if exp is not None and int(exp) < int(datetime.now(UTC).timestamp()):
+        return None
+    agent_id = data.get("sub")
+    agent = _local_agents.get(agent_id)
+    if not agent or agent.get("status") != "active":
+        return None
+    return data
+
+
+def _local_agent_or_404(agent_id: str, principal: Principal) -> dict:
+    agent = _local_agents.get(agent_id)
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
+    if agent["org_id"] != principal.organization_id and not principal.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    return agent
 
 
 def _get_http_client() -> httpx.AsyncClient:
@@ -147,7 +283,7 @@ class AgentRevokeResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# better-auth proxy helpers
+# Local and Better Auth proxy helpers
 # ---------------------------------------------------------------------------
 
 def _forward_headers(request: Request) -> dict[str, str]:
@@ -218,6 +354,8 @@ async def _verify_agent_jwt(request: Request) -> dict | None:
     token = request.headers.get("x-agent-jwt", "")
     if not token:
         return None
+    if _use_local_agent_auth():
+        return _decode_unverified_agent_jwt(token)
 
     client = _get_http_client()
     try:
@@ -371,17 +509,19 @@ def validate_constraints(grant: dict, params: dict) -> tuple[bool, str | None]:
 
 
 # ---------------------------------------------------------------------------
-# Discovery Endpoint (public, no auth) — redirect to better-auth
+# Discovery Endpoint (public, no auth)
 # ---------------------------------------------------------------------------
 
 @discovery_router.get("/.well-known/agent-configuration")
 async def agent_configuration():
     """Agent Auth Protocol discovery document.
 
-    Redirects to the better-auth agent-auth plugin's discovery endpoint on
-    the dashboard service which is the canonical source of truth for agent
-    configuration, capabilities, and supported algorithms.
+    Uses a deterministic local document in dev/test/local environments. In
+    proxy mode it redirects to the Better Auth agent-auth plugin's discovery
+    endpoint on the dashboard service.
     """
+    if _use_local_agent_auth():
+        return _local_discovery_document()
     return RedirectResponse(
         url=f"{BETTER_AUTH_URL}/api/auth/agent/.well-known/agent-configuration",
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
@@ -399,6 +539,8 @@ async def list_capabilities(request: Request):
     Proxies to better-auth which holds the canonical capability definitions
     configured in the agentAuth plugin.
     """
+    if _use_local_agent_auth():
+        return _local_capability_list()
     try:
         data = await _proxy_to_better_auth(
             "GET", "/api/auth/agent/capabilities", request,
@@ -407,13 +549,7 @@ async def list_capabilities(request: Request):
     except HTTPException:
         # Fallback: return a minimal capability list when better-auth is unreachable.
         # This keeps the endpoint functional during dashboard downtime.
-        return {
-            "capabilities": [
-                {"name": cap, "description": f"Sardis {cap} capability"}
-                for cap in ("payment", "fx_quote", "policy_check", "mandate_create", "balance_check")
-            ],
-            "total": 5,
-        }
+        return _local_capability_list()
 
 
 # ---------------------------------------------------------------------------
@@ -449,13 +585,8 @@ async def execute_capability(
 
     # If the agent is authenticated, validate grants via better-auth
     if agent_id:
-        try:
-            grants_data = await _proxy_to_better_auth(
-                "GET",
-                f"/api/auth/agent/grants/{agent_id}",
-                request,
-            )
-            grants = grants_data.get("grants", [])
+        if _use_local_agent_auth():
+            grants = _local_grants.get(agent_id, [])
             matching = [
                 g for g in grants
                 if g.get("capability") == body.capability and g.get("status") == "active"
@@ -465,24 +596,47 @@ async def execute_capability(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Agent {agent_id} does not have an active grant for capability '{body.capability}'",
                 )
-            # Validate constraints on the first matching grant
             allowed, reason = validate_constraints(matching[0], body.parameters)
             if not allowed:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Constraint violation: {reason}",
                 )
-        except HTTPException:
-            raise
-        except Exception as exc:
-            logger.warning("Could not validate agent grants via better-auth: %s", exc)
-            # Fail-open only in development; production requires grant validation
-            env = os.getenv("SARDIS_ENVIRONMENT", "development").lower()
-            if env in ("production", "staging"):
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Agent grant validation service unavailable",
-                ) from exc
+        else:
+            try:
+                grants_data = await _proxy_to_better_auth(
+                    "GET",
+                    f"/api/auth/agent/grants/{agent_id}",
+                    request,
+                )
+                grants = grants_data.get("grants", [])
+                matching = [
+                    g for g in grants
+                    if g.get("capability") == body.capability and g.get("status") == "active"
+                ]
+                if not matching:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Agent {agent_id} does not have an active grant for capability '{body.capability}'",
+                    )
+                # Validate constraints on the first matching grant
+                allowed, reason = validate_constraints(matching[0], body.parameters)
+                if not allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"Constraint violation: {reason}",
+                    )
+            except HTTPException:
+                raise
+            except Exception as exc:
+                logger.warning("Could not validate agent grants via better-auth: %s", exc)
+                # Fail-open only in development; production requires grant validation
+                env = os.getenv("SARDIS_ENVIRONMENT", "development").lower()
+                if env in ("production", "staging"):
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Agent grant validation service unavailable",
+                    ) from exc
 
     # Dispatch to Sardis services
     result = await _dispatch_capability(body.capability, body.parameters, principal)
@@ -666,7 +820,7 @@ async def _exec_balance_check(params: dict, principal: Principal) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Agent Registration — proxy to better-auth
+# Agent Registration — local dev/test store or Better Auth proxy
 # ---------------------------------------------------------------------------
 
 @router.post("/agent/register", response_model=AgentRegistrationResponse, status_code=status.HTTP_201_CREATED)
@@ -677,9 +831,28 @@ async def register_agent(
 ):
     """Register an AI agent with Sardis via the Agent Auth Protocol.
 
-    Proxies the registration to better-auth's agent-auth plugin which stores
-    the agent identity in the ba_agent table and manages key material.
+    Uses a deterministic in-memory store in dev/test/local environments. In
+    proxy mode it delegates identity storage to the Better Auth agent-auth
+    plugin.
     """
+    if _use_local_agent_auth():
+        data = _local_agent_registration(body, principal)
+        return AgentRegistrationResponse(
+            agent_id=data["agent_id"],
+            org_id=data["org_id"],
+            status=data["status"],
+            mode=data["mode"],
+            public_key=data["public_key"],
+            algorithm=data["algorithm"],
+            capabilities_granted=data["capabilities"],
+            created_at=data["created_at"],
+            next_steps=[
+                "Use the agent_id as JWT 'sub' claim for capability execution",
+                "POST /api/v2/capability/execute with signed JWT to perform actions",
+                "POST /api/v2/agent/request-capability to request additional capabilities",
+            ],
+        )
+
     data = await _proxy_to_better_auth(
         "POST",
         "/api/auth/agent/register",
@@ -742,6 +915,20 @@ async def agent_status(
     if not agent_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="agent_id required (via JWT or query param)")
 
+    if _use_local_agent_auth():
+        data = _local_agent_or_404(agent_id, principal)
+        return AgentStatusResponse(
+            agent_id=agent_id,
+            org_id=data["org_id"],
+            status=data["status"],
+            mode=data["mode"],
+            public_key=data["public_key"],
+            algorithm=data["algorithm"],
+            capabilities=_local_grants.get(agent_id, []),
+            created_at=data["created_at"],
+            last_active_at=data.get("last_active_at"),
+        )
+
     data = await _proxy_to_better_auth(
         "GET",
         f"/api/auth/agent/{agent_id}",
@@ -784,6 +971,25 @@ async def request_capability(
     if not agent_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="agent_id required (via JWT or query param)")
 
+    if body.capability not in KNOWN_CAPABILITIES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown capability: {body.capability}")
+
+    if _use_local_agent_auth():
+        _local_agent_or_404(agent_id, principal)
+        now = _now_iso()
+        grant = {
+            "grant_id": f"grant_{uuid4().hex[:12]}",
+            "agent_id": agent_id,
+            "capability": body.capability,
+            "status": "active",
+            "constraints": body.constraints,
+            "granted_at": now,
+            "expires_at": None,
+        }
+        _local_grants.setdefault(agent_id, []).append(grant)
+        _local_agents[agent_id]["capabilities"] = _local_grants[agent_id]
+        return CapabilityGrantResponse(**grant)
+
     data = await _proxy_to_better_auth(
         "POST",
         f"/api/auth/agent/{agent_id}/request-capability",
@@ -818,6 +1024,19 @@ async def revoke_agent(
     principal: Principal = Depends(require_principal),
 ):
     """Revoke an agent's access and all capability grants via better-auth."""
+    if _use_local_agent_auth():
+        agent = _local_agent_or_404(body.agent_id, principal)
+        agent["status"] = "revoked"
+        for grant in _local_grants.get(body.agent_id, []):
+            grant["status"] = "revoked"
+        logger.info("Agent revoked locally: %s (reason=%s)", body.agent_id, body.reason)
+        return AgentRevokeResponse(
+            agent_id=body.agent_id,
+            status="revoked",
+            revoked_at=_now_iso(),
+            reason=body.reason,
+        )
+
     data = await _proxy_to_better_auth(
         "POST",
         f"/api/auth/agent/{body.agent_id}/revoke",

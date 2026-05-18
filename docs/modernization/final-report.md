@@ -85,6 +85,7 @@
 - Moved x402 and MPP API route implementations to `sardis_api.routes.protocol` while keeping `sardis-protocol` and `sardis-mpp` as separate packages.
 - Moved A2A, A2A payments, ACP, ERC-8183, and SPT route implementations into `sardis_api.routes.protocol` so protocol adapter code is no longer buried in the legacy flat router bucket.
 - Moved FIDES identity, agent-auth, and trust route implementations into `sardis_api.routes.identity` so identity and authority code is not mixed with payment protocol adapters.
+- Added deterministic local Agent Auth behavior for dev/test/local environments so OSS contributors can run agent-auth tests without a dashboard Better Auth service.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
@@ -338,9 +339,8 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `pnpm check:openapi` passed after the protocol-adapter route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 - `python3 -m compileall -q packages/sardis-api/src/sardis_api/routes/identity packages/sardis-api/src/sardis_api/routers/fides_identity.py packages/sardis-api/src/sardis_api/routers/agent_auth.py packages/sardis-api/src/sardis_api/routers/trust.py packages/sardis-api/src/sardis_api/routes/policy/policies.py packages/sardis-api/src/sardis_api/main.py` passed after moving identity/trust routes.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.fides_identity`, `agent_auth`, and `trust` imports resolve to the same module objects as the new `sardis_api.routes.identity.*` imports.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-api/tests/test_agent_auth.py::test_mandate_to_capability_grant packages/sardis-api/tests/test_agent_auth.py::test_capability_grant_to_mandate packages/sardis-api/tests/test_agent_auth.py::test_mandate_roundtrip -q` passed after moving agent-auth routes: 3 tests.
-- `pnpm check:openapi` passed after the identity/trust route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-api/tests/test_agent_auth.py -q` still fails in route-level tests unrelated to the import move: 18 failed, 6 passed. The visible failures are stale endpoint expectations (`/.well-known/agent-configuration` returns 307), capability-list response shape drift, and Better Auth proxy configuration returning `Invalid URL`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-api/tests/test_agent_auth.py -q` passed after adding local Agent Auth fallback behavior: 24 tests.
+- `pnpm check:openapi` passed after the identity/trust and local Agent Auth route updates: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 
 Notes:
 
