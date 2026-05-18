@@ -144,6 +144,12 @@ def _create_test_app(
 
     # Override dependency
     app.dependency_overrides[mandates_mod.get_deps] = lambda: deps
+    app.dependency_overrides[mandates_mod.require_principal] = lambda: MagicMock(
+        is_admin=True,
+        organization_id="org_1",
+    )
+    app.dependency_overrides[mandates_mod.require_kill_switch_clear] = lambda: None
+    app.dependency_overrides[mandates_mod.enforce_transaction_caps] = lambda: None
 
     # Build stored mandate in fake DB
     pm = _make_payment_mandate()
@@ -190,7 +196,7 @@ def client_with_mandate():
         patch("sardis_api.routers.mandates.require_kill_switch_clear", lambda: None),
         patch("sardis_api.routers.mandates.enforce_transaction_caps", lambda: None),
         patch("sardis_api.routers.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
-        patch("sardis_v2_core.transactions.validate_wallet_not_frozen", return_value=(True, "OK")),
+        patch.object(mandates_mod, "validate_wallet_not_frozen", return_value=(True, "OK")),
     ):
         yield TestClient(app)
 
@@ -226,7 +232,7 @@ def client_policy_deny():
         patch("sardis_api.routers.mandates.require_kill_switch_clear", lambda: None),
         patch("sardis_api.routers.mandates.enforce_transaction_caps", lambda: None),
         patch("sardis_api.routers.mandates.enforce_agent_payment_rate_limit", new_callable=AsyncMock),
-        patch("sardis_v2_core.transactions.validate_wallet_not_frozen", return_value=(True, "OK")),
+        patch.object(mandates_mod, "validate_wallet_not_frozen", return_value=(True, "OK")),
     ):
         yield TestClient(app)
 
