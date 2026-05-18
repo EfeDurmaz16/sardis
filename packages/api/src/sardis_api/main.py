@@ -138,7 +138,7 @@ from .routers import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
-from .routers import counterparties as counterparties_router
+from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routers import credentials as credentials_router
 from .routes.accounts import data_export as data_export_router
@@ -146,7 +146,7 @@ from .routers import dev as dev_router
 from .routers import emergency as emergency_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
-from .routers import escrow_disputes as escrow_disputes_router
+from .routes.commerce import escrow_disputes as escrow_disputes_router
 from .routes.evidence import evidence as evidence_router
 from .routes.evidence import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
@@ -159,7 +159,7 @@ from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.authority import mandate_delegation as mandate_delegation_router
 from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
-from .routers import marketplace as marketplace_router
+from .routes.commerce import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
 from .routes.developer import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
