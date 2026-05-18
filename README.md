@@ -271,7 +271,7 @@ Every financial action follows a **single authority path** before execution. The
 sardis/
 ├── packages/               # Core monorepo packages
 │   ├── sardis-core/        # Domain models, config, database
-│   ├── sardis-api/         # FastAPI REST endpoints
+│   ├── api/                # FastAPI reference API implementation
 │   ├── sardis-chain/       # Blockchain execution, chain routing
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
