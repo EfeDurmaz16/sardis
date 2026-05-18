@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 logger = logging.getLogger(__name__)
@@ -56,6 +58,7 @@ class BatchPaymentResponse(BaseModel):
 )
 async def batch_payment(
     req: BatchPaymentRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ) -> BatchPaymentResponse:
     """Execute multiple transfers in a single atomic transaction.
@@ -63,9 +66,32 @@ async def batch_payment(
     On Tempo, uses type 0x76 batch transactions. All transfers
     succeed or all fail — no partial settlement.
     """
+    idem_key = get_idempotency_key(request)
+    if idem_key:
+        async def _execute_idempotent() -> tuple[int, Any]:
+            response = await _execute_batch_payment(req=req, principal=principal)
+            return status.HTTP_201_CREATED, response.model_dump(mode="json")
+
+        return await run_idempotent(
+            request=request,
+            principal=principal,
+            operation="batch_payments.execute",
+            key=idem_key,
+            payload=req.model_dump(mode="json"),
+            fn=_execute_idempotent,
+        )
+
+    return await _execute_batch_payment(req=req, principal=principal)
+
+
+async def _execute_batch_payment(
+    *,
+    req: BatchPaymentRequest,
+    principal: Principal,
+) -> BatchPaymentResponse:
     if req.chain != "tempo":
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Batch payments are only supported on Tempo (type 0x76)",
         )
 
@@ -82,7 +108,7 @@ async def batch_payment(
         total = sum(t.amount for t in req.transfers)
         if mandate["amount_per_tx"] is not None and total > mandate["amount_per_tx"]:
             raise HTTPException(
-                status_code=422,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f"Batch total {total} exceeds mandate per-tx limit {mandate['amount_per_tx']}",
             )
 
@@ -93,7 +119,10 @@ async def batch_payment(
         token_meta = TOKEN_REGISTRY.get(TokenType(t.token))
         token_addr = token_meta.contract_addresses.get("tempo", "") if token_meta else ""
         if not token_addr:
-            raise HTTPException(status_code=422, detail=f"Token {t.token} not available on Tempo")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Token {t.token} not available on Tempo",
+            )
 
         memo_bytes = None
         if t.memo:
