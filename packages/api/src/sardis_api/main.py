@@ -172,7 +172,7 @@ from .routes.policy import policy_analytics as policy_analytics_router
 from .routes.policy import policy_simulation as policy_simulation_router
 from .routes.wallets import ramp as ramp_router
 from .routers import sandbox as sandbox_router
-from .routers import sdk_metrics as sdk_metrics_router
+from .routes.developer import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
 from .routers import service_directory as service_directory_router
 from .routers import simulation as simulation_router

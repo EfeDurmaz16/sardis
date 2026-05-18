@@ -90,7 +90,7 @@
 - Moved account route implementations into `sardis_api.routes.accounts`: auth, email verification, current-account state, groups, organizations, API keys, and GDPR account export now sit in a contributor-readable account domain with compatibility wrappers under `sardis_api.routers`.
 - Moved commerce route implementations into `sardis_api.routes.commerce`: checkout, checkout controls, merchant checkout, merchants, and invoices now share one contributor-readable domain with compatibility wrappers under `sardis_api.routers`.
 - Moved operational route implementations into `sardis_api.routes.operations`: analytics, alerts, websocket alerts, event stream, reports, reliability, dashboard metrics, and Prometheus metrics now share one contributor-readable operations domain.
-- Moved enterprise support ticket/profile routes into `sardis_api.routes.developer.enterprise_support` so contributor-facing support APIs are no longer buried in the flat router bucket.
+- Moved enterprise support ticket/profile routes and public SDK install metrics into `sardis_api.routes.developer` so contributor-facing support and transparency APIs are no longer buried in the flat router bucket.
 - Added and executed a package path simplification decision: keep the Python import package `src/sardis_api`, but rename the monorepo package directory from `packages/sardis-api` to `packages/api`.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
