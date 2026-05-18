@@ -70,7 +70,7 @@ Completed so far:
 | `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
 | `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
 | `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py`, `routers/service_directory.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, invoice, and agent service discovery APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
-| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, dashboard metrics, and Prometheus collectors together under one operations domain. |
+| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py`, `routers/outcomes.py`, `routers/execution_modes.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, outcome/risk profiles, execution-mode discovery, dashboard metrics, and Prometheus collectors together under one operations domain. |
 | `routers/striga.py`, `routers/lightspark.py`, `routers/currency.py`, `routers/fiat_rails.py` implementations | `routes/providers/*` with compatibility module aliases in `routers/` | Keeps feature-flagged provider and fiat rail adapter surfaces with other provider callback/integration routes. |
 | `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
 | `routers/billing.py`, `routers/usage.py` implementations | `routes/billing/*` with compatibility module aliases in `routers/` | Groups subscription, checkout, billing provider, webhook, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
@@ -193,7 +193,9 @@ sardis_api/
       analytics.py
       dashboard_metrics.py
       event_stream.py
+      execution_modes.py
       metrics.py
+      outcomes.py
       reliability.py
       reports.py
       ws_alerts.py
@@ -239,8 +241,8 @@ moved to `sardis_api/routes/<domain>/...`.
 9. Commerce and checkout: completed for `checkout`, `checkout_controls`,
    `merchant_checkout`, `merchants`, `invoices`, and `service_directory`.
 10. Operations and observability: completed for `analytics`, `alerts`,
-   `ws_alerts`, `event_stream`, `reports`, `reliability`, and
-   `dashboard_metrics`, and `metrics`.
+   `ws_alerts`, `event_stream`, `reports`, `reliability`,
+   `dashboard_metrics`, `metrics`, `outcomes`, and `execution_modes`.
 11. Developer and contributor-facing tools: completed for
    `webhook_subscriptions`, `enterprise_support`, `sdk_metrics`, and
    `notifications`, `environment_templates`, `workflow_templates`,
