@@ -41,6 +41,10 @@
 - Removed generated uptime/response-time JSON snapshots and Foundry broadcast artifacts from public source tracking, then ignored them going forward.
 - Removed hosted production, compliance, runbook, design-partner, investor-demo, and private release-gate material from public tracking.
 - Reworked release readiness into a public OSS gate covering SDKs, MCP, landing, Python protocol tests, OSS surface, and OpenAPI route snapshot validation.
+- Removed hosted product UI source from the public repo: `apps/dashboard`, `packages/ui-web`, and `packages/sardis-checkout-ui`.
+- Removed dashboard/product UI scripts, Dependabot entries, landing deploy path filters, stale canvas dashboard pages, and product UI references from public canvas docs.
+- Regenerated tracked canvas HTML and LLM exports from the updated public canvas source.
+- Made `apps/canvas-site/scripts/build-llms-full.mjs` deterministic by removing per-build timestamp churn from generated `llms-full.txt`.
 
 ## What Was Deleted
 
@@ -63,6 +67,12 @@
 - Deleted generated uptime/response-time snapshots under `api/*/*.json` and generated Foundry deployment artifacts under `contracts/broadcast/`.
 - Deleted hosted production/compliance/runbook docs and private launch/remediation docs from public tracking.
 - Deleted private release/design-partner scripts that depended on private evidence artifacts.
+- Deleted hosted product source from public tracking:
+  - `apps/dashboard/`
+  - `packages/ui-web/`
+  - `packages/sardis-checkout-ui/`
+  - `apps/canvas-site/src/pages/dashboard.astro`
+  - `canvases/dashboard/index.html`
 
 ## What Was Rewritten
 
@@ -81,15 +91,14 @@
 - No package/runtime/framework migration.
 - No database migration consolidation yet.
 - No large FastAPI bootstrap extraction yet.
-- No generated `canvases/`, `api` monitoring JSON, or `contracts/broadcast` cleanup yet.
-- Dashboard and hosted-product code are still present as `private-candidate` until the private repo extraction is executed.
+- Hosted dashboard, checkout UI, and hosted product design-system source were removed from the OSS repo but preserved in git history for private-repo recovery.
 - Empty package shell directories remain ignored by Git tracking unless they gain a clear package goal.
 
 ## Before/After Architecture Summary
 
 Before: Sardis had a viable monorepo stack, but modernization work lacked a committed coordination source of truth. Some public/docs/CI surfaces drifted from actual package names and auth architecture, and one checkout payment path could continue after mandate validation infrastructure failure.
 
-After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
+After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, hosted product UI source has been removed from the public contribution path, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
 
 Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, uv resolves repo-local Sardis Python packages from editable checkout paths, and the first Pydantic/FastAPI upgrade blockers have been removed from core/API config surfaces.
 
@@ -164,6 +173,15 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `bash -n scripts/check_release_readiness.sh scripts/release/readiness_check.sh` passed after converting release readiness to public-only.
 - `pnpm run check:release-readiness` passed after removing private release gates from the public path.
 - `git diff --check` passed after the release-readiness cleanup.
+- `pnpm install --lockfile-only --ignore-scripts` passed after product workspace removal; workspace scope is now 10 projects.
+- `pnpm --filter canvas-site build` passed after removing the dashboard canvas and regenerating deterministic LLM exports.
+- `rsync -a --delete apps/canvas-site/dist/ canvases/` refreshed tracked generated canvas output from source.
+- `pnpm --filter @sardis/app-landing typecheck` passed after product UI extraction.
+- `pnpm --filter @sardis/app-landing build` passed after product UI extraction.
+- `python3 scripts/oss_surface_check.py` passed after staging product UI removals.
+- `git ls-files | rg '^(apps/dashboard|packages/ui-web|packages/sardis-checkout-ui)/'` returned no matches after product UI extraction.
+- `git diff --cached --check` passed after product UI extraction.
+- `pnpm run check:release-readiness` passed after product UI extraction.
 
 Notes:
 
@@ -175,10 +193,10 @@ Notes:
 - Some money-moving routes still need replay tests and a unified execution service; `/api/v2/pay`, `/api/v2/payments/batch`, and `/api/v2/transactions/batch` now have client-idempotency replay coverage.
 - Database migration history remains split between Alembic and raw SQL.
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
-- Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
-- Dashboard deployment automation has been removed from the public OSS repo, but the dashboard source still needs history-preserving extraction when the private product repo is created.
+- Public/private repo hygiene still needs actual private-repo creation and history-preserving recovery of dashboard/product surfaces from git history.
+- Dashboard deployment automation and source are no longer in the public OSS repo; the private product repo must recreate its CI/CD from the moved history.
 - Private production, compliance, and provider-certification gates now need to live in the future private product/compliance repository; the public gate intentionally does not prove hosted production readiness.
-- Canvas and LLM exports still need registry-driven regeneration.
+- Canvas and LLM exports are regenerated from source, but still need a single typed registry so route order, nav, sitemap, and LLM dumps cannot drift.
 - Webhook replay protection remains uneven across provider routers.
 - Checkout nonce/replay hardening remains to be completed.
 - `actionlint` and `gitleaks` are not installed locally, so workflow linting and local secret scanning still need to run in an environment with those tools.
@@ -190,14 +208,14 @@ Notes:
 - Harden checkout nonce/replay binding.
 - Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
 - Review duplicate Pydantic model class names before considering a full component-schema snapshot instead of the current stable route-level snapshot.
-- Create the private `sardis-product` or `sardis-cloud` repo and move dashboard/product surfaces out of the OSS contribution path.
+- Create the private `sardis-product` or `sardis-cloud` repo and recover dashboard/product surfaces from this repo's history.
 
 ## Next 30 Days
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.
-- Generate canvas sitemap and `llms-full.txt` from one registry.
+- Generate canvas sitemap, nav, route order, and `llms-full.txt` from one typed registry.
 - Classify each integration package as core, supported, experimental, or demo.
 - Raise critical-domain test coverage and add mypy as a staged CI gate.
 
@@ -250,3 +268,5 @@ Notes:
 - `7c560f5a chore: remove private production docs from public surface`
 - `e6cc469f chore: make release readiness public-only`
 - `218695ad chore: keep readiness wrapper executable`
+- `d77ef988 docs: record public release gate cleanup`
+- `b2dff4e3 chore: move product UI source out of public repo`
