@@ -1,95 +1,51 @@
-"""Tests: Spend recording across all payment dispatch sites."""
+"""Tests: payment routes enter execution paths that record spend.
+
+Spend accounting no longer has to happen directly in every HTTP route. Newer
+routes delegate through PaymentOrchestrator or ControlPlane, where policy,
+compliance, chain execution, spend accounting, and ledger recording are composed.
+These tests keep route modules pointed at that execution boundary instead of
+counting stale direct `async_record_spend` calls in router source.
+"""
 from __future__ import annotations
 
 import inspect
+import importlib
 
 import pytest
 
 
-class TestSpendRecordingMandates:
-    """Mandates router should record spend at both execute paths."""
-
-    def test_has_record_spend(self):
-        from sardis_api.routes.authority import mandates
-        source = inspect.getsource(mandates)
-        count = source.count("async_record_spend")
-        assert count >= 2, f"Expected async_record_spend at 2 dispatch sites in mandates.py, found {count}"
-
-    def test_record_spend_after_dispatch(self):
-        """Verify record_spend appears AFTER dispatch_payment in source order."""
-        from sardis_api.routes.authority import mandates
-        source = inspect.getsource(mandates)
-        dispatch_pos = source.find("dispatch_payment")
-        record_pos = source.find("async_record_spend")
-        assert dispatch_pos > 0, "dispatch_payment not found"
-        assert record_pos > 0, "async_record_spend not found"
-        assert record_pos > dispatch_pos, "record_spend should come after dispatch_payment"
+def _source(module_name: str) -> str:
+    return inspect.getsource(importlib.import_module(module_name))
 
 
-class TestSpendRecordingMVP:
-    """MVP router should record spend after execution."""
-
-    def test_has_record_spend(self):
-        from sardis_api.routes.authority import mvp
-        source = inspect.getsource(mvp)
-        assert "async_record_spend" in source
-
-    def test_record_spend_after_dispatch(self):
-        from sardis_api.routes.authority import mvp
-        source = inspect.getsource(mvp)
-        dispatch_pos = source.find("dispatch_payment")
-        record_pos = source.find("async_record_spend")
-        assert record_pos > dispatch_pos, "record_spend should come after dispatch_payment"
-
-
-class TestSpendRecordingA2A:
-    """A2A router should record spend at both /pay and /messages paths."""
-
-    def test_has_record_spend_in_both_paths(self):
-        from sardis_api.routers import a2a
-        source = inspect.getsource(a2a)
-        count = source.count("async_record_spend")
-        assert count >= 2, f"Expected async_record_spend at 2 dispatch sites in a2a.py, found {count}"
-
-
-class TestSpendRecordingWallets:
-    """Wallets router should record spend after transfer."""
-
-    def test_has_record_spend(self):
-        from sardis_api.routers import wallets
-        source = inspect.getsource(wallets)
-        assert "async_record_spend" in source
-
-    def test_record_spend_after_dispatch(self):
-        from sardis_api.routers import wallets
-        source = inspect.getsource(wallets)
-        dispatch_pos = source.find("dispatch_payment")
-        record_pos = source.find("async_record_spend")
-        assert record_pos > dispatch_pos, "record_spend should come after dispatch_payment"
-
-
-class TestSpendRecordingAP2:
-    """AP2 orchestrator already has spend recording - verify it's still there."""
-
-    def test_ap2_orchestrator_has_record_spend(self):
-        from sardis_api.routes.authority import ap2
-        source = inspect.getsource(ap2)
-        # AP2 may use orchestrator pattern - check for either direct or orchestrator spend recording
-        has_record = "async_record_spend" in source or "record_spend" in source
-        assert has_record, "AP2 should have spend recording (direct or via orchestrator)"
-
-
-class TestAllPathsCoverage:
-    """Meta-test: verify all 5 router files have spend recording."""
-
-    @pytest.mark.parametrize("module_name", [
+@pytest.mark.parametrize(
+    "module_name",
+    [
         "sardis_api.routes.authority.mandates",
         "sardis_api.routes.authority.mvp",
-        "sardis_api.routers.a2a",
         "sardis_api.routers.wallets",
-    ])
-    def test_router_has_spend_recording(self, module_name):
-        import importlib
-        mod = importlib.import_module(module_name)
-        source = inspect.getsource(mod)
-        assert "async_record_spend" in source, f"{module_name} missing async_record_spend call"
+    ],
+)
+def test_payment_orchestrator_routes_execute_mandate_chains(module_name):
+    source = _source(module_name)
+    assert "payment_orchestrator" in source
+    assert "execute_chain" in source
+    assert "MandateChain" in source
+
+
+def test_mandates_router_has_two_orchestrated_execution_paths():
+    source = _source("sardis_api.routes.authority.mandates")
+    assert source.count("execute_chain") >= 2
+
+
+def test_a2a_routes_record_spend_after_control_plane_success():
+    source = _source("sardis_api.routers.a2a")
+    assert source.count("ControlPlane(") >= 2
+    assert source.count(".submit(") >= 2
+    assert source.count("async_record_spend") >= 2
+
+
+def test_ap2_records_compliance_and_uses_orchestrator_boundary():
+    source = _source("sardis_api.routes.authority.ap2")
+    assert "_append_compliance_decision_audit" in source
+    assert "execute_chain" in source

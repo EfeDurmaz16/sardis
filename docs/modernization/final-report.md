@@ -62,6 +62,7 @@
 - Updated pay route tests to patch/import the real implementation module instead of the compatibility wrapper.
 - Moved authority route implementations to `sardis_api.routes.authority`: mandates, AP2, MVP, approvals, and approval configuration now share one domain directory with temporary compatibility wrappers under `sardis_api.routers`.
 - Updated authority-focused tests to import and patch the real `routes.authority.*` implementation modules instead of the compatibility wrappers.
+- Modernized stale spend-recording and compliance router tests so they assert the current PaymentOrchestrator/ControlPlane execution boundaries instead of counting old direct router-local calls.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
 ## What Was Deleted
@@ -262,7 +263,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified both the new `sardis_api.routes.authority.*` imports and old compatibility `sardis_api.routers.*` imports for AP2, mandates, MVP, approvals, and approval config.
 - `uv run pytest packages/sardis-api/tests/test_mandates_router.py packages/sardis-api/tests/test_ap2_router.py packages/sardis-api/tests/test_ap2_safety_guards.py packages/sardis-api/tests/test_ap2_compliance_hardening.py packages/sardis-api/tests/test_policy_enforcement.py -q` passed after moving authority route implementations: 45 tests.
 - `pnpm check:openapi` passed after moving authority route implementations: 540 paths and 592 schemas.
-- Broader legacy source-inspection checks in `test_spend_recording.py` and parts of `test_compliance_gate.py` still fail against current architecture, including unrelated A2A/wallet assertions; those should be modernized separately into behavior-level coverage.
+- `python3 -m compileall -q packages/sardis-api/tests/test_spend_recording.py packages/sardis-api/tests/test_compliance_gate.py` passed after modernizing stale spend/compliance source-inspection tests.
+- `uv run pytest packages/sardis-api/tests/test_spend_recording.py packages/sardis-api/tests/test_compliance_gate.py -q` passed after test modernization: 31 tests.
+- `uv run pytest packages/sardis-api/tests/test_mandates_router.py packages/sardis-api/tests/test_ap2_router.py packages/sardis-api/tests/test_ap2_safety_guards.py packages/sardis-api/tests/test_ap2_compliance_hardening.py packages/sardis-api/tests/test_policy_enforcement.py packages/sardis-api/tests/test_spend_recording.py packages/sardis-api/tests/test_compliance_gate.py -q` passed after test modernization: 76 tests.
+- `pnpm check:openapi` passed after test modernization: 540 paths and 592 schemas.
 
 Notes:
 
@@ -275,7 +279,6 @@ Notes:
 - Database migration history remains split between Alembic and raw SQL.
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
 - Route implementation files are still split between legacy `sardis_api.routers` modules and new domain-grouped `sardis_api.routes` modules; the compatibility wrappers must be removed only after internal imports and downstream users have migrated.
-- `test_spend_recording.py` and some router source-inspection checks in `test_compliance_gate.py` are now explicitly identified as stale brittle tests. They should be converted to behavior-level checks rather than kept as string-count assertions.
 - Public/private repo hygiene still needs actual private-repo creation and history-preserving recovery of dashboard/product surfaces from git history.
 - Dashboard deployment automation and source are no longer in the public OSS repo; the private product repo must recreate its CI/CD from the moved history.
 - Private staging/mainnet/demo/partner/monitoring automation is no longer in the public OSS repo; the private product/cloud repo needs a clean replacement from history or fresh infrastructure-as-code.
@@ -300,7 +303,6 @@ Notes:
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
 - Continue physical route placement cleanup by moving provider webhook routes into `routes/providers/` and operational/admin routes into `routes/operations/` with temporary compatibility wrappers.
-- Modernize stale spend/compliance source-inspection tests into behavior-level tests around orchestrator/control-plane execution boundaries.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.

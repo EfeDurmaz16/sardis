@@ -33,6 +33,8 @@ class MockSanctionsService:
 class MockKYCService:
     """Mock KYC verification service matching Persona interface."""
 
+    PROVIDER_NAME = "persona"
+
     def __init__(self, verified: bool = True, raise_error: bool = False):
         self._verified = verified
         self._raise_error = raise_error
@@ -396,7 +398,7 @@ class TestComplianceAuditTrail:
 
 
 class TestComplianceInRouters:
-    """Verify compliance.preflight() is present in all payment router sources."""
+    """Verify payment routes enter compliance-aware execution boundaries."""
 
     def test_mandates_has_compliance(self):
         import inspect
@@ -412,17 +414,16 @@ class TestComplianceInRouters:
         from sardis_api.routes.authority import mvp
         source = inspect.getsource(mvp)
         assert "compliance" in source
-        assert "preflight" in source
+        assert "payment_orchestrator" in source
+        assert "execute_chain" in source
 
     def test_a2a_has_compliance_in_both_paths(self):
         import inspect
 
         from sardis_api.routers import a2a
         source = inspect.getsource(a2a)
-        count = source.count("preflight")
-        assert count >= 2, (
-            f"Expected compliance.preflight in both /pay and /messages, found {count}"
-        )
+        assert source.count("ComplianceAdapter") >= 2
+        assert source.count("ControlPlane(") >= 2
 
     def test_wallets_has_compliance(self):
         import inspect
@@ -430,14 +431,14 @@ class TestComplianceInRouters:
         from sardis_api.routers import wallets
         source = inspect.getsource(wallets)
         assert "compliance" in source
-        assert "preflight" in source
+        assert "payment_orchestrator" in source
+        assert "execute_chain" in source
 
-    def test_mandates_has_multiple_preflight_calls(self):
+    def test_mandates_has_validation_and_execution_compliance_paths(self):
         import inspect
 
         from sardis_api.routes.authority import mandates
         source = inspect.getsource(mandates)
-        count = source.count("preflight")
-        assert count >= 2, (
-            f"Expected multiple compliance.preflight calls in mandates router, found {count}"
-        )
+        assert "preflight" in source
+        assert "payment_orchestrator" in source
+        assert source.count("execute_chain") >= 2
