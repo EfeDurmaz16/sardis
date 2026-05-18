@@ -58,6 +58,8 @@
 - Repaired stale authority/payment policy tests by replacing brittle implementation-string assertions with current orchestrator/control-plane boundary checks and fixed FastAPI dependency overrides in the mandates router tests.
 - Started the physical route placement migration by moving the outbound webhook subscription implementation to `sardis_api.routes.developer.webhook_subscriptions`.
 - Kept `sardis_api.routers.webhook_subscriptions` as a temporary compatibility import while new code moves to domain-grouped `routes/<domain>/...` modules.
+- Moved the unified `/api/v2/pay` implementation to `sardis_api.routes.money_movement.pay` with a temporary compatibility wrapper at `sardis_api.routers.pay`.
+- Updated pay route tests to patch/import the real implementation module instead of the compatibility wrapper.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
 ## What Was Deleted
@@ -139,7 +141,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical move is now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, while the old `sardis_api.routers` path remains as a compatibility wrapper during the migration.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical moves are now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, and the unified pay route lives under `sardis_api.routes.money_movement`, while the old `sardis_api.routers` paths remain as compatibility wrappers during the migration.
 
 ## Test, Build, And Lint Results
 
@@ -250,6 +252,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `pnpm check:openapi` passed after the route placement move: 540 paths and 592 schemas.
 - `uv run pytest packages/sardis-api/tests/test_middleware_security.py packages/sardis-api/tests/test_partner_card_webhooks.py -q` passed after the route placement move: 39 tests.
 - `git diff --check` passed after the route placement move.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/routes/money_movement packages/sardis-api/src/sardis_api/routers/pay.py packages/sardis-api/src/sardis_api/routing/money_movement.py packages/sardis-api/tests/test_pay_phase2_routing.py packages/sardis-api/tests/test_pay_phase3_fx.py packages/sardis-api/tests/test_pay_sandbox_mode.py` passed after moving the pay route implementation.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified both the new `sardis_api.routes.money_movement.pay` import and the old compatibility `sardis_api.routers.pay` import.
+- `uv run pytest packages/sardis-api/tests/test_pay_phase2_routing.py packages/sardis-api/tests/test_pay_phase3_fx.py packages/sardis-api/tests/test_pay_sandbox_mode.py -q` passed after moving the pay route implementation: 35 tests.
+- `pnpm check:openapi` passed after moving the pay route implementation: 540 paths and 592 schemas.
 
 Notes:
 
@@ -285,7 +291,7 @@ Notes:
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
-- Continue physical route placement cleanup: move `pay.py` to `routes/money_movement/pay.py`, then move mandates/AP2/MVP/approvals into `routes/authority/` with temporary compatibility wrappers.
+- Continue physical route placement cleanup by moving mandates/AP2/MVP/approvals into `routes/authority/` with temporary compatibility wrappers.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.

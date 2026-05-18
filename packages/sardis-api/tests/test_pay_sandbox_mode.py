@@ -70,15 +70,15 @@ def app_sandbox(mock_orchestrator):
     """App with chain_mode='simulated' (sandbox mode)."""
     from unittest.mock import patch
 
-    with patch("sardis_api.routers.pay.IntentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.CartMandate", StubMandate), \
-         patch("sardis_api.routers.pay.PaymentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.MandateChain", StubMandateChain):
+    with patch("sardis_api.routes.money_movement.pay.IntentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.CartMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.PaymentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.MandateChain", StubMandateChain):
 
         from fastapi import FastAPI
 
         from sardis_api.authz import require_principal
-        from sardis_api.routers.pay import PayDependencies, get_deps, router
+        from sardis_api.routes.money_movement.pay import PayDependencies, get_deps, router
 
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/pay")
@@ -97,15 +97,15 @@ def app_live(mock_orchestrator):
     """App with chain_mode='live' (live mode)."""
     from unittest.mock import patch
 
-    with patch("sardis_api.routers.pay.IntentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.CartMandate", StubMandate), \
-         patch("sardis_api.routers.pay.PaymentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.MandateChain", StubMandateChain):
+    with patch("sardis_api.routes.money_movement.pay.IntentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.CartMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.PaymentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.MandateChain", StubMandateChain):
 
         from fastapi import FastAPI
 
         from sardis_api.authz import require_principal
-        from sardis_api.routers.pay import PayDependencies, get_deps, router
+        from sardis_api.routes.money_movement.pay import PayDependencies, get_deps, router
 
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/pay")

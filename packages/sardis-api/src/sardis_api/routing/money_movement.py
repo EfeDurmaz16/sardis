@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from sardis_v2_core.orchestrator import PaymentOrchestrator
 
-from sardis_api.routers import pay
+from sardis_api.routes.money_movement import pay
 
 
 def register_pay_endpoint(

@@ -50,10 +50,10 @@ class StubMandateChain:
 @pytest.fixture
 def _patch_mandates():
     """Patch mandate classes so pay.py can construct them with simplified kwargs."""
-    with patch("sardis_api.routers.pay.IntentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.CartMandate", StubMandate), \
-         patch("sardis_api.routers.pay.PaymentMandate", StubMandate), \
-         patch("sardis_api.routers.pay.MandateChain", StubMandateChain):
+    with patch("sardis_api.routes.money_movement.pay.IntentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.CartMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.PaymentMandate", StubMandate), \
+         patch("sardis_api.routes.money_movement.pay.MandateChain", StubMandateChain):
         yield
 
 
@@ -77,7 +77,7 @@ def app_with_pay(mock_orchestrator, _patch_mandates):
     """Create a FastAPI app with the pay router wired."""
     from fastapi import FastAPI
 
-    from sardis_api.routers.pay import PayDependencies, get_deps, router
+    from sardis_api.routes.money_movement.pay import PayDependencies, get_deps, router
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v2/pay")
@@ -90,8 +90,13 @@ def app_with_pay(mock_orchestrator, _patch_mandates):
     from sardis_api.authz import require_principal
 
     class FakePrincipal:
+        organization_id = "org_test"
         subject_id = "test_agent"
         scopes = ["pay"]
+
+        @property
+        def user_id(self):
+            return self.subject_id
 
     app.dependency_overrides[require_principal] = lambda: FakePrincipal()
 

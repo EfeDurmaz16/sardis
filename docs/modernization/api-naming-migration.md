@@ -46,6 +46,7 @@ Completed so far:
 | `main.py` inline `/api/v2/pay` registration | `routing/money_movement.py::register_pay_endpoint` | Moves a small, high-traffic payment surface behind a money-movement registrar without changing the public path. |
 | `main.py` inline mandates/AP2/MVP/approvals registration | `routing/authority.py::register_authority_routes` | Groups authority and mandate route wiring while returning the approval service needed by later payment/provider routers. |
 | `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` with a compatibility wrapper in `routers/` | Starts the physical path simplification from flat routers to domain-grouped routes. |
+| `routers/pay.py` implementation | `routes/money_movement/pay.py` with a compatibility wrapper in `routers/` | Moves the primary money-movement execution route to the domain where contributors expect to find payment logic. |
 
 The external API remains unchanged:
 
