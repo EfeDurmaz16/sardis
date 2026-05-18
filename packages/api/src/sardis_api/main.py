@@ -145,7 +145,7 @@ from .routes.accounts import data_export as data_export_router
 from .routers import dev as dev_router
 from .routers import emergency as emergency_router
 from .routes.developer import enterprise_support as enterprise_support_router
-from .routers import environment_templates as environment_templates_router
+from .routes.developer import environment_templates as environment_templates_router
 from .routers import escrow_disputes as escrow_disputes_router
 from .routes.evidence import evidence as evidence_router
 from .routes.evidence import evidence_export as evidence_export_router
