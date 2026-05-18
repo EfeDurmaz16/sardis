@@ -2027,17 +2027,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except ImportError:
         pass
 
-    # MPP (Machine Payments Protocol) sessions
-    try:
-        from sardis_api.routers import mpp as mpp_router
-        app.include_router(
-            mpp_router.router,
-            prefix="/api/v2/mpp",
-            tags=["mpp"],
-        )
-    except ImportError:
-        logger.warning("MPP router not available")
-
     # SDK install metrics (public)
     app.include_router(sdk_metrics_router.router)
 

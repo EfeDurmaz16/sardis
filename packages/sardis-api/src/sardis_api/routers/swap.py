@@ -50,24 +50,6 @@ class SwapExecuteResponse(BaseModel):
     status: str
 
 
-class BridgeQuoteRequest(BaseModel):
-    from_chain: str = Field(description="Source chain")
-    to_chain: str = Field(description="Destination chain")
-    token: str = Field(description="Token to bridge")
-    amount: Decimal = Field(description="Amount to bridge")
-
-
-class BridgeQuoteResponse(BaseModel):
-    quote_id: str
-    from_chain: str
-    to_chain: str
-    token: str
-    from_amount: str
-    to_amount: str
-    fee_amount: str
-    estimated_time_seconds: int
-
-
 class VerificationResponse(BaseModel):
     address: str
     is_verified: bool
@@ -151,39 +133,6 @@ async def execute_swap(request: SwapExecuteRequest):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Swap execution failed: {e}",
-        ) from e
-    finally:
-        await client.close()
-
-
-# ── Bridge Endpoints ─────────────────────────────────────────────────────
-
-
-@router.post("/bridge/quote", response_model=BridgeQuoteResponse)
-async def get_bridge_quote(request: BridgeQuoteRequest):
-    """Get a cross-chain bridge quote via CDP."""
-    client = _get_cdp_client()
-    try:
-        quote = await client.get_bridge_quote(
-            from_chain=request.from_chain,
-            to_chain=request.to_chain,
-            token=request.token,
-            amount=request.amount,
-        )
-        return BridgeQuoteResponse(
-            quote_id=quote.quote_id,
-            from_chain=quote.from_chain,
-            to_chain=quote.to_chain,
-            token=quote.token,
-            from_amount=str(quote.from_amount),
-            to_amount=str(quote.to_amount),
-            fee_amount=str(quote.fee_amount),
-            estimated_time_seconds=quote.estimated_time_seconds,
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Bridge quote failed: {e}",
         ) from e
     finally:
         await client.close()
