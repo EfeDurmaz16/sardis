@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.onramp import router
+from sardis_api.routes.wallets.onramp import router
 from sardis_api.services.conduit_onramp import (
     API_VERSION,
     PRODUCTION_BASE_URL,
@@ -413,7 +413,7 @@ class TestWalletFundConduitEndpoint:
         monkeypatch.delenv("CONDUIT_API_SECRET", raising=False)
 
         with patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -430,10 +430,10 @@ class TestWalletFundConduitEndpoint:
         mock_conduit_svc = AsyncMock()
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -462,10 +462,10 @@ class TestWalletFundConduitEndpoint:
         mock_conduit_svc.get_quote.return_value = mock_quote
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -528,10 +528,10 @@ class TestWalletFundConduitEndpoint:
         mock_conduit_svc.create_onramp_transaction.return_value = mock_tx
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -572,10 +572,10 @@ class TestWalletFundConduitEndpoint:
         mock_conduit_svc.get_quote.return_value = mock_quote
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0x0000000000000000000000000000000000000001",
         ):
             app = _build_app()
@@ -601,10 +601,10 @@ class TestWalletFundConduitEndpoint:
         )
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0x0000000000000000000000000000000000000001",
         ):
             app = _build_app()
@@ -631,7 +631,7 @@ class TestWalletFundConduitStatusEndpoint:
         mock_conduit_svc.get_transaction_status.return_value = mock_status
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ):
             app = _build_app()
@@ -662,7 +662,7 @@ class TestWalletFundConduitStatusEndpoint:
         mock_conduit_svc.get_transaction_status.side_effect = RuntimeError("Conduit down")
 
         with patch(
-            "sardis_api.routers.onramp._get_conduit_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_conduit_onramp_service",
             return_value=mock_conduit_svc,
         ):
             app = _build_app()
@@ -696,10 +696,10 @@ class TestExistingTurnkeyEndpointsStillWork:
         mock_svc.create_onramp_session.return_value = mock_session
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -733,10 +733,10 @@ class TestExistingTurnkeyEndpointsStillWork:
         mock_svc.create_onramp_session.return_value = mock_session
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0x0000000000000000000000000000000000000001",
         ):
             app = _build_app()
@@ -761,7 +761,7 @@ class TestExistingTurnkeyEndpointsStillWork:
 
         mock_svc = AsyncMock()
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ):
             resp = client.post(

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.onramp import router
+from sardis_api.routes.wallets.onramp import router
 from sardis_api.services.turnkey_onramp import (
     ACTIVITY_TYPE,
     CRYPTO_MAP,
@@ -309,7 +309,7 @@ class TestWalletFundEndpoint:
         monkeypatch.delenv("TURNKEY_ORGANIZATION_ID", raising=False)
 
         with patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -338,10 +338,10 @@ class TestWalletFundEndpoint:
         mock_svc.create_onramp_session.return_value = mock_session
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0xabcdef1234567890abcdef1234567890abcdef12",
         ):
             app = _build_app()
@@ -379,10 +379,10 @@ class TestWalletFundEndpoint:
         mock_svc.create_onramp_session.return_value = mock_session
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             return_value="0x0000000000000000000000000000000000000001",
         ):
             app = _build_app()
@@ -408,10 +408,10 @@ class TestWalletFundEndpoint:
         mock_svc = AsyncMock()
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ), patch(
-            "sardis_api.routers.onramp._resolve_wallet_address",
+            "sardis_api.routes.wallets.onramp._resolve_wallet_address",
             side_effect=ValueError("Wallet wal_gone not found"),
         ):
             app = _build_app()
@@ -431,7 +431,7 @@ class TestWalletFundEndpoint:
         # Patch turnkey service so we don't get 503
         mock_svc = AsyncMock()
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ):
             resp = client.post(
@@ -464,7 +464,7 @@ class TestWalletFundStatusEndpoint:
         mock_svc.get_transaction_status.return_value = mock_status
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ):
             app = _build_app()
@@ -487,7 +487,7 @@ class TestWalletFundStatusEndpoint:
         mock_svc.get_transaction_status.return_value = mock_status
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ):
             app = _build_app()
@@ -507,7 +507,7 @@ class TestWalletFundStatusEndpoint:
         mock_svc.get_transaction_status.side_effect = RuntimeError("Turnkey down")
 
         with patch(
-            "sardis_api.routers.onramp._get_turnkey_onramp_service",
+            "sardis_api.routes.wallets.onramp._get_turnkey_onramp_service",
             return_value=mock_svc,
         ):
             app = _build_app()
