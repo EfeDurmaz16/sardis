@@ -146,7 +146,7 @@ from .routers import execution_modes as execution_modes_router
 from .routers import facility_requests as facility_requests_router
 from .routers import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
-from .routers import funding as funding_router
+from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
 from .routers import invoices as invoices_router
@@ -160,7 +160,7 @@ from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
-from .routers import offramp as offramp_router
+from .routes.wallets import offramp as offramp_router
 from .routers import onchain_payments as onchain_payments_router
 from .routers import onramp as onramp_router
 from .routers import outcomes as outcomes_router
@@ -168,7 +168,7 @@ from .routers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import policies as policies_router
 from .routers import policy_analytics as policy_analytics_router
 from .routers import policy_simulation as policy_simulation_router
-from .routers import ramp as ramp_router
+from .routes.wallets import ramp as ramp_router
 from .routers import reliability as reliability_router
 from .routers import sandbox as sandbox_router
 from .routers import sdk_metrics as sdk_metrics_router

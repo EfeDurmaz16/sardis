@@ -50,6 +50,7 @@ Completed so far:
 | `routers/mandates.py`, `routers/ap2.py`, `routers/mvp.py`, `routers/approvals.py`, `routers/approval_config.py` implementations | `routes/authority/*` with compatibility wrappers in `routers/` | Groups authority, mandate, AP2, MVP, and approval surfaces under one contributor-readable domain. |
 | `routers/ledger.py`, `routers/holds.py`, `routers/transactions.py`, `routers/payments_refund.py`, `routers/payment_objects.py`, `routers/batch_payments.py`, `routers/streaming_payments.py`, `routers/fx.py`, `routers/swap.py`, `routers/settlements.py`, `routers/receipts.py` implementations | `routes/money_movement/*` with compatibility wrappers in `routers/` | Groups core payment, ledger, transaction, FX, settlement, receipt, and refund surfaces under the money movement domain. |
 | `routers/cards.py`, `routers/virtual_cards.py`, `routers/stablecoin_cards.py`, `routers/treasury.py`, `routers/treasury_ops.py`, `routers/cpn.py`, `routers/funding_capabilities.py` implementations | `routes/wallets/*` with compatibility wrappers in `routers/` | Starts the wallet/card/funding domain move with the lower-coupling card, treasury, CPN, and capability surfaces. |
+| `routers/funding.py`, `routers/ramp.py`, `routers/offramp.py` implementations | `routes/wallets/*` with compatibility wrappers in `routers/` | Moves the lower-coupling funding/ramp surfaces before the high-coupling wallet/onchain/onramp routes. |
 
 The external API remains unchanged:
 
@@ -152,8 +153,8 @@ moved to `sardis_api/routes/<domain>/...`.
    `fx`, `swap`, `settlements`, and `receipts`.
 3. Wallets, funding, and cards: completed for `cards`, `virtual_cards`,
    `stablecoin_cards`, `treasury`, `treasury_ops`, `cpn`, and
-   `funding_capabilities`; remaining files are `wallets`, `onchain_payments`,
-   `funding`, `ramp`, `onramp`, and `offramp`.
+   `funding_capabilities`, `funding`, `ramp`, and `offramp`; remaining files
+   are `wallets`, `onchain_payments`, and `onramp`.
 4. Provider callbacks: `stripe_webhooks`, `stripe_spt_webhooks`,
    `mastercard_webhooks`, `visa_tap_webhooks`, `partner_card_webhooks`,
    `cpn_webhooks`, and `polar_webhook`.
