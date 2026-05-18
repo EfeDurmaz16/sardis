@@ -138,14 +138,14 @@ Sardis can route approved actions to provider adapters. Live-money deployments d
 ### Python (5 lines)
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-sardis = Sardis(api_key="sk_...")
-result = sardis.payments.create(
-    agent_id="agent_abc",
+client = SardisClient(api_key="sk_...")
+result = client.pay(
+    to="merchant@example.com",
     amount="50.00",
-    token="USDC",
-    recipient="merchant@example.com"
+    currency="USDC",
+    chain="base",
 )
 print(f"Payment: {result.tx_hash}")
 ```
