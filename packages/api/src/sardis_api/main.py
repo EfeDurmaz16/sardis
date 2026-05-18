@@ -143,7 +143,7 @@ from .routes.wallets import cpn as cpn_router
 from .routes.authority import credentials as credentials_router
 from .routes.accounts import data_export as data_export_router
 from .routes.developer import dev as dev_router
-from .routers import emergency as emergency_router
+from .routes.operations import emergency as emergency_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.commerce import escrow_disputes as escrow_disputes_router
