@@ -87,7 +87,7 @@ class CreateWebhookRequest(BaseModel):
     events: list[str] | None = Field(
         None,
         description="Event types to subscribe to. Empty/null = all events.",
-        example=["payment.completed", "hold.created"],
+        json_schema_extra={"example": ["payment.completed", "hold.created"]},
     )
 
 

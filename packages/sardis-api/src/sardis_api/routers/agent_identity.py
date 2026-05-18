@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sardis_v2_core.agent_card import (
     generate_agent_card,
     verify_agent_card,
@@ -109,8 +109,7 @@ class AgentCardResponse(BaseModel):
     public_key: str | None = None
     ens_name: str | None = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # ============ Endpoints ============

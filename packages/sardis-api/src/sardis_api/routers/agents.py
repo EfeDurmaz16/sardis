@@ -1196,7 +1196,7 @@ _SPENDING_CACHE_TTL = 30  # seconds
 @router.get("/{agent_id}/spending", response_model=AgentSpendingResponse)
 async def get_agent_spending(
     agent_id: str,
-    period: str = Query(default="7d", regex="^(7d|30d)$"),
+    period: str = Query(default="7d", pattern="^(7d|30d)$"),
     deps: AgentDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):

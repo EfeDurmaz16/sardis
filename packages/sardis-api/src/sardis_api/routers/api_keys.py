@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ..middleware import (
     APIKey,
@@ -65,8 +65,8 @@ class CreateAPIKeyResponse(BaseModel):
     created_at: datetime
     mode: str = "test"  # "test" or "live"
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "key": "sk_test_...",
                 "key_id": "key_12345678",
@@ -76,10 +76,10 @@ class CreateAPIKeyResponse(BaseModel):
                 "rate_limit": 100,
                 "expires_at": None,
                 "created_at": "2025-01-01T00:00:00Z",
-                "mode": "test"
+                "mode": "test",
             }
         }
-
+    )
 
 class ListAPIKeysResponse(BaseModel):
     """List of API keys."""
@@ -279,7 +279,6 @@ async def get_current_key_info(
         last_used_at=current_key.last_used_at,
         mode=current_key.environment,
     )
-
 
 
 

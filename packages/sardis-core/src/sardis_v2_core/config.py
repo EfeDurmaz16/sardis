@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ContractLifecycle(str, Enum):
@@ -52,8 +52,7 @@ class TurnkeyConfig(BaseSettings):
     default_wallet_id: str = ""
     api_base: str = "https://api.turnkey.com"
 
-    class Config:
-        env_prefix = "TURNKEY_"
+    model_config = SettingsConfigDict(env_prefix="TURNKEY_")
 
 
 class MPCProvider(BaseSettings):
@@ -81,8 +80,7 @@ class LithicConfig(BaseSettings):
     asa_webhook_secret: str = ""
     asa_enabled: bool = False
 
-    class Config:
-        env_prefix = "LITHIC_"
+    model_config = SettingsConfigDict(env_prefix="LITHIC_")
 
 
 class StripeConfig(BaseSettings):
@@ -97,8 +95,7 @@ class StripeConfig(BaseSettings):
     stablecoin_issuing_enabled: bool = False
     stablecoin_default_chain: str = "base"
 
-    class Config:
-        env_prefix = "STRIPE_"
+    model_config = SettingsConfigDict(env_prefix="STRIPE_")
 
 
 class CoinbaseConfig(BaseSettings):
@@ -112,8 +109,7 @@ class CoinbaseConfig(BaseSettings):
     network_id: str = "base-mainnet"
     x402_enabled: bool = False
 
-    class Config:
-        env_prefix = "COINBASE_CDP_"
+    model_config = SettingsConfigDict(env_prefix="COINBASE_CDP_")
 
 
 class CircleGatewayConfig(BaseSettings):
@@ -124,8 +120,7 @@ class CircleGatewayConfig(BaseSettings):
     base_url: str = "https://gateway-api.circle.com"
     timeout_seconds: float = 20.0
 
-    class Config:
-        env_prefix = "CIRCLE_GATEWAY_"
+    model_config = SettingsConfigDict(env_prefix="CIRCLE_GATEWAY_")
 
 
 class CircleCPNConfig(BaseSettings):
@@ -142,8 +137,7 @@ class CircleCPNConfig(BaseSettings):
     auth_style: Literal["bearer", "x_api_key"] = "bearer"
     timeout_seconds: float = 20.0
 
-    class Config:
-        env_prefix = "CIRCLE_CPN_"
+    model_config = SettingsConfigDict(env_prefix="CIRCLE_CPN_")
 
 
 class RainConfig(BaseSettings):
@@ -157,8 +151,7 @@ class RainConfig(BaseSettings):
     cards_path_map_json: str = ""
     cards_method_map_json: str = ""
 
-    class Config:
-        env_prefix = "RAIN_"
+    model_config = SettingsConfigDict(env_prefix="RAIN_")
 
 
 class BridgeCardsConfig(BaseSettings):
@@ -180,8 +173,7 @@ class BridgeCardsConfig(BaseSettings):
     wire_enabled: bool = False
     default_rail: str = "ach"
 
-    class Config:
-        env_prefix = "BRIDGE_"
+    model_config = SettingsConfigDict(env_prefix="BRIDGE_")
 
 
 class X402Config(BaseSettings):
@@ -197,8 +189,7 @@ class X402Config(BaseSettings):
     permit2_enabled: bool = False
     dry_run_default: bool = False
 
-    class Config:
-        env_prefix = "SARDIS_X402_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_X402_")
 
 
 class DelegatedCredentialConfig(BaseSettings):
@@ -216,8 +207,7 @@ class DelegatedCredentialConfig(BaseSettings):
     stripe_spt_webhook_secret: str = ""
     stripe_spt_partner_id: str = ""
 
-    class Config:
-        env_prefix = "SARDIS_DELEGATED_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_DELEGATED_")
 
 
 class VisaTAPConfig(BaseSettings):
@@ -231,8 +221,7 @@ class VisaTAPConfig(BaseSettings):
     base_url: str = "https://sandbox.api.visa.com"
     timeout_seconds: float = 30.0
 
-    class Config:
-        env_prefix = "VISA_TAP_"
+    model_config = SettingsConfigDict(env_prefix="VISA_TAP_")
 
 
 class MastercardConfig(BaseSettings):
@@ -247,8 +236,7 @@ class MastercardConfig(BaseSettings):
     base_url: str = "https://sandbox.api.mastercard.com"
     timeout_seconds: float = 30.0
 
-    class Config:
-        env_prefix = "MASTERCARD_"
+    model_config = SettingsConfigDict(env_prefix="MASTERCARD_")
 
 
 class StrigaConfig(BaseSettings):
@@ -266,8 +254,7 @@ class StrigaConfig(BaseSettings):
     standing_orders_enabled: bool = False
     kyc_enabled: bool = True
 
-    class Config:
-        env_prefix = "SARDIS_STRIGA_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_STRIGA_")
 
 
 class LightsparkConfig(BaseSettings):
@@ -285,8 +272,7 @@ class LightsparkConfig(BaseSettings):
     uma_enabled: bool = True
     plaid_enabled: bool = False
 
-    class Config:
-        env_prefix = "SARDIS_LIGHTSPARK_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_LIGHTSPARK_")
 
 
 class CardStackConfig(BaseSettings):
@@ -297,8 +283,7 @@ class CardStackConfig(BaseSettings):
     on_chain_provider: Literal["coinbase_cdp"] | None = None
     org_provider_overrides_json: str = ""
 
-    class Config:
-        env_prefix = "SARDIS_CARDS_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_CARDS_")
 
 
 class FundingRoutingConfig(BaseSettings):
@@ -310,8 +295,7 @@ class FundingRoutingConfig(BaseSettings):
     stablecoin_prefund_enabled: bool = False
     require_connected_account: bool = False
 
-    class Config:
-        env_prefix = "SARDIS_FUNDING_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_FUNDING_")
 
 
 class FidesConfig(BaseSettings):
@@ -324,8 +308,7 @@ class FidesConfig(BaseSettings):
     min_trust_for_payment: float = 0.3
     request_timeout_seconds: int = 5
 
-    class Config:
-        env_prefix = "SARDIS_FIDES_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_FIDES_")
 
 
 class StripeBillingConfig(BaseSettings):
@@ -337,8 +320,7 @@ class StripeBillingConfig(BaseSettings):
     growth_plan_price_id: str = ""
     scale_plan_price_id: str = ""
 
-    class Config:
-        env_prefix = "SARDIS_STRIPE_BILLING_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_STRIPE_BILLING_")
 
 
 class ERC8183Config(BaseSettings):
@@ -354,8 +336,7 @@ class ERC8183Config(BaseSettings):
     min_evaluator_trust_score: float = 0.5
     reputation_feedback_enabled: bool = True
 
-    class Config:
-        env_prefix = "SARDIS_ERC8183_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_ERC8183_")
 
 
 class SardisSettings(BaseSettings):
@@ -562,11 +543,12 @@ class SardisSettings(BaseSettings):
         values = [v.strip() for v in self.erc4337_chain_allowlist.split(",")]
         return {v for v in values if v}
 
-    class Config:
-        env_prefix = "SARDIS_"
-        env_nested_delimiter = "__"
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_prefix="SARDIS_",
+        env_nested_delimiter="__",
+        env_file=".env",
+        extra="ignore",
+    )
 
     @field_validator("environment", mode="before")
     @classmethod
