@@ -60,11 +60,16 @@ _stub_mw.__path__ = [str(_src_dir / "sardis_api" / "middleware")]
 _stub_mw.__package__ = "sardis_api.middleware"
 sys.modules.setdefault("sardis_api.middleware", _stub_mw)
 
-# Stub out the routers sub-package
-_stub_rt = types.ModuleType("sardis_api.routers")
-_stub_rt.__path__ = [str(_src_dir / "sardis_api" / "routers")]
-_stub_rt.__package__ = "sardis_api.routers"
-sys.modules.setdefault("sardis_api.routers", _stub_rt)
+# Stub out the route sub-packages
+_stub_routes = types.ModuleType("sardis_api.routes")
+_stub_routes.__path__ = [str(_src_dir / "sardis_api" / "routes")]
+_stub_routes.__package__ = "sardis_api.routes"
+sys.modules.setdefault("sardis_api.routes", _stub_routes)
+
+_stub_accounts = types.ModuleType("sardis_api.routes.accounts")
+_stub_accounts.__path__ = [str(_src_dir / "sardis_api" / "routes" / "accounts")]
+_stub_accounts.__package__ = "sardis_api.routes.accounts"
+sys.modules.setdefault("sardis_api.routes.accounts", _stub_accounts)
 
 # Now load the actual modules we need
 _auth_middleware = _load_module(
@@ -75,8 +80,8 @@ APIKeyManager = _auth_middleware.APIKeyManager
 set_api_key_manager = _auth_middleware.set_api_key_manager
 
 _auth_router_mod = _load_module(
-    "sardis_api.routers.auth",
-    _src_dir / "sardis_api" / "routers" / "auth.py",
+    "sardis_api.routes.accounts.auth",
+    _src_dir / "sardis_api" / "routes" / "accounts" / "auth.py",
 )
 router = _auth_router_mod.router
 _signup_ip_timestamps = _auth_router_mod._signup_ip_timestamps

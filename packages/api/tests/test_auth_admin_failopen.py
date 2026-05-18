@@ -113,11 +113,8 @@ async def test_admin_login_no_default_password_in_non_dev(transport):
 
 
 @pytest.mark.asyncio
-async def test_admin_login_default_password_works_in_dev(transport):
-    """Default admin password works in dev with explicit opt-in.
-
-    This is the happy path: dev environment + explicit allow flag.
-    """
+async def test_admin_login_default_password_removed_even_in_dev_with_optin(transport):
+    """Default admin password is removed even in dev with legacy opt-in flags."""
     env_vars = {
         "SARDIS_ADMIN_PASSWORD": "",  # No real password set
         "SARDIS_ENVIRONMENT": "dev",
@@ -134,12 +131,11 @@ async def test_admin_login_default_password_works_in_dev(transport):
                 },
             )
 
-    assert resp.status_code == 200, (
-        f"Expected 200 for default password in dev with opt-in, "
+    assert resp.status_code == 401, (
+        f"Expected 401 for removed default password in dev with opt-in, "
         f"got {resp.status_code}: {resp.text}"
     )
-    body = resp.json()
-    assert "access_token" in body
+    assert resp.json()["detail"].startswith("Invalid credentials")
 
 
 @pytest.mark.asyncio
@@ -161,7 +157,8 @@ async def test_admin_login_default_password_fails_without_optin(transport):
                 },
             )
 
-    assert resp.status_code == 503, (
-        f"Expected 503 when admin password not configured and no opt-in, "
+    assert resp.status_code == 401, (
+        f"Expected 401 when default admin password has been removed, "
         f"got {resp.status_code}: {resp.text}"
     )
+    assert resp.json()["detail"].startswith("Invalid credentials")

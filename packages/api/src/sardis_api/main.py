@@ -94,6 +94,11 @@ from sardis_wallet.manager import WalletManager
 from .routes.protocol import a2a as a2a_router
 from .routes.protocol import a2a_payments as a2a_payments_router
 from .routes.protocol import acp as acp_router
+from .routes.accounts import api_keys as api_keys_router
+from .routes.accounts import auth
+from .routes.accounts import email_verification as email_verification_router
+from .routes.accounts import groups as groups_router
+from .routes.accounts import me as me_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
@@ -103,8 +108,6 @@ from .routes.agents import agent_registry as agent_registry_router
 from .routes.agents import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
-from .routers import auth
-from .routers import api_keys as api_keys_router
 from .routes.evidence import attestation as attestation_router
 from .routes.evidence import audit_anchors as audit_anchors_router
 from .routes.money_movement import batch_payments as batch_payments_router
@@ -133,7 +136,6 @@ from .routers import credentials as credentials_router
 from .routers import dashboard_metrics as dashboard_metrics_router
 from .routers import data_export as data_export_router
 from .routers import dev as dev_router
-from .routers import email_verification as email_verification_router
 from .routers import emergency as emergency_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import environment_templates as environment_templates_router
@@ -148,14 +150,12 @@ from .routes.policy import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routers import groups as groups_router
 from .routers import invoices as invoices_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
-from .routers import me as me_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
