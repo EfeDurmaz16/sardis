@@ -13,6 +13,11 @@ execution, and evidence control plane. They are not separate products.
 | `packages/sardis-mpp/` | Sardis policy-governed MPP client, session helpers, payment records, and payment methods. | MPP package |
 | `packages/sardis-api/src/sardis_api/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
 | `packages/sardis-api/src/sardis_api/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
+| `packages/sardis-api/src/sardis_api/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
+| `packages/sardis-api/src/sardis_api/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
 
 ## Request Flow Difference
 
@@ -80,7 +85,9 @@ Short term:
 
 - Keep compatibility aliases under `sardis_api.routers`.
 - Keep public routes stable: `/api/v2/x402`, `/api/v2/mpp`, and `/api/v2/demo`.
-- Move all protocol route implementations into `sardis_api.routes.protocol`.
+- Keep protocol route implementations in `sardis_api.routes.protocol`; legacy
+  `sardis_api.routers.*` files remain only as compatibility imports during the
+  route-layout migration.
 
 Later:
 

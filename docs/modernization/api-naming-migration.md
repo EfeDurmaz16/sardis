@@ -59,6 +59,7 @@ Completed so far:
 | `routers/evidence.py`, `routers/evidence_export.py`, `routers/audit_anchors.py`, `routers/attestation.py` implementations | `routes/evidence/*` with compatibility module aliases in `routers/` | Groups evidence capture, export, audit anchors, and attestation proof APIs under one evidence domain while preserving stateful legacy import targets. |
 | `routers/compliance.py`, `routers/compliance_export.py`, `routers/kyc_onboarding.py` implementations | `routes/compliance/*` with compatibility module aliases in `routers/` | Moves regulatory controls, compliance exports, and Didit KYC onboarding into one compliance domain while preserving stateful legacy import targets. |
 | `routers/x402.py`, `routers/mpp.py`, `routers/mpp_demo.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Groups payment protocol adapters together while keeping x402 and MPP as separate packages and request flows. |
+| `routers/a2a.py`, `routers/a2a_payments.py`, `routers/acp.py`, `routers/erc8183.py`, `routers/spt.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Moves the remaining protocol-adapter routes out of the flat router bucket while preserving old import paths for tests and downstream users. |
 
 The external API remains unchanged:
 
@@ -170,9 +171,10 @@ moved to `sardis_api/routes/<domain>/...`.
    `policy_simulation`, `policy_analytics`, `fallback_policies`, `evidence`,
    `evidence_export`, `audit_anchors`, `attestation`, `compliance`,
    `compliance_export`, and `kyc_onboarding`.
-6. Protocol adapters: completed for `x402`, `mpp`, and `mpp_demo`; remaining
-   protocol-like files include `a2a`, `a2a_payments`, `acp`, `erc8183`, `spt`,
-   `trust`, and `fides_identity`.
+6. Protocol adapters: completed for `x402`, `mpp`, `mpp_demo`, `a2a`,
+   `a2a_payments`, `acp`, `erc8183`, and `spt`; remaining protocol-like files
+   that need a separate identity/authority decision include `trust` and
+   `fides_identity`.
 7. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
    `agent_activity`, `agent_events`, `agent_heartbeat`, `fides_identity`,
    `auth`, `email_verification`, `me`, `organizations`, `groups`, and

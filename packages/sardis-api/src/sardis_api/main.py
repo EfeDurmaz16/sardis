@@ -91,9 +91,9 @@ from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.orchestrator import PaymentOrchestrator
 from sardis_wallet.manager import WalletManager
 
-from .routers import a2a as a2a_router
-from .routers import a2a_payments as a2a_payments_router
-from .routers import acp as acp_router
+from .routes.protocol import a2a as a2a_router
+from .routes.protocol import a2a_payments as a2a_payments_router
+from .routes.protocol import acp as acp_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routers import agent_activity as agent_activity_router
@@ -175,7 +175,7 @@ from .routers import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
 from .routers import service_directory as service_directory_router
 from .routers import simulation as simulation_router
-from .routers import spt as spt_router
+from .routes.protocol import spt as spt_router
 from .routers import stripe_connect as stripe_connect_router
 from .routers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
@@ -948,7 +948,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # ERC-8183 agentic commerce router (feature-flag gated)
     if settings.erc8183.enabled:
-        from .routers import erc8183 as erc8183_router
+        from .routes.protocol import erc8183 as erc8183_router
         app.include_router(erc8183_router.router, prefix="/api/v2", tags=["erc8183"])
         logger.info("ERC-8183 agentic commerce router registered at /api/v2/erc8183")
     else:
@@ -2164,7 +2164,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
     async def well_known_agent_card():
         """A2A agent card for discovery (standard .well-known path)."""
-        from .routers.a2a import get_agent_card
+        from .routes.protocol.a2a import get_agent_card
         return await get_agent_card()
 
     # -----------------------------------------------------------------------
