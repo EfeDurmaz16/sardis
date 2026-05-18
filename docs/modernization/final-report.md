@@ -33,6 +33,7 @@
 - Removed duplicate OpenAPI/runtime routes by keeping the canonical MPP router mount and canonical bridge quote router.
 - Made the OpenAPI check fail when FastAPI emits duplicate operation ID warnings.
 - Added a checked-in OpenAPI route contract snapshot and `pnpm openapi:update` for reviewed API surface changes.
+- Added the OpenAPI route snapshot check to the required `Python Lint & Test` CI path so public PRs cannot drift API route contracts accidentally.
 
 ## What Was Deleted
 
@@ -122,6 +123,9 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `pnpm openapi:update` generated `packages/sardis-api/openapi/openapi.routes.snapshot.json`: 600 route operations across 540 OpenAPI paths.
 - `pnpm check:openapi` passed twice against the checked route snapshot.
 - `python3 -m compileall -q packages/sardis-api/scripts/generate_openapi.py` passed after adding snapshot compare/update modes.
+- `uv run python packages/sardis-api/scripts/generate_openapi.py --check` passed after wiring the route snapshot check into CI.
+- `python3 scripts/oss_surface_check.py` passed after wiring the route snapshot check into CI.
+- `git diff --check` passed after wiring the route snapshot check into CI.
 
 Notes:
 
@@ -190,3 +194,5 @@ Notes:
 - `0b970a44 chore(api): fail OpenAPI check on duplicate operations`
 - `34ffe33d docs: record strict OpenAPI check`
 - `02d9cccd chore(api): add OpenAPI route snapshot gate`
+- `1c9d52f3 docs: record OpenAPI snapshot gate`
+- `16cad813 ci: enforce OpenAPI route snapshot`
