@@ -186,7 +186,7 @@ from .routes.wallets import treasury_ops as treasury_ops_router
 from .routes.billing import usage as usage_router
 from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
-from .routers import workflow_templates as workflow_templates_router
+from .routes.developer import workflow_templates as workflow_templates_router
 from .routes.protocol import x402 as x402_router
 
 from sardis_v2_core.agent_groups import AgentGroupRepository

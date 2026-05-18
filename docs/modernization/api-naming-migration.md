@@ -71,7 +71,7 @@ Completed so far:
 | `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
 | `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, and invoice APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
 | `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, dashboard metrics, and Prometheus collectors together under one operations domain. |
-| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, and environment templates out of the flat router bucket while preserving existing HTTP paths. |
+| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, and workflow templates out of the flat router bucket while preserving existing HTTP paths. |
 | `routers/billing.py`, `routers/usage.py` implementations | `routes/billing/*` with compatibility module aliases in `routers/` | Groups subscription, checkout, billing provider, webhook, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
 
 The external API remains unchanged:
@@ -178,6 +178,7 @@ sardis_api/
       environment_templates.py
       notifications.py
       webhook_subscriptions.py
+      workflow_templates.py
       sdk_metrics.py
     operations/
       alerts.py
@@ -234,12 +235,11 @@ moved to `sardis_api/routes/<domain>/...`.
    `dashboard_metrics`, and `metrics`.
 11. Developer and contributor-facing tools: completed for
    `webhook_subscriptions`, `enterprise_support`, `sdk_metrics`, and
-   `notifications`, and `environment_templates`.
+   `notifications`, `environment_templates`, and `workflow_templates`.
 12. Billing and usage: completed for `billing` and `usage`.
 13. Admin and miscellaneous contributor tools: `admin`,
    `admin_reconciliation`, `sandbox`, `dev`,
-   `plugins`, `workflow_templates`,
-   and remaining uncategorized route surfaces.
+   `plugins`, and remaining uncategorized route surfaces.
 
 ## Validation Required For Each Move
 
