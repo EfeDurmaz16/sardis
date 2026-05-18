@@ -360,18 +360,18 @@ class TestStablecoinCardService:
 # ── API Models ────────────────────────────────────────────────────────
 
 
-sardis_api_available = True
+sardis_server_available = True
 try:
-    from sardis_api.routers.stablecoin_cards import (
+    from sardis_server.routes.wallets.stablecoin_cards import (
         BalanceResponse,
         IssueCardRequest,
         OnboardAgentRequest,
     )
 except ImportError:
-    sardis_api_available = False
+    sardis_server_available = False
 
 
-@pytest.mark.skipif(not sardis_api_available, reason="sardis_api deps not available")
+@pytest.mark.skipif(not sardis_server_available, reason="sardis_server deps not available")
 class TestStablecoinCardAPIModels:
     def test_onboard_request(self):
         req = OnboardAgentRequest(

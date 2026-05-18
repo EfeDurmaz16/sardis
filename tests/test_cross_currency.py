@@ -315,7 +315,7 @@ class TestCrossCurrencyService:
 
 class TestSwapAPIModels:
     def test_cross_currency_quote_request(self):
-        from sardis_api.routers.swap import CrossCurrencyQuoteRequest
+        from sardis_server.routes.money_movement.swap import CrossCurrencyQuoteRequest
 
         req = CrossCurrencyQuoteRequest(
             from_currency="USDC",
@@ -325,7 +325,7 @@ class TestSwapAPIModels:
         assert req.side == "from"
 
     def test_cross_currency_trade_request(self):
-        from sardis_api.routers.swap import CrossCurrencyTradeRequest
+        from sardis_server.routes.money_movement.swap import CrossCurrencyTradeRequest
 
         req = CrossCurrencyTradeRequest(quote_id="q_test")
         assert req.quote_id == "q_test"

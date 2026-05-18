@@ -21,7 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.routers.stripe_webhooks import (
+import sardis_server.routes.providers.stripe_webhooks as stripe_webhooks
+from sardis_server.routes.providers.stripe_webhooks import (
     ISSUING_EVENTS,
     TREASURY_EVENTS,
     StripeWebhookDeps,
@@ -103,7 +104,6 @@ def app(deps):
     def override_get_deps():
         return deps
 
-    from sardis_api.routers import stripe_webhooks
     original_get_deps = stripe_webhooks.get_deps
     stripe_webhooks.get_deps = override_get_deps
     app.dependency_overrides[original_get_deps] = override_get_deps
