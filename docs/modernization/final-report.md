@@ -35,6 +35,7 @@
 - Added a checked-in OpenAPI route contract snapshot and `pnpm openapi:update` for reviewed API surface changes.
 - Added the OpenAPI route snapshot check to the required `Python Lint & Test` CI path so public PRs cannot drift API route contracts accidentally.
 - Removed public dashboard deployment workflows from OSS CI/CD while keeping API and landing deployment paths intact.
+- Removed tracked company-specific SOC2/ops docs from the public source surface and expanded `scripts/oss_surface_check.py` to block investor, ops, and SOC2 private prefixes going forward.
 
 ## What Was Deleted
 
@@ -52,6 +53,7 @@
   - `ops/grafana/`
 - Deleted generated Solana local-validator ledger/keypair artifacts under `packages/sardis-solana-program/.anchor/test-ledger/`.
 - Deleted `.github/workflows/deploy-dashboard.yml`; hosted dashboard deployment belongs in the future private product repo.
+- Deleted tracked company-specific SOC2/ops docs from `docs/compliance/soc2/` and `docs/ops/`.
 
 ## What Was Rewritten
 
@@ -132,6 +134,10 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - Public CI/CD dashboard deploy reference scan returned no matches for dashboard deploy secrets or hosted dashboard deploy URLs in `.github/workflows`, `docs/packages.md`, and `docs/oss/public-private-boundary.md`.
 - `python3 scripts/oss_surface_check.py` passed after removing dashboard deploy workflows.
 - `git diff --check` passed after removing dashboard deploy workflows.
+- `python3 scripts/oss_surface_check.py` passed after blocking private investor, ops, and SOC2 prefixes.
+- `git ls-files 'docs/ops/**' 'docs/compliance/soc2/**' 'docs/investor/**' 'docs/sales/**' 'docs/yc/**'` returned no tracked files.
+- `python3 -m compileall -q scripts/oss_surface_check.py` passed after expanding the checker.
+- `git diff --check` passed after removing private ops docs.
 
 Notes:
 
@@ -205,3 +211,5 @@ Notes:
 - `16cad813 ci: enforce OpenAPI route snapshot`
 - `a34a3573 docs: record OpenAPI CI gate`
 - `6acd44ec ci: remove dashboard deploy workflows`
+- `ece27ef4 docs: record dashboard deploy cleanup`
+- `5706d1c5 chore: remove private ops docs from public surface`
