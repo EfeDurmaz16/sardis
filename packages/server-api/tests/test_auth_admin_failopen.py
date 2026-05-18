@@ -23,7 +23,7 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis.routes.accounts import auth
+from sardis_server.routes.accounts import auth
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ async def test_admin_login_rejects_on_primary_auth_failure(transport):
 
     with (
         patch.dict(os.environ, env_vars, clear=False),
-        patch("sardis.services.auth_service.AuthService", mock_auth_cls),
+        patch("sardis_server.services.auth_service.AuthService", mock_auth_cls),
     ):
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post(

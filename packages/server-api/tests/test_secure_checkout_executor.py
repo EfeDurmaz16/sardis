@@ -13,8 +13,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sardis_v2_core.spending_policy import SpendingPolicy
 
-from sardis.authz import Principal, require_principal
-from sardis.routes.commerce import secure_checkout
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.commerce import secure_checkout
 
 
 class _WalletRepo:
@@ -653,7 +653,7 @@ def test_prod_pan_entry_requires_allowlist(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.delenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", raising=False)
     app = _build_app(policy_store=_PolicyStore())
     client = TestClient(app)
@@ -678,7 +678,7 @@ def test_prod_pan_entry_allowlisted_is_permitted(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     app = _build_app(policy_store=_PolicyStore())
     client = TestClient(app)
@@ -705,7 +705,7 @@ def test_prod_pan_boundary_mode_can_disallow_pan_entry(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_only")
     app = _build_app(policy_store=_PolicyStore())
@@ -732,7 +732,7 @@ def test_prod_provider_profile_locks_boundary_mode_for_stripe(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     # Intentionally looser than Stripe profile to verify production lock.
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
@@ -768,7 +768,7 @@ def test_prod_provider_profile_lithic_defaults_to_hosted_only(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
     app = _build_app(policy_store=_PolicyStore())
@@ -803,7 +803,7 @@ def test_prod_provider_profile_lithic_can_allow_break_glass_with_override(monkey
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_BOUNDARY_MODE", "issuer_hosted_iframe_plus_enclave_break_glass")
     monkeypatch.setenv(
@@ -835,7 +835,7 @@ def test_prod_pan_execute_requires_dispatch_runtime_readiness(monkeypatch):
     monkeypatch.setenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     monkeypatch.setenv("SARDIS_CHECKOUT_EXECUTOR_TOKEN", "exec_secret")
     monkeypatch.delenv("SARDIS_CHECKOUT_EXECUTOR_DISPATCH_URL", raising=False)
@@ -871,7 +871,7 @@ def test_prod_pan_execute_requires_shared_secret_store(monkeypatch):
     monkeypatch.delenv("SARDIS_CHECKOUT_ALLOW_INMEMORY_SECRET_STORE", raising=False)
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_EXECUTION_ENABLED", "1")
     monkeypatch.setenv("SARDIS_CHECKOUT_PCI_ATTESTATION_ACK", "1")
-    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis.example")
+    monkeypatch.setenv("SARDIS_CHECKOUT_QSA_CONTACT", "qsa@sardis_server.example")
     monkeypatch.setenv("SARDIS_CHECKOUT_PAN_ENTRY_ALLOWED_MERCHANTS", "www.amazon.com")
     app = _build_app(policy_store=_PolicyStore())
     client = TestClient(app)
@@ -976,7 +976,7 @@ def test_execute_dispatches_to_external_worker_when_configured(monkeypatch):
     mock_client.__aexit__.return_value = None
     mock_client.post.return_value = mock_response
 
-    with patch("sardis.routes.commerce.secure_checkout.httpx.AsyncClient", return_value=mock_client):
+    with patch("sardis_server.routes.commerce.secure_checkout.httpx.AsyncClient", return_value=mock_client):
         executed = client.post(
             f"/api/v2/checkout/secure/jobs/{job_id}/execute",
             json={"approval_id": "appr_ok"},

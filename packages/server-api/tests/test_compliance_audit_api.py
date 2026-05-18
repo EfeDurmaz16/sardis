@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.authz import Principal, require_admin_principal, require_principal
-from sardis.routes.compliance.compliance import ComplianceDependencies, get_deps, router
+from sardis_server.authz import Principal, require_admin_principal, require_principal
+from sardis_server.routes.compliance.compliance import ComplianceDependencies, get_deps, router
 
 
 class _MockProvider:

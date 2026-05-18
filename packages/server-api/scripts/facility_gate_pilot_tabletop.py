@@ -45,15 +45,15 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
 from sardis_v2_core.spending_mandate import SpendingMandate
 
-from sardis.authz import Principal, require_principal
-from sardis.repositories.facility_gate_repository import FacilityGateRepository
-from sardis.routes.authority import facility_requests
-from sardis.services.facility_gate_authority import (
+from sardis_server.authz import Principal, require_principal
+from sardis_server.repositories.facility_gate_repository import FacilityGateRepository
+from sardis_server.routes.authority import facility_requests
+from sardis_server.services.facility_gate_authority import (
     RepositoryBackedFacilityMandateResolver,
     RepositoryBackedFacilityPolicyResolver,
     RepositoryBackedFacilityRecordResolver,
 )
-from sardis.services.facility_gate_replay import FacilityGateReplayService
+from sardis_server.services.facility_gate_replay import FacilityGateReplayService
 
 
 @dataclass(frozen=True)

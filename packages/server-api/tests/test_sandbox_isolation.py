@@ -27,7 +27,7 @@ def _namespace_for(token: str) -> str:
 @pytest.fixture(autouse=True)
 def reset_sandbox_manager():
     """Reset the global SandboxStoreManager before every test for isolation."""
-    from sardis.routes.developer import sandbox as sandbox_mod
+    from sardis_server.routes.developer import sandbox as sandbox_mod
     sandbox_mod._manager = sandbox_mod.SandboxStoreManager()
     yield
     # No teardown needed; next test resets again.
@@ -35,7 +35,7 @@ def reset_sandbox_manager():
 
 @pytest.fixture
 def app():
-    from sardis.main import create_app
+    from sardis_server.main import create_app
     return create_app()
 
 
@@ -175,7 +175,7 @@ async def test_delete_reset_only_resets_caller_namespace(dev_a_client, dev_b_cli
 @pytest.mark.asyncio
 async def test_rate_limit_returns_429_after_60_requests(app):
     """After 60 requests within the rate-limit window the 61st must return 429."""
-    from sardis.routes.developer.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
+    from sardis_server.routes.developer.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
 
     token = "token_rate_limit_test"
     namespace = _namespace_for(token)
@@ -202,7 +202,7 @@ async def test_rate_limit_returns_429_after_60_requests(app):
 @pytest.mark.asyncio
 async def test_rate_limit_resets_after_window(app):
     """Requests outside the window are not counted toward the limit."""
-    from sardis.routes.developer.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
+    from sardis_server.routes.developer.sandbox import RATE_LIMIT_WINDOW_SECONDS, _manager
 
     token = "token_window_expiry_test"
     namespace = _namespace_for(token)
@@ -228,13 +228,13 @@ async def test_rate_limit_resets_after_window(app):
 @pytest.mark.asyncio
 async def test_stores_expire_after_24h_inactivity(app):
     """A store whose last_accessed is >24h ago is evicted on next access."""
-    from sardis.routes.developer.sandbox import _manager
+    from sardis_server.routes.developer.sandbox import _manager
 
     token = "token_ttl_expiry_test"
     namespace = _namespace_for(token)
 
     # Manually create a store and backdate its last_accessed by more than 24h.
-    from sardis.routes.developer.sandbox import SandboxStore
+    from sardis_server.routes.developer.sandbox import SandboxStore
     stale_store = SandboxStore()
     stale_store.last_accessed = datetime.now(UTC) - timedelta(hours=25)
     _manager._stores[namespace] = stale_store

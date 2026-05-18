@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.authz import Principal, require_principal
-from sardis.routes.policy import fallback_policies
-from sardis.routes.policy.fallback_policies import router
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.policy import fallback_policies
+from sardis_server.routes.policy.fallback_policies import router
 
 
 def _make_app() -> FastAPI:

@@ -71,7 +71,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
 CMD cd /app/packages/server-api && \
     PYTHONPATH="/app/packages/server-api/src:$(find /app/packages -type d -name src ! -path '/app/packages/server-api/src' | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
-    gunicorn "sardis.main:create_app()" \
+    gunicorn "sardis_server.main:create_app()" \
     -w ${SARDIS_WORKERS:-4} \
     -k uvicorn.workers.UvicornWorker \
     -b 0.0.0.0:${PORT} \

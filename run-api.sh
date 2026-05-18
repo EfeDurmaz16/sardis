@@ -40,4 +40,4 @@ echo "  - Cards enabled: $SARDIS_ENABLE_CARDS"
 echo ""
 
 # Run with uv
-uv run uvicorn --app-dir packages/server-api/src sardis.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn --app-dir packages/server-api/src sardis_server.main:create_app --factory --host 0.0.0.0 --port 8000 --reload

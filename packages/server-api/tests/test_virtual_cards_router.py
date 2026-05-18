@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.authz import Principal, require_principal
-from sardis.routes.wallets import virtual_cards
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.wallets import virtual_cards
 
 
 def _make_app() -> FastAPI:

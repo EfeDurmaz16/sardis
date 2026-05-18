@@ -8,16 +8,16 @@ execution, and evidence control plane. They are not separate products.
 | Surface | Role | Code owner |
 | --- | --- | --- |
 | `packages/sardis-protocol/src/sardis_protocol/x402*.py` | x402 challenge, verification, ERC-3009, and settlement primitives. | Protocol package |
-| `packages/server-api/src/sardis/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
-| `packages/server-api/src/sardis/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
+| `packages/server-api/src/sardis_server/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
+| `packages/server-api/src/sardis_server/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
 | `packages/sardis-mpp/` | Sardis policy-governed MPP client, session helpers, payment records, and payment methods. | MPP package |
-| `packages/server-api/src/sardis/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
-| `packages/server-api/src/sardis/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
-| `packages/server-api/src/sardis/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
-| `packages/server-api/src/sardis/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
-| `packages/server-api/src/sardis/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
-| `packages/server-api/src/sardis/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
-| `packages/server-api/src/sardis/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
+| `packages/server-api/src/sardis_server/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
+| `packages/server-api/src/sardis_server/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
+| `packages/server-api/src/sardis_server/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
+| `packages/server-api/src/sardis_server/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
+| `packages/server-api/src/sardis_server/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
+| `packages/server-api/src/sardis_server/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
+| `packages/server-api/src/sardis_server/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
 
 ## Request Flow Difference
 
@@ -64,7 +64,7 @@ formats are different:
   client-side HTTP transport behavior.
 
 The API should group their HTTP routes together under
-`sardis.routes.protocol` because contributors looking for protocol
+`sardis_server.routes.protocol` because contributors looking for protocol
 adapters should not search the legacy flat `routers/` directory.
 
 ## Shared Sardis Invariant
@@ -83,11 +83,8 @@ Both flows must eventually pass through the same Sardis invariants:
 
 Short term:
 
-- Keep compatibility aliases under `sardis.routers`.
 - Keep public routes stable: `/api/v2/x402`, `/api/v2/mpp`, and `/api/v2/demo`.
-- Keep protocol route implementations in `sardis.routes.protocol`; legacy
-  `sardis.routers.*` files remain only as compatibility imports during the
-  route-layout migration.
+- Keep protocol route implementations in `sardis_server.routes.protocol`.
 
 Later:
 

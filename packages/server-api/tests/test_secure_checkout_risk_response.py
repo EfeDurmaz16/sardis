@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from sardis.routes.commerce import secure_checkout
+from sardis_server.routes.commerce import secure_checkout
 
 
 class _CardRepo:

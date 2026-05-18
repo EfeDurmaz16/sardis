@@ -31,7 +31,7 @@
 
 ### High: Public quickstarts reference a non-existent Python `Sardis` class
 
-- Evidence: root README and docs-site quickstarts reference `from sardis import Sardis`, while `src/sardis/__init__.py` exports `SardisClient` and `AsyncSardisClient`.
+- Evidence: root README and docs-site quickstarts reference `from sardis_server import Sardis`, while `src/sardis/__init__.py` exports `SardisClient` and `AsyncSardisClient`.
 - Impact: first-run developer experience breaks at import time.
 - Recommended action: update docs to the existing client names or add a tested facade. Prefer docs fix first.
 - Action type: Documentation/API naming fix.

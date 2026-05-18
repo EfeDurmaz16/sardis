@@ -5,7 +5,7 @@ import inspect
 
 
 def test_main_has_explicit_sandbox_enable_flag():
-    from sardis import main
+    from sardis_server import main
 
     source = inspect.getsource(main)
     assert "SARDIS_ENABLE_SANDBOX" in source

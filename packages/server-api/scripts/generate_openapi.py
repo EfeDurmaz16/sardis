@@ -86,7 +86,7 @@ def contract_manifest(openapi_schema: dict) -> dict:
 
 def generate_openapi():
     """Generate OpenAPI spec from the FastAPI app."""
-    from sardis.main import create_app
+    from sardis_server.main import create_app
 
     app = create_app()
     with warnings.catch_warnings(record=True) as caught:

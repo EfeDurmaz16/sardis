@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import sardis.routes.accounts.data_export as _mod
+import sardis_server.routes.accounts.data_export as _mod
 
 
 def _reset_stores():

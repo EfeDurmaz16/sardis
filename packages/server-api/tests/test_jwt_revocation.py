@@ -6,7 +6,7 @@ import secrets
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from sardis.routes.accounts.auth import create_jwt_token
+from sardis_server.routes.accounts.auth import create_jwt_token
 
 
 @pytest.mark.asyncio

@@ -8,13 +8,13 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.authz import Principal, require_principal
-from sardis.routes.billing.subscriptions import (
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.billing.subscriptions import (
     SubscriptionDependencies,
     get_deps,
     router,
 )
-from sardis.services.recurring_billing import RecurringBillingService, compute_next_billing
+from sardis_server.services.recurring_billing import RecurringBillingService, compute_next_billing
 
 
 @dataclass

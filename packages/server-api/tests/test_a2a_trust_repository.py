@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis.repositories.a2a_trust_repository import A2ATrustRepository
+from sardis_server.repositories.a2a_trust_repository import A2ATrustRepository
 
 
 class _FakeConn:

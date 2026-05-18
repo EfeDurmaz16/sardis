@@ -1,4 +1,4 @@
-"""Tests for sardis.email_templates module."""
+"""Tests for sardis_server.email_templates module."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis.email_templates import (
+from sardis_server.email_templates import (
     _kyc_status_html,
     _payment_notification_html,
     _plan_upgrade_html,
@@ -55,7 +55,7 @@ class TestSendEmailNoOp:
         mock_loop = MagicMock()
         mock_loop.run_in_executor = AsyncMock(return_value=None)
         with patch.dict(os.environ, smtp_env, clear=False):
-            with patch("sardis.email_templates.asyncio") as mock_asyncio:
+            with patch("sardis_server.email_templates.asyncio") as mock_asyncio:
                 mock_asyncio.get_event_loop.return_value = mock_loop
                 result = await send_email(
                     "user@example.com",

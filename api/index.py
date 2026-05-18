@@ -9,8 +9,8 @@ from __future__ import annotations
 import os
 import sys
 
-# Add monorepo packages to the path. Keep server-api first because it also uses
-# the top-level `sardis` import package name.
+# Add monorepo packages to the path. The server API uses the dedicated
+# `sardis_server` import package so it cannot collide with the public SDK.
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 packages_dir = os.path.join(root_dir, "packages")
 sys.path[:0] = [
@@ -24,7 +24,7 @@ sys.path[:0] = [
     os.path.join(packages_dir, "sardis-cards", "src"),
 ]
 
-from sardis.main import create_app  # noqa: E402
+from sardis_server.main import create_app  # noqa: E402
 
 # Create the FastAPI app
 app = create_app()

@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.routes.providers.partner_card_webhooks import (
+from sardis_server.routes.providers.partner_card_webhooks import (
     PartnerCardWebhookDeps,
     get_deps,
     router,

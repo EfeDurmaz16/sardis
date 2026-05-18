@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis.repositories.treasury_repository import TreasuryRepository
+from sardis_server.repositories.treasury_repository import TreasuryRepository
 
 
 @pytest.mark.asyncio

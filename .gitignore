@@ -130,6 +130,10 @@ docs/audits/*
 !/docs/oss/**
 !/docs/quickstart/
 !/docs/docs/
+!/docs/security/
+docs/security/*
+!/docs/security/payment-hardening/
+!/docs/security/payment-hardening/**
 /demos/sardis-demo-video/
 docs/marketing/
 docs/investor/

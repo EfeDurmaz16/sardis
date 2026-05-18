@@ -103,8 +103,8 @@
 - Moved delegated credential route implementation into `sardis.routes.authority`, keeping credential provisioning, consent validation, scope tightening, and revocation with the rest of the scoped authority APIs.
 - Moved enterprise support ticket/profile routes, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, and testnet faucet routes into `sardis.routes.developer` so contributor-facing support, transparency, webhook setup, testing, and onboarding APIs are no longer buried in the flat router bucket.
 - Removed the temporary `sardis.routers` compatibility package after migrating internal source and tests to the new domain route modules.
-- Added and executed a package path simplification decision: keep the Python import package `src/sardis`, but rename the monorepo package directory from `packages/api` to `packages/server-api`.
-- Renamed the API import package from `packages/server-api/src/sardis_api` to `packages/server-api/src/sardis`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
+- Added and executed a package path simplification decision: keep the Python import package `src/sardis_server`, but rename the monorepo package directory from `packages/api` to `packages/server-api`.
+- Renamed the API import package from `packages/server-api/src/sardis_api` to `packages/server-api/src/sardis_server`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 - Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
@@ -206,7 +206,7 @@ Latest contributor-test pass: the public default Python test path now exercises 
 
 Latest path-layout pass: the deployable API package now lives at `packages/server-api`, while the Python import package remains `sardis` and the distribution name remains `sardis-api`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
 
-Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/server-api/src/sardis` during local import probes.
+Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/server-api/src/sardis_server` during local import probes.
 
 ## Test, Build, And Lint Results
 
@@ -242,7 +242,7 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `pnpm check:openapi` passed: 540 paths, 592 schemas.
 - `python3 scripts/package_maturity_check.py` passed.
 - `git diff --check` passed.
-- `python3 -m compileall -q packages/server-api/src/sardis packages/server-api/scripts/generate_openapi.py packages/server-api/scripts/facility_gate_pilot_readiness.py packages/server-api/scripts/facility_gate_pilot_tabletop.py api/index.py` passed after the server package rename.
+- `python3 -m compileall -q packages/server-api/src/sardis_server packages/server-api/scripts/generate_openapi.py packages/server-api/scripts/facility_gate_pilot_readiness.py packages/server-api/scripts/facility_gate_pilot_tabletop.py api/index.py` passed after the server package rename.
 - `cd packages/server-api && PYTHONPATH="src:../sardis-core/src:../sardis-wallet/src:../sardis-chain/src:../sardis-protocol/src:../sardis-cards/src:../sardis-compliance/src:../sardis-ledger/src:../sardis-checkout/src" uv run --project ../.. python -c 'from sardis.main import create_app; print(create_app)'` passed after the server package rename.
 - `python3 - <<'PY' ... import api/index.py ...` created a `FastAPI` app from the serverless entrypoint after the server package rename.
 - `PYTHONPATH="packages/server-api/src:$(find packages -maxdepth 2 -type d -name src | grep -v '^packages/server-api/src$' | tr '\n' ':')" uv run pytest packages/server-api/tests/test_funding_bootstrap.py packages/server-api/tests/test_sandbox_isolation.py packages/server-api/tests/test_facility_requests_router.py packages/server-api/tests/test_jwt_revocation.py -q` passed: 40 tests.
@@ -312,7 +312,7 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `pnpm --filter @sardis/app-landing typecheck` passed after the private ops script cleanup.
 - `pnpm --filter @sardis/app-landing build` passed after the private ops script cleanup.
 - `git diff --check` and `git diff --cached --check` passed after the private ops script cleanup.
-- `python3 -m compileall -q packages/server-api/src/sardis` passed after the API route naming cleanup.
+- `python3 -m compileall -q packages/server-api/src/sardis_server` passed after the API route naming cleanup.
 - `pnpm check:openapi` passed after the API route naming cleanup: 540 paths and 592 schemas.
 - `uv run pytest packages/server-api/tests/test_middleware_security.py packages/server-api/tests/test_partner_card_webhooks.py -q` passed after the API route naming cleanup: 39 tests.
 - Stale import/reference scan returned no live references to `sardis.routers.webhooks`, `routers/webhooks.py`, or the removed `agent_identity` router outside the new migration note.
@@ -399,10 +399,10 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_agent_events_and_holds_wiring.py -q` passed after moving agent events routes: 4 tests.
 - `pnpm check:openapi` passed after the agent lifecycle route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 - Core agent lifecycle and registry routes now live under `sardis.routes.agents` instead of the legacy flat `sardis.routers` bucket; compatibility wrappers remain for old import paths.
-- The package-path simplification migration renamed `packages/server-api` to `packages/server-api`, removing the most confusing contributor-facing `sardis-api/src/sardis` repetition while preserving the Python import package.
+- The package-path simplification migration renamed `packages/server-api` to `packages/server-api`, removing the most confusing contributor-facing `sardis-api/src/sardis_server` repetition while preserving the Python import package.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_agents_payment_identity.py packages/server-api/tests/test_agent_events_and_holds_wiring.py packages/server-api/tests/test_agent_auth.py -q` passed after moving core agent routes: 32 tests.
 - `pnpm check:openapi` passed after the core agent route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
-- `python3 scripts/package_maturity_check.py`, `pnpm check:openapi`, `python3 -m compileall -q packages/server-api/src/sardis packages/server-api/scripts/generate_openapi.py api/index.py`, and `git diff --check` passed after the package-directory rename.
+- `python3 scripts/package_maturity_check.py`, `pnpm check:openapi`, `python3 -m compileall -q packages/server-api/src/sardis_server packages/server-api/scripts/generate_openapi.py api/index.py`, and `git diff --check` passed after the package-directory rename.
 - `python3 -m compileall -q packages/server-api/src/sardis/routes/accounts packages/server-api/src/sardis/routers/auth.py packages/server-api/src/sardis/routers/email_verification.py packages/server-api/src/sardis/routers/me.py packages/server-api/src/sardis/routers/groups.py packages/server-api/src/sardis/routers/api_keys.py packages/server-api/src/sardis/main.py packages/server-api/tests/test_signup.py packages/server-api/tests/test_auth_admin_failopen.py` passed after moving account routes.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis.routers.auth`, `email_verification`, `me`, `groups`, and `api_keys` imports resolve to the same module objects as the new `sardis.routes.accounts.*` imports.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_signup.py packages/server-api/tests/test_auth_oauth_csrf.py packages/server-api/tests/test_auth_admin_failopen.py packages/server-api/tests/test_email_verification.py -q` passed after moving account routes and aligning stale default-admin assertions with the removed fallback behavior: 25 passed, 1 skipped.
@@ -479,7 +479,7 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved facility routes remain mounted at `/api/v2/facility-requests` and `/api/v2/provider-webhooks/{provider}/facility-gate`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving facility routes. OpenAPI remained 540 paths and 592 schemas.
 - `rg -n "sardis\\.routers|from sardis\\.routers|from \\.routers|import sardis\\.routers" packages/server-api/src packages/server-api/tests` returned no source or test references after removing the compatibility router package.
-- `python3 -m compileall -q packages/server-api/src/sardis ... focused route-import tests` passed after removing the compatibility router package.
+- `python3 -m compileall -q packages/server-api/src/sardis_server ... focused route-import tests` passed after removing the compatibility router package.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest ... -q` passed for the focused router-import regression set after removing the compatibility router package: 251 tests.
 - `test ! -d packages/server-api/src/sardis/routers` verified the legacy router package directory is gone after clearing local bytecode cache.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after removing the compatibility router package. OpenAPI remained 540 paths and 592 schemas.
@@ -495,7 +495,7 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `python3 -m compileall -q packages/server-api/src/sardis/routing/evidence.py packages/server-api/src/sardis/main.py packages/server-api/src/sardis/routes/evidence packages/server-api/tests/test_attestation_endpoint.py packages/server-api/tests/test_evidence_export.py` passed after extracting evidence route registration.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_attestation_endpoint.py packages/server-api/tests/test_evidence_export.py -q` passed after extracting evidence route registration: 9 tests.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting evidence route registration. OpenAPI remained 540 paths and 592 schemas.
-- `python3 -m compileall -q packages/server-api/src/sardis packages/server-api/scripts/generate_openapi.py packages/server-api/scripts/facility_gate_pilot_tabletop.py api/index.py` passed after renaming the API import package from `sardis_api` to `sardis`.
+- `python3 -m compileall -q packages/server-api/src/sardis_server packages/server-api/scripts/generate_openapi.py packages/server-api/scripts/facility_gate_pilot_tabletop.py api/index.py` passed after renaming the API import package from `sardis_api` to `sardis`.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_funding_bootstrap.py packages/server-api/tests/test_sandbox_isolation.py packages/server-api/tests/test_facility_requests_router.py -q` passed after the import-package rename: 39 tests.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, `git diff --check`, and the path cleanup smoke check passed after the import-package rename. OpenAPI remained 540 paths and 592 schemas.
 

@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis.authz import Principal, require_principal
-from sardis.routes.wallets.funding_capabilities import (
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.wallets.funding_capabilities import (
     FundingCapabilitiesDeps,
     get_deps,
     router,

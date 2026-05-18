@@ -4,8 +4,8 @@ import pytest
 from sardis_v2_core.facility_gate import Facility
 from sardis_v2_core.spending_mandate import SpendingMandate
 
-from sardis.repositories.facility_gate_repository import FacilityGateRepository
-from sardis.services.facility_gate_authority import (
+from sardis_server.repositories.facility_gate_repository import FacilityGateRepository
+from sardis_server.services.facility_gate_authority import (
     InMemoryFacilityMandateResolver,
     InMemoryVersionedFacilityPolicyResolver,
     RepositoryBackedFacilityMandateResolver,

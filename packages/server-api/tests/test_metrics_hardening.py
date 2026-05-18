@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from sardis.middleware.logging import StructuredLoggingMiddleware
-from sardis.routes.operations.metrics import (
+from sardis_server.middleware.logging import StructuredLoggingMiddleware
+from sardis_server.routes.operations.metrics import (
     approval_queue_depth,
     payment_execution_duration_seconds,
     policy_denial_burst_window,
