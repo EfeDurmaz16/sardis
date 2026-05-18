@@ -6,7 +6,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 ## Current Snapshot
 
 - Root Python test files: `233`
-- Files with stale API import/path references: `12`
+- Files with stale API import/path references: `11`
 - Default pytest path: `packages/server-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
@@ -36,7 +36,6 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | --- | --- | ---: |
 | `tests/integration/test_api_integration.py` | `packages/server-api/tests` | 2 |
 | `tests/integration/test_delegated_payment_e2e.py` | `package-owned integration test or archive-candidate` | 2 |
-| `tests/test_acp_checkout.py` | `packages/server-api/tests` | 7 |
 | `tests/test_admin_reconciliation.py` | `packages/sardis-ledger/tests` | 7 |
 | `tests/test_checkout_eip712.py` | `packages/server-api/tests` | 4 |
 | `tests/test_checkout_onchain_verification.py` | `packages/server-api/tests` | 9 |

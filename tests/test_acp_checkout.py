@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clean_acp_state():
     """Reset in-memory ACP state between tests."""
-    from sardis_api.routers.acp import _delegate_tokens, _sessions
+    from sardis_server.routes.protocol.acp import _delegate_tokens, _sessions
     _sessions.clear()
     _delegate_tokens.clear()
     yield
@@ -37,8 +37,8 @@ def _clean_acp_state():
 @pytest.fixture
 def acp_app():
     """Create a test FastAPI app with the ACP router."""
-    from sardis_api.authz import Principal, require_principal
-    from sardis_api.routers.acp import router
+    from sardis_server.authz import Principal, require_principal
+    from sardis_server.routes.protocol.acp import router
 
     app = FastAPI()
 
@@ -93,7 +93,7 @@ class TestCreateCheckoutSession:
         resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={
-                "items": [{"id": "sardis_api_credits_1000", "quantity": 5}],
+                "items": [{"id": "sardis_credits_1000", "quantity": 5}],
                 "buyer_information": {
                     "name": "Agent Smith",
                     "email": "agent@example.com",
@@ -120,7 +120,7 @@ class TestCreateCheckoutSession:
             json={
                 "items": [
                     {"id": "sardis_pro_monthly", "quantity": 1},
-                    {"id": "sardis_api_credits_1000", "quantity": 3},
+                    {"id": "sardis_credits_1000", "quantity": 3},
                 ],
             },
         )
@@ -291,7 +291,7 @@ class TestUpdateCheckoutSession:
         # Try to update
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}",
-            json={"items": [{"id": "sardis_api_credits_1000", "quantity": 1}]},
+            json={"items": [{"id": "sardis_credits_1000", "quantity": 1}]},
         )
         assert resp.status_code == 409
 
@@ -309,7 +309,7 @@ class TestUpdateCheckoutSession:
         # Try to update
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}",
-            json={"items": [{"id": "sardis_api_credits_1000", "quantity": 1}]},
+            json={"items": [{"id": "sardis_credits_1000", "quantity": 1}]},
         )
         assert resp.status_code == 409
 
@@ -400,7 +400,7 @@ class TestCompleteCheckoutSession:
     def test_complete_with_delegate_payment(self, client):
         """Complete with delegate payment token (dev mode)."""
         # First create a delegate token
-        from sardis_api.routers.acp import _delegate_tokens
+        from sardis_server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_test123"] = {
             "id": "vt_test123",
             "stripe_payment_method_id": None,
@@ -430,7 +430,7 @@ class TestCompleteCheckoutSession:
 
     def test_complete_delegate_wrong_session(self, client):
         """Reject delegate token scoped to a different session."""
-        from sardis_api.routers.acp import _delegate_tokens
+        from sardis_server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_scoped"] = {
             "id": "vt_scoped",
             "stripe_payment_method_id": None,
@@ -460,7 +460,7 @@ class TestCompleteCheckoutSession:
 
     def test_complete_delegate_exceeds_allowance(self, client):
         """Reject when amount exceeds delegate allowance."""
-        from sardis_api.routers.acp import _delegate_tokens
+        from sardis_server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_small"] = {
             "id": "vt_small",
             "stripe_payment_method_id": None,
@@ -701,7 +701,7 @@ class TestACPLifecycle:
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={
-                "items": [{"id": "sardis_api_credits_1000", "quantity": 2}],
+                "items": [{"id": "sardis_credits_1000", "quantity": 2}],
                 "buyer_information": {"name": "AI Agent", "email": "ai@agent.com"},
             },
         )
@@ -714,7 +714,7 @@ class TestACPLifecycle:
             f"/api/v2/acp/checkout_sessions/{session_id}",
             json={
                 "items": [
-                    {"id": "sardis_api_credits_1000", "quantity": 5},
+                    {"id": "sardis_credits_1000", "quantity": 5},
                     {"id": "sardis_pro_monthly", "quantity": 1},
                 ],
             },
@@ -818,7 +818,7 @@ class TestACPWebhooks:
 
     def test_webhook_emitted_on_create(self, client):
         """Webhook is emitted when session is created."""
-        with patch("sardis_api.routers.acp._send_acp_webhook", new_callable=AsyncMock) as mock_send:
+        with patch("sardis_server.routes.protocol.acp._send_acp_webhook", new_callable=AsyncMock) as mock_send:
             resp = client.post(
                 "/api/v2/acp/checkout_sessions",
                 json={
