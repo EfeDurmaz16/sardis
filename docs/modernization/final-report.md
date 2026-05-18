@@ -25,6 +25,7 @@
 - Added package README entrypoints for experimental and private-candidate packages that previously had tracked source but no README.
 - Mapped every tracked Python `sardis-*` package to a local editable `[tool.uv.sources]` entry so contributor checks exercise the checkout instead of published packages with matching names.
 - Documented the Python local-source verification command in `docs/development.md`.
+- Modernized low-risk Pydantic/FastAPI configuration usage by replacing class-based config, deprecated `regex=`, and deprecated `Field(example=...)` usage in the touched API/core/provider modules.
 
 ## What Was Deleted
 
@@ -66,7 +67,7 @@ Before: Sardis had a viable monorepo stack, but modernization work lacked a comm
 
 After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
 
-Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, and uv resolves repo-local Sardis Python packages from editable checkout paths.
+Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, uv resolves repo-local Sardis Python packages from editable checkout paths, and the first Pydantic/FastAPI upgrade blockers have been removed from core/API config surfaces.
 
 ## Test, Build, And Lint Results
 
@@ -86,6 +87,11 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `uv lock --check` passed after adding the complete local editable Python source map.
 - `uv run --extra api python - <<'PY' ... direct_url.json ...` verified `sardis-api`, `sardis-chain`, `sardis-compliance`, `sardis-ledger`, and `sardis-sdk` install from local editable `file://` sources.
 - `uv run pytest packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 5 tests.
+- `python3 -m compileall -q packages/sardis-core/src packages/sardis-api/src packages/sardis-striga/src` passed after Pydantic config cleanup.
+- `uv run --extra api python - <<'PY' ... SardisSettings/Agent/AgentGroup/Wallet ...` verified settings prefixes and JSON-mode model serialization.
+- `uv run --with-editable ./packages/sardis-striga python - <<'PY' ... StrigaConfig ...` verified the standalone Striga config prefix.
+- `uv run pytest packages/sardis-api/tests/test_merchant_checkout.py packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 49 tests.
+- `rg -n "class Config:|regex=|Field\\([^\\n]*example=" packages/sardis-core/src packages/sardis-api/src packages/sardis-striga/src` returned no matches.
 
 Notes:
 
@@ -108,7 +114,7 @@ Notes:
 - Add replay tests for `/api/v2/pay` and batch payments.
 - Standardize provider webhook replay protection.
 - Harden checkout nonce/replay binding.
-- Convert remaining Pydantic class-based config and deprecated FastAPI `regex` usage before Pydantic/FastAPI upgrades turn warnings into failures.
+- Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
 - Add an OpenAPI snapshot/diff command before router refactors.
 - Create the private `sardis-product` or `sardis-cloud` repo and move dashboard/product surfaces out of the OSS contribution path.
 
@@ -138,3 +144,5 @@ Notes:
 - `8c5be376 chore: make OSS tooling installs deterministic`
 - `3f0716c1 docs: document experimental and private-candidate packages`
 - `b3cee4d4 chore(python): map Sardis packages to local uv sources`
+- `6cf2117f docs: record Python source mapping cleanup`
+- `f7621c11 chore(python): modernize Pydantic config usage`
