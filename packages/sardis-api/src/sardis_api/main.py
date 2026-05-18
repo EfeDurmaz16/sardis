@@ -103,7 +103,7 @@ from .routers import agent_registry as agent_registry_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
-from .routers import ap2, auth, mandates, mvp, pay
+from .routers import ap2, auth, mandates, mvp
 from .routers import api_keys as api_keys_router
 from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
@@ -235,6 +235,7 @@ from .repositories.secure_checkout_job_repository import SecureCheckoutJobReposi
 from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .routing.developer import register_webhook_subscriptions
+from .routing.money_movement import register_pay_endpoint
 from .services.recurring_billing import RecurringBillingService
 
 # Configure structured logging
@@ -809,12 +810,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
-    # Unified /pay endpoint
-    app.dependency_overrides[pay.get_deps] = lambda: pay.PayDependencies(  # type: ignore[arg-type]
+    register_pay_endpoint(
+        app,
         orchestrator=orchestrator,
         chain_mode=settings.chain_mode,
     )
-    app.include_router(pay.router, prefix="/api/v2/pay", tags=["pay"])
 
     app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]
         ledger=ledger_store,
