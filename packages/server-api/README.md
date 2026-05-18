@@ -132,7 +132,7 @@ Interactive API documentation is available at:
 ## Architecture
 
 ```
-packages/api/
+packages/server-api/
 └── src/sardis/
     ├── main.py           # Application entry point
     ├── dependencies.py   # FastAPI dependencies

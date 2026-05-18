@@ -193,7 +193,7 @@ pip install -e ../../packages/sardis-sdk-python
 **"Connection refused"**
 ```bash
 # Start the Sardis API server first:
-cd ../../packages/api
+cd ../../packages/server-api
 uvicorn sardis.main:app --port 8000
 ```
 

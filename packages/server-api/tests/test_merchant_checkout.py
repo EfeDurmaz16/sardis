@@ -11,7 +11,7 @@ _packages = Path(__file__).parent.parent.parent
 for _pkg in [
     "sardis-core",
     "sardis-checkout",
-    "sardis-api",
+    "server-api",
     "sardis-guardrails",
     "sardis-protocol",
 ]:

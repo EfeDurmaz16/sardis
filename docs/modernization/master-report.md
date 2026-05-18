@@ -6,7 +6,7 @@ Sardis is a substantial monorepo, not a thin prototype. The current OSS stack re
 
 ## Biggest Technical Risks
 
-- `packages/api/src/sardis/main.py` is too large and centralizes too many unrelated concerns.
+- `packages/server-api/src/sardis/main.py` is too large and centralizes too many unrelated concerns.
 - Database migrations are split between Alembic and raw SQL.
 - Frontend authenticated API behavior differs between dashboard and landing.
 - Package manager state is fragmented across root and package-local lockfiles.
@@ -26,7 +26,7 @@ Sardis is a substantial monorepo, not a thin prototype. The current OSS stack re
 ## Duplicate Code Map
 
 - Product/private API transport types should be generated from the public OpenAPI/SDK contract instead of mirrored by hand.
-- Migration systems: `packages/api/alembic/versions`, `packages/api/migrations`.
+- Migration systems: `packages/server-api/alembic/versions`, `packages/server-api/migrations`.
 - Public docs/canvas surfaces: `apps/landing`, `apps/canvas-site`, `docs-site`, generated `canvases`.
 - Spending-policy defaults: frontend constants mirror backend values manually.
 
@@ -81,7 +81,7 @@ Deletion requires proof. Current candidates:
 - Public `/api/v2` and SDK contracts consumed by the private dashboard/product clients.
 - Existing `/api/v2` route behavior.
 - Existing raw SQL migration history until reconciliation.
-- Production guards in `packages/api/src/sardis/lifespan.py`.
+- Production guards in `packages/server-api/src/sardis/lifespan.py`.
 
 ## Delete Candidates
 
@@ -92,8 +92,8 @@ Deletion requires proof. Current candidates:
 
 ## Recommended Final Architecture
 
-- `packages/api/src/sardis/bootstrap/` for middleware, services, routers, and production guards.
-- `packages/api/src/sardis/domains/<domain>/` for cohesive payment, policy, wallet, billing, webhook, evidence, and facility modules over time.
+- `packages/server-api/src/sardis/bootstrap/` for middleware, services, routers, and production guards.
+- `packages/server-api/src/sardis/domains/<domain>/` for cohesive payment, policy, wallet, billing, webhook, evidence, and facility modules over time.
 - Root-managed `uv` and `pnpm` validation for monorepo development.
 - SDK/generated-contract shared types used by private product apps and public examples.
 - Canonical migration runner with drift tests.

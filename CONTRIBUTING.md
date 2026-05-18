@@ -39,7 +39,7 @@ Run the narrowest check that covers your change.
 python3 scripts/repo_inventory.py
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest packages/api/tests/test_merchant_checkout.py -q
+uv run pytest packages/server-api/tests/test_merchant_checkout.py -q
 ```
 
 For contracts:

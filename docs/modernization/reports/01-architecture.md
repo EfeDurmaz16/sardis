@@ -4,16 +4,16 @@
 
 ### High: FastAPI app factory is an oversized composition root
 
-- Evidence: `packages/api/src/sardis/main.py` contains middleware setup, provider construction, dependency overrides, router registration, feature flags, checkout setup, billing, facility-gate wiring, and health registration in one `create_app` path. Router registration spans hundreds of lines around `packages/api/src/sardis/main.py:781`, `packages/api/src/sardis/main.py:1891`, and `packages/api/src/sardis/main.py:2244`.
+- Evidence: `packages/server-api/src/sardis/main.py` contains middleware setup, provider construction, dependency overrides, router registration, feature flags, checkout setup, billing, facility-gate wiring, and health registration in one `create_app` path. Router registration spans hundreds of lines around `packages/server-api/src/sardis/main.py:781`, `packages/server-api/src/sardis/main.py:1891`, and `packages/server-api/src/sardis/main.py:2244`.
 - Impact: Changes to one domain can regress unrelated startup behavior. Tests need to import a very large app to validate narrow routes.
 - Recommended action: Refactor into domain registration modules such as `bootstrap/middleware.py`, `bootstrap/core_services.py`, `bootstrap/router_registry.py`, and per-domain registrars.
 - Action type: Refactor.
 - Estimated risk: Medium, because startup order and dependency overrides are behavior-sensitive.
-- Validation method: `uv run pytest packages/api/tests/ -q` plus app startup smoke importing `sardis.main:create_app`.
+- Validation method: `uv run pytest packages/server-api/tests/ -q` plus app startup smoke importing `sardis.main:create_app`.
 
 ### Medium: Backend still mixes v1, v2, and prototype naming
 
-- Evidence: `packages/api/src/sardis/main.py` registers both `/api/v1/auth` and `/api/v2/auth`; it also imports `sardis_v2_core` throughout. Root package exists at `sardis/`.
+- Evidence: `packages/server-api/src/sardis/main.py` registers both `/api/v1/auth` and `/api/v2/auth`; it also imports `sardis_v2_core` throughout. Root package exists at `sardis/`.
 - Impact: Contributors cannot quickly infer which domain package is canonical.
 - Recommended action: Document canonical surfaces and create a deprecation map before renaming packages.
 - Action type: Migration.

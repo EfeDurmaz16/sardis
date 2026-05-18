@@ -6,8 +6,8 @@ pilot evidence before a Facility Gate pilot org is enabled. It does not touch
 live provider rails.
 
 Usage:
-  python packages/api/scripts/facility_gate_pilot_readiness.py org_123
-  python packages/api/scripts/facility_gate_pilot_readiness.py org_123 --run-tabletop --require-alerts
+  python packages/server-api/scripts/facility_gate_pilot_readiness.py org_123
+  python packages/server-api/scripts/facility_gate_pilot_readiness.py org_123 --run-tabletop --require-alerts
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 for _package in (
-    "sardis-api",
+    "server-api",
     "sardis-core",
     "sardis-protocol",
     "sardis-ledger",

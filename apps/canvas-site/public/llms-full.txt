@@ -555,7 +555,7 @@ div class="layer-label"Layer 2 · API Gateway
 div class="layer-title"FastAPI · 123 routers · auth + rate limit + CSP
 
 div class="layer-desc"
-Composition root: codepackages/api/src/sardis_api/main.py/code. Every router is grouped
+Composition root: codepackages/server-api/src/sardis_api/main.py/code. Every router is grouped
 by domain (auth, wallets, payments, policy, checkout, compliance, ops). CSP/HSTS/CORS enforced
 at middleware; principal extraction in coderequire_principal/code; rate limits Redis-backed.
 
@@ -793,7 +793,7 @@ trtdcodepackages/sardis-core/src/sardis_v2_core/spending_policy.py/code
 td3 · Gate
 tdThe policy engine. Natural-language input → structured policy → enforcement at runtime.
 
-trtdcodepackages/api/src/sardis_api/main.py/code
+trtdcodepackages/server-api/src/sardis_api/main.py/code
 td2 · Gateway
 tdFastAPI composition root. Shows all 123 routers wired up with middleware.
 
@@ -817,7 +817,7 @@ trtdcodecontracts/src/SardisLedgerAnchor.sol/code
 td7 · Audit
 tdOn-chain anchor for Merkle-rooted evidence batches.
 
-trtdcodepackages/api/src/sardis_api/routers/code
+trtdcodepackages/server-api/src/sardis_api/routers/code
 tdControl plane API
 tdPolicy, approval, kill-switch, live-event, and merchant/session routes.
 
@@ -1889,7 +1889,7 @@ div class="eyebrow"The Spine
 ## Middleware stack — outermost first.
 
 p class="text-muted" style="max-width:720px;"
-Registered in codepackages/api/src/sardis_api/main.py/code. FastAPI/Starlette
+Registered in codepackages/server-api/src/sardis_api/main.py/code. FastAPI/Starlette
 middleware executes outermost-registered-first on request, innermost-first on response. If you
 need to add a cross-cutting concern, add it here, not in a router.
 
@@ -3043,7 +3043,7 @@ div class="eyebrow"Full catalogue
 ## All 123 routers.
 
 p class="text-muted" style="max-width:720px;"
-Source: codels packages/api/src/sardis_api/routers//code on 2026-04-19. If this list
+Source: codels packages/server-api/src/sardis_api/routers//code on 2026-04-19. If this list
 and the filesystem disagree, trust the filesystem and open a fix.
 
 div class="router-grid"
@@ -3283,7 +3283,7 @@ span class="eyebrow"Canvas 05 · Backend/span
 
 p class="hero-lead"
 One Neon Postgres database. 107 sequentially-numbered SQL migrations under
-codepackages/api/migrations//code. No ORM is doing the heavy lifting — tables are
+codepackages/server-api/migrations//code. No ORM is doing the heavy lifting — tables are
 defined by hand, in SQL, and applied in strict order. When Postgres is the source of truth for
 money, legibility beats abstraction.
 
@@ -3320,7 +3320,7 @@ div class="card"
 div class="card-title"Hand-written SQL, applied in order
 
 div class="card-description"
-Migrations live in codepackages/api/migrations//code as
+Migrations live in codepackages/server-api/migrations//code as
 codeNNN_description.sql/code. Applied with
 codepsql $DATABASE_URL -f file/code. A codeschema_migrations/code table guards
 against double-apply. No Alembic, no Django, no Drizzle — direct SQL keeps the diff honest.
@@ -3998,7 +3998,7 @@ div class="eyebrow"Full catalogue
 ## All 107 migrations.
 
 p class="text-muted" style="max-width:720px;"
-Source: codels packages/api/migrations//code on 2026-04-19.
+Source: codels packages/server-api/migrations//code on 2026-04-19.
 
 div class="migration-chip-grid"
 span class="migration-chip"001_initial_schema/span
@@ -4914,7 +4914,7 @@ and the Redis-backed rate limiter. Rate limiter is strongfail-closed/strong in p
 if Redis is unreachable the request is denied.
 
 div class="step-meta"
-spanfile: codepackages/api/src/sardis_api/main.py/code/span
+spanfile: codepackages/server-api/src/sardis_api/main.py/code/span
 spanenv: codeSARDIS_REDIS_URL/code required/span
 span class="failmode"fail: 429 on limit; 503 if Redis down/span
 
@@ -4931,7 +4931,7 @@ take the same slot for dashboard-originated calls. Missing/invalid key → 401, 
 downstream work.
 
 div class="step-meta"
-spanfile: codepackages/api/src/sardis_api/routers/pay.py/code/span
+spanfile: codepackages/server-api/src/sardis_api/routers/pay.py/code/span
 spanprincipal: org_id, agent_id, scopes[], key_id/span
 span class="failmode"fail: 401 — no orchestrator invocation/span
 
@@ -5004,7 +5004,7 @@ valid, remaining budget covers the amount, and the mandate hasn't been revoked.
 Decrements budget atomically via DB row lock.
 
 div class="step-meta"
-spanfile: codepackages/api/src/sardis_api/routers/mandate_delegation.py/code/span
+spanfile: codepackages/server-api/src/sardis_api/routers/mandate_delegation.py/code/span
 spanSQL: codeSELECT … FOR UPDATE/code on mandate row/span
 span class="failmode"fail-closed: race → NOWAIT lock, 409 to caller/span
 
@@ -5926,7 +5926,7 @@ div class="eyebrow"Simulation
 p class="text-muted" style="max-width:760px;"
 Policy changes are risky: tighten too much, block legitimate spending; loosen too much, invite
 incidents. The codepolicy_simulation/code router
-(codepackages/api/src/sardis_api/routers/policy_simulation.py/code) replays historical
+(codepackages/server-api/src/sardis_api/routers/policy_simulation.py/code) replays historical
 traffic against a proposed policy and returns what would have changed — allows that became denies,
 denies that became allows, new approval routes.
 
@@ -5958,10 +5958,10 @@ the operator needs one action that stops everything. The emergency router is tha
 
 dl class="defs"
 dtRouter
-ddcodepackages/api/src/sardis_api/routers/emergency.py/code
+ddcodepackages/server-api/src/sardis_api/routers/emergency.py/code
 
 dtDependency
-ddcodepackages/api/src/sardis_api/kill_switch_dep.py/code — enforced on every write path.
+ddcodepackages/server-api/src/sardis_api/kill_switch_dep.py/code — enforced on every write path.
 
 dtEffect
 ddGlobal flag flips; codeSpendingPolicy.evaluate()/code short-circuits to deny with reason codekill_switch_active/code; no new mandates accept; in-flight signatures are aborted at the wallet manager.
@@ -6014,13 +6014,13 @@ tdDrift scoring — input to the drift check.
 trtdcodepackages/sardis-core/src/sardis_v2_core/kya_trust_scoring.py/code
 tdTrust tiers + per-tier caps merged into per-tx limit.
 
-trtdcodepackages/api/src/sardis_api/routers/policy_simulation.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/policy_simulation.py/code
 tdWhat-if / replay endpoints.
 
-trtdcodepackages/api/src/sardis_api/routers/emergency.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/emergency.py/code
 tdKill-switch activation and status.
 
-trtdcodepackages/api/src/sardis_api/kill_switch_dep.py/code
+trtdcodepackages/server-api/src/sardis_api/kill_switch_dep.py/code
 tdFastAPI dependency that enforces the flag on every write.
 
 /tbody
@@ -6630,7 +6630,7 @@ tdTempo-specific executor (non-EVM flow).
 trtdcodepackages/sardis-wallet/src/sardis_wallet/multisig.py/code
 tdm-of-n approval logic for shared wallets.
 
-trtdcodepackages/api/migrations/006_wallet_freeze.sql/code
+trtdcodepackages/server-api/migrations/006_wallet_freeze.sql/code
 tdFreeze columns + index.
 
 /tbody
@@ -7093,7 +7093,7 @@ second one.
 
 dl class="defs"
 dtMigration
-ddcodepackages/api/migrations/048_settlement_tracking.sql/code
+ddcodepackages/server-api/migrations/048_settlement_tracking.sql/code
 
 dtTable
 ddcodesettlement_records/code
@@ -7125,7 +7125,7 @@ need to see which one in every row — for reconciliation, cost analysis, and in
 
 dl class="defs"
 dtMigration
-ddcodepackages/api/migrations/053_provider_rail_tracking.sql/code
+ddcodepackages/server-api/migrations/053_provider_rail_tracking.sql/code
 
 dtColumns on codetransactions/code
 ddcodeprovider_rail VARCHAR(50)/code, codeprovider_payment_reference VARCHAR(255)/code
@@ -7155,7 +7155,7 @@ Persistence means a process restart doesn't lose a cent.
 
 dl class="defs"
 dtMigration
-ddcodepackages/api/migrations/057_reconciliation_queue.sql/code
+ddcodepackages/server-api/migrations/057_reconciliation_queue.sql/code
 
 dtTable
 ddcodereconciliation_queue/code
@@ -7373,7 +7373,7 @@ div class="eyebrow"Pay with Sardis · End-to-end
 
 p class="text-muted" style="max-width:720px;"
 Every step corresponds to a real endpoint in
-codepackages/api/src/sardis_api/routers/merchant_checkout.py/code. Public endpoints
+codepackages/server-api/src/sardis_api/routers/merchant_checkout.py/code. Public endpoints
 live under the code/sessions/client/{client_secret}/.../code namespace; merchant endpoints
 require a principal.
 
@@ -7485,7 +7485,7 @@ div class="eyebrow"Hardening
 ## Why public checkout is boring in a good way.
 
 p class="text-muted" style="max-width:720px;"
-codepackages/api/migrations/031_checkout_hardening.sql/code is the migration that
+codepackages/server-api/migrations/031_checkout_hardening.sql/code is the migration that
 turned Pay with Sardis from "it works on the happy path" into something safe to point at the
 open internet. Polar-inspired; every column earns its keep.
 
@@ -7708,7 +7708,7 @@ div class="card"
 div class="card-title"Checkout controls router
 
 div class="card-description"
-codepackages/api/src/sardis_api/routers/checkout_controls.py/code exposes
+codepackages/server-api/src/sardis_api/routers/checkout_controls.py/code exposes
 merchant-side knobs: amount caps, country allowlists, velocity limits, required
 customer-KYC tier. codeGET /config/code / codePUT /config/code for configuration,
 codePOST /incidents/code / codeGET /incidents/code for the merchant's audit trail of
@@ -7798,28 +7798,28 @@ thWhy it matters
 
 /thead
 tbody
-trtdcodepackages/api/src/sardis_api/routers/merchant_checkout.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/merchant_checkout.py/code
 tdAll code/sessions/.../code endpoints: create, connect, pay, confirm, stream, onramp.
 
-trtdcodepackages/api/src/sardis_api/routers/checkout.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/checkout.py/code
 tdLegacy /checkout surface used by older integrations; kept for backwards compat.
 
-trtdcodepackages/api/src/sardis_api/routers/merchants.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/merchants.py/code
 tdMerchant CRUD + checkout links + settlements lookup.
 
-trtdcodepackages/api/src/sardis_api/routers/checkout_controls.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/checkout_controls.py/code
 tdMerchant-side controls + incident log.
 
-trtdcodepackages/api/src/sardis_api/routers/stripe_connect.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/stripe_connect.py/code
 tdconnected merchant bank onboarding for USD payout.
 
-trtdcodepackages/api/migrations/031_checkout_hardening.sql/code
+trtdcodepackages/server-api/migrations/031_checkout_hardening.sql/code
 tdclient_secret · idempotency · embed_origin · checkout_links · webhook_deliveries.
 
-trtdcodepackages/api/migrations/033_wallet_verification.sql/code
+trtdcodepackages/server-api/migrations/033_wallet_verification.sql/code
 tdcodepayer_wallet_address/code column + codeexternal_wallet/code payment method.
 
-trtdcodepackages/api/migrations/045_merchant_trust.sql/code
+trtdcodepackages/server-api/migrations/045_merchant_trust.sql/code
 tdcodemerchant_trust_profiles/code scoring table.
 
 trtdcodepackages/sardis-checkout/src/sardis_checkout//code
@@ -8027,7 +8027,7 @@ div class="eyebrow"KYC · Didit flow
 ## Signup to codesk_live_/code key in four steps.
 
 p class="text-muted" style="max-width:720px;"
-Router: codepackages/api/src/sardis_api/routers/kyc_onboarding.py/code. Webhook
+Router: codepackages/server-api/src/sardis_api/routers/kyc_onboarding.py/code. Webhook
 delivery is where a dashboard user becomes a fully provisioned Sardis tenant.
 
 div
@@ -8424,7 +8424,7 @@ tdThe package. Modules: kyc · kyb · kya · sanctions · pep · adverse_media �
 trtdcode…/providers//code
 tddidit · chainalysis · notabene · ofac · opensanctions · privado_id · scorechain · watchman. Behind one interface.
 
-trtdcodepackages/api/src/sardis_api/routers/compliance.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/compliance.py/code
 tdAll code/v1/compliance/*/code endpoints (KYC, KYA, sanctions, audit, evidence).
 
 trtdcode…/routers/kyc_onboarding.py/code
@@ -9093,28 +9093,28 @@ tbody
 trtdcodepackages/sardis-protocol/src/sardis_protocol//code
 tdVerifier core, replay cache, mandate cache, nonce registry, reason codes, schemas, per-protocol helpers.
 
-trtdcodepackages/api/src/sardis_api/routers/ap2.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/ap2.py/code
 tdAP2 mandate-chain execute endpoint.
 
-trtdcodepackages/api/src/sardis_api/routers/visa_tap_webhooks.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/visa_tap_webhooks.py/code
 tdVisa TAP webhook ingestion.
 
-trtdcodepackages/api/src/sardis_api/routers/x402.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/x402.py/code
 tdx402 verify / settle / dry-run / challenges.
 
-trtdcodepackages/api/src/sardis_api/routers/a2a.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/a2a.py/code
 tdGoogle A2A payments + trust graph.
 
-trtdcodepackages/api/src/sardis_api/routers/a2a_payments.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/a2a_payments.py/code
 tdA2A payments helper endpoints.
 
-trtdcodepackages/api/src/sardis_api/routers/acp.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/acp.py/code
 tdAgent Commerce Protocol endpoints.
 
-trtdcodepackages/api/src/sardis_api/routers/mpp.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/mpp.py/code
 tdStripe MPP / Tempo sessions + policy + card issue.
 
-trtdcodepackages/api/src/sardis_api/routers/mpp_demo.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/mpp_demo.py/code
 tdStripe MPP hackathon demo endpoints.
 
 trtdcodepackages/sardis-core/src/sardis_v2_core/erc8004.py/code
@@ -10489,7 +10489,7 @@ tbody
 trtdcodeX-Sardis-Framework/code
 tdFramework hint attached by SDKs and adapters.
 
-trtdcodepackages/api/code
+trtdcodepackages/server-api/code
 tdNormalizes framework metadata at the API boundary.
 
 trtdcodepackages/sardis-ledger/code
@@ -11149,7 +11149,7 @@ tdLive
 tdEdDSA/JWKS sessions, passkeys, org roles, and API-key issuance outside the public protocol repo.
 
 trtdLegacy FastAPI JWT (HS256)
-tdcodepackages/api/code
+tdcodepackages/server-api/code
 tdLive
 tdDual-path auth for SDK clients; bridged to better-auth via JWKS.
 
@@ -11551,7 +11551,7 @@ tdgitleaks full-history scan (codefetch-depth: 0/code). Fails the run on any det
 
 trtdcodesecurity-scan.yml/code
 tdpush · PR · weekly Mon 06:00 UTC
-tdThree jobs: codepip-audit/code (Python deps), Trivy container scan of the built API image (fails on CRITICAL/HIGH, codeignore-unfixed/code), Bandit SAST on codesardis//code + codepackages/api/src/code + codepackages/sardis-core/src/code.
+tdThree jobs: codepip-audit/code (Python deps), Trivy container scan of the built API image (fails on CRITICAL/HIGH, codeignore-unfixed/code), Bandit SAST on codesardis//code + codepackages/server-api/src/code + codepackages/sardis-core/src/code.
 
 trtdcodescorecard.yml/code
 tdpush · weekly Mon 06:00 UTC
@@ -11589,7 +11589,7 @@ tdcodedeploy-api-cloudrun.yml/code
 
 tdCloud Run · codeus-east1/code · service codesardis-api/code
 
-tdcodepackages/api/**/code, codesardis-core/**/code, codesardis-chain/**/code
+tdcodepackages/server-api/**/code, codesardis-core/**/code, codesardis-chain/**/code
 
 tdGCP OIDC via Workload Identity Federation (no long-lived keys). Build through codecloudbuild.yaml/code, deploy, then codecurl /health/code — non-200 fails the run. If codeGCP_WORKLOAD_IDENTITY_PROVIDER/code is missing, the job fails loudly with remediation instructions (previously silently skipped).
 
@@ -12172,7 +12172,7 @@ div class="card"
 div class="card-title"Middleware stack (sardis-api)
 
 div class="card-description"
-Order from codepackages/api/src/sardis_api/main.py/code: RequestId →
+Order from codepackages/server-api/src/sardis_api/main.py/code: RequestId →
 StructuredLogging → SecurityHeaders (CSP/HSTS) → RequestBodyLimit (10MB default, 1MB
 webhooks, 512KB checkout, 64KB policies) → RateLimit → TAP → x402 → UsageMetering →
 ActivityLogger → CORS (no wildcards — codesettings.allowed_origins_list/code) →
@@ -13979,10 +13979,10 @@ tdNode/Express middleware; same three routes, hand-rolled with codefetch/code to
 trtdcodepackages/sardis-connect-js/src/types.ts/code
 tdTS types shared with the Python models by contract.
 
-trtdcodepackages/api/src/sardis_api/routers/merchants.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/merchants.py/code
 tdMerchant registration + key issuance. Upstream of every Connect flow.
 
-trtdcodepackages/api/src/sardis_api/routers/service_directory.py/code
+trtdcodepackages/server-api/src/sardis_api/routers/service_directory.py/code
 tdRegistry side: where discovered services can be listed globally.
 
 trtdcodedemos/sardis_connect_e2e_demo.py/code

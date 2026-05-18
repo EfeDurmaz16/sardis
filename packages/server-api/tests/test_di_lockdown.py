@@ -23,7 +23,7 @@ import pytest
 # Ensure sardis and its dependencies are importable without conftest
 _packages_dir = Path(__file__).resolve().parent.parent.parent
 for _pkg_name in [
-    "sardis-api",
+    "server-api",
     "sardis-core",
     "sardis-wallet",
     "sardis-chain",

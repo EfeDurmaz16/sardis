@@ -168,7 +168,7 @@ flowchart LR
           <tbody>
             <tr><td><code>codeql.yml</code></td><td>push · PR · weekly Mon 05:30 UTC</td><td>CodeQL on Python and JavaScript/TypeScript. Uploads SARIF to GitHub Security.</td></tr>
             <tr><td><code>secret-scan.yml</code></td><td>push · PR</td><td>gitleaks full-history scan (<code>fetch-depth: 0</code>). Fails the run on any detection.</td></tr>
-            <tr><td><code>security-scan.yml</code></td><td>push · PR · weekly Mon 06:00 UTC</td><td>Three jobs: <code>pip-audit</code> (Python deps), Trivy container scan of the built API image (fails on CRITICAL/HIGH, <code>ignore-unfixed</code>), Bandit SAST on <code>sardis/</code> + <code>packages/api/src</code> + <code>packages/sardis-core/src</code>.</td></tr>
+            <tr><td><code>security-scan.yml</code></td><td>push · PR · weekly Mon 06:00 UTC</td><td>Three jobs: <code>pip-audit</code> (Python deps), Trivy container scan of the built API image (fails on CRITICAL/HIGH, <code>ignore-unfixed</code>), Bandit SAST on <code>sardis/</code> + <code>packages/server-api/src</code> + <code>packages/sardis-core/src</code>.</td></tr>
             <tr><td><code>scorecard.yml</code></td><td>push · weekly Mon 06:00 UTC</td><td>OpenSSF Scorecard → SARIF → uploaded to GitHub Security. Tracks branch protection, token permissions, pinned deps, SAST, signed releases.</td></tr>
             <tr><td><code>sign-artifacts.yml</code></td><td>release tag</td><td>Produces signed build provenance for published artifacts. Complements npm <code>--provenance</code> in <code>release-npm.yml</code>.</td></tr>
             <tr><td><code>fuzz.yml</code></td><td>push · PR · weekly Sat 08:00 UTC</td><td>atheris fuzzer against <code>tests/fuzz/fuzz_spending_policy.py</code>, capped at <code>FUZZING_DURATION=60</code>s for PRs.</td></tr>
@@ -190,7 +190,7 @@ flowchart LR
             <tr>
               <td><code>deploy-api-cloudrun.yml</code></td>
               <td>Cloud Run · <code>us-east1</code> · service <code>sardis-api</code></td>
-              <td><code>packages/api/**</code>, <code>sardis-core/**</code>, <code>sardis-chain/**</code></td>
+              <td><code>packages/server-api/**</code>, <code>sardis-core/**</code>, <code>sardis-chain/**</code></td>
               <td>GCP OIDC via Workload Identity Federation (no long-lived keys). Build through <code>cloudbuild.yaml</code>, deploy, then <code>curl /health</code> — non-200 fails the run. If <code>GCP_WORKLOAD_IDENTITY_PROVIDER</code> is missing, the job fails loudly with remediation instructions (previously silently skipped).</td>
             </tr>
             <tr>

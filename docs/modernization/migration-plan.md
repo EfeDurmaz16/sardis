@@ -3,7 +3,7 @@
 ## 1. Safety And Tests
 
 - Goal: Add cheap validation and inventory tooling before risky changes.
-- Files likely affected: `scripts/repo_inventory.py`, `package.json`, `README.md`, `packages/api/tests`, `docs/modernization/*`.
+- Files likely affected: `scripts/repo_inventory.py`, `package.json`, `README.md`, `packages/server-api/tests`, `docs/modernization/*`.
 - Implementation notes: Prune generated folders and report canonical stack/scripts. Add a credential-free validation command.
 - Risk: Low.
 - Rollback plan: Revert script and package script commit.
@@ -12,7 +12,7 @@
 ### 1a. Payment safety test expansion
 
 - Goal: Cover idempotency fallback, checkout mandate fail-closed behavior, and KYC redaction before deep refactors.
-- Exact files likely affected: `packages/api/src/sardis/idempotency.py`, `packages/api/src/sardis/routers/merchant_checkout.py`, `packages/api/src/sardis/routers/kyc_onboarding.py`, related tests.
+- Exact files likely affected: `packages/server-api/src/sardis/idempotency.py`, `packages/server-api/src/sardis/routers/merchant_checkout.py`, `packages/server-api/src/sardis/routers/kyc_onboarding.py`, related tests.
 - Implementation notes: Start with narrow tests and bug fixes; defer schema migration until DB fallback contract is fully mapped.
 - Risk: Medium-high.
 - Rollback plan: Revert individual safety fix commit.
@@ -48,20 +48,20 @@
 ## 5. Architecture Restructuring
 
 - Goal: Shrink `create_app` into maintainable registrars.
-- Files likely affected: `packages/api/src/sardis/main.py`, new `packages/api/src/sardis/bootstrap/*`, route-domain modules under `packages/api/src/sardis/routes/*`.
+- Files likely affected: `packages/server-api/src/sardis/main.py`, new `packages/server-api/src/sardis/bootstrap/*`, route-domain modules under `packages/server-api/src/sardis/routes/*`.
 - Implementation notes: Start with pure middleware registration, then router groups. Keep route prefixes unchanged. Continue route-domain migration before any package-directory rename.
 - Risk: Medium-high.
 - Rollback plan: Revert each extraction commit independently.
-- Validation command: `uv run pytest packages/api/tests/ -q`.
+- Validation command: `uv run pytest packages/server-api/tests/ -q`.
 
-### 5a. Package Path Simplification
+### 5a. Server API Package Path Simplification
 
-- Goal: Reduce contributor-visible path repetition by renaming the monorepo API package directory from `packages/sardis-api` to `packages/api` while keeping the Python import package `sardis`.
-- Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and any path references to `packages/api`.
-- Implementation notes: Do not remove `src/sardis`; it is the stable Python import package and the standard `src` layout. This migration is now complete; future cleanup should focus on domain-grouping modules below `src/sardis`.
+- Goal: Reduce contributor-visible ambiguity by renaming the monorepo API package directory from `packages/api` to `packages/server-api` while keeping the Python import package `sardis`.
+- Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and any path references to `packages/server-api`.
+- Implementation notes: Do not remove `src/sardis`; it is the stable Python import package and the standard `src` layout. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
 - Risk: High.
 - Rollback plan: Revert the directory rename commit and path-reference updates together.
-- Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agent_auth.py packages/api/tests/test_agent_events_and_holds_wiring.py -q`.
+- Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_agent_auth.py packages/server-api/tests/test_agent_events_and_holds_wiring.py -q`.
 
 ## 6. Language/Framework/Runtime Migrations
 
@@ -75,7 +75,7 @@
 ## 7. Database/Schema Migrations
 
 - Goal: Declare canonical migration path and test it.
-- Files likely affected: `packages/api/migrations`, `packages/api/alembic`, docs, CI scripts.
+- Files likely affected: `packages/server-api/migrations`, `packages/server-api/alembic`, docs, CI scripts.
 - Implementation notes: Do not delete historical migrations until a Postgres reconciliation test passes.
 - Risk: High.
 - Rollback plan: Keep old migration paths available until cutover.
@@ -84,7 +84,7 @@
 ## 8. API Contract Stabilization
 
 - Goal: Protect `/api/v2` route behavior.
-- Files likely affected: OpenAPI generation scripts, `packages/api/openapi`, SDK tests.
+- Files likely affected: OpenAPI generation scripts, `packages/server-api/openapi`, SDK tests.
 - Implementation notes: Add OpenAPI snapshot diff before router refactors.
 - Risk: Medium.
 - Rollback plan: Revert snapshot gate.

@@ -4,7 +4,7 @@
 cd "$(dirname "$0")"
 
 # Set PYTHONPATH for all packages
-export PYTHONPATH="./packages/api/src:./packages/sardis-core/src:./packages/sardis-wallet/src:./packages/sardis-chain/src:./packages/sardis-protocol/src:./packages/sardis-cards/src:./packages/sardis-compliance/src:./packages/sardis-ledger/src:./packages/sardis-checkout/src:$PYTHONPATH"
+export PYTHONPATH="./packages/server-api/src:./packages/sardis-core/src:./packages/sardis-wallet/src:./packages/sardis-chain/src:./packages/sardis-protocol/src:./packages/sardis-cards/src:./packages/sardis-compliance/src:./packages/sardis-ledger/src:./packages/sardis-checkout/src:$PYTHONPATH"
 
 # Environment
 export SARDIS_ENVIRONMENT="${SARDIS_ENVIRONMENT:-dev}"
@@ -40,4 +40,4 @@ echo "  - Cards enabled: $SARDIS_ENABLE_CARDS"
 echo ""
 
 # Run with uv
-uv run uvicorn sardis.main:create_app --factory --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn --app-dir packages/server-api/src sardis.main:create_app --factory --host 0.0.0.0 --port 8000 --reload

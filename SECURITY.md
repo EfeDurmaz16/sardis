@@ -37,7 +37,7 @@ Instead, please report vulnerabilities via one of these channels:
 
 The following are in scope for security reports:
 
-- Sardis API (`packages/api`)
+- Sardis API (`packages/server-api`)
 - Sardis Core (`packages/sardis-core`)
 - Smart Contracts (`contracts/`)
 - Wallet Management (`packages/sardis-wallet`)

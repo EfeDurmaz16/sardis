@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 
 _packages = Path(__file__).parent.parent.parent
-for _pkg in ["sardis-core", "sardis-api"]:
+for _pkg in ["server-api", "sardis-core"]:
     _p = _packages / _pkg / "src"
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))

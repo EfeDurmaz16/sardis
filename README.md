@@ -325,7 +325,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Fork the repository
 - Create a feature branch: `git checkout -b feature/your-feature`
 - Make your changes with tests
-- Run the maintained API test suite: `uv run pytest packages/api/tests/`
+- Run the maintained API test suite: `uv run pytest packages/server-api/tests/`
 - Submit a pull request
 
 **Development setup:**

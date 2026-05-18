@@ -12,7 +12,7 @@ Sardis should use a clean open-core split:
 | Protocol and API contracts | `docs/api/`, `docs/docs/api/`, `packages/sardis-protocol/`, `packages/sardis-a2a/`, `packages/sardis-ucp/` | These define interoperable agent-payment semantics. |
 | SDKs and CLI | `sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/`, `packages/sardis-cli/` | Contributors need typed client surfaces and local tooling. |
 | Core authority primitives | `packages/sardis-core/`, `packages/sardis-ledger/`, `packages/sardis-wallet/`, `packages/sardis-chain/` | These express business logic that should be inspectable. |
-| API implementation | `packages/api/` | Keep as the reference implementation, but separate hosted-only routes over time. |
+| API implementation | `packages/server-api/` | Keep as the reference implementation, but separate hosted-only routes over time. |
 | MCP and framework integrations | `packages/sardis-mcp-server/`, `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `examples/` | These are the main contribution surface for agent ecosystems. |
 | Simulators and demos | `demos/`, `examples/`, sandbox-only provider adapters | Useful for adoption when they run without private credentials. |
 | Public docs | `README.md`, `SECURITY.md`, `docs/docs/`, `docs/quickstart/`, `docs/architecture/`, `docs/oss/` | Public explanation and contributor onboarding. |

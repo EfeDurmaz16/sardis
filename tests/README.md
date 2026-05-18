@@ -3,13 +3,13 @@
 The maintained public API test suite lives in:
 
 ```text
-packages/api/tests/
+packages/server-api/tests/
 ```
 
 Run it with:
 
 ```bash
-uv run pytest packages/api/tests/
+uv run pytest packages/server-api/tests/
 ```
 
 This root `tests/` directory contains older cross-package, audit, integration,
@@ -21,7 +21,7 @@ the `sardis_api` to `sardis` import-package migration.
 Before re-enabling any root test in CI, move it to the owning package's
 `tests/` directory or update it to the current package layout:
 
-- API route tests: `packages/api/tests/`
+- API route tests: `packages/server-api/tests/`
 - Core policy/orchestration tests: `packages/sardis-core/tests/`
 - Ledger tests: `packages/sardis-ledger/tests/`
 - Chain execution tests: `packages/sardis-chain/tests/`
