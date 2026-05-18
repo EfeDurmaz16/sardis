@@ -6,7 +6,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 ## Current Snapshot
 
 - Root Python test files: `233`
-- Files with stale API import/path references: `20`
+- Files with stale API import/path references: `17`
 - Default pytest path: `packages/server-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
@@ -39,7 +39,6 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_acp_checkout.py` | `packages/server-api/tests` | 7 |
 | `tests/test_admin_reconciliation.py` | `packages/sardis-ledger/tests` | 7 |
 | `tests/test_better_auth_jwt.py` | `packages/server-api/tests` | 8 |
-| `tests/test_billing.py` | `packages/server-api/tests` | 16 |
 | `tests/test_checkout_eip712.py` | `packages/server-api/tests` | 4 |
 | `tests/test_checkout_onchain_verification.py` | `packages/server-api/tests` | 9 |
 | `tests/test_coinbase_stack_integration.py` | `needs owner review` | 2 |
@@ -47,12 +46,10 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_emergency_freeze.py` | `needs owner review` | 11 |
 | `tests/test_fake_routes_removed.py` | `needs owner review` | 10 |
 | `tests/test_fides_identity_api.py` | `packages/server-api/tests` | 14 |
-| `tests/test_polar_webhook.py` | `packages/server-api/tests` | 8 |
 | `tests/test_router_orchestrator_migration.py` | `packages/server-api/tests` | 3 |
 | `tests/test_stripe_onramp.py` | `packages/server-api/tests` | 17 |
 | `tests/test_stripe_spt_real.py` | `packages/server-api/tests` | 4 |
 | `tests/test_tap_fail_close.py` | `packages/server-api/tests` | 3 |
-| `tests/test_usage_metering.py` | `packages/server-api/tests` | 13 |
 | `tests/test_zk_failclosed.py` | `needs owner review` | 3 |
 
 Regenerate this inventory with:

@@ -25,12 +25,12 @@ from fastapi.testclient import TestClient
 # Ensure package sources are on sys.path
 _root = Path(__file__).parent.parent
 _pkgs = _root / "packages"
-for _pkg in ("sardis-core", "sardis-api"):
+for _pkg in ("sardis-core", "server-api"):
     _p = _pkgs / _pkg / "src"
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_api.routers.polar_webhook import router as polar_router
+from sardis_server.routes.providers.polar_webhook import router as polar_router
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -110,7 +110,7 @@ class TestPolarWebhookSignatureEnforcement:
         adapter = _mock_adapter(is_configured=True)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -131,7 +131,7 @@ class TestPolarWebhookSignatureEnforcement:
         adapter = _mock_adapter(is_configured=True, verify_result=False)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -164,7 +164,7 @@ class TestPolarWebhookAdapterNotConfigured:
         adapter = _mock_adapter(is_configured=False)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -197,7 +197,7 @@ class TestPolarWebhookEventProcessing:
         adapter = _mock_adapter(is_configured=True, verify_result=True)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -226,7 +226,7 @@ class TestPolarWebhookEventProcessing:
         adapter = _mock_adapter(is_configured=True, verify_result=True)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -253,7 +253,7 @@ class TestPolarWebhookEventProcessing:
         adapter = _mock_adapter(is_configured=True, verify_result=True)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
@@ -279,7 +279,7 @@ class TestPolarWebhookEventProcessing:
         adapter = _mock_adapter(is_configured=True, verify_result=True)
 
         with patch(
-            "sardis_api.billing.polar_adapter.PolarBillingAdapter",
+            "sardis_server.billing.polar_adapter.PolarBillingAdapter",
             return_value=adapter,
         ):
             app = _build_app()
