@@ -26,6 +26,7 @@
 - Mapped every tracked Python `sardis-*` package to a local editable `[tool.uv.sources]` entry so contributor checks exercise the checkout instead of published packages with matching names.
 - Documented the Python local-source verification command in `docs/development.md`.
 - Modernized low-risk Pydantic/FastAPI configuration usage by replacing class-based config, deprecated `regex=`, and deprecated `Field(example=...)` usage in the touched API/core/provider modules.
+- Added client-supplied idempotency protection to `/api/v2/pay` so same-key/same-payload retries replay the first response and same-key/different-payload attempts are rejected before re-execution.
 
 ## What Was Deleted
 
@@ -51,6 +52,7 @@
   - durable idempotency DB fallback rejects same-key/different-payload replay attempts.
   - KYC webhook persistence stores allowlisted metadata plus payload hash instead of raw provider payloads.
   - JWT validation checks expected issuer/audience boundaries for new internal tokens and Better Auth JWKS tokens.
+  - `/api/v2/pay` now uses the shared idempotency helper when an idempotency header is supplied.
 
 ## Intentionally Left Unchanged
 
@@ -92,6 +94,9 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `uv run --with-editable ./packages/sardis-striga python - <<'PY' ... StrigaConfig ...` verified the standalone Striga config prefix.
 - `uv run pytest packages/sardis-api/tests/test_merchant_checkout.py packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 49 tests.
 - `rg -n "class Config:|regex=|Field\\([^\\n]*example=" packages/sardis-core/src packages/sardis-api/src packages/sardis-striga/src` returned no matches.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/routers/pay.py packages/sardis-api/tests/test_pay_phase3_fx.py` passed after `/api/v2/pay` idempotency changes.
+- `uv run pytest packages/sardis-api/tests/test_pay_phase3_fx.py -q` passed: 16 tests.
+- `uv run pytest packages/sardis-api/tests/test_pay_phase3_fx.py packages/sardis-api/tests/test_merchant_checkout.py packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 65 tests.
 
 Notes:
 
@@ -100,7 +105,7 @@ Notes:
 
 ## Remaining Risks
 
-- Money-moving routes still need replay tests and a unified execution service.
+- Some money-moving routes still need replay tests and a unified execution service; `/api/v2/pay` now has client-idempotency replay coverage.
 - Database migration history remains split between Alembic and raw SQL.
 - `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root.
 - Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
@@ -111,7 +116,7 @@ Notes:
 
 ## Next 7 Days
 
-- Add replay tests for `/api/v2/pay` and batch payments.
+- Add replay tests for batch payments and remaining money-moving mutation routes.
 - Standardize provider webhook replay protection.
 - Harden checkout nonce/replay binding.
 - Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
@@ -146,3 +151,5 @@ Notes:
 - `b3cee4d4 chore(python): map Sardis packages to local uv sources`
 - `6cf2117f docs: record Python source mapping cleanup`
 - `f7621c11 chore(python): modernize Pydantic config usage`
+- `68943d32 docs: record Pydantic modernization pass`
+- `fd7bb9cb fix(pay): add idempotent replay protection`
