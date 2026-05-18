@@ -161,7 +161,7 @@ from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
-from .routers import notifications as notifications_router
+from .routes.developer import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router
 from .routes.wallets import onramp as onramp_router
