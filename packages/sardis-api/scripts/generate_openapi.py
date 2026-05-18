@@ -26,11 +26,68 @@ os.environ.setdefault("JWT_SECRET_KEY", "openapi-generation-local-jwt-secret-key
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from sardis_api.main import create_app
+
+DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parents[1] / "openapi.json"
+DEFAULT_SNAPSHOT_PATH = Path(__file__).resolve().parents[1] / "openapi" / "openapi.routes.snapshot.json"
+
+
+def _canonical_json(schema: dict) -> str:
+    return json.dumps(schema, indent=2, sort_keys=True) + "\n"
+
+
+def contract_manifest(openapi_schema: dict) -> dict:
+    """Return a stable route-level API contract manifest.
+
+    The full FastAPI component schema currently has duplicate model class names
+    in different modules, which can make component bodies and `$ref` names
+    unstable across Python processes. This manifest intentionally tracks the
+    stable public route surface: path, method, operationId, tags, parameters,
+    request media types, and response status/media types.
+    """
+    paths: list[dict] = []
+    for path, path_item in sorted(openapi_schema.get("paths", {}).items()):
+        for method, operation in sorted(path_item.items()):
+            if method.lower() not in {"get", "post", "put", "patch", "delete", "options", "head"}:
+                continue
+            request_body = operation.get("requestBody", {}) if isinstance(operation, dict) else {}
+            request_content = request_body.get("content", {}) if isinstance(request_body, dict) else {}
+            responses = operation.get("responses", {}) if isinstance(operation, dict) else {}
+            paths.append(
+                {
+                    "method": method.upper(),
+                    "path": path,
+                    "operation_id": operation.get("operationId"),
+                    "tags": sorted(operation.get("tags", [])),
+                    "parameters": [
+                        {
+                            "name": param.get("name"),
+                            "in": param.get("in"),
+                            "required": bool(param.get("required", False)),
+                        }
+                        for param in operation.get("parameters", [])
+                    ],
+                    "request_body": sorted(request_content),
+                    "responses": {
+                        status_code: sorted(response.get("content", {}))
+                        for status_code, response in sorted(responses.items())
+                    },
+                }
+            )
+    return {
+        "openapi": openapi_schema.get("openapi"),
+        "info": {
+            "title": openapi_schema.get("info", {}).get("title"),
+            "version": openapi_schema.get("info", {}).get("version"),
+        },
+        "path_count": len(paths),
+        "paths": paths,
+    }
 
 
 def generate_openapi():
     """Generate OpenAPI spec from the FastAPI app."""
+    from sardis_api.main import create_app
+
     app = create_app()
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
@@ -137,11 +194,26 @@ X-API-Key: <your-api-key>
 
 def main():
     """Main entry point."""
+    if os.environ.get("PYTHONHASHSEED") != "0":
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = "0"
+        os.execvpe(sys.executable, [sys.executable, *sys.argv], env)
+
     parser = ArgumentParser(description="Generate or validate the Sardis API OpenAPI schema.")
     parser.add_argument(
         "--check",
         action="store_true",
-        help="Generate the schema in memory and exit without writing files.",
+        help="Generate the schema in memory and compare it with the checked snapshot.",
+    )
+    parser.add_argument(
+        "--update-snapshot",
+        action="store_true",
+        help="Write the generated route contract manifest to the checked OpenAPI snapshot.",
+    )
+    parser.add_argument(
+        "--snapshot",
+        default=str(DEFAULT_SNAPSHOT_PATH),
+        help="Snapshot JSON path used by --check and --update-snapshot.",
     )
     parser.add_argument(
         "--output",
@@ -155,15 +227,36 @@ def main():
     schema_count = len(openapi_schema.get("components", {}).get("schemas", {}))
 
     if args.check:
+        snapshot_path = Path(args.snapshot)
+        if not snapshot_path.exists():
+            raise SystemExit(
+                f"OpenAPI snapshot is missing: {snapshot_path}. "
+                "Run generate_openapi.py --update-snapshot after reviewing the API surface."
+            )
+        expected = snapshot_path.read_text()
+        actual = _canonical_json(contract_manifest(openapi_schema))
+        if actual != expected:
+            raise SystemExit(
+                f"OpenAPI route snapshot is out of date: {snapshot_path}. "
+                "Review the API diff, then run generate_openapi.py --update-snapshot."
+            )
+        print(f"OpenAPI schema generated successfully: {path_count} paths, {schema_count} schemas")
+        return
+
+    if args.update_snapshot:
+        snapshot_path = Path(args.snapshot)
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        snapshot_path.write_text(_canonical_json(contract_manifest(openapi_schema)))
+        print(f"OpenAPI route snapshot updated at: {snapshot_path}")
         print(f"OpenAPI schema generated successfully: {path_count} paths, {schema_count} schemas")
         return
 
     # Output to stdout or file
-    output_path = Path(args.output) if args.output else Path(__file__).resolve().parents[1] / "openapi.json"
+    output_path = Path(args.output) if args.output else DEFAULT_OUTPUT_PATH
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w") as f:
-        json.dump(openapi_schema, f, indent=2)
+        f.write(_canonical_json(openapi_schema))
 
     print(f"OpenAPI spec generated at: {output_path}")
 
