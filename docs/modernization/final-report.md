@@ -37,6 +37,7 @@
 - Removed public dashboard deployment workflows from OSS CI/CD while keeping API and landing deployment paths intact.
 - Removed tracked company-specific SOC2/ops docs from the public source surface and expanded `scripts/oss_surface_check.py` to block investor, ops, and SOC2 private prefixes going forward.
 - Made public quickstart entrypoints simulation-first by removing hosted dashboard signup as a prerequisite for contributor onboarding.
+- Removed generated audit evidence/latest-run artifacts from public tracking and expanded the OSS surface check to block audit evidence, outbound, outreach, and GTM paths.
 
 ## What Was Deleted
 
@@ -55,6 +56,7 @@
 - Deleted generated Solana local-validator ledger/keypair artifacts under `packages/sardis-solana-program/.anchor/test-ledger/`.
 - Deleted `.github/workflows/deploy-dashboard.yml`; hosted dashboard deployment belongs in the future private product repo.
 - Deleted tracked company-specific SOC2/ops docs from `docs/compliance/soc2/` and `docs/ops/`.
+- Deleted generated/private operational evidence under `docs/audits/evidence/`.
 
 ## What Was Rewritten
 
@@ -143,6 +145,10 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `python3 examples/quickstart_5min.py` passed in simulation mode after the quickstart copy update.
 - `python3 -m compileall -q examples/quickstart_5min.py` passed.
 - `git diff --check` passed after the quickstart update.
+- `python3 scripts/oss_surface_check.py` passed after blocking audit evidence, outbound, outreach, and GTM paths.
+- `git ls-files docs | rg -n "(^docs/(audits/evidence|outbound|outreach|gtm|business-plan|investor-list|investor-proof|ops|investor|sales|yc|compliance/soc2)/|^docs/(business-plan|investor-list|investor-proof))"` returned no tracked blocked files.
+- `python3 -m compileall -q scripts/oss_surface_check.py` passed after expanding the public-surface guard.
+- `git diff --check` passed after removing generated audit evidence.
 
 Notes:
 
@@ -220,3 +226,5 @@ Notes:
 - `5706d1c5 chore: remove private ops docs from public surface`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
+- `91bf799e docs: record simulation-first quickstarts`
+- `5ded7702 chore: remove generated audit evidence from public surface`
