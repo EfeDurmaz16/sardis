@@ -180,7 +180,7 @@ from .routes.protocol import spt as spt_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
-from .routers import subscriptions as subscriptions_router
+from .routes.billing import subscriptions as subscriptions_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
 from .routes.billing import usage as usage_router
