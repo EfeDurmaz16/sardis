@@ -140,7 +140,7 @@ from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
-from .routers import credentials as credentials_router
+from .routes.authority import credentials as credentials_router
 from .routes.accounts import data_export as data_export_router
 from .routers import dev as dev_router
 from .routers import emergency as emergency_router
