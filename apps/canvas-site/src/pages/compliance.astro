@@ -181,7 +181,7 @@ const styles = `
           <div class="eyebrow">KYC · Didit flow</div>
           <h2>Signup to <code>sk_live_</code> key in four steps.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Router: <code>packages/server-api/src/sardis/routers/kyc_onboarding.py</code>. Webhook
+            Router: <code>packages/server-api/src/sardis_server/routes/compliance/kyc_onboarding.py</code>. Webhook
             delivery is where a dashboard user becomes a fully provisioned Sardis tenant.
           </p>
         </div>
@@ -450,7 +450,7 @@ sequenceDiagram
           <tbody>
             <tr><td><code>packages/sardis-compliance/src/sardis_compliance/</code></td><td>The package. Modules: kyc · kyb · kya · sanctions · pep · adverse_media · travel_rule · sar · risk_scoring · audit_rotation · batch · reports · checks · marble · mica · circle_compliance · coinbase_verifications.</td></tr>
             <tr><td><code>…/providers/</code></td><td>didit · chainalysis · notabene · ofac · opensanctions · privado_id · scorechain · watchman. Behind one interface.</td></tr>
-            <tr><td><code>packages/server-api/src/sardis/routers/compliance.py</code></td><td>All <code>/v1/compliance/*</code> endpoints (KYC, KYA, sanctions, audit, evidence).</td></tr>
+            <tr><td><code>packages/server-api/src/sardis_server/routes/compliance/compliance.py</code></td><td>All <code>/v1/compliance/*</code> endpoints (KYC, KYA, sanctions, audit, evidence).</td></tr>
             <tr><td><code>…/routers/kyc_onboarding.py</code></td><td>Dashboard-facing KYC onboarding (Didit flow).</td></tr>
             <tr><td><code>…/routers/fides_identity.py</code></td><td>FIDES DID + trust score queries.</td></tr>
             <tr><td><code>…/routers/compliance_export.py</code></td><td>GDPR / regulator export bundles.</td></tr>

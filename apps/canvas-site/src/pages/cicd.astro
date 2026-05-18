@@ -329,7 +329,7 @@ flowchart LR
           <div class="card">
             <div class="card-title">Gunicorn 25.x — use call syntax, not <code>--factory</code></div>
             <div class="card-description">
-              Launch the API as <code>"sardis.main:create_app()"</code>. The <code>--factory</code>
+              Launch the API as <code>"sardis_server.main:create_app()"</code>. The <code>--factory</code>
               flag was removed in gunicorn 25.x; using it produces a cryptic boot failure that looks
               like a module-not-found error. Docker <code>CMD</code>, <code>cloudbuild.yaml</code>,
               and <code>deploy-api-cloudrun.yml</code> encode the call form.

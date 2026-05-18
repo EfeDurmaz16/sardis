@@ -85,7 +85,7 @@ Builds and deploys the documentation site on changes to <code>docs/</code>. Mirr
 Things that silently failed at least once and now have permanent fixes in the deploy
               workflow and container config. Worth knowing before you touch Cloud Run config.
 </p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Gunicorn 25.x — use call syntax, not <code>--factory</code></div> <div class="card-description">
-Launch the API as <code>"sardis_api.main:create_app()"</code>. The <code>--factory</code>
+Launch the API as <code>"sardis_server.main:create_app()"</code>. The <code>--factory</code>
 flag was removed in gunicorn 25.x; using it produces a cryptic boot failure that looks
               like a module-not-found error. Docker <code>CMD</code>, <code>cloudbuild.yaml</code>,
               and <code>deploy-api-cloudrun.yml</code> encode the call form.

@@ -23,8 +23,8 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 
 The repeated-looking path prefix is tracked separately in
 `docs/modernization/package-path-simplification.md`. The short version: the
-current contributor path is `packages/server-api/src/sardis/...`; both the old
-`packages/sardis-api` package directory, the too-generic `packages/api`
+current contributor path is `packages/server-api/src/sardis_server/...`; both
+the old `packages/sardis-api` package directory, the too-generic `packages/api`
 directory, and the old `sardis_api` import package name have been removed.
 
 ## Naming Principles
@@ -90,7 +90,7 @@ Completed so far:
 | `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` with a compatibility module alias in `routers/` | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls, leaving the legacy router bucket with compatibility wrappers only. |
 
 Final cleanup: after internal imports and tests were migrated to
-`sardis.routes.<domain>`, the temporary `sardis.routers` compatibility
+`sardis_server.routes.<domain>`, the temporary `sardis_server.routers` compatibility
 package was removed. The HTTP API paths remain unchanged.
 
 The external API remains unchanged:
@@ -112,11 +112,12 @@ is long, repeats API/package concepts, and hides the business domain in a flat
 shorter mental paths:
 
 ```text
-packages/server-api/src/sardis/routes/developer/webhook_subscriptions.py
+packages/server-api/src/sardis_server/routes/developer/webhook_subscriptions.py
 ```
 
-The top-level Python package still uses `src/sardis` because that is the
-standard packaging boundary. The part we should actively simplify is everything
+The top-level Python package now uses `src/sardis_server` because that is the
+standard packaging boundary and avoids colliding with the public Python SDK
+package named `sardis`. The part we should actively simplify is everything
 below it:
 
 - `routes/<domain>/...` for HTTP route modules
@@ -133,7 +134,7 @@ The long-term target is to replace the flat router directory with grouped route
 domains:
 
 ```text
-sardis/
+sardis_server/
   routes/
     admin/
       control.py
@@ -224,12 +225,12 @@ sardis/
       ws_alerts.py
 ```
 
-This should continue after `sardis.main` is split into router registration
+This should continue after `sardis_server.main` is split into router registration
 functions. Moving 120+ files before extracting registration would create a large
 rename diff without enough architectural payoff. The first extracted registrars
-are `sardis.routing.developer.register_webhook_subscriptions`,
-`sardis.routing.money_movement.register_pay_endpoint`, and
-`sardis.routing.authority.register_authority_routes`.
+are `sardis_server.routing.developer.register_webhook_subscriptions`,
+`sardis_server.routing.money_movement.register_pay_endpoint`, and
+`sardis_server.routing.authority.register_authority_routes`.
 
 ## Recommended Move Order
 
@@ -281,7 +282,7 @@ the migration and then removed after internal imports moved to
 Run these commands after each route move:
 
 ```bash
-python3 -m compileall -q packages/server-api/src/sardis
+python3 -m compileall -q packages/server-api/src/sardis_server
 pnpm check:openapi
 uv run pytest packages/server-api/tests -q
 ```
@@ -289,7 +290,7 @@ uv run pytest packages/server-api/tests -q
 For small route-only moves, the minimum acceptable validation is:
 
 ```bash
-python3 -m compileall -q packages/server-api/src/sardis
+python3 -m compileall -q packages/server-api/src/sardis_server
 pnpm check:openapi
 ```
 

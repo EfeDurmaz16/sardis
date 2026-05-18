@@ -109,6 +109,29 @@ The contributor-facing API path is now:
 packages/server-api/src/sardis_server/...
 ```
 
+This still contains two naming layers:
+
+- `packages/server-api` is the monorepo package boundary: the deployable
+  reference API service.
+- `src/sardis_server` is the Python import boundary: the package imported by
+  tests, ASGI servers, and internal modules.
+
+That duplication is intentional only at the Python packaging boundary. It
+should not leak into public docs as `sardis-api/src/sardis_api`, and the active
+source tree must not keep an extra `routers/` bucket below it. A contributor
+should land in a domain path such as:
+
+```text
+packages/server-api/src/sardis_server/routes/protocol/x402.py
+packages/server-api/src/sardis_server/routes/protocol/mpp.py
+packages/server-api/src/sardis_server/routes/commerce/merchant_checkout.py
+```
+
+Further shortening the physical path by removing `src/` would trade readability
+for worse Python packaging behavior and easier accidental import shadowing.
+The clean migration target is therefore domain placement below
+`sardis_server`, plus accurate public docs and generated artifacts.
+
 Remaining path cleanup should focus below `src/sardis_server`: continue moving
 route registration and bootstrap concerns out of the oversized `main.py` into
 domain registrars and bootstrap modules. The legacy `routers/` bucket and the
