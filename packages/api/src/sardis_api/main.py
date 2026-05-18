@@ -157,8 +157,8 @@ from .routes.developer import faucet as faucet_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
-from .routers import mandate_delegation as mandate_delegation_router
-from .routers import mandate_subscriptions as mandate_subscriptions_router
+from .routes.authority import mandate_delegation as mandate_delegation_router
+from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
 from .routes.developer import notifications as notifications_router
@@ -1934,7 +1934,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Spending mandates
     try:
-        from sardis_api.routers import spending_mandates as spending_mandates_router
+        from sardis_api.routes.authority import spending_mandates as spending_mandates_router
         app.include_router(
             spending_mandates_router.router,
             prefix="/api/v2/spending-mandates",
