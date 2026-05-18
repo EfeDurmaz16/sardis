@@ -38,6 +38,7 @@
 - Removed tracked company-specific SOC2/ops docs from the public source surface and expanded `scripts/oss_surface_check.py` to block investor, ops, and SOC2 private prefixes going forward.
 - Made public quickstart entrypoints simulation-first by removing hosted dashboard signup as a prerequisite for contributor onboarding.
 - Removed generated audit evidence/latest-run artifacts from public tracking and expanded the OSS surface check to block audit evidence, outbound, outreach, and GTM paths.
+- Removed generated uptime/response-time JSON snapshots and Foundry broadcast artifacts from public source tracking, then ignored them going forward.
 
 ## What Was Deleted
 
@@ -57,6 +58,7 @@
 - Deleted `.github/workflows/deploy-dashboard.yml`; hosted dashboard deployment belongs in the future private product repo.
 - Deleted tracked company-specific SOC2/ops docs from `docs/compliance/soc2/` and `docs/ops/`.
 - Deleted generated/private operational evidence under `docs/audits/evidence/`.
+- Deleted generated uptime/response-time snapshots under `api/*/*.json` and generated Foundry deployment artifacts under `contracts/broadcast/`.
 
 ## What Was Rewritten
 
@@ -149,6 +151,10 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `git ls-files docs | rg -n "(^docs/(audits/evidence|outbound|outreach|gtm|business-plan|investor-list|investor-proof|ops|investor|sales|yc|compliance/soc2)/|^docs/(business-plan|investor-list|investor-proof))"` returned no tracked blocked files.
 - `python3 -m compileall -q scripts/oss_surface_check.py` passed after expanding the public-surface guard.
 - `git diff --check` passed after removing generated audit evidence.
+- `git ls-files | rg -n "(^api/.*/(uptime|response-time).*\\.json$|^contracts/broadcast/)"` returned no tracked generated monitoring or Foundry broadcast artifacts.
+- `python3 scripts/oss_surface_check.py` passed after generated deployment artifact cleanup.
+- `python3 -m compileall -q api/index.py` passed after removing generated monitoring snapshots.
+- `git diff --check` passed after generated deployment artifact cleanup.
 
 Notes:
 
@@ -228,3 +234,5 @@ Notes:
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
 - `5ded7702 chore: remove generated audit evidence from public surface`
+- `85fb48af docs: record audit evidence cleanup`
+- `0a1ed87d chore: remove generated deployment artifacts`
