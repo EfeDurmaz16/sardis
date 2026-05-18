@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.authz import Principal, require_admin_principal
-from sardis_api.canonical_state_machine import normalize_stablecoin_event
-from sardis_api.repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from sardis_api.routers import treasury_ops as treasury_ops_router
+from sardis_server.authz import Principal, require_admin_principal
+from sardis_server.canonical_state_machine import normalize_stablecoin_event
+from sardis_server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from sardis_server.routes.wallets import treasury_ops as treasury_ops_router
 
 
 @pytest.mark.asyncio
@@ -61,4 +61,3 @@ async def test_treasury_ops_endpoints_expose_journeys_and_reviews():
     export_data = export_resp.json()
     assert export_data["organization_id"] == "org_demo"
     assert "journeys" in export_data
-

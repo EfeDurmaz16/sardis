@@ -27,7 +27,7 @@ require_match() {
   fi
 }
 
-require_file "docs/design-partner/policy-signer-mpc-key-governance-runbook.md"
+require_file "docs/security/key-governance.md"
 
 if [[ -f "contracts/src/SardisPolicyModule.sol" ]]; then
   contract_file="contracts/src/SardisPolicyModule.sol"

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-from sardis_api.canonical_state_machine import (
+from sardis_server.canonical_state_machine import (
     normalize_lithic_ach_event,
     normalize_stablecoin_event,
 )
-from sardis_api.repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from sardis_server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
 
 
 async def _build_repo() -> CanonicalLedgerRepository:

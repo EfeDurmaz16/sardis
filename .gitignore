@@ -132,6 +132,9 @@ docs/audits/*
 !/docs/docs/
 !/docs/security/
 docs/security/*
+!/docs/security/escrow-governance-timelock.md
+!/docs/security/key-governance.md
+!/docs/security/reconciliation-load-chaos-slos.md
 !/docs/security/payment-hardening/
 !/docs/security/payment-hardening/**
 /demos/sardis-demo-video/

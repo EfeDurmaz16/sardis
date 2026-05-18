@@ -16,7 +16,7 @@ This root `tests/` directory contains older cross-package, audit, integration,
 and historical migration tests. It is intentionally not the default contributor
 or CI test path while the public repository is being modernized. Many files in
 this directory still refer to legacy API module paths that were removed during
-the `sardis_api` to `sardis` import-package migration.
+the API import-package migration from `sardis_api` to `sardis_server`.
 
 Before re-enabling any root test in CI, move it to the owning package's
 `tests/` directory or update it to the current package layout:

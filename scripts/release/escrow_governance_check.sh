@@ -32,7 +32,7 @@ require_match() {
   fi
 }
 
-RUNBOOK_FILE="docs/design-partner/escrow-governance-timelock-runbook.md"
+RUNBOOK_FILE="docs/security/escrow-governance-timelock.md"
 
 require_file "$RUNBOOK_FILE"
 

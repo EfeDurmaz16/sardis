@@ -4,8 +4,8 @@ import asyncio
 import random
 
 import pytest
-from sardis_api.canonical_state_machine import normalize_stablecoin_event
-from sardis_api.repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from sardis_server.canonical_state_machine import normalize_stablecoin_event
+from sardis_server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
 
 
 @pytest.mark.asyncio
@@ -52,4 +52,3 @@ async def test_reconciliation_engine_handles_concurrent_out_of_order_events():
     # At scale, terminal state should remain stable despite replays/out-of-order events.
     settled = [j for j in journeys if str(j.get("canonical_state")) == "settled"]
     assert len(settled) >= 180
-

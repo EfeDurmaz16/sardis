@@ -11,5 +11,5 @@
 # Security and operational controls
 /.github/workflows/ @EfeDurmaz16
 /scripts/ @EfeDurmaz16
-/docs/design-partner/ @EfeDurmaz16
+/docs/security/ @EfeDurmaz16
 /docs/alerts/ @EfeDurmaz16
