@@ -132,7 +132,7 @@ async def auto_register(
         logger.info("Auto-registered new agent %s (framework=%s)", body.agent_id, body.framework)
         # Publish SSE event for dashboard
         try:
-            from sardis_api.routers.event_stream import publish_event
+            from sardis_api.routes.operations.event_stream import publish_event
             org_id = principal.org_id or principal.subject
             await publish_event(org_id, "agent.registered", {
                 "agent_id": body.agent_id,

@@ -168,7 +168,7 @@ async def batch_events(
 
     # Publish SSE events (best-effort, outside transaction)
     try:
-        from sardis_api.routers.event_stream import publish_event
+        from sardis_api.routes.operations.event_stream import publish_event
         for evt in body.events:
             await publish_event(org_id, f"agent.event.{evt.event_type}", {
                 "agent_id": agent_id,

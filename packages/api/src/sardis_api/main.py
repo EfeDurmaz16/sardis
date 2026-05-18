@@ -104,6 +104,12 @@ from .routes.commerce import checkout_controls as checkout_controls_router
 from .routes.commerce import invoices as invoices_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
+from .routes.operations import alerts as alerts_router
+from .routes.operations import analytics as analytics_router
+from .routes.operations import dashboard_metrics as dashboard_metrics_router
+from .routes.operations import event_stream as event_stream_router
+from .routes.operations import reliability as reliability_router
+from .routes.operations import ws_alerts as ws_alerts_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
@@ -111,8 +117,6 @@ from .routes.agents import agent_events as agent_events_router
 from .routes.agents import agent_heartbeat as agent_heartbeat_router
 from .routes.agents import agent_registry as agent_registry_router
 from .routes.agents import agents as agents_router
-from .routers import alerts as alerts_router
-from .routers import analytics as analytics_router
 from .routes.evidence import attestation as attestation_router
 from .routes.evidence import audit_anchors as audit_anchors_router
 from .routes.money_movement import batch_payments as batch_payments_router
@@ -136,14 +140,12 @@ from .routes.compliance import compliance_export as compliance_export_router
 from .routers import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routers import credentials as credentials_router
-from .routers import dashboard_metrics as dashboard_metrics_router
 from .routers import data_export as data_export_router
 from .routers import dev as dev_router
 from .routers import emergency as emergency_router
 from .routers import enterprise_support as enterprise_support_router
 from .routers import environment_templates as environment_templates_router
 from .routers import escrow_disputes as escrow_disputes_router
-from .routers import event_stream as event_stream_router
 from .routes.evidence import evidence as evidence_router
 from .routes.evidence import evidence_export as evidence_export_router
 from .routers import exceptions as exceptions_router
@@ -169,7 +171,6 @@ from .routes.policy import policies as policies_router
 from .routes.policy import policy_analytics as policy_analytics_router
 from .routes.policy import policy_simulation as policy_simulation_router
 from .routes.wallets import ramp as ramp_router
-from .routers import reliability as reliability_router
 from .routers import sandbox as sandbox_router
 from .routers import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
@@ -186,7 +187,6 @@ from .routers import usage as usage_router
 from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routers import workflow_templates as workflow_templates_router
-from .routers import ws_alerts as ws_alerts_router
 from .routes.protocol import x402 as x402_router
 
 from sardis_v2_core.agent_groups import AgentGroupRepository
