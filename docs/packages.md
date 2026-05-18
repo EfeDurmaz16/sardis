@@ -36,6 +36,7 @@ Status meanings:
 | `packages/sardis-ai-sdk/` | Vercel AI SDK integration. | Keep published package CI green. |
 | `packages/sardis-langchain/` | LangChain integration. | Add minimal integration test. |
 | `packages/sardis-crewai/` | CrewAI integration. | Add minimal integration test. |
+| `packages/sardis-agent-sdk/` | Claude Agent SDK integration. | Keep examples aligned with current agent SDK package shape. |
 | `packages/sardis-openai-agents/` | OpenAI Agents integration. | Add current SDK examples and tests. |
 | `packages/sardis-a2a/` | Agent-to-agent protocol integration. | Add conformance tests. |
 | `packages/sardis-ucp/` | UCP transport/protocol work. | Clarify API stability. |
@@ -62,6 +63,8 @@ Status meanings:
 | `packages/sardis-autogpt/` | AutoGPT integration. | Revalidate current AutoGPT plugin shape. |
 | `packages/sardis-openai/` | OpenAI function/tool integration. | Clarify overlap with OpenAI Agents package. |
 | `packages/sardis-openclaw/` | OpenClaw integration. | Add evidence of current ecosystem use. |
+| `packages/sardis-gpt/` | ChatGPT Custom GPT actions surface. | Keep OpenAPI/action files aligned with public API contract. |
+| `packages/sardis-e2b/` | E2B sandbox template for Sardis-enabled code execution agents. | Add reproducible template smoke test or archive. |
 | `packages/n8n-nodes-sardis/` | n8n integration. | Add build/test gate before publication. |
 | `packages/sardis-activepieces/` | Activepieces integration. | Add build/test gate before publication. |
 
