@@ -421,6 +421,11 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.emergency` resolves to the same module object as `sardis_api.routes.operations.emergency`.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved emergency routes remain mounted at `/api/v2/admin/emergency/freeze-all`, `/api/v2/admin/emergency/unfreeze-all`, and `/api/v2/admin/emergency/status`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving emergency incident-response routes. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routes/developer/sandbox.py packages/api/src/sardis_api/routers/sandbox.py packages/api/src/sardis_api/main.py packages/api/tests/test_sandbox_isolation.py` passed after moving the developer sandbox playground routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.sandbox` resolves to the same module object as `sardis_api.routes.developer.sandbox`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_sandbox_route_gate.py -q` passed after moving sandbox routes: 8 tests.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved sandbox routes remain mounted at `/api/v2/sandbox/payment`, `/api/v2/sandbox/demo-data`, `/api/v2/sandbox/reset`, and `/api/v2/sandbox/playground-key`.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving sandbox routes. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 

@@ -78,7 +78,7 @@ Completed so far:
 | `routers/counterparties.py`, `routers/marketplace.py`, `routers/escrow_disputes.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Moves counterparty trust records, service marketplace, and escrow/dispute APIs into the commerce domain where contributors expect merchant/vendor interaction surfaces. |
 | `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py`, `routers/outcomes.py`, `routers/execution_modes.py`, `routers/exceptions.py`, `routers/emergency.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, outcome/risk profiles, execution-mode discovery, exception workflow/retry policies, emergency incident response, dashboard metrics, and Prometheus collectors together under one operations domain. |
 | `routers/striga.py`, `routers/lightspark.py`, `routers/currency.py`, `routers/fiat_rails.py` implementations | `routes/providers/*` with compatibility module aliases in `routers/` | Keeps feature-flagged provider and fiat rail adapter surfaces with other provider callback/integration routes. |
-| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py`, `routers/dev.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
+| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py`, `routers/dev.py`, `routers/sandbox.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, no-signup sandbox playground, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
 | `routers/billing.py`, `routers/usage.py`, `routers/subscriptions.py` implementations | `routes/billing/*` with compatibility module aliases in `routers/` | Groups subscription, checkout, billing provider, webhook, recurring subscription, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
 
 The external API remains unchanged:
@@ -190,6 +190,7 @@ sardis_api/
       environment_templates.py
       faucet.py
       notifications.py
+      sandbox.py
       simulation.py
       webhook_subscriptions.py
       workflow_templates.py
@@ -252,13 +253,13 @@ moved to `sardis_api/routes/<domain>/...`.
 11. Developer and contributor-facing tools: completed for
    `webhook_subscriptions`, `enterprise_support`, `sdk_metrics`, and
    `notifications`, `environment_templates`, `workflow_templates`,
-   `simulation`, and `faucet`.
+   `simulation`, `faucet`, `dev`, and `sandbox`.
 12. Billing and usage: completed for `billing` and `usage`.
 13. Provider and fiat rail adapters: completed for `striga`, `lightspark`,
    `currency`, and `fiat_rails`.
 14. Admin and miscellaneous contributor tools: `admin`,
-   `admin_reconciliation`, `sandbox`, `dev`,
-   `plugins`, and remaining uncategorized route surfaces.
+   `admin_reconciliation`, `secure_checkout`,
+   and remaining uncategorized route surfaces.
 
 ## Validation Required For Each Move
 
