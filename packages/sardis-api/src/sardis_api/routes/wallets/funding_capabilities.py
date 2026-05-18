@@ -1,0 +1,237 @@
+"""Funding capability matrix endpoints."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from typing import Any
+
+from fastapi import APIRouter, Depends
+from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
+from sardis_v2_core.config import load_settings
+
+from sardis_api.authz import Principal, require_admin_principal
+
+router = APIRouter(prefix="/funding", tags=["funding"])
+
+
+@dataclass
+class FundingCapabilitiesDeps:
+    settings: Any = None
+
+
+def get_deps() -> FundingCapabilitiesDeps:
+    raise NotImplementedError("Dependency override required")
+
+
+def _resolve_settings(deps: FundingCapabilitiesDeps):
+    if deps.settings is not None:
+        return deps.settings
+    return load_settings()
+
+
+def _build_retry_order(
+    *,
+    preferred: list[str],
+    ready_by_provider: dict[str, bool],
+) -> list[str]:
+    order: list[str] = []
+    for provider in preferred:
+        key = str(provider or "").strip().lower()
+        if not key or key in order:
+            continue
+        if ready_by_provider.get(key, False):
+            order.append(key)
+    for provider, ready in sorted(ready_by_provider.items()):
+        if not ready or provider in order:
+            continue
+        order.append(provider)
+    return order
+
+
+def _normalize_funding_adapter_name(adapter_name: str) -> str:
+    normalized = str(adapter_name or "").strip().lower()
+    alias_map = {
+        "stripe": "stripe_issuing",
+        "bridge": "bridge_cards",
+        "coinbase_cdp": "coinbase_cdp",
+        "circle_cpn": "circle_cpn",
+        "rain": "rain",
+        "lithic": "lithic",
+    }
+    return alias_map.get(normalized, normalized)
+
+
+@router.get("/capabilities")
+async def get_funding_capability_matrix(
+    deps: FundingCapabilitiesDeps = Depends(get_deps),
+    _: Principal = Depends(require_admin_principal),
+):
+    settings = _resolve_settings(deps)
+    issuer_rows = {row.name: row for row in evaluate_issuer_readiness()}
+
+    stripe_financial_account_id = (
+        getattr(settings.stripe, "treasury_financial_account_id", "")
+        or os.getenv("STRIPE_TREASURY_FINANCIAL_ACCOUNT_ID", "")
+    ).strip()
+    stripe_connected_account = (
+        getattr(settings.stripe, "connected_account_id", "")
+        or os.getenv("STRIPE_CONNECTED_ACCOUNT_ID", "")
+    ).strip()
+
+    providers: list[dict[str, Any]] = []
+    for provider_name in ("stripe_issuing", "lithic", "rain", "bridge_cards"):
+        row = issuer_rows.get(provider_name)
+        if row is None:
+            continue
+
+        missing_env = list(row.missing_env)
+        fiat_ready = False
+        if provider_name == "stripe_issuing":
+            fiat_ready = row.configured and bool(stripe_financial_account_id)
+            if row.configured and not stripe_financial_account_id:
+                missing_env.append("STRIPE_TREASURY_FINANCIAL_ACCOUNT_ID")
+        elif provider_name == "lithic":
+            fiat_ready = row.configured
+        elif provider_name == "bridge_cards":
+            # Bridge acts as a practical fallback lane for funding routes.
+            fiat_ready = row.configured
+
+        providers.append(
+            {
+                "provider": provider_name,
+                "configured": bool(row.configured),
+                "card_issuing_ready": bool(row.card_issuing and row.configured),
+                "funding_fiat_ready": bool(fiat_ready),
+                "funding_stablecoin_ready": bool(row.stablecoin_native and row.configured),
+                "onchain_rail_ready": False,
+                "stablecoin_native": bool(row.stablecoin_native),
+                "required_env": list(row.required_env),
+                "missing_env": missing_env,
+                "notes": row.notes,
+            }
+        )
+
+    circle_cpn_settings = getattr(settings, "circle_cpn", None)
+    circle_cpn_api_key = (
+        getattr(circle_cpn_settings, "api_key", "")
+        or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
+        or os.getenv("CIRCLE_CPN_API_KEY", "")
+    ).strip()
+    circle_cpn_enabled = bool(
+        getattr(circle_cpn_settings, "enabled", False)
+        or os.getenv("SARDIS_CIRCLE_CPN__ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+        or os.getenv("CIRCLE_CPN_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
+    )
+    circle_cpn_ready = bool(circle_cpn_api_key) and circle_cpn_enabled
+    circle_cpn_missing = []
+    if not circle_cpn_enabled:
+        circle_cpn_missing.append("SARDIS_CIRCLE_CPN__ENABLED")
+    if not circle_cpn_api_key:
+        circle_cpn_missing.append("SARDIS_CIRCLE_CPN__API_KEY")
+    providers.append(
+        {
+            "provider": "circle_cpn",
+            "configured": circle_cpn_ready,
+            "card_issuing_ready": False,
+            "funding_fiat_ready": circle_cpn_ready,
+            "funding_stablecoin_ready": False,
+            "onchain_rail_ready": False,
+            "stablecoin_native": False,
+            "required_env": [
+                "SARDIS_CIRCLE_CPN__ENABLED",
+                "SARDIS_CIRCLE_CPN__API_KEY",
+            ],
+            "missing_env": circle_cpn_missing,
+            "notes": "CPN payout/collection rail. Keep issuer cards sandbox-only until live approval.",
+        }
+    )
+
+    coinbase_key_name = (
+        getattr(settings.coinbase, "api_key_name", "")
+        or os.getenv("COINBASE_CDP_API_KEY_NAME", "")
+    ).strip()
+    coinbase_key_private = (
+        getattr(settings.coinbase, "api_key_private_key", "")
+        or os.getenv("COINBASE_CDP_API_KEY_PRIVATE_KEY", "")
+    ).strip()
+    coinbase_ready = bool(coinbase_key_name and coinbase_key_private)
+    coinbase_missing = []
+    if not coinbase_key_name:
+        coinbase_missing.append("COINBASE_CDP_API_KEY_NAME")
+    if not coinbase_key_private:
+        coinbase_missing.append("COINBASE_CDP_API_KEY_PRIVATE_KEY")
+
+    providers.append(
+        {
+            "provider": "coinbase_cdp",
+            "configured": coinbase_ready,
+            "card_issuing_ready": False,
+            "funding_fiat_ready": False,
+            "funding_stablecoin_ready": coinbase_ready,
+            "onchain_rail_ready": coinbase_ready,
+            "stablecoin_native": True,
+            "required_env": [
+                "COINBASE_CDP_API_KEY_NAME",
+                "COINBASE_CDP_API_KEY_PRIVATE_KEY",
+            ],
+            "missing_env": coinbase_missing,
+            "notes": "On-chain stablecoin rail and x402 execution path.",
+        }
+    )
+
+    fiat_ready_providers = sorted(
+        [entry["provider"] for entry in providers if entry["funding_fiat_ready"]]
+    )
+    stablecoin_ready_providers = sorted(
+        [entry["provider"] for entry in providers if entry["funding_stablecoin_ready"]]
+    )
+    fiat_ready_by_provider = {
+        str(entry["provider"]): bool(entry["funding_fiat_ready"])
+        for entry in providers
+    }
+    stablecoin_ready_by_provider = {
+        str(entry["provider"]): bool(entry["funding_stablecoin_ready"])
+        for entry in providers
+    }
+    primary_provider = getattr(settings.cards, "primary_provider", None)
+    fallback_provider = getattr(settings.cards, "fallback_provider", None)
+    on_chain_provider = getattr(settings.cards, "on_chain_provider", None)
+    funding_config = getattr(settings, "funding", None)
+    funding_primary_adapter = _normalize_funding_adapter_name(
+        getattr(funding_config, "primary_adapter", "")
+    )
+    funding_fallback_adapter = _normalize_funding_adapter_name(
+        getattr(funding_config, "fallback_adapter", "")
+    )
+    preferred_fiat_order = [
+        funding_primary_adapter or str(primary_provider or ""),
+        funding_fallback_adapter or str(fallback_provider or ""),
+    ]
+    preferred_stablecoin_order = [
+        str(on_chain_provider or ""),
+        str(primary_provider or ""),
+        str(fallback_provider or ""),
+    ]
+
+    return {
+        "primary_provider": primary_provider,
+        "fallback_provider": fallback_provider,
+        "on_chain_provider": on_chain_provider,
+        "default_fiat_connected_account": stripe_connected_account or None,
+        "funding_primary_adapter": funding_primary_adapter or None,
+        "funding_fallback_adapter": funding_fallback_adapter or None,
+        "providers": providers,
+        "rails": {
+            "fiat_ready_providers": fiat_ready_providers,
+            "stablecoin_ready_providers": stablecoin_ready_providers,
+            "fiat_retry_order": _build_retry_order(
+                preferred=preferred_fiat_order,
+                ready_by_provider=fiat_ready_by_provider,
+            ),
+            "stablecoin_retry_order": _build_retry_order(
+                preferred=preferred_stablecoin_order,
+                ready_by_provider=stablecoin_ready_by_provider,
+            ),
+        },
+    }

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.funding_capabilities import (
+from sardis_api.routes.wallets.funding_capabilities import (
     FundingCapabilitiesDeps,
     get_deps,
     router,

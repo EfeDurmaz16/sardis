@@ -111,26 +111,26 @@ class TestCardsWebhookPathPolicyEnforcement:
     """Cards webhook policy behavior remains fail-closed in production."""
 
     def test_cards_has_policy_evaluation_function(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert "_evaluate_policy_for_card" in source
 
     def test_cards_webhook_calls_policy_evaluation(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert source.count("_evaluate_policy_for_card") >= 2
 
     def test_cards_policy_store_mandatory_in_production(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert "policy_enforcement_unavailable_in_production" in source
 
     def test_cards_policy_denial_marks_transaction_declined(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert "declined_policy" in source
 
     def test_cards_policy_denial_can_auto_freeze(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert "_auto_freeze_enabled" in source
 
     def test_cards_policy_uses_wallet_id_and_mcc(self) -> None:
-        source = _source("sardis_api.routers.cards")
+        source = _source("sardis_api.routes.wallets.cards")
         assert "wallet_id" in source
         assert "mcc_code" in source

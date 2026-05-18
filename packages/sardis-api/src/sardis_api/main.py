@@ -122,13 +122,13 @@ from .routes.money_movement import transactions as transactions_router
 # Protocol v1.0 routers
 from .routers import billing as billing_router
 from .routers import bridge as bridge_router
-from .routers import cards as cards_router
+from .routes.wallets import cards as cards_router
 from .routers import checkout as checkout_router
 from .routers import checkout_controls as checkout_controls_router
 from .routers import compliance as compliance_router
 from .routers import compliance_export as compliance_export_router
 from .routers import counterparties as counterparties_router
-from .routers import cpn as cpn_router
+from .routes.wallets import cpn as cpn_router
 from .routers import credentials as credentials_router
 from .routers import dashboard_metrics as dashboard_metrics_router
 from .routers import data_export as data_export_router
@@ -147,7 +147,7 @@ from .routers import facility_requests as facility_requests_router
 from .routers import fallback_policies as fallback_policies_router
 from .routers import faucet as faucet_router
 from .routers import funding as funding_router
-from .routers import funding_capabilities as funding_capabilities_router
+from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routers import groups as groups_router
 from .routers import invoices as invoices_router
 from .routers import kyc_onboarding as kyc_onboarding_router
@@ -180,10 +180,10 @@ from .routers import stripe_connect as stripe_connect_router
 from .routers import stripe_funding as stripe_funding_router
 from .routers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
-from .routers import treasury as treasury_router
-from .routers import treasury_ops as treasury_ops_router
+from .routes.wallets import treasury as treasury_router
+from .routes.wallets import treasury_ops as treasury_ops_router
 from .routers import usage as usage_router
-from .routers import virtual_cards as virtual_cards_router
+from .routes.wallets import virtual_cards as virtual_cards_router
 from .routers import wallets as wallets_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router

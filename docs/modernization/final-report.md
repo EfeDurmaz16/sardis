@@ -65,6 +65,8 @@
 - Modernized stale spend-recording and compliance router tests so they assert the current PaymentOrchestrator/ControlPlane execution boundaries instead of counting old direct router-local calls.
 - Moved the money movement and ledger route implementations to `sardis_api.routes.money_movement`: ledger, holds, transactions, refunds, payment objects, batch payments, streaming payments, FX, swaps, settlements, and receipts now share the same domain directory with temporary compatibility wrappers under `sardis_api.routers`.
 - Updated `sardis_api.main` and the batch idempotency tests to import the money movement implementations from the new domain package.
+- Moved the lower-coupling wallet/card/funding route implementations to `sardis_api.routes.wallets`: cards, virtual cards, stablecoin cards, treasury, treasury operations, CPN, and funding capabilities now share one domain directory with temporary compatibility wrappers under `sardis_api.routers`.
+- Updated `sardis_api.main`, provider docs, and focused card/CPN/treasury/funding tests to import the moved wallet routes from the new domain package.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 
 ## What Was Deleted
@@ -146,7 +148,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical moves are now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, the pay/ledger/transaction/payment route code lives under `sardis_api.routes.money_movement`, and mandate/AP2/MVP/approval route code lives under `sardis_api.routes.authority`, while the old `sardis_api.routers` paths remain as compatibility wrappers during the migration.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars. The first physical moves are now complete: outbound webhook subscription route code lives under `sardis_api.routes.developer`, the pay/ledger/transaction/payment route code lives under `sardis_api.routes.money_movement`, mandate/AP2/MVP/approval route code lives under `sardis_api.routes.authority`, and lower-coupling card/treasury/funding route code lives under `sardis_api.routes.wallets`, while the old `sardis_api.routers` paths remain as compatibility wrappers during the migration.
 
 ## Test, Build, And Lint Results
 
@@ -273,6 +275,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified both new `sardis_api.routes.money_movement.*` imports and old compatibility `sardis_api.routers.*` imports for ledger, holds, transactions, refunds, payment objects, batch payments, streaming payments, FX, swaps, settlements, and receipts.
 - `uv run pytest packages/sardis-api/tests/test_transactions_batch_idempotency.py packages/sardis-api/tests/test_batch_payments_idempotency.py -q` passed after the money movement route move: 4 tests.
 - `pnpm check:openapi` passed after the money movement route move: 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/routes/wallets ... packages/sardis-api/src/sardis_api/main.py ... focused wallet/card tests` passed after moving card, treasury, CPN, and funding capability routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified both new `sardis_api.routes.wallets.*` imports and old compatibility `sardis_api.routers.*` imports for cards, virtual cards, stablecoin cards, treasury, treasury operations, CPN, and funding capabilities.
+- `uv run pytest packages/sardis-api/tests/test_cards_provider_introspection.py packages/sardis-api/tests/test_cards_warm_mode_gate.py packages/sardis-api/tests/test_cpn_webhooks.py packages/sardis-api/tests/test_funding_capabilities.py packages/sardis-api/tests/test_policy_enforcement.py packages/sardis-api/tests/test_virtual_cards_router.py packages/sardis-api/tests/test_webhook_signature_enforcement.py -q` passed after the wallet/card route move: 51 tests.
+- `pnpm check:openapi` passed after the wallet/card route move: 540 paths and 592 schemas.
 
 Notes:
 
@@ -308,7 +314,7 @@ Notes:
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
-- Continue physical route placement cleanup by moving wallets/funding/card surfaces into `routes/wallets/` and provider webhook routes into `routes/providers/` with temporary compatibility wrappers.
+- Continue physical route placement cleanup by moving the remaining high-coupling wallet/funding surfaces (`wallets`, `onchain_payments`, `funding`, `ramp`, `onramp`, and `offramp`) into `routes/wallets/`, then provider webhook routes into `routes/providers/` with temporary compatibility wrappers.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.

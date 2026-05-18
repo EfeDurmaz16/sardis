@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.cards import create_cards_router
+from sardis_api.routes.wallets.cards import create_cards_router
 
 
 class _NoopCardRepo:

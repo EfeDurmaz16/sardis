@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers import virtual_cards
+from sardis_api.routes.wallets import virtual_cards
 
 
 def _make_app() -> FastAPI:
