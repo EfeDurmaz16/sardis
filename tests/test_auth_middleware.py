@@ -29,12 +29,12 @@ import pytest
 # Ensure package sources are on sys.path
 _root = Path(__file__).parent.parent
 _pkgs = _root / "packages"
-for _pkg in ("sardis-core", "sardis-api"):
+for _pkg in ("sardis-core", "server-api"):
     _p = _pkgs / _pkg / "src"
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_api.middleware.auth import (
+from sardis_server.middleware.auth import (
     APIKey,
     APIKeyManager,
     AuthContext,

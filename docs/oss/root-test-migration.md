@@ -6,7 +6,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 ## Current Snapshot
 
 - Root Python test files: `233`
-- Files with stale API import/path references: `50`
+- Files with stale API import/path references: `45`
 - Default pytest path: `packages/server-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
@@ -40,9 +40,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_acp_checkout.py` | `packages/server-api/tests` | 7 |
 | `tests/test_admin_reconciliation.py` | `packages/sardis-ledger/tests` | 7 |
 | `tests/test_agent_auth_ed25519.py` | `packages/server-api/tests` | 2 |
-| `tests/test_ap2_compliance_checks.py` | `packages/server-api/tests` | 1 |
 | `tests/test_audit_f25_kyc_fail_closed.py` | `needs owner review` | 1 |
-| `tests/test_auth_middleware.py` | `packages/server-api/tests` | 1 |
 | `tests/test_batch_payments.py` | `needs owner review` | 2 |
 | `tests/test_better_auth_jwt.py` | `packages/server-api/tests` | 8 |
 | `tests/test_billing.py` | `packages/server-api/tests` | 16 |
@@ -67,12 +65,10 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_health.py` | `packages/server-api/tests` | 2 |
 | `tests/test_ledger_entries_api.py` | `packages/server-api/tests` | 2 |
 | `tests/test_monorepo_bootstrap_guard.py` | `needs owner review` | 1 |
-| `tests/test_mpp_router.py` | `packages/server-api/tests` | 2 |
 | `tests/test_payments_refund.py` | `needs owner review` | 2 |
 | `tests/test_polar_webhook.py` | `packages/server-api/tests` | 8 |
 | `tests/test_ramp_offramp.py` | `packages/server-api/tests` | 2 |
 | `tests/test_ramp_onramp.py` | `packages/server-api/tests` | 3 |
-| `tests/test_rbac_middleware.py` | `packages/server-api/tests` | 1 |
 | `tests/test_router_orchestrator_migration.py` | `packages/server-api/tests` | 3 |
 | `tests/test_streaming_payments.py` | `needs owner review` | 4 |
 | `tests/test_stripe_onramp.py` | `packages/server-api/tests` | 17 |
@@ -82,7 +78,6 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_tap_fail_close.py` | `packages/server-api/tests` | 3 |
 | `tests/test_usage_metering.py` | `packages/server-api/tests` | 13 |
 | `tests/test_wallet_transfer.py` | `packages/server-api/tests` | 2 |
-| `tests/test_x402_e2e.py` | `packages/server-api/tests` | 1 |
 | `tests/test_zk_failclosed.py` | `needs owner review` | 3 |
 
 Regenerate this inventory with:

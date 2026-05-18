@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 
-from sardis_api.routers.ap2 import (
+from sardis_server.routes.authority.ap2 import (
     HIGH_VALUE_THRESHOLD_MINOR,
     KYC_THRESHOLD_MINOR,
     perform_compliance_checks,
@@ -133,4 +133,3 @@ async def test_sanctions_service_error_fails_closed():
 
     assert res.passed is False
     assert res.reason == "sanctions_service_error"
-

@@ -124,7 +124,7 @@ async def test_sardis_serves_x402_content_e2e():
     """Full server flow: middleware generates 402, client pays, gets content."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from sardis_api.middleware.x402 import (
+    from sardis_server.middleware.x402 import (
         X402MiddlewareConfig,
         X402PaymentMiddleware,
         X402PricingRegistry,
