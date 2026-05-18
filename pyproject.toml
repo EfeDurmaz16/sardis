@@ -140,10 +140,38 @@ ignore = [
 "examples/**" = ["F401", "F841"]
 
 [tool.uv.sources]
+sardis-a2a = { path = "packages/sardis-a2a", editable = true }
+sardis-adk = { path = "packages/sardis-adk", editable = true }
+sardis-agent-sdk = { path = "packages/sardis-agent-sdk", editable = true }
+sardis-agentkit = { path = "packages/sardis-agentkit", editable = true }
+sardis-api = { path = "packages/sardis-api", editable = true }
+sardis-autogpt = { path = "packages/sardis-autogpt", editable = true }
+sardis-browser-use = { path = "packages/sardis-browser-use", editable = true }
+sardis-cards = { path = "packages/sardis-cards", editable = true }
+sardis-chain = { path = "packages/sardis-chain", editable = true }
+sardis-checkout = { path = "packages/sardis-checkout", editable = true }
 sardis-cli = { path = "packages/sardis-cli", editable = true }
+sardis-coinbase = { path = "packages/sardis-coinbase", editable = true }
+sardis-compliance = { path = "packages/sardis-compliance", editable = true }
+sardis-composio = { path = "packages/sardis-composio", editable = true }
+sardis-connect = { path = "packages/sardis-connect", editable = true }
 sardis-core = { path = "packages/sardis-core", editable = true }
 sardis-crewai = { path = "packages/sardis-crewai", editable = true }
+sardis-guardrails = { path = "packages/sardis-guardrails", editable = true }
+sardis-langchain = { path = "packages/sardis-langchain", editable = true }
 sardis-ledger = { path = "packages/sardis-ledger", editable = true }
+sardis-lightspark = { path = "packages/sardis-lightspark", editable = true }
+sardis-mpp = { path = "packages/sardis-mpp", editable = true }
+sardis-openai = { path = "packages/sardis-openai", editable = true }
+sardis-openai-agents = { path = "packages/sardis-openai-agents", editable = true }
+sardis-openclaw = { path = "packages/sardis-openclaw", editable = true }
+sardis-protocol = { path = "packages/sardis-protocol", editable = true }
+sardis-ramp = { path = "packages/sardis-ramp", editable = true }
+sardis-sdk = { path = "packages/sardis-sdk-python", editable = true }
+sardis-striga = { path = "packages/sardis-striga", editable = true }
+sardis-ucp = { path = "packages/sardis-ucp", editable = true }
+sardis-wallet = { path = "packages/sardis-wallet", editable = true }
+sardis-zk-policy = { path = "packages/sardis-zk-policy", editable = true }
 
 [dependency-groups]
 dev = [

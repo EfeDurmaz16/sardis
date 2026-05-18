@@ -19,6 +19,8 @@ pnpm install --frozen-lockfile
 
 Use local package sources where available. Do not rely on published Sardis packages while developing repo-local changes.
 
+The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[tool.uv.sources]` as an editable local path. This is intentional: contributor checks must exercise the checkout being edited, not a previously published PyPI package with the same name.
+
 ## Fast Checks
 
 ```bash
@@ -77,3 +79,18 @@ Default expectations:
 ## Package Stability
 
 Use `docs/packages.md` before changing a package. Do not promote a package from experimental to supported without tests, docs, and a stable API explanation.
+
+## Verifying Python Local Sources
+
+When changing Python package metadata or root extras, run:
+
+```bash
+uv lock --check
+uv run --extra api python - <<'PY'
+from importlib import metadata
+for name in ["sardis-api", "sardis-chain", "sardis-compliance", "sardis-ledger", "sardis-sdk"]:
+    direct_url = metadata.distribution(name).read_text("direct_url.json")
+    assert direct_url and "file://" in direct_url and '"editable":true' in direct_url
+print("local editable sources verified")
+PY
+```

@@ -6540,6 +6540,22 @@ wheels = [
 ]
 
 [[package]]
+name = "pytempo"
+version = "0.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "eth-account" },
+    { name = "eth-utils" },
+    { name = "rlp" },
+    { name = "web3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f3/5b/2a31105f61a75413a8a61274443d610a7813142c1638956c76d963228896/pytempo-0.5.1.tar.gz", hash = "sha256:3f70c0bb8b3111b7eb56a334e22df0eeb715b8f35d77fced11358e8d487a6bad", size = 267288, upload-time = "2026-05-02T19:36:30.815Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/51/85d4f411c8768b3308b2ef40365f98b7d64ef33655b6bc67f612cdce9416/pytempo-0.5.1-py3-none-any.whl", hash = "sha256:3e912ad4e81455e54523d93dd27cf06921c624b56ec622a4d16e7726640cb04c", size = 38436, upload-time = "2026-05-02T19:36:29.667Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -6870,6 +6886,19 @@ wheels = [
 ]
 
 [[package]]
+name = "resend"
+version = "2.30.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/c7/b4c5bee252a2690cadb41063f280f4c09aac663e050e4425df545d28403d/resend-2.30.1.tar.gz", hash = "sha256:a529a019e83be285d855ecf135475dc6a6b9fa1c24f9b710686988e021a535ec", size = 43216, upload-time = "2026-05-13T15:39:18.172Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a7/46/f2f5da31f7359dd39672a279f654e6eb86fb1a27aa9c90d0d9efbb962ebb/resend-2.30.1-py2.py3-none-any.whl", hash = "sha256:45da25b86940307e130f8a44d2bac889574362400843e9cd98b49b79a7b3db63", size = 68393, upload-time = "2026-05-13T15:39:17.114Z" },
+]
+
+[[package]]
 name = "respx"
 version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
@@ -7149,28 +7178,28 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2" },
     { name = "sardis", extras = ["chain", "compliance", "ledger", "wallet", "cards", "ramp", "api", "protocols", "checkout", "guardrails"], marker = "extra == 'all'" },
-    { name = "sardis-a2a", marker = "extra == 'protocols'", specifier = ">=1.0.0" },
-    { name = "sardis-adk", marker = "extra == 'adk'", specifier = ">=1.0.0" },
-    { name = "sardis-api", marker = "extra == 'api'", specifier = ">=1.0.0" },
-    { name = "sardis-autogpt", marker = "extra == 'autogpt'", specifier = ">=1.0.0" },
-    { name = "sardis-browser-use", marker = "extra == 'browser-use'", specifier = ">=1.0.0" },
-    { name = "sardis-cards", marker = "extra == 'cards'", specifier = ">=1.0.0" },
-    { name = "sardis-chain", marker = "extra == 'chain'", specifier = ">=1.0.0" },
-    { name = "sardis-checkout", marker = "extra == 'checkout'", specifier = ">=1.0.0" },
+    { name = "sardis-a2a", marker = "extra == 'protocols'", editable = "packages/sardis-a2a" },
+    { name = "sardis-adk", marker = "extra == 'adk'", editable = "packages/sardis-adk" },
+    { name = "sardis-api", marker = "extra == 'api'", editable = "packages/sardis-api" },
+    { name = "sardis-autogpt", marker = "extra == 'autogpt'", editable = "packages/sardis-autogpt" },
+    { name = "sardis-browser-use", marker = "extra == 'browser-use'", editable = "packages/sardis-browser-use" },
+    { name = "sardis-cards", marker = "extra == 'cards'", editable = "packages/sardis-cards" },
+    { name = "sardis-chain", marker = "extra == 'chain'", editable = "packages/sardis-chain" },
+    { name = "sardis-checkout", marker = "extra == 'checkout'", editable = "packages/sardis-checkout" },
     { name = "sardis-cli", editable = "packages/sardis-cli" },
-    { name = "sardis-compliance", marker = "extra == 'compliance'", specifier = ">=1.0.0" },
-    { name = "sardis-composio", marker = "extra == 'composio'", specifier = ">=1.0.0" },
+    { name = "sardis-compliance", marker = "extra == 'compliance'", editable = "packages/sardis-compliance" },
+    { name = "sardis-composio", marker = "extra == 'composio'", editable = "packages/sardis-composio" },
     { name = "sardis-core", editable = "packages/sardis-core" },
     { name = "sardis-crewai", marker = "extra == 'crewai'", editable = "packages/sardis-crewai" },
-    { name = "sardis-guardrails", marker = "extra == 'guardrails'", specifier = ">=1.0.0" },
-    { name = "sardis-langchain", marker = "extra == 'langchain'", specifier = ">=1.0.0" },
+    { name = "sardis-guardrails", marker = "extra == 'guardrails'", editable = "packages/sardis-guardrails" },
+    { name = "sardis-langchain", marker = "extra == 'langchain'", editable = "packages/sardis-langchain" },
     { name = "sardis-ledger", marker = "extra == 'ledger'", editable = "packages/sardis-ledger" },
-    { name = "sardis-openai-agents", marker = "extra == 'openai-agents'", specifier = ">=1.0.0" },
-    { name = "sardis-protocol", marker = "extra == 'protocols'", specifier = ">=1.0.0" },
-    { name = "sardis-ramp", marker = "extra == 'ramp'", specifier = ">=1.0.0" },
-    { name = "sardis-sdk", specifier = ">=1.0.0" },
-    { name = "sardis-ucp", marker = "extra == 'protocols'", specifier = ">=1.0.0" },
-    { name = "sardis-wallet", marker = "extra == 'wallet'", specifier = ">=1.0.0" },
+    { name = "sardis-openai-agents", marker = "extra == 'openai-agents'", editable = "packages/sardis-openai-agents" },
+    { name = "sardis-protocol", marker = "extra == 'protocols'", editable = "packages/sardis-protocol" },
+    { name = "sardis-ramp", marker = "extra == 'ramp'", editable = "packages/sardis-ramp" },
+    { name = "sardis-sdk", editable = "packages/sardis-sdk-python" },
+    { name = "sardis-ucp", marker = "extra == 'protocols'", editable = "packages/sardis-ucp" },
+    { name = "sardis-wallet", marker = "extra == 'wallet'", editable = "packages/sardis-wallet" },
 ]
 provides-extras = ["chain", "compliance", "ledger", "wallet", "cards", "ramp", "api", "protocols", "checkout", "crewai", "langchain", "autogpt", "openai-agents", "adk", "browser-use", "composio", "guardrails", "all", "dev"]
 
@@ -7200,133 +7229,223 @@ dev = [
 
 [[package]]
 name = "sardis-a2a"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-a2a" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/1f/514911a6b389d4897c00e425e6ec36db36f2f08a8483726844c1873fcacc/sardis_a2a-1.0.0.tar.gz", hash = "sha256:8a7f49b3f56c556b066ad28cf248b63d8b1c0b1291312c010d4608562da4d739", size = 21221, upload-time = "2026-03-08T12:07:54.859Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/81/01bec0330d2c67c52e9c6761dde49242cb71e0541236f20f4f6210d15c16/sardis_a2a-1.0.0-py3-none-any.whl", hash = "sha256:730284a976e4786a8260d76f373e1bb29d81f21e400b47f68b4106b2c67cc8b8", size = 14256, upload-time = "2026-03-08T12:07:53.905Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.25" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-adk"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-adk" }
 dependencies = [
     { name = "google-adk" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/31/2b0292fc7ccf4bf20ba76b759100153ff67cf00a6b7e0d223292f49ec97f/sardis_adk-1.0.0.tar.gz", hash = "sha256:5387988753b16a29e1f0cfe29c3ae3834d83360c9c4037d9beebc0a2e649c65d", size = 11005, upload-time = "2026-03-08T12:08:19.151Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/37/f2/15b64f3bf1d8fb52e60c1ecd172de8ea32276187aea6823524b48d76fb69/sardis_adk-1.0.0-py3-none-any.whl", hash = "sha256:3d6c0db528098ca744a95e0bf762322e13d83ea3833ad7c42900bd188996705a", size = 12173, upload-time = "2026-03-08T12:08:17.975Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "google-adk", specifier = ">=0.3" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-api"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-api" }
 dependencies = [
     { name = "alembic" },
-    { name = "apscheduler" },
     { name = "asyncpg" },
     { name = "fastapi" },
+    { name = "greenlet" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-instrumentation-asyncpg" },
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-sdk" },
     { name = "prometheus-client" },
     { name = "pyjwt" },
+    { name = "pynacl" },
+    { name = "pyotp" },
     { name = "python-multipart" },
+    { name = "resend" },
     { name = "sardis-chain" },
     { name = "sardis-compliance" },
     { name = "sardis-core" },
     { name = "sardis-ledger" },
     { name = "sentry-sdk", extra = ["fastapi"] },
+    { name = "sqlalchemy" },
+    { name = "stripe" },
     { name = "uvicorn" },
-    { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ce/58/8ba25f2022936e9e43653a7ad5895b4d6ee696633e29c0106262d4f89b39/sardis_api-1.0.0.tar.gz", hash = "sha256:207b20551ede0cb167d197d9dec50b5761420b24ea7d4fc39a954f00bdad5a41", size = 419058, upload-time = "2026-03-08T12:08:53.858Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/e0/cea3c9512226b47727e9c7f931737d12072a45139e404cbfdbabce62d4c7/sardis_api-1.0.0-py3-none-any.whl", hash = "sha256:19fb33fd28303fa6b6c9e8c09ff3c35ff60cc3afd4a993060857e53c59428e3c", size = 410333, upload-time = "2026-03-08T12:08:52.557Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "alembic", specifier = ">=1.13" },
+    { name = "asyncpg", specifier = ">=0.29,<1.0" },
+    { name = "fastapi", specifier = ">=0.109,<1.0" },
+    { name = "greenlet", specifier = ">=3.0,<4.0" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.25" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "opentelemetry-api", specifier = ">=1.20" },
+    { name = "opentelemetry-instrumentation-asyncpg", specifier = ">=0.41b0" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.41b0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.20" },
+    { name = "prometheus-client", specifier = ">=0.19" },
+    { name = "pyjwt", specifier = ">=2.12.0" },
+    { name = "pynacl", specifier = ">=1.5" },
+    { name = "pyotp", specifier = ">=2.9" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "python-multipart", specifier = ">=0.0.7" },
+    { name = "resend", specifier = ">=2.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis-chain", specifier = ">=0.1.0" },
+    { name = "sardis-compliance", specifier = ">=0.1.0" },
+    { name = "sardis-core", specifier = ">=0.1.0" },
+    { name = "sardis-ledger", specifier = ">=0.1.0" },
+    { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.0" },
+    { name = "sqlalchemy", specifier = ">=2.0,<3.0" },
+    { name = "stripe", specifier = ">=7.0.0" },
+    { name = "uvicorn", specifier = ">=0.23" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-autogpt"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "2.0.0"
+source = { editable = "packages/sardis-autogpt" }
 dependencies = [
     { name = "pydantic" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/b4/5607e3ca439a27460ff305dd3bad81e5498c580a9e6f2ba1bf0689afdaef/sardis_autogpt-1.0.0.tar.gz", hash = "sha256:453afde74980daa445e95548191e999f7a29ef552a9b13c0a9a639f8e3d1a178", size = 6755, upload-time = "2026-03-08T12:08:08.772Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/0b/f7ea4c75b13b42bb9c77a71a0056d0f583f64afa1bd39b5ae26b919bbd35/sardis_autogpt-1.0.0-py3-none-any.whl", hash = "sha256:a96073470c5639c7e1d94ab114dc223f8895fc9903f0484ac02761452bfe4a99", size = 5108, upload-time = "2026-03-08T12:08:07.703Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-browser-use"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-browser-use" }
 dependencies = [
     { name = "browser-use" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/97/d1106bbf1d058d14b4f208250a61147a065d87bee2b9655704c61efb8aa3/sardis_browser_use-1.0.0.tar.gz", hash = "sha256:760bfdb2c547d00eafa2f0b675808d7cbf32559a3257dccc6b044b1b648c00f9", size = 5190, upload-time = "2026-03-08T12:08:22.404Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/e3/77fba13d0e537a93282b1c3e76e43df1b271a5a9aed9326f2d681f9ca057/sardis_browser_use-1.0.0-py3-none-any.whl", hash = "sha256:dc205fa2cc5202e08588f2c6b39081073e28e233586a030a1a77ec4578ba282e", size = 4076, upload-time = "2026-03-08T12:08:21.295Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "browser-use", specifier = ">=0.1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-cards"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-cards" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "sardis-core" },
     { name = "stripe" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/d5/67e73a93ee72cb8ccf7de6c5b1643bc1f07ce0506765ad0796fb63b195bc/sardis_cards-1.0.0.tar.gz", hash = "sha256:7ac9a57038c99fa2a1c377304132d8d81cffc9d3226725b6f263c5293c6da48b", size = 57520, upload-time = "2026-03-08T12:07:43.847Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/75/712b15a16fa6b30e66c1ae8bbf199be88d9ea7691043a7dccf7b8d589ce6/sardis_cards-1.0.0-py3-none-any.whl", hash = "sha256:f6ecf7d58e00a3172c5e45d03d10fcc8e840f899c522b2c2ea061d8015d63956", size = 67556, upload-time = "2026-03-08T12:07:42.357Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "lithic", marker = "extra == 'all'", specifier = ">=0.30.0" },
+    { name = "lithic", marker = "extra == 'lithic'", specifier = ">=0.30.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "sardis-core" },
+    { name = "stripe", specifier = ">=7.0.0" },
+    { name = "stripe", marker = "extra == 'all'", specifier = ">=7.0.0" },
+    { name = "stripe", marker = "extra == 'stripe'", specifier = ">=7.0.0" },
 ]
+provides-extras = ["dev", "lithic", "stripe", "all"]
 
 [[package]]
 name = "sardis-chain"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-chain" }
 dependencies = [
     { name = "cryptography" },
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "pytempo" },
     { name = "rlp" },
     { name = "sardis-core" },
     { name = "solana" },
     { name = "solders" },
     { name = "web3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/44/ce0487bff5359e4ac6e6bcee40679dca165bf45c25633b5e874372a30ff7/sardis_chain-1.0.0.tar.gz", hash = "sha256:b2187b27195059c83383f1027c74c279b5e596a2dbf23cb79e1433459db5de30", size = 127848, upload-time = "2026-03-08T12:07:26.923Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/cd/feec9154563eafb7497b6a282dcc1fbcba2e25c35186cb5964c60a3e9bd0/sardis_chain-1.0.0-py3-none-any.whl", hash = "sha256:f094f0304775c49cac149dcc5a810d5e4ed3c7ac7355002739408a4a754e8a53", size = 140940, upload-time = "2026-03-08T12:07:25.378Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "cryptography", specifier = ">=41.0.0" },
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytempo", specifier = ">=0.4.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "rlp", specifier = ">=3.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis-core", specifier = ">=0.1.0" },
+    { name = "solana", specifier = ">=0.35.0" },
+    { name = "solders", specifier = ">=0.25.0" },
+    { name = "web3", specifier = ">=6.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-checkout"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-checkout" }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "sardis-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/62/8f968bf47796a55e5c041b1de61850d31d0e0776b6c76e127b51d8abcb96/sardis_checkout-1.0.0.tar.gz", hash = "sha256:d4e5f9893207ad67b1eda188b7a4e698142a6593221ad2b935caab847458bf12", size = 56657, upload-time = "2026-03-08T12:07:51.574Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/c2/333e52bbc462e4903d8d7027c34febf6e2d97a39e2e5125205eaf2248862/sardis_checkout-1.0.0-py3-none-any.whl", hash = "sha256:604298e70c143981def3e7c297cd2f5fab56e77807abfe93c9fb9510d4b6c38d", size = 62617, upload-time = "2026-03-08T12:07:50.358Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "sardis-core", specifier = ">=0.1.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-cli"
@@ -7356,29 +7475,50 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-compliance"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-compliance" }
 dependencies = [
     { name = "httpx" },
     { name = "sardis-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/37/53/75a2eb2f37449be46144c61d41d6118178f7812ace9ac591b1ffb7b792e6/sardis_compliance-1.0.0.tar.gz", hash = "sha256:5d2d2e8d3e8335553e5b5e1d934a83815b21c85ca431a0ef0b11b0d4eca675a0", size = 102507, upload-time = "2026-03-08T12:07:39.593Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/49/11201b79c2c964e6d41c8440510f00f6709624940b5ec61072d99e220193/sardis_compliance-1.0.0-py3-none-any.whl", hash = "sha256:f6717807b0e1f8d5f0d07140d6c134754c34e7d2aa63ac27ac353f1275eeac8f", size = 109012, upload-time = "2026-03-08T12:07:38.097Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", marker = "extra == 'all'", specifier = ">=0.29.0" },
+    { name = "asyncpg", marker = "extra == 'postgres'", specifier = ">=0.29.0" },
+    { name = "boto3", marker = "extra == 'all'", specifier = ">=1.34.0" },
+    { name = "boto3", marker = "extra == 's3'", specifier = ">=1.34.0" },
+    { name = "google-cloud-storage", marker = "extra == 'all'", specifier = ">=2.14.0" },
+    { name = "google-cloud-storage", marker = "extra == 'gcs'", specifier = ">=2.14.0" },
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
+    { name = "reportlab", marker = "extra == 'all'", specifier = ">=4.0.0" },
+    { name = "reportlab", marker = "extra == 'pdf'", specifier = ">=4.0.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis-core", specifier = ">=0.1.0" },
 ]
+provides-extras = ["postgres", "s3", "gcs", "pdf", "all", "dev"]
 
 [[package]]
 name = "sardis-composio"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-composio" }
 dependencies = [
     { name = "pydantic" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c8/3f/b4e09074f2fdf7b98f186be961e6cb4df3717db0cbdbdc443c1fbc1c7509/sardis_composio-1.0.0.tar.gz", hash = "sha256:5eef5696d36437d900bb807076f12ed28ed12fc34a33b4caa1a9ba1ca4175e85", size = 7415, upload-time = "2026-03-08T12:08:26.295Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/47/392523a82c122b58ffcf55905c0428af3b055e2d80502d0fb7c696885130/sardis_composio-1.0.0-py3-none-any.whl", hash = "sha256:5ad1634ac79a611aaa30b299d59c96d505f112d35ebd71843d6df517595ed06a", size = 4741, upload-time = "2026-03-08T12:08:24.83Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-core"
@@ -7441,29 +7581,45 @@ provides-extras = ["crewai", "dev"]
 
 [[package]]
 name = "sardis-guardrails"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-guardrails" }
 dependencies = [
     { name = "pydantic" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/66/807a5565f61672a793234d08b67e186e392b24dc16f7a750f68cb70deba7/sardis_guardrails-1.0.0.tar.gz", hash = "sha256:4b4eb910b300555b3eebdfc0a0b05d4effba4fd9c1a5a3a7078e033bb16b8627", size = 28131, upload-time = "2026-03-08T12:08:38.141Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/0c/ce97027524cec8345ddaf361fdc73b5214d042978d108298287fd799f2e5/sardis_guardrails-1.0.0-py3-none-any.whl", hash = "sha256:135d2679c12b2d920f5c400ef6dc96eae1e6ce30891f2f82c41d71cd175c5c11", size = 26617, upload-time = "2026-03-08T12:08:36.708Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-langchain"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-langchain" }
 dependencies = [
     { name = "langchain-core" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/9d/da258750fc38e4ae3504fb38d5d12f143c343191edf7db678aae929af7af/sardis_langchain-1.0.0.tar.gz", hash = "sha256:a5fe029218bb1e73828fcaa3aff94a7f434b3bfc9f2cfda0c1f6a336c490ea75", size = 10535, upload-time = "2026-03-08T12:08:01.233Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/5b/7c7a7e0adea1088573e8930c4cba72701dd9054ec7c4c878182b4d6717a0/sardis_langchain-1.0.0-py3-none-any.whl", hash = "sha256:5632fd488949e641af90470b455350b60e811c6a14f2b90dce4142291cab2550", size = 10628, upload-time = "2026-03-08T12:08:00.294Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "langchain-core", specifier = ">=0.3" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2" },
+    { name = "sardis", specifier = ">=1.0.0" },
+    { name = "sardis-langchain", extras = ["dev"], marker = "extra == 'all'" },
 ]
+provides-extras = ["dev", "all"]
 
 [[package]]
 name = "sardis-ledger"
@@ -7489,80 +7645,132 @@ provides-extras = ["postgres", "immudb", "anchoring", "dev", "all"]
 
 [[package]]
 name = "sardis-openai-agents"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-openai-agents" }
 dependencies = [
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/db/d66b4637ca03a7ff7247a00457952b7cacfdbba505aa1b33e6ad075df984/sardis_openai_agents-1.0.0.tar.gz", hash = "sha256:b73dc81ab91389a183b1f32ad3d9d34d35281b3b7205a08fa2710ee6a14787e5", size = 6076, upload-time = "2026-03-08T12:08:15.746Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/9f/fd0a2daaef91afe8c4fe98eb909f6f5cd1d3f6b4c3c2d544c030c0e2782a/sardis_openai_agents-1.0.0-py3-none-any.whl", hash = "sha256:7cc23c94eab5dc916c587eed357194912e0800377de7273249c71b348d07bbf4", size = 4385, upload-time = "2026-03-08T12:08:14.74Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "openai-agents", marker = "extra == 'agents'", specifier = ">=0.1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["agents", "dev"]
 
 [[package]]
 name = "sardis-protocol"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-protocol" }
 dependencies = [
     { name = "pydantic" },
     { name = "redis" },
     { name = "sardis-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/0c/4e033650d0444f9561893a45bba6d4dec51996a75e3ea718ae1747490795/sardis_protocol-1.0.0.tar.gz", hash = "sha256:f61cbbc8363bb6d72acd883790fa2401c00e2ab8bdb314a48109b8a8a7155ec8", size = 43873, upload-time = "2026-03-08T12:07:22.449Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c7/1f/7cbd5c8a28c803a8bbdb5f6c33f10eba760de211169c4a1d0cd01d2372ec/sardis_protocol-1.0.0-py3-none-any.whl", hash = "sha256:e3db86a5dd1bff946bfdf46a8b106964fe3e93d0a79c68900d66e851ef75c06f", size = 45878, upload-time = "2026-03-08T12:07:21.211Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "redis", specifier = ">=5.0.0" },
+    { name = "sardis-core" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-ramp"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-ramp" }
 dependencies = [
     { name = "httpx" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1b/56/feb11c6913e005bce6de55f9a8edf7d251466bc6b3062b72a61ec32fcf4e/sardis_ramp-1.0.0.tar.gz", hash = "sha256:a745367a32b1391e9328c4a2abb98259afc3f2f4764145db65130799243dab4e", size = 15553, upload-time = "2026-03-08T12:07:47.573Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/99/2e1cbaee90f2f9962639e1598547ddea22dd5c85a15928ba3b054e11f464/sardis_ramp-1.0.0-py3-none-any.whl", hash = "sha256:48aa7a05e163fd5f6d829374d6fbf9b8c85481cd707f383df72c55106101552e", size = 19321, upload-time = "2026-03-08T12:07:46.347Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-sdk"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-sdk-python" }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/db/f1e1749d1f55b644adc6f9e8e5af0c9ff18f1e71fc50a843b09abcf2867f/sardis_sdk-1.0.0.tar.gz", hash = "sha256:9256fa604207546c36ccbfcc40caa95f1dccd9169407b167ee262507346a58df", size = 53333, upload-time = "2026-03-08T12:08:45.349Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/30/b1e4fecd920e7ad7d292cb697cc268491d40d534b956afcfac4698e9feba/sardis_sdk-1.0.0-py3-none-any.whl", hash = "sha256:61e2dc94d253fdfbe55b58f003c61f8252f2388816289e2c35319cbfd1a412b0", size = 72341, upload-time = "2026-03-08T12:08:44.183Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", extras = ["http2"], specifier = ">=0.27" },
+    { name = "langchain", marker = "extra == 'integrations'", specifier = ">=0.1" },
+    { name = "llama-index", marker = "extra == 'integrations'", specifier = ">=0.10" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8" },
+    { name = "openai", marker = "extra == 'integrations'", specifier = ">=1.0" },
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
+    { name = "pytest-httpx", marker = "extra == 'dev'", specifier = ">=0.30" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.20" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2" },
+    { name = "sardis-sdk", extras = ["dev", "integrations"], marker = "extra == 'all'" },
+]
+provides-extras = ["dev", "integrations", "all"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "langchain", specifier = ">=1.2.6" },
+    { name = "langchain-core", specifier = ">=1.2.7" },
+    { name = "mypy", specifier = ">=1.8" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-httpx", specifier = ">=0.36.0" },
+    { name = "ruff", specifier = ">=0.2" },
 ]
 
 [[package]]
 name = "sardis-ucp"
 version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "packages/sardis-ucp" }
 dependencies = [
     { name = "pydantic" },
     { name = "sardis" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/53/be78b1a8246186261f91c16f53fc04d0721bdaa317f211ab102c5727ce09/sardis_ucp-1.0.0.tar.gz", hash = "sha256:034c66e20e3c6db62698844e80f7ab81108ea9934a35771b57e3dd86b9c08024", size = 29467, upload-time = "2026-03-08T12:07:58.029Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/ba/3664bcee296158a95ac6b4b04c12f79515439fcf42ea3cdb48546b46124c/sardis_ucp-1.0.0-py3-none-any.whl", hash = "sha256:488d1882e37be655a2655e79ffdb2b5f73cb05ec3e8b041fe81e7fa3805f6ef4", size = 31135, upload-time = "2026-03-08T12:07:57.05Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "sardis", specifier = ">=1.0.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "sardis-wallet"
-version = "1.0.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.1.0"
+source = { editable = "packages/sardis-wallet" }
 dependencies = [
     { name = "sardis-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/89/7316624e4e2f0402812dd3513ef32f68e516aeffa06ee2ca767ae4e080ab/sardis_wallet-1.0.0.tar.gz", hash = "sha256:b4de7cf4d93f0edb0ca5eb168605285445aebdd74f7f8284920e16db2bbdf78a", size = 73723, upload-time = "2026-03-08T12:07:30.674Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/ed/c597af2a6c37e114a38932e187a9974d785537a447891448ecc507771e45/sardis_wallet-1.0.0-py3-none-any.whl", hash = "sha256:b2a72ae35f6e53b47b4e3dbc41bf9b77b52c88cbb3a5ca36b15c2ea8463c0393", size = 79919, upload-time = "2026-03-08T12:07:29.581Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "sardis-core" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "scipy"
