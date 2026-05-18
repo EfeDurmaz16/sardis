@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import require_principal
-from sardis_api.routers import transactions
+from sardis_api.routes.money_movement import transactions
 
 
 class FakeCache:

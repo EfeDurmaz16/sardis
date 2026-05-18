@@ -48,6 +48,7 @@ Completed so far:
 | `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` with a compatibility wrapper in `routers/` | Starts the physical path simplification from flat routers to domain-grouped routes. |
 | `routers/pay.py` implementation | `routes/money_movement/pay.py` with a compatibility wrapper in `routers/` | Moves the primary money-movement execution route to the domain where contributors expect to find payment logic. |
 | `routers/mandates.py`, `routers/ap2.py`, `routers/mvp.py`, `routers/approvals.py`, `routers/approval_config.py` implementations | `routes/authority/*` with compatibility wrappers in `routers/` | Groups authority, mandate, AP2, MVP, and approval surfaces under one contributor-readable domain. |
+| `routers/ledger.py`, `routers/holds.py`, `routers/transactions.py`, `routers/payments_refund.py`, `routers/payment_objects.py`, `routers/batch_payments.py`, `routers/streaming_payments.py`, `routers/fx.py`, `routers/swap.py`, `routers/settlements.py`, `routers/receipts.py` implementations | `routes/money_movement/*` with compatibility wrappers in `routers/` | Groups core payment, ledger, transaction, FX, settlement, receipt, and refund surfaces under the money movement domain. |
 
 The external API remains unchanged:
 
@@ -145,7 +146,7 @@ moved to `sardis_api/routes/<domain>/...`.
 
 1. Authority: completed for `mandates`, `ap2`, `mvp`, `approvals`, and
    `approval_config`.
-2. Money movement and ledger: `ledger`, `holds`, `transactions`,
+2. Money movement and ledger: completed for `ledger`, `holds`, `transactions`,
    `payments_refund`, `payment_objects`, `batch_payments`, `streaming_payments`,
    `fx`, `swap`, `settlements`, and `receipts`.
 3. Wallets, funding, and cards: `wallets`, `onchain_payments`, `funding`,
