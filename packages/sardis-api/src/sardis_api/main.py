@@ -161,7 +161,7 @@ from .routers import merchants as merchants_router
 from .routers import metrics as metrics_router
 from .routers import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
-from .routers import onchain_payments as onchain_payments_router
+from .routes.wallets import onchain_payments as onchain_payments_router
 from .routers import onramp as onramp_router
 from .routers import outcomes as outcomes_router
 from .routers import partner_card_webhooks as partner_card_webhooks_router

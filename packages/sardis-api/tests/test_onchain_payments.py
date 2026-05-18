@@ -9,9 +9,9 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.policy_attestation import compute_policy_hash
 from sardis_v2_core.spending_policy import SpendingPolicy
 
-import sardis_api.routers.onchain_payments as onchain_payments_router
+import sardis_api.routes.wallets.onchain_payments as onchain_payments_router
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.onchain_payments import (
+from sardis_api.routes.wallets.onchain_payments import (
     OnChainPaymentDependencies,
     get_deps,
     router,
@@ -63,13 +63,13 @@ class _AuditStore:
 def test_onchain_payment_turnkey_rail():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_turnkey")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_turnkey")
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
     )
     app = _build_app(deps)
     client = TestClient(app)
@@ -88,20 +88,20 @@ def test_onchain_payment_turnkey_rail():
     payload = response.json()
     assert payload["tx_hash"] == "0xtx_turnkey"
     assert payload["status"] == "submitted"
-    chain_executor.dispatch_payment.assert_awaited_once()
+    payment_orchestrator.execute_chain.assert_awaited_once()
 
 
 def test_onchain_payment_cdp_rail_explicit():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     cdp_provider = AsyncMock()
     cdp_provider.send_usdc.return_value = "0xtx_cdp"
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         coinbase_cdp_provider=cdp_provider,
     )
     app = _build_app(deps)
@@ -123,20 +123,20 @@ def test_onchain_payment_cdp_rail_explicit():
     payload = response.json()
     assert payload["tx_hash"] == "0xtx_cdp"
     cdp_provider.send_usdc.assert_awaited_once()
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_uses_default_cdp_provider():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     cdp_provider = AsyncMock()
     cdp_provider.send_usdc.return_value = "0xtx_cdp_default"
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         coinbase_cdp_provider=cdp_provider,
         default_on_chain_provider="coinbase_cdp",
     )
@@ -156,21 +156,21 @@ def test_onchain_payment_uses_default_cdp_provider():
     assert response.status_code == 200
     assert response.json()["tx_hash"] == "0xtx_cdp_default"
     cdp_provider.send_usdc.assert_awaited_once()
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_default_cdp_falls_back_to_chain_on_provider_error():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_chain_fallback")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_chain_fallback")
     cdp_provider = AsyncMock()
     cdp_provider.send_usdc.side_effect = RuntimeError("cdp unavailable")
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         coinbase_cdp_provider=cdp_provider,
         default_on_chain_provider="coinbase_cdp",
     )
@@ -190,19 +190,19 @@ def test_onchain_payment_default_cdp_falls_back_to_chain_on_provider_error():
     assert response.status_code == 200
     assert response.json()["tx_hash"] == "0xtx_chain_fallback"
     cdp_provider.send_usdc.assert_awaited_once()
-    chain_executor.dispatch_payment.assert_awaited_once()
+    payment_orchestrator.execute_chain.assert_awaited_once()
 
 
 def test_onchain_payment_default_cdp_falls_back_to_chain_when_cdp_not_configured():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_chain")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_chain")
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         coinbase_cdp_provider=None,
         default_on_chain_provider="coinbase_cdp",
     )
@@ -221,13 +221,13 @@ def test_onchain_payment_default_cdp_falls_back_to_chain_when_cdp_not_configured
 
     assert response.status_code == 200
     assert response.json()["tx_hash"] == "0xtx_chain"
-    chain_executor.dispatch_payment.assert_awaited_once()
+    payment_orchestrator.execute_chain.assert_awaited_once()
 
 
 def test_onchain_payment_denied_by_policy():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SimpleNamespace(validate_payment=lambda **_: (False, "blocked_by_policy"))
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -235,7 +235,7 @@ def test_onchain_payment_denied_by_policy():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -253,13 +253,13 @@ def test_onchain_payment_denied_by_policy():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "blocked_by_policy"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_requires_approval_returns_pending():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SimpleNamespace(validate_payment=lambda **_: (True, "requires_approval"))
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -269,7 +269,7 @@ def test_onchain_payment_policy_requires_approval_returns_pending():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         approval_service=approval_service,
     )
@@ -291,13 +291,13 @@ def test_onchain_payment_policy_requires_approval_returns_pending():
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_policy_1"
     assert payload["tx_hash"] is None
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_requires_approval_fail_closed_without_service():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SimpleNamespace(validate_payment=lambda **_: (True, "requires_approval"))
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -305,7 +305,7 @@ def test_onchain_payment_policy_requires_approval_fail_closed_without_service():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -323,14 +323,14 @@ def test_onchain_payment_policy_requires_approval_fail_closed_without_service():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "requires_approval"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_receives_recipient_as_merchant_id():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_policy_ok")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_policy_ok")
     captured: dict = {}
 
     def _validate_payment(**kwargs):
@@ -344,7 +344,7 @@ def test_onchain_payment_policy_receives_recipient_as_merchant_id():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -368,7 +368,7 @@ def test_onchain_payment_policy_receives_recipient_as_merchant_id():
 def test_onchain_payment_denied_by_execution_context_guardrails():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SimpleNamespace(
         validate_payment=lambda **_: (True, "OK"),
         validate_execution_context=lambda **_: (False, "destination_not_allowlisted"),
@@ -379,7 +379,7 @@ def test_onchain_payment_denied_by_execution_context_guardrails():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -397,14 +397,14 @@ def test_onchain_payment_denied_by_execution_context_guardrails():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "destination_not_allowlisted"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_passes_chain_token_destination_to_guardrails():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_guardrails_ok")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_guardrails_ok")
     captured: dict = {}
 
     def _validate_execution_context(**kwargs):
@@ -421,7 +421,7 @@ def test_onchain_payment_passes_chain_token_destination_to_guardrails():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -448,8 +448,8 @@ def test_onchain_payment_passes_chain_token_destination_to_guardrails():
 def test_onchain_payment_returns_policy_receipt_fields_and_audits():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_attested")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_attested")
     policy = SpendingPolicy(agent_id="agent_1")
 
     policy_store = AsyncMock()
@@ -459,7 +459,7 @@ def test_onchain_payment_returns_policy_receipt_fields_and_audits():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         audit_store=audit_store,
     )
@@ -491,7 +491,7 @@ def test_onchain_payment_prod_requires_policy_snapshot_signer(monkeypatch):
 
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -499,7 +499,7 @@ def test_onchain_payment_prod_requires_policy_snapshot_signer(monkeypatch):
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -517,7 +517,7 @@ def test_onchain_payment_prod_requires_policy_snapshot_signer(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "policy_snapshot_signer_not_configured"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_prod_executes_with_signed_policy_snapshot(monkeypatch):
@@ -526,8 +526,8 @@ def test_onchain_payment_prod_executes_with_signed_policy_snapshot(monkeypatch):
 
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_snapshot_ok")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_snapshot_ok")
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -543,7 +543,7 @@ def test_onchain_payment_prod_executes_with_signed_policy_snapshot(monkeypatch):
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         audit_store=audit_store,
         sanctions_service=sanctions_service,
@@ -580,12 +580,12 @@ def test_onchain_payment_prod_executes_with_signed_policy_snapshot(monkeypatch):
 def test_onchain_payment_policy_pin_requires_active_policy_store():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=None,
     )
     app = _build_app(deps)
@@ -604,13 +604,13 @@ def test_onchain_payment_policy_pin_requires_active_policy_store():
 
     assert response.status_code == 409
     assert response.json()["detail"] == "policy_pin_requires_active_policy"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_hash_pin_mismatch_denied():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -618,7 +618,7 @@ def test_onchain_payment_policy_hash_pin_mismatch_denied():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -637,13 +637,13 @@ def test_onchain_payment_policy_hash_pin_mismatch_denied():
 
     assert response.status_code == 409
     assert response.json()["detail"] == "policy_hash_mismatch"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_id_pin_mismatch_denied():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -651,7 +651,7 @@ def test_onchain_payment_policy_id_pin_mismatch_denied():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -670,14 +670,14 @@ def test_onchain_payment_policy_id_pin_mismatch_denied():
 
     assert response.status_code == 409
     assert response.json()["detail"] == "policy_id_mismatch"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_pins_match_and_execute():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_pin_ok")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_pin_ok")
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -685,7 +685,7 @@ def test_onchain_payment_policy_pins_match_and_execute():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -705,13 +705,13 @@ def test_onchain_payment_policy_pins_match_and_execute():
 
     assert response.status_code == 200
     assert response.json()["tx_hash"] == "0xtx_pin_ok"
-    chain_executor.dispatch_payment.assert_awaited_once()
+    payment_orchestrator.execute_chain.assert_awaited_once()
 
 
 def test_onchain_payment_policy_pin_denied_when_attestation_unavailable(monkeypatch):
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SpendingPolicy(agent_id="agent_1")
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -720,7 +720,7 @@ def test_onchain_payment_policy_pin_denied_when_attestation_unavailable(monkeypa
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
     )
     app = _build_app(deps)
@@ -739,13 +739,13 @@ def test_onchain_payment_policy_pin_denied_when_attestation_unavailable(monkeypa
 
     assert response.status_code == 503
     assert response.json()["detail"] == "policy_pin_attestation_unavailable"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_prompt_injection_returns_pending_approval():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = None
     approval_service = AsyncMock()
@@ -754,7 +754,7 @@ def test_onchain_payment_prompt_injection_returns_pending_approval():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         approval_service=approval_service,
     )
@@ -777,7 +777,7 @@ def test_onchain_payment_prompt_injection_returns_pending_approval():
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_1"
     assert payload["tx_hash"] is None
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -792,7 +792,7 @@ def test_onchain_payment_prompt_injection_returns_pending_approval():
 def test_onchain_payment_adversarial_prompt_patterns_require_approval(memo: str):
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = None
     approval_service = AsyncMock()
@@ -801,7 +801,7 @@ def test_onchain_payment_adversarial_prompt_patterns_require_approval(memo: str)
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         approval_service=approval_service,
     )
@@ -824,7 +824,7 @@ def test_onchain_payment_adversarial_prompt_patterns_require_approval(memo: str)
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_adversarial_1"
     assert payload["tx_hash"] is None
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_goal_drift_review_returns_pending_approval(monkeypatch):
@@ -832,14 +832,14 @@ def test_onchain_payment_goal_drift_review_returns_pending_approval(monkeypatch)
     monkeypatch.setenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90")
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     approval_service = AsyncMock()
     approval_service.create_approval.return_value = SimpleNamespace(id="appr_drift_review_1")
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         approval_service=approval_service,
     )
     app = _build_app(deps)
@@ -861,7 +861,7 @@ def test_onchain_payment_goal_drift_review_returns_pending_approval(monkeypatch)
     payload = response.json()
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_drift_review_1"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_goal_drift_block_denied(monkeypatch):
@@ -869,13 +869,13 @@ def test_onchain_payment_goal_drift_block_denied(monkeypatch):
     monkeypatch.setenv("SARDIS_GOAL_DRIFT_BLOCK_THRESHOLD", "0.90")
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     approval_service = AsyncMock()
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         approval_service=approval_service,
     )
     app = _build_app(deps)
@@ -894,13 +894,13 @@ def test_onchain_payment_goal_drift_block_denied(monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "goal_drift_blocked"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_policy_goal_drift_exceeded_creates_approval():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     policy = SimpleNamespace(validate_payment=lambda **_: (False, "goal_drift_exceeded"))
     policy_store = AsyncMock()
     policy_store.fetch_policy.return_value = policy
@@ -910,7 +910,7 @@ def test_onchain_payment_policy_goal_drift_exceeded_creates_approval():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         policy_store=policy_store,
         approval_service=approval_service,
     )
@@ -932,21 +932,21 @@ def test_onchain_payment_policy_goal_drift_exceeded_creates_approval():
     payload = response.json()
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_goal_drift_policy_1"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_denied_when_kya_enforcement_enabled(monkeypatch):
     monkeypatch.setenv("SARDIS_KYA_ENFORCEMENT_ENABLED", "true")
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     kya_service = AsyncMock()
     kya_service.check_agent.return_value = SimpleNamespace(allowed=False, reason="kya_denied")
 
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         kya_service=kya_service,
     )
     app = _build_app(deps)
@@ -964,13 +964,13 @@ def test_onchain_payment_denied_when_kya_enforcement_enabled(monkeypatch):
 
     assert response.status_code == 403
     assert response.json()["detail"] == "kya_denied"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_kyt_review_requires_approval():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     sanctions_service = AsyncMock()
     sanctions_service.screen_address.return_value = SimpleNamespace(
         should_block=False,
@@ -985,7 +985,7 @@ def test_onchain_payment_kyt_review_requires_approval():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         sanctions_service=sanctions_service,
         approval_service=approval_service,
         audit_store=audit_store,
@@ -1008,7 +1008,7 @@ def test_onchain_payment_kyt_review_requires_approval():
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_kyt_1"
     assert payload["compliance_audit_id"]
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_kyt_org_override_reviews_medium_risk(monkeypatch):
@@ -1018,7 +1018,7 @@ def test_onchain_payment_kyt_org_override_reviews_medium_risk(monkeypatch):
     )
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     sanctions_service = AsyncMock()
     sanctions_service.screen_address.return_value = SimpleNamespace(
         should_block=False,
@@ -1033,7 +1033,7 @@ def test_onchain_payment_kyt_org_override_reviews_medium_risk(monkeypatch):
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         sanctions_service=sanctions_service,
         approval_service=approval_service,
         audit_store=audit_store,
@@ -1055,13 +1055,13 @@ def test_onchain_payment_kyt_org_override_reviews_medium_risk(monkeypatch):
     payload = response.json()
     assert payload["status"] == "pending_approval"
     assert payload["approval_id"] == "appr_kyt_org_1"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_kyt_sanctions_hit_denied():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
+    payment_orchestrator = AsyncMock()
     sanctions_service = AsyncMock()
     sanctions_service.screen_address.return_value = SimpleNamespace(
         should_block=True,
@@ -1074,7 +1074,7 @@ def test_onchain_payment_kyt_sanctions_hit_denied():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         sanctions_service=sanctions_service,
         audit_store=audit_store,
     )
@@ -1093,14 +1093,14 @@ def test_onchain_payment_kyt_sanctions_hit_denied():
 
     assert response.status_code == 403
     assert response.json()["detail"] == "sanctions_hit"
-    chain_executor.dispatch_payment.assert_not_called()
+    payment_orchestrator.execute_chain.assert_not_called()
 
 
 def test_onchain_payment_includes_compliance_audit_id_on_success():
     wallet_repo = AsyncMock()
     wallet_repo.get.return_value = _build_wallet()
-    chain_executor = AsyncMock()
-    chain_executor.dispatch_payment.return_value = SimpleNamespace(tx_hash="0xtx_kyt_ok")
+    payment_orchestrator = AsyncMock()
+    payment_orchestrator.execute_chain.return_value = SimpleNamespace(chain_tx_hash="0xtx_kyt_ok")
     sanctions_service = AsyncMock()
     sanctions_service.screen_address.return_value = SimpleNamespace(
         should_block=False,
@@ -1113,7 +1113,7 @@ def test_onchain_payment_includes_compliance_audit_id_on_success():
     deps = OnChainPaymentDependencies(
         wallet_repo=wallet_repo,
         agent_repo=None,
-        chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
         sanctions_service=sanctions_service,
         audit_store=audit_store,
     )
