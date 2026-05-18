@@ -53,6 +53,7 @@
 - Renamed the generic outbound webhook router module from `routers/webhooks.py` to `routers/webhook_subscriptions.py` while preserving the public `/api/v2/webhooks` path.
 - Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
 - Added the first domain-scoped route registrar at `sardis_api.routing.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `sardis_api.main`.
+- Added `sardis_api.routing.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `sardis_api.main`.
 
 ## What Was Deleted
 
@@ -133,7 +134,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. The first registration extraction now lives under `sardis_api.routing.developer`, so `main.py` can shrink toward domain registrars before the larger grouped `sardis_api/routes/<domain>/...` move.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer` and `sardis_api.routing.money_movement`, so `main.py` can shrink toward domain registrars before the larger grouped `sardis_api/routes/<domain>/...` move.
 
 ## Test, Build, And Lint Results
 
@@ -231,6 +232,9 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routing packages/sardis-api/src/sardis_api/routers/webhook_subscriptions.py` passed after extracting the developer route registrar.
 - `pnpm check:openapi` passed after extracting the developer route registrar: 540 paths and 592 schemas.
 - `uv run pytest packages/sardis-api/tests/test_middleware_security.py packages/sardis-api/tests/test_partner_card_webhooks.py -q` passed after extracting the developer route registrar: 39 tests.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routing packages/sardis-api/src/sardis_api/routers/pay.py` passed after extracting the pay route registrar.
+- `pnpm check:openapi` passed after extracting the pay route registrar: 540 paths and 592 schemas.
+- `uv run pytest packages/sardis-api/tests/test_pay_phase3_fx.py packages/sardis-api/tests/test_pay_sandbox_mode.py -q` passed after extracting the pay route registrar: 23 tests.
 
 Notes:
 
@@ -316,6 +320,7 @@ Notes:
 - `904bf3fa chore: remove private ops scripts from public surface`
 - `6156c7c9 refactor(api): clarify webhook subscription routing`
 - `7783e291 refactor(api): extract developer route registration`
+- `1ae31368 refactor(api): extract pay route registration`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
