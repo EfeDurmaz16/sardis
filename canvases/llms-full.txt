@@ -1184,12 +1184,12 @@ tdDeployment configs — GCP Cloud Run YAML, env templates, service specs.
 tdcodegcp//code, codeenv//code
 
 trtdcodescripts//code
-tdOps tooling. Deploy scripts, health checks, data seeds, release gates, outreach pipeline.
-tdcodedeploy-cloudrun.sh/code, codedeploy-mainnet-contracts.sh/code, codehealth_monitor.sh/code, codeseed_demo.py/code, codeoutreach//code, codeaudit//code, codeci//code
+tdPublic contributor tooling: inventory, OSS surface checks, release readiness, protocol conformance, package publication, and safe contract helpers.
+tdcoderepo_inventory.py/code, codeoss_surface_check.py/code, codepackage_maturity_check.py/code, codecheck_release_readiness.sh/code, codedeploy-contracts.sh/code, codeaudit//code, codeci//code
 
 trtdcodedocs//code
-tdInternal + external documentation. Not all of it is public.
-tdcodearchitecture//code, codeengineering//code, codeinvestor//code, codegtm//code, codecompliance//code, coderunbooks//code, codesecurity//code, codeplans//code
+tdPublic architecture, OSS boundary, contribution, and modernization documentation.
+tdcodearchitecture//code, codeoss//code, codemodernization//code, codeplans//code, codequickstart//code
 
 trtdcodedocs-site//code
 tdPublic documentation site — codesardis.sh/docs/code.
@@ -4670,8 +4670,8 @@ tdcodelib/forge-std/code · codelib/openzeppelin-contracts/code
 tdBoth vendored as git submodules under codecontracts/lib//code.
 
 trtdDeploy script
-tdcodescripts/deploy-mainnet-contracts.sh/code
-tdDeploys SardisLedgerAnchor + RefundProtocol + ERC-8183 stack (4 contracts) with ERC-8183 caps pre-set.
+tdcodescripts/deploy-contracts.sh/code
+tdPublic contract deployment helper with dry-run defaults and explicit broadcast confirmation for mainnet.
 
 trtdDeploy target
 tdBase mainnet (primary), Tempo mainnet
@@ -11789,7 +11789,7 @@ div class="eyebrow"Gotchas
 
 p class="text-muted" style="max-width:720px;"
 Things that silently failed at least once and now have permanent fixes in the deploy
-scripts. Worth knowing before you touch Cloud Run config.
+workflow and container config. Worth knowing before you touch Cloud Run config.
 
 div class="grid grid-2"
 div class="card"
@@ -11798,8 +11798,8 @@ div class="card-title"Gunicorn 25.x — use call syntax, not code--factory/code
 div class="card-description"
 Launch the API as code"sardis_api.main:create_app()"/code. The code--factory/code
 flag was removed in gunicorn 25.x; using it produces a cryptic boot failure that looks
-like a module-not-found error. Both Docker codeCMD/code and
-codescripts/deploy-cloudrun.sh/code encode the call form.
+like a module-not-found error. Docker codeCMD/code, codecloudbuild.yaml/code,
+and codedeploy-api-cloudrun.yml/code encode the call form.
 
 div class="card"
 div class="card-title"Install gunicorn + uvicorn inside code.venv/code
@@ -11814,8 +11814,8 @@ div class="card-title"Always codegcloud ... --update-env-vars/code, never code--
 
 div class="card-description"
 code--set-env-vars/code silently wipes every other env var on the service. Use
-code--update-env-vars/code to merge. This is encoded in
-codescripts/deploy-cloudrun.sh/code but matters every time someone pokes Cloud Run by hand.
+code--update-env-vars/code to merge when changing a live service by hand; private
+deployment helper scripts live outside the public repo.
 
 div class="card"
 div class="card-title"Workload Identity Federation, not SA keys

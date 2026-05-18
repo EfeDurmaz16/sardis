@@ -484,7 +484,7 @@ flowchart LR
             <tr><td>Compile</td><td><code>cd contracts &amp;&amp; forge build</code></td><td>Foundry; Solidity 0.8.20–0.8.24.</td></tr>
             <tr><td>Test</td><td><code>cd contracts &amp;&amp; forge test</code></td><td>Fuzz + invariant tests for Job state machine + anchor.</td></tr>
             <tr><td>Deps</td><td><code>lib/forge-std</code> · <code>lib/openzeppelin-contracts</code></td><td>Both vendored as git submodules under <code>contracts/lib/</code>.</td></tr>
-            <tr><td>Deploy script</td><td><code>scripts/deploy-mainnet-contracts.sh</code></td><td>Deploys SardisLedgerAnchor + RefundProtocol + ERC-8183 stack (4 contracts) with ERC-8183 caps pre-set.</td></tr>
+            <tr><td>Deploy script</td><td><code>scripts/deploy-contracts.sh</code></td><td>Public contract deployment helper with dry-run defaults and explicit broadcast confirmation for mainnet.</td></tr>
             <tr><td>Deploy target</td><td>Base mainnet (primary), Tempo mainnet</td><td>Needs deployer wallet with ~$2–5 ETH on Base, Alchemy API key, BaseScan API key.</td></tr>
           </tbody>
         </table>

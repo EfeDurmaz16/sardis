@@ -29,7 +29,7 @@ jobs:
           GCP_WIP: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
         run: |
           if [ -z "$GCP_WIP" ]; then
-            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER secret is not configured. Previously this step silently skipped the deploy, which meant backend changes never shipped — the running revision stayed frozen at whatever was last deployed manually. Set the secret in repository settings (Settings → Secrets → Actions) to enable automated Cloud Run deploys. Until then, backend deploys must be run manually via scripts/deploy-cloudrun.sh."
+            echo "::error::GCP_WORKLOAD_IDENTITY_PROVIDER secret is not configured. Public OSS deploys use this workflow plus cloudbuild.yaml; private/manual Cloud Run helper scripts are intentionally not tracked in this repo."
             exit 1
           fi
 

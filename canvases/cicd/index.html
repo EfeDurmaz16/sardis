@@ -83,19 +83,19 @@ Builds and deploys the documentation site on changes to <code>docs/</code>. Mirr
               Vercel shape of the public landing app: build on PR for preview, deploy on merge to <code>main</code>.
 </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Gotchas</div> <h2>Deploy lessons paid for in incidents.</h2> <p class="text-muted" style="max-width:720px;">
 Things that silently failed at least once and now have permanent fixes in the deploy
-            scripts. Worth knowing before you touch Cloud Run config.
+              workflow and container config. Worth knowing before you touch Cloud Run config.
 </p> </div> <div class="grid grid-2"> <div class="card"> <div class="card-title">Gunicorn 25.x — use call syntax, not <code>--factory</code></div> <div class="card-description">
 Launch the API as <code>"sardis_api.main:create_app()"</code>. The <code>--factory</code>
 flag was removed in gunicorn 25.x; using it produces a cryptic boot failure that looks
-              like a module-not-found error. Both Docker <code>CMD</code> and
-<code>scripts/deploy-cloudrun.sh</code> encode the call form.
+              like a module-not-found error. Docker <code>CMD</code>, <code>cloudbuild.yaml</code>,
+              and <code>deploy-api-cloudrun.yml</code> encode the call form.
 </div> </div> <div class="card"> <div class="card-title">Install gunicorn + uvicorn inside <code>.venv</code></div> <div class="card-description">
 The container's system Python shouldn't host gunicorn — uv installs into <code>.venv</code>,
               so gunicorn must live there too. Otherwise Cloud Run boots with the wrong interpreter and
               the app never binds its port, tripping the startup probe.
 </div> </div> <div class="card"> <div class="card-title">Always <code>gcloud ... --update-env-vars</code>, never <code>--set-env-vars</code></div> <div class="card-description"> <code>--set-env-vars</code> silently wipes every other env var on the service. Use
-<code>--update-env-vars</code> to merge. This is encoded in
-<code>scripts/deploy-cloudrun.sh</code> but matters every time someone pokes Cloud Run by hand.
+<code>--update-env-vars</code> to merge when changing a live service by hand; private
+              deployment helper scripts live outside the public repo.
 </div> </div> <div class="card"> <div class="card-title">Workload Identity Federation, not SA keys</div> <div class="card-description"> <code>deploy-api-cloudrun.yml</code> authenticates through
 <code>google-github-actions/auth</code> with
 <code>GCP_WORKLOAD_IDENTITY_PROVIDER</code> + <code>GCP_SERVICE_ACCOUNT</code>. No

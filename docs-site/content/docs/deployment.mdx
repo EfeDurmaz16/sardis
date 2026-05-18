@@ -1,95 +1,140 @@
 ---
-title: Deployment Guide
-description: Production-like staging deployment for Sardis API, dashboard, and demo live mode on Cloud Run and AWS App Runner.
+title: Self-hosting and Deployment
+description: Deploy the public Sardis API without private staging scripts or hosted-product operations.
 ---
 
-Production-like staging deployment for Sardis API + landing demo live mode.
+import { Callout } from 'fumadocs-ui/components/callout';
 
-## Recommended Architecture
+<Callout type="info">
+The public repository contains the protocol, SDKs, API server, documentation, tests, and reference deployment path. Hosted dashboard operations, managed customer environments, partner onboarding, and private staging runbooks live outside this repo.
+</Callout>
 
-- **Landing + Demo UI** -- Deploy on Vercel. Keep API keys server-side only and route live demo calls through `/api/demo-proxy`.
-- **Sardis API** -- Deploy containerized API on Cloud Run (recommended) or AWS App Runner. Use Postgres + Redis in staging.
-- **Data Layer** -- Neon Postgres + Upstash Redis is the fastest low-ops stack for design partner staging.
+## What This Guide Covers
 
-## Required Environment Variables
+This guide is for contributors and operators who want to run the open-source Sardis API themselves.
 
-Minimum variables for secure staging:
+It covers:
 
-```bash
-# API
-DATABASE_URL=postgresql://...
-SARDIS_REDIS_URL=rediss://...
-SARDIS_SECRET_KEY=...
-JWT_SECRET_KEY=...
-SARDIS_ADMIN_PASSWORD=...
-SARDIS_STRICT_CONFIG=true
+- Local API execution
+- Container builds
+- Google Cloud Run deployment through GitHub Actions and Cloud Build
+- Required runtime configuration
+- Public validation commands
 
-# Landing live demo (server-side only)
-SARDIS_API_URL=https://<your-api-domain>
-SARDIS_API_KEY=sk_...
-DEMO_OPERATOR_PASSWORD=<shared-password>
+It does not cover hosted Sardis Cloud operations, production customer provisioning, managed secrets, partner onboarding, sales demos, or dashboard administration.
 
-# Optional live demo defaults
-DEMO_LIVE_AGENT_ID=agent_demo_01
-DEMO_LIVE_CARD_ID=card_demo_01
-```
+## Local API
 
-## Cloud Run (Recommended)
-
-Use the built-in deploy script (includes build, deploy, health check, and post-deploy hints):
+Install dependencies from the repository root:
 
 ```bash
-# 1) Prepare local env file copy
-cp deploy/gcp/staging/env.cloudrun.staging.yaml deploy/gcp/staging/env.cloudrun.staging.local.yaml
-
-# 2) Generate strong secrets
-bash ./scripts/generate_staging_secrets.sh --write deploy/env/.env.generated.secrets
-
-# 3) Deploy
-PROJECT_ID="<gcp-project-id>" \
-ENV_VARS_FILE="deploy/gcp/staging/env.cloudrun.staging.local.yaml" \
-bash ./scripts/deploy_gcp_cloudrun_staging.sh
+uv sync
+pnpm install --frozen-lockfile
 ```
 
-## AWS App Runner (Alternative)
-
-If you prefer AWS credits/stack, use App Runner deployment automation:
+Start the API locally:
 
 ```bash
-# 1) Prepare env
-cp deploy/aws/staging/env.apprunner.staging.json deploy/aws/staging/env.apprunner.staging.local.json
-
-# 2) Deploy
-AWS_REGION="eu-central-1" \
-AWS_ACCOUNT_ID="<aws-account-id>" \
-ENV_JSON_FILE="deploy/aws/staging/env.apprunner.staging.local.json" \
-bash ./scripts/deploy_aws_apprunner_staging.sh
+uv run uvicorn sardis_api.main:create_app --factory --host 0.0.0.0 --port 8000
 ```
 
-## Frontend Integration (Live Demo)
-
-After API deploy, bootstrap API key and inject landing env vars in Vercel project settings.
+Verify the health endpoint:
 
 ```bash
-# Bootstrap API key from deployed staging API
-BASE_URL="https://<your-api-domain>" \
-ADMIN_PASSWORD="<SARDIS_ADMIN_PASSWORD>" \
-bash ./scripts/bootstrap_staging_api_key.sh
-
-# Add these to Vercel (landing project):
-SARDIS_API_URL=https://<your-api-domain>
-SARDIS_API_KEY=<bootstrap-output>
-DEMO_OPERATOR_PASSWORD=<shared-password>
+curl -sf http://localhost:8000/health
 ```
 
-## Verification
+## Container Build
 
-- **API Health** (`/health`) -- Must return 200 before live demo mode
-- **Demo Auth** (`/api/demo-auth`) -- Confirms operator lock + live config status
-- **Demo Flow** (`/demo`) -- Run blocked + approved scenarios end-to-end
+The root `Dockerfile` builds the public FastAPI backend with the required local Python packages installed into the image.
 
-## Runbook References
+```bash
+docker build -t sardis-api:local .
+docker run --rm -p 8000:8000 \
+  -e SARDIS_ENVIRONMENT=development \
+  sardis-api:local
+```
 
-- `docs/release/api-deployment-plan-gcp-cloudrun.md`
-- `docs/release/cloud-deployment-and-frontend-integration.md`
-- `docs/release/investor-demo-operator-kit.md`
+Then verify:
+
+```bash
+curl -sf http://localhost:8000/health
+```
+
+## Runtime Configuration
+
+Minimum local development configuration:
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `SARDIS_ENVIRONMENT` | No | Use `development`, `staging`, or `production`. |
+| `DATABASE_URL` | Production | Required in production. Use PostgreSQL. |
+| `SARDIS_REDIS_URL` | Production | Preferred Redis URL for rate limiting, idempotency, and revocation. `REDIS_URL` and `UPSTASH_REDIS_URL` are also accepted. |
+| `SARDIS_SECRET_KEY` | Production | Secret material for server-side signing/encryption paths. Store in a secret manager. |
+| `JWT_SECRET_KEY` | Production | Secret used for JWT/session validation. Store in a secret manager. |
+| `SARDIS_TAP_JWKS_URL` | Production | Required for TAP authentication in production. |
+
+Provider-specific variables are optional until the corresponding rail or integration is enabled. Keep provider credentials in your deployment secret manager, not in repository files.
+
+## Cloud Run Reference Path
+
+The public repo ships a GitHub Actions workflow at `.github/workflows/deploy-api-cloudrun.yml` and a Cloud Build config at `cloudbuild.yaml`.
+
+Required GitHub secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | Workload Identity Federation provider for GitHub Actions. |
+| `GCP_SERVICE_ACCOUNT` | Service account used by the deploy workflow. |
+| `GCP_PROJECT_ID` | Target Google Cloud project. |
+
+The workflow:
+
+1. Authenticates with Google Cloud through Workload Identity Federation.
+2. Builds the root `Dockerfile` through Cloud Build.
+3. Pushes `gcr.io/$GCP_PROJECT_ID/sardis-api:latest`.
+4. Deploys the image to Cloud Run.
+5. Verifies `/health`.
+
+For a manual equivalent:
+
+```bash
+gcloud builds submit \
+  --project="$GCP_PROJECT_ID" \
+  --config=cloudbuild.yaml \
+  --substitutions=_SERVICE_NAME=sardis-api
+
+gcloud run deploy sardis-api \
+  --project="$GCP_PROJECT_ID" \
+  --region=us-east1 \
+  --image="gcr.io/$GCP_PROJECT_ID/sardis-api:latest" \
+  --platform=managed \
+  --allow-unauthenticated \
+  --port=8000
+```
+
+Set production secrets through Cloud Run, Secret Manager, Terraform, Pulumi, or your internal deployment system. Do not add deployment credentials, customer keys, or staging bootstrap scripts to this repository.
+
+## Public Validation
+
+Before opening a deployment-related pull request, run:
+
+```bash
+python3 scripts/oss_surface_check.py
+python3 scripts/package_maturity_check.py
+pnpm --filter @sardis/app-landing typecheck
+pnpm --filter canvas-site build
+pnpm run verify
+```
+
+For full release readiness:
+
+```bash
+pnpm run check:release-readiness
+```
+
+## API Keys
+
+For the hosted API, use the public API-key flow documented in [Get Your API Key](/docs/get-api-key).
+
+For self-hosted deployments, create operator/admin keys through your own deployment bootstrap path and keep that bootstrap code private if it embeds customer, staging, or organization-specific assumptions. Public contributions should focus on stable API behavior, schema, SDKs, tests, and protocol compatibility.
