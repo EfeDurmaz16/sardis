@@ -52,6 +52,7 @@
 - Added `docs/modernization/api-naming-migration.md` to define the API route naming/layout cleanup policy.
 - Renamed the generic outbound webhook router module from `routers/webhooks.py` to `routers/webhook_subscriptions.py` while preserving the public `/api/v2/webhooks` path.
 - Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
+- Added the first domain-scoped route registrar at `sardis_api.routing.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `sardis_api.main`.
 
 ## What Was Deleted
 
@@ -132,7 +133,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. This is intentionally incremental; the target grouped `sardis_api/routes/<domain>/...` layout is documented but should follow router-registration extraction.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. The first registration extraction now lives under `sardis_api.routing.developer`, so `main.py` can shrink toward domain registrars before the larger grouped `sardis_api/routes/<domain>/...` move.
 
 ## Test, Build, And Lint Results
 
@@ -227,6 +228,9 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `pnpm check:openapi` passed after the API route naming cleanup: 540 paths and 592 schemas.
 - `uv run pytest packages/sardis-api/tests/test_middleware_security.py packages/sardis-api/tests/test_partner_card_webhooks.py -q` passed after the API route naming cleanup: 39 tests.
 - Stale import/reference scan returned no live references to `sardis_api.routers.webhooks`, `routers/webhooks.py`, or the removed `agent_identity` router outside the new migration note.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routing packages/sardis-api/src/sardis_api/routers/webhook_subscriptions.py` passed after extracting the developer route registrar.
+- `pnpm check:openapi` passed after extracting the developer route registrar: 540 paths and 592 schemas.
+- `uv run pytest packages/sardis-api/tests/test_middleware_security.py packages/sardis-api/tests/test_partner_card_webhooks.py -q` passed after extracting the developer route registrar: 39 tests.
 
 Notes:
 
@@ -260,6 +264,7 @@ Notes:
 ## Next 30 Days
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
+- Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.
 - Generate canvas sitemap, nav, route order, and `llms-full.txt` from one typed registry.
@@ -310,6 +315,7 @@ Notes:
 - `106f499c chore: enforce package maturity docs`
 - `904bf3fa chore: remove private ops scripts from public surface`
 - `6156c7c9 refactor(api): clarify webhook subscription routing`
+- `7783e291 refactor(api): extract developer route registration`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
