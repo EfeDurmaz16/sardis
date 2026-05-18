@@ -68,3 +68,17 @@ The following are in scope for security reports:
 - Automated dependency scanning via Dependabot
 - Static analysis via Bandit (Python) and Trivy (containers)
 - OpenSSF Scorecard monitoring
+
+## Payment Safety Invariants
+
+Payment, wallet, signing, webhook, policy, compliance, and evidence changes must preserve these invariants:
+
+- Policy and mandate checks run before execution, signing, issuing, refunding, settling, or swapping.
+- Unknown or unavailable policy/compliance dependencies fail closed.
+- Idempotency keys are bound to the request fingerprint and cannot be reused with a different payload.
+- Webhooks verify signatures and timestamps before mutating state.
+- Replayable checkout or mandate flows use server-bound nonces.
+- Raw KYC payloads, private keys, secrets, API tokens, and sensitive payment data are not logged.
+- Evidence records are append-only or tamper-evident for production-critical actions.
+
+If a public issue requires exploit details, stop and use GitHub Security Advisories instead.

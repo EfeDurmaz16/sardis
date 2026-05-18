@@ -44,6 +44,9 @@ Read the boundaries:
 
 - [Open-core model](OPEN_CORE.md)
 - [Provider abstraction](PROVIDER_ABSTRACTION.md)
+- [OSS goal](docs/oss/goal.md)
+- [Public/private boundary](docs/oss/public-private-boundary.md)
+- [Package maturity matrix](docs/packages.md)
 - [Legal and compliance disclaimer](DISCLAIMER.md)
 - [Agent authority demo](examples/agent-authority-demo/)
 
@@ -287,8 +290,8 @@ sardis/
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
 ├── apps/
-│   ├── dashboard/          # React admin dashboard
-│   ├── landing/            # Public website
+│   ├── dashboard/          # Hosted product dashboard, private-candidate
+│   ├── landing/            # Public website source
 │   └── canvas-site/        # Technical canvas source
 ├── playground/             # Interactive demo sandbox
 ├── examples/               # Usage examples
@@ -310,6 +313,8 @@ sardis/
 - **[Security Model](https://docs.sardis.sh/security)** — MPC architecture and threat model
 - **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
+- **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
+- **[Development Guide](docs/development.md)** — Local setup and contribution checks
 
 ---
 
@@ -333,9 +338,12 @@ cd sardis
 
 # Install dependencies
 uv sync
+pnpm install --frozen-lockfile
 
-# Run tests
-uv run pytest tests/
+# Run fast OSS checks
+python3 scripts/repo_inventory.py
+python3 scripts/oss_surface_check.py
+pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
 uvicorn sardis_api.main:create_app --factory --port 8000

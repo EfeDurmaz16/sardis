@@ -16,6 +16,18 @@ env:
   NODE_VERSION: "22"
 
 jobs:
+  oss-surface:
+    name: OSS Surface Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Run OSS surface check
+        run: python3 scripts/oss_surface_check.py
+
   python-lint-test:
     name: Python Lint & Test
     runs-on: ubuntu-latest
@@ -197,47 +209,6 @@ jobs:
 
       - name: Test SDK
         run: pnpm --filter @sardis/sdk test
-
-  dashboard-build:
-    name: Canonical Dashboard Build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Set up Node 22
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
-        with:
-          run_install: false
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Type check dashboard
-        run: pnpm --filter @sardis/app-dashboard typecheck
-
-      - name: Build dashboard
-        run: pnpm --filter @sardis/app-dashboard build
 
   build-landing:
     name: Canonical Landing Build

@@ -1,0 +1,31 @@
+name: Security or payment invariant
+description: Report a non-secret design concern about payment safety
+title: "[Invariant]: "
+labels: ["security", "payment-safety", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not disclose exploitable vulnerabilities here. Use GitHub Security Advisories for private reports.
+  - type: textarea
+    id: invariant
+    attributes:
+      label: Invariant
+      description: Which safety property should hold?
+      placeholder: Policy must run before provider execution.
+    validations:
+      required: true
+  - type: textarea
+    id: concern
+    attributes:
+      label: Concern
+      description: What public design, docs, or test gap weakens this invariant?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Public file paths, docs, or test cases. Do not include secrets or exploit details.
+    validations:
+      required: false

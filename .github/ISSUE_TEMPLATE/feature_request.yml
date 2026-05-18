@@ -1,0 +1,42 @@
+name: Feature request
+description: Propose a public Sardis OSS feature
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What contributor or developer workflow does this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the API, package, docs, or behavior you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Protocol / API
+        - Policy / evidence
+        - Python SDK
+        - TypeScript SDK
+        - MCP server
+        - Framework integration
+        - Docs / examples
+        - CI / tooling
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: How should maintainers verify this works?
+    validations:
+      required: false

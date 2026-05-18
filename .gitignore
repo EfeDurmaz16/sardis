@@ -96,6 +96,9 @@ coverage/
 contracts/out/
 contracts/cache/
 
+# Generated local validator ledgers
+packages/sardis-solana-program/.anchor/test-ledger/
+
 # Local/temporary files
 .serena/
 RALPH_LOOP_*.md
@@ -111,11 +114,15 @@ pitch-deck/
 # Internal docs (keep locally, not in repo)
 /docs/*
 !/docs/README.md
+!/docs/development.md
+!/docs/packages.md
 !/docs/PRODUCTION_DEPLOYMENT.md
 !/docs/production-runbook.md
 !/docs/audits/
 !/docs/modernization/
 !/docs/modernization/**
+!/docs/oss/
+!/docs/oss/**
 !/docs/quickstart/
 !/docs/docs/
 !/docs/cdp/

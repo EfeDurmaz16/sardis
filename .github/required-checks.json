@@ -3,7 +3,7 @@
   "contexts": [
     "Python Lint & Test",
     "TypeScript SDK Build & Type Check",
-    "Dashboard Build",
-    "Landing Page Build"
+    "OSS Surface Check",
+    "Contracts Strict Forge"
   ]
 }
