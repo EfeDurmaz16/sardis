@@ -19,6 +19,10 @@
 - Sanitized Didit KYC webhook logging and metadata persistence so raw provider payloads are not logged or stored.
 - Bound internal and Better Auth JWT validation to expected issuer/audience semantics and added regression tests.
 - Aligned remaining public examples and landing/docs snippets from `Sardis` to `SardisClient`.
+- Made contributor and release install paths deterministic by default with `pnpm install --frozen-lockfile`, leaving `bootstrap:mutable` only for intentional lockfile updates.
+- Fixed stale deploy workflow app paths from `landing`/`dashboard` to `apps/landing`/`apps/dashboard` and added pnpm setup for those jobs.
+- Replaced legacy Vercel `npm install --legacy-peer-deps` install commands with workspace-aligned pnpm frozen installs.
+- Added package README entrypoints for experimental and private-candidate packages that previously had tracked source but no README.
 
 ## What Was Deleted
 
@@ -52,12 +56,15 @@
 - No large FastAPI bootstrap extraction yet.
 - No generated `canvases/`, `api` monitoring JSON, or `contracts/broadcast` cleanup yet.
 - Dashboard and hosted-product code are still present as `private-candidate` until the private repo extraction is executed.
+- Empty package shell directories remain ignored by Git tracking unless they gain a clear package goal.
 
 ## Before/After Architecture Summary
 
 Before: Sardis had a viable monorepo stack, but modernization work lacked a committed coordination source of truth. Some public/docs/CI surfaces drifted from actual package names and auth architecture, and one checkout payment path could continue after mandate validation infrastructure failure.
 
 After: The repo has a committed modernization map and a first set of safe implementation commits. CI filters point at the actual TypeScript SDK package, public quickstarts use exported clients, the landing app no longer carries an unused unsafe Sardis API browser client, checkout mandate validation fails closed, the public/private boundary is documented, public contribution paths exist, tracked private/company material has been removed, and the highest-risk idempotency/KYC/JWT issues from the audit have focused regression coverage.
+
+Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, and JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs.
 
 ## Test, Build, And Lint Results
 
@@ -70,6 +77,10 @@ After: The repo has a committed modernization map and a first set of safe implem
 - `uv run pytest packages/sardis-api/tests/test_merchant_checkout.py -q` passed: 44 tests.
 - `uv run pytest packages/sardis-api/tests/test_idempotency_db_fallback.py packages/sardis-api/tests/test_didit_webhook.py packages/sardis-api/tests/test_auth_jwt_issuer.py -q` passed: 18 tests.
 - Public example drift scan passed for stale `Sardis` constructor/import snippets except the intentional React hook name `useSardis`.
+- `pnpm --filter @sardis/connect build` passed.
+- `pnpm --filter @sardis/checkout-ui build` passed.
+- `uv run pytest packages/sardis-zk-policy/tests -q` passed: 31 tests.
+- JSON parse check passed for `package.json`, `apps/landing/vercel.json`, and `apps/dashboard/vercel.json`.
 
 Notes:
 
@@ -86,6 +97,7 @@ Notes:
 - Canvas and LLM exports still need registry-driven regeneration.
 - Webhook replay protection remains uneven across provider routers.
 - Checkout nonce/replay hardening remains to be completed.
+- `actionlint` and `gitleaks` are not installed locally, so workflow linting and local secret scanning still need to run in an environment with those tools.
 
 ## Next 7 Days
 
@@ -118,3 +130,6 @@ Notes:
 - `646eec77 fix(api): bind idempotency fallback and sanitize KYC webhooks`
 - `81420c1d fix(auth): bind JWT validation to expected issuers`
 - `efefabe1 docs: align public examples with SardisClient`
+- `fcf01d86 docs: update modernization final report`
+- `8c5be376 chore: make OSS tooling installs deterministic`
+- `3f0716c1 docs: document experimental and private-candidate packages`
