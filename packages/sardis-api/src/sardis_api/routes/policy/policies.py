@@ -246,7 +246,7 @@ def _serialize_policy_snapshot(policy: object, natural_language: str) -> dict:
 
 
 def _get_policy_history_engine():
-    from sardis_api.routers.fides_identity import _get_agit_engine
+    from sardis_api.routes.identity.fides_identity import _get_agit_engine
 
     return _get_agit_engine()
 

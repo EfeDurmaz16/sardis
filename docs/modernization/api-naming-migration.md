@@ -60,6 +60,7 @@ Completed so far:
 | `routers/compliance.py`, `routers/compliance_export.py`, `routers/kyc_onboarding.py` implementations | `routes/compliance/*` with compatibility module aliases in `routers/` | Moves regulatory controls, compliance exports, and Didit KYC onboarding into one compliance domain while preserving stateful legacy import targets. |
 | `routers/x402.py`, `routers/mpp.py`, `routers/mpp_demo.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Groups payment protocol adapters together while keeping x402 and MPP as separate packages and request flows. |
 | `routers/a2a.py`, `routers/a2a_payments.py`, `routers/acp.py`, `routers/erc8183.py`, `routers/spt.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Moves the remaining protocol-adapter routes out of the flat router bucket while preserving old import paths for tests and downstream users. |
+| `routers/fides_identity.py`, `routers/agent_auth.py`, `routers/trust.py` implementations | `routes/identity/*` with compatibility module aliases in `routers/` | Separates identity, trust, and agent-authority routes from payment protocol adapters and the legacy flat router bucket. |
 
 The external API remains unchanged:
 
@@ -107,12 +108,14 @@ sardis_api/
       tap.py
       acp.py
       mpp.py
+    identity/
+      agent_auth.py
+      fides_identity.py
+      trust.py
     authority/
       mandates.py
       policies.py
       approvals.py
-      trust.py
-      fides_identity.py
     money_movement/
       pay.py
       onchain_payments.py
@@ -172,13 +175,12 @@ moved to `sardis_api/routes/<domain>/...`.
    `evidence_export`, `audit_anchors`, `attestation`, `compliance`,
    `compliance_export`, and `kyc_onboarding`.
 6. Protocol adapters: completed for `x402`, `mpp`, `mpp_demo`, `a2a`,
-   `a2a_payments`, `acp`, `erc8183`, and `spt`; remaining protocol-like files
-   that need a separate identity/authority decision include `trust` and
-   `fides_identity`.
-7. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
-   `agent_activity`, `agent_events`, `agent_heartbeat`, `fides_identity`,
-   `auth`, `email_verification`, `me`, `organizations`, `groups`, and
-   `api_keys`.
+   `a2a_payments`, `acp`, `erc8183`, and `spt`.
+7. Identity, trust, and agent authority: completed for `agent_auth`,
+   `fides_identity`, and `trust`; remaining identity/account files include
+   `agents`, `agent_registry`, `agent_activity`, `agent_events`,
+   `agent_heartbeat`, `auth`, `email_verification`, `me`, `organizations`,
+   `groups`, and `api_keys`.
 8. Admin, operations, observability, and miscellaneous contributor tools:
    `admin`, `admin_reconciliation`, `analytics`, `metrics`,
    `dashboard_metrics`, `alerts`, `ws_alerts`, `event_stream`, `reports`,

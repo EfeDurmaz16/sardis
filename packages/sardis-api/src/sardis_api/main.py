@@ -1802,7 +1802,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # FIDES identity & trust routes (feature-flag gated)
     if settings.fides.enabled:
-        from .routers import fides_identity as fides_identity_router
+        from .routes.identity import fides_identity as fides_identity_router
 
         app.dependency_overrides[fides_identity_router.get_agent_repo] = lambda: agent_repo
         app.include_router(fides_identity_router.router, prefix="/api/v2", tags=["fides-identity"])
@@ -1945,7 +1945,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Agent Auth Protocol — makes Sardis discoverable by any AI agent
     try:
-        from sardis_api.routers import agent_auth as agent_auth_router
+        from sardis_api.routes.identity import agent_auth as agent_auth_router
 
         # Public discovery endpoints (no auth required)
         app.include_router(
