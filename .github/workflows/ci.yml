@@ -56,9 +56,9 @@ jobs:
       - name: Run ruff lint
         run: uv run ruff check .
 
-      - name: Run root tests with coverage
+      - name: Run API tests with coverage
         run: >-
-          uv run pytest tests/ -v --tb=short
+          uv run pytest packages/api/tests/ -v --tb=short
           --cov=packages/sardis-core/src
           --cov=packages/api/src
           --cov-report=xml

@@ -90,7 +90,7 @@ packages = ["sardis"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["packages/api/tests"]
 python_files = ["test_*.py"]
 addopts = "-v --import-mode=importlib"
 

@@ -25,7 +25,7 @@
     "test:python-sdk": "cd packages/sardis-sdk-python && pytest -q",
     "lint": "uv run ruff check .",
     "typecheck": "pnpm --filter @sardis/sdk typecheck && pnpm --filter @sardis/mcp-server typecheck",
-    "test": "uv run pytest tests/ -q && pnpm --filter @sardis/sdk test && pnpm --filter @sardis/mcp-server test",
+    "test": "uv run pytest packages/api/tests/ -q && uv run pytest packages/sardis-core/tests/ -q && uv run pytest packages/sardis-ledger/tests/ -q && uv run pytest packages/sardis-chain/tests/ -q && pnpm --filter @sardis/sdk test && pnpm --filter @sardis/mcp-server test",
     "verify": "python3 scripts/repo_inventory.py && python3 scripts/oss_surface_check.py && python3 scripts/package_maturity_check.py && pnpm --filter @sardis/sdk typecheck && pnpm --filter @sardis/mcp-server build",
     "check:live-chain": "bash ./scripts/check_live_chain_conformance.sh",
     "check:live-chain:strict": "STRICT_MODE=1 bash ./scripts/check_live_chain_conformance.sh",

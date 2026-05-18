@@ -784,6 +784,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(ledger_router.router, prefix="/api/v2/ledger")
 
     holds_repo = HoldsRepository(dsn=database_url if use_postgres else "memory://")
+    app.state.holds_deps = holds_router.HoldsDependencies(holds_repo=holds_repo)
+    app.state.holds_repo = holds_repo
     app.dependency_overrides[holds_router.get_deps] = lambda: holds_router.HoldsDependencies(  # type: ignore[arg-type]
         holds_repo=holds_repo,
     )

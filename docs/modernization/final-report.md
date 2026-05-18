@@ -107,6 +107,11 @@
 - Renamed the API import package from `packages/api/src/sardis_api` to `packages/api/src/sardis`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
+- Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
+- Documented root `tests/` as a legacy migration backlog until individual tests are moved to their owning packages or updated to the current package layout.
+- Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.
+- Added public Facility Gate alert/dashboard artifacts required by the pilot readiness gate.
+- Updated JWT logout regression coverage to test the current internal-token revocation path instead of the removed shared admin password fallback.
 
 ## What Was Deleted
 
@@ -192,6 +197,8 @@ Latest public-surface pass: remaining private deployment, staging, mainnet, part
 
 Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis.routing.developer`, `sardis.routing.money_movement`, and `sardis.routing.authority`, so `main.py` can shrink toward domain registrars. The physical route placement pass is now complete: outbound webhook subscription and dev utility route code lives under `sardis.routes.developer`, inbound provider callback, provider adapter, Stripe Connect, and Stripe funding route code lives under `sardis.routes.providers`, the pay/ledger/transaction/payment/bridge route code lives under `sardis.routes.money_movement`, mandate/AP2/MVP/approval/delegation/subscription/credential/facility route code lives under `sardis.routes.authority`, wallet/card/treasury/funding/ramp/on-chain/onramp route code lives under `sardis.routes.wallets`, billing/subscription/usage route code lives under `sardis.routes.billing`, policy definition/simulation/analytics/fallback route code lives under `sardis.routes.policy`, evidence/audit/attestation route code lives under `sardis.routes.evidence`, compliance/KYC route code lives under `sardis.routes.compliance`, x402/MPP/A2A/ACP/ERC-8183/SPT route code lives under `sardis.routes.protocol`, FIDES identity/agent-auth/trust route code lives under `sardis.routes.identity`, account/auth/organization route code lives under `sardis.routes.accounts`, checkout/merchant/invoice/counterparty/marketplace/escrow/secure-checkout route code lives under `sardis.routes.commerce`, operational alert/report/event/reliability/exception/emergency/metrics route code lives under `sardis.routes.operations`, and agent lifecycle route code lives under `sardis.routes.agents`. The old `sardis.routers` compatibility package has been removed after internal imports and tests moved to the domain modules.
 
+Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
+
 ## Test, Build, And Lint Results
 
 - `python3 scripts/repo_inventory.py` passed.
@@ -218,6 +225,14 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `python3 -m compileall -q packages/api/src/sardis/routers/pay.py packages/api/tests/test_pay_phase3_fx.py` passed after `/api/v2/pay` idempotency changes.
 - `uv run pytest packages/api/tests/test_pay_phase3_fx.py -q` passed: 16 tests.
 - `uv run pytest packages/api/tests/test_pay_phase3_fx.py packages/api/tests/test_merchant_checkout.py packages/api/tests/test_idempotency_db_fallback.py packages/api/tests/test_auth_jwt_issuer.py -q` passed: 65 tests.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest --collect-only -q` passed: 883 maintained API tests collected from `packages/api/tests`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/ -q` passed: 878 tests, 5 skipped.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-core/tests/ -q` passed: 509 tests.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-ledger/tests/ -q` passed: 49 tests, 2 skipped.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-chain/tests/ -q` passed: 138 tests.
+- `pnpm check:openapi` passed: 540 paths, 592 schemas.
+- `python3 scripts/package_maturity_check.py` passed.
+- `git diff --check` passed.
 - `python3 -m compileall -q packages/api/src/sardis/routers/batch_payments.py packages/api/tests/test_batch_payments_idempotency.py` passed after batch payment idempotency changes.
 - `uv run pytest packages/api/tests/test_batch_payments_idempotency.py -q` passed: 2 tests.
 - `uv run pytest packages/api/tests/test_batch_payments_idempotency.py packages/api/tests/test_pay_phase3_fx.py packages/api/tests/test_merchant_checkout.py packages/api/tests/test_idempotency_db_fallback.py packages/api/tests/test_auth_jwt_issuer.py -q` passed: 67 tests.

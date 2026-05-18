@@ -31,6 +31,16 @@ pnpm --filter @sardis/mcp-server build
 uv run pytest packages/api/tests/test_merchant_checkout.py -q
 ```
 
+The default maintained Python API suite is:
+
+```bash
+uv run pytest packages/api/tests/
+```
+
+The root `tests/` directory is a legacy migration backlog and is not part of
+the default public CI path until individual tests are moved to their owning
+package or updated to the current package layout.
+
 When an intentional API contract change updates the generated OpenAPI schema, review the diff and then run:
 
 ```bash
