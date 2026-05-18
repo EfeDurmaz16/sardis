@@ -149,7 +149,7 @@ from .routes.developer import environment_templates as environment_templates_rou
 from .routes.commerce import escrow_disputes as escrow_disputes_router
 from .routes.evidence import evidence as evidence_router
 from .routes.evidence import evidence_export as evidence_export_router
-from .routers import exceptions as exceptions_router
+from .routes.operations import exceptions as exceptions_router
 from .routes.operations import execution_modes as execution_modes_router
 from .routers import facility_requests as facility_requests_router
 from .routes.policy import fallback_policies as fallback_policies_router
