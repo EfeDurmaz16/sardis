@@ -7,7 +7,7 @@ import json
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.routers.x402 import router
+from sardis_server.routes.protocol.x402 import router
 
 
 def _create_test_app() -> FastAPI:

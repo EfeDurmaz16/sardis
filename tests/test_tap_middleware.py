@@ -18,7 +18,7 @@ from collections.abc import Callable
 import pytest
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
-from sardis_api.middleware import (
+from sardis_server.middleware import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
     register_exception_handlers,

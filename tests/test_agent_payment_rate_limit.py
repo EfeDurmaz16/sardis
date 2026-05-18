@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 from fastapi import HTTPException
-from sardis_api.middleware.agent_payment_rate_limit import (
+from sardis_server.middleware.agent_payment_rate_limit import (
     AgentPaymentRateLimitConfig,
     InMemoryAgentSlidingWindowLimiter,
     enforce_agent_payment_rate_limit,
@@ -74,4 +74,3 @@ async def test_disabled_rate_limit_allows_requests() -> None:
     assert result.allowed is True
     # Ensure no coroutine scheduling issue in disabled path.
     await asyncio.sleep(0)
-

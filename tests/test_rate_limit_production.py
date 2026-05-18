@@ -4,7 +4,7 @@ import sys
 import types
 
 import pytest
-from sardis_api.middleware.rate_limit import (
+from sardis_server.middleware.rate_limit import (
     InMemoryRateLimiter,
     RateLimitConfig,
     RedisRateLimiter,
