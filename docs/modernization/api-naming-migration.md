@@ -44,6 +44,7 @@ Completed so far:
 | `routers/agent_identity.py` | deleted | The router was not imported or registered in the app and overlapped with the newer FIDES identity surface. |
 | `main.py` inline webhook subscription registration | `routing/developer.py::register_webhook_subscriptions` | Starts separating route registration by API audience/domain before moving 120+ router files. |
 | `main.py` inline `/api/v2/pay` registration | `routing/money_movement.py::register_pay_endpoint` | Moves a small, high-traffic payment surface behind a money-movement registrar without changing the public path. |
+| `main.py` inline mandates/AP2/MVP/approvals registration | `routing/authority.py::register_authority_routes` | Groups authority and mandate route wiring while returning the approval service needed by later payment/provider routers. |
 
 The external API remains unchanged:
 
@@ -104,8 +105,9 @@ sardis_api/
 This should continue after `sardis_api.main` is split into router registration
 functions. Moving 120+ files before extracting registration would create a large
 rename diff without enough architectural payoff. The first extracted registrars
-are `sardis_api.routing.developer.register_webhook_subscriptions` and
-`sardis_api.routing.money_movement.register_pay_endpoint`.
+are `sardis_api.routing.developer.register_webhook_subscriptions`,
+`sardis_api.routing.money_movement.register_pay_endpoint`, and
+`sardis_api.routing.authority.register_authority_routes`.
 
 ## Validation Required For Each Move
 

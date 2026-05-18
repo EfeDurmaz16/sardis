@@ -103,9 +103,8 @@ from .routers import agent_registry as agent_registry_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
-from .routers import ap2, auth, mandates, mvp
+from .routers import auth
 from .routers import api_keys as api_keys_router
-from .routers import approval_config as approval_config_router
 from .routers import attestation as attestation_router
 from .routers import audit_anchors as audit_anchors_router
 
@@ -190,11 +189,6 @@ from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
 
-# Conditional import for approvals router (may not exist yet)
-try:
-    from .routers import approvals as approvals_router
-except ImportError:
-    approvals_router = None  # type: ignore
 from sardis_v2_core.agent_groups import AgentGroupRepository
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
@@ -234,6 +228,7 @@ from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
+from .routing.authority import register_authority_routes
 from .routing.developer import register_webhook_subscriptions
 from .routing.money_movement import register_pay_endpoint
 from .services.recurring_billing import RecurringBillingService
@@ -768,9 +763,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # Router registration
     # -----------------------------------------------------------------------
-    approval_service = None
-
-    app.dependency_overrides[mandates.get_deps] = lambda: mandates.Dependencies(  # type: ignore[arg-type]
+    approval_service = register_authority_routes(
+        app,
         wallet_manager=wallet_mgr,
         chain_executor=chain_exec,
         verifier=verifier,
@@ -778,37 +772,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance=compliance,
         wallet_repository=wallet_repo,
         agent_repo=agent_repo,
-    )
-    app.include_router(mandates.router, prefix="/api/v2/mandates")
-
-    app.dependency_overrides[ap2.get_deps] = lambda: ap2.Dependencies(  # type: ignore[arg-type]
-        verifier=verifier,
         orchestrator=orchestrator,
-        wallet_repo=wallet_repo,
-        agent_repo=agent_repo,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
         kya_service=kya_service,
-        approval_service=approval_service,
         settings=settings,
-        wallet_manager=wallet_mgr,
         policy_store=policy_store,
         audit_store=audit_store,
-    )
-    app.include_router(ap2.router, prefix="/api/v2/ap2")
-
-    app.dependency_overrides[mvp.get_deps] = lambda: mvp.Dependencies(  # type: ignore[arg-type]
-        verifier=verifier,
-        ledger=ledger_store,
         identity_registry=identity_registry,
-        settings=settings,
-        wallet_repo=wallet_repo,
-        agent_repo=agent_repo,
-        wallet_manager=wallet_mgr,
-        compliance=compliance,
-        payment_orchestrator=orchestrator,
+        dsn=database_url if use_postgres else "memory://",
     )
-    app.include_router(mvp.router, prefix="/api/v2/mvp", tags=["mvp"])
 
     register_pay_endpoint(
         app,
@@ -826,28 +799,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         holds_repo=holds_repo,
     )
     app.include_router(holds_router.router, prefix="/api/v2/holds")
-
-    if approvals_router is not None:
-        try:
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
-            approval_repo = ApprovalRepository(dsn=database_url if use_postgres else "memory://")
-            approval_service = ApprovalService(repository=approval_repo)
-            app.dependency_overrides[approvals_router.get_deps] = lambda: approvals_router.ApprovalsDependencies(  # type: ignore[arg-type]
-                approval_service=approval_service,
-                approval_repo=approval_repo,
-            )
-            app.include_router(approvals_router.router, prefix="/api/v2/approvals", tags=["approvals"])
-            app.include_router(
-                approval_config_router.router,
-                prefix="/api/v2/approvals/config",
-                tags=["approval-config"],
-            )
-            logger.info("Approvals router registered")
-        except ImportError as e:
-            logger.warning(f"Approvals dependencies not available: {e}")
-    else:
-        logger.info("Approvals router not yet available (dependencies not complete)")
 
     webhook_service = register_webhook_subscriptions(
         app,
