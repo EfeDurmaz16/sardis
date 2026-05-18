@@ -6,7 +6,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 ## Current Snapshot
 
 - Root Python test files: `233`
-- Files with stale API import/path references: `37`
+- Files with stale API import/path references: `31`
 - Default pytest path: `packages/server-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
@@ -39,7 +39,6 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_acp_checkout.py` | `packages/server-api/tests` | 7 |
 | `tests/test_admin_reconciliation.py` | `packages/sardis-ledger/tests` | 7 |
 | `tests/test_audit_f25_kyc_fail_closed.py` | `needs owner review` | 1 |
-| `tests/test_batch_payments.py` | `needs owner review` | 2 |
 | `tests/test_better_auth_jwt.py` | `packages/server-api/tests` | 8 |
 | `tests/test_billing.py` | `packages/server-api/tests` | 16 |
 | `tests/test_card_funding_real.py` | `needs owner review` | 2 |
@@ -57,19 +56,14 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `tests/test_fake_routes_removed.py` | `needs owner review` | 10 |
 | `tests/test_fides_identity_api.py` | `packages/server-api/tests` | 14 |
 | `tests/test_monorepo_bootstrap_guard.py` | `needs owner review` | 1 |
-| `tests/test_payments_refund.py` | `needs owner review` | 2 |
 | `tests/test_polar_webhook.py` | `packages/server-api/tests` | 8 |
-| `tests/test_ramp_offramp.py` | `packages/server-api/tests` | 2 |
-| `tests/test_ramp_onramp.py` | `packages/server-api/tests` | 3 |
 | `tests/test_router_orchestrator_migration.py` | `packages/server-api/tests` | 3 |
-| `tests/test_streaming_payments.py` | `needs owner review` | 4 |
 | `tests/test_stripe_onramp.py` | `packages/server-api/tests` | 17 |
 | `tests/test_stripe_spt_real.py` | `packages/server-api/tests` | 4 |
 | `tests/test_stripe_stablecoin.py` | `packages/server-api/tests` | 2 |
 | `tests/test_stripe_webhooks.py` | `packages/server-api/tests` | 2 |
 | `tests/test_tap_fail_close.py` | `packages/server-api/tests` | 3 |
 | `tests/test_usage_metering.py` | `packages/server-api/tests` | 13 |
-| `tests/test_wallet_transfer.py` | `packages/server-api/tests` | 2 |
 | `tests/test_zk_failclosed.py` | `needs owner review` | 3 |
 
 Regenerate this inventory with:

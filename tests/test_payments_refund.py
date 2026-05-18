@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.payments_refund import router
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.money_movement.payments_refund import router
 from sardis_v2_core.refund import Refund, RefundService, RefundStatus
 
 # ---------------------------------------------------------------------------
