@@ -49,6 +49,9 @@
 - Added `scripts/package_maturity_check.py` and wired it into `pnpm run verify` so every tracked public package must have both a README and an active `docs/packages.md` entry.
 - Removed remaining private/live ops scripts from the public repo and blocked them from re-entering through `scripts/oss_surface_check.py`.
 - Replaced private deployment runbook references with a public-safe self-hosting/deployment guide and added a tracked `cloudbuild.yaml` so the Cloud Run workflow is self-contained.
+- Added `docs/modernization/api-naming-migration.md` to define the API route naming/layout cleanup policy.
+- Renamed the generic outbound webhook router module from `routers/webhooks.py` to `routers/webhook_subscriptions.py` while preserving the public `/api/v2/webhooks` path.
+- Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
 
 ## What Was Deleted
 
@@ -97,6 +100,7 @@
   - `scripts/submit_ecosystem_prs.sh`
   - `scripts/verify-mainnet.sh`
   - `scripts/yc_wow_demo.py`
+- Deleted `packages/sardis-api/src/sardis_api/routers/agent_identity.py`, an unregistered legacy identity router.
 
 ## What Was Rewritten
 
@@ -127,6 +131,8 @@ After: The repo has a committed modernization map and a first set of safe implem
 Additional contributor-readiness pass: package docs now cover the tracked experimental/private-candidate packages that lacked README entrypoints, JS install paths are frozen by default across contributor scripts, release dry-run, Vercel config, and deploy workflow app jobs, uv resolves repo-local Sardis Python packages from editable checkout paths, and the first Pydantic/FastAPI upgrade blockers have been removed from core/API config surfaces.
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
+
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. This is intentionally incremental; the target grouped `sardis_api/routes/<domain>/...` layout is documented but should follow router-registration extraction.
 
 ## Test, Build, And Lint Results
 
@@ -217,6 +223,10 @@ Latest public-surface pass: remaining private deployment, staging, mainnet, part
 - `pnpm --filter @sardis/app-landing typecheck` passed after the private ops script cleanup.
 - `pnpm --filter @sardis/app-landing build` passed after the private ops script cleanup.
 - `git diff --check` and `git diff --cached --check` passed after the private ops script cleanup.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api` passed after the API route naming cleanup.
+- `pnpm check:openapi` passed after the API route naming cleanup: 540 paths and 592 schemas.
+- `uv run pytest packages/sardis-api/tests/test_middleware_security.py packages/sardis-api/tests/test_partner_card_webhooks.py -q` passed after the API route naming cleanup: 39 tests.
+- Stale import/reference scan returned no live references to `sardis_api.routers.webhooks`, `routers/webhooks.py`, or the removed `agent_identity` router outside the new migration note.
 
 Notes:
 
@@ -299,6 +309,7 @@ Notes:
 - `e753d904 fix(docs): declare docs chat schema dependency`
 - `106f499c chore: enforce package maturity docs`
 - `904bf3fa chore: remove private ops scripts from public surface`
+- `6156c7c9 refactor(api): clarify webhook subscription routing`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
