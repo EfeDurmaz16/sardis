@@ -405,6 +405,48 @@ class TestMerchantCheckoutSandboxSessions:
         assert payload["client_secret"] in merchant_checkout._DEMO_SESSIONS_FALLBACK
 
 
+class TestMerchantCheckoutMandateSafety:
+    @pytest.mark.asyncio
+    async def test_mandate_validation_errors_fail_closed(self, monkeypatch):
+        from fastapi import HTTPException
+        from sardis_api.routers import merchant_checkout
+        from sardis_v2_core.database import Database
+
+        session = _make_session(
+            amount=Decimal("0"),
+            client_secret="secret_fail_closed",
+            payer_wallet_id="wal_payer_001",
+        )
+        repo = MockMerchantRepo()
+        await repo.create_session(session)
+
+        connector = types.SimpleNamespace(execute_payment=AsyncMock())
+        deps = merchant_checkout.MerchantCheckoutDependencies(
+            merchant_repo=repo,
+            sardis_connector=connector,
+        )
+
+        async def _raise_fetchrow(*_args, **_kwargs):
+            raise RuntimeError("database unavailable")
+
+        monkeypatch.setattr(Database, "fetchrow", _raise_fetchrow)
+
+        with pytest.raises(HTTPException) as exc:
+            await merchant_checkout.pay_session(
+                session.client_secret,
+                merchant_checkout.PayRequest(
+                    wallet_id="wal_payer_001",
+                    mandate_id="mandate_required",
+                ),
+                deps,
+                None,
+            )
+
+        assert exc.value.status_code == 503
+        assert exc.value.detail["error"] == "mandate_validation_unavailable"
+        connector.execute_payment.assert_not_called()
+
+
 # ── Session Lifecycle Tests ────────────────────────────────────────
 
 

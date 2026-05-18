@@ -608,7 +608,13 @@ async def pay_session(
             raise
         except Exception:
             logger.exception("Mandate validation error for session %s", session.session_id)
-            # Non-mandate errors shouldn't block payment
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "mandate_validation_unavailable",
+                    "mandate_id": body.mandate_id,
+                },
+            )
 
     try:
         result = await deps.sardis_connector.execute_payment(
