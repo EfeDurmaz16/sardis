@@ -54,6 +54,7 @@ Completed so far:
 | `routers/onchain_payments.py` implementation | `routes/wallets/onchain_payments.py` with a compatibility wrapper in `routers/` | Moves the on-chain wallet payment route into the wallet domain and aligns tests with the current PaymentOrchestrator execution boundary. |
 | `routers/onramp.py` implementation | `routes/wallets/onramp.py` with a compatibility wrapper in `routers/` | Moves fiat onramp and onramp webhook handling into the wallet domain while preserving old public and monkeypatch import targets during migration. |
 | `routers/wallets.py` implementation | `routes/wallets/wallets.py` with a compatibility wrapper in `routers/` | Completes the first wallet-domain placement pass by moving core wallet lifecycle, balance, transfer, and x402 wallet routes into the same domain. |
+| `routers/stripe_webhooks.py`, `routers/stripe_spt_webhooks.py`, `routers/mastercard_webhooks.py`, `routers/visa_tap_webhooks.py`, `routers/partner_card_webhooks.py`, `routers/cpn_webhooks.py`, `routers/polar_webhook.py` implementations | `routes/providers/*` with compatibility wrappers in `routers/` | Separates inbound provider callback handling from outbound customer webhook subscription APIs. |
 
 The external API remains unchanged:
 
@@ -158,9 +159,9 @@ moved to `sardis_api/routes/<domain>/...`.
    `stablecoin_cards`, `treasury`, `treasury_ops`, `cpn`, and
    `funding_capabilities`, `funding`, `ramp`, `offramp`, `onchain_payments`,
    `onramp`, and `wallets`.
-4. Provider callbacks: `stripe_webhooks`, `stripe_spt_webhooks`,
-   `mastercard_webhooks`, `visa_tap_webhooks`, `partner_card_webhooks`,
-   `cpn_webhooks`, and `polar_webhook`.
+4. Provider callbacks: completed for `stripe_webhooks`,
+   `stripe_spt_webhooks`, `mastercard_webhooks`, `visa_tap_webhooks`,
+   `partner_card_webhooks`, `cpn_webhooks`, and `polar_webhook`.
 5. Policy, compliance, and evidence: `policies`, `policy_simulation`,
    `policy_analytics`, `fallback_policies`, `compliance`, `compliance_export`,
    `kyc_onboarding`, `evidence`, `evidence_export`, `audit_anchors`, and

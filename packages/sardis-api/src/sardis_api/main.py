@@ -154,7 +154,7 @@ from .routers import kyc_onboarding as kyc_onboarding_router
 from .routers import mandate_delegation as mandate_delegation_router
 from .routers import mandate_subscriptions as mandate_subscriptions_router
 from .routers import marketplace as marketplace_router
-from .routers import mastercard_webhooks as mastercard_webhooks_router
+from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
 from .routers import me as me_router
 from .routers import merchant_checkout as merchant_checkout_router
 from .routers import merchants as merchants_router
@@ -164,7 +164,7 @@ from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router
 from .routes.wallets import onramp as onramp_router
 from .routers import outcomes as outcomes_router
-from .routers import partner_card_webhooks as partner_card_webhooks_router
+from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routers import policies as policies_router
 from .routers import policy_analytics as policy_analytics_router
 from .routers import policy_simulation as policy_simulation_router
@@ -178,7 +178,7 @@ from .routers import simulation as simulation_router
 from .routers import spt as spt_router
 from .routers import stripe_connect as stripe_connect_router
 from .routers import stripe_funding as stripe_funding_router
-from .routers import stripe_webhooks as stripe_webhooks_router
+from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
@@ -1964,7 +1964,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Polar.sh billing webhook (pre-incorporation MoR)
     try:
-        from sardis_api.routers import polar_webhook as polar_webhook_router
+        from sardis_api.routes.providers import polar_webhook as polar_webhook_router
         app.include_router(
             polar_webhook_router.router,
             prefix="/api/v2/billing",
