@@ -177,8 +177,8 @@ from .routers import secure_checkout as secure_checkout_router
 from .routes.commerce import service_directory as service_directory_router
 from .routes.developer import simulation as simulation_router
 from .routes.protocol import spt as spt_router
-from .routers import stripe_connect as stripe_connect_router
-from .routers import stripe_funding as stripe_funding_router
+from .routes.providers import stripe_connect as stripe_connect_router
+from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
 from .routes.wallets import treasury as treasury_router
