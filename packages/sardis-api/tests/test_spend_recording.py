@@ -23,7 +23,7 @@ def _source(module_name: str) -> str:
     [
         "sardis_api.routes.authority.mandates",
         "sardis_api.routes.authority.mvp",
-        "sardis_api.routers.wallets",
+        "sardis_api.routes.wallets.wallets",
     ],
 )
 def test_payment_orchestrator_routes_execute_mandate_chains(module_name):

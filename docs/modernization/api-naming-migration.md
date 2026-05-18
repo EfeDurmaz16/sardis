@@ -53,6 +53,7 @@ Completed so far:
 | `routers/funding.py`, `routers/ramp.py`, `routers/offramp.py` implementations | `routes/wallets/*` with compatibility wrappers in `routers/` | Moves the lower-coupling funding/ramp surfaces before the high-coupling wallet/onchain/onramp routes. |
 | `routers/onchain_payments.py` implementation | `routes/wallets/onchain_payments.py` with a compatibility wrapper in `routers/` | Moves the on-chain wallet payment route into the wallet domain and aligns tests with the current PaymentOrchestrator execution boundary. |
 | `routers/onramp.py` implementation | `routes/wallets/onramp.py` with a compatibility wrapper in `routers/` | Moves fiat onramp and onramp webhook handling into the wallet domain while preserving old public and monkeypatch import targets during migration. |
+| `routers/wallets.py` implementation | `routes/wallets/wallets.py` with a compatibility wrapper in `routers/` | Completes the first wallet-domain placement pass by moving core wallet lifecycle, balance, transfer, and x402 wallet routes into the same domain. |
 
 The external API remains unchanged:
 
@@ -156,7 +157,7 @@ moved to `sardis_api/routes/<domain>/...`.
 3. Wallets, funding, and cards: completed for `cards`, `virtual_cards`,
    `stablecoin_cards`, `treasury`, `treasury_ops`, `cpn`, and
    `funding_capabilities`, `funding`, `ramp`, `offramp`, `onchain_payments`,
-   and `onramp`; the remaining high-coupling file is `wallets`.
+   `onramp`, and `wallets`.
 4. Provider callbacks: `stripe_webhooks`, `stripe_spt_webhooks`,
    `mastercard_webhooks`, `visa_tap_webhooks`, `partner_card_webhooks`,
    `cpn_webhooks`, and `polar_webhook`.

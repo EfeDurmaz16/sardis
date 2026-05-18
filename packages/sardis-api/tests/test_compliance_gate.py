@@ -428,7 +428,7 @@ class TestComplianceInRouters:
     def test_wallets_has_compliance(self):
         import inspect
 
-        from sardis_api.routers import wallets
+        import sardis_api.routes.wallets.wallets as wallets
         source = inspect.getsource(wallets)
         assert "compliance" in source
         assert "payment_orchestrator" in source

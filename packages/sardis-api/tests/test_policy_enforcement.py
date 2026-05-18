@@ -93,7 +93,7 @@ class TestWalletsTransferPathPolicyEnforcement:
     """Wallet transfers use the payment orchestrator instead of raw dispatch."""
 
     def test_wallet_transfer_delegates_to_orchestrator(self) -> None:
-        source = _source("sardis_api.routers.wallets")
+        source = _source("sardis_api.routes.wallets.wallets")
         transfer_idx = source.find("async def transfer_crypto")
         execute_idx = source.find("payment_orchestrator.execute_chain", transfer_idx)
         assert transfer_idx != -1
@@ -102,7 +102,7 @@ class TestWalletsTransferPathPolicyEnforcement:
         assert "HTTP_403_FORBIDDEN" in source[transfer_idx:execute_idx + 1000]
 
     def test_wallet_transfer_requires_orchestrator(self) -> None:
-        source = _source("sardis_api.routers.wallets")
+        source = _source("sardis_api.routes.wallets.wallets")
         transfer_source = source[source.find("async def transfer_crypto"):]
         assert "payment_orchestrator_not_configured" in transfer_source
 

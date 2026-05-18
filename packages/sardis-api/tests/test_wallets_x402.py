@@ -11,7 +11,7 @@ from sardis_v2_core.database import Database
 from sardis_v2_core.wallets import Wallet
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers import wallets
+import sardis_api.routes.wallets.wallets as wallets
 
 
 class _StubWalletRepo:

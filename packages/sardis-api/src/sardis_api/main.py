@@ -184,7 +184,7 @@ from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
 from .routers import usage as usage_router
 from .routes.wallets import virtual_cards as virtual_cards_router
-from .routers import wallets as wallets_router
+from .routes.wallets import wallets as wallets_router
 from .routers import workflow_templates as workflow_templates_router
 from .routers import ws_alerts as ws_alerts_router
 from .routers import x402 as x402_router
