@@ -106,11 +106,6 @@ from .routes.operations import event_stream as event_stream_router
 from .routes.operations import metrics as metrics_router
 from .routes.operations import reliability as reliability_router
 from .routes.operations import ws_alerts as ws_alerts_router
-from .routes.agents import agent_activity as agent_activity_router
-from .routes.agents import agent_events as agent_events_router
-from .routes.agents import agent_heartbeat as agent_heartbeat_router
-from .routes.agents import agent_registry as agent_registry_router
-from .routes.agents import agents as agents_router
 from .routes.evidence import attestation as attestation_router
 from .routes.evidence import audit_anchors as audit_anchors_router
 from .routes.money_movement import batch_payments as batch_payments_router
@@ -224,6 +219,7 @@ from .routing.accounts import (
     register_auth_routes,
 )
 from .routing.admin import register_admin_routes
+from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
 from .routing.developer import register_webhook_subscriptions
 from .routing.money_movement import register_pay_endpoint
@@ -1775,31 +1771,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(funding_capabilities_router.router, prefix="/api/v2")
 
-    app.dependency_overrides[agents_router.get_deps] = lambda: agents_router.AgentDependencies(  # type: ignore[arg-type]
+    register_agent_lifecycle_routes(
+        app,
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
         kya_service=kya_service,
         wallet_manager=wallet_mgr,
-    )
-    app.include_router(agents_router.router, prefix="/api/v2/agents", tags=["agents"])
-    app.include_router(agent_activity_router.router, prefix="/api/v2/agents", tags=["agent-activity"])
-
-    app.dependency_overrides[agent_heartbeat_router.get_deps] = lambda: agent_heartbeat_router.HeartbeatDependencies(
         database_url=database_url,
+        settings=settings,
     )
-    app.include_router(agent_heartbeat_router.router, prefix="/api/v2/agents", tags=["agent-heartbeat"])
-
-    app.dependency_overrides[agent_events_router.get_deps] = lambda: agent_events_router.EventsDependencies(
-        database_url=database_url,
-    )
-    app.include_router(agent_events_router.router, prefix="/api/v2/agents", tags=["agent-events"])
-
-    # FIDES identity & trust routes (feature-flag gated)
-    if settings.fides.enabled:
-        from .routes.identity import fides_identity as fides_identity_router
-
-        app.dependency_overrides[fides_identity_router.get_agent_repo] = lambda: agent_repo
-        app.include_router(fides_identity_router.router, prefix="/api/v2", tags=["fides-identity"])
 
     register_account_group_routes(app)
 
@@ -2096,8 +2076,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # --- Service Directory, Compliance Export, Agent Registry ---
     app.include_router(service_directory_router.router)
     app.include_router(compliance_export_router.router)
-    app.include_router(agent_registry_router.router)
-    app.include_router(agent_registry_router.public_router)
+    register_agent_registry_routes(app)
 
     # --- Delegated payment rails routers ---
     app.include_router(credentials_router.router)

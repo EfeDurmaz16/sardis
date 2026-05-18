@@ -59,6 +59,7 @@
 - Added `sardis_api.routing.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `sardis_api.main` while preserving the approval service handoff needed by later payment/provider routes.
 - Added `sardis_api.routing.accounts` account-domain registrars and moved auth, email verification, groups, API keys, current-user state, and data export wiring out of `sardis_api.main` without changing route order.
 - Added `sardis_api.routing.admin.register_admin_routes` and moved admin control, reconciliation, and emergency-freeze wiring out of `sardis_api.main`.
+- Added `sardis_api.routing.agents` agent-domain registrars and moved agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring out of `sardis_api.main`.
 - Repaired stale authority/payment policy tests by replacing brittle implementation-string assertions with current orchestrator/control-plane boundary checks and fixed FastAPI dependency overrides in the mandates router tests.
 - Started the physical route placement migration by moving the outbound webhook subscription implementation to `sardis_api.routes.developer.webhook_subscriptions`.
 - Kept `sardis_api.routers.webhook_subscriptions` as a temporary compatibility import while new code moves to domain-grouped `routes/<domain>/...` modules.
@@ -454,6 +455,9 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `python3 -m compileall -q packages/api/src/sardis_api/routing/admin.py packages/api/src/sardis_api/main.py packages/api/src/sardis_api/routes/admin packages/api/src/sardis_api/routes/operations/emergency.py` passed after extracting admin route registration.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified admin routes remain mounted at `/api/v2/admin/stats`, `/api/v2/admin/reconciliation/check`, and `/api/v2/admin/emergency/status`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting admin route registration. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routing/agents.py packages/api/src/sardis_api/main.py packages/api/src/sardis_api/routes/agents packages/api/src/sardis_api/routes/identity/fides_identity.py` passed after extracting agent route registration.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agents_payment_identity.py packages/api/tests/test_agent_events_and_holds_wiring.py packages/api/tests/test_agent_auth.py -q` passed after extracting agent route registration: 32 tests.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting agent route registration. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 
