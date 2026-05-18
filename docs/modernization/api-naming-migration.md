@@ -67,6 +67,7 @@ Completed so far:
 | `routers/a2a.py`, `routers/a2a_payments.py`, `routers/acp.py`, `routers/erc8183.py`, `routers/spt.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Moves the remaining protocol-adapter routes out of the flat router bucket while preserving old import paths for tests and downstream users. |
 | `routers/fides_identity.py`, `routers/agent_auth.py`, `routers/trust.py` implementations | `routes/identity/*` with compatibility module aliases in `routers/` | Separates identity, trust, and agent-authority routes from payment protocol adapters and the legacy flat router bucket. |
 | `routers/agent_activity.py`, `routers/agent_events.py`, `routers/agent_heartbeat.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Groups agent lifecycle telemetry and heartbeat routes before moving the larger agent registry/lifecycle files. |
+| `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
 
 The external API remains unchanged:
 
@@ -123,6 +124,8 @@ sardis_api/
       fides_identity.py
       trust.py
     agents/
+      agents.py
+      agent_registry.py
       agent_activity.py
       agent_events.py
       agent_heartbeat.py
@@ -192,10 +195,10 @@ moved to `sardis_api/routes/<domain>/...`.
    `a2a_payments`, `acp`, `erc8183`, and `spt`.
 7. Identity, trust, and agent authority: completed for `agent_auth`,
    `fides_identity`, and `trust`.
-8. Agent lifecycle: completed for `agent_activity`, `agent_events`, and
-   `agent_heartbeat`; remaining identity/account files include `agents`,
-   `agent_registry`, `auth`, `email_verification`, `me`, `organizations`,
-   `groups`, and `api_keys`.
+8. Agent lifecycle: completed for `agents`, `agent_registry`,
+   `agent_activity`, `agent_events`, and `agent_heartbeat`; remaining
+   identity/account files include `auth`, `email_verification`, `me`,
+   `organizations`, `groups`, and `api_keys`.
 9. Admin, operations, observability, and miscellaneous contributor tools:
    `admin`, `admin_reconciliation`, `analytics`, `metrics`,
    `dashboard_metrics`, `alerts`, `ws_alerts`, `event_stream`, `reports`,

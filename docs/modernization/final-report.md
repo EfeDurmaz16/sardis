@@ -347,6 +347,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.agent_activity`, `agent_events`, and `agent_heartbeat` imports resolve to the same module objects as the new `sardis_api.routes.agents.*` imports.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-api/tests/test_agent_events_and_holds_wiring.py -q` passed after moving agent events routes: 4 tests.
 - `pnpm check:openapi` passed after the agent lifecycle route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
+- Core agent lifecycle and registry routes now live under `sardis_api.routes.agents` instead of the legacy flat `sardis_api.routers` bucket; compatibility wrappers remain for old import paths.
+- The package-path simplification decision now treats `packages/sardis-api -> packages/api` as a near-term atomic migration rather than a vague future cleanup, because `packages/sardis-api/src/sardis_api` is too noisy for OSS contributors.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/sardis-api/tests/test_agents_payment_identity.py packages/sardis-api/tests/test_agent_events_and_holds_wiring.py packages/sardis-api/tests/test_agent_auth.py -q` passed after moving core agent routes: 32 tests.
+- `pnpm check:openapi` passed after the core agent route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 
 Notes:
 

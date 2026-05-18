@@ -99,8 +99,8 @@ from .routers import admin_reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
 from .routes.agents import agent_events as agent_events_router
 from .routes.agents import agent_heartbeat as agent_heartbeat_router
-from .routers import agent_registry as agent_registry_router
-from .routers import agents as agents_router
+from .routes.agents import agent_registry as agent_registry_router
+from .routes.agents import agents as agents_router
 from .routers import alerts as alerts_router
 from .routers import analytics as analytics_router
 from .routers import auth

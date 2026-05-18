@@ -45,6 +45,17 @@ packages/api/src/sardis_api/...
 This removes one visible `sardis-api` repetition while preserving the stable
 Python import path and the `src` layout.
 
+This should be treated as an actual migration, not merely a documentation note.
+The current path is technically defensible but ergonomically bad for an OSS
+repo. The next safe package-layout milestone is:
+
+```text
+packages/api/src/sardis_api/...
+```
+
+That is still a normal Python package layout, but it removes the most confusing
+double Sardis API wording from day-to-day navigation.
+
 ## Why Not Rename Immediately
 
 The package directory is referenced by build, validation, Docker, OpenAPI, and
@@ -58,8 +69,9 @@ workspace configuration. A casual rename would touch many unrelated surfaces:
 - tests that add `packages/sardis-api/src` to `PYTHONPATH`
 - generated OpenAPI commands and package-local scripts
 
-This is a high-blast-radius change and should not be mixed with route-layout
-cleanup.
+This is a high-blast-radius change and should not be mixed into an unrelated
+route move commit. It should be executed as its own atomic package-layout
+commit with a broad reference update and validation pass.
 
 ## Migration Shape
 
@@ -101,5 +113,5 @@ Continue the lower-risk route-domain migration first:
 - keep OpenAPI paths stable
 - shrink `main.py` route registration into domain registrars
 
-After the route tree is materially cleaner, perform the package-directory rename
-as a focused migration.
+After the current route-domain commit, perform the package-directory rename as a
+focused migration if the worktree is clean and the reference scan is tractable.
