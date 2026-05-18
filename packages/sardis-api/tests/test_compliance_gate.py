@@ -401,7 +401,7 @@ class TestComplianceInRouters:
     def test_mandates_has_compliance(self):
         import inspect
 
-        from sardis_api.routers import mandates
+        from sardis_api.routes.authority import mandates
         source = inspect.getsource(mandates)
         assert "compliance" in source
         assert "preflight" in source
@@ -409,7 +409,7 @@ class TestComplianceInRouters:
     def test_mvp_has_compliance(self):
         import inspect
 
-        from sardis_api.routers import mvp
+        from sardis_api.routes.authority import mvp
         source = inspect.getsource(mvp)
         assert "compliance" in source
         assert "preflight" in source
@@ -435,7 +435,7 @@ class TestComplianceInRouters:
     def test_mandates_has_multiple_preflight_calls(self):
         import inspect
 
-        from sardis_api.routers import mandates
+        from sardis_api.routes.authority import mandates
         source = inspect.getsource(mandates)
         count = source.count("preflight")
         assert count >= 2, (

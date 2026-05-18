@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from sardis_api.routers.ap2 import Dependencies, _compliance_checks_impl, perform_compliance_checks
+from sardis_api.routes.authority.ap2 import Dependencies, _compliance_checks_impl, perform_compliance_checks
 
 
 class _KYAService:

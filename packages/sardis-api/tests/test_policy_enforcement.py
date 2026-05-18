@@ -21,13 +21,13 @@ class TestMandatesPathPolicyEnforcement:
     """Mandates router delegates execution to PaymentOrchestrator."""
 
     def test_stored_and_legacy_execute_use_orchestrator(self) -> None:
-        source = _source("sardis_api.routers.mandates")
+        source = _source("sardis_api.routes.authority.mandates")
         assert source.count("payment_orchestrator.execute_chain") >= 2
         assert "PolicyViolationError" in source
         assert "HTTP_403_FORBIDDEN" in source
 
     def test_validate_endpoint_still_checks_policy_and_compliance(self) -> None:
-        source = _source("sardis_api.routers.mandates")
+        source = _source("sardis_api.routes.authority.mandates")
         assert "async_validate_policies" in source
         assert "compliance.preflight" in source
         assert source.find("async_validate_policies") < source.find("compliance.preflight")
@@ -37,13 +37,13 @@ class TestAP2PathPolicyEnforcement:
     """AP2 router runs deterministic guardrails then delegated execution."""
 
     def test_ap2_delegates_execution_to_orchestrator(self) -> None:
-        source = _source("sardis_api.routers.ap2")
+        source = _source("sardis_api.routes.authority.ap2")
         assert "deps.orchestrator.execute_chain" in source
         assert "PolicyViolationError" in source
         assert "HTTP_403_FORBIDDEN" in source
 
     def test_ap2_compliance_runs_before_execution(self) -> None:
-        source = _source("sardis_api.routers.ap2")
+        source = _source("sardis_api.routes.authority.ap2")
         compliance_idx = source.find("_compliance_checks_impl")
         execute_idx = source.find("deps.orchestrator.execute_chain")
         assert compliance_idx != -1
@@ -55,13 +55,13 @@ class TestMVPPathPolicyEnforcement:
     """MVP router delegates live execution to PaymentOrchestrator."""
 
     def test_mvp_delegates_execution_to_orchestrator(self) -> None:
-        source = _source("sardis_api.routers.mvp")
+        source = _source("sardis_api.routes.authority.mvp")
         assert "payment_orchestrator.execute_chain" in source
         assert "PolicyViolationError" in source
         assert "HTTP_403_FORBIDDEN" in source
 
     def test_mvp_checks_static_policy_before_execution(self) -> None:
-        source = _source("sardis_api.routers.mvp")
+        source = _source("sardis_api.routes.authority.mvp")
         policy_idx = source.find("_policy_check")
         execute_idx = source.find("payment_orchestrator.execute_chain")
         assert policy_idx != -1

@@ -6,11 +6,11 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_api.routers import ap2, mandates, mvp
-from sardis_api.routers import approval_config as approval_config_router
+from sardis_api.routes.authority import ap2, mandates, mvp
+from sardis_api.routes.authority import approval_config as approval_config_router
 
 try:
-    from sardis_api.routers import approvals as approvals_router
+    from sardis_api.routes.authority import approvals as approvals_router
 except ImportError:
     approvals_router = None  # type: ignore[assignment]
 
