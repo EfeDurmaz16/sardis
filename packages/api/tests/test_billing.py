@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.billing import router, webhook_router
+from sardis_api.routes.billing.billing import router, webhook_router
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -109,7 +109,7 @@ class TestGetAccount:
         mock_sub.stripe_subscription_id = None
 
         with patch(
-            "sardis_api.routers.billing.StripeBillingService.get_or_create_subscription",
+            "sardis_api.routes.billing.billing.StripeBillingService.get_or_create_subscription",
             new=AsyncMock(return_value=mock_sub),
         ):
             resp = client.get("/api/v2/billing/account")
@@ -127,7 +127,7 @@ class TestGetAccount:
         mock_sub.stripe_subscription_id = None
 
         with patch(
-            "sardis_api.routers.billing.StripeBillingService.get_or_create_subscription",
+            "sardis_api.routes.billing.billing.StripeBillingService.get_or_create_subscription",
             new=AsyncMock(return_value=mock_sub),
         ):
             resp = client.get("/api/v2/billing/account")
@@ -146,7 +146,7 @@ class TestGetAccount:
         mock_sub.stripe_subscription_id = None
 
         with patch(
-            "sardis_api.routers.billing.StripeBillingService.get_or_create_subscription",
+            "sardis_api.routes.billing.billing.StripeBillingService.get_or_create_subscription",
             new=AsyncMock(return_value=mock_sub),
         ):
             resp = client.get("/api/v2/billing/account")
@@ -166,7 +166,7 @@ class TestCheckout:
         """POST /checkout with an invalid plan returns 400 even before billing check."""
         # Patch billing_enabled to True to reach plan validation
         with patch(
-            "sardis_api.routers.billing._billing_config",
+            "sardis_api.routes.billing.billing._billing_config",
             MagicMock(
                 billing_enabled=True,
                 stripe_secret_key="stripe_key_for_testing",
@@ -187,7 +187,7 @@ class TestCheckout:
         fake_stripe.checkout.Session.create.return_value = fake_session
 
         with patch(
-            "sardis_api.routers.billing._billing_config",
+            "sardis_api.routes.billing.billing._billing_config",
             MagicMock(
                 billing_enabled=True,
                 stripe_secret_key="stripe_key_for_testing",
@@ -239,11 +239,11 @@ class TestWebhook:
         ).encode()
 
         with patch(
-            "sardis_api.routers.billing.StripeBillingService.verify_webhook_signature",
+            "sardis_api.routes.billing.billing.StripeBillingService.verify_webhook_signature",
             return_value=True,
         ):
             with patch(
-                "sardis_api.routers.billing.StripeBillingService.handle_webhook_event",
+                "sardis_api.routes.billing.billing.StripeBillingService.handle_webhook_event",
                 new=AsyncMock(),
             ):
                 resp = client.post(

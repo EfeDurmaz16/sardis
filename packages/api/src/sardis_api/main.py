@@ -133,7 +133,7 @@ from .routes.money_movement import swap as swap_router
 from .routes.money_movement import transactions as transactions_router
 
 # Protocol v1.0 routers
-from .routers import billing as billing_router
+from .routes.billing import billing as billing_router
 from .routers import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
@@ -183,7 +183,7 @@ from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routers import subscriptions as subscriptions_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
-from .routers import usage as usage_router
+from .routes.billing import usage as usage_router
 from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routers import workflow_templates as workflow_templates_router
