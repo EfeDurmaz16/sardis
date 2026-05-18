@@ -54,6 +54,7 @@
 - Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
 - Added the first domain-scoped route registrar at `sardis_api.routing.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `sardis_api.main`.
 - Added `sardis_api.routing.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `sardis_api.main`.
+- Added `sardis_api.routing.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `sardis_api.main` while preserving the approval service handoff needed by later payment/provider routes.
 
 ## What Was Deleted
 
@@ -134,7 +135,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer` and `sardis_api.routing.money_movement`, so `main.py` can shrink toward domain registrars before the larger grouped `sardis_api/routes/<domain>/...` move.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration extraction has started under `sardis_api.routing.developer`, `sardis_api.routing.money_movement`, and `sardis_api.routing.authority`, so `main.py` can shrink toward domain registrars before the larger grouped `sardis_api/routes/<domain>/...` move.
 
 ## Test, Build, And Lint Results
 
@@ -235,6 +236,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routing packages/sardis-api/src/sardis_api/routers/pay.py` passed after extracting the pay route registrar.
 - `pnpm check:openapi` passed after extracting the pay route registrar: 540 paths and 592 schemas.
 - `uv run pytest packages/sardis-api/tests/test_pay_phase3_fx.py packages/sardis-api/tests/test_pay_sandbox_mode.py -q` passed after extracting the pay route registrar: 23 tests.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routing packages/sardis-api/src/sardis_api/routers/mandates.py packages/sardis-api/src/sardis_api/routers/ap2.py packages/sardis-api/src/sardis_api/routers/mvp.py packages/sardis-api/src/sardis_api/routers/approvals.py` passed after extracting the authority route registrar.
+- `pnpm check:openapi` passed after extracting the authority route registrar: 540 paths and 592 schemas.
+- `uv run pytest packages/sardis-api/tests/test_ap2_router.py packages/sardis-api/tests/test_ap2_safety_guards.py packages/sardis-api/tests/test_ap2_compliance_hardening.py -q` passed after extracting the authority route registrar: 24 tests.
+- `uv run pytest packages/sardis-api/tests/test_mandates_router.py packages/sardis-api/tests/test_ap2_router.py packages/sardis-api/tests/test_policy_enforcement.py -q` did not pass: 41 passed, 25 failed. The failures are pre-existing legacy/static policy assertion and auth patch issues unrelated to the registrar extraction, but they remain a real test-suite cleanup task.
 
 Notes:
 
@@ -269,6 +274,7 @@ Notes:
 
 - Split `sardis_api.main` into bootstrap registrars without changing route contracts.
 - Continue extracting `sardis_api.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
+- Repair or retire stale source-inspection policy tests in `packages/sardis-api/tests/test_policy_enforcement.py` and auth patching in `test_mandates_router.py` so authority-domain coverage is behavior-based and trustworthy.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.
 - Generate canvas sitemap, nav, route order, and `llms-full.txt` from one typed registry.
@@ -321,6 +327,7 @@ Notes:
 - `6156c7c9 refactor(api): clarify webhook subscription routing`
 - `7783e291 refactor(api): extract developer route registration`
 - `1ae31368 refactor(api): extract pay route registration`
+- `58e57232 refactor(api): extract authority route registration`
 - `0a491efc docs: record private ops docs cleanup`
 - `45d67a52 docs: make quickstarts simulation first`
 - `91bf799e docs: record simulation-first quickstarts`
