@@ -36,6 +36,7 @@
 - Added the OpenAPI route snapshot check to the required `Python Lint & Test` CI path so public PRs cannot drift API route contracts accidentally.
 - Removed public dashboard deployment workflows from OSS CI/CD while keeping API and landing deployment paths intact.
 - Removed tracked company-specific SOC2/ops docs from the public source surface and expanded `scripts/oss_surface_check.py` to block investor, ops, and SOC2 private prefixes going forward.
+- Made public quickstart entrypoints simulation-first by removing hosted dashboard signup as a prerequisite for contributor onboarding.
 
 ## What Was Deleted
 
@@ -138,6 +139,10 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `git ls-files 'docs/ops/**' 'docs/compliance/soc2/**' 'docs/investor/**' 'docs/sales/**' 'docs/yc/**'` returned no tracked files.
 - `python3 -m compileall -q scripts/oss_surface_check.py` passed after expanding the checker.
 - `git diff --check` passed after removing private ops docs.
+- Public quickstart signup scan returned no matches for hosted dashboard signup/API-key URLs in `docs/docs/getting-started`, `docs/docs/api/rest.md`, `docs/quickstart/README.md`, and `examples/quickstart_5min.py`.
+- `python3 examples/quickstart_5min.py` passed in simulation mode after the quickstart copy update.
+- `python3 -m compileall -q examples/quickstart_5min.py` passed.
+- `git diff --check` passed after the quickstart update.
 
 Notes:
 
@@ -213,3 +218,5 @@ Notes:
 - `6acd44ec ci: remove dashboard deploy workflows`
 - `ece27ef4 docs: record dashboard deploy cleanup`
 - `5706d1c5 chore: remove private ops docs from public surface`
+- `0a491efc docs: record private ops docs cleanup`
+- `45d67a52 docs: make quickstarts simulation first`
