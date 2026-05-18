@@ -395,9 +395,9 @@ export default function SardisVsCirclePage() {
               }}
             >
               <pre style={{ margin: 0, fontSize: 13, lineHeight: "22px", color: "rgba(253,251,247,0.7)", fontFamily: "var(--font-geist-mono), monospace" }}>
-{`from sardis import Sardis
+{`from sardis import SardisClient
 
-client = Sardis(api_key="sk_live_...")
+client = SardisClient(api_key="sk_live_...")
 
 # Agent pays with USDC on Base — Circle CCTP handles
 # cross-chain if needed, Sardis enforces the policy

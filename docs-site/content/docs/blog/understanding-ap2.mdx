@@ -110,9 +110,9 @@ The flow works like this:
 5. If valid, Sardis executes the Payment Mandate via MPC signing
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
 
 # This creates an AP2 Intent Mandate under the hood
 wallet = client.wallets.create(

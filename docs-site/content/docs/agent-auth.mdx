@@ -56,9 +56,9 @@ This endpoint is unauthenticated and cacheable. Agents can use it to decide whet
 Agents register by declaring their identity, capabilities, and the human or organization that owns them:
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_live_...")
+client = SardisClient(api_key="sk_live_...")
 
 agent = await client.agents.register(
     name="procurement-agent-v2",

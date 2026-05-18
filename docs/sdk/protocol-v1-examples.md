@@ -25,10 +25,10 @@ then present it to a merchant and verify.
 
 ```python
 import asyncio
-from sardis import Sardis
+from sardis import SardisClient
 
 async def mint_and_present():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Step 1 -- Mint a payment object
     po = await client.payment_objects.mint(
@@ -77,9 +77,9 @@ asyncio.run(mint_and_present())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 async function mintAndPresent() {
   // Step 1 -- Mint
@@ -136,10 +136,10 @@ cell, and merge small cells together.
 
 ```python
 import asyncio
-from sardis import Sardis
+from sardis import SardisClient
 
 async def funding_flow():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Create a commitment with 10 x $100 cells
     commitment = await client.funding.commit(
@@ -186,9 +186,9 @@ asyncio.run(funding_flow())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 async function fundingFlow() {
   // Create commitment
@@ -237,10 +237,10 @@ swap before the 30-second quote window expires.
 
 ```python
 import asyncio
-from sardis import Sardis
+from sardis import SardisClient
 
 async def fx_swap():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Check current rates
     rates = await client.fx.rates()
@@ -270,9 +270,9 @@ asyncio.run(fx_swap())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 async function fxSwap() {
   // Check rates
@@ -315,12 +315,12 @@ usage reports.
 import asyncio
 import hashlib
 import hmac
-from sardis import Sardis
+from sardis import SardisClient
 
 COUNTER_SECRET = "meter-signing-secret-from-setup"
 
 async def metered_billing():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # List existing meters for a subscription
     meters = await client.usage.list_meters(subscription_id="sub_abc123")
@@ -361,9 +361,9 @@ asyncio.run(metered_billing())
 
 ```typescript
 import { createHmac } from "crypto";
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 const COUNTER_SECRET = "meter-signing-secret-from-setup";
 
 async function meteredBilling() {
@@ -414,11 +414,11 @@ Create an escrow hold for a payment object, then either confirm delivery
 
 ```python
 import asyncio
-from sardis import Sardis
+from sardis import SardisClient
 
 async def escrow_happy_path():
     """Happy path: create escrow, confirm delivery, funds released."""
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Create escrow
     escrow = await client.escrow.create(
@@ -444,7 +444,7 @@ async def escrow_happy_path():
 
 async def escrow_dispute_path():
     """Dispute path: create escrow, file dispute, submit evidence, resolve."""
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Assume escrow already created with hold_id "esc_existing"
     hold_id = "esc_existing"
@@ -500,9 +500,9 @@ asyncio.run(escrow_dispute_path())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 // Happy path
 async function escrowHappyPath() {
@@ -570,10 +570,10 @@ type 0x76 batch instruction. All transfers succeed or all fail.
 
 ```python
 import asyncio
-from sardis import Sardis
+from sardis import SardisClient
 
 async def batch_payroll():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     result = await client.payments.batch(
         transfers=[
@@ -600,9 +600,9 @@ asyncio.run(batch_payroll())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 async function batchPayroll() {
   const result = await client.payments.batch({
@@ -642,10 +642,10 @@ tokens), listen for real-time SSE events, and settle on-chain.
 import asyncio
 import json
 import httpx
-from sardis import Sardis
+from sardis import SardisClient
 
 async def streaming_payment():
-    client = Sardis(api_key="sk_live_...")
+    client = SardisClient(api_key="sk_live_...")
 
     # Open a stream channel
     stream = await client.payments.stream.open(
@@ -712,9 +712,9 @@ asyncio.run(streaming_payment())
 ### TypeScript
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({ apiKey: "sk_live_..." });
+const client = new SardisClient({ apiKey: "sk_live_..." });
 
 async function streamingPayment() {
   // Open stream
@@ -843,9 +843,9 @@ uv add sardis
 
 ```python
 import os
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(
+client = SardisClient(
     api_key=os.environ["SARDIS_API_KEY"],
     base_url="https://api.sardis.sh/api/v2",  # default
 )
@@ -860,9 +860,9 @@ pnpm add @sardis/sdk
 ```
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const client = new Sardis({
+const client = new SardisClient({
   apiKey: process.env.SARDIS_API_KEY!,
   baseUrl: "https://api.sardis.sh/api/v2", // default
 });

@@ -467,9 +467,9 @@ Transitions `presented` to `verified`. Requires a valid merchant signature over 
 ### Python SDK
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-sardis = Sardis(api_key="sk_live_...")
+sardis = SardisClient(api_key="sk_live_...")
 
 # Mint a payment object from a spending mandate
 po = await sardis.payment_objects.mint(
@@ -500,9 +500,9 @@ for po in objects:
 ### TypeScript SDK
 
 ```typescript
-import { Sardis } from "@sardis/sdk";
+import { SardisClient } from "@sardis/sdk";
 
-const sardis = new Sardis({ apiKey: "sk_live_..." });
+const sardis = new SardisClient({ apiKey: "sk_live_..." });
 
 // Mint a payment object
 const po = await sardis.paymentObjects.mint({

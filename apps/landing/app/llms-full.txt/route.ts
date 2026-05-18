@@ -40,9 +40,9 @@ Traditional payment systems (Stripe, PayPal) are designed for human-initiated tr
 \`\`\`python
 pip install sardis
 
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
 
 # Create an agent with a wallet
 agent = client.agents.create(
@@ -68,9 +68,9 @@ payment = client.payments.create(
 ### TypeScript
 
 \`\`\`typescript
-import { Sardis } from '@sardis/sdk';
+import { SardisClient } from '@sardis/sdk';
 
-const client = new Sardis({ apiKey: 'sk_...' });
+const client = new SardisClient({ apiKey: 'sk_...' });
 
 const agent = await client.agents.create({
   name: 'Procurement Agent',
