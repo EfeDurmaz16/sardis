@@ -9,6 +9,7 @@ import secrets
 import time
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt as pyjwt
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -48,11 +49,20 @@ elif len(_jwt_secret_env) < 32:
 JWT_SECRET = _jwt_secret_env
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = int(os.getenv("JWT_EXPIRATION_HOURS", "24"))
+INTERNAL_JWT_ISSUER = os.getenv("SARDIS_JWT_ISSUER", "sardis-api").strip() or "sardis-api"
+INTERNAL_JWT_AUDIENCE = os.getenv("SARDIS_JWT_AUDIENCE", "sardis-api").strip() or "sardis-api"
+BETTER_AUTH_ISSUER = (
+    os.getenv("BETTER_AUTH_ISSUER", "").strip()
+    or os.getenv("BETTER_AUTH_URL", "").strip()
+)
+BETTER_AUTH_AUDIENCE = os.getenv("BETTER_AUTH_AUDIENCE", "sardis-api").strip() or "sardis-api"
 
 # JWKS client for validating better-auth EdDSA tokens
 _jwks_url = os.getenv("BETTER_AUTH_JWKS_URL", "")
 _jwks_client: pyjwt.PyJWKClient | None = None
 if _jwks_url:
+    if not BETTER_AUTH_ISSUER and os.getenv("SARDIS_ENVIRONMENT", "dev") in ("prod", "production", "staging"):
+        raise RuntimeError("CRITICAL: BETTER_AUTH_ISSUER or BETTER_AUTH_URL is required with JWKS in production.")
     _jwks_client = pyjwt.PyJWKClient(_jwks_url, cache_jwk_set=True, lifespan=3600)
     _logger.info("JWKS validation enabled: %s", _jwks_url)
 
@@ -100,6 +110,9 @@ class BootstrapAPIKeyResponse(BaseModel):
 
 def create_jwt_token(payload: dict) -> str:
     """Create a JWT token using PyJWT with HMAC-SHA256."""
+    payload = dict(payload)
+    payload.setdefault("iss", INTERNAL_JWT_ISSUER)
+    payload.setdefault("aud", INTERNAL_JWT_AUDIENCE)
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -124,6 +137,8 @@ def verify_jwt_token(token: str) -> dict | None:
             algorithms=[JWT_ALGORITHM],
             options={
                 "require": ["sub", "jti", "exp", "iat"],
+                "verify_aud": False,
+                "verify_iss": False,
             },
         )
 
@@ -131,6 +146,12 @@ def verify_jwt_token(token: str) -> dict | None:
         if not isinstance(payload.get("sub"), str) or not payload["sub"]:
             return None
         if not isinstance(payload.get("jti"), str) or not payload["jti"]:
+            return None
+        if payload.get("iss") not in (None, INTERNAL_JWT_ISSUER):
+            _logger.warning("internal JWT rejected: issuer mismatch")
+            return None
+        if payload.get("aud") not in (None, INTERNAL_JWT_AUDIENCE):
+            _logger.warning("internal JWT rejected: audience mismatch")
             return None
 
         return payload
@@ -141,14 +162,21 @@ def verify_jwt_token(token: str) -> dict | None:
     if _jwks_client is not None:
         try:
             signing_key = _jwks_client.get_signing_key_from_jwt(token)
+            required_claims = ["sub", "exp"]
+            decode_kwargs: dict[str, Any] = {
+                "algorithms": ["EdDSA", "ES256", "RS256"],
+                "audience": BETTER_AUTH_AUDIENCE,
+                "options": {
+                    "require": required_claims,
+                },
+            }
+            if BETTER_AUTH_ISSUER:
+                required_claims.append("iss")
+                decode_kwargs["issuer"] = BETTER_AUTH_ISSUER
             payload = pyjwt.decode(
                 token,
                 signing_key.key,
-                algorithms=["EdDSA", "ES256", "RS256"],
-                audience="sardis-api",
-                options={
-                    "require": ["sub", "exp"],
-                },
+                **decode_kwargs,
             )
 
             if not isinstance(payload.get("sub"), str) or not payload["sub"]:
