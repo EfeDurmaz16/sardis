@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import warnings
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -31,7 +32,18 @@ from sardis_api.main import create_app
 def generate_openapi():
     """Generate OpenAPI spec from the FastAPI app."""
     app = create_app()
-    openapi_schema = app.openapi()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        openapi_schema = app.openapi()
+
+    duplicate_operation_warnings = [
+        str(warning.message)
+        for warning in caught
+        if "Duplicate Operation ID" in str(warning.message)
+    ]
+    if duplicate_operation_warnings:
+        details = "\n".join(f"- {message}" for message in duplicate_operation_warnings)
+        raise RuntimeError(f"OpenAPI duplicate operation IDs detected:\n{details}")
 
     # Enhance the schema with additional info
     openapi_schema["info"]["title"] = "Sardis API"
