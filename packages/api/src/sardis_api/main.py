@@ -134,7 +134,7 @@ from .routes.money_movement import transactions as transactions_router
 
 # Protocol v1.0 routers
 from .routes.billing import billing as billing_router
-from .routers import bridge as bridge_router
+from .routes.money_movement import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
