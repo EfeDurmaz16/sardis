@@ -121,12 +121,12 @@ Request lands on Cloud Run, enters FastAPI composition root
               (<code>sardis-api/main.py</code>). Middleware applies canonical prod origins, CSP/HSTS,
               and the Redis-backed rate limiter. Rate limiter is <strong>fail-closed</strong> in prod —
               if Redis is unreachable the request is denied.
-</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/main.py</code></span> <span>env: <code>SARDIS_REDIS_URL</code> required</span> <span class="failmode">fail: 429 on limit; 503 if Redis down</span> </div> </div> </div> <div class="step"> <div class="step-num">04</div> <div> <div class="step-title"><code>require_principal</code> extracts identity.</div> <div class="step-body">
+</div> <div class="step-meta"> <span>file: <code>packages/api/src/sardis_api/main.py</code></span> <span>env: <code>SARDIS_REDIS_URL</code> required</span> <span class="failmode">fail: 429 on limit; 503 if Redis down</span> </div> </div> </div> <div class="step"> <div class="step-num">04</div> <div> <div class="step-title"><code>require_principal</code> extracts identity.</div> <div class="step-body">
 Dependency resolver hashes the incoming API key, looks up the principal (org + agent +
               scopes) from Postgres, attaches it to the request. Better-auth JWTs (EdDSA via JWKS)
               take the same slot for dashboard-originated calls. Missing/invalid key → 401, no
               downstream work.
-</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/routers/pay.py</code></span> <span>principal: org_id, agent_id, scopes[], key_id</span> <span class="failmode">fail: 401 — no orchestrator invocation</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 3 · The single gate</div> <h2>PaymentOrchestrator + PreExecutionPipeline.</h2> <p class="text-muted" style="max-width:720px;">
+</div> <div class="step-meta"> <span>file: <code>packages/api/src/sardis_api/routers/pay.py</code></span> <span>principal: org_id, agent_id, scopes[], key_id</span> <span class="failmode">fail: 401 — no orchestrator invocation</span> </div> </div> </div> </section>  <section class="section"> <div class="section-header"> <div class="eyebrow">Stage 3 · The single gate</div> <h2>PaymentOrchestrator + PreExecutionPipeline.</h2> <p class="text-muted" style="max-width:720px;">
 Every path (wallets, mandates, ap2, pay) funnels through these two files. This is the
             "policy before execution" invariant at the code level.
 </p> </div> <div class="step"> <div class="step-num">05</div> <div> <div class="step-title"><code>PaymentOrchestrator.execute()</code> enters.</div> <div class="step-body">
@@ -145,7 +145,7 @@ Hits <code>sardis-compliance</code> which calls Didit (KYC status cached) + Elli
 If the intent references a spending mandate, verifies the delegator's authority is still
               valid, remaining budget covers the amount, and the mandate hasn't been revoked.
               Decrements budget atomically via DB row lock.
-</div> <div class="step-meta"> <span>file: <code>packages/sardis-api/src/sardis_api/routers/mandate_delegation.py</code></span> <span>SQL: <code>SELECT … FOR UPDATE</code> on mandate row</span> <span class="failmode">fail-closed: race → NOWAIT lock, 409 to caller</span> </div> </div> </div> <div class="step"> <div class="step-num">09</div> <div> <div class="step-title">Rate limiter + anomaly score.</div> <div class="step-body">
+</div> <div class="step-meta"> <span>file: <code>packages/api/src/sardis_api/routers/mandate_delegation.py</code></span> <span>SQL: <code>SELECT … FOR UPDATE</code> on mandate row</span> <span class="failmode">fail-closed: race → NOWAIT lock, 409 to caller</span> </div> </div> </div> <div class="step"> <div class="step-num">09</div> <div> <div class="step-title">Rate limiter + anomaly score.</div> <div class="step-body">
 Per-agent + per-org buckets in Redis. Anomaly model (sardis-guardrails) scores the
               intent against learned baselines — amount z-score, velocity, new counterparty, unusual
               time-of-day. Score above threshold routes to approval queue instead of denying.

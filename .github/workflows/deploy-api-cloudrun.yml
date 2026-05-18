@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/sardis-api/**'
+      - 'packages/api/**'
       - 'packages/sardis-core/**'
       - 'packages/sardis-chain/**'
 

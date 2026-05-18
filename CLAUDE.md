@@ -245,7 +245,7 @@ UPSTASH_REDIS_URL=...        # Caching
 3. Update SDK types
 
 ### Creating a New API Endpoint
-1. Add route in `sardis-api/src/sardis_v2_api/routes/`
+1. Add route in `packages/api/src/sardis_api/routes/`
 2. Add request/response models
 3. Add tests
 4. Update OpenAPI docs

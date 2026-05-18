@@ -31,7 +31,7 @@
 
 ### Medium: Python lockfile state is also mixed
 
-- Evidence: root `uv.lock` plus package-local `uv.lock` in `packages/sardis-api`, `sardis-chain`, `sardis-cli`, `sardis-connect`, `sardis-core`, `sardis-guardrails`, `sardis-ledger`, `sardis-sdk-python`, and `sardis-striga`.
+- Evidence: root `uv.lock` plus package-local `uv.lock` in `packages/api`, `sardis-chain`, `sardis-cli`, `sardis-connect`, `sardis-core`, `sardis-guardrails`, `sardis-ledger`, `sardis-sdk-python`, and `sardis-striga`.
 - Impact: It is unclear whether package tests use root or package-local resolution.
 - Recommended action: Document canonical lock behavior. Prefer root for monorepo validation and package-local only for published standalone packages that require it.
 - Action type: Migration.

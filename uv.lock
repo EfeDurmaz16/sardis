@@ -7180,7 +7180,7 @@ requires-dist = [
     { name = "sardis", extras = ["chain", "compliance", "ledger", "wallet", "cards", "ramp", "api", "protocols", "checkout", "guardrails"], marker = "extra == 'all'" },
     { name = "sardis-a2a", marker = "extra == 'protocols'", editable = "packages/sardis-a2a" },
     { name = "sardis-adk", marker = "extra == 'adk'", editable = "packages/sardis-adk" },
-    { name = "sardis-api", marker = "extra == 'api'", editable = "packages/sardis-api" },
+    { name = "sardis-api", marker = "extra == 'api'", editable = "packages/api" },
     { name = "sardis-autogpt", marker = "extra == 'autogpt'", editable = "packages/sardis-autogpt" },
     { name = "sardis-browser-use", marker = "extra == 'browser-use'", editable = "packages/sardis-browser-use" },
     { name = "sardis-cards", marker = "extra == 'cards'", editable = "packages/sardis-cards" },
@@ -7268,7 +7268,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "sardis-api"
 version = "1.0.0"
-source = { editable = "packages/sardis-api" }
+source = { editable = "packages/api" }
 dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },

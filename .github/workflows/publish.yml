@@ -37,7 +37,7 @@ jobs:
       - name: Build packages
         run: |
           cd packages/sardis-core && uv build
-          cd packages/sardis-api && uv build
+          cd packages/api && uv build
           cd packages/sardis-chain && uv build
           cd packages/sardis-wallet && uv build
           cd packages/sardis-protocol && uv build
@@ -49,7 +49,7 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           cd packages/sardis-core && uv publish
-          cd packages/sardis-api && uv publish
+          cd packages/api && uv publish
           cd packages/sardis-chain && uv publish
           cd packages/sardis-wallet && uv publish
           cd packages/sardis-protocol && uv publish

@@ -54,7 +54,7 @@ python3 "$ROOT_DIR/scripts/oss_surface_check.py"
 echo "[release-readiness] Running OpenAPI route snapshot check"
 (
   cd "$ROOT_DIR"
-  uv run python packages/sardis-api/scripts/generate_openapi.py --check
+  uv run python packages/api/scripts/generate_openapi.py --check
 )
 
 echo "[release-readiness] Completed"

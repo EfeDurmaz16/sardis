@@ -132,21 +132,13 @@ Interactive API documentation is available at:
 ## Architecture
 
 ```
-sardis-api/
-├── main.py           # Application entry point
-├── dependencies.py   # FastAPI dependencies
-├── routers/
-│   ├── wallets.py    # Wallet endpoints
-│   ├── transactions.py
-│   ├── agents.py
-│   ├── mandates.py
-│   ├── holds.py
-│   └── ...
-└── middleware/
-    ├── auth.py       # Authentication
-    ├── rate_limit.py # Rate limiting
-    ├── logging.py    # Request logging
-    └── security.py   # Security headers
+packages/api/
+└── src/sardis_api/
+    ├── main.py           # Application entry point
+    ├── dependencies.py   # FastAPI dependencies
+    ├── routes/           # Domain-grouped route implementations
+    ├── routers/          # Temporary compatibility imports
+    └── middleware/       # Request/auth/security middleware
 ```
 
 ## Requirements

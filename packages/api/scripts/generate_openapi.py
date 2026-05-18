@@ -218,7 +218,7 @@ def main():
     parser.add_argument(
         "--output",
         default=None,
-        help="Output JSON path. Defaults to packages/sardis-api/openapi.json.",
+        help="Output JSON path. Defaults to packages/api/openapi.json.",
     )
     args = parser.parse_args()
 

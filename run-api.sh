@@ -4,7 +4,7 @@
 cd "$(dirname "$0")"
 
 # Set PYTHONPATH for all packages
-export PYTHONPATH="./packages/sardis-api/src:./packages/sardis-core/src:./packages/sardis-wallet/src:./packages/sardis-chain/src:./packages/sardis-protocol/src:./packages/sardis-cards/src:./packages/sardis-compliance/src:./packages/sardis-ledger/src:./packages/sardis-checkout/src:$PYTHONPATH"
+export PYTHONPATH="./packages/api/src:./packages/sardis-core/src:./packages/sardis-wallet/src:./packages/sardis-chain/src:./packages/sardis-protocol/src:./packages/sardis-cards/src:./packages/sardis-compliance/src:./packages/sardis-ledger/src:./packages/sardis-checkout/src:$PYTHONPATH"
 
 # Environment
 export SARDIS_ENVIRONMENT="${SARDIS_ENVIRONMENT:-dev}"

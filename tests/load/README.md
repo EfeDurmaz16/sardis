@@ -90,7 +90,7 @@ Tests the complete hold flow:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `SARDIS_API_URL` | API base URL | `http://localhost:8000` |
-| `SARDIS_API_KEY` | API authentication key | `sk_test_load_test` |
+| `SARDIS_API_KEY` | API authentication key | `replace-with-your-api-key` |
 | `SARDIS_TEST_WALLET_ID` | Wallet ID for tests | `wallet_load_test` |
 
 ## Pre-Test Setup
@@ -99,7 +99,7 @@ Before running load tests:
 
 1. **Start the API server**
    ```bash
-   cd packages/sardis-api
+   cd packages/api
    python -m uvicorn main:app --host 0.0.0.0 --port 8000
    ```
 

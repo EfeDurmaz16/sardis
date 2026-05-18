@@ -28,7 +28,7 @@ python3 scripts/repo_inventory.py
 pnpm check:openapi
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest packages/sardis-api/tests/test_merchant_checkout.py -q
+uv run pytest packages/api/tests/test_merchant_checkout.py -q
 ```
 
 When an intentional API contract change updates the generated OpenAPI schema, review the diff and then run:

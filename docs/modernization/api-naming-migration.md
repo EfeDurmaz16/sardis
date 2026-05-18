@@ -6,7 +6,7 @@ The API package uses a standard Python `src` layout, but the routing layer has
 grown into a flat directory:
 
 ```text
-packages/sardis-api/src/sardis_api/routers/*.py
+packages/api/src/sardis_api/routers/*.py
 ```
 
 That path is technically normal for Python packaging, but the last segment is
@@ -23,8 +23,8 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 
 The repeated-looking path prefix is tracked separately in
 `docs/modernization/package-path-simplification.md`. The short version: keep
-the Python import package `src/sardis_api`, but plan a later dedicated rename
-from `packages/sardis-api` to `packages/api`.
+the Python import package `src/sardis_api`; the monorepo package directory has
+already been simplified from `packages/sardis-api` to `packages/api`.
 
 ## Naming Principles
 
@@ -80,7 +80,7 @@ The external API remains unchanged:
 The concrete contributor pain is path roaming. A file like:
 
 ```text
-packages/sardis-api/src/sardis_api/routers/webhook_subscriptions.py
+packages/api/src/sardis_api/routers/webhook_subscriptions.py
 ```
 
 is long, repeats API/package concepts, and hides the business domain in a flat
@@ -88,7 +88,7 @@ is long, repeats API/package concepts, and hides the business domain in a flat
 shorter mental paths:
 
 ```text
-packages/sardis-api/src/sardis_api/routes/developer/webhook_subscriptions.py
+packages/api/src/sardis_api/routes/developer/webhook_subscriptions.py
 ```
 
 The top-level Python package still uses `src/sardis_api` because that is the
@@ -100,9 +100,9 @@ below it:
 - old `routers/` files only as temporary compatibility wrappers while imports
   migrate
 
-The package directory itself should eventually become `packages/api`, but that
-rename touches workspace, CI, Docker, OpenAPI, and docs paths. It should happen
-as a separate migration after the route tree is easier to reason about.
+The package directory itself has already been simplified to `packages/api`.
+Further path cleanup should happen inside the Python package by moving active
+implementation modules out of the legacy flat `routers/` bucket.
 
 ## Target Layout
 
@@ -211,15 +211,15 @@ moved to `sardis_api/routes/<domain>/...`.
 Run these commands after each route move:
 
 ```bash
-python3 -m compileall -q packages/sardis-api/src/sardis_api
+python3 -m compileall -q packages/api/src/sardis_api
 pnpm check:openapi
-uv run pytest packages/sardis-api/tests -q
+uv run pytest packages/api/tests -q
 ```
 
 For small route-only moves, the minimum acceptable validation is:
 
 ```bash
-python3 -m compileall -q packages/sardis-api/src/sardis_api
+python3 -m compileall -q packages/api/src/sardis_api
 pnpm check:openapi
 ```
 

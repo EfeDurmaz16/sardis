@@ -28,7 +28,7 @@ RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-checkout \
     -e /app/packages/sardis-coinbase \
     -e /app/packages/sardis-ramp \
-    -e /app/packages/sardis-api \
+    -e /app/packages/api \
     "gunicorn>=25" "uvicorn[standard]"
 
 # Stage 2: Runtime

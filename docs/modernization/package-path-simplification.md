@@ -2,7 +2,8 @@
 
 ## Problem
 
-The current API implementation path is technically valid but hard to navigate:
+The previous API implementation path was technically valid but hard to
+navigate:
 
 ```text
 packages/sardis-api/src/sardis_api/...
@@ -10,7 +11,7 @@ packages/sardis-api/src/sardis_api/...
 
 The repetition comes from two different naming layers:
 
-- `packages/sardis-api/` is the monorepo package directory and PyPI
+- `packages/sardis-api/` was the monorepo package directory and PyPI
   distribution boundary.
 - `src/sardis_api/` is the Python import package, required because Python
   imports use underscores rather than hyphens.
@@ -18,13 +19,13 @@ The repetition comes from two different naming layers:
   from the repository root.
 
 The Python package name `sardis_api` should stay stable. The directory
-`packages/sardis-api` is the part that can be simplified.
+`packages/sardis-api` was the part that could be simplified.
 
 ## Decision
 
 Do not collapse or remove `src/sardis_api`.
 
-Instead, plan a separate package-directory migration from:
+Rename the monorepo package directory from:
 
 ```text
 packages/sardis-api/
@@ -43,43 +44,30 @@ packages/api/src/sardis_api/...
 ```
 
 This removes one visible `sardis-api` repetition while preserving the stable
-Python import path and the `src` layout.
+Python import path and the standard `src` layout.
 
-This should be treated as an actual migration, not merely a documentation note.
-The current path is technically defensible but ergonomically bad for an OSS
-repo. The next safe package-layout milestone is:
-
-```text
-packages/api/src/sardis_api/...
-```
-
-That is still a normal Python package layout, but it removes the most confusing
-double Sardis API wording from day-to-day navigation.
-
-## Why Not Rename Immediately
+## Execution Notes
 
 The package directory is referenced by build, validation, Docker, OpenAPI, and
-workspace configuration. A casual rename would touch many unrelated surfaces:
+workspace configuration. The rename therefore must update:
 
 - root `pyproject.toml` editable workspace mapping
 - root `package.json` OpenAPI scripts
 - API Dockerfile and local compose paths
 - CI workflows and deployment jobs
 - package docs and README examples
-- tests that add `packages/sardis-api/src` to `PYTHONPATH`
+- tests that add `packages/api/src` to `PYTHONPATH`
 - generated OpenAPI commands and package-local scripts
 
-This is a high-blast-radius change and should not be mixed into an unrelated
-route move commit. It should be executed as its own atomic package-layout
-commit with a broad reference update and validation pass.
+This was intentionally executed as its own atomic package-layout commit with a
+broad reference update and validation pass.
 
 ## Migration Shape
 
-When this migration is executed, it should be one dedicated branch/commit
-sequence:
+The migration sequence is:
 
-1. Add a temporary compatibility note in docs that `packages/sardis-api` is
-   being renamed to `packages/api`.
+1. Add a compatibility note in docs that `packages/sardis-api` was renamed to
+   `packages/api`.
 2. Rename the directory with `git mv packages/sardis-api packages/api`.
 3. Update root workspace mappings and scripts.
 4. Update CI/workflows, Docker, OpenAPI, and docs references.
@@ -104,14 +92,15 @@ pnpm check
 uv run pytest packages/api/tests -q
 ```
 
-## Current Priority
+## Current State
 
-Continue the lower-risk route-domain migration first:
+The contributor-facing API path is now:
 
-- move active implementation files out of `sardis_api.routers`
-- keep temporary compatibility wrappers
-- keep OpenAPI paths stable
-- shrink `main.py` route registration into domain registrars
+```text
+packages/api/src/sardis_api/...
+```
 
-After the current route-domain commit, perform the package-directory rename as a
-focused migration if the worktree is clean and the reference scan is tractable.
+Remaining path cleanup should focus below `src/sardis_api`: continue moving
+active route implementations out of the legacy flat `routers/` bucket into
+domain-grouped `routes/<domain>/` modules, while keeping compatibility wrappers
+until imports have migrated.

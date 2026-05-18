@@ -45,7 +45,7 @@ jobs:
           pip install -e packages/sardis-compliance
           pip install -e packages/sardis-cards
           pip install -e packages/sardis-ramp
-          pip install -e packages/sardis-api
+          pip install -e packages/api
           pip install pytest pytest-asyncio httpx
 
       - name: Release gate - webhook conformance
@@ -90,13 +90,13 @@ jobs:
           pip install -e packages/sardis-compliance/
           pip install -e packages/sardis-cards/
           pip install -e packages/sardis-ramp/
-          pip install -e packages/sardis-api/
+          pip install -e packages/api/
 
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
-          cd packages/sardis-api
+          cd packages/api
           alembic upgrade head
 
       - name: Deploy to Vercel (Staging)
@@ -160,13 +160,13 @@ jobs:
           pip install -e packages/sardis-compliance/
           pip install -e packages/sardis-cards/
           pip install -e packages/sardis-ramp/
-          pip install -e packages/sardis-api/
+          pip install -e packages/api/
 
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
         run: |
-          cd packages/sardis-api
+          cd packages/api
           alembic upgrade head
 
       - name: Deploy to Vercel (Production)
