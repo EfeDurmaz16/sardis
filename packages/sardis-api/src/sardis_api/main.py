@@ -96,9 +96,9 @@ from .routes.protocol import a2a_payments as a2a_payments_router
 from .routes.protocol import acp as acp_router
 from .routers import admin as admin_router
 from .routers import admin_reconciliation as admin_reconciliation_router
-from .routers import agent_activity as agent_activity_router
-from .routers import agent_events as agent_events_router
-from .routers import agent_heartbeat as agent_heartbeat_router
+from .routes.agents import agent_activity as agent_activity_router
+from .routes.agents import agent_events as agent_events_router
+from .routes.agents import agent_heartbeat as agent_heartbeat_router
 from .routers import agent_registry as agent_registry_router
 from .routers import agents as agents_router
 from .routers import alerts as alerts_router
