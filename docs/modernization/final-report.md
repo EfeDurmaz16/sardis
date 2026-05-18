@@ -30,6 +30,7 @@
 - Added client-supplied idempotency protection and first dedicated replay tests for `/api/v2/payments/batch`.
 - Added client-supplied idempotency protection and dedicated replay tests for `/api/v2/transactions/batch`.
 - Added `pnpm check:openapi`, fixed local OpenAPI generation imports/env setup, and documented the check in the public development loop.
+- Removed duplicate OpenAPI/runtime routes by keeping the canonical MPP router mount and canonical bridge quote router.
 
 ## What Was Deleted
 
@@ -111,6 +112,9 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 - `pnpm check:openapi` passed and generated the OpenAPI schema in memory: 540 paths and 594 schemas.
 - `uv lock --check` passed after adding `sardis-guardrails` to the API package dependency metadata.
 - `python3 -m compileall -q packages/sardis-api/scripts/generate_openapi.py packages/sardis-api/src/sardis_api/main.py` passed.
+- `pnpm check:openapi` passed without duplicate operation ID warnings after duplicate route cleanup: 540 paths and 592 schemas.
+- A route-table smoke script confirmed `duplicate operation ids: 0` and `duplicate method/path: 0`.
+- `python3 -m compileall -q packages/sardis-api/src/sardis_api/main.py packages/sardis-api/src/sardis_api/routers/swap.py` passed.
 
 Notes:
 
@@ -121,7 +125,7 @@ Notes:
 
 - Some money-moving routes still need replay tests and a unified execution service; `/api/v2/pay`, `/api/v2/payments/batch`, and `/api/v2/transactions/batch` now have client-idempotency replay coverage.
 - Database migration history remains split between Alembic and raw SQL.
-- `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a check command before router extraction work.
+- `packages/sardis-api/src/sardis_api/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
 - Public/private repo hygiene still needs actual private-repo extraction for dashboard/product surfaces.
 - Canvas and LLM exports still need registry-driven regeneration.
 - Webhook replay protection remains uneven across provider routers.
@@ -134,7 +138,7 @@ Notes:
 - Standardize provider webhook replay protection.
 - Harden checkout nonce/replay binding.
 - Replace remaining `json_encoders` model config with Pydantic v2 field serializers and remove websocket/datetime deprecation warnings.
-- Fix duplicate OpenAPI operation IDs before making `check:openapi` fail on warnings or adding a checked-in API snapshot.
+- Make `check:openapi` fail on future duplicate operation ID warnings and add a checked-in API snapshot/diff gate.
 - Create the private `sardis-product` or `sardis-cloud` repo and move dashboard/product surfaces out of the OSS contribution path.
 
 ## Next 30 Days
@@ -173,3 +177,5 @@ Notes:
 - `d0b52966 fix(transactions): add batch idempotency protection`
 - `e57ea626 docs: record transactions batch idempotency protection`
 - `79bf97e5 chore(api): add OpenAPI contract check`
+- `1a9fa253 docs: record OpenAPI contract check`
+- `ee121646 fix(api): remove duplicate OpenAPI routes`
