@@ -174,7 +174,7 @@ from .routes.wallets import ramp as ramp_router
 from .routers import sandbox as sandbox_router
 from .routes.developer import sdk_metrics as sdk_metrics_router
 from .routers import secure_checkout as secure_checkout_router
-from .routers import service_directory as service_directory_router
+from .routes.commerce import service_directory as service_directory_router
 from .routers import simulation as simulation_router
 from .routes.protocol import spt as spt_router
 from .routers import stripe_connect as stripe_connect_router
