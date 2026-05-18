@@ -12,11 +12,15 @@ from __future__ import annotations
 import json
 import os
 import sys
+from argparse import ArgumentParser
+from pathlib import Path
 
-# Set test environment to avoid database connections
-os.environ["SARDIS_ENVIRONMENT"] = "test"
-os.environ["DATABASE_URL"] = "memory://"
-os.environ["SARDIS_CHAIN_MODE"] = "simulated"
+# Set local environment to avoid database/network connections.
+os.environ.setdefault("SARDIS_ENVIRONMENT", "dev")
+os.environ.setdefault("DATABASE_URL", "memory://")
+os.environ.setdefault("SARDIS_CHAIN_MODE", "simulated")
+os.environ.setdefault("SARDIS_SECRET_KEY", "openapi-generation-local-secret-key")
+os.environ.setdefault("JWT_SECRET_KEY", "openapi-generation-local-jwt-secret-key")
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -46,7 +50,7 @@ Sardis provides secure payment infrastructure for AI agents with:
 All API requests require an API key passed via the `X-API-Key` header:
 
 ```
-X-API-Key: sk_live_your_api_key
+X-API-Key: <your-api-key>
 ```
 
 ## Rate Limits
@@ -121,14 +125,32 @@ X-API-Key: sk_live_your_api_key
 
 def main():
     """Main entry point."""
+    parser = ArgumentParser(description="Generate or validate the Sardis API OpenAPI schema.")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Generate the schema in memory and exit without writing files.",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Output JSON path. Defaults to packages/sardis-api/openapi.json.",
+    )
+    args = parser.parse_args()
+
     openapi_schema = generate_openapi()
+    path_count = len(openapi_schema.get("paths", {}))
+    schema_count = len(openapi_schema.get("components", {}).get("schemas", {}))
+
+    if args.check:
+        print(f"OpenAPI schema generated successfully: {path_count} paths, {schema_count} schemas")
+        return
 
     # Output to stdout or file
-    output_path = os.path.join(
-        os.path.dirname(__file__), "..", "openapi.json"
-    )
+    output_path = Path(args.output) if args.output else Path(__file__).resolve().parents[1] / "openapi.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_path, "w") as f:
+    with output_path.open("w") as f:
         json.dump(openapi_schema, f, indent=2)
 
     print(f"OpenAPI spec generated at: {output_path}")
@@ -137,8 +159,8 @@ def main():
     try:
         import yaml
 
-        yaml_path = output_path.replace(".json", ".yaml")
-        with open(yaml_path, "w") as f:
+        yaml_path = output_path.with_suffix(".yaml")
+        with yaml_path.open("w") as f:
             yaml.dump(openapi_schema, f, default_flow_style=False, allow_unicode=True)
         print(f"OpenAPI YAML generated at: {yaml_path}")
     except ImportError:

@@ -25,6 +25,7 @@ The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[t
 
 ```bash
 python3 scripts/repo_inventory.py
+pnpm check:openapi
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
 uv run pytest packages/sardis-api/tests/test_merchant_checkout.py -q

@@ -45,6 +45,7 @@ dependencies = [
     "sardis-ledger>=0.1.0",
     "sardis-chain>=0.1.0",
     "sardis-compliance>=0.1.0",
+    "sardis-guardrails>=0.1.0",
     "sentry-sdk[fastapi]>=2.0",
     "alembic>=1.13",
     "asyncpg>=0.29,<1.0",

@@ -56,6 +56,7 @@ def _bootstrap_monorepo_sys_path() -> None:
         "sardis-coinbase",
         "sardis-striga",
         "sardis-lightspark",
+        "sardis-guardrails",
     ):
         src = packages_dir / pkg / "src"
         if src.is_dir():
