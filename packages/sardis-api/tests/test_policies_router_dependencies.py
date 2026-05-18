@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sardis_api.authz import Principal, optional_principal, require_principal
-from sardis_api.routers import policies
+from sardis_api.routes.policy import policies
 
 
 class _Policy:

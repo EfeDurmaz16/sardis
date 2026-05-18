@@ -11,7 +11,7 @@ from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
 from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, TrustLevel
 
 from sardis_api.authz import Principal, require_principal
-from sardis_api.routers import policies
+from sardis_api.routes.policy import policies
 
 
 class _AgentRepo:
@@ -49,7 +49,7 @@ def _build_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     )
 
     history_engine = AgitPolicyEngine()
-    monkeypatch.setattr("sardis_api.routers.policies._get_policy_history_engine", lambda: history_engine)
+    monkeypatch.setattr("sardis_api.routes.policy.policies._get_policy_history_engine", lambda: history_engine)
     monkeypatch.setattr(
         "sardis_v2_core.nl_policy_parser.create_policy_parser",
         lambda use_llm=True: _FakeParser(),
