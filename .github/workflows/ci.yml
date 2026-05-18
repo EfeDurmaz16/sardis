@@ -187,16 +187,16 @@ jobs:
         run: pnpm install
 
       - name: Build SDK
-        run: pnpm --filter @sardis/sdk-js build
+        run: pnpm --filter @sardis/sdk build
 
       - name: Build MCP Server
         run: pnpm --filter @sardis/mcp-server build
 
       - name: Type check SDK
-        run: pnpm --filter @sardis/sdk-js tsc --noEmit
+        run: pnpm --filter @sardis/sdk typecheck
 
       - name: Test SDK
-        run: pnpm --filter @sardis/sdk-js test
+        run: pnpm --filter @sardis/sdk test
 
   dashboard-build:
     name: Canonical Dashboard Build

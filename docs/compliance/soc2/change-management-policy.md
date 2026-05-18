@@ -122,9 +122,9 @@ All pull requests to the `main` branch must pass the following CI pipeline (defi
 
 | Check | Tool | Command |
 |-------|------|---------|
-| Build SDK | pnpm | `pnpm --filter @sardis/sdk-js build` |
+| Build SDK | pnpm | `pnpm --filter @sardis/sdk build` |
 | Build MCP Server | pnpm | `pnpm --filter @sardis/mcp-server build` |
-| Type check | tsc | `pnpm --filter @sardis/sdk-js tsc --noEmit` |
+| Type check | tsc | `pnpm --filter @sardis/sdk typecheck` |
 
 ### 5.4 Frontend Builds
 
