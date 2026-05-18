@@ -111,8 +111,8 @@ from .routes.operations import event_stream as event_stream_router
 from .routes.operations import metrics as metrics_router
 from .routes.operations import reliability as reliability_router
 from .routes.operations import ws_alerts as ws_alerts_router
-from .routers import admin as admin_router
-from .routers import admin_reconciliation as admin_reconciliation_router
+from .routes.admin import control as admin_router
+from .routes.admin import reconciliation as admin_reconciliation_router
 from .routes.agents import agent_activity as agent_activity_router
 from .routes.agents import agent_events as agent_events_router
 from .routes.agents import agent_heartbeat as agent_heartbeat_router

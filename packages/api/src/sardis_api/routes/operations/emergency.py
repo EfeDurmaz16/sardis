@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sardis_api.audit_log import log_admin_action
 from sardis_api.authz import Principal, require_principal
 from sardis_api.middleware.mfa import require_mfa_if_enabled
-from sardis_api.routers.admin import admin_rate_limit
+from sardis_api.routes.admin.control import admin_rate_limit
 
 logger = logging.getLogger(__name__)
 

@@ -426,6 +426,10 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_sandbox_route_gate.py -q` passed after moving sandbox routes: 8 tests.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved sandbox routes remain mounted at `/api/v2/sandbox/payment`, `/api/v2/sandbox/demo-data`, `/api/v2/sandbox/reset`, and `/api/v2/sandbox/playground-key`.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving sandbox routes. OpenAPI remained 540 paths and 592 schemas.
+- `python3 -m compileall -q packages/api/src/sardis_api/routes/admin packages/api/src/sardis_api/routers/admin.py packages/api/src/sardis_api/routers/admin_reconciliation.py packages/api/src/sardis_api/routes/operations/emergency.py packages/api/src/sardis_api/main.py` passed after moving admin control and reconciliation routes.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" python3 - <<'PY' ...` verified old `sardis_api.routers.admin` and `sardis_api.routers.admin_reconciliation` resolve to the same module objects as `sardis_api.routes.admin.control` and `sardis_api.routes.admin.reconciliation`.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run python - <<'PY' ...` verified the moved admin routes remain mounted at `/api/v2/admin/stats`, `/api/v2/admin/rate-limit/status`, `/api/v2/admin/reconciliation/check`, and `/api/v2/admin/reconciliation/stats`.
+- `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after moving admin routes. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 
