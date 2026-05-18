@@ -45,12 +45,38 @@ Completed so far:
 | `main.py` inline webhook subscription registration | `routing/developer.py::register_webhook_subscriptions` | Starts separating route registration by API audience/domain before moving 120+ router files. |
 | `main.py` inline `/api/v2/pay` registration | `routing/money_movement.py::register_pay_endpoint` | Moves a small, high-traffic payment surface behind a money-movement registrar without changing the public path. |
 | `main.py` inline mandates/AP2/MVP/approvals registration | `routing/authority.py::register_authority_routes` | Groups authority and mandate route wiring while returning the approval service needed by later payment/provider routers. |
+| `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` with a compatibility wrapper in `routers/` | Starts the physical path simplification from flat routers to domain-grouped routes. |
 
 The external API remains unchanged:
 
 ```text
 /api/v2/webhooks
 ```
+
+## Path Simplification
+
+The concrete contributor pain is path roaming. A file like:
+
+```text
+packages/sardis-api/src/sardis_api/routers/webhook_subscriptions.py
+```
+
+is long, repeats API/package concepts, and hides the business domain in a flat
+`routers` bucket. The migration target is therefore not only better names, but
+shorter mental paths:
+
+```text
+packages/sardis-api/src/sardis_api/routes/developer/webhook_subscriptions.py
+```
+
+The top-level Python package still uses `src/sardis_api` because that is the
+standard packaging boundary. The part we should actively simplify is everything
+below it:
+
+- `routes/<domain>/...` for HTTP route modules
+- `routing/<domain>.py` for FastAPI registration/wiring
+- old `routers/` files only as temporary compatibility wrappers while imports
+  migrate
 
 ## Target Layout
 

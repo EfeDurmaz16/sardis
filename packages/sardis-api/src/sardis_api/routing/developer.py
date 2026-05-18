@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
-from sardis_api.routers import webhook_subscriptions
+from sardis_api.routes.developer import webhook_subscriptions
 
 
 def register_webhook_subscriptions(app: FastAPI, *, dsn: str) -> WebhookService:
