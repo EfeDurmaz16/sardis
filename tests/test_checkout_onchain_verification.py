@@ -15,7 +15,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_api.services.onchain_verification import (
+from sardis_server.services.onchain_verification import (
     TRANSFER_EVENT_TOPIC,
     verify_usdc_transfer,
 )
@@ -75,7 +75,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response("0x110")  # 16 confirmations
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -100,7 +100,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response()
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -125,7 +125,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response()
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -149,7 +149,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response()
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -173,7 +173,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response()
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -197,7 +197,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response()
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -218,7 +218,7 @@ class TestVerifyUsdcTransfer:
         """RPC connection error is handled gracefully."""
         import httpx
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = httpx.ConnectError("connection refused")
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -259,7 +259,7 @@ class TestVerifyUsdcTransfer:
         mock_block_resp = MagicMock()
         mock_block_resp.json.return_value = _make_block_number_response("0x100")  # latest also 256 = 0 confirmations
 
-        with patch("sardis_api.services.onchain_verification.httpx.AsyncClient") as mock_client:
+        with patch("sardis_server.services.onchain_verification.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.post.side_effect = [mock_receipt_resp, mock_block_resp]
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)

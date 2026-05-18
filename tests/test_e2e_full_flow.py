@@ -17,23 +17,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.cards import create_cards_router
-from sardis_api.routers.ramp import (
+from sardis_server.authz import Principal, require_principal
+from sardis_server.routes.wallets.cards import create_cards_router
+from sardis_server.routes.wallets.ramp import (
     RampDependencies,
 )
-from sardis_api.routers.ramp import (
+from sardis_server.routes.wallets.ramp import (
     get_deps as ramp_get_deps,
 )
-from sardis_api.routers.ramp import (
+from sardis_server.routes.wallets.ramp import (
     public_router as ramp_public_router,
 )
-from sardis_api.routers.ramp import (
+from sardis_server.routes.wallets.ramp import (
     router as ramp_router,
 )
-from sardis_api.routers.wallets import WalletDependencies
-from sardis_api.routers.wallets import get_deps as wallets_get_deps
-from sardis_api.routers.wallets import router as wallets_router
+from sardis_server.routes.wallets.wallets import WalletDependencies
+from sardis_server.routes.wallets.wallets import get_deps as wallets_get_deps
+from sardis_server.routes.wallets.wallets import router as wallets_router
 from sardis_cards.offramp import (
     OfframpProvider,
     OfframpQuote,
@@ -128,6 +128,23 @@ def chain_executor():
 
 
 @pytest.fixture
+def payment_orchestrator():
+    orchestrator = AsyncMock()
+    result = MagicMock()
+    result.chain_tx_hash = "0xe2e_tx_hash"
+    result.chain = "base_sepolia"
+    result.ledger_tx_id = "ledger_e2e"
+    result.status = "submitted"
+    result.audit_anchor = None
+    result.execution_path = "legacy_tx"
+    result.user_op_hash = None
+    result.proof_artifact_path = None
+    result.proof_artifact_sha256 = None
+    orchestrator.execute_chain.return_value = result
+    return orchestrator
+
+
+@pytest.fixture
 def card_repo():
     repo = AsyncMock()
     repo.create.return_value = {
@@ -154,7 +171,15 @@ def card_provider():
 
 
 @pytest.fixture
-def e2e_app(wallet_repo, agent_repo, offramp_service, chain_executor, card_repo, card_provider):
+def e2e_app(
+    wallet_repo,
+    agent_repo,
+    offramp_service,
+    chain_executor,
+    payment_orchestrator,
+    card_repo,
+    card_provider,
+):
     app = FastAPI()
 
     # Wire ramp router
@@ -174,6 +199,7 @@ def e2e_app(wallet_repo, agent_repo, offramp_service, chain_executor, card_repo,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_executor,
+        payment_orchestrator=payment_orchestrator,
     )
     app.dependency_overrides[wallets_get_deps] = lambda: wallet_deps
     app.include_router(wallets_router, prefix="/api/v2/wallets")
@@ -252,7 +278,7 @@ class TestIssueAndFundCard:
 
 
 class TestWalletToWalletTransfer:
-    def test_a2a_transfer(self, e2e_app, chain_executor):
+    def test_a2a_transfer(self, e2e_app, payment_orchestrator):
         client = TestClient(e2e_app)
         resp = client.post("/api/v2/wallets/wallet_e2e/transfer", json={
             "destination": "0xrecipientAgent",
@@ -264,7 +290,7 @@ class TestWalletToWalletTransfer:
         data = resp.json()
         assert data["tx_hash"] == "0xe2e_tx_hash"
         assert data["to_address"] == "0xrecipientAgent"
-        chain_executor.dispatch_payment.assert_called_once()
+        payment_orchestrator.execute_chain.assert_called_once()
 
 
 class TestOfframpToBank:
