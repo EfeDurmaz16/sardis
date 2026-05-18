@@ -95,6 +95,10 @@ coverage/
 # Foundry build artifacts
 contracts/out/
 contracts/cache/
+contracts/broadcast/
+
+# Generated uptime / response-time snapshots
+/api/*/*.json
 
 # Generated local validator ledgers
 packages/sardis-solana-program/.anchor/test-ledger/

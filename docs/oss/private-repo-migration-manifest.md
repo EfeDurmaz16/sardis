@@ -20,6 +20,8 @@ The following categories are private by default:
 - `docs/partnerships/` - partner-development and LOI drafts
 - `docs/sales/` - sales prospecting and outreach strategy
 - `docs/yc/` - accelerator application drafts
+- `api/*/*.json` - generated uptime and response-time snapshots
+- `contracts/broadcast/` - generated Foundry broadcast/deployment artifacts
 - `scripts/gtm/` - GTM automation and lead workflow scripts
 
 ## Follow-Up
