@@ -137,6 +137,38 @@ are `sardis_api.routing.developer.register_webhook_subscriptions`,
 `sardis_api.routing.money_movement.register_pay_endpoint`, and
 `sardis_api.routing.authority.register_authority_routes`.
 
+## Recommended Move Order
+
+Proceed bucket-by-bucket. Each bucket should leave a temporary compatibility
+wrapper in `sardis_api/routers/` until internal imports and downstream users have
+moved to `sardis_api/routes/<domain>/...`.
+
+1. Authority: completed for `mandates`, `ap2`, `mvp`, `approvals`, and
+   `approval_config`.
+2. Money movement and ledger: `ledger`, `holds`, `transactions`,
+   `payments_refund`, `payment_objects`, `batch_payments`, `streaming_payments`,
+   `fx`, `swap`, `settlements`, and `receipts`.
+3. Wallets, funding, and cards: `wallets`, `onchain_payments`, `funding`,
+   `funding_capabilities`, `ramp`, `onramp`, `offramp`, `cards`,
+   `virtual_cards`, `stablecoin_cards`, `treasury`, `treasury_ops`, and `cpn`.
+4. Provider callbacks: `stripe_webhooks`, `stripe_spt_webhooks`,
+   `mastercard_webhooks`, `visa_tap_webhooks`, `partner_card_webhooks`,
+   `cpn_webhooks`, and `polar_webhook`.
+5. Policy, compliance, and evidence: `policies`, `policy_simulation`,
+   `policy_analytics`, `fallback_policies`, `compliance`, `compliance_export`,
+   `kyc_onboarding`, `evidence`, `evidence_export`, `audit_anchors`, and
+   `attestation`.
+6. Agents, identity, and auth: `agents`, `agent_auth`, `agent_registry`,
+   `agent_activity`, `agent_events`, `agent_heartbeat`, `fides_identity`,
+   `auth`, `email_verification`, `me`, `organizations`, `groups`, and
+   `api_keys`.
+7. Admin, operations, observability, and miscellaneous contributor tools:
+   `admin`, `admin_reconciliation`, `analytics`, `metrics`,
+   `dashboard_metrics`, `alerts`, `ws_alerts`, `event_stream`, `reports`,
+   `data_export`, `usage`, `notifications`, `sandbox`, `dev`, `reliability`,
+   `plugins`, `workflow_templates`, `environment_templates`, and
+   `enterprise_support`.
+
 ## Validation Required For Each Move
 
 Run these commands after each route move:
