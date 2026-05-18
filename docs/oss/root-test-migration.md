@@ -6,7 +6,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 ## Current Snapshot
 
 - Root Python test files: `233`
-- Files with stale API import/path references: `3`
+- Files with stale API import/path references: `0`
 - Default pytest path: `packages/server-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
@@ -34,9 +34,6 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 
 | File | Suggested owner | Stale refs |
 | --- | --- | ---: |
-| `tests/test_emergency_freeze.py` | `needs owner review` | 11 |
-| `tests/test_fake_routes_removed.py` | `needs owner review` | 10 |
-| `tests/test_stripe_onramp.py` | `packages/server-api/tests` | 17 |
 
 Regenerate this inventory with:
 
