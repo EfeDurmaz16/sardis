@@ -163,7 +163,7 @@ def _make_cpn_app(secret: str = "webhook-secret") -> tuple[FastAPI, TestClient]:
     import os
     os.environ["CIRCLE_CPN_WEBHOOK_SECRET"] = secret
 
-    from sardis_api.routers.cpn_webhooks import router
+    from sardis_server.routes.providers.cpn_webhooks import router
 
     app = FastAPI()
     app.include_router(router)

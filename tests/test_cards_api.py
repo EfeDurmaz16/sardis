@@ -1,25 +1,12 @@
 import hashlib
 import hmac as hmac_mod
 import json
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-
-def _load_cards_module(module_name: str):
-    import importlib.util
-    import sys
-
-    repo_root = Path(__file__).resolve().parents[1]
-    cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
-    spec = importlib.util.spec_from_file_location(module_name, str(cards_path))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = mod
-    spec.loader.exec_module(mod)
-    return mod
+from sardis_server.routes.wallets.cards import create_cards_router
 
 
 def _auth_headers() -> dict[str, str]:
@@ -27,7 +14,7 @@ def _auth_headers() -> dict[str, str]:
     import secrets
     import time
 
-    from sardis_api.routers.auth import create_jwt_token
+    from sardis_server.routes.accounts.auth import create_jwt_token
 
     now = int(time.time())
     token = create_jwt_token(
@@ -91,8 +78,6 @@ def mock_card_provider():
 
 @pytest.fixture
 def app_with_cards(mock_card_repo, mock_card_provider):
-    cards_mod = _load_cards_module("cards_router")
-    create_cards_router = cards_mod.create_cards_router
     app = FastAPI()
     router = create_cards_router(
         card_repo=mock_card_repo,
@@ -104,8 +89,6 @@ def app_with_cards(mock_card_repo, mock_card_provider):
 
 @pytest.fixture
 def app_with_cards_prod_no_secret(mock_card_repo, mock_card_provider):
-    cards_mod = _load_cards_module("cards_router_prod")
-    create_cards_router = cards_mod.create_cards_router
     app = FastAPI()
     router = create_cards_router(
         card_repo=mock_card_repo,
@@ -154,9 +137,8 @@ def test_get_card_not_found(app_with_cards, mock_card_repo):
 
 @pytest.fixture
 def app_with_webhook_secret(mock_card_repo, mock_card_provider):
-    cards_mod = _load_cards_module("cards_router_wh")
     app = FastAPI()
-    router = cards_mod.create_cards_router(
+    router = create_cards_router(
         card_repo=mock_card_repo,
         card_provider=mock_card_provider,
         webhook_secret="test_secret_key",
