@@ -52,6 +52,7 @@
 - Added `docs/modernization/api-naming-migration.md` to define the API route naming/layout cleanup policy.
 - Renamed the generic outbound webhook router module from `routers/webhooks.py` to `routers/webhook_subscriptions.py` while preserving the public `/api/v2/webhooks` path.
 - Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
+- Removed the unregistered `routers/anomaly.py` prototype; anomaly scoring still exists through control-plane/protocol internals, but the old standalone API router was not mounted or dependency-wired.
 - Added the first domain-scoped route registrar at `sardis_api.routing.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `sardis_api.main`.
 - Added `sardis_api.routing.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `sardis_api.main`.
 - Added `sardis_api.routing.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `sardis_api.main` while preserving the approval service handoff needed by later payment/provider routes.
@@ -145,6 +146,7 @@
   - `scripts/verify-mainnet.sh`
   - `scripts/yc_wow_demo.py`
 - Deleted `packages/api/src/sardis_api/routers/agent_identity.py`, an unregistered legacy identity router.
+- Deleted `packages/api/src/sardis_api/routers/anomaly.py`, an unregistered anomaly API prototype with no live app wiring.
 
 ## What Was Rewritten
 
