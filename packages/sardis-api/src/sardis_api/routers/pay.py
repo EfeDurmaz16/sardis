@@ -33,7 +33,7 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sardis_v2_core.mandates import (
     CartMandate,
@@ -52,6 +52,7 @@ from sardis_v2_core.orchestrator import (
 from sardis_v2_core.policy_explainer import explain_denial
 
 from sardis_api.authz import Principal, require_principal
+from sardis_api.idempotency import get_idempotency_key, run_idempotent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -215,7 +216,7 @@ async def _get_fx_quote(
     pair = (from_token, to_token)
     if pair not in SUPPORTED_FX_PAIRS:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
                 f"Unsupported currency pair: {from_token} -> {to_token}. "
                 f"Supported: {', '.join(f'{a}->{b}' for a, b in sorted(SUPPORTED_FX_PAIRS))}"
@@ -356,8 +357,33 @@ async def _find_best_chain(
 )
 async def pay(
     body: PayRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
     deps: PayDependencies = Depends(get_deps),
+) -> PayResponse:
+    idem_key = get_idempotency_key(request)
+    if idem_key:
+        async def _execute_idempotent() -> tuple[int, Any]:
+            response = await _execute_pay(body=body, principal=principal, deps=deps)
+            return status.HTTP_200_OK, response.model_dump(mode="json")
+
+        return await run_idempotent(
+            request=request,
+            principal=principal,
+            operation="pay.execute",
+            key=idem_key,
+            payload=body.model_dump(mode="json"),
+            fn=_execute_idempotent,
+        )
+
+    return await _execute_pay(body=body, principal=principal, deps=deps)
+
+
+async def _execute_pay(
+    *,
+    body: PayRequest,
+    principal: Principal,
+    deps: PayDependencies,
 ) -> PayResponse:
     # Parse amount
     try:
@@ -366,7 +392,7 @@ async def pay(
             raise InvalidOperation
     except (InvalidOperation, ValueError):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid amount: {body.amount!r}",
         )
 
@@ -375,7 +401,7 @@ async def pay(
     target_token = _resolve_token(body.currency)
     if target_token is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=(
                 f"Unsupported currency: {body.currency!r}. "
                 f"Supported: {', '.join(sorted(CURRENCY_TO_TOKEN.keys()))}"

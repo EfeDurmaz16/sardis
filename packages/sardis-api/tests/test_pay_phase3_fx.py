@@ -82,6 +82,29 @@ class MockRouteResult:
         self.route_type = "swap"
 
 
+class FakeCache:
+    """Minimal async cache implementing the idempotency helper contract."""
+
+    def __init__(self):
+        self.values: dict[str, str] = {}
+        self.locks: set[str] = set()
+
+    async def get(self, key: str) -> str | None:
+        return self.values.get(key)
+
+    async def set(self, key: str, value: str, ttl: int | None = None) -> None:
+        self.values[key] = value
+
+    async def acquire_lock(self, key: str, ttl_seconds: int) -> str | None:
+        if key in self.locks:
+            return None
+        self.locks.add(key)
+        return f"owner:{key}"
+
+    async def release_lock(self, key: str, owner: str) -> None:
+        self.locks.discard(key)
+
+
 @pytest.fixture
 def mock_liquidity_router():
     """Mock LiquidityRouter that returns a USDC->EURC quote."""
@@ -156,6 +179,7 @@ def app_with_pay(mock_orchestrator, mock_liquidity_router, _patch_mandates):
     from sardis_api.routers.pay import PayDependencies, get_deps, router
 
     app = FastAPI()
+    app.state.cache_service = FakeCache()
     app.include_router(router, prefix="/api/v2/pay")
 
     app.dependency_overrides[get_deps] = lambda: PayDependencies(
@@ -166,8 +190,13 @@ def app_with_pay(mock_orchestrator, mock_liquidity_router, _patch_mandates):
     from sardis_api.authz import require_principal
 
     class FakePrincipal:
+        organization_id = "org_test"
         subject_id = "test_agent"
         scopes = ["pay"]
+
+        @property
+        def user_id(self):
+            return self.subject_id
 
     app.dependency_overrides[require_principal] = lambda: FakePrincipal()
 
@@ -223,6 +252,59 @@ async def test_same_currency_usd_maps_to_usdc_no_fx(client, mock_orchestrator):
     data = response.json()
     assert data["status"] == "completed"
     assert data["fx"] is None
+
+
+@pytest.mark.asyncio
+async def test_pay_idempotency_replays_same_payload_without_reexecution(
+    client, mock_orchestrator
+):
+    """A repeated client idempotency key should return the cached response."""
+    payload = {
+        "to": "0xmerchant",
+        "amount": "100.00",
+        "currency": "USDC",
+    }
+    headers = {"Idempotency-Key": "pay_replay_same_payload"}
+
+    first = await client.post("/api/v2/pay", json=payload, headers=headers)
+    second = await client.post("/api/v2/pay", json=payload, headers=headers)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert mock_orchestrator.execute_chain.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_pay_idempotency_rejects_same_key_with_different_payload(
+    client, mock_orchestrator
+):
+    """A reused key with a different payment payload is a replay/tamper signal."""
+    headers = {"Idempotency-Key": "pay_replay_changed_payload"}
+
+    first = await client.post(
+        "/api/v2/pay",
+        json={
+            "to": "0xmerchant",
+            "amount": "100.00",
+            "currency": "USDC",
+        },
+        headers=headers,
+    )
+    replay = await client.post(
+        "/api/v2/pay",
+        json={
+            "to": "0xmerchant",
+            "amount": "101.00",
+            "currency": "USDC",
+        },
+        headers=headers,
+    )
+
+    assert first.status_code == 200
+    assert replay.status_code == 409
+    assert replay.json()["detail"] == "idempotency_key_reuse_different_payload"
+    assert mock_orchestrator.execute_chain.await_count == 1
 
 
 # ---------------------------------------------------------------------------
