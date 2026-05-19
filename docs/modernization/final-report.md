@@ -306,14 +306,18 @@ module. The extraction preserves feature-flag behavior, mock/Lithic/Stripe/Rain/
 Bridge provider selection, primary/fallback routing, organization overrides,
 partner webhook secrets, and Lithic ASA handler wiring while leaving
 `server.main` responsible only for route registration.
+Stripe treasury and funding route configuration parsing now has a dedicated
+`server.funding_runtime` helper with focused tests for settings/env precedence,
+connected-account map parsing, non-Stripe funding credentials, and live-mode
+fail-closed bootstrap activation.
 
 ## Test, Build, And Lint Results
 
 Current validation after the latest API bootstrap cleanup:
 
-- `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
-- `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_storage_backend_config.py -q` passed: 77 passed.
+- `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
+- `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 6 passed.
 - `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
 - `pnpm check:openapi` passed: 540 paths, 592 schemas.
 - `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.
