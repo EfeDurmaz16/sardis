@@ -7,7 +7,18 @@ import os
 from fastapi import FastAPI
 from sardis_v2_core.webhooks import WebhookRepository, WebhookService
 
-from sardis_server.routes.developer import dev, sandbox, sdk_metrics, simulation, webhook_subscriptions
+from sardis_server.routes.developer import (
+    dev,
+    enterprise_support,
+    environment_templates,
+    faucet,
+    notifications,
+    sandbox,
+    sdk_metrics,
+    simulation,
+    webhook_subscriptions,
+    workflow_templates,
+)
 
 logger = logging.getLogger("sardis_server.api.routing.developer")
 
@@ -54,3 +65,49 @@ def register_developer_utility_routes(app: FastAPI, *, is_production: bool) -> N
         logger.info("Sandbox/Playground routes enabled")
     else:
         logger.info("Sandbox/Playground routes disabled")
+
+
+def register_enterprise_support_routes(
+    app: FastAPI,
+    *,
+    database_url: str,
+    use_postgres: bool,
+) -> None:
+    """Register enterprise support ticket/profile routes."""
+    from sardis_server.repositories.enterprise_support_repository import EnterpriseSupportRepository
+
+    support_repo = EnterpriseSupportRepository(dsn=database_url if use_postgres else None)
+    app.dependency_overrides[enterprise_support.get_deps] = (
+        lambda: enterprise_support.EnterpriseSupportDependencies(
+            support_repo=support_repo,
+        )
+    )
+    app.include_router(enterprise_support.router)
+
+
+def register_faucet_routes(app: FastAPI) -> None:
+    """Register testnet faucet routes."""
+    app.include_router(faucet.router, prefix="/api/v2/faucet", tags=["faucet"])
+
+
+def register_notification_routes(app: FastAPI) -> None:
+    """Register notification webhook configuration routes."""
+    app.include_router(
+        notifications.router,
+        prefix="/api/v2/notifications",
+        tags=["notifications"],
+    )
+
+
+def register_template_routes(app: FastAPI) -> None:
+    """Register workflow and environment template routes."""
+    app.include_router(
+        workflow_templates.router,
+        prefix="/api/v2/templates",
+        tags=["workflow-templates"],
+    )
+    app.include_router(
+        environment_templates.router,
+        prefix="/api/v2/environments",
+        tags=["Environment Templates"],
+    )

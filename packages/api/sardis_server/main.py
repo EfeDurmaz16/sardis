@@ -26,8 +26,6 @@ from .bootstrap import bootstrap_monorepo_sys_path, should_bootstrap_monorepo_sy
 if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
-from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore, SardisSettings, load_settings
-
 from sardis_chain.executor import ChainExecutor
 from sardis_compliance.checks import ComplianceEngine
 from sardis_ledger.records import LedgerStore
@@ -38,53 +36,17 @@ from sardis_protocol.storage import (
     SqliteReplayCache,
 )
 from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core.cache import create_cache_service
-from sardis_v2_core.identity import IdentityRegistry
-from sardis_v2_core.orchestrator import PaymentOrchestrator
-from sardis_wallet.manager import WalletManager
-
-from .routes.commerce import checkout as checkout_router
-from .routes.commerce import merchant_checkout as merchant_checkout_router
-from .routes.commerce import merchants as merchants_router
-from .routes.money_movement import swap as swap_router
-
-from .routes.wallets import cards as cards_router
-from .routes.compliance import compliance as compliance_router
-from .routes.compliance import compliance_export as compliance_export_router
-from .routes.wallets import cpn as cpn_router
-from .routes.authority import credentials as credentials_router
-from .routes.developer import enterprise_support as enterprise_support_router
-from .routes.developer import environment_templates as environment_templates_router
-from .routes.authority import facility_requests as facility_requests_router
-from .routes.developer import faucet as faucet_router
-from .routes.wallets import funding as funding_router
-from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routes.compliance import kyc_onboarding as kyc_onboarding_router
-from .routes.authority import mandate_delegation as mandate_delegation_router
-from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
-from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
-from .routes.developer import notifications as notifications_router
-from .routes.wallets import offramp as offramp_router
-from .routes.wallets import onchain_payments as onchain_payments_router
-from .routes.wallets import onramp as onramp_router
-from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
-from .routes.wallets import ramp as ramp_router
-from .routes.commerce import secure_checkout as secure_checkout_router
-from .routes.providers import stripe_connect as stripe_connect_router
-from .routes.providers import stripe_funding as stripe_funding_router
-from .routes.providers import stripe_webhooks as stripe_webhooks_router
-from .routes.wallets import treasury as treasury_router
-from .routes.wallets import treasury_ops as treasury_ops_router
-from .routes.wallets import virtual_cards as virtual_cards_router
-from .routes.wallets import wallets as wallets_router
-from .routes.developer import workflow_templates as workflow_templates_router
-
+from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore, SardisSettings, load_settings
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core.cache import create_cache_service
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
+from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
+from sardis_v2_core.orchestrator import PaymentOrchestrator
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
+from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
 from .health import create_health_router
@@ -110,10 +72,38 @@ from .middleware import (
 from .openapi_schema import custom_openapi
 from .providers.lithic_treasury import LithicTreasuryClient
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.treasury_repository import TreasuryRepository
+from .routes.authority import credentials as credentials_router
+from .routes.authority import facility_requests as facility_requests_router
+from .routes.authority import mandate_delegation as mandate_delegation_router
+from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
+from .routes.commerce import checkout as checkout_router
+from .routes.commerce import merchant_checkout as merchant_checkout_router
+from .routes.commerce import merchants as merchants_router
+from .routes.commerce import secure_checkout as secure_checkout_router
+from .routes.compliance import compliance as compliance_router
+from .routes.compliance import compliance_export as compliance_export_router
+from .routes.compliance import kyc_onboarding as kyc_onboarding_router
+from .routes.money_movement import swap as swap_router
+from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
+from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
+from .routes.providers import stripe_connect as stripe_connect_router
+from .routes.providers import stripe_funding as stripe_funding_router
+from .routes.providers import stripe_webhooks as stripe_webhooks_router
+from .routes.wallets import cards as cards_router
+from .routes.wallets import cpn as cpn_router
+from .routes.wallets import funding as funding_router
+from .routes.wallets import funding_capabilities as funding_capabilities_router
+from .routes.wallets import offramp as offramp_router
+from .routes.wallets import onchain_payments as onchain_payments_router
+from .routes.wallets import onramp as onramp_router
+from .routes.wallets import ramp as ramp_router
+from .routes.wallets import treasury as treasury_router
+from .routes.wallets import treasury_ops as treasury_ops_router
+from .routes.wallets import virtual_cards as virtual_cards_router
+from .routes.wallets import wallets as wallets_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -122,7 +112,11 @@ from .routing.accounts import (
 from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
-from .routing.billing import register_billing_routes, register_subscription_routes, register_usage_routes
+from .routing.billing import (
+    register_billing_routes,
+    register_subscription_routes,
+    register_usage_routes,
+)
 from .routing.commerce import (
     register_commerce_support_routes,
     register_escrow_dispute_routes,
@@ -130,7 +124,14 @@ from .routing.commerce import (
     register_marketplace_routes,
     register_service_directory_routes,
 )
-from .routing.developer import register_developer_utility_routes, register_webhook_subscriptions
+from .routing.developer import (
+    register_developer_utility_routes,
+    register_enterprise_support_routes,
+    register_faucet_routes,
+    register_notification_routes,
+    register_template_routes,
+    register_webhook_subscriptions,
+)
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
 from .routing.money_movement import (
     register_batch_payment_routes,
@@ -871,13 +872,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         live_mode=settings.chain_mode == "live",
     )
 
-    enterprise_support_repo = EnterpriseSupportRepository(dsn=database_url if use_postgres else None)
-    app.dependency_overrides[enterprise_support_router.get_deps] = (
-        lambda: enterprise_support_router.EnterpriseSupportDependencies(
-            support_repo=enterprise_support_repo,
-        )
+    register_enterprise_support_routes(
+        app,
+        database_url=database_url,
+        use_postgres=use_postgres,
     )
-    app.include_router(enterprise_support_router.router)
 
     register_audit_anchor_routes(
         app,
@@ -977,8 +976,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_mpp_routes(app)
 
-    # --- Testnet faucet ---
-    app.include_router(faucet_router.router, prefix="/api/v2/faucet", tags=["faucet"])
+    register_faucet_routes(app)
 
     # --- Striga routes (EEA cards, vIBAN, SEPA) ---
     if settings.striga.enabled:
@@ -1730,8 +1728,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_invoice_routes(app)
 
-    # Notification webhook config
-    app.include_router(notifications_router.router, prefix="/api/v2/notifications", tags=["notifications"])
+    register_notification_routes(app)
 
     register_alert_routes(app)
     app.include_router(swap_router.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
@@ -1911,8 +1908,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_outcome_reliability_routes(app)
     register_policy_analytics_routes(app)
     register_exception_routes(app)
-    app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
-    app.include_router(environment_templates_router.router, prefix="/api/v2/environments", tags=["Environment Templates"])
+    register_template_routes(app)
     register_fallback_policy_routes(app)
     register_commerce_support_routes(app)
     register_dashboard_metrics_routes(app)
