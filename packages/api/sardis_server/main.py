@@ -92,11 +92,9 @@ from .routes.wallets import cards as cards_router
 from .routes.wallets import cpn as cpn_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routes.wallets import onchain_payments as onchain_payments_router
 from .routes.wallets import ramp as ramp_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
-from .routes.wallets import wallets as wallets_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -167,7 +165,11 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
-from .routing.wallets import register_ramp_edge_routes
+from .routing.wallets import (
+    register_onchain_payment_routes,
+    register_ramp_edge_routes,
+    register_wallet_core_routes,
+)
 
 # Configure structured logging
 setup_logging(
@@ -839,19 +841,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.inbound_payment_service = inbound_payment_service
     app.state.event_bus = event_bus
 
-    app.dependency_overrides[wallets_router.get_deps] = lambda: wallets_router.WalletDependencies(  # type: ignore[arg-type]
+    register_wallet_core_routes(
+        app,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         ledger=ledger_store,
         settings=settings,
-        canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
         compliance=compliance,
         inbound_payment_service=inbound_payment_service,
         circle_nanopayments_client=circle_gateway_nanopayments_client,
     )
-    app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
     register_bridge_routes(app, wallet_repo=wallet_repo, chain_executor=chain_exec)
     logger.info("Bridge router registered at /api/v2/bridge")
@@ -884,7 +885,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ledger_store=ledger_store,
     )
 
-    app.dependency_overrides[onchain_payments_router.get_deps] = lambda: onchain_payments_router.OnChainPaymentDependencies(
+    register_onchain_payment_routes(
+        app,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         policy_store=policy_store,
@@ -897,7 +899,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         settings=settings,
         payment_orchestrator=orchestrator,
     )
-    app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
     register_refund_routes(app)
 
