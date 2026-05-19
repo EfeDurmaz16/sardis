@@ -6,7 +6,6 @@ from __future__ import annotations
 import subprocess
 import sys
 
-
 BLOCKED_PREFIXES = (
     "apps/dashboard/",
     "docs/audits/evidence/",
@@ -80,6 +79,29 @@ BLOCKED_FILES = {
     "scripts/release/validate_drill_metrics.py",
 }
 
+BLOCKED_TEXT_SNIPPETS = {
+    "You can now start the API and dashboard!": (
+        "Public demo tooling must not direct contributors to the private "
+        "hosted dashboard surface."
+    ),
+}
+
+TEXT_FILE_SUFFIXES = {
+    ".md",
+    ".py",
+    ".sh",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".json",
+    ".yaml",
+    ".yml",
+}
+
+TEXT_SNIPPET_SCAN_EXCLUDED_FILES = {
+    "scripts/oss_surface_check.py",
+}
+
 
 def tracked_files() -> list[str]:
     result = subprocess.run(
@@ -93,14 +115,30 @@ def tracked_files() -> list[str]:
 
 def main() -> int:
     blocked: list[str] = []
+    blocked_text: list[tuple[str, str, str]] = []
     for path in tracked_files():
         if path in BLOCKED_FILES or path.startswith(BLOCKED_PREFIXES):
             blocked.append(path)
+            continue
+        if path in TEXT_SNIPPET_SCAN_EXCLUDED_FILES:
+            continue
+        if not any(path.endswith(suffix) for suffix in TEXT_FILE_SUFFIXES):
+            continue
+        try:
+            with open(path, encoding="utf-8") as file:
+                text = file.read()
+        except UnicodeDecodeError:
+            continue
+        for snippet, reason in BLOCKED_TEXT_SNIPPETS.items():
+            if snippet in text:
+                blocked_text.append((path, snippet, reason))
 
-    if blocked:
+    if blocked or blocked_text:
         print("Private/company material is tracked in the public OSS repo:")
         for path in blocked:
             print(f"  - {path}")
+        for path, snippet, reason in blocked_text:
+            print(f"  - {path}: {snippet!r} ({reason})")
         print("\nMove these files to a private repository or add a public-safe replacement.")
         return 1
 
