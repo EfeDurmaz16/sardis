@@ -22,8 +22,11 @@ from pathlib import Path
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+_API_ROOT = _REPO_ROOT / "apps" / "api"
+if _API_ROOT.is_dir() and str(_API_ROOT) not in sys.path:
+    sys.path.insert(0, str(_API_ROOT))
+
 for _package in (
-    "api",
     "sardis-core",
     "sardis-protocol",
     "sardis-ledger",
