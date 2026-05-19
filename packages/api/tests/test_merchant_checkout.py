@@ -352,8 +352,8 @@ class TestMerchantCheckoutRouterWiring:
         source = Path(commerce.__file__).read_text()
         assert "register_merchant_routes" in source
         assert "merchants.router" in source
-        main_path = Path(__file__).parent.parent / "sardis_server" / "main.py"
-        assert "merchant_checkout_router" in main_path.read_text()
+        assert "register_merchant_checkout_routes" in source
+        assert "merchant_checkout.public_router" in source
 
 
 class TestMerchantCheckoutSandboxSessions:

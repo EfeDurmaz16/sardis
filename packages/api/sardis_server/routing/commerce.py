@@ -13,6 +13,7 @@ from sardis_server.routes.commerce import (
     escrow_disputes,
     invoices,
     marketplace,
+    merchant_checkout,
     merchants,
     secure_checkout,
     service_directory,
@@ -108,6 +109,33 @@ def register_merchant_routes(
         checkout_base_url=checkout_base_url,
     )
     app.include_router(merchants.router, prefix="/api/v2/merchants", tags=["merchants"])
+
+
+def register_merchant_checkout_routes(
+    app: FastAPI,
+    *,
+    merchant_repo: Any,
+    sardis_connector: Any,
+    wallet_manager: Any,
+    checkout_base_url: str,
+) -> None:
+    """Register Pay with Sardis merchant checkout session routes."""
+    app.dependency_overrides[merchant_checkout.get_deps] = lambda: merchant_checkout.MerchantCheckoutDependencies(
+        merchant_repo=merchant_repo,
+        sardis_connector=sardis_connector,
+        wallet_manager=wallet_manager,
+        checkout_base_url=checkout_base_url,
+    )
+    app.include_router(
+        merchant_checkout.router,
+        prefix="/api/v2/merchant-checkout",
+        tags=["merchant-checkout"],
+    )
+    app.include_router(
+        merchant_checkout.public_router,
+        prefix="/api/v2/merchant-checkout",
+        tags=["merchant-checkout"],
+    )
 
 
 def register_marketplace_routes(

@@ -1,9 +1,10 @@
 import pytest
 from fastapi import FastAPI
 
-from sardis_server.routes.commerce import checkout, merchants, secure_checkout
+from sardis_server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
 from sardis_server.routing.commerce import (
     register_checkout_routes,
+    register_merchant_checkout_routes,
     register_merchant_routes,
     register_secure_checkout_routes,
 )
@@ -143,4 +144,32 @@ def test_register_merchant_routes_mounts_paths_and_dependencies() -> None:
     assert deps.merchant_repo is merchant_repo
     assert deps.wallet_manager is wallet_manager
     assert deps.settlement_service is settlement_service
+    assert deps.checkout_base_url == "https://checkout.test.sardis"
+
+
+def test_register_merchant_checkout_routes_mounts_private_and_public_paths_with_dependencies() -> None:
+    app = FastAPI()
+    merchant_repo = object()
+    sardis_connector = object()
+    wallet_manager = object()
+
+    register_merchant_checkout_routes(
+        app,
+        merchant_repo=merchant_repo,
+        sardis_connector=sardis_connector,
+        wallet_manager=wallet_manager,
+        checkout_base_url="https://checkout.test.sardis",
+    )
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/merchant-checkout/sessions" in paths
+    assert "/api/v2/merchant-checkout/sessions/{session_id}" in paths
+    assert "/api/v2/merchant-checkout/sessions/client/{client_secret}/details" in paths
+    assert "/api/v2/merchant-checkout/sessions/client/{client_secret}/pay" in paths
+    assert "/api/v2/merchant-checkout/links/{slug}" in paths
+
+    deps = app.dependency_overrides[merchant_checkout.get_deps]()
+    assert deps.merchant_repo is merchant_repo
+    assert deps.sardis_connector is sardis_connector
+    assert deps.wallet_manager is wallet_manager
     assert deps.checkout_base_url == "https://checkout.test.sardis"
