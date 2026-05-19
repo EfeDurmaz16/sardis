@@ -83,7 +83,6 @@ from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
-from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
@@ -160,6 +159,7 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
+from .routing.providers import register_mastercard_webhook_routes
 from .routing.wallets import (
     register_cpn_routes,
     register_funding_capability_routes,
@@ -1618,9 +1618,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("Stripe webhook router disabled (missing STRIPE API key/webhook secret)")
 
-    # Mastercard Agent Pay inbound webhooks (always mounted; sig check is env-driven)
-    app.include_router(mastercard_webhooks_router.router)
-    logger.info("Mastercard webhook router enabled at /mastercard/webhooks")
+    register_mastercard_webhook_routes(app)
 
     register_funding_capability_routes(app, settings=settings)
 
