@@ -76,6 +76,14 @@ class CacheBackendConfig:
     redis_url: str | None
 
 
+@dataclass(frozen=True)
+class LiveExecutionConfig:
+    """Resolved live execution signer configuration."""
+
+    chain_mode: str
+    mpc_name: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -125,6 +133,39 @@ def resolve_cache_backend(
         )
 
     return CacheBackendConfig(redis_url=redis_url)
+
+
+def validate_live_execution_config(
+    settings: Any,
+    *,
+    turnkey_client: Any | None,
+    environ: Mapping[str, str] | None = None,
+) -> LiveExecutionConfig:
+    """Validate chain execution and signer safety before booting the API."""
+    env = environ if environ is not None else os.environ
+    chain_mode = str(getattr(settings, "chain_mode", "simulated") or "simulated")
+
+    if getattr(settings, "is_production", False) and chain_mode != "live":
+        raise RuntimeError("Production requires SARDIS_CHAIN_MODE=live; simulated execution is disabled")
+
+    mpc_settings = getattr(settings, "mpc", None)
+    settings_mpc_name = getattr(mpc_settings, "name", "simulated")
+    mpc_name = str(env.get("SARDIS_MPC__NAME", settings_mpc_name) or settings_mpc_name).strip().lower()
+
+    if chain_mode == "live":
+        if mpc_name == "simulated":
+            raise RuntimeError("Simulated signer is not allowed for live chain mode")
+        if mpc_name == "turnkey" and turnkey_client is None:
+            raise RuntimeError("Turnkey MPC provider required for live chain mode but not configured")
+        if mpc_name == "fireblocks" and not env.get("FIREBLOCKS_API_KEY"):
+            raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
+        if mpc_name == "local":
+            if getattr(settings, "is_production", False):
+                raise RuntimeError("Local signer is custodial and not allowed in production live mode")
+            if not env.get("SARDIS_EOA_PRIVATE_KEY"):
+                raise RuntimeError("SARDIS_MPC__NAME=local requires SARDIS_EOA_PRIVATE_KEY in live mode")
+
+    return LiveExecutionConfig(chain_mode=chain_mode, mpc_name=mpc_name)
 
 
 class DependencyContainer:

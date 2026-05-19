@@ -49,7 +49,11 @@ from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
-from .dependencies import resolve_cache_backend, resolve_storage_backend
+from .dependencies import (
+    resolve_cache_backend,
+    resolve_storage_backend,
+    validate_live_execution_config,
+)
 from .lifespan import lifespan, shutdown_state
 from .middleware import (
     API_VERSION,
@@ -456,43 +460,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     app.state.turnkey_client = turnkey_client
 
-    if settings.is_production and getattr(settings, "chain_mode", "simulated") != "live":
-        logger.error(
-            "Production boot attempted with non-live chain mode (%s). "
-            "Set SARDIS_CHAIN_MODE=live to disable simulated execution.",
-            getattr(settings, "chain_mode", "simulated"),
+    live_execution_config = validate_live_execution_config(settings, turnkey_client=turnkey_client)
+    if live_execution_config.chain_mode == "live" and live_execution_config.mpc_name == "local":
+        logger.warning(
+            "SARDIS_MPC__NAME=local enabled in live mode. This is a custodial signer path for dev/sandbox only."
         )
-        raise RuntimeError("Production requires SARDIS_CHAIN_MODE=live; simulated execution is disabled")
-
-    if getattr(settings, "chain_mode", "simulated") == "live":
-        mpc_name = (os.getenv("SARDIS_MPC__NAME", settings.mpc.name) or settings.mpc.name).strip().lower()
-        if mpc_name == "simulated":
-            logger.error(
-                "SARDIS_CHAIN_MODE=live with MPC=simulated is not allowed. "
-                "Use turnkey, fireblocks, or local (dev/sandbox only)."
-            )
-            raise RuntimeError("Simulated signer is not allowed for live chain mode")
-        if mpc_name == "turnkey" and turnkey_client is None:
-            logger.error(
-                "SARDIS_CHAIN_MODE=live with MPC=turnkey but Turnkey client is not initialized. "
-                "Set TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY, and TURNKEY_ORGANIZATION_ID."
-            )
-            raise RuntimeError("Turnkey MPC provider required for live chain mode but not configured")
-        if mpc_name == "fireblocks" and not os.getenv("FIREBLOCKS_API_KEY"):
-            logger.error(
-                "SARDIS_CHAIN_MODE=live with MPC=fireblocks but FIREBLOCKS_API_KEY is not set."
-            )
-            raise RuntimeError("Fireblocks MPC provider required for live chain mode but not configured")
-        if mpc_name == "local":
-            if settings.is_production:
-                raise RuntimeError("Local signer is custodial and not allowed in production live mode")
-            if not os.getenv("SARDIS_EOA_PRIVATE_KEY"):
-                raise RuntimeError(
-                    "SARDIS_MPC__NAME=local requires SARDIS_EOA_PRIVATE_KEY in live mode"
-                )
-            logger.warning(
-                "SARDIS_MPC__NAME=local enabled in live mode. This is a custodial signer path for dev/sandbox only."
-            )
 
     # -----------------------------------------------------------------------
     # Core services

@@ -2,7 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from sardis_server.dependencies import resolve_cache_backend, resolve_storage_backend
+from sardis_server.dependencies import (
+    resolve_cache_backend,
+    resolve_storage_backend,
+    validate_live_execution_config,
+)
 
 
 def _settings(**overrides):
@@ -11,6 +15,8 @@ def _settings(**overrides):
         "ledger_dsn": "memory://",
         "redis_url": None,
         "is_production": False,
+        "chain_mode": "simulated",
+        "mpc": SimpleNamespace(name="simulated"),
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -93,3 +99,102 @@ def test_resolve_cache_backend_falls_back_to_generic_urls_then_settings() -> Non
 def test_resolve_cache_backend_requires_redis_in_production() -> None:
     with pytest.raises(RuntimeError, match="Redis is required in production"):
         resolve_cache_backend(_settings(is_production=True), environ={})
+
+
+def test_validate_live_execution_requires_live_chain_mode_in_production() -> None:
+    with pytest.raises(RuntimeError, match="Production requires SARDIS_CHAIN_MODE=live"):
+        validate_live_execution_config(
+            _settings(is_production=True, chain_mode="simulated"),
+            turnkey_client=None,
+            environ={},
+        )
+
+
+def test_validate_live_execution_rejects_simulated_signer_in_live_mode() -> None:
+    with pytest.raises(RuntimeError, match="Simulated signer is not allowed"):
+        validate_live_execution_config(
+            _settings(chain_mode="live", mpc=SimpleNamespace(name="simulated")),
+            turnkey_client=None,
+            environ={},
+        )
+
+
+def test_validate_live_execution_requires_turnkey_client_for_turnkey_mpc() -> None:
+    with pytest.raises(RuntimeError, match="Turnkey MPC provider required"):
+        validate_live_execution_config(
+            _settings(chain_mode="live", mpc=SimpleNamespace(name="turnkey")),
+            turnkey_client=None,
+            environ={},
+        )
+
+
+def test_validate_live_execution_accepts_configured_turnkey_mpc() -> None:
+    config = validate_live_execution_config(
+        _settings(chain_mode="live", mpc=SimpleNamespace(name="turnkey")),
+        turnkey_client=object(),
+        environ={},
+    )
+
+    assert config.chain_mode == "live"
+    assert config.mpc_name == "turnkey"
+
+
+def test_validate_live_execution_requires_fireblocks_key() -> None:
+    with pytest.raises(RuntimeError, match="Fireblocks MPC provider required"):
+        validate_live_execution_config(
+            _settings(chain_mode="live", mpc=SimpleNamespace(name="fireblocks")),
+            turnkey_client=None,
+            environ={},
+        )
+
+
+def test_validate_live_execution_accepts_configured_fireblocks_mpc() -> None:
+    config = validate_live_execution_config(
+        _settings(chain_mode="live", mpc=SimpleNamespace(name="fireblocks")),
+        turnkey_client=None,
+        environ={"FIREBLOCKS_API_KEY": "fb_key"},
+    )
+
+    assert config.mpc_name == "fireblocks"
+
+
+def test_validate_live_execution_rejects_local_signer_in_production() -> None:
+    with pytest.raises(RuntimeError, match="Local signer is custodial"):
+        validate_live_execution_config(
+            _settings(
+                is_production=True,
+                chain_mode="live",
+                mpc=SimpleNamespace(name="local"),
+            ),
+            turnkey_client=None,
+            environ={"SARDIS_EOA_PRIVATE_KEY": "0xkey"},
+        )
+
+
+def test_validate_live_execution_requires_local_private_key() -> None:
+    with pytest.raises(RuntimeError, match="SARDIS_MPC__NAME=local requires"):
+        validate_live_execution_config(
+            _settings(chain_mode="live", mpc=SimpleNamespace(name="local")),
+            turnkey_client=None,
+            environ={},
+        )
+
+
+def test_validate_live_execution_accepts_local_signer_outside_production() -> None:
+    config = validate_live_execution_config(
+        _settings(chain_mode="live", mpc=SimpleNamespace(name="local")),
+        turnkey_client=None,
+        environ={"SARDIS_EOA_PRIVATE_KEY": "0xkey"},
+    )
+
+    assert config.mpc_name == "local"
+
+
+def test_validate_live_execution_env_mpc_overrides_settings() -> None:
+    config = validate_live_execution_config(
+        _settings(chain_mode="live", mpc=SimpleNamespace(name="simulated")),
+        turnkey_client=object(),
+        environ={"SARDIS_MPC__NAME": "turnkey"},
+    )
+
+    assert config.mpc_name == "turnkey"
