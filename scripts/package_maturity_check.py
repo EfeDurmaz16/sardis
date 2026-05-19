@@ -13,9 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES_DOC = ROOT / "docs" / "packages.md"
+DEVELOPMENT_DOC = ROOT / "docs" / "development.md"
 
 
 def tracked_files() -> list[str]:
@@ -48,6 +48,7 @@ def main() -> int:
     files = tracked_files()
     tracked = tracked_package_dirs(files)
     documented = documented_package_dirs()
+    development_text = DEVELOPMENT_DOC.read_text(encoding="utf-8")
 
     missing_docs = sorted(tracked - documented)
     stale_docs = sorted(documented - tracked)
@@ -72,6 +73,11 @@ def main() -> int:
         errors.append(
             "Tracked package directories missing README.md:\n"
             + "\n".join(f"  - packages/{pkg}/README.md" for pkg in missing_readmes)
+        )
+    if "pnpm repo:package-validation" not in development_text:
+        errors.append(
+            "docs/development.md must document pnpm repo:package-validation so "
+            "contributors can find package-specific validation commands."
         )
 
     if errors:

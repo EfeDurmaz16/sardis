@@ -52,6 +52,7 @@
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase",
     "repo:tree": "python3 scripts/repo_tree.py",
     "repo:ignored-artifacts": "python3 scripts/ignored_artifact_inventory.py",
+    "repo:package-validation": "python3 scripts/package_validation_inventory.py",
     "repo:api-tree": "python3 scripts/repo_tree.py --root packages/reference-api/server --max-depth 3 --files"
   },
   "pnpm": {
