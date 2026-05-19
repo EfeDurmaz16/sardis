@@ -80,7 +80,6 @@ from .routes.compliance import compliance_export as compliance_export_router
 from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routes.authority import credentials as credentials_router
-from .routes.developer import dev as dev_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.commerce import escrow_disputes as escrow_disputes_router
@@ -106,11 +105,8 @@ from .routes.policy import policies as policies_router
 from .routes.policy import policy_analytics as policy_analytics_router
 from .routes.policy import policy_simulation as policy_simulation_router
 from .routes.wallets import ramp as ramp_router
-from .routes.developer import sandbox as sandbox_router
-from .routes.developer import sdk_metrics as sdk_metrics_router
 from .routes.commerce import secure_checkout as secure_checkout_router
 from .routes.commerce import service_directory as service_directory_router
-from .routes.developer import simulation as simulation_router
 from .routes.protocol import spt as spt_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
@@ -170,7 +166,7 @@ from .routing.accounts import (
 from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
-from .routing.developer import register_webhook_subscriptions
+from .routing.developer import register_developer_utility_routes, register_webhook_subscriptions
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
 from .routing.money_movement import register_pay_endpoint
 from .services.recurring_billing import RecurringBillingService
@@ -1859,13 +1855,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except ImportError:
         pass
 
-    # SDK install metrics (public)
-    app.include_router(sdk_metrics_router.router)
+    register_developer_utility_routes(app, is_production=is_production)
 
     register_evidence_routes(app)
-
-    # Simulation API
-    app.include_router(simulation_router.router, prefix="/api/v2/simulate", tags=["simulation"])
     from sardis_server.services.facility_gate_authority import (
         RepositoryBackedFacilityMandateResolver,
         RepositoryBackedFacilityPolicyResolver,
@@ -1901,28 +1893,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         app.include_router(sso_router, prefix="/api/v2", tags=["sso"])
     except ImportError:
         pass
-
-    # Dev/testnet utility routes - NOT available in production
-    if not is_production:
-        app.include_router(dev_router.router, prefix="/api/v2/dev", tags=["dev"])
-        logger.info("Dev routes enabled (faucet, etc.)")
-
-    # Sandbox/Playground routes - no auth required, for developer onboarding.
-    # Default: enabled outside production, disabled in production unless explicitly enabled.
-    sandbox_env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-    sandbox_flag = os.getenv("SARDIS_ENABLE_SANDBOX", "").strip().lower()
-    sandbox_enabled_explicit = sandbox_flag in ("1", "true", "yes", "on")
-    sandbox_disabled_explicit = sandbox_flag in ("0", "false", "no", "off")
-    if sandbox_env in ("prod", "production"):
-        sandbox_enabled = sandbox_enabled_explicit
-    else:
-        sandbox_enabled = not sandbox_disabled_explicit
-
-    if sandbox_enabled:
-        app.include_router(sandbox_router.router, prefix="/api/v2/sandbox", tags=["sandbox"])
-        logger.info("Sandbox/Playground routes enabled")
-    else:
-        logger.info("Sandbox/Playground routes disabled")
 
     # -----------------------------------------------------------------------
     # Merchant checkout ("Pay with Sardis")
