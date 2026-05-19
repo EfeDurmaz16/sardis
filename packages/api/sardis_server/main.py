@@ -62,8 +62,6 @@ from .routes.money_movement import streaming_payments as streaming_payments_rout
 from .routes.money_movement import swap as swap_router
 from .routes.money_movement import transactions as transactions_router
 
-# Protocol v1.0 routers
-from .routes.billing import billing as billing_router
 from .routes.money_movement import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
@@ -91,10 +89,8 @@ from .routes.protocol import spt as spt_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
-from .routes.billing import subscriptions as subscriptions_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
-from .routes.billing import usage as usage_router
 from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routes.developer import workflow_templates as workflow_templates_router
@@ -135,7 +131,6 @@ from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
-from .repositories.subscriptions_repository import SubscriptionRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .routing.accounts import (
     register_account_group_routes,
@@ -145,6 +140,7 @@ from .routing.accounts import (
 from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
+from .routing.billing import register_billing_routes, register_subscription_routes, register_usage_routes
 from .routing.commerce import (
     register_commerce_support_routes,
     register_escrow_dispute_routes,
@@ -169,7 +165,6 @@ from .routing.policy import (
     register_policy_routes,
     register_policy_simulation_routes,
 )
-from .services.recurring_billing import RecurringBillingService
 
 # Configure structured logging
 setup_logging(
@@ -888,30 +883,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     else:
         logger.info("ERC-8183 router disabled (set SARDIS_ERC8183_ENABLED=true to enable)")
 
-    subscription_repo = SubscriptionRepository(dsn=database_url if use_postgres else None)
-    recurring_billing_service = RecurringBillingService(
-        subscription_repo=subscription_repo,
+    recurring_billing_service = register_subscription_routes(
+        app,
+        database_url=database_url,
+        use_postgres=use_postgres,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         compliance=compliance,
         allow_simulated_autofund=settings.chain_mode != "live",
+        live_mode=settings.chain_mode == "live",
     )
-    if settings.chain_mode == "live":
-        # Live mode must not mint simulated autofund artifacts.
-        recurring_billing_service.configure_autofund_handler(
-            None,
-            allow_simulated_fallback=False,
-        )
-    app.state.recurring_billing_runner = recurring_billing_service.process_due_subscriptions
-    app.dependency_overrides[subscriptions_router.get_deps] = lambda: subscriptions_router.SubscriptionDependencies(
-        subscription_repo=subscription_repo,
-        wallet_repo=wallet_repo,
-        agent_repo=agent_repo,
-        recurring_service=recurring_billing_service,
-    )
-    app.include_router(subscriptions_router.router, prefix="/api/v2/subscriptions", tags=["subscriptions"])
 
     enterprise_support_repo = EnterpriseSupportRepository(dsn=database_url if use_postgres else None)
     app.dependency_overrides[enterprise_support_router.get_deps] = (
@@ -1794,9 +1777,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_admin_routes(app)
 
-    # Billing & usage metering
-    app.include_router(billing_router.router)
-    app.include_router(billing_router.webhook_router)
+    register_billing_routes(app)
 
     # Spending mandates
     try:
@@ -1979,7 +1960,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
     app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
     app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
-    app.include_router(usage_router.router, prefix="/api/v2", tags=["usage"])
+    register_usage_routes(app)
     register_escrow_dispute_routes(app)
     app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
     app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
