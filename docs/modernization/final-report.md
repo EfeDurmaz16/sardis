@@ -322,6 +322,10 @@ Recurring billing auto-fund handler wiring now lives beside funding runtime
 configuration, with tests for request shaping, fail-closed live mode behavior,
 simulated no-op behavior, invalid token rejection, and non-positive amount
 rejection.
+Stripe Issuing webhook policy evaluation now also lives in
+`server.funding_runtime`, with tests for fail-open behavior when policy context
+is unavailable, missing wallet/policy handling, Decimal amount normalization,
+and MCC-to-merchant-category policy evaluation.
 
 ## Test, Build, And Lint Results
 
@@ -329,7 +333,7 @@ Current validation after the latest API bootstrap cleanup:
 
 - `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
 - `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 15 passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 18 passed.
 - `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
 - `pnpm check:openapi` passed: 540 paths, 592 schemas.
 - `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Mapping
 
 logger = logging.getLogger(__name__)
@@ -316,3 +317,58 @@ def configure_recurring_autofund_handler(
         )
 
     return False
+
+
+def configure_stripe_webhook_issuing_provider(
+    *,
+    stripe_api_key: str,
+    stripe_webhook_secret: str,
+    policy_store: Any,
+    wallet_repository: Any,
+    issuing_provider_cls: Any = _DEFAULT_PROVIDER,
+    mcc_info_resolver: Any = _DEFAULT_PROVIDER,
+) -> Any:
+    """Create the Stripe Issuing webhook provider with payment policy evaluation."""
+    if issuing_provider_cls is _DEFAULT_PROVIDER:
+        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+
+        issuing_provider_cls = StripeIssuingProvider
+    if mcc_info_resolver is _DEFAULT_PROVIDER:
+        from sardis_v2_core.mcc_service import get_mcc_info
+
+        mcc_info_resolver = get_mcc_info
+
+    async def stripe_webhooks_policy_evaluator(
+        wallet_id: str,
+        amount: Any,
+        mcc_code: str,
+        merchant_name: str,
+    ) -> tuple[bool, str]:
+        normalized_amount = Decimal(str(amount))
+        if not policy_store or not wallet_repository:
+            return True, "OK"
+        wallet = await wallet_repository.get(wallet_id)
+        if not wallet:
+            return True, "OK"
+        policy = await policy_store.fetch_policy(wallet.agent_id)
+        if not policy:
+            return True, "OK"
+
+        merchant_category = None
+        if mcc_code:
+            mcc_info = mcc_info_resolver(mcc_code)
+            if mcc_info:
+                merchant_category = mcc_info.category
+
+        return policy.validate_payment(
+            amount=normalized_amount,
+            fee=Decimal("0"),
+            mcc_code=mcc_code,
+            merchant_category=merchant_category,
+        )
+
+    return issuing_provider_cls(
+        api_key=stripe_api_key,
+        webhook_secret=stripe_webhook_secret,
+        policy_evaluator=stripe_webhooks_policy_evaluator,
+    )

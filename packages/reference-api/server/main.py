@@ -54,6 +54,7 @@ from .dependencies import (
 from .funding_runtime import (
     configure_funding_adapters,
     configure_recurring_autofund_handler,
+    configure_stripe_webhook_issuing_provider,
     resolve_stripe_funding_runtime_config,
 )
 from .lifespan import lifespan, shutdown_state
@@ -822,41 +823,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     if stripe_api_key and stripe_webhook_secret and treasury_provider is not None:
         try:
-            from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
-
-            async def _stripe_webhooks_policy_evaluator(
-                _wallet_id: str,
-                _amount,
-                _mcc_code: str,
-                _merchant_name: str,
-            ) -> tuple[bool, str]:
-                from decimal import Decimal as _Decimal
-                _amount = _Decimal(str(_amount))
-                if not policy_store or not wallet_repo:
-                    return True, "OK"
-                _wallet = await wallet_repo.get(_wallet_id)
-                if not _wallet:
-                    return True, "OK"
-                _policy = await policy_store.fetch_policy(_wallet.agent_id)
-                if not _policy:
-                    return True, "OK"
-                _merchant_category = None
-                if _mcc_code:
-                    from sardis_v2_core.mcc_service import get_mcc_info
-                    _mcc_info = get_mcc_info(_mcc_code)
-                    if _mcc_info:
-                        _merchant_category = _mcc_info.category
-                return _policy.validate_payment(
-                    amount=_amount,
-                    fee=_Decimal("0"),
-                    mcc_code=_mcc_code,
-                    merchant_category=_merchant_category,
-                )
-
-            issuing_provider = StripeIssuingProvider(
-                api_key=stripe_api_key,
-                webhook_secret=stripe_webhook_secret,
-                policy_evaluator=_stripe_webhooks_policy_evaluator,
+            issuing_provider = configure_stripe_webhook_issuing_provider(
+                stripe_api_key=stripe_api_key,
+                stripe_webhook_secret=stripe_webhook_secret,
+                policy_store=policy_store,
+                wallet_repository=wallet_repo,
             )
             register_stripe_webhook_routes(
                 app,

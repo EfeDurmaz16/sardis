@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -6,6 +7,7 @@ from server.funding_runtime import (
     StripeFundingRuntimeConfig,
     configure_funding_adapters,
     configure_recurring_autofund_handler,
+    configure_stripe_webhook_issuing_provider,
     resolve_stripe_funding_runtime_config,
 )
 
@@ -409,3 +411,114 @@ def test_configure_recurring_autofund_handler_leaves_simulated_mode_unconfigured
     assert configured is False
     assert service.handler is None
     assert service.allow_simulated_fallback is None
+
+
+class FakeStripeWebhookIssuingProvider:
+    def __init__(self, *, api_key: str, webhook_secret: str, policy_evaluator) -> None:
+        self.api_key = api_key
+        self.webhook_secret = webhook_secret
+        self.policy_evaluator = policy_evaluator
+
+
+class FakeWalletRepository:
+    def __init__(self, wallet=None) -> None:
+        self.wallet = wallet
+        self.wallet_ids = []
+
+    async def get(self, wallet_id: str):
+        self.wallet_ids.append(wallet_id)
+        return self.wallet
+
+
+class FakePolicyStore:
+    def __init__(self, policy=None) -> None:
+        self.policy = policy
+        self.agent_ids = []
+
+    async def fetch_policy(self, agent_id: str):
+        self.agent_ids.append(agent_id)
+        return self.policy
+
+
+class FakePaymentPolicy:
+    def __init__(self, result=(True, "OK")) -> None:
+        self.result = result
+        self.calls = []
+
+    def validate_payment(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.result
+
+
+@pytest.mark.asyncio
+async def test_configure_stripe_webhook_issuing_provider_allows_without_policy_context() -> None:
+    provider = configure_stripe_webhook_issuing_provider(
+        stripe_api_key="sk_test",
+        stripe_webhook_secret="webhook_secret_fixture",
+        policy_store=None,
+        wallet_repository=None,
+        issuing_provider_cls=FakeStripeWebhookIssuingProvider,
+        mcc_info_resolver=lambda mcc: None,
+    )
+
+    assert provider.api_key == "sk_test"
+    assert provider.webhook_secret == "webhook_secret_fixture"
+    assert await provider.policy_evaluator("wallet_123", "12.34", "5812", "Cafe") == (
+        True,
+        "OK",
+    )
+
+
+@pytest.mark.asyncio
+async def test_configure_stripe_webhook_issuing_provider_allows_missing_wallet_or_policy() -> None:
+    missing_wallet_repo = FakeWalletRepository(wallet=None)
+    provider = configure_stripe_webhook_issuing_provider(
+        stripe_api_key="sk_test",
+        stripe_webhook_secret="webhook_secret_fixture",
+        policy_store=FakePolicyStore(policy=FakePaymentPolicy()),
+        wallet_repository=missing_wallet_repo,
+        issuing_provider_cls=FakeStripeWebhookIssuingProvider,
+        mcc_info_resolver=lambda mcc: None,
+    )
+
+    assert await provider.policy_evaluator("wallet_missing", 100, "", "") == (True, "OK")
+    assert missing_wallet_repo.wallet_ids == ["wallet_missing"]
+
+    policy_store = FakePolicyStore(policy=None)
+    provider = configure_stripe_webhook_issuing_provider(
+        stripe_api_key="sk_test",
+        stripe_webhook_secret="webhook_secret_fixture",
+        policy_store=policy_store,
+        wallet_repository=FakeWalletRepository(wallet=SimpleNamespace(agent_id="agent_1")),
+        issuing_provider_cls=FakeStripeWebhookIssuingProvider,
+        mcc_info_resolver=lambda mcc: None,
+    )
+
+    assert await provider.policy_evaluator("wallet_123", 100, "", "") == (True, "OK")
+    assert policy_store.agent_ids == ["agent_1"]
+
+
+@pytest.mark.asyncio
+async def test_configure_stripe_webhook_issuing_provider_evaluates_policy_with_mcc() -> None:
+    policy = FakePaymentPolicy(result=(False, "blocked"))
+    provider = configure_stripe_webhook_issuing_provider(
+        stripe_api_key="sk_test",
+        stripe_webhook_secret="webhook_secret_fixture",
+        policy_store=FakePolicyStore(policy=policy),
+        wallet_repository=FakeWalletRepository(wallet=SimpleNamespace(agent_id="agent_1")),
+        issuing_provider_cls=FakeStripeWebhookIssuingProvider,
+        mcc_info_resolver=lambda mcc: SimpleNamespace(category="restaurants"),
+    )
+
+    assert await provider.policy_evaluator("wallet_123", "12.34", "5812", "Cafe") == (
+        False,
+        "blocked",
+    )
+    assert policy.calls == [
+        {
+            "amount": Decimal("12.34"),
+            "fee": Decimal("0"),
+            "mcc_code": "5812",
+            "merchant_category": "restaurants",
+        }
+    ]
