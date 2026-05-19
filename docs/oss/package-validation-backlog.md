@@ -20,7 +20,6 @@ but the package itself does not yet prove its own behavior.
 | Package | Current status | Required next step | Promotion or archive rule |
 | --- | --- | --- | --- |
 | `packages/sardis-agentkit/` | `experimental` | Add a minimal import or adapter smoke test under package-owned tests. | Promote only after current AgentKit API compatibility is verified; archive if the upstream integration shape is stale. |
-| `packages/sardis-coinbase/` | `experimental` | Add sandbox-safe adapter smoke coverage or a documented provider-not-configured test. | Promote only after current Coinbase/AgentKit/x402 APIs are rechecked; archive if it duplicates a better-supported package. |
 
 ## External-Tool Validation
 

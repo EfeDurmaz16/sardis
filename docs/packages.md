@@ -47,7 +47,7 @@ Status meanings:
 | --- | --- | --- |
 | `packages/sardis-cards/` | Card provider adapter experiments. | Keep provider-specific production ops private. |
 | `packages/sardis-ramp/` | On/off-ramp provider experiments. | Keep credential-free provider smoke tests passing with the package-local source path before adding sandbox examples. |
-| `packages/sardis-coinbase/` | Coinbase-related adapter work. | Verify current API docs before changing dependency surface. |
+| `packages/sardis-coinbase/` | Coinbase-related adapter work. | Keep credential-free x402 policy-before-payment smoke tests passing before refreshing provider APIs. |
 | `packages/sardis-lightspark/` | Lightspark/Grid-related adapter work. | Confirm provider state and sandbox viability. |
 | `packages/sardis-striga/` | Striga adapter work. | Reassess after provider status changes. |
 | `packages/sardis-mpp/` | Policy-governed MPP client and payment-method adapters. | Add contract tests for policy-before-payment and receipt recording. |
