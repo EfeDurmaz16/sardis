@@ -23,7 +23,6 @@ but the package itself does not yet prove its own behavior.
 | `packages/sardis-coinbase/` | `experimental` | Add sandbox-safe adapter smoke coverage or a documented provider-not-configured test. | Promote only after current Coinbase/AgentKit/x402 APIs are rechecked; archive if it duplicates a better-supported package. |
 | `packages/sardis-connect/` | `experimental` | Clarify overlap with `packages/sardis-connect-js/` and add a package-owned smoke test. | Promote only after the Python/JS boundary is explicit; archive one side if the split is not useful. |
 | `packages/sardis-openclaw/` | `experimental` | Add static validation for `SKILL.md`, `clawhub.json`, and API action examples. | Promote only if OpenClaw remains a relevant integration surface; archive if ecosystem use is unclear. |
-| `packages/sardis-ramp/` | `experimental` | Add a sandbox-only ramp adapter smoke test or a clear provider-not-configured test. | Promote only after sandbox behavior is credential-safe; archive if the ramp logic belongs in the reference API. |
 
 ## External-Tool Validation
 

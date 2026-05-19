@@ -46,7 +46,7 @@ Status meanings:
 | Path | Why it exists | Required before promotion |
 | --- | --- | --- |
 | `packages/sardis-cards/` | Card provider adapter experiments. | Keep provider-specific production ops private. |
-| `packages/sardis-ramp/` | On/off-ramp provider experiments. | Add sandbox-only examples. |
+| `packages/sardis-ramp/` | On/off-ramp provider experiments. | Keep credential-free provider smoke tests passing with the package-local source path before adding sandbox examples. |
 | `packages/sardis-coinbase/` | Coinbase-related adapter work. | Verify current API docs before changing dependency surface. |
 | `packages/sardis-lightspark/` | Lightspark/Grid-related adapter work. | Confirm provider state and sandbox viability. |
 | `packages/sardis-striga/` | Striga adapter work. | Reassess after provider status changes. |
