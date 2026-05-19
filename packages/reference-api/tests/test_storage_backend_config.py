@@ -10,6 +10,8 @@ from sardis_server.dependencies import (
     configure_kyc_service,
     configure_payment_runtime,
     configure_sanctions_service,
+    expose_runtime_state,
+    expose_support_services_state,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -976,3 +978,52 @@ def test_configure_facility_gate_services_uses_memory_dsn_without_postgres() -> 
 
     assert config.dsn == "memory://"
     assert config.repository.dsn == "memory://"
+
+
+def test_expose_runtime_state_sets_route_dependency_state() -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    settings = _settings()
+    turnkey_client = object()
+    policy_store = object()
+    chain_executor = object()
+    wallet_repository = object()
+    compliance_engine = object()
+    facility_gate_repository = object()
+
+    expose_runtime_state(
+        app,
+        settings=settings,
+        database_url="postgresql://localhost/sardis",
+        use_postgres=True,
+        turnkey_client=turnkey_client,
+        policy_store=policy_store,
+        chain_executor=chain_executor,
+        wallet_repository=wallet_repository,
+        compliance_engine=compliance_engine,
+        facility_gate_repository=facility_gate_repository,
+    )
+
+    assert app.state.settings is settings
+    assert app.state.database_url == "postgresql://localhost/sardis"
+    assert app.state.use_postgres is True
+    assert app.state.turnkey_client is turnkey_client
+    assert app.state.policy_store is policy_store
+    assert app.state.chain_executor is chain_executor
+    assert app.state.wallet_repo is wallet_repository
+    assert app.state.compliance_engine is compliance_engine
+    assert app.state.facility_gate_repo is facility_gate_repository
+
+
+def test_expose_support_services_state_sets_late_bound_services() -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    cache_service = object()
+    api_key_manager = object()
+
+    expose_support_services_state(
+        app,
+        cache_service=cache_service,
+        api_key_manager=api_key_manager,
+    )
+
+    assert app.state.cache_service is cache_service
+    assert app.state.api_key_manager is api_key_manager

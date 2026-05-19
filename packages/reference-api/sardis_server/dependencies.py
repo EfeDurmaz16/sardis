@@ -784,6 +784,42 @@ def configure_facility_gate_services(
     )
 
 
+def expose_runtime_state(
+    app: Any,
+    *,
+    settings: Any,
+    database_url: str,
+    use_postgres: bool,
+    turnkey_client: Any | None,
+    policy_store: Any,
+    chain_executor: Any,
+    wallet_repository: Any,
+    compliance_engine: Any,
+    facility_gate_repository: Any,
+) -> None:
+    """Expose bootstrapped runtime services required by route dependencies."""
+    app.state.settings = settings
+    app.state.database_url = database_url
+    app.state.use_postgres = use_postgres
+    app.state.turnkey_client = turnkey_client
+    app.state.policy_store = policy_store
+    app.state.chain_executor = chain_executor
+    app.state.wallet_repo = wallet_repository
+    app.state.compliance_engine = compliance_engine
+    app.state.facility_gate_repo = facility_gate_repository
+
+
+def expose_support_services_state(
+    app: Any,
+    *,
+    cache_service: Any,
+    api_key_manager: Any,
+) -> None:
+    """Expose late-bound API support services required by middleware/routes."""
+    app.state.cache_service = cache_service
+    app.state.api_key_manager = api_key_manager
+
+
 class DependencyContainer:
     """
     Central dependency injection container.

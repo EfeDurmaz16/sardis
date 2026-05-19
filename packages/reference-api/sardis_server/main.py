@@ -39,6 +39,8 @@ from .dependencies import (
     configure_kyc_service,
     configure_payment_runtime,
     configure_sanctions_service,
+    expose_runtime_state,
+    expose_support_services_state,
     initialize_turnkey_client,
     resolve_storage_backend,
     validate_live_execution_config,
@@ -421,18 +423,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     database_url = storage_backend.database_url
     use_postgres = storage_backend.use_postgres
 
-    app.state.settings = settings
-    app.state.database_url = database_url
-    app.state.use_postgres = use_postgres
-
     # -----------------------------------------------------------------------
     # MPC / Turnkey
     # -----------------------------------------------------------------------
     turnkey_client = initialize_turnkey_client(settings)
     if turnkey_client is not None:
         logger.info("Turnkey MPC client initialized")
-
-    app.state.turnkey_client = turnkey_client
 
     live_execution_config = validate_live_execution_config(settings, turnkey_client=turnkey_client)
     if live_execution_config.chain_mode == "live" and live_execution_config.mpc_name == "local":
@@ -450,7 +446,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         turnkey_client=turnkey_client,
     )
     policy_store = core_services.policy_store
-    app.state.policy_store = policy_store
 
     wallet_repo = core_services.wallet_repository
     agent_repo = core_services.agent_repository
@@ -513,16 +508,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     verifier = payment_runtime.verifier
     orchestrator = payment_runtime.orchestrator
-    app.state.chain_executor = chain_exec
-    app.state.wallet_repo = wallet_repo
-    app.state.compliance_engine = compliance
     facility_gate_services = configure_facility_gate_services(
         database_url=database_url,
         use_postgres=use_postgres,
     )
     facility_gate_repo = facility_gate_services.repository
     facility_gate_adapter = facility_gate_services.adapter
-    app.state.facility_gate_repo = facility_gate_repo
+    expose_runtime_state(
+        app,
+        settings=settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+        turnkey_client=turnkey_client,
+        policy_store=policy_store,
+        chain_executor=chain_exec,
+        wallet_repository=wallet_repo,
+        compliance_engine=compliance,
+        facility_gate_repository=facility_gate_repo,
+    )
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")
 
@@ -570,10 +573,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     cache_service = support_services.cache_service
     redis_url = support_services.redis_url
-    app.state.cache_service = cache_service
+    expose_support_services_state(
+        app,
+        cache_service=cache_service,
+        api_key_manager=support_services.api_key_manager,
+    )
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
-
-    app.state.api_key_manager = support_services.api_key_manager
 
     register_transaction_routes(
         app,
