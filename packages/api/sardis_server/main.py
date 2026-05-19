@@ -79,7 +79,6 @@ from .routes.commerce import checkout as checkout_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
 from .routes.commerce import secure_checkout as secure_checkout_router
-from .routes.compliance import compliance as compliance_router
 from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -107,7 +106,11 @@ from .routing.commerce import (
     register_marketplace_routes,
     register_service_directory_routes,
 )
-from .routing.compliance import register_compliance_export_routes, register_kyc_onboarding_routes
+from .routing.compliance import (
+    register_compliance_export_routes,
+    register_compliance_routes,
+    register_kyc_onboarding_routes,
+)
 from .routing.developer import (
     register_developer_utility_routes,
     register_enterprise_support_routes,
@@ -1688,7 +1691,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_policy_routes(app, policy_store=policy_store, agent_repo=agent_repo)
 
-    app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
+    register_compliance_routes(
+        app,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
         audit_store=audit_store,
@@ -1696,9 +1700,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         policy_store=policy_store,
         approval_service=approval_service,
     )
-    app.include_router(compliance_router.router, prefix="/api/v2/compliance", tags=["compliance"])
-    if hasattr(compliance_router, "public_router"):
-        app.include_router(compliance_router.public_router, prefix="/api/v2/compliance", tags=["compliance"])
 
     register_kyc_onboarding_routes(app)
 
