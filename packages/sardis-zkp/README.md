@@ -11,6 +11,16 @@ Sardis may eventually need proofs that preserve privacy while keeping financial 
 ## Local Development
 
 ```bash
+PYTHONPATH=packages/sardis-zkp/src uv run pytest packages/sardis-zkp/tests -q
+```
+
+That credential-free smoke test checks the Python wrapper, circuit manifest,
+public/private input documentation, and the safety invariant that mock proofs
+are not treated as verified cryptographic proofs.
+
+When working on the Noir circuits directly, also run:
+
+```bash
 cd packages/sardis-zkp
 nargo check
 ```

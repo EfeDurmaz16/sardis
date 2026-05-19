@@ -39,7 +39,7 @@ from uuid import uuid4
 
 logger = logging.getLogger("sardis.zkp")
 
-CIRCUITS_DIR = Path(__file__).parent.parent / "circuits"
+CIRCUITS_DIR = Path(__file__).resolve().parents[2] / "circuits"
 
 
 class PrivacyTier(str, Enum):

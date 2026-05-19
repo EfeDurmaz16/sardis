@@ -54,7 +54,7 @@ Status meanings:
 | `packages/sardis-connect/` | Python FastAPI merchant middleware package. | Keep credential-free manifest, route, and webhook signature tests passing; use `docs/architecture/connect-packages.md` before changing ownership. |
 | `packages/sardis-connect-js/` | TypeScript Node/Express merchant middleware package. | Keep the build passing and avoid moving canonical SDK behavior out of `packages/sardis-sdk-js/`. |
 | `packages/sardis-zk-policy/` | ZK policy experiments. | Add reproducible proving/verifying dev setup. |
-| `packages/sardis-zkp/` | Experimental ZK proof circuits for identity, mandate, and funding proofs. | Add reproducible proving/verifying dev setup and fixtures. |
+| `packages/sardis-zkp/` | Experimental ZK proof circuits for identity, mandate, and funding proofs. | Keep credential-free wrapper/circuit smoke tests passing; Nargo remains optional until circuits are runtime-bound. |
 | `packages/sardis-guardrails/` | Guardrails integration. | Add real examples and tests. |
 | `packages/sardis-adk/` | Google ADK integration. | Refresh against current ADK docs before publication. |
 | `packages/sardis-agentkit/` | AgentKit integration. | Keep credential-free provider/action smoke tests passing before refreshing current AgentKit APIs. |

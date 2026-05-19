@@ -28,7 +28,7 @@ tool that is not part of the default contributor loop.
 
 | Package | External tool | Validation | Required next step |
 | --- | --- | --- | --- |
-| `packages/sardis-zkp/` | Nargo | `(cd packages/sardis-zkp && nargo check)` | Document Nargo install/version and add fixtures before using these circuits in runtime decisions. |
+| _None_ | - | Keep external-tool checks optional unless a package also has a credential-free static smoke test. | Add package-owned tests or archive the package before exposing it as a contribution path. |
 
 ## Maintenance Rule
 
