@@ -189,7 +189,7 @@ def test_saml_handler_source_no_notimplementederror() -> None:
     source_path = (
         Path(__file__).parent.parent
         / "packages"
-        / "server-api"
+        / "api"
         / "src"
         / "sardis_server"
         / "middleware"
@@ -214,7 +214,7 @@ def test_no_stub_proof_references() -> None:
     routers_dir = (
         Path(__file__).parent.parent
         / "packages"
-        / "server-api"
+        / "api"
         / "src"
         / "sardis_server"
         / "routes"

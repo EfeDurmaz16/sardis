@@ -10,7 +10,7 @@ import pytest
 # Add package paths for testing FIRST
 root_dir = Path(__file__).parent.parent
 packages_dir = root_dir / "packages"
-for pkg in ["sardis-core", "server-api", "sardis-wallet", "sardis-protocol",
+for pkg in ["sardis-core", "api", "sardis-wallet", "sardis-protocol",
             "sardis-chain", "sardis-ledger", "sardis-compliance", "sardis-checkout",
             "sardis-cards", "sardis-ramp", "sardis-sdk-python", "sardis-ucp",
             "sardis-guardrails"]:

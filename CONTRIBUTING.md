@@ -47,7 +47,7 @@ python3 scripts/oss_surface_check.py
 python3 scripts/stale_api_path_check.py
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest packages/server-api/tests/test_merchant_checkout.py -q
+uv run pytest packages/api/tests/test_merchant_checkout.py -q
 ```
 
 `pnpm run check:contributor` is the fast public-surface gate for most docs,

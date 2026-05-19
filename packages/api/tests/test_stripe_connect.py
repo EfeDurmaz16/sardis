@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # Ensure local packages are importable
 _packages = Path(__file__).parent.parent.parent
-for _pkg in ["server-api", "sardis-core", "sardis-checkout", "sardis-protocol"]:
+for _pkg in ["api", "sardis-core", "sardis-checkout", "sardis-protocol"]:
     _p = _packages / _pkg / "src"
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))

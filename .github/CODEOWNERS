@@ -2,7 +2,7 @@
 * @EfeDurmaz16
 
 # API and core payment rails
-/packages/server-api/ @EfeDurmaz16
+/packages/api/ @EfeDurmaz16
 /packages/sardis-core/ @EfeDurmaz16
 /packages/sardis-cards/ @EfeDurmaz16
 /packages/sardis-coinbase/ @EfeDurmaz16

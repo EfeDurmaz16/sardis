@@ -5,8 +5,8 @@ This harness is intentionally simulator-only. It proves the control-plane
 surfaces needed for a pilot without touching live provider rails.
 
 Usage:
-  python packages/server-api/scripts/facility_gate_pilot_tabletop.py
-  python packages/server-api/scripts/facility_gate_pilot_tabletop.py --output tabletop.json
+  python packages/api/scripts/facility_gate_pilot_tabletop.py
+  python packages/api/scripts/facility_gate_pilot_tabletop.py --output tabletop.json
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 for _package in (
-    "server-api",
+    "api",
     "sardis-core",
     "sardis-protocol",
     "sardis-ledger",

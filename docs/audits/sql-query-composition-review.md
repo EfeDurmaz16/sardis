@@ -6,9 +6,9 @@ Date: 2026-02-13
 
 Manual review of dynamic SQL construction patterns flagged by static grep in:
 
-- `packages/server-api/src/sardis_server/repositories/card_repository.py`
-- `packages/server-api/src/sardis_server/routes/commerce/invoices.py`
-- `packages/server-api/src/sardis_server/routes/authority/mandates.py`
+- `packages/api/src/sardis_server/repositories/card_repository.py`
+- `packages/api/src/sardis_server/routes/commerce/invoices.py`
+- `packages/api/src/sardis_server/routes/authority/mandates.py`
 
 ## Findings
 

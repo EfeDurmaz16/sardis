@@ -14,10 +14,10 @@ STALE_PATTERNS = (
     re.compile(r"\bsardis\.main\b"),
     re.compile(r"\bsardis\.routers\b"),
     re.compile(r"packages/sardis-api"),
+    re.compile(r"packages/server-api"),
     re.compile(r"packages/api/src/sardis_api"),
-    re.compile(r"packages/server-api/src/sardis_api"),
-    re.compile(r"packages/server-api/src/sardis/routers"),
-    re.compile(r"packages/server-api/src/sardis/main\.py"),
+    re.compile(r"packages/api/src/sardis/routers"),
+    re.compile(r"packages/api/src/sardis/main\.py"),
 )
 
 # Root tests are a documented legacy migration backlog. They are excluded from
@@ -90,7 +90,7 @@ def main() -> int:
         for path, line_no, line in violations:
             print(f"  - {path}:{line_no}: {line}")
         print(
-            "\nUse sardis_server imports and packages/server-api/src/sardis_server paths, "
+            "\nUse sardis_server imports and packages/api/src/sardis_server paths, "
             "or move legacy material behind an explicit migration/archive boundary."
         )
         return 1

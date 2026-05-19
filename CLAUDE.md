@@ -50,7 +50,7 @@ sardis/
 │   │
 │   │ ── Core platform ──
 │   ├── sardis-core/        # Domain models, config, database, spending policy
-│   ├── server-api/         # FastAPI reference API implementation
+│   ├── api/         # FastAPI reference API implementation
 │   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
 │   ├── sardis-protocol/    # AP2 / TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain
@@ -157,7 +157,7 @@ pnpm --filter @sardis/sdk build      # Build SDK
 pnpm --filter @sardis/sdk test       # Test SDK
 
 # API Server
-uv run uvicorn --app-dir packages/server-api/src sardis_server.main:create_app --factory --port 8000
+uv run uvicorn --app-dir packages/api/src sardis_server.main:create_app --factory --port 8000
 
 # Smart Contracts
 cd contracts && forge build          # Compile
@@ -245,7 +245,7 @@ UPSTASH_REDIS_URL=...        # Caching
 3. Update SDK types
 
 ### Creating a New API Endpoint
-1. Add route in `packages/server-api/src/sardis_server/routes/`
+1. Add route in `packages/api/src/sardis_server/routes/`
 2. Add request/response models
 3. Add tests
 4. Update OpenAPI docs

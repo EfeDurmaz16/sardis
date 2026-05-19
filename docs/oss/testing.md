@@ -8,7 +8,7 @@ Run the narrowest suite that covers your change:
 
 ```bash
 pnpm run check:contributor
-uv run pytest packages/server-api/tests/ -q
+uv run pytest packages/api/tests/ -q
 uv run pytest packages/sardis-core/tests/ -q
 uv run pytest packages/sardis-ledger/tests/ -q
 uv run pytest packages/sardis-chain/tests/ -q
@@ -17,7 +17,7 @@ pnpm --filter @sardis/mcp-server test
 ```
 
 The root `package.json` `test` script runs the maintained package-owned suites.
-Root `pyproject.toml` also points pytest at `packages/server-api/tests` by
+Root `pyproject.toml` also points pytest at `packages/api/tests` by
 default.
 
 `pnpm run check:contributor` is the recommended first check for public OSS
@@ -38,7 +38,7 @@ it into the owning package first:
 
 | Test kind | Target |
 | --- | --- |
-| API route and middleware tests | `packages/server-api/tests/` |
+| API route and middleware tests | `packages/api/tests/` |
 | Policy, mandate, orchestration, and authority tests | `packages/sardis-core/tests/` |
 | Ledger, receipt, and reconciliation tests | `packages/sardis-ledger/tests/` |
 | Chain, token, Tempo, and Solana tests | `packages/sardis-chain/tests/` |
@@ -66,7 +66,7 @@ Active public surfaces must use the current API import package and path layout:
 
 ```text
 sardis_server
-packages/server-api/src/sardis_server
+packages/api/src/sardis_server
 ```
 
 Run this guard before opening PRs that touch docs, examples, or test routing:

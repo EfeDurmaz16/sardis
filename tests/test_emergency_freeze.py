@@ -13,7 +13,7 @@ import pytest
 packages_dir = Path(__file__).parent.parent / "packages"
 for pkg in ["sardis-core", "sardis-wallet", "sardis-chain", "sardis-protocol",
             "sardis-ledger", "sardis-cards", "sardis-compliance", "sardis-checkout",
-            "sardis-coinbase", "server-api"]:
+            "sardis-coinbase", "api"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists() and str(pkg_path) not in sys.path:
         sys.path.insert(0, str(pkg_path))

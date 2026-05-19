@@ -35,7 +35,7 @@ highest review rigor and the best tests.
 | Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
 | Authority primitives | `packages/sardis-core/`, `packages/sardis-protocol/` | Mandate semantics, AP2/TAP fixtures, policy evaluation, replay safety | `uv run pytest packages/sardis-core/tests -q`; `uv run pytest packages/sardis-protocol/tests -q` |
 | Evidence and ledger | `packages/sardis-ledger/` | Audit packet fixtures, tamper-evidence tests, reconciliation examples | `uv run pytest packages/sardis-ledger/tests -q` |
-| Reference API | `packages/server-api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest packages/server-api/tests -q`; `pnpm run check:contributor` |
+| Reference API | `packages/api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest packages/api/tests -q`; `pnpm run check:contributor` |
 | Agent tooling | `packages/sardis-mcp-server/` | MCP schema improvements, examples, simulated-response labeling | `pnpm --filter @sardis/mcp-server build`; `pnpm --filter @sardis/mcp-server test` |
 
 ## Supported Package Paths
@@ -82,7 +82,7 @@ Use `docs/oss/public-private-boundary.md` and
 
 | Change | Put tests in |
 | --- | --- |
-| API route, middleware, auth, webhooks | `packages/server-api/tests/` |
+| API route, middleware, auth, webhooks | `packages/api/tests/` |
 | Policy, mandate, authority, orchestration | `packages/sardis-core/tests/` or `packages/sardis-protocol/tests/` |
 | Ledger, audit packet, reconciliation | `packages/sardis-ledger/tests/` |
 | Chain, wallet, provider execution | owning package tests |

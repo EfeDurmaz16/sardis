@@ -84,9 +84,9 @@ jobs:
 
       - name: Run API tests with coverage
         run: >-
-          uv run pytest packages/server-api/tests/ -v --tb=short
+          uv run pytest packages/api/tests/ -v --tb=short
           --cov=packages/sardis-core/src
-          --cov=packages/server-api/src
+          --cov=packages/api/src
           --cov-report=xml
           --cov-fail-under=40
 
@@ -97,7 +97,7 @@ jobs:
           uv run pytest packages/sardis-chain/tests/ -v --tb=short
 
       - name: Check OpenAPI route contract snapshot
-        run: uv run python packages/server-api/scripts/generate_openapi.py --check
+        run: uv run python packages/api/scripts/generate_openapi.py --check
 
   idempotency-replay-e2e:
     name: Idempotency Replay E2E

@@ -4,12 +4,12 @@
 
 The API implementation path went through several readability cleanups. The
 early tree repeated `sardis-api` at both package and import-package levels.
-The monorepo package directory was then renamed to `packages/server-api`. The
+The monorepo package directory was then renamed to `packages/api`. The
 remaining problem was that the server import package still used `sardis`, which
 collided conceptually and technically with the public Python SDK:
 
 ```text
-packages/server-api/src/sardis/...
+packages/api/src/sardis/...
 ```
 
 That path was technically valid, but it made the package boundary too vague:
@@ -19,9 +19,10 @@ That path was technically valid, but it made the package boundary too vague:
 - `src/` is still the standard Python source layout used to avoid accidental
   imports from the repository root.
 
-For a contributor, the package directory should say what is inside before they
-open it. The package is the server/reference API, so `server-api` is clearer
-than a bare `api`.
+For a contributor, the package directory should be short enough to scan quickly
+from the repository root. The package is the deployable/reference API, and it
+already sits under `packages/`, so `packages/api` is clearer than repeating the
+same concept in `packages/server-api`.
 
 ## Decision
 
@@ -30,19 +31,19 @@ Do not collapse or remove `src`; keep the standard Python source layout.
 Keep the API import package as:
 
 ```text
-packages/server-api/src/sardis_server/
+packages/api/src/sardis_server/
 ```
 
 Rename the monorepo package directory from:
 
 ```text
-packages/api/
+packages/server-api/
 ```
 
 to:
 
 ```text
-packages/server-api/
+packages/api/
 ```
 
 This keeps a clear server-only import path:
@@ -75,7 +76,7 @@ public SDK import path are not part of this rename and must stay stable.
 The current migration sequence is:
 
 1. Confirm the deployable FastAPI package is still the OSS reference server, not only a protocol schema package.
-2. Rename the package directory with `git mv packages/api packages/server-api`.
+2. Rename the package directory with `git mv packages/server-api packages/api`.
 3. Update path references in packaging config, scripts, CI, Docker, OpenAPI, docs, and tests.
 4. Rename the server import package from `sardis` to `sardis_server`.
 5. Keep the root public SDK import package as `src/sardis`.
@@ -86,8 +87,8 @@ The current migration sequence is:
 Minimum validation for the server package-directory rename:
 
 ```bash
-python3 -m compileall -q packages/server-api/src/sardis_server packages/server-api/scripts/generate_openapi.py api/index.py
-PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/server-api/tests/test_funding_bootstrap.py packages/server-api/tests/test_sandbox_isolation.py packages/server-api/tests/test_facility_requests_router.py -q
+python3 -m compileall -q packages/api/src/sardis_server packages/api/scripts/generate_openapi.py api/index.py
+PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_funding_bootstrap.py packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_facility_requests_router.py -q
 pnpm check:openapi
 python3 scripts/package_maturity_check.py
 git diff --check
@@ -98,7 +99,7 @@ Recommended broader validation:
 ```bash
 python3 scripts/repo_inventory.py
 pnpm check
-uv run pytest packages/server-api/tests -q
+uv run pytest packages/api/tests -q
 ```
 
 ## Current State
@@ -106,12 +107,12 @@ uv run pytest packages/server-api/tests -q
 The contributor-facing API path is now:
 
 ```text
-packages/server-api/src/sardis_server/...
+packages/api/src/sardis_server/...
 ```
 
 This still contains two naming layers:
 
-- `packages/server-api` is the monorepo package boundary: the deployable
+- `packages/api` is the monorepo package boundary: the deployable
   reference API service.
 - `src/sardis_server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
@@ -122,9 +123,9 @@ source tree must not keep an extra `routers/` bucket below it. A contributor
 should land in a domain path such as:
 
 ```text
-packages/server-api/src/sardis_server/routes/protocol/x402.py
-packages/server-api/src/sardis_server/routes/protocol/mpp.py
-packages/server-api/src/sardis_server/routes/commerce/merchant_checkout.py
+packages/api/src/sardis_server/routes/protocol/x402.py
+packages/api/src/sardis_server/routes/protocol/mpp.py
+packages/api/src/sardis_server/routes/commerce/merchant_checkout.py
 ```
 
 Further shortening the physical path by removing `src/` would trade readability

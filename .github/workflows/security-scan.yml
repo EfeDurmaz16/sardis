@@ -65,7 +65,7 @@ jobs:
 
       - name: Run Bandit security linter
         run: |
-          bandit -r sardis/ packages/server-api/src/ packages/sardis-core/src/ \
+          bandit -r sardis/ packages/api/src/ packages/sardis-core/src/ \
             -f txt \
             --severity-level medium \
             --confidence-level medium \

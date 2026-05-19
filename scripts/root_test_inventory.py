@@ -19,8 +19,9 @@ from pathlib import Path
 STALE_API_PATTERNS = (
     r"\bsardis_api\b",
     r"packages/sardis-api",
-    r"packages/server-api/src/sardis_api",
-    r"packages/server-api/src/sardis/routers",
+    r"packages/server-api",
+    r"packages/api/src/sardis_api",
+    r"packages/api/src/sardis/routers",
     r"\bsardis\.routers\b",
     r"\bsardis\.main:create_app\b",
 )
@@ -28,7 +29,7 @@ STALE_API_PATTERNS = (
 STALE_API_RE = re.compile("|".join(f"(?:{pattern})" for pattern in STALE_API_PATTERNS))
 
 OWNER_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"(api|auth|billing|checkout|compliance|cpn|fides|mpp|ramp|stripe|tap|wallet|x402|router|webhook|health|rate_limit|rbac|usage)"), "packages/server-api/tests"),
+    (re.compile(r"(api|auth|billing|checkout|compliance|cpn|fides|mpp|ramp|stripe|tap|wallet|x402|router|webhook|health|rate_limit|rbac|usage)"), "packages/api/tests"),
     (re.compile(r"(ledger|receipt|reconciliation)"), "packages/sardis-ledger/tests"),
     (re.compile(r"(chain|solana|tempo|erc|token)"), "packages/sardis-chain/tests"),
     (re.compile(r"(policy|mandate|orchestrator|trust|evidence|reason|scheduler|cache)"), "packages/sardis-core/tests"),
@@ -81,13 +82,13 @@ def build_report(files: list[TestFile]) -> str:
         "# Root Test Migration Inventory",
         "",
         "The repository-root `tests/` tree is a legacy migration backlog, not the default contributor test suite.",
-        "Maintained tests live under package-owned `tests/` directories such as `packages/server-api/tests/`, `packages/sardis-core/tests/`, `packages/sardis-ledger/tests/`, and `packages/sardis-chain/tests/`.",
+        "Maintained tests live under package-owned `tests/` directories such as `packages/api/tests/`, `packages/sardis-core/tests/`, `packages/sardis-ledger/tests/`, and `packages/sardis-chain/tests/`.",
         "",
         "## Current Snapshot",
         "",
         f"- Root Python test files: `{total}`",
         f"- Files with stale API import/path references: `{len(stale)}`",
-        "- Default pytest path: `packages/server-api/tests` from root `pyproject.toml`",
+        "- Default pytest path: `packages/api/tests` from root `pyproject.toml`",
         "- Default npm test path: package-owned suites from `package.json`",
         "",
         "## Owner Buckets",

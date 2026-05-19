@@ -99,7 +99,7 @@ Before running load tests:
 
 1. **Start the API server**
    ```bash
-   cd packages/server-api
+   cd packages/api
    python -m uvicorn main:app --host 0.0.0.0 --port 8000
    ```
 

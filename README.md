@@ -271,7 +271,7 @@ Every financial action follows a **single authority path** before execution. The
 sardis/
 ├── packages/               # Core monorepo packages
 │   ├── sardis-core/        # Domain models, config, database
-│   ├── server-api/         # FastAPI reference API implementation
+│   ├── api/         # FastAPI reference API implementation
 │   ├── sardis-chain/       # Blockchain execution, chain routing
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
@@ -348,7 +348,7 @@ python3 scripts/stale_api_path_check.py
 pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
-uv run uvicorn --app-dir packages/server-api/src sardis_server.main:create_app --factory --port 8000
+uv run uvicorn --app-dir packages/api/src sardis_server.main:create_app --factory --port 8000
 ```
 
 ---

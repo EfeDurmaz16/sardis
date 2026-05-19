@@ -132,7 +132,7 @@ Interactive API documentation is available at:
 ## Architecture
 
 ```
-packages/server-api/
+packages/api/
 └── src/sardis_server/
     ├── main.py           # FastAPI composition root
     ├── bootstrap.py      # Local monorepo import bootstrap for dev/test

@@ -2,7 +2,7 @@
 """Replay Facility Gate event projections.
 
 Usage:
-  DATABASE_URL=postgresql://... python packages/server-api/scripts/facility_gate_replay.py org_123 --apply
+  DATABASE_URL=postgresql://... python packages/api/scripts/facility_gate_replay.py org_123 --apply
 """
 from __future__ import annotations
 

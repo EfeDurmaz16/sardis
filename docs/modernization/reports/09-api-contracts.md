@@ -4,7 +4,7 @@
 
 ### High: Public API surface is very broad
 
-- Evidence: `packages/server-api/src/sardis_server/routes/` contains well over 100 route modules, and `main.py` registers many under `/api/v2`.
+- Evidence: `packages/api/src/sardis_server/routes/` contains well over 100 route modules, and `main.py` registers many under `/api/v2`.
 - Impact: Any cleanup can accidentally change public routes.
 - Recommended action: Generate and commit an OpenAPI snapshot for contract diffing before route refactors.
 - Action type: Tests/tooling.
@@ -31,7 +31,7 @@
 
 ### Medium: OpenAPI artifacts exist but canonical generation is unclear
 
-- Evidence: `packages/server-api/openapi/` contains ChatGPT action and README artifacts; API app has `openapi_schema.py`.
+- Evidence: `packages/api/openapi/` contains ChatGPT action and README artifacts; API app has `openapi_schema.py`.
 - Impact: Docs/SDK generation may drift from runtime routes.
 - Recommended action: Add a documented command to regenerate and verify OpenAPI artifacts.
 - Action type: Tooling.
