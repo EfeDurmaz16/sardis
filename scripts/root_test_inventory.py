@@ -43,6 +43,7 @@ class TestFile:
     path: str
     owner: str
     stale_api_refs: int
+    kind: str
 
 
 def git_files() -> list[str]:
@@ -55,8 +56,25 @@ def git_files() -> list[str]:
     return sorted(path for path in result.stdout.splitlines() if path.endswith(".py"))
 
 
+def classify_kind(path: str) -> str:
+    file_name = Path(path).name
+    lowered = path.lower()
+    if file_name.startswith("test_"):
+        return "test"
+    if file_name in {"conftest.py", "__init__.py"}:
+        return "support"
+    if "/load/" in lowered or file_name == "locustfile.py":
+        return "load harness"
+    if "/fuzz/" in lowered:
+        return "fuzz harness"
+    return "support"
+
+
 def guess_owner(path: str) -> str:
     lowered = path.lower()
+    kind = classify_kind(path)
+    if kind != "test":
+        return f"root {kind}"
     for pattern, owner in OWNER_RULES:
         if pattern.search(lowered):
             return owner
@@ -71,13 +89,17 @@ def analyze(path: str) -> TestFile:
         path=path,
         owner=guess_owner(path),
         stale_api_refs=len(STALE_API_RE.findall(text)),
+        kind=classify_kind(path),
     )
 
 
 def build_report(files: list[TestFile]) -> str:
-    total = len(files)
+    tests = [item for item in files if item.kind == "test"]
+    support = [item for item in files if item.kind != "test"]
+    total = len(tests)
     stale = [item for item in files if item.stale_api_refs]
-    owners = Counter(item.owner for item in files)
+    owners = Counter(item.owner for item in tests)
+    support_kinds = Counter(item.kind for item in support)
 
     lines = [
         "# Root Test Migration Inventory",
@@ -88,6 +110,7 @@ def build_report(files: list[TestFile]) -> str:
         "## Current Snapshot",
         "",
         f"- Root Python test files: `{total}`",
+        f"- Root Python support files: `{len(support)}`",
         f"- Files with stale API import/path references: `{len(stale)}`",
         "- Default pytest path: `packages/reference-api/tests` from root `pyproject.toml`",
         "- Default npm test path: package-owned suites from `package.json`",
@@ -100,6 +123,21 @@ def build_report(files: list[TestFile]) -> str:
 
     for owner, count in sorted(owners.items()):
         lines.append(f"| `{owner}` | {count} |")
+
+    lines.extend(
+        [
+            "",
+            "## Support Files",
+            "",
+            "These files live under root `tests/` but are not counted as test backlog.",
+            "",
+            "| Support kind | Files |",
+            "| --- | ---: |",
+        ]
+    )
+
+    for kind, count in sorted(support_kinds.items()):
+        lines.append(f"| `{kind}` | {count} |")
 
     lines.extend(
         [

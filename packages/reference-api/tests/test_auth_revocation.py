@@ -4,9 +4,9 @@ import pytest
 
 
 @pytest.mark.anyio
-async def test_login_requires_valid_credentials(test_client):
+async def test_login_requires_valid_credentials(client):
     """Shared admin password was removed. Login with invalid credentials returns 401."""
-    resp = await test_client.post(
+    resp = await client.post(
         "/api/v1/auth/login",
         data={"username": "admin", "password": "anything"},
     )
@@ -14,11 +14,11 @@ async def test_login_requires_valid_credentials(test_client):
 
 
 @pytest.mark.anyio
-async def test_login_admin_password_removed(test_client, monkeypatch):
+async def test_login_admin_password_removed(client, monkeypatch):
     """Even with SARDIS_ADMIN_PASSWORD set, shared admin login is no longer supported."""
     monkeypatch.setenv("SARDIS_ADMIN_PASSWORD", "super-secret-password")
 
-    login = await test_client.post(
+    login = await client.post(
         "/api/v1/auth/login",
         data={"username": "admin", "password": "super-secret-password"},
     )
