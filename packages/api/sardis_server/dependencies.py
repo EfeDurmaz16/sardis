@@ -69,6 +69,13 @@ class StorageBackendConfig:
     use_postgres: bool
 
 
+@dataclass(frozen=True)
+class CacheBackendConfig:
+    """Resolved API cache backend configuration."""
+
+    redis_url: str | None
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -94,6 +101,30 @@ def resolve_storage_backend(
             )
 
     return StorageBackendConfig(database_url=database_url, use_postgres=use_postgres)
+
+
+def resolve_cache_backend(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> CacheBackendConfig:
+    """Resolve cache backend settings and enforce production Redis durability."""
+    env = environ if environ is not None else os.environ
+    redis_url = (
+        env.get("SARDIS_REDIS_URL")
+        or env.get("REDIS_URL")
+        or env.get("UPSTASH_REDIS_URL")
+        or getattr(settings, "redis_url", None)
+        or None
+    )
+
+    if getattr(settings, "is_production", False) and not redis_url:
+        raise RuntimeError(
+            "CRITICAL: Redis is required in production for idempotency, webhook replay protection, "
+            "and JWT revocation. Set SARDIS_REDIS_URL (preferred), REDIS_URL, or UPSTASH_REDIS_URL."
+        )
+
+    return CacheBackendConfig(redis_url=redis_url)
 
 
 class DependencyContainer:

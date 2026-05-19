@@ -49,7 +49,7 @@ from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
-from .dependencies import resolve_storage_backend
+from .dependencies import resolve_cache_backend, resolve_storage_backend
 from .lifespan import lifespan, shutdown_state
 from .middleware import (
     API_VERSION,
@@ -729,18 +729,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         dsn=database_url if use_postgres else "memory://",
     )
 
-    redis_url = (
-        os.getenv("SARDIS_REDIS_URL")
-        or os.getenv("REDIS_URL")
-        or os.getenv("UPSTASH_REDIS_URL")
-        or settings.redis_url
-        or None
-    )
-    if settings.is_production and not redis_url:
-        raise RuntimeError(
-            "CRITICAL: Redis is required in production for idempotency, webhook replay protection, "
-            "and JWT revocation. Set SARDIS_REDIS_URL (preferred), REDIS_URL, or UPSTASH_REDIS_URL."
-        )
+    cache_backend = resolve_cache_backend(settings)
+    redis_url = cache_backend.redis_url
     cache_service = create_cache_service(redis_url)
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")

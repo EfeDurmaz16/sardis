@@ -2,13 +2,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from sardis_server.dependencies import resolve_storage_backend
+from sardis_server.dependencies import resolve_cache_backend, resolve_storage_backend
 
 
 def _settings(**overrides):
     defaults = {
         "database_url": "",
         "ledger_dsn": "memory://",
+        "redis_url": None,
         "is_production": False,
     }
     defaults.update(overrides)
@@ -55,3 +56,40 @@ def test_resolve_storage_backend_requires_postgres_in_production() -> None:
             _settings(database_url="sqlite:///prod.db", is_production=True),
             environ={},
         )
+
+
+def test_resolve_cache_backend_prefers_sardis_redis_url() -> None:
+    config = resolve_cache_backend(
+        _settings(redis_url="redis://settings"),
+        environ={
+            "SARDIS_REDIS_URL": "redis://sardis",
+            "REDIS_URL": "redis://generic",
+            "UPSTASH_REDIS_URL": "redis://upstash",
+        },
+    )
+
+    assert config.redis_url == "redis://sardis"
+
+
+def test_resolve_cache_backend_falls_back_to_generic_urls_then_settings() -> None:
+    generic_config = resolve_cache_backend(
+        _settings(redis_url="redis://settings"),
+        environ={"REDIS_URL": "redis://generic"},
+    )
+    upstash_config = resolve_cache_backend(
+        _settings(redis_url="redis://settings"),
+        environ={"UPSTASH_REDIS_URL": "redis://upstash"},
+    )
+    settings_config = resolve_cache_backend(
+        _settings(redis_url="redis://settings"),
+        environ={},
+    )
+
+    assert generic_config.redis_url == "redis://generic"
+    assert upstash_config.redis_url == "redis://upstash"
+    assert settings_config.redis_url == "redis://settings"
+
+
+def test_resolve_cache_backend_requires_redis_in_production() -> None:
+    with pytest.raises(RuntimeError, match="Redis is required in production"):
+        resolve_cache_backend(_settings(is_production=True), environ={})
