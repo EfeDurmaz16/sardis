@@ -87,6 +87,7 @@ from .routing.authority import (
     register_facility_request_routes,
     register_mandate_delegation_routes,
     register_mandate_subscription_routes,
+    register_spending_mandate_routes,
 )
 from .routing.billing import (
     register_billing_routes,
@@ -1691,16 +1692,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_billing_routes(app)
 
-    # Spending mandates
-    try:
-        from sardis_server.routes.authority import spending_mandates as spending_mandates_router
-        app.include_router(
-            spending_mandates_router.router,
-            prefix="/api/v2/spending-mandates",
-            tags=["spending-mandates"],
-        )
-    except ImportError:
-        logger.warning("Spending mandates router not available")
+    register_spending_mandate_routes(app)
 
     register_agent_auth_routes(app)
 

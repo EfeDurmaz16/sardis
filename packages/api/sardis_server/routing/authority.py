@@ -6,7 +6,14 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_server.routes.authority import ap2, credentials, facility_requests, mandates, mvp
+from sardis_server.routes.authority import (
+    ap2,
+    credentials,
+    facility_requests,
+    mandates,
+    mvp,
+    spending_mandates,
+)
 from sardis_server.routes.authority import approval_config as approval_config_router
 from sardis_server.routes.authority import mandate_delegation as mandate_delegation_router
 from sardis_server.routes.authority import mandate_subscriptions as mandate_subscriptions_router
@@ -153,6 +160,15 @@ def register_facility_request_routes(
 def register_credential_routes(app: FastAPI) -> None:
     """Register delegated credential authority routes."""
     app.include_router(credentials.router)
+
+
+def register_spending_mandate_routes(app: FastAPI) -> None:
+    """Register spending mandate CRUD and lifecycle routes."""
+    app.include_router(
+        spending_mandates.router,
+        prefix="/api/v2/spending-mandates",
+        tags=["spending-mandates"],
+    )
 
 
 def register_mandate_delegation_routes(app: FastAPI) -> None:
