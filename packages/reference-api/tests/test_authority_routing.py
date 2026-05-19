@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from server.routing.authority import register_spending_mandate_routes
+from server.route_registry.authority import register_spending_mandate_routes
 
 
 def test_register_spending_mandate_routes_mounts_crud_and_lifecycle_paths() -> None:

@@ -347,7 +347,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/links/{slug}" in public_paths
 
     def test_main_wires_merchant_routers(self):
-        from server.routing import commerce
+        from server.route_registry import commerce
 
         source = Path(commerce.__file__).read_text()
         assert "register_merchant_routes" in source

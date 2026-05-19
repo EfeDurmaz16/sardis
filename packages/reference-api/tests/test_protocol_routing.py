@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from server.routing.protocol import register_a2a_discovery_routes
+from server.route_registry.protocol import register_a2a_discovery_routes
 
 
 def test_register_a2a_discovery_routes_mounts_well_known_agent_card() -> None:

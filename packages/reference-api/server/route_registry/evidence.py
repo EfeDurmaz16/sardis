@@ -9,7 +9,7 @@ from fastapi import FastAPI
 
 from server.routes.evidence import attestation, audit_anchors, evidence, evidence_export
 
-logger = logging.getLogger("server.api.routing.evidence")
+logger = logging.getLogger("server.api.route_registry.evidence")
 
 
 def register_audit_anchor_routes(

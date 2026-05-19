@@ -54,7 +54,7 @@ packages/reference-api/server/routes/wallets/wallets.py
 FastAPI registration and dependency wiring should live under:
 
 ```text
-packages/reference-api/server/routing/
+packages/reference-api/server/route_registry/
 ```
 
 Do not add more route nesting below the domain layer. This is acceptable:

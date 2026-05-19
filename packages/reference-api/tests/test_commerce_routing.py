@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI
 
 from server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
-from server.routing.commerce import (
+from server.route_registry.commerce import (
     register_checkout_routes,
     register_merchant_checkout_routes,
     register_merchant_routes,

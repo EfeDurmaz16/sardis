@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from server.routes.commerce import secure_checkout
-from server.routing.commerce import register_secure_checkout_routes
+from server.route_registry.commerce import register_secure_checkout_routes
 
 
 def test_secure_checkout_registrar_wires_router_with_flag(monkeypatch):

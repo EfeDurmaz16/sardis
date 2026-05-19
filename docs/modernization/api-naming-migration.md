@@ -49,13 +49,13 @@ Completed so far:
 | `routers/agent_identity.py` | deleted | The router was not imported or registered in the app and overlapped with the newer FIDES identity surface. |
 | `routers/anomaly.py` | deleted | The router was not imported, registered, or covered by tests; anomaly scoring remains internal to control-plane and protocol flows until a properly wired operations API is added. |
 | `routers/plugins.py` | deleted | The plugin API router was not imported, mounted, or covered by tests; keeping an unreachable plugin-management API in the public surface made the repo look broader than the runnable reference API. |
-| `main.py` inline webhook subscription registration | `routing/developer.py::register_webhook_subscriptions` | Starts separating route registration by API audience/domain before moving 120+ router files. |
-| `main.py` inline `/api/v2/pay` registration | `routing/money_movement.py::register_pay_endpoint` | Moves a small, high-traffic payment surface behind a money-movement registrar without changing the public path. |
-| `main.py` inline mandates/AP2/MVP/approvals registration | `routing/authority.py::register_authority_routes` | Groups authority and mandate route wiring while returning the approval service needed by later payment/provider routers. |
-| `main.py` inline auth/account registration | `routing/accounts.py::{register_auth_routes, register_account_group_routes, register_account_self_service_routes}` | Moves auth, email verification, account groups, API keys, current-user state, and data export wiring behind account-domain registrars without changing public paths or route ordering. |
-| `main.py` inline admin registration | `routing/admin.py::register_admin_routes` | Groups admin control, admin reconciliation, and emergency freeze wiring behind one privileged-route registrar without changing public paths. |
-| `main.py` inline agent lifecycle/registry registration | `routing/agents.py::{register_agent_lifecycle_routes, register_agent_registry_routes}` | Moves agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring behind agent-domain registrars without changing public paths or route ordering. |
-| `main.py` inline audit/evidence registration | `routing/evidence.py::{register_audit_anchor_routes, register_evidence_routes}` | Moves audit anchoring, evidence capture/export, and attestation wiring behind evidence-domain registrars without changing public paths or route ordering. |
+| `main.py` inline webhook subscription registration | `route_registry/developer.py::register_webhook_subscriptions` | Starts separating route registration by API audience/domain before moving 120+ router files. |
+| `main.py` inline `/api/v2/pay` registration | `route_registry/money_movement.py::register_pay_endpoint` | Moves a small, high-traffic payment surface behind a money-movement registrar without changing the public path. |
+| `main.py` inline mandates/AP2/MVP/approvals registration | `route_registry/authority.py::register_authority_routes` | Groups authority and mandate route wiring while returning the approval service needed by later payment/provider routers. |
+| `main.py` inline auth/account registration | `route_registry/accounts.py::{register_auth_routes, register_account_group_routes, register_account_self_service_routes}` | Moves auth, email verification, account groups, API keys, current-user state, and data export wiring behind account-domain registrars without changing public paths or route ordering. |
+| `main.py` inline admin registration | `route_registry/admin.py::register_admin_routes` | Groups admin control, admin reconciliation, and emergency freeze wiring behind one privileged-route registrar without changing public paths. |
+| `main.py` inline agent lifecycle/registry registration | `route_registry/agents.py::{register_agent_lifecycle_routes, register_agent_registry_routes}` | Moves agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring behind agent-domain registrars without changing public paths or route ordering. |
+| `main.py` inline audit/evidence registration | `route_registry/evidence.py::{register_audit_anchor_routes, register_evidence_routes}` | Moves audit anchoring, evidence capture/export, and attestation wiring behind evidence-domain registrars without changing public paths or route ordering. |
 | `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` after a temporary compatibility-wrapper phase | Starts the physical path simplification from flat routers to domain-grouped routes. |
 | `routers/pay.py` implementation | `routes/money_movement/pay.py` after a temporary compatibility-wrapper phase | Moves the primary money-movement execution route to the domain where contributors expect to find payment logic. |
 | `routers/mandates.py`, `routers/ap2.py`, `routers/mvp.py`, `routers/approvals.py`, `routers/approval_config.py` implementations | `routes/authority/*` after a temporary compatibility-wrapper phase | Groups authority, mandate, AP2, MVP, and approval surfaces under one contributor-readable domain. |
@@ -120,7 +120,7 @@ package named `sardis`. The part we should actively simplify is everything
 below it:
 
 - `routes/<domain>/...` for HTTP route modules
-- `routing/<domain>.py` for FastAPI registration/wiring
+- `route_registry/<domain>.py` for FastAPI registration/wiring
 - no legacy `routers/` bucket in the active source tree
 
 The package directory itself has already been simplified to
@@ -271,7 +271,7 @@ server/
       ws_alerts.py
 ```
 
-Route registration now lives in `server.routing.<domain>` modules, keeping
+Route registration now lives in `server.route_registry.<domain>` modules, keeping
 `server.main` closer to a composition root instead of a file-by-file router
 mount list.
 

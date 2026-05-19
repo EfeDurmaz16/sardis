@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from server.routes.protocol import a2a, a2a_payments, acp, mpp, mpp_demo, spt, x402
 
-logger = logging.getLogger("server.api.routing.protocol")
+logger = logging.getLogger("server.api.route_registry.protocol")
 
 
 def register_x402_routes(app: FastAPI, *, facilitator_enabled: bool) -> None:

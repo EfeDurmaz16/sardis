@@ -25,7 +25,7 @@ FORBIDDEN_PATHS = (
 REQUIRED_PATHS = (
     "packages/reference-api/server",
     "packages/reference-api/server/routes",
-    "packages/reference-api/server/routing",
+    "packages/reference-api/server/route_registry",
     "docs/oss/source-layout.md",
 )
 

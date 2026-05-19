@@ -23,7 +23,7 @@ try:
 except ImportError:
     approvals_router = None  # type: ignore[assignment]
 
-logger = logging.getLogger("server.api.routing.authority")
+logger = logging.getLogger("server.api.route_registry.authority")
 
 
 def register_authority_routes(

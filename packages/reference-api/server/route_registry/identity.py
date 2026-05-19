@@ -5,7 +5,7 @@ import logging
 
 from fastapi import FastAPI
 
-logger = logging.getLogger("server.api.routing.identity")
+logger = logging.getLogger("server.api.route_registry.identity")
 
 
 def register_agent_auth_routes(app: FastAPI) -> None:

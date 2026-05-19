@@ -20,7 +20,7 @@ from server.routes.developer import (
     workflow_templates,
 )
 
-logger = logging.getLogger("server.api.routing.developer")
+logger = logging.getLogger("server.api.route_registry.developer")
 
 
 def register_webhook_subscriptions(app: FastAPI, *, dsn: str) -> WebhookService:

@@ -8,7 +8,7 @@ from server.routes.providers import (
     stripe_funding,
     stripe_webhooks,
 )
-from server.routing.providers import (
+from server.route_registry.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
     register_polar_webhook_routes,

@@ -18,7 +18,7 @@ from server.routes.providers import (
     stripe_webhooks,
 )
 
-logger = logging.getLogger("server.api.routing.providers")
+logger = logging.getLogger("server.api.route_registry.providers")
 
 
 def register_provider_integration_routes(app: FastAPI, *, settings) -> None:

@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
-from server.routing.wallets import (
+from server.route_registry.wallets import (
     register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,
@@ -9,6 +8,7 @@ from server.routing.wallets import (
     register_ramp_routes,
     register_treasury_routes,
 )
+from server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
 
 
 def test_register_card_routes_mounts_provider_injected_routes():

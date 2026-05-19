@@ -72,14 +72,14 @@ from .middleware import (
     setup_logging,
 )
 from .openapi_schema import custom_openapi
-from .routing.accounts import (
+from .route_registry.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
     register_auth_routes,
 )
-from .routing.admin import register_admin_routes
-from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
-from .routing.authority import (
+from .route_registry.admin import register_admin_routes
+from .route_registry.agents import register_agent_lifecycle_routes, register_agent_registry_routes
+from .route_registry.authority import (
     register_authority_routes,
     register_credential_routes,
     register_facility_request_routes,
@@ -87,12 +87,12 @@ from .routing.authority import (
     register_mandate_subscription_routes,
     register_spending_mandate_routes,
 )
-from .routing.billing import (
+from .route_registry.billing import (
     register_billing_routes,
     register_subscription_routes,
     register_usage_routes,
 )
-from .routing.commerce import (
+from .route_registry.commerce import (
     register_checkout_routes,
     register_commerce_support_routes,
     register_escrow_dispute_routes,
@@ -103,12 +103,12 @@ from .routing.commerce import (
     register_secure_checkout_routes,
     register_service_directory_routes,
 )
-from .routing.compliance import (
+from .route_registry.compliance import (
     register_compliance_export_routes,
     register_compliance_routes,
     register_kyc_onboarding_routes,
 )
-from .routing.developer import (
+from .route_registry.developer import (
     register_developer_utility_routes,
     register_enterprise_support_routes,
     register_faucet_routes,
@@ -116,10 +116,10 @@ from .routing.developer import (
     register_template_routes,
     register_webhook_subscriptions,
 )
-from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
-from .routing.health import register_health_routes
-from .routing.identity import register_agent_auth_routes, register_sso_routes
-from .routing.money_movement import (
+from .route_registry.evidence import register_audit_anchor_routes, register_evidence_routes
+from .route_registry.health import register_health_routes
+from .route_registry.identity import register_agent_auth_routes, register_sso_routes
+from .route_registry.money_movement import (
     register_batch_payment_routes,
     register_bridge_routes,
     register_fx_routes,
@@ -134,7 +134,7 @@ from .routing.money_movement import (
     register_swap_routes,
     register_transaction_routes,
 )
-from .routing.operations import (
+from .route_registry.operations import (
     register_alert_routes,
     register_dashboard_metrics_routes,
     register_exception_routes,
@@ -142,13 +142,13 @@ from .routing.operations import (
     register_outcome_reliability_routes,
     register_realtime_operations_routes,
 )
-from .routing.policy import (
+from .route_registry.policy import (
     register_fallback_policy_routes,
     register_policy_analytics_routes,
     register_policy_routes,
     register_policy_simulation_routes,
 )
-from .routing.protocol import (
+from .route_registry.protocol import (
     register_a2a_discovery_routes,
     register_a2a_routes,
     register_erc8183_routes,
@@ -156,7 +156,7 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
-from .routing.providers import (
+from .route_registry.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
     register_polar_webhook_routes,
@@ -165,7 +165,7 @@ from .routing.providers import (
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
-from .routing.wallets import (
+from .route_registry.wallets import (
     register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,

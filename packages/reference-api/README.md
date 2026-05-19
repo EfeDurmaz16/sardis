@@ -138,7 +138,7 @@ packages/reference-api/
     ├── bootstrap.py      # Local monorepo import bootstrap for dev/test
     ├── dependencies.py   # FastAPI dependencies
     ├── routes/           # Domain-grouped route implementations
-    ├── routing/          # Route registration helpers for larger domains
+    ├── route_registry/  # Route registration helpers for larger domains
     └── middleware/       # Request/auth/security middleware
 ```
 

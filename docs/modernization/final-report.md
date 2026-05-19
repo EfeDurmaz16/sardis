@@ -62,19 +62,19 @@
 - Removed the unregistered legacy `routers/agent_identity.py` prototype, which overlapped with the newer FIDES identity surface and was not imported by the app.
 - Removed the unregistered `routers/anomaly.py` prototype; anomaly scoring still exists through control-plane/protocol internals, but the old standalone API router was not mounted or dependency-wired.
 - Removed the unregistered `routers/plugins.py` plugin-management API prototype; plugin primitives remain in `sardis_v2_core.plugins`, but no public FastAPI plugin-management surface was mounted.
-- Added the first domain-scoped route registrar at `server.routing.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `server.main`.
-- Added `server.routing.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `server.main`.
-- Added `server.routing.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `server.main` while preserving the approval service handoff needed by later payment/provider routes.
-- Added `server.routing.accounts` account-domain registrars and moved auth, email verification, groups, API keys, current-user state, and data export wiring out of `server.main` without changing route order.
-- Added `server.routing.admin.register_admin_routes` and moved admin control, reconciliation, and emergency-freeze wiring out of `server.main`.
-- Added `server.routing.agents` agent-domain registrars and moved agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring out of `server.main`.
-- Added `server.routing.evidence` evidence-domain registrars and moved audit-anchor, evidence capture/export, and attestation wiring out of `server.main`.
-- Added `server.routing.operations` operations-domain registrars and moved alert, realtime event, analytics, metrics, execution-mode, outcome, reliability, exception, and dashboard-metric route wiring out of `server.main` while preserving route order.
-- Added `server.routing.commerce` commerce-domain registrars and moved marketplace, invoices, service directory, checkout controls, counterparties, and escrow/dispute route wiring out of `server.main` while preserving route order.
-- Added `server.routing.policy` policy-domain registrars and moved policy CRUD, policy simulation, policy analytics, and fallback policy route wiring out of `server.main` while preserving route order.
-- Added `server.routing.billing` billing-domain registrars and moved recurring subscription, billing account/webhook, and metered usage route wiring out of `server.main` while preserving the recurring billing service handoff used by later autofund wiring.
-- Added `server.routing.protocol` protocol-domain registrars and moved x402, ERC-8183, A2A, A2A payments, MPP, MPP demo, SPT, and ACP route wiring out of `server.main` while preserving feature flags and route order.
-- Expanded `server.routing.money_movement` and moved ledger, holds, transactions, bridge, refunds, settlements, receipts, payment objects, FX, batch payments, and streaming payment route wiring out of `server.main` while preserving route order and dependency handoffs.
+- Added the first domain-scoped route registrar at `server.route_registry.developer.register_webhook_subscriptions` and moved outbound webhook subscription wiring out of `server.main`.
+- Added `server.route_registry.money_movement.register_pay_endpoint` and moved the unified `/api/v2/pay` route wiring out of `server.main`.
+- Added `server.route_registry.authority.register_authority_routes` and moved mandates/AP2/MVP/approvals wiring out of `server.main` while preserving the approval service handoff needed by later payment/provider routes.
+- Added `server.route_registry.accounts` account-domain registrars and moved auth, email verification, groups, API keys, current-user state, and data export wiring out of `server.main` without changing route order.
+- Added `server.route_registry.admin.register_admin_routes` and moved admin control, reconciliation, and emergency-freeze wiring out of `server.main`.
+- Added `server.route_registry.agents` agent-domain registrars and moved agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring out of `server.main`.
+- Added `server.route_registry.evidence` evidence-domain registrars and moved audit-anchor, evidence capture/export, and attestation wiring out of `server.main`.
+- Added `server.route_registry.operations` operations-domain registrars and moved alert, realtime event, analytics, metrics, execution-mode, outcome, reliability, exception, and dashboard-metric route wiring out of `server.main` while preserving route order.
+- Added `server.route_registry.commerce` commerce-domain registrars and moved marketplace, invoices, service directory, checkout controls, counterparties, and escrow/dispute route wiring out of `server.main` while preserving route order.
+- Added `server.route_registry.policy` policy-domain registrars and moved policy CRUD, policy simulation, policy analytics, and fallback policy route wiring out of `server.main` while preserving route order.
+- Added `server.route_registry.billing` billing-domain registrars and moved recurring subscription, billing account/webhook, and metered usage route wiring out of `server.main` while preserving the recurring billing service handoff used by later autofund wiring.
+- Added `server.route_registry.protocol` protocol-domain registrars and moved x402, ERC-8183, A2A, A2A payments, MPP, MPP demo, SPT, and ACP route wiring out of `server.main` while preserving feature flags and route order.
+- Expanded `server.route_registry.money_movement` and moved ledger, holds, transactions, bridge, refunds, settlements, receipts, payment objects, FX, batch payments, and streaming payment route wiring out of `server.main` while preserving route order and dependency handoffs.
 - Repaired stale authority/payment policy tests by replacing brittle implementation-string assertions with current orchestrator/control-plane boundary checks and fixed FastAPI dependency overrides in the mandates router tests.
 - Started the physical route placement migration by moving the outbound webhook subscription implementation to `server.routes.developer.webhook_subscriptions`.
 - Used temporary compatibility imports during the route move, then removed the
@@ -117,14 +117,14 @@
 - Moved operational route implementations into `server.routes.operations`: analytics, alerts, websocket alerts, event stream, reports, reliability, outcomes, execution modes, exception workflows/retry policies, emergency incident response, dashboard metrics, and Prometheus metrics now share one contributor-readable operations domain.
 - Moved remaining mandate route implementations into `server.routes.authority`: spending mandate CRUD/lifecycle, mandate delegation, and mandate-based subscriptions now live with the core authority and approval APIs.
 - Moved delegated credential route implementation into `server.routes.authority`, keeping credential provisioning, consent validation, scope tightening, and revocation with the rest of the scoped authority APIs.
-- Expanded `server.routing.authority` so facility gate requests/webhooks, delegated credentials, mandate delegation, and mandate subscription registration no longer live inline in `main.py`.
+- Expanded `server.route_registry.authority` so facility gate requests/webhooks, delegated credentials, mandate delegation, and mandate subscription registration no longer live inline in `main.py`.
 - Moved enterprise support ticket/profile routes, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, and testnet faucet routes into `server.routes.developer` so contributor-facing support, transparency, webhook setup, testing, and onboarding APIs are no longer buried in the flat router bucket.
-- Expanded `server.routing.developer` so enterprise support, testnet faucet, notification webhook configuration, and workflow/environment template registration no longer live inline in `main.py`.
-- Added `server.routing.wallets` for simple wallet-edge route registration so offramp, onramp, Stripe onramp webhook, and virtual-card route mounting no longer lives inline in `main.py`.
-- Expanded `server.routing.wallets` so core wallet and on-chain payment dependency wiring no longer lives inline in `main.py`.
-- Expanded `server.routing.wallets` with fiat ramp registration and added a focused wiring test for dependency overrides plus public webhook route mounting.
-- Expanded `server.routing.wallets` with treasury and treasury-ops registration, keeping repository/client construction in `main.py` while moving route dependency wiring and Lithic webhook mounting into the wallet registrar.
-- Expanded `server.routing.wallets` with Circle CPN registration and extended the wallet routing test to cover CPN dependencies plus public webhook mounting.
+- Expanded `server.route_registry.developer` so enterprise support, testnet faucet, notification webhook configuration, and workflow/environment template registration no longer live inline in `main.py`.
+- Added `server.route_registry.wallets` for simple wallet-edge route registration so offramp, onramp, Stripe onramp webhook, and virtual-card route mounting no longer lives inline in `main.py`.
+- Expanded `server.route_registry.wallets` so core wallet and on-chain payment dependency wiring no longer lives inline in `main.py`.
+- Expanded `server.route_registry.wallets` with fiat ramp registration and added a focused wiring test for dependency overrides plus public webhook route mounting.
+- Expanded `server.route_registry.wallets` with treasury and treasury-ops registration, keeping repository/client construction in `main.py` while moving route dependency wiring and Lithic webhook mounting into the wallet registrar.
+- Expanded `server.route_registry.wallets` with Circle CPN registration and extended the wallet routing test to cover CPN dependencies plus public webhook mounting.
 - Removed the temporary compatibility package after migrating internal source and tests to the new domain route modules.
 - Added and executed a package path simplification decision: keep the Python import package `server`, but consolidate the monorepo API package directory at `packages/reference-api`.
 - Renamed the reference API import root from `sardis_server` to `server`, so the
@@ -136,19 +136,19 @@
 - Added a contributor-facing clean tree helper, `pnpm repo:tree`, so maintainers can inspect source layout without local `node_modules`, `dist`, `.venv`, `.pytest_cache`, private ignored app folders, or generated build artifacts overwhelming the repository map.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
-- Expanded `server.routing.money_movement` with swap, exchange, and verification route registration so those provider-backed money-movement helper routes no longer mount inline in `server.main`.
-- Added `server.routing.compliance` for KYC onboarding and compliance evidence export registration so low-coupling regulatory routes no longer mount inline in `server.main`.
-- Expanded `server.routing.compliance` so compliance screening, KYC/KYA, audit, and Persona webhook dependency wiring no longer lives inline in `server.main`.
-- Expanded `server.routing.commerce` so agentic checkout route dependency wiring no longer lives inline in `server.main`.
-- Expanded `server.routing.commerce` so secure checkout executor dependency wiring, executor flag handling, and production Postgres enforcement no longer live inline in `server.main`.
-- Expanded `server.routing.commerce` so merchant management and checkout-link route dependency wiring no longer lives inline in `server.main`.
-- Expanded `server.routing.commerce` so Pay with Sardis merchant checkout session route dependency wiring no longer lives inline in `server.main`.
-- Expanded `server.routing.providers` so feature-flagged Striga, Lightspark Grid, fiat rails, and currency route registration no longer lives inline in `server.main`.
-- Added `server.routing.identity` so Agent Auth discovery/management and enterprise SSO route registration no longer live inline in `server.main`.
-- Expanded `server.routing.authority` so spending mandate CRUD and lifecycle route registration no longer lives inline in `server.main`.
-- Expanded `server.routing.providers` so Polar billing-provider webhook registration no longer lives inline in `server.main`.
-- Expanded `server.routing.protocol` so the A2A `.well-known/agent-card.json` discovery route no longer lives inline in `server.main`.
-- Added `server.routing.health` so liveness, readiness, service discovery, and deep-health route registration no longer lives inline in `server.main`.
+- Expanded `server.route_registry.money_movement` with swap, exchange, and verification route registration so those provider-backed money-movement helper routes no longer mount inline in `server.main`.
+- Added `server.route_registry.compliance` for KYC onboarding and compliance evidence export registration so low-coupling regulatory routes no longer mount inline in `server.main`.
+- Expanded `server.route_registry.compliance` so compliance screening, KYC/KYA, audit, and Persona webhook dependency wiring no longer lives inline in `server.main`.
+- Expanded `server.route_registry.commerce` so agentic checkout route dependency wiring no longer lives inline in `server.main`.
+- Expanded `server.route_registry.commerce` so secure checkout executor dependency wiring, executor flag handling, and production Postgres enforcement no longer live inline in `server.main`.
+- Expanded `server.route_registry.commerce` so merchant management and checkout-link route dependency wiring no longer lives inline in `server.main`.
+- Expanded `server.route_registry.commerce` so Pay with Sardis merchant checkout session route dependency wiring no longer lives inline in `server.main`.
+- Expanded `server.route_registry.providers` so feature-flagged Striga, Lightspark Grid, fiat rails, and currency route registration no longer lives inline in `server.main`.
+- Added `server.route_registry.identity` so Agent Auth discovery/management and enterprise SSO route registration no longer live inline in `server.main`.
+- Expanded `server.route_registry.authority` so spending mandate CRUD and lifecycle route registration no longer lives inline in `server.main`.
+- Expanded `server.route_registry.providers` so Polar billing-provider webhook registration no longer lives inline in `server.main`.
+- Expanded `server.route_registry.protocol` so the A2A `.well-known/agent-card.json` discovery route no longer lives inline in `server.main`.
+- Added `server.route_registry.health` so liveness, readiness, service discovery, and deep-health route registration no longer lives inline in `server.main`.
 - Added a tested `resolve_storage_backend` helper so database URL selection and production PostgreSQL enforcement no longer live inline in `server.main`.
 - Added a tested `resolve_cache_backend` helper so Redis URL selection and production Redis enforcement no longer live inline in `server.main`.
 - Added a tested `validate_live_execution_config` helper so live-chain and MPC signer safety rules no longer live inline in `server.main`.
@@ -250,7 +250,7 @@ Additional contributor-readiness pass: package docs now cover the tracked experi
 
 Latest public-surface pass: remaining private deployment, staging, mainnet, partner, monitoring, and demo scripts have been removed from the OSS repo. Public deployment docs now describe local/container/Cloud Run deployment without organization-specific bootstrap scripts, and package maturity is enforced by the default verification command.
 
-Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration now lives under `server.routing.<domain>` modules so `main.py` can shrink toward a composition root. The physical route placement pass is complete: outbound webhook subscription and dev utility route code lives under `server.routes.developer`, inbound provider callback and provider adapter code lives under `server.routes.providers`, pay/ledger/transaction/payment/bridge code lives under `server.routes.money_movement`, mandate/AP2/MVP/approval/delegation/subscription/credential/facility code lives under `server.routes.authority`, wallet/card/treasury/funding/ramp/on-chain/onramp code lives under `server.routes.wallets`, and the remaining account, commerce, billing, policy, evidence, compliance, protocol, identity, operations, and agent lifecycle surfaces live under their matching domain route packages. The old flat router compatibility package has been removed after internal imports and tests moved to the domain modules.
+Latest API layout pass: the first route naming cleanup removed one dead prototype router and renamed the generic outbound webhook module to make room for a clearer distinction between customer webhook subscriptions and inbound provider callbacks. Route registration now lives under `server.route_registry.<domain>` modules so `main.py` can shrink toward a composition root. The physical route placement pass is complete: outbound webhook subscription and dev utility route code lives under `server.routes.developer`, inbound provider callback and provider adapter code lives under `server.routes.providers`, pay/ledger/transaction/payment/bridge code lives under `server.routes.money_movement`, mandate/AP2/MVP/approval/delegation/subscription/credential/facility code lives under `server.routes.authority`, wallet/card/treasury/funding/ramp/on-chain/onramp code lives under `server.routes.wallets`, and the remaining account, commerce, billing, policy, evidence, compliance, protocol, identity, operations, and agent lifecycle surfaces live under their matching domain route packages. The old flat router compatibility package has been removed after internal imports and tests moved to the domain modules.
 
 Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
 
@@ -263,12 +263,16 @@ Latest CI/CD guardrail pass: the public CI map now inventories every workflow fi
 Latest source-layout pass: the contributor gate now enforces the current API
 source layout directly. The reference API must stay at
 `packages/reference-api/server`, route implementations must stay under domain
-`routes/` modules, registration must stay under `routing/`, and the old
+`routes/` modules, registration must stay under `route_registry/`, and the old
 repeated API package/source shape must not return. Published Python libraries
 may still use `src/<import_package>` when that is the package-correct library
 layout. The contributor tree helper now has an API-focused command,
 `pnpm repo:api-tree`, and the source-layout gate rejects route implementation
 files nested deeper than `routes/<domain>/<module>.py`.
+Latest route registration naming pass: the former `server.routing` package was
+renamed to `server.route_registry` so contributors can distinguish endpoint
+implementations under `server.routes` from FastAPI registration helpers without
+parsing two nearly identical directory names.
 
 Latest API bootstrap pass: KYC provider/service construction moved out of
 `server.main` into a tested dependency helper. The production
@@ -371,7 +375,7 @@ Notes:
 ## Next 30 Days
 
 - Split `server.main` into bootstrap registrars without changing route contracts.
-- Continue extracting `server.main` route registration into `routing/authority.py`, `routing/money_movement.py`, `routing/providers.py`, and `routing/operations.py`.
+- Continue extracting `server.main` route registration into `route_registry/authority.py`, `route_registry/money_movement.py`, `route_registry/providers.py`, and `route_registry/operations.py`.
 - Continue extracting `server.main` route registration into smaller domain registrars now that route implementation placement is domain-based.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.

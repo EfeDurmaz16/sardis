@@ -463,7 +463,7 @@ class TestStripeConnectRouterWiring:
     def test_stripe_connect_registrar_mounts_public_routes(self):
         from fastapi import FastAPI
 
-        from server.routing.providers import register_stripe_connect_routes
+        from server.route_registry.providers import register_stripe_connect_routes
 
         app = FastAPI()
         register_stripe_connect_routes(

@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 
-from server.routes.compliance import compliance
-from server.routing.compliance import (
+from server.route_registry.compliance import (
     register_compliance_export_routes,
     register_compliance_routes,
     register_kyc_onboarding_routes,
 )
+from server.routes.compliance import compliance
 
 
 def test_register_compliance_routes_mounts_core_and_public_paths_with_dependencies() -> None:

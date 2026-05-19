@@ -91,6 +91,6 @@ python3 scripts/source_layout_check.py
 ```
 
 It requires the active API tree to stay at `packages/reference-api/server` with
-domain route modules under `routes/` and FastAPI registration under `routing/`.
+domain route modules under `routes/` and FastAPI registration under `route_registry/`.
 Published Python libraries may still use `src/<import_package>` when that is
 the package-correct layout for a library.

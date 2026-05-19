@@ -13,7 +13,7 @@ from server.routes.policy import (
     policy_simulation,
 )
 
-logger = logging.getLogger("server.api.routing.policy")
+logger = logging.getLogger("server.api.route_registry.policy")
 
 
 def register_policy_routes(

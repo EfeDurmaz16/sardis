@@ -5,7 +5,7 @@ import inspect
 
 
 def test_developer_routing_has_explicit_sandbox_enable_flag():
-    from server.routing import developer
+    from server.route_registry import developer
 
     source = inspect.getsource(developer)
     assert "SARDIS_ENABLE_SANDBOX" in source
