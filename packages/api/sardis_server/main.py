@@ -80,8 +80,6 @@ from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
 from .routes.commerce import secure_checkout as secure_checkout_router
 from .routes.compliance import compliance as compliance_router
-from .routes.compliance import compliance_export as compliance_export_router
-from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -109,6 +107,7 @@ from .routing.commerce import (
     register_marketplace_routes,
     register_service_directory_routes,
 )
+from .routing.compliance import register_compliance_export_routes, register_kyc_onboarding_routes
 from .routing.developer import (
     register_developer_utility_routes,
     register_enterprise_support_routes,
@@ -1701,8 +1700,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if hasattr(compliance_router, "public_router"):
         app.include_router(compliance_router.public_router, prefix="/api/v2/compliance", tags=["compliance"])
 
-    # Self-serve KYC initiation and status (developer-facing)
-    app.include_router(kyc_onboarding_router.router)
+    register_kyc_onboarding_routes(app)
 
     register_account_self_service_routes(app)
 
@@ -1850,7 +1848,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # --- Service Directory, Compliance Export, Agent Registry ---
     register_service_directory_routes(app)
-    app.include_router(compliance_export_router.router)
+    register_compliance_export_routes(app)
     register_agent_registry_routes(app)
 
     # --- Delegated payment rails routers ---
