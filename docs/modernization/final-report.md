@@ -103,8 +103,8 @@
 - Moved delegated credential route implementation into `sardis_server.routes.authority`, keeping credential provisioning, consent validation, scope tightening, and revocation with the rest of the scoped authority APIs.
 - Moved enterprise support ticket/profile routes, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, and testnet faucet routes into `sardis_server.routes.developer` so contributor-facing support, transparency, webhook setup, testing, and onboarding APIs are no longer buried in the flat router bucket.
 - Removed the temporary `sardis_server.routers` compatibility package after migrating internal source and tests to the new domain route modules.
-- Added and executed a package path simplification decision: keep the Python import package `src/sardis_server`, but rename the monorepo package directory from `packages/api` to `packages/api`.
-- Renamed the API import package from `packages/api/src/sardis_server` to `packages/api/src/sardis_server`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
+- Added and executed a package path simplification decision: keep the Python import package `src/sardis_server`, but consolidate the monorepo API package directory at `packages/api`.
+- Preserved the API import package at `packages/api/src/sardis_server`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
 - Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
@@ -112,7 +112,7 @@
 - Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.
 - Added public Facility Gate alert/dashboard artifacts required by the pilot readiness gate.
 - Updated JWT logout regression coverage to test the current internal-token revocation path instead of the removed shared admin password fallback.
-- Renamed the deployable FastAPI/reference API package directory from `packages/api` to `packages/api` so contributors can distinguish it from protocol schemas, generated clients, or generic API artifacts at a glance.
+- Consolidated the deployable FastAPI/reference API package directory at `packages/api` so contributors can distinguish it from protocol schemas, generated clients, or generic API artifacts at a glance.
 - Updated CI, Docker, Vercel/serverless entrypoints, package source mappings, OpenAPI scripts, migration scripts, tests, docs, and generated public canvas references to the new `packages/api` path.
 - Adjusted local/serverless startup paths so `sardis_server.main` resolves to the server package rather than the root simulation SDK package when launching the API.
 - Moved the root public Python client facade from `sardis/` to `src/sardis/` so the repository root no longer shadows the server package's `sardis_server.main` import.
@@ -204,7 +204,7 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 
 Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
 
-Latest path-layout pass: the deployable API package now lives at `packages/api`, while the Python import package remains `sardis` and the distribution name remains `sardis-api`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
+Latest path-layout pass: the deployable API package now lives at `packages/api`, while the API Python import package remains `sardis_server` and the distribution name remains `sardis-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
 
 Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/api/src/sardis_server` during local import probes.
 
@@ -399,7 +399,7 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agent_events_and_holds_wiring.py -q` passed after moving agent events routes: 4 tests.
 - `pnpm check:openapi` passed after the agent lifecycle route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 - Core agent lifecycle and registry routes now live under `sardis_server.routes.agents` instead of the legacy flat `sardis_server.routers` bucket; compatibility wrappers remain for old import paths.
-- The package-path simplification migration renamed `packages/api` to `packages/api`, removing the most confusing contributor-facing `sardis-api/src/sardis_server` repetition while preserving the Python import package.
+- The package-path simplification migration consolidated the API package at `packages/api`, removing the most confusing contributor-facing repeated API naming while preserving the Python import package.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agents_payment_identity.py packages/api/tests/test_agent_events_and_holds_wiring.py packages/api/tests/test_agent_auth.py -q` passed after moving core agent routes: 32 tests.
 - `pnpm check:openapi` passed after the core agent route move: 540 paths and 592 schemas. The command still warns that local Node is v24.10.0 while the repo requests 22.x.
 - `python3 scripts/package_maturity_check.py`, `pnpm check:openapi`, `python3 -m compileall -q packages/api/src/sardis_server packages/api/scripts/generate_openapi.py api/index.py`, and `git diff --check` passed after the package-directory rename.

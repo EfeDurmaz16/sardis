@@ -56,8 +56,8 @@
 
 ### 5a. Server API Package Path Simplification
 
-- Goal: Reduce contributor-visible ambiguity by renaming the monorepo API package directory from `packages/api` to `packages/api` and the server import package from `sardis` to `sardis_server`.
-- Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and any path references to `packages/api`.
+- Goal: Reduce contributor-visible ambiguity by consolidating the monorepo API package directory at `packages/api` while keeping the server import package `sardis_server` stable.
+- Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and API package path references.
 - Implementation notes: Do not remove `src/sardis_server`; it is the stable Python import package and the standard `src` layout. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
 - Risk: High.
 - Rollback plan: Revert the directory rename commit and path-reference updates together.
