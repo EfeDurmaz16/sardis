@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRIBUTION_MAP = ROOT / "docs" / "oss" / "contribution-map.md"
+TESTING_DOC = ROOT / "docs" / "oss" / "testing.md"
 PACKAGES_DOC = ROOT / "docs" / "packages.md"
 
 
@@ -44,6 +45,7 @@ def main() -> int:
     files = tracked_files()
     tracked = tracked_package_dirs(files)
     contribution_map_text = CONTRIBUTION_MAP.read_text(encoding="utf-8")
+    testing_doc_text = TESTING_DOC.read_text(encoding="utf-8")
     maturity_refs = package_refs(PACKAGES_DOC)
     contribution_refs = package_refs(CONTRIBUTION_MAP)
 
@@ -64,6 +66,15 @@ def main() -> int:
     ]
     missing_protocol_boundary_refs = [
         ref for ref in required_protocol_boundary_refs if ref not in contribution_map_text
+    ]
+    required_protocol_testing_refs = [
+        "PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q",
+        "PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q",
+        "PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q",
+        "Run those protocol targets separately.",
+    ]
+    missing_protocol_testing_refs = [
+        ref for ref in required_protocol_testing_refs if ref not in testing_doc_text
     ]
 
     errors: list[str] = []
@@ -91,6 +102,11 @@ def main() -> int:
         errors.append(
             "docs/oss/contribution-map.md is missing required paid-protocol boundary guidance:\n"
             + "\n".join(f"  - {ref}" for ref in missing_protocol_boundary_refs)
+        )
+    if missing_protocol_testing_refs:
+        errors.append(
+            "docs/oss/testing.md is missing required paid-protocol validation guidance:\n"
+            + "\n".join(f"  - {ref}" for ref in missing_protocol_testing_refs)
         )
 
     if errors:

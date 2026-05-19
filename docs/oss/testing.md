@@ -20,6 +20,21 @@ The root `package.json` `test` script runs the maintained package-owned suites.
 Root `pyproject.toml` also points pytest at `packages/reference-api/tests` by
 default.
 
+Some protocol packages are intentionally validated with package-local source
+paths instead of relying on a published install. Use these commands when
+changing paid HTTP protocol behavior:
+
+```bash
+PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
+PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
+PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q
+```
+
+Run those protocol targets separately. The package-local protocol tests and
+legacy root protocol tests load different pytest `tests.conftest` modules, so
+combining them into one pytest invocation can produce plugin-registration
+collisions unrelated to the code under test.
+
 `pnpm run check:contributor` is the recommended first check for public OSS
 cleanup PRs. It verifies the public/private surface guard, stale API path guard,
 source-layout guard, generated-artifact guard, public docs local-link guard, CI
