@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES_DOC = ROOT / "docs" / "packages.md"
 DEVELOPMENT_DOC = ROOT / "docs" / "development.md"
+MIN_README_CHARS = 200
 
 
 def tracked_files() -> list[str]:
@@ -57,6 +58,14 @@ def main() -> int:
         for pkg in tracked
         if f"packages/{pkg}/README.md" not in files
     )
+    thin_readmes: list[tuple[str, int]] = []
+    for pkg in sorted(tracked):
+        readme = ROOT / "packages" / pkg / "README.md"
+        if not readme.exists():
+            continue
+        text = readme.read_text(encoding="utf-8").strip()
+        if len(text) < MIN_README_CHARS:
+            thin_readmes.append((pkg, len(text)))
 
     errors: list[str] = []
     if missing_docs:
@@ -74,6 +83,15 @@ def main() -> int:
             "Tracked package directories missing README.md:\n"
             + "\n".join(f"  - packages/{pkg}/README.md" for pkg in missing_readmes)
         )
+    if thin_readmes:
+        errors.append(
+            "Tracked package README.md files are too thin for public contribution:\n"
+            + "\n".join(
+                f"  - packages/{pkg}/README.md ({size} chars)"
+                for pkg, size in thin_readmes
+            )
+            + f"\nMinimum README length is {MIN_README_CHARS} non-whitespace characters."
+        )
     if "pnpm repo:package-validation" not in development_text:
         errors.append(
             "docs/development.md must document pnpm repo:package-validation so "
@@ -86,7 +104,7 @@ def main() -> int:
 
     print(
         f"Package maturity check passed: {len(tracked)} tracked package directories "
-        "are documented and have README.md."
+        "are documented and have substantive README.md."
     )
     return 0
 

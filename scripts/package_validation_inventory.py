@@ -35,6 +35,14 @@ VALIDATION_OVERRIDES = {
         "pyproject.toml",
         "PYTHONPATH=packages/sardis-ramp/src uv run pytest packages/sardis-ramp/tests -q",
     ),
+    "packages/sardis-lightspark": (
+        "pyproject.toml",
+        "PYTHONPATH=packages/sardis-lightspark/src:packages/sardis-ramp/src uv run pytest packages/sardis-lightspark/tests -q",
+    ),
+    "packages/sardis-striga": (
+        "pyproject.toml",
+        "PYTHONPATH=packages/sardis-striga/src:packages/sardis-cards/src:packages/sardis-ramp/src uv run pytest packages/sardis-striga/tests -q",
+    ),
     "packages/sardis-openclaw": (
         "pyproject.toml",
         "PYTHONPATH=packages/sardis-openclaw/src uv run pytest packages/sardis-openclaw/tests -q",
@@ -54,6 +62,10 @@ VALIDATION_OVERRIDES = {
     "packages/sardis-coinbase": (
         "pyproject.toml",
         "PYTHONPATH=packages/sardis-coinbase/src uv run pytest packages/sardis-coinbase/tests -q",
+    ),
+    "packages/sardis-wallet": (
+        "pyproject.toml",
+        "PYTHONPATH=packages/sardis-wallet/src:packages/sardis-core/src uv run pytest packages/sardis-wallet/tests -q",
     ),
     "packages/sardis-agentkit": (
         "pyproject.toml",
