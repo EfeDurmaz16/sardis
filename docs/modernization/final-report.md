@@ -334,6 +334,11 @@ URL defaults.
 Stripe Connect route registration now reuses the checkout runtime's resolved
 Stripe Connect provider instead of constructing a second provider inline in
 `server.main`.
+Late-stage dependency-light route registration now lives in
+`server.route_registry.static_routes`, reducing the app factory's route
+registration tail while preserving coverage for service directory, compliance
+export, agent registry, evidence, policy simulation, settlement, funding, FX,
+batch payment, streaming payment, ACP, ramp, and A2A discovery paths.
 
 ## Test, Build, And Lint Results
 
@@ -343,6 +348,7 @@ Current validation after the latest API bootstrap cleanup:
 - `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 18 passed.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_checkout_runtime.py packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 22 passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_static_routes.py packages/reference-api/tests/test_commerce_routing.py packages/reference-api/tests/test_money_movement_routing.py packages/reference-api/tests/test_protocol_routing.py -q` passed: 10 passed.
 - `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
 - `pnpm check:openapi` passed: 540 paths, 592 schemas.
 - `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.

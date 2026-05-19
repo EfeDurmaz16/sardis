@@ -83,82 +83,53 @@ from .route_registry.accounts import (
     register_auth_routes,
 )
 from .route_registry.admin import register_admin_routes
-from .route_registry.agents import register_agent_lifecycle_routes, register_agent_registry_routes
+from .route_registry.agents import register_agent_lifecycle_routes
 from .route_registry.authority import (
     register_authority_routes,
-    register_credential_routes,
     register_facility_request_routes,
-    register_mandate_delegation_routes,
-    register_mandate_subscription_routes,
     register_spending_mandate_routes,
 )
 from .route_registry.billing import (
     register_billing_routes,
     register_subscription_routes,
-    register_usage_routes,
 )
 from .route_registry.commerce import (
     register_checkout_routes,
-    register_commerce_support_routes,
-    register_escrow_dispute_routes,
     register_invoice_routes,
     register_marketplace_routes,
     register_merchant_checkout_routes,
     register_merchant_routes,
     register_secure_checkout_routes,
-    register_service_directory_routes,
 )
-from .route_registry.compliance import (
-    register_compliance_export_routes,
-    register_compliance_routes,
-    register_kyc_onboarding_routes,
-)
+from .route_registry.compliance import register_compliance_routes, register_kyc_onboarding_routes
 from .route_registry.developer import (
     register_developer_utility_routes,
     register_enterprise_support_routes,
     register_faucet_routes,
     register_notification_routes,
-    register_template_routes,
     register_webhook_subscriptions,
 )
-from .route_registry.evidence import register_audit_anchor_routes, register_evidence_routes
+from .route_registry.evidence import register_audit_anchor_routes
 from .route_registry.health import register_health_routes
 from .route_registry.identity import register_agent_auth_routes, register_sso_routes
 from .route_registry.money_movement import (
-    register_batch_payment_routes,
     register_bridge_routes,
-    register_fx_routes,
     register_hold_routes,
     register_ledger_routes,
     register_pay_endpoint,
-    register_payment_object_routes,
-    register_receipt_routes,
     register_refund_routes,
-    register_settlement_routes,
-    register_streaming_payment_routes,
     register_swap_routes,
     register_transaction_routes,
 )
 from .route_registry.operations import (
     register_alert_routes,
-    register_dashboard_metrics_routes,
-    register_exception_routes,
-    register_execution_mode_routes,
-    register_outcome_reliability_routes,
     register_realtime_operations_routes,
 )
-from .route_registry.policy import (
-    register_fallback_policy_routes,
-    register_policy_analytics_routes,
-    register_policy_routes,
-    register_policy_simulation_routes,
-)
+from .route_registry.policy import register_policy_routes
 from .route_registry.protocol import (
-    register_a2a_discovery_routes,
     register_a2a_routes,
     register_erc8183_routes,
     register_mpp_routes,
-    register_protocol_v1_routes,
     register_x402_routes,
 )
 from .route_registry.providers import (
@@ -170,13 +141,12 @@ from .route_registry.providers import (
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
+from .route_registry.static_routes import register_static_public_routes
 from .route_registry.wallets import (
     register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,
-    register_funding_routes,
     register_onchain_payment_routes,
-    register_ramp_edge_routes,
     register_ramp_routes,
     register_treasury_routes,
     register_wallet_core_routes,
@@ -919,7 +889,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_developer_utility_routes(app, is_production=is_production)
 
-    register_evidence_routes(app)
     register_facility_request_routes(
         app,
         repository=facility_gate_repo,
@@ -973,40 +942,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         checkout_base_url=checkout_base_url,
     )
 
-    # --- Service Directory, Compliance Export, Agent Registry ---
-    register_service_directory_routes(app)
-    register_compliance_export_routes(app)
-    register_agent_registry_routes(app)
-
-    # --- Delegated payment rails routers ---
-    register_credential_routes(app)
-    register_execution_mode_routes(app)
-    register_settlement_routes(app)
-
-    # --- Trust & Evidence Platform routers ---
-    register_policy_simulation_routes(app)
-    register_receipt_routes(app)
-    register_outcome_reliability_routes(app)
-    register_policy_analytics_routes(app)
-    register_exception_routes(app)
-    register_template_routes(app)
-    register_fallback_policy_routes(app)
-    register_commerce_support_routes(app)
-    register_dashboard_metrics_routes(app)
-
-    # Protocol v1.0 routers
-    register_payment_object_routes(app)
-    register_funding_routes(app)
-    register_mandate_delegation_routes(app)
-    register_fx_routes(app)
-    register_usage_routes(app)
-    register_escrow_dispute_routes(app)
-    register_batch_payment_routes(app)
-    register_mandate_subscription_routes(app)
-    register_streaming_payment_routes(app)
-    register_protocol_v1_routes(app)
-    register_ramp_edge_routes(app)
-    register_a2a_discovery_routes(app)
+    register_static_public_routes(app)
 
     register_health_routes(
         app,
