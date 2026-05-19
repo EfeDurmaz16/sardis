@@ -29,6 +29,10 @@ from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.identity import IdentityRegistry
 
 from .card_runtime import configure_card_runtime
+from .checkout_runtime import (
+    configure_checkout_orchestrator,
+    configure_merchant_checkout_runtime,
+)
 from .dependencies import (
     configure_api_support_services,
     configure_compliance_services,
@@ -855,26 +859,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_account_group_routes(app)
 
-    # Checkout routes (Agentic Checkout - Pivot D)
-    from sardis_checkout.connectors.stripe import StripeConnector
-    from sardis_checkout.orchestrator import CheckoutOrchestrator
-
-    stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
-    stripe_webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    stripe_connector = (
-        StripeConnector(api_key=stripe_secret_key, webhook_secret=stripe_webhook_secret)
-        if stripe_secret_key
-        else None
-    )
-    checkout_orchestrator = CheckoutOrchestrator()
-    if stripe_connector:
-        checkout_orchestrator.register_connector("stripe", stripe_connector)
+    checkout_runtime = configure_checkout_orchestrator()
 
     register_checkout_routes(
         app,
         database_url=database_url,
         use_postgres=use_postgres,
-        orchestrator=checkout_orchestrator,
+        orchestrator=checkout_runtime.orchestrator,
     )
 
     register_secure_checkout_routes(
@@ -938,49 +929,24 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_sso_routes(app)
 
-    # -----------------------------------------------------------------------
-    # Merchant checkout ("Pay with Sardis")
-    # -----------------------------------------------------------------------
-    from sardis_checkout.connectors.sardis_native import SardisNativeConnector
-    from sardis_checkout.merchant_webhooks import MerchantWebhookService
-    from sardis_checkout.settlement import SettlementService
-    from sardis_v2_core.merchant import MerchantRepository
-
-    merchant_repo = MerchantRepository()
-    merchant_webhook_service = MerchantWebhookService(merchant_repo=merchant_repo)
-
-    # Initialize Stripe Connect provider for settlement (optional)
-    _stripe_connect_for_settlement = None
-    try:
-        from sardis_v2_core.stripe_connect import StripeConnectProvider
-        _stripe_connect_for_settlement = StripeConnectProvider()
-    except (ImportError, ValueError):
-        pass  # Stripe not configured, skip
-
-    settlement_service = SettlementService(
-        merchant_repo=merchant_repo,
-        offramp_service=None,  # Wire Bridge offramp when configured
-        merchant_webhook_service=merchant_webhook_service,
-        stripe_connect_provider=_stripe_connect_for_settlement,
-    )
-
-    sardis_native_connector = SardisNativeConnector(
+    merchant_checkout_runtime = configure_merchant_checkout_runtime(
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
         compliance_engine=compliance,
         ledger_store=ledger_store,
-        merchant_repo=merchant_repo,
-        settlement_service=settlement_service,
-        merchant_webhook_service=merchant_webhook_service,
     )
+    merchant_repo = merchant_checkout_runtime.merchant_repository
+    merchant_webhook_service = merchant_checkout_runtime.merchant_webhook_service
+    settlement_service = merchant_checkout_runtime.settlement_service
+    sardis_native_connector = merchant_checkout_runtime.sardis_native_connector
 
-    checkout_orchestrator.register_connector("sardis", sardis_native_connector)
+    checkout_runtime.orchestrator.register_connector("sardis", sardis_native_connector)
 
     # Store settlement service on app.state for background jobs
     app.state.settlement_service = settlement_service
     app.state.merchant_webhook_service = merchant_webhook_service
 
-    checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
+    checkout_base_url = merchant_checkout_runtime.checkout_base_url
     register_merchant_routes(
         app,
         merchant_repo=merchant_repo,
