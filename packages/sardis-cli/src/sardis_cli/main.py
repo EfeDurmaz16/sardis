@@ -23,7 +23,6 @@ from .commands import (
     ledger,
     payments,
     policies,
-    projects,
     spending,
     wallets,
 )
@@ -137,7 +136,6 @@ cli.add_command(demo.demo)
 cli.add_command(groups.groups)
 cli.add_command(approvals.approvals)
 cli.add_command(ledger.ledger)
-cli.add_command(projects.projects)
 
 # Spending mandates
 from sardis_cli.commands import mandates
