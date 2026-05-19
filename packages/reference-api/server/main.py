@@ -29,9 +29,9 @@ if should_bootstrap_monorepo_sys_path():
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.identity import IdentityRegistry
 
-from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
     configure_api_support_services,
+    configure_card_runtime,
     configure_compliance_services,
     configure_core_services,
     configure_cpn_runtime,
@@ -730,267 +730,32 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         environment=settings.environment,
     )
 
-    # Virtual Card routes (gated behind feature flag)
-    card_repo = None
-    card_provider = None
-    if os.getenv("SARDIS_ENABLE_CARDS", "").lower() in ("1", "true", "yes"):
-        from server.repositories.card_repository import CardRepository
-
-        card_repo = CardRepository(dsn=database_url if use_postgres else None)
-        from sardis_cards.providers.mock import MockProvider
-
-        configured_primary = (settings.cards.primary_provider or "mock").strip().lower()
-        lithic_api_key = settings.lithic.api_key or os.getenv("LITHIC_API_KEY", "")
-        stripe_api_key = (
-            settings.stripe.api_key
-            or os.getenv("STRIPE_API_KEY", "")
-            or os.getenv("STRIPE_SECRET_KEY", "")
-        )
-        stripe_webhook_secret = settings.stripe.webhook_secret or os.getenv("STRIPE_WEBHOOK_SECRET", "")
-        provider_cache: dict[str, object] = {}
-
-        def _build_provider(provider_name: str):
-            cached = provider_cache.get(provider_name)
-            if cached is not None:
-                return cached
-            if provider_name == "lithic":
-                if not lithic_api_key:
-                    logger.warning("LITHIC_API_KEY missing; cannot initialize Lithic provider")
-                    return None
-                try:
-                    from sardis_cards.providers.lithic import LithicProvider
-
-                    provider = LithicProvider(
-                        api_key=lithic_api_key,
-                        environment=settings.lithic.environment,
-                    )
-                    provider_cache[provider_name] = provider
-                    return provider
-                except Exception as exc:
-                    logger.warning("Lithic provider init failed: %s", exc)
-                    return None
-            if provider_name == "stripe_issuing":
-                if not stripe_api_key:
-                    logger.warning(
-                        "STRIPE_API_KEY/STRIPE_SECRET_KEY missing; cannot initialize Stripe Issuing provider"
-                    )
-                    return None
-                try:
-                    from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
-
-                    async def _stripe_policy_evaluator(
-                        _wallet_id: str,
-                        _amount,
-                        _mcc_code: str,
-                        _merchant_name: str,
-                    ) -> tuple[bool, str]:
-                        from decimal import Decimal as _Decimal
-                        _amount = _Decimal(str(_amount))
-                        if not policy_store or not wallet_repo:
-                            return True, "OK"
-                        _wallet = await wallet_repo.get(_wallet_id)
-                        if not _wallet:
-                            return True, "OK"
-                        _policy = await policy_store.fetch_policy(_wallet.agent_id)
-                        if not _policy:
-                            return True, "OK"
-                        _merchant_category = None
-                        if _mcc_code:
-                            from sardis_v2_core.mcc_service import get_mcc_info
-                            _mcc_info = get_mcc_info(_mcc_code)
-                            if _mcc_info:
-                                _merchant_category = _mcc_info.category
-                        return _policy.validate_payment(
-                            amount=_amount,
-                            fee=_Decimal("0"),
-                            mcc_code=_mcc_code,
-                            merchant_category=_merchant_category,
-                        )
-
-                    provider = StripeIssuingProvider(
-                        api_key=stripe_api_key,
-                        webhook_secret=stripe_webhook_secret or None,
-                        policy_evaluator=_stripe_policy_evaluator,
-                    )
-                    provider_cache[provider_name] = provider
-                    return provider
-                except Exception as exc:
-                    logger.warning("Stripe Issuing provider init failed: %s", exc)
-                    return None
-            if provider_name == "mock":
-                provider = MockProvider()
-                provider_cache[provider_name] = provider
-                return provider
-            if provider_name == "rain":
-                rain_api_key = settings.rain.api_key or os.getenv("RAIN_API_KEY", "")
-                if not rain_api_key:
-                    logger.warning("RAIN_API_KEY missing; cannot initialize Rain provider")
-                    return None
-                try:
-                    from sardis_cards.providers.partner_issuers import RainCardsProvider
-
-                    rain_base_url = settings.rain.base_url or os.getenv("RAIN_BASE_URL", "https://api.rain.xyz")
-                    provider = RainCardsProvider(
-                        api_key=rain_api_key,
-                        base_url=rain_base_url,
-                        program_id=settings.rain.program_id or os.getenv("RAIN_PROGRAM_ID", ""),
-                        path_map=settings.rain.cards_path_map_json or os.getenv("RAIN_CARDS_PATH_MAP_JSON", ""),
-                        method_map=settings.rain.cards_method_map_json or os.getenv("RAIN_CARDS_METHOD_MAP_JSON", ""),
-                    )
-                    provider_cache[provider_name] = provider
-                    return provider
-                except Exception as exc:
-                    logger.warning("Rain provider init failed: %s", exc)
-                    return None
-            if provider_name == "bridge_cards":
-                bridge_api_key = settings.bridge_cards.api_key or os.getenv("BRIDGE_API_KEY", "")
-                if not bridge_api_key:
-                    logger.warning("BRIDGE_API_KEY missing; cannot initialize Bridge cards provider")
-                    return None
-                try:
-                    from sardis_cards.providers.partner_issuers import BridgeCardsProvider
-
-                    bridge_base_url = (
-                        settings.bridge_cards.cards_base_url
-                        or os.getenv("BRIDGE_CARDS_BASE_URL", "https://api.bridge.xyz")
-                    )
-                    provider = BridgeCardsProvider(
-                        api_key=bridge_api_key,
-                        api_secret=settings.bridge_cards.api_secret or os.getenv("BRIDGE_API_SECRET", ""),
-                        base_url=bridge_base_url,
-                        program_id=settings.bridge_cards.program_id or os.getenv("BRIDGE_PROGRAM_ID", ""),
-                        path_map=(
-                            settings.bridge_cards.cards_path_map_json
-                            or os.getenv("BRIDGE_CARDS_PATH_MAP_JSON", "")
-                        ),
-                        method_map=(
-                            settings.bridge_cards.cards_method_map_json
-                            or os.getenv("BRIDGE_CARDS_METHOD_MAP_JSON", "")
-                        ),
-                    )
-                    provider_cache[provider_name] = provider
-                    return provider
-                except Exception as exc:
-                    logger.warning("Bridge cards provider init failed: %s", exc)
-                    return None
-            logger.warning("Unknown card provider configured: %s", provider_name)
-            return None
-
-        primary_provider = _build_provider(configured_primary)
-        configured_fallback = (settings.cards.fallback_provider or "").strip().lower()
-        fallback_provider = None
-        if configured_fallback and configured_fallback != configured_primary:
-            fallback_provider = _build_provider(configured_fallback)
-
-        if primary_provider is None and fallback_provider is not None:
-            provider_impl = fallback_provider
-            logger.info(
-                "Primary card provider unavailable; using fallback provider=%s",
-                configured_fallback,
-            )
-        elif primary_provider is None:
-            provider_impl = MockProvider()
-            logger.warning("No card provider could be initialized; using MockProvider")
-        elif fallback_provider is not None:
-            from sardis_cards.providers.router import CardProviderRouter
-
-            provider_impl = CardProviderRouter(primary=primary_provider, fallback=fallback_provider)
-            logger.info(
-                "Cards enabled with routed providers primary=%s fallback=%s",
-                configured_primary,
-                configured_fallback,
-            )
-        else:
-            provider_impl = primary_provider
-            logger.info("Cards enabled with provider=%s", configured_primary)
-
-        org_overrides_raw = (
-            settings.cards.org_provider_overrides_json
-            or os.getenv("SARDIS_CARDS_ORG_PROVIDER_OVERRIDES_JSON", "")
-        )
-        if org_overrides_raw and wallet_repo and agent_repo:
-            try:
-                parsed = json.loads(org_overrides_raw)
-            except json.JSONDecodeError:
-                parsed = {}
-                logger.warning("Invalid SARDIS_CARDS_ORG_PROVIDER_OVERRIDES_JSON; ignoring")
-            if isinstance(parsed, dict) and parsed:
-                org_provider_map: dict[str, object] = {}
-                for org_id, provider_name in parsed.items():
-                    provider_name_str = str(provider_name).strip().lower()
-                    provider_candidate = _build_provider(provider_name_str)
-                    if provider_candidate is None:
-                        logger.warning(
-                            "Could not initialize org-specific provider '%s' for org=%s",
-                            provider_name_str,
-                            org_id,
-                        )
-                        continue
-                    org_provider_map[str(org_id)] = provider_candidate
-                if org_provider_map:
-                    from sardis_cards.providers.org_router import OrganizationCardProviderRouter
-
-                    async def _resolve_wallet_org(wallet_id: str) -> str | None:
-                        wallet = await wallet_repo.get(wallet_id)
-                        if not wallet:
-                            return None
-                        agent = await agent_repo.get(wallet.agent_id)
-                        if not agent or not getattr(agent, "owner_id", None):
-                            return None
-                        return str(agent.owner_id)
-
-                    provider_impl = OrganizationCardProviderRouter(
-                        default_provider=provider_impl,
-                        providers_by_org=org_provider_map,  # type: ignore[arg-type]
-                        wallet_org_resolver=_resolve_wallet_org,
-                    )
-                    logger.info(
-                        "Cards org provider overrides enabled for %d org(s)",
-                        len(org_provider_map),
-                    )
-
-        card_provider = CardProviderCompatAdapter(provider_impl, card_repo)
-        webhook_secret = settings.lithic.webhook_secret or os.getenv("LITHIC_WEBHOOK_SECRET")
-        asa_handler = None
-        asa_secret = (
-            settings.lithic.asa_webhook_secret
-            or os.getenv("LITHIC_ASA_WEBHOOK_SECRET", "")
-            or settings.lithic.webhook_secret
-            or os.getenv("LITHIC_WEBHOOK_SECRET", "")
-        )
-        lithic_present = configured_primary == "lithic" or configured_fallback == "lithic"
-        if lithic_present and settings.lithic.asa_enabled:
-            if not asa_secret:
-                logger.warning("LITHIC_ASA is enabled but no ASA webhook secret is configured")
-            else:
-                from sardis_cards.webhooks import ASAHandler, CardWebhookHandler
-
-                async def _lookup_provider_card(card_token: str):
-                    if hasattr(provider_impl, "get_card"):
-                        return await provider_impl.get_card(card_token)
-                    return None
-
-                asa_handler = ASAHandler(
-                    webhook_handler=CardWebhookHandler(secret=asa_secret, provider="lithic"),
-                    card_lookup=_lookup_provider_card,
-                )
-                logger.info("Lithic ASA handler enabled")
-
-        register_card_routes(
-            app,
-            card_repo=card_repo,
-            card_provider=card_provider,
-            webhook_secret=webhook_secret,
-            environment=settings.environment,
-            offramp_service=offramp_service,
-            chain_executor=chain_exec,
-            wallet_repo=wallet_repo,
-            policy_store=policy_store,
-            treasury_repo=treasury_repo,
-            agent_repo=agent_repo,
-            canonical_repo=canonical_ledger_repo,
-            asa_handler=asa_handler,
-        )
+    card_runtime = configure_card_runtime(
+        settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+        policy_store=policy_store,
+        wallet_repository=wallet_repo,
+        agent_repository=agent_repo,
+    )
+    card_repo = card_runtime.card_repository
+    card_provider = card_runtime.card_provider
+    register_card_routes(
+        app,
+        card_repo=card_repo,
+        card_provider=card_provider,
+        webhook_secret=card_runtime.webhook_secret,
+        environment=settings.environment,
+        offramp_service=offramp_service,
+        chain_executor=chain_exec,
+        wallet_repo=wallet_repo,
+        policy_store=policy_store,
+        treasury_repo=treasury_repo,
+        agent_repo=agent_repo,
+        canonical_repo=canonical_ledger_repo,
+        asa_handler=card_runtime.asa_handler,
+    )
+    if card_runtime.cards_enabled:
         register_partner_card_webhook_routes(
             app,
             card_repo=card_repo,
@@ -998,27 +763,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             agent_repo=agent_repo,
             canonical_repo=canonical_ledger_repo,
             treasury_repo=treasury_repo,
-            rain_webhook_secret=settings.rain.webhook_secret or os.getenv("RAIN_WEBHOOK_SECRET", ""),
-            bridge_webhook_secret=(
-                settings.bridge_cards.webhook_secret
-                or os.getenv("BRIDGE_CARDS_WEBHOOK_SECRET", "")
-            ),
+            rain_webhook_secret=card_runtime.rain_webhook_secret,
+            bridge_webhook_secret=card_runtime.bridge_webhook_secret,
             environment=settings.environment,
-        )
-    else:
-        register_card_routes(
-            app,
-            card_repo=card_repo,
-            card_provider=None,
-            webhook_secret=None,
-            environment=settings.environment,
-            offramp_service=offramp_service,
-            chain_executor=chain_exec,
-            wallet_repo=wallet_repo,
-            policy_store=policy_store,
-            treasury_repo=treasury_repo,
-            agent_repo=agent_repo,
-            canonical_repo=canonical_ledger_repo,
         )
 
     # Stripe treasury + funding + inbound webhooks
