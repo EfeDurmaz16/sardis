@@ -75,7 +75,6 @@ from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.treasury_repository import TreasuryRepository
-from .routes.commerce import checkout as checkout_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
 from .routes.commerce import secure_checkout as secure_checkout_router
@@ -100,6 +99,7 @@ from .routing.billing import (
     register_usage_routes,
 )
 from .routing.commerce import (
+    register_checkout_routes,
     register_commerce_support_routes,
     register_escrow_dispute_routes,
     register_invoice_routes,
@@ -1645,14 +1645,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if stripe_connector:
         checkout_orchestrator.register_connector("stripe", stripe_connector)
 
-    wallet_repo_for_checkout = WalletRepository(dsn=database_url if use_postgres else "memory://")
-    app.dependency_overrides[checkout_router.get_deps] = lambda: checkout_router.CheckoutDependencies(  # type: ignore[arg-type]
-        wallet_repo=wallet_repo_for_checkout,
+    register_checkout_routes(
+        app,
+        database_url=database_url,
+        use_postgres=use_postgres,
         orchestrator=checkout_orchestrator,
     )
-    app.include_router(checkout_router.router, prefix="/api/v2/checkout", tags=["checkout"])
-    if hasattr(checkout_router, "public_router"):
-        app.include_router(checkout_router.public_router, prefix="/api/v2/checkout", tags=["checkout"])
 
     secure_checkout_store = secure_checkout_router.InMemorySecureCheckoutStore()
     if use_postgres:

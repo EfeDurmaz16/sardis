@@ -1,9 +1,12 @@
 """Commerce route registration helpers."""
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI
 
 from sardis_server.routes.commerce import (
+    checkout,
     checkout_controls,
     counterparties,
     escrow_disputes,
@@ -11,6 +14,26 @@ from sardis_server.routes.commerce import (
     marketplace,
     service_directory,
 )
+
+
+def register_checkout_routes(
+    app: FastAPI,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    orchestrator: Any,
+) -> None:
+    """Register agentic checkout routes and their wallet repository dependency."""
+    from sardis_v2_core.wallet_repository import WalletRepository
+
+    wallet_repo = WalletRepository(dsn=database_url if use_postgres else "memory://")
+    app.dependency_overrides[checkout.get_deps] = lambda: checkout.CheckoutDependencies(  # type: ignore[arg-type]
+        wallet_repo=wallet_repo,
+        orchestrator=orchestrator,
+    )
+    app.include_router(checkout.router, prefix="/api/v2/checkout", tags=["checkout"])
+    if hasattr(checkout, "public_router"):
+        app.include_router(checkout.public_router, prefix="/api/v2/checkout", tags=["checkout"])
 
 
 def register_marketplace_routes(
