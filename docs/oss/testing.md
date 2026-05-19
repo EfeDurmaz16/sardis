@@ -22,8 +22,9 @@ default.
 
 `pnpm run check:contributor` is the recommended first check for public OSS
 cleanup PRs. It verifies the public/private surface guard, stale API path guard,
-package maturity matrix, contribution map coverage, root-test migration
-inventory, and a small mixed root/package pytest smoke suite.
+generated-artifact guard, package maturity matrix, contribution map coverage,
+root-test migration inventory, and a small mixed root/package pytest smoke
+suite.
 
 ## Legacy Root Tests
 
