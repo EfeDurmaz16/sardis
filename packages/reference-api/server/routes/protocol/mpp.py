@@ -20,6 +20,14 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from server.authz import Principal, require_principal
+from server.domains.mpp_session import (
+    MPPBudgetExceededError,
+    MPPSessionExpiredError,
+    MPPSessionInactiveError,
+    apply_payment_budget,
+    ensure_card_budget,
+    ensure_session_can_execute,
+)
 from server.models.mpp import (
     CreateMPPSessionRequest,
     ExecutePaymentRequest,
@@ -191,40 +199,21 @@ async def execute_payment(
     """
     session = await _load_session(session_id, principal.org_id)
 
-    if session["status"] != "active":
-        raise HTTPException(status_code=409, detail=f"Session is {session['status']}, cannot execute")
-
-    # Check expiration
-    expires_at = session.get("expires_at")
-    if expires_at:
-        try:
-            if isinstance(expires_at, datetime):
-                exp_dt = expires_at
-            elif isinstance(expires_at, str):
-                exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
-            else:
-                exp_dt = datetime.fromisoformat(str(expires_at).replace(" ", "T").replace("Z", "+00:00"))
-            if exp_dt.tzinfo is None:
-                exp_dt = exp_dt.replace(tzinfo=UTC)
-            is_expired = datetime.now(UTC) > exp_dt
-        except Exception:
-            is_expired = False
-        if is_expired:
-            await mark_session_expired(session_id)
-            raise HTTPException(status_code=409, detail="Session has expired")
-
-    remaining = Decimal(str(session["remaining"]))
-    if req.amount > remaining:
+    try:
+        ensure_session_can_execute(session)
+        budget = apply_payment_budget(session, req.amount)
+    except MPPSessionExpiredError as exc:
+        await mark_session_expired(session_id)
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except MPPSessionInactiveError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except MPPBudgetExceededError as exc:
         raise HTTPException(
             status_code=422,
-            detail=f"Amount {req.amount} exceeds remaining session budget {remaining}",
-        )
+            detail=str(exc),
+        ) from exc
 
     payment_id = f"mpp_pay_{uuid4().hex[:16]}"
-    new_remaining = remaining - req.amount
-    new_total = Decimal(str(session["total_spent"])) + req.amount
-    new_count = session["payment_count"] + 1
-    new_status = "exhausted" if new_remaining <= Decimal("0") else "active"
 
     # ── Execute on-chain payment via ChainExecutor ────────────────────
     tx_hash: str | None = None
@@ -266,10 +255,10 @@ async def execute_payment(
         payment_id=payment_id,
         currency=session["currency"],
         chain=session["chain"],
-        new_remaining=new_remaining,
-        new_total=new_total,
-        new_count=new_count,
-        new_status=new_status,
+        new_remaining=budget.remaining,
+        new_total=budget.total_spent,
+        new_count=budget.payment_count,
+        new_status=budget.status,
         pay_status=pay_status,
         tx_hash=tx_hash,
         created_at=datetime.now(UTC),
@@ -277,7 +266,7 @@ async def execute_payment(
 
     logger.info(
         "MPP payment executed: %s in session %s (amount=%s, remaining=%s, tx=%s)",
-        payment_id, session_id, req.amount, new_remaining, tx_hash,
+        payment_id, session_id, req.amount, budget.remaining, tx_hash,
     )
 
     return ExecutePaymentResponse(
@@ -288,7 +277,7 @@ async def execute_payment(
         status=pay_status,
         tx_hash=tx_hash,
         chain=session["chain"],
-        remaining=str(new_remaining),
+        remaining=str(budget.remaining),
         next_steps=[
             "GET /api/v2/ledger/entries — Check audit trail",
             "POST /api/v2/mpp/sessions/{session_id}/close — Close session",
@@ -391,13 +380,15 @@ async def issue_virtual_card(
             raise HTTPException(status_code=404, detail="MPP session not found")
         if session["org_id"] != principal.org_id:
             raise HTTPException(status_code=403, detail="Access denied")
-        if session["status"] != "active":
-            raise HTTPException(status_code=409, detail=f"Session is {session['status']}")
-        if req.amount > session["remaining"]:
+        try:
+            ensure_card_budget(session, req.amount)
+        except MPPSessionInactiveError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except MPPBudgetExceededError as exc:
             raise HTTPException(
                 status_code=422,
-                detail=f"Card amount {req.amount} exceeds remaining session budget {session['remaining']}",
-            )
+                detail=str(exc),
+            ) from exc
 
     try:
         response = await issue_mpp_virtual_card(req)
