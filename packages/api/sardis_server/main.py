@@ -39,7 +39,6 @@ from sardis_protocol.storage import (
 )
 from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core.cache import create_cache_service
-from sardis_v2_core.holds import HoldsRepository
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.orchestrator import PaymentOrchestrator
 from sardis_wallet.manager import WalletManager
@@ -47,19 +46,8 @@ from sardis_wallet.manager import WalletManager
 from .routes.commerce import checkout as checkout_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
-from .routes.money_movement import batch_payments as batch_payments_router
-from .routes.money_movement import fx as fx_router
-from .routes.money_movement import holds as holds_router
-from .routes.money_movement import ledger as ledger_router
-from .routes.money_movement import payment_objects as payment_objects_router
-from .routes.money_movement import payments_refund as payments_refund_router
-from .routes.money_movement import receipts as receipts_router
-from .routes.money_movement import settlements as settlements_router
-from .routes.money_movement import streaming_payments as streaming_payments_router
 from .routes.money_movement import swap as swap_router
-from .routes.money_movement import transactions as transactions_router
 
-from .routes.money_movement import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
@@ -144,7 +132,20 @@ from .routing.commerce import (
 )
 from .routing.developer import register_developer_utility_routes, register_webhook_subscriptions
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
-from .routing.money_movement import register_pay_endpoint
+from .routing.money_movement import (
+    register_batch_payment_routes,
+    register_bridge_routes,
+    register_fx_routes,
+    register_hold_routes,
+    register_ledger_routes,
+    register_pay_endpoint,
+    register_payment_object_routes,
+    register_receipt_routes,
+    register_refund_routes,
+    register_settlement_routes,
+    register_streaming_payment_routes,
+    register_transaction_routes,
+)
 from .routing.operations import (
     register_alert_routes,
     register_dashboard_metrics_routes,
@@ -723,18 +724,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         chain_mode=settings.chain_mode,
     )
 
-    app.dependency_overrides[ledger_router.get_deps] = lambda: ledger_router.LedgerDependencies(  # type: ignore[arg-type]
-        ledger=ledger_store,
-    )
-    app.include_router(ledger_router.router, prefix="/api/v2/ledger")
-
-    holds_repo = HoldsRepository(dsn=database_url if use_postgres else "memory://")
-    app.state.holds_deps = holds_router.HoldsDependencies(holds_repo=holds_repo)
-    app.state.holds_repo = holds_repo
-    app.dependency_overrides[holds_router.get_deps] = lambda: holds_router.HoldsDependencies(  # type: ignore[arg-type]
-        holds_repo=holds_repo,
-    )
-    app.include_router(holds_router.router, prefix="/api/v2/holds")
+    register_ledger_routes(app, ledger_store=ledger_store)
+    register_hold_routes(app, database_url=database_url, use_postgres=use_postgres)
 
     webhook_service = register_webhook_subscriptions(
         app,
@@ -761,11 +752,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     set_api_key_manager(api_key_manager)
     app.state.api_key_manager = api_key_manager
 
-    app.dependency_overrides[transactions_router.get_deps] = lambda: transactions_router.TransactionDependencies(  # type: ignore[arg-type]
+    register_transaction_routes(
+        app,
         chain_executor=chain_exec,
         canonical_repo=getattr(app.state, "canonical_ledger_repo", None),
     )
-    app.include_router(transactions_router.router, prefix="/api/v2/transactions")
 
     register_marketplace_routes(app, database_url=database_url, use_postgres=use_postgres)
 
@@ -861,12 +852,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(wallets_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
-    # Cross-chain bridge router
-    app.dependency_overrides[bridge_router.get_deps] = lambda: bridge_router.BridgeDependencies(
-        wallet_repo=wallet_repo,
-        chain_executor=chain_exec,
-    )
-    app.include_router(bridge_router.router, prefix="/api/v2/bridge", tags=["bridge"])
+    register_bridge_routes(app, wallet_repo=wallet_repo, chain_executor=chain_exec)
     logger.info("Bridge router registered at /api/v2/bridge")
 
     register_x402_routes(app, facilitator_enabled=settings.x402.facilitator_enabled)
@@ -914,8 +900,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(onchain_payments_router.router, prefix="/api/v2/wallets", tags=["wallets"])
 
-    # Refund endpoints (nested under /payments)
-    app.include_router(payments_refund_router.router, prefix="/api/v2/payments", tags=["payments", "refunds"])
+    register_refund_routes(app)
 
     register_a2a_routes(
         app,
@@ -1918,11 +1903,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # --- Delegated payment rails routers ---
     app.include_router(credentials_router.router)
     register_execution_mode_routes(app)
-    app.include_router(settlements_router.router)
+    register_settlement_routes(app)
 
     # --- Trust & Evidence Platform routers ---
     register_policy_simulation_routes(app)
-    app.include_router(receipts_router.router, prefix="/api/v2/receipts", tags=["receipts"])
+    register_receipt_routes(app)
     register_outcome_reliability_routes(app)
     register_policy_analytics_routes(app)
     register_exception_routes(app)
@@ -1933,15 +1918,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_dashboard_metrics_routes(app)
 
     # Protocol v1.0 routers
-    app.include_router(payment_objects_router.router, prefix="/api/v2", tags=["payment-objects"])
+    register_payment_object_routes(app)
     app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
     app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
-    app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
+    register_fx_routes(app)
     register_usage_routes(app)
     register_escrow_dispute_routes(app)
-    app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
+    register_batch_payment_routes(app)
     app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
-    app.include_router(streaming_payments_router.router, prefix="/api/v2", tags=["streaming-payments"])
+    register_streaming_payment_routes(app)
     register_protocol_v1_routes(app)
     app.include_router(offramp_router.router, prefix="/api/v2", tags=["offramp"])
     app.include_router(onramp_router.router, prefix="/api/v2", tags=["onramp"])
