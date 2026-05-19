@@ -53,6 +53,7 @@
     "repo:tree": "python3 scripts/repo_tree.py",
     "repo:ignored-artifacts": "python3 scripts/ignored_artifact_inventory.py",
     "repo:package-validation": "python3 scripts/package_validation_inventory.py",
+    "repo:stale-paths:local": "python3 scripts/stale_api_path_check.py --include-local",
     "repo:api-tree": "python3 scripts/repo_tree.py --root packages/reference-api/server --max-depth 3 --files"
   },
   "pnpm": {

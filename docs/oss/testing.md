@@ -96,6 +96,17 @@ Run this guard before opening PRs that touch docs, examples, or test routing:
 python3 scripts/stale_api_path_check.py
 ```
 
+For cleanup work, also run the stricter local audit:
+
+```bash
+pnpm repo:stale-paths:local
+```
+
+The local audit includes ignored and untracked text files, so it can surface old
+planning docs, generated canvases, or archived notes that still mention removed
+repeated API package paths. Do not wire that stricter mode into contributor CI
+until those local-only surfaces have been archived or regenerated.
+
 ## Source Layout
 
 The source-layout guard keeps the reference API contributor path readable and

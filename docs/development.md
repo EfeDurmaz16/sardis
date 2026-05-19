@@ -32,6 +32,7 @@ The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[t
 python3 scripts/repo_inventory.py
 pnpm repo:ignored-artifacts
 pnpm repo:package-validation
+pnpm repo:stale-paths:local
 pnpm check:openapi
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
@@ -53,6 +54,11 @@ manifest.
 Packages that still fall back to the repo-wide contributor gate, or that need a
 non-default external tool, are tracked in
 `docs/oss/package-validation-backlog.md`.
+
+`pnpm repo:stale-paths:local` scans the full local working tree, including
+ignored docs and generated canvases, for obsolete repeated API package paths.
+The default contributor guard only scans tracked public surfaces; use this
+local audit before declaring the checkout clean from a navigation standpoint.
 
 The default maintained Python API suite is:
 

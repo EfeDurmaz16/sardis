@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import argparse
+import os
 import re
 import subprocess
 import sys
@@ -66,6 +68,24 @@ TEXT_SUFFIXES = {
     ".yaml",
 }
 
+SKIPPED_LOCAL_DIRS = {
+    ".git",
+    ".mypy_cache",
+    ".next",
+    ".omc",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".turbo",
+    ".venv",
+    "__pycache__",
+    "coverage",
+    "dist",
+    "htmlcov",
+    "node_modules",
+}
+
+MAX_LOCAL_FILE_BYTES = 1_000_000
+
 
 def tracked_files() -> list[str]:
     result = subprocess.run(
@@ -77,19 +97,55 @@ def tracked_files() -> list[str]:
     return [line for line in result.stdout.splitlines() if line]
 
 
+def local_files() -> list[str]:
+    files: list[str] = []
+    for current_root, dirnames, filenames in os.walk("."):
+        dirnames[:] = [
+            dirname for dirname in dirnames if dirname not in SKIPPED_LOCAL_DIRS
+        ]
+        root = Path(current_root)
+        for filename in filenames:
+            path = (root / filename).as_posix()
+            if path.startswith("./"):
+                path = path[2:]
+            files.append(path)
+    return sorted(files)
+
+
 def should_check(path: str) -> bool:
     if path.startswith(IGNORED_PREFIXES):
         return False
-    return Path(path).suffix in TEXT_SUFFIXES
+    path_obj = Path(path)
+    return path_obj.suffix in TEXT_SUFFIXES and path_obj.is_file()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Fail when public or local surfaces point to stale API paths."
+    )
+    parser.add_argument(
+        "--include-local",
+        action="store_true",
+        help=(
+            "Scan the full local working tree, including untracked and ignored "
+            "text files. This is useful for cleanup audits and intentionally "
+            "stricter than the default contributor guard."
+        ),
+    )
+    return parser.parse_args()
 
 
 def main() -> int:
+    args = parse_args()
     violations: list[tuple[str, int, str]] = []
 
-    for path in tracked_files():
+    paths = local_files() if args.include_local else tracked_files()
+    for path in paths:
         if not should_check(path):
             continue
         if not Path(path).exists():
+            continue
+        if args.include_local and Path(path).stat().st_size > MAX_LOCAL_FILE_BYTES:
             continue
         try:
             text = Path(path).read_text(encoding="utf-8")
@@ -101,7 +157,8 @@ def main() -> int:
                 violations.append((path, line_no, line.strip()))
 
     if violations:
-        print("Stale API import/path references found in active public surfaces:")
+        surface = "local working tree" if args.include_local else "active public surfaces"
+        print(f"Stale API import/path references found in {surface}:")
         for path, line_no, line in violations:
             print(f"  - {path}:{line_no}: {line}")
         print(
@@ -110,7 +167,8 @@ def main() -> int:
         )
         return 1
 
-    print("Stale API path check passed: active public surfaces use server paths.")
+    surface = "local working tree" if args.include_local else "active public surfaces"
+    print(f"Stale API path check passed: {surface} use server paths.")
     return 0
 
 
