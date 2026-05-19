@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from sardis_server.dependencies import (
+    initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
     validate_live_execution_config,
@@ -17,6 +18,11 @@ def _settings(**overrides):
         "is_production": False,
         "chain_mode": "simulated",
         "mpc": SimpleNamespace(name="simulated"),
+        "turnkey": SimpleNamespace(
+            api_public_key="",
+            api_private_key="",
+            organization_id="",
+        ),
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -198,3 +204,78 @@ def test_validate_live_execution_env_mpc_overrides_settings() -> None:
     )
 
     assert config.mpc_name == "turnkey"
+
+
+class FakeTurnkeyClient:
+    def __init__(self, *, api_key: str, api_private_key: str, organization_id: str) -> None:
+        self.api_key = api_key
+        self.api_private_key = api_private_key
+        self.organization_id = organization_id
+
+
+def test_initialize_turnkey_client_returns_none_without_complete_credentials() -> None:
+    assert (
+        initialize_turnkey_client(
+            _settings(),
+            environ={"TURNKEY_API_PUBLIC_KEY": "tk_public"},
+            client_cls=FakeTurnkeyClient,
+        )
+        is None
+    )
+
+
+def test_initialize_turnkey_client_prefers_env_credentials() -> None:
+    client = initialize_turnkey_client(
+        _settings(
+            turnkey=SimpleNamespace(
+                api_public_key="settings_public",
+                api_private_key="settings_private",
+                organization_id="settings_org",
+            )
+        ),
+        environ={
+            "TURNKEY_API_PUBLIC_KEY": "env_public",
+            "TURNKEY_API_PRIVATE_KEY": "env_private",
+            "TURNKEY_ORGANIZATION_ID": "env_org",
+        },
+        client_cls=FakeTurnkeyClient,
+    )
+
+    assert isinstance(client, FakeTurnkeyClient)
+    assert client.api_key == "env_public"
+    assert client.api_private_key == "env_private"
+    assert client.organization_id == "env_org"
+
+
+def test_initialize_turnkey_client_falls_back_to_legacy_api_key_env() -> None:
+    client = initialize_turnkey_client(
+        _settings(),
+        environ={
+            "TURNKEY_API_KEY": "legacy_key",
+            "TURNKEY_API_PRIVATE_KEY": "env_private",
+            "TURNKEY_ORGANIZATION_ID": "env_org",
+        },
+        client_cls=FakeTurnkeyClient,
+    )
+
+    assert isinstance(client, FakeTurnkeyClient)
+    assert client.api_key == "legacy_key"
+
+
+def test_initialize_turnkey_client_uses_settings_credentials() -> None:
+    client = initialize_turnkey_client(
+        _settings(
+            turnkey=SimpleNamespace(
+                api_public_key="settings_public",
+                api_private_key="settings_private",
+                organization_id="settings_org",
+            )
+        ),
+        environ={},
+        client_cls=FakeTurnkeyClient,
+    )
+
+    assert isinstance(client, FakeTurnkeyClient)
+    assert client.api_key == "settings_public"
+    assert client.api_private_key == "settings_private"
+    assert client.organization_id == "settings_org"

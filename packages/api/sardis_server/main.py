@@ -50,6 +50,7 @@ from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
+    initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
     validate_live_execution_config,
@@ -442,21 +443,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # MPC / Turnkey
     # -----------------------------------------------------------------------
-    turnkey_client = None
-    turnkey_api_key = os.getenv("TURNKEY_API_PUBLIC_KEY") or os.getenv("TURNKEY_API_KEY") or settings.turnkey.api_public_key
-    turnkey_private_key = os.getenv("TURNKEY_API_PRIVATE_KEY") or settings.turnkey.api_private_key
-    turnkey_org_id = os.getenv("TURNKEY_ORGANIZATION_ID") or settings.turnkey.organization_id
-    if turnkey_api_key and turnkey_private_key and turnkey_org_id:
-        try:
-            from sardis_wallet.turnkey_client import TurnkeyClient
-            turnkey_client = TurnkeyClient(
-                api_key=turnkey_api_key,
-                api_private_key=turnkey_private_key,
-                organization_id=turnkey_org_id,
-            )
-            logger.info("Turnkey MPC client initialized")
-        except ImportError:
-            logger.warning("Turnkey client module not available")
+    turnkey_client = initialize_turnkey_client(settings)
+    if turnkey_client is not None:
+        logger.info("Turnkey MPC client initialized")
 
     app.state.turnkey_client = turnkey_client
 

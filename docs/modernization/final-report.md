@@ -147,6 +147,7 @@
 - Added a tested `resolve_storage_backend` helper so database URL selection and production PostgreSQL enforcement no longer live inline in `sardis_server.main`.
 - Added a tested `resolve_cache_backend` helper so Redis URL selection and production Redis enforcement no longer live inline in `sardis_server.main`.
 - Added a tested `validate_live_execution_config` helper so live-chain and MPC signer safety rules no longer live inline in `sardis_server.main`.
+- Added a tested `initialize_turnkey_client` helper so Turnkey credential precedence and optional client creation no longer live inline in `sardis_server.main`.
 - Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
 - Documented root `tests/` as a legacy migration backlog until individual tests are moved to their owning packages or updated to the current package layout.
 - Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.

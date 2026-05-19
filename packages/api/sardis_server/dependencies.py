@@ -168,6 +168,48 @@ def validate_live_execution_config(
     return LiveExecutionConfig(chain_mode=chain_mode, mpc_name=mpc_name)
 
 
+def initialize_turnkey_client(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    client_cls: Any | None = None,
+) -> Any | None:
+    """Initialize the optional shared Turnkey client when all credentials exist."""
+    env = environ if environ is not None else os.environ
+    turnkey_settings = getattr(settings, "turnkey", None)
+    api_key = (
+        env.get("TURNKEY_API_PUBLIC_KEY")
+        or env.get("TURNKEY_API_KEY")
+        or getattr(turnkey_settings, "api_public_key", "")
+    )
+    api_private_key = env.get("TURNKEY_API_PRIVATE_KEY") or getattr(
+        turnkey_settings,
+        "api_private_key",
+        "",
+    )
+    organization_id = env.get("TURNKEY_ORGANIZATION_ID") or getattr(
+        turnkey_settings,
+        "organization_id",
+        "",
+    )
+
+    if not (api_key and api_private_key and organization_id):
+        return None
+
+    if client_cls is None:
+        try:
+            from sardis_wallet.turnkey_client import TurnkeyClient
+        except ImportError:
+            return None
+        client_cls = TurnkeyClient
+
+    return client_cls(
+        api_key=api_key,
+        api_private_key=api_private_key,
+        organization_id=organization_id,
+    )
+
+
 class DependencyContainer:
     """
     Central dependency injection container.
