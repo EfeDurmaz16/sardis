@@ -159,6 +159,7 @@ from .routing.protocol import (
 from .routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_polar_webhook_routes,
     register_provider_integration_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
@@ -1696,16 +1697,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_agent_auth_routes(app)
 
-    # Polar.sh billing webhook (pre-incorporation MoR)
-    try:
-        from sardis_server.routes.providers import polar_webhook as polar_webhook_router
-        app.include_router(
-            polar_webhook_router.router,
-            prefix="/api/v2/billing",
-            tags=["billing"],
-        )
-    except ImportError:
-        pass
+    register_polar_webhook_routes(app)
 
     register_developer_utility_routes(app, is_production=is_production)
 

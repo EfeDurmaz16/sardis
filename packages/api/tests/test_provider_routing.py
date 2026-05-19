@@ -11,6 +11,7 @@ from sardis_server.routes.providers import (
 from sardis_server.routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_polar_webhook_routes,
     register_provider_integration_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
@@ -92,6 +93,15 @@ def test_register_partner_card_webhook_routes_wires_dependencies_and_routes():
     paths = {route.path for route in app.routes}
     assert "/api/v2/webhooks/cards/rain" in paths
     assert "/api/v2/webhooks/cards/bridge" in paths
+
+
+def test_register_polar_webhook_routes_mounts_billing_provider_webhook():
+    app = FastAPI()
+
+    register_polar_webhook_routes(app)
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/billing/polar-webhook" in paths
 
 
 def test_register_stripe_funding_routes_wires_dependencies_and_routes():

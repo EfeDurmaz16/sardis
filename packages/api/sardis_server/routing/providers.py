@@ -11,6 +11,7 @@ from sardis_server.routes.providers import (
     lightspark,
     mastercard_webhooks,
     partner_card_webhooks,
+    polar_webhook,
     striga,
     stripe_connect,
     stripe_funding,
@@ -74,6 +75,15 @@ def register_partner_card_webhook_routes(
         partner_card_webhooks.router,
         prefix="/api/v2",
         tags=["partner-card-webhooks"],
+    )
+
+
+def register_polar_webhook_routes(app: FastAPI) -> None:
+    """Register Polar billing provider webhook routes."""
+    app.include_router(
+        polar_webhook.router,
+        prefix="/api/v2/billing",
+        tags=["billing"],
     )
 
 
