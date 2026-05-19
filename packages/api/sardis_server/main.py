@@ -92,13 +92,10 @@ from .routes.wallets import cards as cards_router
 from .routes.wallets import cpn as cpn_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router
-from .routes.wallets import onramp as onramp_router
 from .routes.wallets import ramp as ramp_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
-from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -170,6 +167,7 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
+from .routing.wallets import register_ramp_edge_routes
 
 # Configure structured logging
 setup_logging(
@@ -1904,10 +1902,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_mandate_subscription_routes(app)
     register_streaming_payment_routes(app)
     register_protocol_v1_routes(app)
-    app.include_router(offramp_router.router, prefix="/api/v2", tags=["offramp"])
-    app.include_router(onramp_router.router, prefix="/api/v2", tags=["onramp"])
-    app.include_router(onramp_router.webhook_router, prefix="/api/v2", tags=["stripe-onramp-webhooks"])
-    app.include_router(virtual_cards_router.router, prefix="/api/v2", tags=["virtual-cards"])
+    register_ramp_edge_routes(app)
 
     # A2A discovery: /.well-known/agent-card.json
     @app.get("/.well-known/agent-card.json", tags=["a2a"])
