@@ -81,6 +81,11 @@ construction should go into focused helpers such as `card_runtime.py`,
 `checkout_runtime.py`, or `funding_runtime.py` when it can be tested without
 booting the full FastAPI app.
 
+The source-layout guard enforces a 1,000-line ceiling for
+`packages/reference-api/server/main.py`. If a change would exceed that limit,
+move route registration into `route_registry/` or runtime construction into a
+focused `*_runtime.py` helper first.
+
 ## Python Libraries
 
 Published Python libraries may keep the standard `src/<import_package>` layout

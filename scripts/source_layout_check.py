@@ -37,6 +37,7 @@ REQUIRED_DOC_SNIPPETS = {
         "card_runtime.py",
         "checkout_runtime.py",
         "funding_runtime.py",
+        "1,000-line ceiling",
     ),
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
@@ -49,6 +50,7 @@ REQUIRED_DOC_SNIPPETS = {
 }
 
 MAX_ROUTE_RELATIVE_PARTS = 2
+MAX_MAIN_LINES = 1000
 
 
 def main() -> int:
@@ -86,6 +88,17 @@ def main() -> int:
                     "Route implementation is nested too deeply: "
                     f"{path.relative_to(ROOT).as_posix()}"
                 )
+
+    main_py = ROOT / "packages/reference-api/server/main.py"
+    if main_py.exists():
+        main_line_count = len(main_py.read_text(encoding="utf-8").splitlines())
+        if main_line_count > MAX_MAIN_LINES:
+            errors.append(
+                "API composition root is too large: "
+                f"packages/reference-api/server/main.py has {main_line_count} lines "
+                f"(limit {MAX_MAIN_LINES}). Move route registration into "
+                "route_registry/ or runtime construction into focused *_runtime.py helpers."
+            )
 
     if errors:
         print("Source layout check failed:")
