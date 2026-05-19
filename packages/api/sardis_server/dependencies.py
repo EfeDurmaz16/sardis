@@ -127,6 +127,16 @@ class CoreServicesConfig:
     ledger_store: Any
 
 
+@dataclass(frozen=True)
+class PaymentRuntimeConfig:
+    """Resolved payment runtime primitives used by execution routes."""
+
+    archive: Any
+    replay_cache: Any
+    verifier: Any
+    orchestrator: Any
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -610,6 +620,83 @@ def configure_core_services(
         wallet_manager=wallet_manager,
         chain_executor=chain_executor,
         ledger_store=ledger_store,
+    )
+
+
+def configure_payment_runtime(
+    settings: Any,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    identity_registry: Any,
+    wallet_manager: Any,
+    compliance_engine: Any,
+    chain_executor: Any,
+    ledger_store: Any,
+    mandate_archive_cls: Any | None = None,
+    postgres_replay_cache_cls: Any | None = None,
+    sqlite_replay_cache_cls: Any | None = None,
+    replay_cache_cls: Any | None = None,
+    mandate_verifier_cls: Any | None = None,
+    payment_orchestrator_cls: Any | None = None,
+) -> PaymentRuntimeConfig:
+    """Create mandate verification and payment orchestration primitives."""
+    if (
+        mandate_archive_cls is None
+        or postgres_replay_cache_cls is None
+        or sqlite_replay_cache_cls is None
+        or replay_cache_cls is None
+    ):
+        from sardis_protocol.storage import (
+            MandateArchive,
+            PostgresReplayCache,
+            ReplayCache,
+            SqliteReplayCache,
+        )
+
+        mandate_archive_cls = mandate_archive_cls or MandateArchive
+        postgres_replay_cache_cls = postgres_replay_cache_cls or PostgresReplayCache
+        sqlite_replay_cache_cls = sqlite_replay_cache_cls or SqliteReplayCache
+        replay_cache_cls = replay_cache_cls or ReplayCache
+
+    if mandate_verifier_cls is None:
+        from sardis_protocol.verifier import MandateVerifier
+
+        mandate_verifier_cls = MandateVerifier
+    if payment_orchestrator_cls is None:
+        from sardis_v2_core.orchestrator import PaymentOrchestrator
+
+        payment_orchestrator_cls = PaymentOrchestrator
+
+    if use_postgres:
+        archive = mandate_archive_cls(database_url)
+        replay_cache = postgres_replay_cache_cls(database_url)
+    else:
+        archive = mandate_archive_cls(settings.mandate_archive_dsn)
+        replay_cache = (
+            sqlite_replay_cache_cls(settings.replay_cache_dsn)
+            if settings.replay_cache_dsn.startswith("sqlite:///")
+            else replay_cache_cls()
+        )
+
+    verifier = mandate_verifier_cls(
+        settings=settings,
+        replay_cache=replay_cache,
+        archive=archive,
+        identity_registry=identity_registry,
+    )
+    orchestrator = payment_orchestrator_cls(
+        wallet_manager=wallet_manager,
+        compliance=compliance_engine,
+        chain_executor=chain_executor,
+        ledger=ledger_store,
+    )
+
+    return PaymentRuntimeConfig(
+        archive=archive,
+        replay_cache=replay_cache,
+        verifier=verifier,
+        orchestrator=orchestrator,
     )
 
 

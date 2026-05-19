@@ -274,6 +274,9 @@ of a mixed provider-bootstrap module.
 Core API service construction now also sits behind a tested helper covering the
 Postgres versus in-memory policy store, wallet repository, agent repository,
 wallet manager, chain executor, and ledger store selection.
+Mandate archive, replay cache, verifier, and payment orchestrator construction
+now sit behind a tested payment runtime helper, including Postgres, SQLite, and
+in-memory replay-cache selection.
 
 ## Test, Build, And Lint Results
 

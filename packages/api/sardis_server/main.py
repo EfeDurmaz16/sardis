@@ -26,25 +26,18 @@ from .bootstrap import bootstrap_monorepo_sys_path, should_bootstrap_monorepo_sy
 if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
-from sardis_protocol.storage import (
-    MandateArchive,
-    PostgresReplayCache,
-    ReplayCache,
-    SqliteReplayCache,
-)
-from sardis_protocol.verifier import MandateVerifier
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.cache import create_cache_service
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
-from sardis_v2_core.orchestrator import PaymentOrchestrator
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
     configure_compliance_services,
     configure_core_services,
     configure_kyc_service,
+    configure_payment_runtime,
     configure_sanctions_service,
     initialize_turnkey_client,
     resolve_cache_backend,
@@ -512,29 +505,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     compliance = compliance_config.compliance_engine
     identity_registry = IdentityRegistry()
 
-    if use_postgres:
-        archive = MandateArchive(database_url)
-        replay_cache = PostgresReplayCache(database_url)
-    else:
-        archive = MandateArchive(settings.mandate_archive_dsn)
-        replay_cache = (
-            SqliteReplayCache(settings.replay_cache_dsn)
-            if settings.replay_cache_dsn.startswith("sqlite:///")
-            else ReplayCache()
-        )
-
-    verifier = MandateVerifier(
+    payment_runtime = configure_payment_runtime(
         settings=settings,
-        replay_cache=replay_cache,
-        archive=archive,
+        database_url=database_url,
+        use_postgres=use_postgres,
         identity_registry=identity_registry,
-    )
-    orchestrator = PaymentOrchestrator(
         wallet_manager=wallet_mgr,
-        compliance=compliance,
+        compliance_engine=compliance,
         chain_executor=chain_exec,
-        ledger=ledger_store,
+        ledger_store=ledger_store,
     )
+    verifier = payment_runtime.verifier
+    orchestrator = payment_runtime.orchestrator
     app.state.chain_executor = chain_exec
     app.state.wallet_repo = wallet_repo
     app.state.compliance_engine = compliance

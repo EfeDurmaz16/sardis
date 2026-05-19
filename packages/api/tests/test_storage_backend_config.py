@@ -6,6 +6,7 @@ from sardis_server.dependencies import (
     configure_compliance_services,
     configure_core_services,
     configure_kyc_service,
+    configure_payment_runtime,
     configure_sanctions_service,
     initialize_turnkey_client,
     resolve_cache_backend,
@@ -755,3 +756,121 @@ def test_configure_core_services_uses_memory_backends_outside_postgres() -> None
     assert isinstance(config.agent_repository, FakeAgentRepository)
     assert config.agent_repository.dsn == "memory://"
     assert config.ledger_store.dsn == "sqlite:///ledger.db"
+
+
+class FakeMandateArchive:
+    def __init__(self, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakePostgresReplayCache:
+    def __init__(self, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakeSqliteReplayCache:
+    def __init__(self, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakeReplayCache:
+    def __init__(self) -> None:
+        self.dsn = "memory://"
+
+
+class FakeMandateVerifier:
+    def __init__(
+        self,
+        *,
+        settings: object,
+        replay_cache: object,
+        archive: object,
+        identity_registry: object,
+    ) -> None:
+        self.settings = settings
+        self.replay_cache = replay_cache
+        self.archive = archive
+        self.identity_registry = identity_registry
+
+
+class FakePaymentOrchestrator:
+    def __init__(
+        self,
+        *,
+        wallet_manager: object,
+        compliance: object,
+        chain_executor: object,
+        ledger: object,
+    ) -> None:
+        self.wallet_manager = wallet_manager
+        self.compliance = compliance
+        self.chain_executor = chain_executor
+        self.ledger = ledger
+
+
+def _configure_payment_runtime(settings=None, use_postgres=True):
+    return configure_payment_runtime(
+        settings or _settings(
+            mandate_archive_dsn="sqlite:///mandates.db",
+            replay_cache_dsn="sqlite:///replay.db",
+        ),
+        database_url="postgresql://localhost/sardis",
+        use_postgres=use_postgres,
+        identity_registry=SimpleNamespace(name="identity"),
+        wallet_manager=SimpleNamespace(name="wallet_manager"),
+        compliance_engine=SimpleNamespace(name="compliance"),
+        chain_executor=SimpleNamespace(name="chain_executor"),
+        ledger_store=SimpleNamespace(name="ledger"),
+        mandate_archive_cls=FakeMandateArchive,
+        postgres_replay_cache_cls=FakePostgresReplayCache,
+        sqlite_replay_cache_cls=FakeSqliteReplayCache,
+        replay_cache_cls=FakeReplayCache,
+        mandate_verifier_cls=FakeMandateVerifier,
+        payment_orchestrator_cls=FakePaymentOrchestrator,
+    )
+
+
+def test_configure_payment_runtime_uses_postgres_archive_and_replay_cache() -> None:
+    config = _configure_payment_runtime(use_postgres=True)
+
+    assert isinstance(config.archive, FakeMandateArchive)
+    assert config.archive.dsn == "postgresql://localhost/sardis"
+    assert isinstance(config.replay_cache, FakePostgresReplayCache)
+    assert config.replay_cache.dsn == "postgresql://localhost/sardis"
+    assert isinstance(config.verifier, FakeMandateVerifier)
+    assert config.verifier.archive is config.archive
+    assert config.verifier.replay_cache is config.replay_cache
+    assert config.verifier.identity_registry.name == "identity"
+    assert isinstance(config.orchestrator, FakePaymentOrchestrator)
+    assert config.orchestrator.wallet_manager.name == "wallet_manager"
+    assert config.orchestrator.compliance.name == "compliance"
+    assert config.orchestrator.chain_executor.name == "chain_executor"
+    assert config.orchestrator.ledger.name == "ledger"
+
+
+def test_configure_payment_runtime_uses_sqlite_replay_cache_for_sqlite_dsn() -> None:
+    config = _configure_payment_runtime(
+        settings=_settings(
+            mandate_archive_dsn="sqlite:///mandates.db",
+            replay_cache_dsn="sqlite:///replay.db",
+        ),
+        use_postgres=False,
+    )
+
+    assert config.archive.dsn == "sqlite:///mandates.db"
+    assert isinstance(config.replay_cache, FakeSqliteReplayCache)
+    assert config.replay_cache.dsn == "sqlite:///replay.db"
+
+
+def test_configure_payment_runtime_uses_memory_replay_cache_for_non_sqlite_dsn() -> None:
+    config = _configure_payment_runtime(
+        settings=_settings(
+            mandate_archive_dsn="memory://mandates",
+            replay_cache_dsn="memory://replay",
+        ),
+        use_postgres=False,
+    )
+
+    assert config.archive.dsn == "memory://mandates"
+    assert isinstance(config.replay_cache, FakeReplayCache)
+    assert config.replay_cache.dsn == "memory://"
