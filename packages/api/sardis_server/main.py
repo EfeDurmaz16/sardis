@@ -158,6 +158,7 @@ from .routing.protocol import (
 from .routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_provider_integration_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
@@ -979,25 +980,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_faucet_routes(app)
 
-    # --- Striga routes (EEA cards, vIBAN, SEPA) ---
-    if settings.striga.enabled:
-        from .routes.providers import striga as striga_router
-        app.include_router(striga_router.router, prefix="/api/v2", tags=["striga"])
-        logger.info("Striga routes enabled")
-
-    # --- Lightspark Grid routes (UMA, payouts, FX) ---
-    if settings.lightspark.enabled:
-        from .routes.providers import lightspark as lightspark_router
-        app.include_router(lightspark_router.router, prefix="/api/v2", tags=["lightspark-grid"])
-        logger.info("Lightspark Grid routes enabled")
-
-    # --- Unified fiat rails routes ---
-    if settings.striga.enabled or settings.lightspark.enabled:
-        from .routes.providers import currency as currency_router
-        from .routes.providers import fiat_rails as fiat_rails_router
-        app.include_router(fiat_rails_router.router, prefix="/api/v2", tags=["fiat-rails"])
-        app.include_router(currency_router.router, prefix="/api/v2", tags=["currency"])
-        logger.info("Fiat rails and currency routes enabled")
+    register_provider_integration_routes(app, settings=settings)
 
     # Treasury routes (Lithic financial accounts + ACH payments)
     treasury_repo = TreasuryRepository(dsn=database_url if use_postgres else None)

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi import FastAPI
 
 from sardis_server.routes.providers import (
@@ -9,10 +11,43 @@ from sardis_server.routes.providers import (
 from sardis_server.routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_provider_integration_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
+
+
+def test_register_provider_integration_routes_mounts_enabled_provider_routes():
+    app = FastAPI()
+    settings = SimpleNamespace(
+        striga=SimpleNamespace(enabled=True),
+        lightspark=SimpleNamespace(enabled=True),
+    )
+
+    register_provider_integration_routes(app, settings=settings)
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/striga/vibans" in paths
+    assert "/api/v2/grid/uma/create" in paths
+    assert "/api/v2/fiat-rails/payout" in paths
+    assert "/api/v2/currency/convert" in paths
+
+
+def test_register_provider_integration_routes_skips_disabled_provider_routes():
+    app = FastAPI()
+    settings = SimpleNamespace(
+        striga=SimpleNamespace(enabled=False),
+        lightspark=SimpleNamespace(enabled=False),
+    )
+
+    register_provider_integration_routes(app, settings=settings)
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/striga/vibans" not in paths
+    assert "/api/v2/grid/uma/create" not in paths
+    assert "/api/v2/fiat-rails/payout" not in paths
+    assert "/api/v2/currency/convert" not in paths
 
 
 def test_register_mastercard_webhook_routes_mounts_public_route():

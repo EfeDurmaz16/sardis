@@ -6,14 +6,37 @@ import logging
 from fastapi import FastAPI
 
 from sardis_server.routes.providers import (
+    currency,
+    fiat_rails,
+    lightspark,
     mastercard_webhooks,
     partner_card_webhooks,
+    striga,
     stripe_connect,
     stripe_funding,
     stripe_webhooks,
 )
 
 logger = logging.getLogger("sardis_server.api.routing.providers")
+
+
+def register_provider_integration_routes(app: FastAPI, *, settings) -> None:
+    """Register optional provider integration routes based on provider feature flags."""
+    striga_enabled = bool(getattr(getattr(settings, "striga", None), "enabled", False))
+    lightspark_enabled = bool(getattr(getattr(settings, "lightspark", None), "enabled", False))
+
+    if striga_enabled:
+        app.include_router(striga.router, prefix="/api/v2", tags=["striga"])
+        logger.info("Striga routes enabled")
+
+    if lightspark_enabled:
+        app.include_router(lightspark.router, prefix="/api/v2", tags=["lightspark-grid"])
+        logger.info("Lightspark Grid routes enabled")
+
+    if striga_enabled or lightspark_enabled:
+        app.include_router(fiat_rails.router, prefix="/api/v2", tags=["fiat-rails"])
+        app.include_router(currency.router, prefix="/api/v2", tags=["currency"])
+        logger.info("Fiat rails and currency routes enabled")
 
 
 def register_mastercard_webhook_routes(app: FastAPI) -> None:
