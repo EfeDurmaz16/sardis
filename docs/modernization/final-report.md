@@ -371,7 +371,7 @@ Notes:
 
 - Some money-moving routes still need replay tests and a unified execution service; `/api/v2/pay`, `/api/v2/payments/batch`, and `/api/v2/transactions/batch` now have client-idempotency replay coverage.
 - Database migration history remains split between Alembic and raw SQL.
-- `packages/reference-api/server/main.py` remains an oversized composition root, but OpenAPI generation now has a duplicate-clean check command before router extraction work.
+- `packages/reference-api/server/main.py` is now below 1,000 lines, but it still owns several stateful bootstrap handoffs that should continue moving into focused runtime helpers.
 - Public/private repo hygiene still needs actual private-repo creation and history-preserving recovery of dashboard/product surfaces from git history.
 - Dashboard deployment automation and source are no longer in the public OSS repo; the private product repo must recreate its CI/CD from the moved history.
 - Private staging/mainnet/demo/partner/monitoring automation is no longer in the public OSS repo; the private product/cloud repo needs a clean replacement from history or fresh infrastructure-as-code.
@@ -393,9 +393,9 @@ Notes:
 
 ## Next 30 Days
 
-- Split `server.main` into bootstrap registrars without changing route contracts.
-- Continue extracting `server.main` route registration into `route_registry/authority.py`, `route_registry/money_movement.py`, `route_registry/providers.py`, and `route_registry/operations.py`.
-- Continue extracting `server.main` route registration into smaller domain registrars now that route implementation placement is domain-based.
+- Continue extracting stateful `server.main` bootstrap handoffs into focused runtime helpers without changing route contracts.
+- Keep route registration in `route_registry/<domain>.py` or `route_registry/static_routes.py`; do not add new inline route registration to `server.main`.
+- Continue shrinking `server.main` toward app creation, runtime composition, app-state exposure, and final health registration only.
 - Continue replacing source-inspection tests with behavior-level tests where practical; the authority/payment policy tests now track current orchestrator/control-plane boundaries instead of stale route-local implementation strings.
 - Reconcile raw SQL and Alembic migration policy with a Postgres apply test.
 - Consolidate dashboard request layers into one client plus hook wrapper.

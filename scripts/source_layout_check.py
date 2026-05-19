@@ -26,10 +26,18 @@ REQUIRED_PATHS = (
     "packages/reference-api/server",
     "packages/reference-api/server/routes",
     "packages/reference-api/server/route_registry",
+    "packages/reference-api/server/route_registry/static_routes.py",
     "docs/oss/source-layout.md",
 )
 
 REQUIRED_DOC_SNIPPETS = {
+    "docs/oss/source-layout.md": (
+        "packages/reference-api/server/route_registry/",
+        "route_registry/static_routes.py",
+        "card_runtime.py",
+        "checkout_runtime.py",
+        "funding_runtime.py",
+    ),
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
         "packages/reference-api/server",

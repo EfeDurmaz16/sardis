@@ -45,6 +45,32 @@ packages/reference-api/server/routes/<domain>/<module>.py
 Do not add route implementation folders below the domain layer unless a
 separate architecture decision explains why the extra depth is worth it.
 
+Route registration lives separately from endpoint implementation:
+
+```text
+packages/reference-api/server/route_registry/<domain>.py
+packages/reference-api/server/route_registry/static_routes.py
+```
+
+Domain registrars own FastAPI `include_router` calls, dependency overrides, and
+feature-gated mounting for one API area. `static_routes.py` is reserved for
+dependency-light public/protocol routes that do not need app-factory runtime
+objects. If a route needs repositories, provider clients, policy stores,
+wallets, or execution services, wire it through a domain registrar instead of
+adding more logic to `static_routes.py` or `main.py`.
+
+Runtime construction also stays outside `main.py` once it becomes testable on
+its own. Current examples include:
+
+```text
+packages/reference-api/server/card_runtime.py
+packages/reference-api/server/checkout_runtime.py
+packages/reference-api/server/funding_runtime.py
+```
+
+`main.py` should remain the composition root: create the app, call runtime
+helpers, expose app state, and delegate route registration.
+
 ## Root Python Client
 
 The root public Python client facade lives at:

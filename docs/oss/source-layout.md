@@ -57,6 +57,12 @@ FastAPI registration and dependency wiring should live under:
 packages/reference-api/server/route_registry/
 ```
 
+Use one registrar module per domain when route mounting needs dependencies or
+runtime state. Use `route_registry/static_routes.py` only for dependency-light
+public/protocol routes that are mounted together near the end of app startup.
+Do not put endpoint implementations, request models, provider clients, or
+business logic in `route_registry/`.
+
 Do not add more route nesting below the domain layer. This is acceptable:
 
 ```text
@@ -70,7 +76,10 @@ routes/protocol/payments/x402/handlers.py
 ```
 
 `packages/reference-api/server/main.py` should remain a composition root, not a
-catch-all file for every route, provider, and bootstrap concern.
+catch-all file for every route, provider, and bootstrap concern. New runtime
+construction should go into focused helpers such as `card_runtime.py`,
+`checkout_runtime.py`, or `funding_runtime.py` when it can be tested without
+booting the full FastAPI app.
 
 ## Python Libraries
 

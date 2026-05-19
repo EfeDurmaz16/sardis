@@ -137,8 +137,9 @@ packages/reference-api/
     ├── main.py           # FastAPI composition root
     ├── bootstrap.py      # Local monorepo import bootstrap for dev/test
     ├── dependencies.py   # FastAPI dependencies
+    ├── *_runtime.py      # Testable runtime construction helpers
     ├── routes/           # Domain-grouped route implementations
-    ├── route_registry/  # Route registration helpers for larger domains
+    ├── route_registry/   # FastAPI registration helpers, including static_routes.py
     └── middleware/       # Request/auth/security middleware
 ```
 
