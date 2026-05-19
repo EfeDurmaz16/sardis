@@ -268,6 +268,9 @@ non-production factory fallback are now covered without booting the full app.
 Sanctions provider/service construction now follows the same pattern, covering
 Elliptic, Scorechain, mock fallback, duplicate fallback suppression, production
 fail-closed behavior, and non-production factory fallback outside the full app.
+KYA service, audit store, and ComplianceEngine wiring are now constructed by a
+tested dependency helper, leaving `main.py` closer to a composition root instead
+of a mixed provider-bootstrap module.
 
 ## Test, Build, And Lint Results
 

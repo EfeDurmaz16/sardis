@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from sardis_server.dependencies import (
+    configure_compliance_services,
     configure_kyc_service,
     configure_sanctions_service,
     initialize_turnkey_client,
@@ -578,3 +579,80 @@ def test_configure_sanctions_service_uses_factory_outside_production_without_pro
         "api_key": "partial_key",
         "api_secret": None,
     }
+
+
+class FakeComplianceEngine:
+    def __init__(
+        self,
+        *,
+        settings: object,
+        audit_store: object,
+        kyc_service: object,
+        sanctions_service: object,
+        kya_service: object,
+    ) -> None:
+        self.settings = settings
+        self.audit_store = audit_store
+        self.kyc_service = kyc_service
+        self.sanctions_service = sanctions_service
+        self.kya_service = kya_service
+
+
+def test_configure_compliance_services_wires_audit_kya_and_engine() -> None:
+    calls = []
+    settings = _settings()
+    kyc_service = object()
+    sanctions_service = object()
+
+    def fake_create_audit_store(*, dsn: str):
+        calls.append(("audit", dsn))
+        return SimpleNamespace(name="audit", dsn=dsn)
+
+    def fake_create_kya_service(*, liveness_timeout: int, dsn: str):
+        calls.append(("kya", liveness_timeout, dsn))
+        return SimpleNamespace(name="kya", liveness_timeout=liveness_timeout, dsn=dsn)
+
+    config = configure_compliance_services(
+        settings,
+        database_url="postgresql://localhost/sardis",
+        kyc_service=kyc_service,
+        sanctions_service=sanctions_service,
+        environ={"SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS": "45"},
+        create_audit_store_fn=fake_create_audit_store,
+        create_kya_service_fn=fake_create_kya_service,
+        compliance_engine_cls=FakeComplianceEngine,
+    )
+
+    assert calls == [
+        ("audit", "postgresql://localhost/sardis"),
+        ("kya", 45, "postgresql://localhost/sardis"),
+    ]
+    assert config.kya_liveness_timeout == 45
+    assert config.audit_store.name == "audit"
+    assert config.kya_service.name == "kya"
+    assert isinstance(config.compliance_engine, FakeComplianceEngine)
+    assert config.compliance_engine.settings is settings
+    assert config.compliance_engine.audit_store is config.audit_store
+    assert config.compliance_engine.kyc_service is kyc_service
+    assert config.compliance_engine.sanctions_service is sanctions_service
+    assert config.compliance_engine.kya_service is config.kya_service
+
+
+def test_configure_compliance_services_uses_default_kya_liveness_timeout() -> None:
+    config = configure_compliance_services(
+        _settings(),
+        database_url="memory://",
+        kyc_service=object(),
+        sanctions_service=object(),
+        environ={},
+        create_audit_store_fn=lambda *, dsn: SimpleNamespace(dsn=dsn),
+        create_kya_service_fn=lambda *, liveness_timeout, dsn: SimpleNamespace(
+            liveness_timeout=liveness_timeout,
+            dsn=dsn,
+        ),
+        compliance_engine_cls=FakeComplianceEngine,
+    )
+
+    assert config.kya_liveness_timeout == 300
+    assert config.kya_service.liveness_timeout == 300
+    assert config.kya_service.dsn == "memory://"

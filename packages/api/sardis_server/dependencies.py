@@ -105,6 +105,16 @@ class SanctionsServiceConfig:
     mode: str
 
 
+@dataclass(frozen=True)
+class ComplianceServicesConfig:
+    """Resolved compliance engine and its backing services."""
+
+    audit_store: Any
+    kya_service: Any
+    compliance_engine: Any
+    kya_liveness_timeout: int
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -453,6 +463,54 @@ def configure_sanctions_service(
         primary_name=primary_name,
         fallback_name=fallback_name,
         mode="factory",
+    )
+
+
+def configure_compliance_services(
+    settings: Any,
+    *,
+    database_url: str,
+    kyc_service: Any,
+    sanctions_service: Any,
+    environ: Mapping[str, str] | None = None,
+    create_audit_store_fn: Any | None = None,
+    create_kya_service_fn: Any | None = None,
+    compliance_engine_cls: Any | None = None,
+) -> ComplianceServicesConfig:
+    """Create the compliance engine and durable compliance support services."""
+    env = environ if environ is not None else os.environ
+
+    if (
+        create_audit_store_fn is None
+        or create_kya_service_fn is None
+        or compliance_engine_cls is None
+    ):
+        from sardis_compliance import create_kya_service
+        from sardis_compliance.checks import ComplianceEngine, create_audit_store
+
+        create_audit_store_fn = create_audit_store_fn or create_audit_store
+        create_kya_service_fn = create_kya_service_fn or create_kya_service
+        compliance_engine_cls = compliance_engine_cls or ComplianceEngine
+
+    liveness_timeout = int(env.get("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300"))
+    audit_store = create_audit_store_fn(dsn=database_url)
+    kya_service = create_kya_service_fn(
+        liveness_timeout=liveness_timeout,
+        dsn=database_url,
+    )
+    compliance_engine = compliance_engine_cls(
+        settings=settings,
+        audit_store=audit_store,
+        kyc_service=kyc_service,
+        sanctions_service=sanctions_service,
+        kya_service=kya_service,
+    )
+
+    return ComplianceServicesConfig(
+        audit_store=audit_store,
+        kya_service=kya_service,
+        compliance_engine=compliance_engine,
+        kya_liveness_timeout=liveness_timeout,
     )
 
 

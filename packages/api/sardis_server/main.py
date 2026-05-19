@@ -27,7 +27,6 @@ if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
 from sardis_chain.executor import ChainExecutor
-from sardis_compliance.checks import ComplianceEngine
 from sardis_ledger.records import LedgerStore
 from sardis_protocol.storage import (
     MandateArchive,
@@ -50,6 +49,7 @@ from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
+    configure_compliance_services,
     configure_kyc_service,
     configure_sanctions_service,
     initialize_turnkey_client,
@@ -472,11 +472,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     chain_exec = ChainExecutor(settings=settings, turnkey_client=turnkey_client)
     ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
-    from sardis_compliance.checks import create_audit_store
-    audit_store = create_audit_store(dsn=database_url)
-    from sardis_compliance import (
-        create_kya_service,
-    )
 
     kyc_config = configure_kyc_service(settings)
     kyc_service = kyc_config.service
@@ -510,17 +505,15 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             sanctions_config.fallback_name,
         )
 
-    kya_service = create_kya_service(
-        liveness_timeout=int(os.getenv("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300")),
-        dsn=database_url,
-    )
-    compliance = ComplianceEngine(
+    compliance_config = configure_compliance_services(
         settings=settings,
-        audit_store=audit_store,
+        database_url=database_url,
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
-        kya_service=kya_service,
     )
+    audit_store = compliance_config.audit_store
+    kya_service = compliance_config.kya_service
+    compliance = compliance_config.compliance_engine
     identity_registry = IdentityRegistry()
 
     if use_postgres:
