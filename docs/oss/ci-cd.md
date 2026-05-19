@@ -30,6 +30,15 @@ credentials, or managed-provider accounts.
 - Scheduled uptime and monitoring workflows are operational signals, not a
   required local contributor gate.
 
+## Branch Protection Source
+
+Branch protection expected checks are recorded in
+`.github/required-checks.json`. Keep that file focused on jobs that run for
+normal public pull requests. Path-limited, scheduled, deploy, publish, and
+operations-only workflows can still protect their surfaces, but they should not
+be required for every external contribution unless they run reliably on every
+PR without private credentials.
+
 ## Local First Loop
 
 Start with:

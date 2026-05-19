@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CI_DOC = ROOT / "docs" / "oss" / "ci-cd.md"
 PACKAGE_JSON = ROOT / "package.json"
+REQUIRED_CHECKS = ROOT / ".github" / "required-checks.json"
 
 
 def documented_workflows(text: str) -> set[str]:
@@ -58,14 +59,27 @@ def package_scripts() -> set[str]:
     return set(data["scripts"])
 
 
+def required_contexts() -> set[str]:
+    data = json.loads(REQUIRED_CHECKS.read_text(encoding="utf-8"))
+    contexts = data.get("contexts", [])
+    if not isinstance(contexts, list):
+        raise TypeError(".github/required-checks.json contexts must be a list")
+    return {str(context) for context in contexts}
+
+
 def main() -> int:
     text = CI_DOC.read_text(encoding="utf-8")
+    doc_jobs = documented_jobs(text)
+    actual_jobs = workflow_job_names()
+    contexts = required_contexts()
 
     missing_workflows = sorted(
         workflow for workflow in documented_workflows(text) if not (ROOT / workflow).exists()
     )
     missing_scripts = sorted(documented_scripts(text) - package_scripts())
-    missing_jobs = sorted(documented_jobs(text) - workflow_job_names())
+    missing_jobs = sorted(doc_jobs - actual_jobs)
+    missing_required_jobs = sorted(contexts - actual_jobs)
+    undocumented_required_jobs = sorted(contexts - doc_jobs)
 
     errors: list[str] = []
     if missing_workflows:
@@ -82,6 +96,16 @@ def main() -> int:
         errors.append(
             "docs/oss/ci-cd.md references missing workflow job names:\n"
             + "\n".join(f"  - {job}" for job in missing_jobs)
+        )
+    if missing_required_jobs:
+        errors.append(
+            ".github/required-checks.json references missing workflow job names:\n"
+            + "\n".join(f"  - {job}" for job in missing_required_jobs)
+        )
+    if undocumented_required_jobs:
+        errors.append(
+            ".github/required-checks.json contexts missing from docs/oss/ci-cd.md:\n"
+            + "\n".join(f"  - {job}" for job in undocumented_required_jobs)
         )
 
     if errors:
