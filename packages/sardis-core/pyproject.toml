@@ -82,7 +82,7 @@ Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
 "Bug Tracker" = "https://github.com/EfeDurmaz16/sardis/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sardis_v2_core"]
+packages = ["src/sardis_core", "src/sardis_v2_core"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -115,7 +115,7 @@ ignore = ["E501", "B008", "B904", "E402", "N806", "N801", "N818", "F821", "B017"
 "tests/**" = ["F401", "F811", "F841", "E722", "B007", "N802"]
 
 [tool.coverage.run]
-source = ["src/sardis_v2_core"]
+source = ["src/sardis_core", "src/sardis_v2_core"]
 branch = true
 
 [tool.coverage.report]
