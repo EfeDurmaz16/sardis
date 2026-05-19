@@ -11,8 +11,11 @@ def test_preferred_namespace_reexports_public_core_symbols() -> None:
 
 
 def test_preferred_namespace_resolves_existing_submodules() -> None:
+    from sardis_core.budget_allocator import BudgetAllocator
     from sardis_core.circuit_breaker import CircuitBreakerConfig
 
+    from sardis_v2_core.budget_allocator import BudgetAllocator as LegacyBudgetAllocator
     from sardis_v2_core.circuit_breaker import CircuitBreakerConfig as LegacyConfig
 
     assert CircuitBreakerConfig is LegacyConfig
+    assert BudgetAllocator is LegacyBudgetAllocator

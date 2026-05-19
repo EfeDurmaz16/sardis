@@ -7,7 +7,7 @@ This demonstrates how to:
 """
 import asyncio
 
-from sardis_v2_core import (
+from sardis_core import (
     EventType,
     WebhookEvent,
     emit_approval_event,
