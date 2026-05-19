@@ -280,6 +280,9 @@ in-memory replay-cache selection.
 Cache service and API-key manager construction now sit behind a tested support
 services helper, preserving production Redis requirements and Postgres versus
 memory API-key manager storage selection.
+Facility Gate repository and adapter construction now also sits behind a tested
+helper, preserving the Postgres versus memory repository DSN selection used by
+facility request routes.
 
 ## Test, Build, And Lint Results
 

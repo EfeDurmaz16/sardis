@@ -27,7 +27,6 @@ if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
 from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
 
@@ -36,6 +35,7 @@ from .dependencies import (
     configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
+    configure_facility_gate_services,
     configure_kyc_service,
     configure_payment_runtime,
     configure_sanctions_service,
@@ -61,7 +61,6 @@ from .middleware import (
 from .openapi_schema import custom_openapi
 from .providers.lithic_treasury import LithicTreasuryClient
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .routing.accounts import (
     register_account_group_routes,
@@ -517,8 +516,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.chain_executor = chain_exec
     app.state.wallet_repo = wallet_repo
     app.state.compliance_engine = compliance
-    facility_gate_repo = FacilityGateRepository(dsn=database_url if use_postgres else "memory://")
-    facility_gate_adapter = SimulatedFacilityAdapter()
+    facility_gate_services = configure_facility_gate_services(
+        database_url=database_url,
+        use_postgres=use_postgres,
+    )
+    facility_gate_repo = facility_gate_services.repository
+    facility_gate_adapter = facility_gate_services.adapter
     app.state.facility_gate_repo = facility_gate_repo
 
     logger.info(f"API initialized with storage backend: {'PostgreSQL' if use_postgres else 'SQLite/Memory'}")

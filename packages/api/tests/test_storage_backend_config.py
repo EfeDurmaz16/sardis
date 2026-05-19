@@ -6,6 +6,7 @@ from sardis_server.dependencies import (
     configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
+    configure_facility_gate_services,
     configure_kyc_service,
     configure_payment_runtime,
     configure_sanctions_service,
@@ -940,3 +941,38 @@ def test_configure_api_support_services_keeps_production_redis_requirement() -> 
             api_key_manager_cls=FakeAPIKeyManager,
             set_api_key_manager_fn=lambda manager: None,
         )
+
+
+class FakeFacilityGateRepository:
+    def __init__(self, *, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakeFacilityGateAdapter:
+    pass
+
+
+def test_configure_facility_gate_services_uses_postgres_dsn() -> None:
+    config = configure_facility_gate_services(
+        database_url="postgresql://localhost/sardis",
+        use_postgres=True,
+        repository_cls=FakeFacilityGateRepository,
+        adapter_cls=FakeFacilityGateAdapter,
+    )
+
+    assert config.dsn == "postgresql://localhost/sardis"
+    assert isinstance(config.repository, FakeFacilityGateRepository)
+    assert config.repository.dsn == "postgresql://localhost/sardis"
+    assert isinstance(config.adapter, FakeFacilityGateAdapter)
+
+
+def test_configure_facility_gate_services_uses_memory_dsn_without_postgres() -> None:
+    config = configure_facility_gate_services(
+        database_url="sqlite:///api.db",
+        use_postgres=False,
+        repository_cls=FakeFacilityGateRepository,
+        adapter_cls=FakeFacilityGateAdapter,
+    )
+
+    assert config.dsn == "memory://"
+    assert config.repository.dsn == "memory://"

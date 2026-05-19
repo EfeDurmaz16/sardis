@@ -147,6 +147,15 @@ class APISupportServicesConfig:
     api_key_manager_dsn: str
 
 
+@dataclass(frozen=True)
+class FacilityGateServicesConfig:
+    """Resolved Facility Gate repository and execution adapter."""
+
+    repository: Any
+    adapter: Any
+    dsn: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -744,6 +753,34 @@ def configure_api_support_services(
         api_key_manager=api_key_manager,
         redis_url=redis_url,
         api_key_manager_dsn=api_key_manager_dsn,
+    )
+
+
+def configure_facility_gate_services(
+    *,
+    database_url: str,
+    use_postgres: bool,
+    repository_cls: Any | None = None,
+    adapter_cls: Any | None = None,
+) -> FacilityGateServicesConfig:
+    """Create Facility Gate persistence and adapter services."""
+    if repository_cls is None:
+        from .repositories.facility_gate_repository import FacilityGateRepository
+
+        repository_cls = FacilityGateRepository
+    if adapter_cls is None:
+        from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
+
+        adapter_cls = SimulatedFacilityAdapter
+
+    dsn = database_url if use_postgres else "memory://"
+    repository = repository_cls(dsn=dsn)
+    adapter = adapter_cls()
+
+    return FacilityGateServicesConfig(
+        repository=repository,
+        adapter=adapter,
+        dsn=dsn,
     )
 
 
