@@ -96,7 +96,7 @@ non-HTTP logic out of the route file:
 
 | Concern | Target location |
 | --- | --- |
-| Request/response models | route module until an OpenAPI model package is justified |
+| Request/response models | `server/models/mpp.py` |
 | Session persistence | `server/repositories/` |
 | Policy/session orchestration | `server/domains/` or `server/services/` |
 | Provider-specific execution | provider or service modules |
