@@ -50,6 +50,10 @@ status from `docs/packages.md`, its manifest type, and the most specific
 credential-free validation command that can be inferred from the package
 manifest.
 
+Packages that still fall back to the repo-wide contributor gate, or that need a
+non-default external tool, are tracked in
+`docs/oss/package-validation-backlog.md`.
+
 The default maintained Python API suite is:
 
 ```bash

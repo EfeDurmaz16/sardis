@@ -107,3 +107,8 @@ Each package README should include:
 6. Local test/build command.
 7. Contribution notes.
 8. Security or provider-credential caveats.
+
+Use `pnpm repo:package-validation` to inspect current validation commands across
+all tracked packages. Packages that still lack package-owned validation are
+tracked in `docs/oss/package-validation-backlog.md`; do not promote those
+packages from `experimental` to `supported` until the backlog entry is resolved.

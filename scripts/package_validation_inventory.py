@@ -18,6 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES_DOC = ROOT / "docs" / "packages.md"
+BACKLOG_DOC = ROOT / "docs" / "oss" / "package-validation-backlog.md"
+FALLBACK_VALIDATION = "pnpm run check:contributor"
+EXTERNAL_TOOL_MANIFESTS = {"e2b.toml", "Nargo.toml"}
 VALIDATION_OVERRIDES = {
     "packages/sardis-protocol": (
         "pyproject.toml",
@@ -132,10 +135,15 @@ def inventory() -> list[PackageValidation]:
 
 def main() -> int:
     rows = inventory()
+    backlog_text = BACKLOG_DOC.read_text(encoding="utf-8") if BACKLOG_DOC.exists() else ""
     errors: list[str] = []
     for row in rows:
         if row.status == "undocumented":
             errors.append(f"{row.path}: missing docs/packages.md status")
+        if row.validation == FALLBACK_VALIDATION and f"`{row.path}`" not in backlog_text:
+            errors.append(f"{row.path}: fallback validation is missing from {BACKLOG_DOC.relative_to(ROOT)}")
+        if row.manifest in EXTERNAL_TOOL_MANIFESTS and f"`{row.path}`" not in backlog_text:
+            errors.append(f"{row.path}: external-tool validation is missing from {BACKLOG_DOC.relative_to(ROOT)}")
 
     if errors:
         print("Package validation inventory is incomplete:")
