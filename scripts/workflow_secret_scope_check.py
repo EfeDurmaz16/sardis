@@ -98,6 +98,11 @@ def main() -> int:
             )
 
         events = workflow_pr_events(text)
+        if events and top_level_permissions(text) == "read-all":
+            errors.append(
+                f"{workflow.relative_to(ROOT)} is triggered by {', '.join(sorted(events))} "
+                "with top-level permissions: read-all; use explicit least-privilege permissions"
+            )
         if not events:
             continue
 

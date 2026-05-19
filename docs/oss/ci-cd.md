@@ -88,6 +88,8 @@ those surfaces.
 - Jobs triggered by `pull_request` or `pull_request_target` must not use
   private deploy, publish, provider, or operations secrets unless the job has a
   job-level condition that excludes public PR events.
+- Workflows triggered by `pull_request` or `pull_request_target` must use
+  explicit least-privilege permissions instead of `permissions: read-all`.
 - Workflows that use private deploy, publish, provider, or operations secrets
   must use explicit least-privilege permissions instead of `permissions:
   read-all`.

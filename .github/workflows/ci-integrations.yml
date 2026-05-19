@@ -15,7 +15,8 @@ on:
       - "packages/sardis-adk/**"
       - "packages/sardis-agent-sdk/**"
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   PYTHON_VERSION: "3.12"
