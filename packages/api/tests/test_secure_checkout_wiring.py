@@ -1,12 +1,30 @@
 from __future__ import annotations
 
-import inspect
+from fastapi import FastAPI
+
+from sardis_server.routes.commerce import secure_checkout
+from sardis_server.routing.commerce import register_secure_checkout_routes
 
 
-def test_main_wires_secure_checkout_router_with_flag():
-    from sardis_server import main
+def test_secure_checkout_registrar_wires_router_with_flag(monkeypatch):
+    monkeypatch.delenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", raising=False)
+    app = FastAPI()
 
-    source = inspect.getsource(main)
-    assert "secure_checkout_router.get_deps" in source
-    assert "SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR" in source
-    assert "secure_checkout_router.router" in source
+    register_secure_checkout_routes(
+        app,
+        database_url="memory://",
+        use_postgres=False,
+        is_production=False,
+        wallet_repo=object(),
+        agent_repo=object(),
+        card_repo=object(),
+        card_provider=object(),
+        policy_store=object(),
+        approval_service=object(),
+        audit_store=object(),
+        cache_service=object(),
+    )
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/checkout/secure/jobs" in paths
+    assert secure_checkout.get_deps in app.dependency_overrides

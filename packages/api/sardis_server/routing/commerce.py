@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from sardis_server.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from sardis_server.routes.commerce import (
     checkout,
     checkout_controls,
@@ -12,6 +13,7 @@ from sardis_server.routes.commerce import (
     escrow_disputes,
     invoices,
     marketplace,
+    secure_checkout,
     service_directory,
 )
 
@@ -34,6 +36,59 @@ def register_checkout_routes(
     app.include_router(checkout.router, prefix="/api/v2/checkout", tags=["checkout"])
     if hasattr(checkout, "public_router"):
         app.include_router(checkout.public_router, prefix="/api/v2/checkout", tags=["checkout"])
+
+
+def register_secure_checkout_routes(
+    app: FastAPI,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    is_production: bool,
+    wallet_repo: Any,
+    agent_repo: Any,
+    card_repo: Any,
+    card_provider: Any,
+    policy_store: Any,
+    approval_service: Any,
+    audit_store: Any,
+    cache_service: Any,
+) -> None:
+    """Register secure checkout executor routes and fail closed without persistent storage in production."""
+    import os
+
+    secure_checkout_store: Any = secure_checkout.InMemorySecureCheckoutStore()
+    if use_postgres:
+        secure_checkout_job_repo = SecureCheckoutJobRepository(dsn=database_url)
+        secure_checkout_store = secure_checkout.RepositoryBackedSecureCheckoutStore(
+            secure_checkout_job_repo,
+            cache_service=cache_service,
+        )
+    secure_checkout_enabled = os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if is_production and secure_checkout_enabled and not use_postgres:
+        raise RuntimeError("secure_checkout_executor requires PostgreSQL in production")
+
+    app.dependency_overrides[secure_checkout.get_deps] = lambda: secure_checkout.SecureCheckoutDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        card_repo=card_repo,
+        card_provider=card_provider,
+        policy_store=policy_store,
+        approval_service=approval_service,
+        audit_sink=audit_store,
+        cache_service=cache_service,
+        store=secure_checkout_store,
+    )
+    if secure_checkout_enabled:
+        app.include_router(
+            secure_checkout.router,
+            prefix="/api/v2/checkout",
+            tags=["checkout-secure"],
+        )
 
 
 def register_marketplace_routes(

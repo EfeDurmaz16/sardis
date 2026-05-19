@@ -73,11 +73,9 @@ from .openapi_schema import custom_openapi
 from .providers.lithic_treasury import LithicTreasuryClient
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
-from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
-from .routes.commerce import secure_checkout as secure_checkout_router
 from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -104,6 +102,7 @@ from .routing.commerce import (
     register_escrow_dispute_routes,
     register_invoice_routes,
     register_marketplace_routes,
+    register_secure_checkout_routes,
     register_service_directory_routes,
 )
 from .routing.compliance import (
@@ -1652,40 +1651,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         orchestrator=checkout_orchestrator,
     )
 
-    secure_checkout_store = secure_checkout_router.InMemorySecureCheckoutStore()
-    if use_postgres:
-        secure_checkout_job_repo = SecureCheckoutJobRepository(dsn=database_url)
-        secure_checkout_store = secure_checkout_router.RepositoryBackedSecureCheckoutStore(
-            secure_checkout_job_repo,
-            cache_service=cache_service,
-        )
-    secure_checkout_enabled = os.getenv("SARDIS_ENABLE_SECURE_CHECKOUT_EXECUTOR", "1").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
+    register_secure_checkout_routes(
+        app,
+        database_url=database_url,
+        use_postgres=use_postgres,
+        is_production=settings.is_production,
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        card_repo=card_repo,
+        card_provider=card_provider,
+        policy_store=policy_store,
+        approval_service=approval_service,
+        audit_store=audit_store,
+        cache_service=cache_service,
     )
-    if settings.is_production and secure_checkout_enabled and not use_postgres:
-        raise RuntimeError("secure_checkout_executor requires PostgreSQL in production")
-    app.dependency_overrides[secure_checkout_router.get_deps] = (
-        lambda: secure_checkout_router.SecureCheckoutDependencies(
-            wallet_repo=wallet_repo,
-            agent_repo=agent_repo,
-            card_repo=card_repo,
-            card_provider=card_provider,
-            policy_store=policy_store,
-            approval_service=approval_service,
-            audit_sink=audit_store,
-            cache_service=cache_service,
-            store=secure_checkout_store,
-        )
-    )
-    if secure_checkout_enabled:
-        app.include_router(
-            secure_checkout_router.router,
-            prefix="/api/v2/checkout",
-            tags=["checkout-secure"],
-        )
 
     register_policy_routes(app, policy_store=policy_store, agent_repo=agent_repo)
 
