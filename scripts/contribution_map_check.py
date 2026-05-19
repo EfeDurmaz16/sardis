@@ -61,11 +61,19 @@ def main() -> int:
     required_protocol_boundary_refs = [
         "x402 and MPP are separate protocol surfaces",
         "docs/architecture/x402-and-mpp.md",
+        "PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q",
         "tests/test_x402_middleware.py",
         "tests/test_mpp_router.py",
     ]
     missing_protocol_boundary_refs = [
         ref for ref in required_protocol_boundary_refs if ref not in contribution_map_text
+    ]
+    forbidden_protocol_command_refs = [
+        "`uv run pytest packages/sardis-protocol/tests -q`",
+        "`uv run pytest packages/sardis-mpp/tests -q`",
+    ]
+    present_forbidden_protocol_commands = [
+        ref for ref in forbidden_protocol_command_refs if ref in contribution_map_text
     ]
     required_protocol_testing_refs = [
         "PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q",
@@ -102,6 +110,12 @@ def main() -> int:
         errors.append(
             "docs/oss/contribution-map.md is missing required paid-protocol boundary guidance:\n"
             + "\n".join(f"  - {ref}" for ref in missing_protocol_boundary_refs)
+        )
+    if present_forbidden_protocol_commands:
+        errors.append(
+            "docs/oss/contribution-map.md contains protocol validation commands "
+            "that skip required local source/dependency setup:\n"
+            + "\n".join(f"  - {ref}" for ref in present_forbidden_protocol_commands)
         )
     if missing_protocol_testing_refs:
         errors.append(
