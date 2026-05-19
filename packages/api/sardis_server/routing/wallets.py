@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from sardis_server.routes.wallets import (
     cpn,
+    funding,
     funding_capabilities,
     offramp,
     onchain_payments,
@@ -169,6 +170,11 @@ def register_funding_capability_routes(app: FastAPI, *, settings: Any) -> None:
         lambda: funding_capabilities.FundingCapabilitiesDeps(settings=settings)
     )
     app.include_router(funding_capabilities.router, prefix="/api/v2")
+
+
+def register_funding_routes(app: FastAPI) -> None:
+    """Register protocol funding commitment and funding cell routes."""
+    app.include_router(funding.router, prefix="/api/v2", tags=["funding"])
 
 
 def register_ramp_edge_routes(app: FastAPI) -> None:

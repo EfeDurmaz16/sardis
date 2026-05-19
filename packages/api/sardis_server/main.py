@@ -84,7 +84,6 @@ from .routes.compliance import compliance_export as compliance_export_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
 from .routes.wallets import cards as cards_router
-from .routes.wallets import funding as funding_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -165,6 +164,7 @@ from .routing.providers import (
 from .routing.wallets import (
     register_cpn_routes,
     register_funding_capability_routes,
+    register_funding_routes,
     register_onchain_payment_routes,
     register_ramp_edge_routes,
     register_ramp_routes,
@@ -1871,7 +1871,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # Protocol v1.0 routers
     register_payment_object_routes(app)
-    app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
+    register_funding_routes(app)
     register_mandate_delegation_routes(app)
     register_fx_routes(app)
     register_usage_routes(app)

@@ -4,6 +4,7 @@ from sardis_server.routes.wallets import cpn, funding_capabilities, ramp, treasu
 from sardis_server.routing.wallets import (
     register_cpn_routes,
     register_funding_capability_routes,
+    register_funding_routes,
     register_ramp_routes,
     register_treasury_routes,
 )
@@ -106,3 +107,14 @@ def test_register_funding_capability_routes_wires_dependencies_and_route():
 
     paths = {route.path for route in app.routes}
     assert "/api/v2/funding/capabilities" in paths
+
+
+def test_register_funding_routes_mounts_commitment_and_cell_routes():
+    app = FastAPI()
+
+    register_funding_routes(app)
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/funding/commit" in paths
+    assert "/api/v2/funding/commitments" in paths
+    assert "/api/v2/funding/cells" in paths
