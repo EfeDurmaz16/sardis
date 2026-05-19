@@ -32,6 +32,7 @@ The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[t
 python3 scripts/repo_inventory.py
 pnpm repo:ignored-artifacts
 pnpm repo:package-layout
+pnpm repo:core-imports
 pnpm repo:package-validation
 pnpm repo:stale-paths:local
 pnpm check:openapi
@@ -51,6 +52,10 @@ from your local checkout.
 the public tree readable for contributors. It blocks repeated API application
 path shapes while allowing normal `src/<import_package>` layouts for published
 Python libraries.
+
+`pnpm repo:core-imports` checks public examples and README files use
+`sardis_core` for new Sardis core imports. The legacy `sardis_v2_core`
+namespace remains available only as a compatibility boundary.
 
 `pnpm repo:package-validation` prints every tracked public package, its maturity
 status from `docs/packages.md`, its manifest type, and the most specific
