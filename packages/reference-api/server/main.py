@@ -34,6 +34,7 @@ from .dependencies import (
     configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
+    configure_cpn_runtime,
     configure_facility_gate_services,
     configure_inbound_payment_runtime,
     configure_kyc_service,
@@ -720,48 +721,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         lithic_treasury_client=lithic_treasury_client,
         canonical_ledger_repo=canonical_ledger_repo,
     )
-    cpn_client = None
-    circle_cpn_api_key_for_router = (
-        settings.circle_cpn.api_key
-        or os.getenv("SARDIS_CIRCLE_CPN__API_KEY", "")
-        or os.getenv("CIRCLE_CPN_API_KEY", "")
-    )
-    circle_cpn_enabled_for_router = bool(
-        settings.circle_cpn.enabled
-        or os.getenv("SARDIS_CIRCLE_CPN__ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
-        or os.getenv("CIRCLE_CPN_ENABLED", "").strip().lower() in {"1", "true", "yes", "on"}
-    )
-    if circle_cpn_enabled_for_router and circle_cpn_api_key_for_router:
-        try:
-            from .providers.circle_cpn import CircleCPNClient
-
-            cpn_client = CircleCPNClient(
-                api_key=circle_cpn_api_key_for_router,
-                base_url=settings.circle_cpn.base_url or "https://api.circle.com",
-                payout_path=settings.circle_cpn.payout_path or "/v1/cpn/payments",
-                collection_path=settings.circle_cpn.collection_path or "/v1/cpn/collections",
-                status_path=settings.circle_cpn.status_path or "/v1/cpn/payments/{payment_id}",
-                auth_style=settings.circle_cpn.auth_style or "bearer",
-                timeout_seconds=float(settings.circle_cpn.timeout_seconds),
-                program_id=(
-                    settings.circle_cpn.program_id
-                    or os.getenv("SARDIS_CIRCLE_CPN__PROGRAM_ID", "")
-                    or os.getenv("CIRCLE_CPN_PROGRAM_ID", "")
-                ),
-            )
-        except Exception as exc:
-            logger.warning("Circle CPN client init failed for router: %s", exc)
-            cpn_client = None
-
+    cpn_runtime = configure_cpn_runtime(settings)
     register_cpn_routes(
         app,
         treasury_repo=treasury_repo,
-        cpn_client=cpn_client,
-        webhook_secret=(
-            settings.circle_cpn.webhook_secret
-            or os.getenv("SARDIS_CIRCLE_CPN__WEBHOOK_SECRET", "")
-            or os.getenv("CIRCLE_CPN_WEBHOOK_SECRET", "")
-        ),
+        cpn_client=cpn_runtime.cpn_client,
+        webhook_secret=cpn_runtime.webhook_secret,
         environment=settings.environment,
     )
 

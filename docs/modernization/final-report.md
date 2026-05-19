@@ -297,6 +297,9 @@ runtime construction now follow the same tested bootstrap-helper pattern. The
 treasury pass removed Lithic client and treasury repository construction from
 `server.main` while preserving the route dependency handoff and no-key warning
 behavior.
+Circle CPN route client construction now also lives behind a tested helper,
+including settings/env precedence, default Circle paths, webhook secret
+resolution, disabled-mode behavior, and client initialization failure recovery.
 
 ## Test, Build, And Lint Results
 
@@ -304,7 +307,10 @@ Current validation after the latest API bootstrap cleanup:
 
 - `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
 - `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_storage_backend_config.py -q` passed: 68 passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_storage_backend_config.py -q` passed: 72 passed.
+- `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
+- `pnpm check:openapi` passed: 540 paths, 592 schemas.
+- `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.
 
 Representative earlier validation during the modernization run:
 

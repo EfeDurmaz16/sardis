@@ -6,6 +6,7 @@ from server.dependencies import (
     configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
+    configure_cpn_runtime,
     configure_facility_gate_services,
     configure_inbound_payment_runtime,
     configure_kyc_service,
@@ -51,6 +52,18 @@ def _settings(**overrides):
             api_key="",
             base_url="",
             timeout_seconds=10.0,
+        ),
+        "circle_cpn": SimpleNamespace(
+            enabled=False,
+            api_key="",
+            base_url="",
+            payout_path="",
+            collection_path="",
+            status_path="",
+            auth_style="",
+            timeout_seconds=10.0,
+            program_id="",
+            webhook_secret="",
         ),
     }
     defaults.update(overrides)
@@ -1474,3 +1487,111 @@ def test_expose_treasury_runtime_state_sets_route_dependencies() -> None:
         treasury_runtime.canonical_ledger_repository
     )
     assert app.state.lithic_treasury_client is treasury_runtime.lithic_treasury_client
+
+
+class FakeCPNClient:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        base_url: str,
+        payout_path: str,
+        collection_path: str,
+        status_path: str,
+        auth_style: str,
+        timeout_seconds: float,
+        program_id: str,
+    ) -> None:
+        self.api_key = api_key
+        self.base_url = base_url
+        self.payout_path = payout_path
+        self.collection_path = collection_path
+        self.status_path = status_path
+        self.auth_style = auth_style
+        self.timeout_seconds = timeout_seconds
+        self.program_id = program_id
+
+
+class ExplodingCPNClient:
+    def __init__(self, **kwargs) -> None:
+        raise RuntimeError("boom")
+
+
+def test_configure_cpn_runtime_uses_settings_client_config() -> None:
+    config = configure_cpn_runtime(
+        _settings(
+            circle_cpn=SimpleNamespace(
+                enabled=True,
+                api_key="settings_key",
+                base_url="https://cpn.example",
+                payout_path="/pay",
+                collection_path="/collect",
+                status_path="/status/{payment_id}",
+                auth_style="x_api_key",
+                timeout_seconds=2.5,
+                program_id="settings_program",
+                webhook_secret="settings_webhook",
+            )
+        ),
+        environ={},
+        cpn_client_cls=FakeCPNClient,
+    )
+
+    assert isinstance(config.cpn_client, FakeCPNClient)
+    assert config.cpn_client.api_key == "settings_key"
+    assert config.cpn_client.base_url == "https://cpn.example"
+    assert config.cpn_client.payout_path == "/pay"
+    assert config.cpn_client.collection_path == "/collect"
+    assert config.cpn_client.status_path == "/status/{payment_id}"
+    assert config.cpn_client.auth_style == "x_api_key"
+    assert config.cpn_client.timeout_seconds == 2.5
+    assert config.cpn_client.program_id == "settings_program"
+    assert config.webhook_secret == "settings_webhook"
+
+
+def test_configure_cpn_runtime_uses_env_feature_flag_and_defaults() -> None:
+    config = configure_cpn_runtime(
+        _settings(),
+        environ={
+            "SARDIS_CIRCLE_CPN__ENABLED": "true",
+            "SARDIS_CIRCLE_CPN__API_KEY": "env_key",
+            "SARDIS_CIRCLE_CPN__PROGRAM_ID": "env_program",
+            "SARDIS_CIRCLE_CPN__WEBHOOK_SECRET": "env_webhook",
+        },
+        cpn_client_cls=FakeCPNClient,
+    )
+
+    assert isinstance(config.cpn_client, FakeCPNClient)
+    assert config.cpn_client.api_key == "env_key"
+    assert config.cpn_client.base_url == "https://api.circle.com"
+    assert config.cpn_client.payout_path == "/v1/cpn/payments"
+    assert config.cpn_client.collection_path == "/v1/cpn/collections"
+    assert config.cpn_client.status_path == "/v1/cpn/payments/{payment_id}"
+    assert config.cpn_client.auth_style == "bearer"
+    assert config.cpn_client.program_id == "env_program"
+    assert config.webhook_secret == "env_webhook"
+
+
+def test_configure_cpn_runtime_leaves_client_unconfigured_when_disabled() -> None:
+    circle_cpn_settings = _settings().circle_cpn
+    circle_cpn_settings.api_key = "key"
+    config = configure_cpn_runtime(
+        _settings(circle_cpn=circle_cpn_settings),
+        environ={},
+        cpn_client_cls=FakeCPNClient,
+    )
+
+    assert config.cpn_client is None
+
+
+def test_configure_cpn_runtime_recovers_from_client_failure() -> None:
+    config = configure_cpn_runtime(
+        _settings(),
+        environ={
+            "CIRCLE_CPN_ENABLED": "1",
+            "CIRCLE_CPN_API_KEY": "env_key",
+        },
+        cpn_client_cls=ExplodingCPNClient,
+    )
+
+    assert config.cpn_client is None

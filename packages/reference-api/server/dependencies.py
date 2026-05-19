@@ -194,6 +194,14 @@ class TreasuryRuntimeConfig:
     lithic_webhook_secret: str
 
 
+@dataclass(frozen=True)
+class CPNRuntimeConfig:
+    """Resolved Circle CPN route client and webhook credential."""
+
+    cpn_client: Any | None
+    webhook_secret: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -1100,6 +1108,66 @@ def configure_treasury_runtime(
         lithic_treasury_client=lithic_treasury_client,
         lithic_webhook_secret=lithic_webhook_secret,
     )
+
+
+def configure_cpn_runtime(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    cpn_client_cls: Any = _DEFAULT_PROVIDER,
+) -> CPNRuntimeConfig:
+    """Create the optional Circle CPN client used by wallet CPN routes."""
+    env = environ if environ is not None else os.environ
+    circle_cpn_settings = settings.circle_cpn
+    api_key = (
+        getattr(circle_cpn_settings, "api_key", "")
+        or env.get("SARDIS_CIRCLE_CPN__API_KEY", "")
+        or env.get("CIRCLE_CPN_API_KEY", "")
+    )
+    enabled = bool(
+        getattr(circle_cpn_settings, "enabled", False)
+        or env.get("SARDIS_CIRCLE_CPN__ENABLED", "").strip().lower()
+        in {"1", "true", "yes", "on"}
+        or env.get("CIRCLE_CPN_ENABLED", "").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    webhook_secret = (
+        getattr(circle_cpn_settings, "webhook_secret", "")
+        or env.get("SARDIS_CIRCLE_CPN__WEBHOOK_SECRET", "")
+        or env.get("CIRCLE_CPN_WEBHOOK_SECRET", "")
+    )
+
+    cpn_client = None
+    if enabled and api_key:
+        if cpn_client_cls is _DEFAULT_PROVIDER:
+            from .providers.circle_cpn import CircleCPNClient
+
+            cpn_client_cls = CircleCPNClient
+        try:
+            cpn_client = cpn_client_cls(
+                api_key=api_key,
+                base_url=getattr(circle_cpn_settings, "base_url", "")
+                or "https://api.circle.com",
+                payout_path=getattr(circle_cpn_settings, "payout_path", "")
+                or "/v1/cpn/payments",
+                collection_path=getattr(circle_cpn_settings, "collection_path", "")
+                or "/v1/cpn/collections",
+                status_path=getattr(circle_cpn_settings, "status_path", "")
+                or "/v1/cpn/payments/{payment_id}",
+                auth_style=getattr(circle_cpn_settings, "auth_style", "")
+                or "bearer",
+                timeout_seconds=float(getattr(circle_cpn_settings, "timeout_seconds", 10.0)),
+                program_id=(
+                    getattr(circle_cpn_settings, "program_id", "")
+                    or env.get("SARDIS_CIRCLE_CPN__PROGRAM_ID", "")
+                    or env.get("CIRCLE_CPN_PROGRAM_ID", "")
+                ),
+            )
+        except Exception as exc:
+            logger.warning("Circle CPN client init failed for router: %s", exc)
+            cpn_client = None
+
+    return CPNRuntimeConfig(cpn_client=cpn_client, webhook_secret=webhook_secret)
 
 
 def expose_runtime_state(
