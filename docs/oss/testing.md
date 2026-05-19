@@ -22,10 +22,10 @@ default.
 
 `pnpm run check:contributor` is the recommended first check for public OSS
 cleanup PRs. It verifies the public/private surface guard, stale API path guard,
-generated-artifact guard, public docs local-link guard, CI map drift guard,
-workflow secret-scope guard, GitHub template guard, community health guard, package maturity matrix,
-contribution map coverage, root-test migration inventory, and a small mixed
-root/package pytest smoke suite.
+source-layout guard, generated-artifact guard, public docs local-link guard, CI
+map drift guard, workflow secret-scope guard, GitHub template guard, community
+health guard, package maturity matrix, contribution map coverage, root-test
+migration inventory, and a small mixed root/package pytest smoke suite.
 
 The public docs local-link guard covers the README, contribution/security/support
 files, package matrix, development guide, docs index, quickstart, OSS docs, and
@@ -80,3 +80,17 @@ Run this guard before opening PRs that touch docs, examples, or test routing:
 ```bash
 python3 scripts/stale_api_path_check.py
 ```
+
+## Source Layout
+
+The source-layout guard keeps the reference API contributor path readable and
+prevents older package names from coming back:
+
+```bash
+python3 scripts/source_layout_check.py
+```
+
+It requires the active API tree to stay at `packages/api/sardis_server` with
+domain route modules under `routes/` and FastAPI registration under `routing/`.
+Published Python libraries may still use `src/<import_package>` when that is
+the package-correct layout for a library.

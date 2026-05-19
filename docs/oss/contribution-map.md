@@ -11,8 +11,9 @@ pnpm run check:contributor
 ```
 
 That gate is intentionally credential-free. It checks the OSS/private boundary,
-stale API paths, package documentation coverage, root-test migration inventory,
-and a small mixed package/root pytest smoke suite.
+stale API paths, source-layout invariants, package documentation coverage,
+root-test migration inventory, and a small mixed package/root pytest smoke
+suite.
 
 ## Contribution Principles
 
@@ -24,6 +25,10 @@ and a small mixed package/root pytest smoke suite.
   credential requirements.
 - Security-sensitive work must include fail-closed tests or a clear validation
   command.
+- Keep source placement aligned with `docs/oss/source-layout.md`. The reference
+  API source tree is `packages/api/sardis_server`; do not reintroduce the old
+  repeated API package names, extra API `src` layer, or legacy flat router
+  bucket.
 
 ## Core Contribution Paths
 

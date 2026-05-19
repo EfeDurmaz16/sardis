@@ -13,6 +13,9 @@
 - Reduced deploy, publish, operations, and public PR workflow permissions from broad `read-all` defaults to explicit least-privilege permissions where practical.
 - Required PR-triggered workflows and private-secret workflows to avoid top-level `permissions: read-all`.
 - Required public workflows that install JavaScript dependencies to use Node 22, pnpm 9.15.4 when explicitly pinned, and `pnpm install --frozen-lockfile`.
+- Added a source-layout policy and contributor gate so the API cannot drift back
+  to repeated API package names, an extra API `src` layer, or the legacy flat
+  router bucket.
 - Fixed public quickstarts to use the existing `SardisClient` export.
 - Removed unused `apps/landing/lib/sardis-api.ts`, which contained stale browser-readable token and direct API auth assumptions.
 - Changed merchant checkout mandate validation to fail closed when a required mandate cannot be validated.
@@ -230,6 +233,14 @@ Latest path-layout pass: the deployable API package now lives at `packages/api`,
 Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/api/sardis_server` during local import probes.
 
 Latest CI/CD guardrail pass: the public CI map now inventories every workflow file, required check metadata is cross-checked against workflow job names, public docs links are checked across the main contributor docs and architecture docs, PR-triggered workflows cannot use private deploy/publish/provider secrets without a PR-excluding job condition, private-secret workflows cannot use top-level `permissions: read-all`, public PR workflows cannot use top-level `permissions: read-all`, and workflow Node/pnpm/install commands are checked against the repo's Node 22, pnpm 9.15.4, and frozen-lockfile policy.
+
+Latest source-layout pass: the contributor gate now enforces the current API
+source layout directly. The reference API must stay at
+`packages/api/sardis_server`, route implementations must stay under domain
+`routes/` modules, registration must stay under `routing/`, and the old
+repeated API package/source shape must not return. Published Python libraries
+may still use `src/<import_package>` when that is the package-correct library
+layout.
 
 ## Test, Build, And Lint Results
 
@@ -542,6 +553,7 @@ Latest CI/CD guardrail pass: the public CI map now inventories every workflow fi
 - `python3 -m compileall -q packages/api/sardis_server/main.py packages/api/sardis_server/routing/billing.py packages/api/sardis_server/routes/billing`, `pnpm check:openapi`, `uv run pytest packages/api/tests/test_billing.py packages/api/tests/test_recurring_subscriptions.py packages/api/tests/test_usage_metering.py -q`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting billing route registration. OpenAPI remained 540 paths and 592 schemas.
 - `python3 -m compileall -q packages/api/sardis_server/main.py packages/api/sardis_server/routing/protocol.py packages/api/sardis_server/routes/protocol`, `pnpm check:openapi`, `uv run pytest packages/api/tests/test_a2a_message_security.py packages/api/tests/test_a2a_trust_endpoints.py packages/api/tests/test_a2a_trust_table.py packages/api/tests/test_wallets_x402.py -q`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting protocol route registration. OpenAPI remained 540 paths and 592 schemas.
 - `python3 -m compileall -q packages/api/sardis_server/main.py packages/api/sardis_server/routing/money_movement.py packages/api/sardis_server/routes/money_movement`, `pnpm check:openapi`, `uv run pytest packages/api/tests/test_pay_phase2_routing.py packages/api/tests/test_pay_phase3_fx.py packages/api/tests/test_pay_sandbox_mode.py packages/api/tests/test_transactions_batch_idempotency.py packages/api/tests/test_batch_payments_idempotency.py -q`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after expanding money movement route registration. OpenAPI remained 540 paths and 592 schemas.
+- `python3 scripts/source_layout_check.py`, `python3 scripts/stale_api_path_check.py`, `python3 scripts/public_doc_link_check.py`, `python3 scripts/ci_cd_map_check.py`, `python3 -m compileall -q scripts/source_layout_check.py scripts/stale_api_path_check.py`, `git diff --check`, and `pnpm run check:contributor` passed after adding the source-layout guard to the public contributor gate.
 
 Notes:
 
