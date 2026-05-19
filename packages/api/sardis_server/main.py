@@ -44,9 +44,6 @@ from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.orchestrator import PaymentOrchestrator
 from sardis_wallet.manager import WalletManager
 
-from .routes.protocol import a2a as a2a_router
-from .routes.protocol import a2a_payments as a2a_payments_router
-from .routes.protocol import acp as acp_router
 from .routes.commerce import checkout as checkout_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
@@ -85,7 +82,6 @@ from .routes.wallets import onramp as onramp_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.wallets import ramp as ramp_router
 from .routes.commerce import secure_checkout as secure_checkout_router
-from .routes.protocol import spt as spt_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
@@ -94,7 +90,6 @@ from .routes.wallets import treasury_ops as treasury_ops_router
 from .routes.wallets import virtual_cards as virtual_cards_router
 from .routes.wallets import wallets as wallets_router
 from .routes.developer import workflow_templates as workflow_templates_router
-from .routes.protocol import x402 as x402_router
 
 from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
@@ -126,7 +121,6 @@ from .middleware import (
 )
 from .openapi_schema import custom_openapi
 from .providers.lithic_treasury import LithicTreasuryClient
-from .repositories.a2a_trust_repository import A2ATrustRepository
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.enterprise_support_repository import EnterpriseSupportRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
@@ -164,6 +158,13 @@ from .routing.policy import (
     register_policy_analytics_routes,
     register_policy_routes,
     register_policy_simulation_routes,
+)
+from .routing.protocol import (
+    register_a2a_routes,
+    register_erc8183_routes,
+    register_mpp_routes,
+    register_protocol_v1_routes,
+    register_x402_routes,
 )
 
 # Configure structured logging
@@ -868,20 +869,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(bridge_router.router, prefix="/api/v2/bridge", tags=["bridge"])
     logger.info("Bridge router registered at /api/v2/bridge")
 
-    # x402 facilitator router (feature-flag gated)
-    if settings.x402.facilitator_enabled:
-        app.include_router(x402_router.router, prefix="/api/v2/x402", tags=["x402"])
-        logger.info("x402 facilitator router registered at /api/v2/x402")
-    else:
-        logger.info("x402 facilitator router disabled (set SARDIS_X402_FACILITATOR_ENABLED=true to enable)")
-
-    # ERC-8183 agentic commerce router (feature-flag gated)
-    if settings.erc8183.enabled:
-        from .routes.protocol import erc8183 as erc8183_router
-        app.include_router(erc8183_router.router, prefix="/api/v2", tags=["erc8183"])
-        logger.info("ERC-8183 agentic commerce router registered at /api/v2/erc8183")
-    else:
-        logger.info("ERC-8183 router disabled (set SARDIS_ERC8183_ENABLED=true to enable)")
+    register_x402_routes(app, facilitator_enabled=settings.x402.facilitator_enabled)
+    register_erc8183_routes(app, enabled=settings.erc8183.enabled)
 
     recurring_billing_service = register_subscription_routes(
         app,
@@ -928,24 +917,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Refund endpoints (nested under /payments)
     app.include_router(payments_refund_router.router, prefix="/api/v2/payments", tags=["payments", "refunds"])
 
-    a2a_trust_repo = A2ATrustRepository(dsn=database_url if use_postgres else None)
-    app.state.a2a_trust_repo = a2a_trust_repo
-
-    app.dependency_overrides[a2a_router.get_deps] = lambda: a2a_router.A2ADependencies(
+    register_a2a_routes(
+        app,
+        database_url=database_url,
+        use_postgres=use_postgres,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         chain_executor=chain_exec,
         wallet_manager=wallet_mgr,
-        ledger=ledger_store,
+        ledger_store=ledger_store,
         compliance=compliance,
         identity_registry=identity_registry,
-        trust_repo=a2a_trust_repo,
         audit_store=audit_store,
         approval_service=approval_service,
     )
-    app.include_router(a2a_router.router, prefix="/api/v2/a2a", tags=["a2a"])
-    app.include_router(a2a_router.public_router, prefix="/api/v2/a2a", tags=["a2a"])
-    app.include_router(a2a_payments_router.router, prefix="/api/v2", tags=["a2a-payments"])
 
     # OfframpService (used by ramp + cards)
     offramp_service = None
@@ -1005,15 +990,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     if hasattr(ramp_router, "public_router"):
         app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
-    # --- MPP (Machine Payments Protocol) routes ---
-    from .routes.protocol import mpp as mpp_router
-    app.include_router(mpp_router.router, prefix="/api/v2/mpp", tags=["mpp"])
-    logger.info("MPP routes enabled")
-
-    # --- MPP Demo (paid API for Stripe team demo) ---
-    from .routes.protocol import mpp_demo as mpp_demo_router
-    app.include_router(mpp_demo_router.router, prefix="/api/v2/demo", tags=["mpp-demo"])
-    logger.info("MPP demo routes enabled")
+    register_mpp_routes(app)
 
     # --- Testnet faucet ---
     app.include_router(faucet_router.router, prefix="/api/v2/faucet", tags=["faucet"])
@@ -1965,8 +1942,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
     app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
     app.include_router(streaming_payments_router.router, prefix="/api/v2", tags=["streaming-payments"])
-    app.include_router(spt_router.router, prefix="/api/v2", tags=["spt"])
-    app.include_router(acp_router.router, prefix="/api/v2", tags=["acp"])
+    register_protocol_v1_routes(app)
     app.include_router(offramp_router.router, prefix="/api/v2", tags=["offramp"])
     app.include_router(onramp_router.router, prefix="/api/v2", tags=["onramp"])
     app.include_router(onramp_router.webhook_router, prefix="/api/v2", tags=["stripe-onramp-webhooks"])
