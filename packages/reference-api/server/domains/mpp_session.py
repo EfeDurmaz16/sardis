@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+
+from server.models.mpp import CreateMPPSessionRequest
 
 
 class MPPSessionInactiveError(ValueError):
@@ -27,6 +29,12 @@ class MPPBudgetTransition:
     status: str
 
 
+@dataclass(frozen=True)
+class MPPNewSession:
+    record: dict
+    expires_at_dt: datetime | None
+
+
 def parse_session_expiry(expires_at) -> datetime | None:
     if not expires_at:
         return None
@@ -42,6 +50,42 @@ def parse_session_expiry(expires_at) -> datetime | None:
     if expiry.tzinfo is None:
         expiry = expiry.replace(tzinfo=UTC)
     return expiry
+
+
+def create_session_record_payload(
+    *,
+    request: CreateMPPSessionRequest,
+    session_id: str,
+    organization_id: str,
+    now: datetime,
+) -> MPPNewSession:
+    expires_at_dt = None
+    expires_at = None
+    if request.expires_in_seconds:
+        expires_at_dt = now + timedelta(seconds=request.expires_in_seconds)
+        expires_at = expires_at_dt.isoformat()
+
+    return MPPNewSession(
+        record={
+            "session_id": session_id,
+            "org_id": organization_id,
+            "mandate_id": request.mandate_id,
+            "wallet_id": request.wallet_id,
+            "agent_id": request.agent_id,
+            "method": request.method,
+            "chain": request.chain,
+            "currency": request.currency,
+            "spending_limit": request.spending_limit,
+            "remaining": request.spending_limit,
+            "total_spent": Decimal("0"),
+            "payment_count": 0,
+            "status": "active",
+            "created_at": now,
+            "closed_at": None,
+            "expires_at": expires_at,
+        },
+        expires_at_dt=expires_at_dt,
+    )
 
 
 def ensure_session_can_execute(session: dict, now: datetime | None = None) -> None:

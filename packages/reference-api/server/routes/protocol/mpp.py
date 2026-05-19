@@ -25,6 +25,7 @@ from server.domains.mpp_session import (
     MPPSessionExpiredError,
     MPPSessionInactiveError,
     apply_payment_budget,
+    create_session_record_payload,
     ensure_card_budget,
     ensure_session_can_execute,
 )
@@ -65,43 +66,23 @@ async def create_session(
     principal: Principal = Depends(require_principal),
 ):
     """Create an MPP payment session with a spending limit."""
-    from datetime import timedelta
-
     session_id = f"mpp_sess_{uuid4().hex[:16]}"
     now = datetime.now(UTC)
-    expires_at_dt = None
-    expires_at = None
-    if req.expires_in_seconds:
-        expires_at_dt = now + timedelta(seconds=req.expires_in_seconds)
-        expires_at = expires_at_dt.isoformat()
-
-    session = {
-        "session_id": session_id,
-        "org_id": principal.org_id,
-        "mandate_id": req.mandate_id,
-        "wallet_id": req.wallet_id,
-        "agent_id": req.agent_id,
-        "method": req.method,
-        "chain": req.chain,
-        "currency": req.currency,
-        "spending_limit": req.spending_limit,
-        "remaining": req.spending_limit,
-        "total_spent": Decimal("0"),
-        "payment_count": 0,
-        "status": "active",
-        "created_at": now,
-        "closed_at": None,
-        "expires_at": expires_at,
-    }
+    new_session = create_session_record_payload(
+        request=req,
+        session_id=session_id,
+        organization_id=principal.org_id,
+        now=now,
+    )
     await create_session_record(
-        session=session,
+        session=new_session.record,
         metadata=req.metadata or {},
-        expires_at_dt=expires_at_dt,
+        expires_at_dt=new_session.expires_at_dt,
     )
     logger.info("MPP session created: %s (limit=%s %s)", session_id, req.spending_limit, req.currency)
 
     return mpp_session_response_from_record(
-        session,
+        new_session.record,
         next_steps=[
             "POST /api/v2/mpp/sessions/{session_id}/execute — Execute payment",
         ],

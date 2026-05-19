@@ -12,10 +12,12 @@ from server.domains.mpp_session import (
     MPPSessionExpiredError,
     MPPSessionInactiveError,
     apply_payment_budget,
+    create_session_record_payload,
     ensure_card_budget,
     ensure_session_can_execute,
     parse_session_expiry,
 )
+from server.models.mpp import CreateMPPSessionRequest
 
 
 def _session(**overrides):
@@ -37,6 +39,40 @@ def test_parse_session_expiry_handles_datetime_and_strings():
     assert parse_session_expiry(now.isoformat()) == now
     assert parse_session_expiry("not-a-date") is None
     assert parse_session_expiry(None) is None
+
+
+def test_create_session_record_payload_sets_defaults_and_expiry():
+    now = datetime.now(UTC)
+    new_session = create_session_record_payload(
+        request=CreateMPPSessionRequest(
+            mandate_id="mandate_123",
+            wallet_id="wallet_123",
+            agent_id="agent_123",
+            spending_limit=Decimal("50"),
+            expires_in_seconds=60,
+        ),
+        session_id="mpp_sess_123",
+        organization_id="org_123",
+        now=now,
+    )
+
+    assert new_session.record["session_id"] == "mpp_sess_123"
+    assert new_session.record["org_id"] == "org_123"
+    assert new_session.record["mandate_id"] == "mandate_123"
+    assert new_session.record["wallet_id"] == "wallet_123"
+    assert new_session.record["agent_id"] == "agent_123"
+    assert new_session.record["method"] == "tempo"
+    assert new_session.record["chain"] == "tempo"
+    assert new_session.record["currency"] == "USDC"
+    assert new_session.record["spending_limit"] == Decimal("50")
+    assert new_session.record["remaining"] == Decimal("50")
+    assert new_session.record["total_spent"] == Decimal("0")
+    assert new_session.record["payment_count"] == 0
+    assert new_session.record["status"] == "active"
+    assert new_session.record["created_at"] == now
+    assert new_session.record["closed_at"] is None
+    assert new_session.expires_at_dt == now + timedelta(seconds=60)
+    assert new_session.record["expires_at"] == new_session.expires_at_dt.isoformat()
 
 
 def test_ensure_session_can_execute_rejects_inactive_session():
