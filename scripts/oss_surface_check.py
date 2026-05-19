@@ -107,6 +107,14 @@ BLOCKED_TEXT_SNIPPETS = {
         "Public CLI demo next steps must not route contributors into the private "
         "hosted product surface."
     ),
+    "https://dashboard.sardis.sh/api-keys": (
+        "Public SDK and docs onboarding must describe self-hosted/reference API "
+        "key setup instead of private hosted dashboard key management."
+    ),
+    "https://dashboard.sardis.sh/signup": (
+        "Public SDK and docs onboarding must not route contributors into private "
+        "hosted product signup."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {

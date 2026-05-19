@@ -11,7 +11,7 @@ async function main() {
   const apiKey = process.env.SARDIS_API_KEY;
   if (!apiKey) {
     console.log('Set SARDIS_API_KEY environment variable first.');
-    console.log('Get your key at: https://dashboard.sardis.sh/api-keys');
+    console.log('Configure a sandbox key with your Sardis API deployment: https://sardis.sh/docs/authentication');
     return;
   }
 

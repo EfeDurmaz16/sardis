@@ -75,6 +75,8 @@ export enum SardisErrorCode {
   CHAIN_UNAVAILABLE = 'SARDIS_7005',
 }
 
+const API_KEY_SETUP_URL = 'https://sardis.sh/docs/authentication';
+
 /**
  * Detailed error information structure.
  */
@@ -264,7 +266,7 @@ export class APIError extends SardisError {
 
     // Append actionable guidance for common error status codes
     if (statusCode === 401) {
-      message = message + '\n→ Get or rotate your API key: https://dashboard.sardis.sh/api-keys';
+      message = message + `\n→ Configure or rotate your API key: ${API_KEY_SETUP_URL}`;
     } else if (statusCode === 403) {
       message = message + '\n→ Check required scopes: https://sardis.sh/docs/api#authentication';
     } else if (statusCode === 503) {
@@ -339,7 +341,7 @@ export class AuthenticationError extends SardisError {
    * @param code - Machine-readable error code
    */
   constructor(
-    message: string = 'Invalid or missing API key. Get one at https://dashboard.sardis.sh/api-keys',
+    message: string = `Invalid or missing API key. Configure one with ${API_KEY_SETUP_URL}`,
     code: string = SardisErrorCode.AUTHENTICATION_ERROR
   ) {
     super(message, code, {}, undefined, false);

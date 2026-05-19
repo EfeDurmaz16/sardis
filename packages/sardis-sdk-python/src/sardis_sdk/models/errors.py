@@ -9,6 +9,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any
 
+API_KEY_SETUP_URL = "https://sardis.sh/docs/authentication"
+
 
 class ErrorCode(str, Enum):
     """Standardized error codes for the Sardis SDK.
@@ -304,8 +306,8 @@ class APIError(SardisError):
         error_class = cls._get_error_class_for_status(status_code)
 
         # Enhance messages for common auth errors
-        if status_code == 401 and "dashboard.sardis.sh" not in message:
-            message = message + "\n→ Get or rotate your API key: https://dashboard.sardis.sh/api-keys"
+        if status_code == 401 and API_KEY_SETUP_URL not in message:
+            message = message + f"\n→ Configure or rotate your API key: {API_KEY_SETUP_URL}"
         elif status_code == 403 and "scope" not in message:
             message = message + "\n→ Check required scopes: https://sardis.sh/docs/api#authentication"
 
@@ -345,7 +347,7 @@ class AuthenticationError(APIError):
     """
 
     default_code = ErrorCode.AUTHENTICATION_ERROR
-    default_message = "Authentication failed. Check your API key at https://dashboard.sardis.sh/api-keys"
+    default_message = f"Authentication failed. Configure your API key with {API_KEY_SETUP_URL}"
     default_severity = ErrorSeverity.HIGH
 
     def __init__(

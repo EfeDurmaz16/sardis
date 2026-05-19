@@ -1,6 +1,6 @@
 ---
 title: Authentication
-description: Three ways to start using Sardis. Get your API key via simulation mode, the dashboard, or the CLI.
+description: Start using Sardis with local simulation, a self-hosted reference API, the CLI, or MCP.
 ---
 
 ## Option 1: No API Key Needed
@@ -17,16 +17,16 @@ result = client.quickstart()  # Guided first payment in 30 seconds
 "
 ```
 
-When you're ready for real payments, continue to option 2 or 3.
+When you're ready for API-backed flows, continue to option 2 or 3.
 
-## Option 2: Dashboard
+## Option 2: Reference API
 
-Sign up to get a sandbox API key. Create wallets, set policies, and manage spending mandates from the dashboard.
+Use a sandbox API key issued by the Sardis reference API deployment you control. The public repository documents the protocol and developer platform; hosted product onboarding lives outside the OSS source tree.
 
-1. Go to [dashboard.sardis.sh/signup](https://dashboard.sardis.sh/signup)
-2. Register with email + password
-3. **Your API key is shown immediately** (copy it — shown only once)
-4. You're redirected to the onboarding wizard with quickstart code
+1. Run the reference API locally or use your team's Sardis API deployment.
+2. Issue a sandbox key with the deployment's configured auth provider.
+3. Export it as `SARDIS_API_KEY`.
+4. Keep production keys out of source control and CI logs.
 
 ```python
 import os
@@ -77,7 +77,7 @@ npx @sardis/mcp-server start
 
 ## Managing API Keys
 
-From the [dashboard API Keys page](https://dashboard.sardis.sh/api-keys), you can:
+In any Sardis API deployment, key management should support:
 
 - **Create** new keys with specific scopes (read, write, admin)
 - **Set expiration** (30, 90, 365 days, or never)

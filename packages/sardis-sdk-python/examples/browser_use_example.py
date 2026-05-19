@@ -14,7 +14,7 @@ async def main():
     wallet_id = os.environ.get("SARDIS_WALLET_ID")
     if not api_key or not wallet_id:
         print("Set SARDIS_API_KEY and SARDIS_WALLET_ID environment variables.")
-        print("Get your key at: https://dashboard.sardis.sh/api-keys")
+        print("Configure a sandbox key with your Sardis API deployment: https://sardis.sh/docs/authentication")
         return
 
     # Initialize Sardis client

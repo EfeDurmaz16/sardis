@@ -12,7 +12,7 @@ async def main():
     api_key = os.environ.get("SARDIS_API_KEY")
     if not api_key:
         print("Set SARDIS_API_KEY environment variable first.")
-        print("Get your key at: https://dashboard.sardis.sh/api-keys")
+        print("Configure a sandbox key with your Sardis API deployment: https://sardis.sh/docs/authentication")
         return
 
     async with AsyncSardisClient(api_key=api_key) as client:
