@@ -34,6 +34,10 @@ VALIDATION_OVERRIDES = {
         "pyproject.toml",
         "PYTHONPATH=packages/sardis-ramp/src uv run pytest packages/sardis-ramp/tests -q",
     ),
+    "packages/sardis-openclaw": (
+        "pyproject.toml",
+        "PYTHONPATH=packages/sardis-openclaw/src uv run pytest packages/sardis-openclaw/tests -q",
+    ),
 }
 
 
