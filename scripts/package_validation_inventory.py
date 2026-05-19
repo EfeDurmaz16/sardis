@@ -46,6 +46,10 @@ VALIDATION_OVERRIDES = {
         "pyproject.toml",
         "PYTHONPATH=packages/sardis-coinbase/src uv run pytest packages/sardis-coinbase/tests -q",
     ),
+    "packages/sardis-agentkit": (
+        "pyproject.toml",
+        "PYTHONPATH=packages/sardis-agentkit/src uv run pytest packages/sardis-agentkit/tests -q",
+    ),
 }
 
 

@@ -57,7 +57,7 @@ Status meanings:
 | `packages/sardis-zkp/` | Experimental ZK proof circuits for identity, mandate, and funding proofs. | Add reproducible proving/verifying dev setup and fixtures. |
 | `packages/sardis-guardrails/` | Guardrails integration. | Add real examples and tests. |
 | `packages/sardis-adk/` | Google ADK integration. | Refresh against current ADK docs before publication. |
-| `packages/sardis-agentkit/` | AgentKit integration. | Refresh against current AgentKit docs before publication. |
+| `packages/sardis-agentkit/` | AgentKit integration. | Keep credential-free provider/action smoke tests passing before refreshing current AgentKit APIs. |
 | `packages/sardis-browser-use/` | Browser-use integration. | Add smoke test or archive. |
 | `packages/sardis-composio/` | Composio integration. | Add smoke test or archive. |
 | `packages/sardis-autogpt/` | AutoGPT integration. | Revalidate current AutoGPT plugin shape. |

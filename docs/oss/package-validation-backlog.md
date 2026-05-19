@@ -19,7 +19,7 @@ but the package itself does not yet prove its own behavior.
 
 | Package | Current status | Required next step | Promotion or archive rule |
 | --- | --- | --- | --- |
-| `packages/sardis-agentkit/` | `experimental` | Add a minimal import or adapter smoke test under package-owned tests. | Promote only after current AgentKit API compatibility is verified; archive if the upstream integration shape is stale. |
+| _None_ | - | Keep new tracked packages out of fallback-only validation. | Add package-owned tests, a build command, or archive the package before exposing it as a contribution path. |
 
 ## External-Tool Validation
 

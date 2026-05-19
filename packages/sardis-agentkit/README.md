@@ -17,7 +17,7 @@ pip install sardis-agentkit
 For local development from this monorepo:
 
 ```bash
-uv run pytest packages/sardis-agentkit/tests -q
+PYTHONPATH=packages/sardis-agentkit/src uv run pytest packages/sardis-agentkit/tests -q
 ```
 
 ## Security Notes
