@@ -14,6 +14,7 @@
     "bootstrap:js": "bash ./scripts/bootstrap_js_env.sh",
     "bootstrap:js:install": "bash ./scripts/bootstrap_js_env.sh --install",
     "bootstrap:js:verify": "bash ./scripts/bootstrap_js_env.sh --install --verify",
+    "doctor": "python3 scripts/contributor_doctor.py",
     "dev:landing": "pnpm --filter @sardis/app-landing dev",
     "build:landing": "pnpm --filter @sardis/app-landing build",
     "typecheck:landing": "pnpm --filter @sardis/app-landing typecheck",

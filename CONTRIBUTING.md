@@ -32,9 +32,14 @@ Read:
 ## Setup
 
 ```bash
+pnpm run doctor
 uv sync
 pnpm install --frozen-lockfile
 ```
+
+`pnpm run doctor` checks Python, Node.js, pnpm, and uv before heavier
+bootstrap or CI gates. Fix any failing toolchain item first; the repository
+expects Node.js 22 LTS, pnpm 9.15.4 or newer, Python 3.12 or newer, and uv.
 
 ## Common Checks
 

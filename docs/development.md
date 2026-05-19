@@ -13,9 +13,14 @@ This guide describes the public OSS development loop for Sardis.
 ## Setup
 
 ```bash
+pnpm run doctor
 uv sync
 pnpm install --frozen-lockfile
 ```
+
+`pnpm run doctor` checks the local Python, Node.js, pnpm, and uv versions before
+running heavier setup commands. Run it first when onboarding or debugging local
+CI parity.
 
 Use local package sources where available. Do not rely on published Sardis packages while developing repo-local changes.
 

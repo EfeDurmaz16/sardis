@@ -338,6 +338,7 @@ git clone https://github.com/EfeDurmaz16/sardis.git
 cd sardis
 
 # Install dependencies
+pnpm run doctor
 uv sync
 pnpm install --frozen-lockfile
 
