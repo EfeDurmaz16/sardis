@@ -10,7 +10,7 @@ from server.routes.agents import (
     agent_events,
     agent_heartbeat,
     agent_registry,
-    agents,
+    lifecycle,
 )
 from server.routes.identity import fides_identity
 
@@ -26,13 +26,13 @@ def register_agent_lifecycle_routes(
     settings: Any,
 ) -> None:
     """Register agent lifecycle, activity, heartbeat, events, and FIDES identity routes."""
-    app.dependency_overrides[agents.get_deps] = lambda: agents.AgentDependencies(  # type: ignore[arg-type]
+    app.dependency_overrides[lifecycle.get_deps] = lambda: lifecycle.AgentDependencies(  # type: ignore[arg-type]
         agent_repo=agent_repo,
         wallet_repo=wallet_repo,
         kya_service=kya_service,
         wallet_manager=wallet_manager,
     )
-    app.include_router(agents.router, prefix="/api/v2/agents", tags=["agents"])
+    app.include_router(lifecycle.router, prefix="/api/v2/agents", tags=["agents"])
     app.include_router(agent_activity.router, prefix="/api/v2/agents", tags=["agent-activity"])
 
     app.dependency_overrides[agent_heartbeat.get_deps] = lambda: agent_heartbeat.HeartbeatDependencies(
