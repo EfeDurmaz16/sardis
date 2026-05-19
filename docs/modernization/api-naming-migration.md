@@ -2,17 +2,16 @@
 
 ## Problem
 
-The API package uses a standard Python `src` layout. The legacy routing layer
-had grown into a flat directory:
+The API package previously used deeper and less contributor-readable source
+paths. During the migration, the routing layer had grown into a flat directory:
 
 ```text
-packages/reference-api/sardis/routers/*.py
+packages/reference-api/server/routers/*.py
 ```
 
-That path is technically normal for Python packaging, but the last segment is
-not contributor-friendly anymore. It contains protocol endpoints, payments,
-wallets, hosted-product remnants, provider callbacks, admin surfaces, metrics,
-and old prototypes in one flat list.
+That path was not contributor-friendly. It contained protocol endpoints,
+payments, wallets, hosted-product remnants, provider callbacks, admin surfaces,
+metrics, and old prototypes in one flat list.
 
 The result is that a new contributor has to know too much before finding the
 right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
@@ -22,10 +21,10 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
   other payment networks
 
 The repeated-looking path prefix is tracked separately in
-`docs/modernization/package-path-simplification.md`. The short version: the
-current contributor path is `packages/reference-api/server/...`; both
-the old `packages/sardis-api` package directory, the too-generic `packages/reference-api`
-directory, and the old `sardis_api` import package name have been removed.
+`docs/modernization/package-path-simplification.md`. The current contributor
+path is `packages/reference-api/server/...`; the old `packages/sardis-api`
+package directory, the extra API `src/` layer, the legacy `routers/` bucket,
+and the old `sardis_api` import package name have been removed.
 
 ## Naming Principles
 
@@ -40,7 +39,7 @@ directory, and the old `sardis_api` import package name have been removed.
    imported.
 6. Moves should be mechanical and validated by OpenAPI route snapshot checks.
 
-## First Migration Step
+## Completed Migration
 
 Completed so far:
 
@@ -57,41 +56,41 @@ Completed so far:
 | `main.py` inline admin registration | `routing/admin.py::register_admin_routes` | Groups admin control, admin reconciliation, and emergency freeze wiring behind one privileged-route registrar without changing public paths. |
 | `main.py` inline agent lifecycle/registry registration | `routing/agents.py::{register_agent_lifecycle_routes, register_agent_registry_routes}` | Moves agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring behind agent-domain registrars without changing public paths or route ordering. |
 | `main.py` inline audit/evidence registration | `routing/evidence.py::{register_audit_anchor_routes, register_evidence_routes}` | Moves audit anchoring, evidence capture/export, and attestation wiring behind evidence-domain registrars without changing public paths or route ordering. |
-| `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` with a compatibility wrapper in `routers/` | Starts the physical path simplification from flat routers to domain-grouped routes. |
-| `routers/pay.py` implementation | `routes/money_movement/pay.py` with a compatibility wrapper in `routers/` | Moves the primary money-movement execution route to the domain where contributors expect to find payment logic. |
-| `routers/mandates.py`, `routers/ap2.py`, `routers/mvp.py`, `routers/approvals.py`, `routers/approval_config.py` implementations | `routes/authority/*` with compatibility wrappers in `routers/` | Groups authority, mandate, AP2, MVP, and approval surfaces under one contributor-readable domain. |
-| `routers/spending_mandates.py`, `routers/mandate_delegation.py`, `routers/mandate_subscriptions.py` implementations | `routes/authority/*` with compatibility module aliases in `routers/` | Moves the remaining mandate lifecycle, delegation, and recurring mandate billing APIs into the same authority domain as the core mandate and approval routes. |
-| `routers/credentials.py` implementation | `routes/authority/credentials.py` with a compatibility module alias in `routers/` | Moves delegated credential provisioning, consent validation, scope tightening, and revocation into the authority domain instead of leaving scoped authority credentials in the flat router bucket. |
-| `routers/facility_requests.py` implementation | `routes/authority/facility_requests.py` with a compatibility module alias in `routers/` | Moves partner-backed facility request, mandate authority, approval, revocation, and provider webhook handling into the authority domain instead of leaving a large facility gate API in the legacy flat router bucket. |
-| `routers/ledger.py`, `routers/holds.py`, `routers/transactions.py`, `routers/payments_refund.py`, `routers/payment_objects.py`, `routers/batch_payments.py`, `routers/streaming_payments.py`, `routers/fx.py`, `routers/swap.py`, `routers/settlements.py`, `routers/receipts.py`, `routers/bridge.py` implementations | `routes/money_movement/*` with compatibility wrappers in `routers/` | Groups core payment, ledger, transaction, FX, bridge, settlement, receipt, and refund surfaces under the money movement domain. |
-| `routers/cards.py`, `routers/virtual_cards.py`, `routers/stablecoin_cards.py`, `routers/treasury.py`, `routers/treasury_ops.py`, `routers/cpn.py`, `routers/funding_capabilities.py` implementations | `routes/wallets/*` with compatibility wrappers in `routers/` | Starts the wallet/card/funding domain move with the lower-coupling card, treasury, CPN, and capability surfaces. |
-| `routers/funding.py`, `routers/ramp.py`, `routers/offramp.py` implementations | `routes/wallets/*` with compatibility wrappers in `routers/` | Moves the lower-coupling funding/ramp surfaces before the high-coupling wallet/onchain/onramp routes. |
-| `routers/onchain_payments.py` implementation | `routes/wallets/onchain_payments.py` with a compatibility wrapper in `routers/` | Moves the on-chain wallet payment route into the wallet domain and aligns tests with the current PaymentOrchestrator execution boundary. |
-| `routers/onramp.py` implementation | `routes/wallets/onramp.py` with a compatibility wrapper in `routers/` | Moves fiat onramp and onramp webhook handling into the wallet domain while preserving old public and monkeypatch import targets during migration. |
-| `routers/wallets.py` implementation | `routes/wallets/wallets.py` with a compatibility wrapper in `routers/` | Completes the first wallet-domain placement pass by moving core wallet lifecycle, balance, transfer, and x402 wallet routes into the same domain. |
-| `routers/stripe_webhooks.py`, `routers/stripe_spt_webhooks.py`, `routers/mastercard_webhooks.py`, `routers/visa_tap_webhooks.py`, `routers/partner_card_webhooks.py`, `routers/cpn_webhooks.py`, `routers/polar_webhook.py` implementations | `routes/providers/*` with compatibility wrappers in `routers/` | Separates inbound provider callback handling from outbound customer webhook subscription APIs. |
-| `routers/stripe_connect.py`, `routers/stripe_funding.py` implementations | `routes/providers/*` with compatibility module aliases in `routers/` | Moves Stripe Connect onboarding/webhooks and Stripe Issuing funding into the provider integration domain instead of keeping Stripe provider logic in the flat router bucket. |
-| `routers/policies.py`, `routers/policy_simulation.py`, `routers/policy_analytics.py`, `routers/fallback_policies.py` implementations | `routes/policy/*` with compatibility module aliases in `routers/` | Moves policy definition, simulation, analytics, and fallback policy APIs into a control-plane policy domain while preserving stateful legacy import targets. |
-| `routers/evidence.py`, `routers/evidence_export.py`, `routers/audit_anchors.py`, `routers/attestation.py` implementations | `routes/evidence/*` with compatibility module aliases in `routers/` | Groups evidence capture, export, audit anchors, and attestation proof APIs under one evidence domain while preserving stateful legacy import targets. |
-| `routers/compliance.py`, `routers/compliance_export.py`, `routers/kyc_onboarding.py` implementations | `routes/compliance/*` with compatibility module aliases in `routers/` | Moves regulatory controls, compliance exports, and Didit KYC onboarding into one compliance domain while preserving stateful legacy import targets. |
-| `routers/x402.py`, `routers/mpp.py`, `routers/mpp_demo.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Groups payment protocol adapters together while keeping x402 and MPP as separate packages and request flows. |
-| `routers/a2a.py`, `routers/a2a_payments.py`, `routers/acp.py`, `routers/erc8183.py`, `routers/spt.py` implementations | `routes/protocol/*` with compatibility module aliases in `routers/` | Moves the remaining protocol-adapter routes out of the flat router bucket while preserving old import paths for tests and downstream users. |
-| `routers/fides_identity.py`, `routers/agent_auth.py`, `routers/trust.py` implementations | `routes/identity/*` with compatibility module aliases in `routers/` | Separates identity, trust, and agent-authority routes from payment protocol adapters and the legacy flat router bucket. |
-| `routers/agent_activity.py`, `routers/agent_events.py`, `routers/agent_heartbeat.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Groups agent lifecycle telemetry and heartbeat routes before moving the larger agent registry/lifecycle files. |
-| `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` with compatibility module aliases in `routers/` | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
-| `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` with compatibility module aliases in `routers/` | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
-| `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py`, `routers/service_directory.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Groups merchant, checkout, checkout control, invoice, and agent service discovery APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
-| `routers/counterparties.py`, `routers/marketplace.py`, `routers/escrow_disputes.py` implementations | `routes/commerce/*` with compatibility module aliases in `routers/` | Moves counterparty trust records, service marketplace, and escrow/dispute APIs into the commerce domain where contributors expect merchant/vendor interaction surfaces. |
-| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py`, `routers/outcomes.py`, `routers/execution_modes.py`, `routers/exceptions.py`, `routers/emergency.py` implementations | `routes/operations/*` with compatibility module aliases in `routers/` | Moves operational reporting, alerting, SSE, reliability, outcome/risk profiles, execution-mode discovery, exception workflow/retry policies, emergency incident response, dashboard metrics, and Prometheus collectors together under one operations domain. |
-| `routers/striga.py`, `routers/lightspark.py`, `routers/currency.py`, `routers/fiat_rails.py` implementations | `routes/providers/*` with compatibility module aliases in `routers/` | Keeps feature-flagged provider and fiat rail adapter surfaces with other provider callback/integration routes. |
-| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py`, `routers/dev.py`, `routers/sandbox.py` implementations | `routes/developer/*` with compatibility module aliases in `routers/` | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, no-signup sandbox playground, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
-| `routers/billing.py`, `routers/usage.py`, `routers/subscriptions.py` implementations | `routes/billing/*` with compatibility module aliases in `routers/` | Groups subscription, checkout, billing provider, webhook, recurring subscription, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
-| `routers/admin.py`, `routers/admin_reconciliation.py` implementations | `routes/admin/control.py` and `routes/admin/reconciliation.py` with compatibility module aliases in `routers/` | Makes privileged operations easier to find without repeating `admin/admin.py`, and keeps admin rate-limit helpers close to admin-only reconciliation surfaces. |
-| `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` with a compatibility module alias in `routers/` | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls, leaving the legacy router bucket with compatibility wrappers only. |
+| `routers/webhook_subscriptions.py` implementation | `routes/developer/webhook_subscriptions.py` after a temporary compatibility-wrapper phase | Starts the physical path simplification from flat routers to domain-grouped routes. |
+| `routers/pay.py` implementation | `routes/money_movement/pay.py` after a temporary compatibility-wrapper phase | Moves the primary money-movement execution route to the domain where contributors expect to find payment logic. |
+| `routers/mandates.py`, `routers/ap2.py`, `routers/mvp.py`, `routers/approvals.py`, `routers/approval_config.py` implementations | `routes/authority/*` after a temporary compatibility-wrapper phase | Groups authority, mandate, AP2, MVP, and approval surfaces under one contributor-readable domain. |
+| `routers/spending_mandates.py`, `routers/mandate_delegation.py`, `routers/mandate_subscriptions.py` implementations | `routes/authority/*` after a temporary compatibility-alias phase | Moves the remaining mandate lifecycle, delegation, and recurring mandate billing APIs into the same authority domain as the core mandate and approval routes. |
+| `routers/credentials.py` implementation | `routes/authority/credentials.py` after a temporary compatibility-alias phase | Moves delegated credential provisioning, consent validation, scope tightening, and revocation into the authority domain instead of leaving scoped authority credentials in the flat router bucket. |
+| `routers/facility_requests.py` implementation | `routes/authority/facility_requests.py` after a temporary compatibility-alias phase | Moves partner-backed facility request, mandate authority, approval, revocation, and provider webhook handling into the authority domain instead of leaving a large facility gate API in the legacy flat router bucket. |
+| `routers/ledger.py`, `routers/holds.py`, `routers/transactions.py`, `routers/payments_refund.py`, `routers/payment_objects.py`, `routers/batch_payments.py`, `routers/streaming_payments.py`, `routers/fx.py`, `routers/swap.py`, `routers/settlements.py`, `routers/receipts.py`, `routers/bridge.py` implementations | `routes/money_movement/*` after a temporary compatibility-wrapper phase | Groups core payment, ledger, transaction, FX, bridge, settlement, receipt, and refund surfaces under the money movement domain. |
+| `routers/cards.py`, `routers/virtual_cards.py`, `routers/stablecoin_cards.py`, `routers/treasury.py`, `routers/treasury_ops.py`, `routers/cpn.py`, `routers/funding_capabilities.py` implementations | `routes/wallets/*` after a temporary compatibility-wrapper phase | Starts the wallet/card/funding domain move with the lower-coupling card, treasury, CPN, and capability surfaces. |
+| `routers/funding.py`, `routers/ramp.py`, `routers/offramp.py` implementations | `routes/wallets/*` after a temporary compatibility-wrapper phase | Moves the lower-coupling funding/ramp surfaces before the high-coupling wallet/onchain/onramp routes. |
+| `routers/onchain_payments.py` implementation | `routes/wallets/onchain_payments.py` after a temporary compatibility-wrapper phase | Moves the on-chain wallet payment route into the wallet domain and aligns tests with the current PaymentOrchestrator execution boundary. |
+| `routers/onramp.py` implementation | `routes/wallets/onramp.py` after a temporary compatibility-wrapper phase | Moves fiat onramp and onramp webhook handling into the wallet domain while preserving old public and monkeypatch import targets during migration. |
+| `routers/wallets.py` implementation | `routes/wallets/wallets.py` after a temporary compatibility-wrapper phase | Completes the first wallet-domain placement pass by moving core wallet lifecycle, balance, transfer, and x402 wallet routes into the same domain. |
+| `routers/stripe_webhooks.py`, `routers/stripe_spt_webhooks.py`, `routers/mastercard_webhooks.py`, `routers/visa_tap_webhooks.py`, `routers/partner_card_webhooks.py`, `routers/cpn_webhooks.py`, `routers/polar_webhook.py` implementations | `routes/providers/*` after a temporary compatibility-wrapper phase | Separates inbound provider callback handling from outbound customer webhook subscription APIs. |
+| `routers/stripe_connect.py`, `routers/stripe_funding.py` implementations | `routes/providers/*` after a temporary compatibility-alias phase | Moves Stripe Connect onboarding/webhooks and Stripe Issuing funding into the provider integration domain instead of keeping Stripe provider logic in the flat router bucket. |
+| `routers/policies.py`, `routers/policy_simulation.py`, `routers/policy_analytics.py`, `routers/fallback_policies.py` implementations | `routes/policy/*` after a temporary compatibility-alias phase | Moves policy definition, simulation, analytics, and fallback policy APIs into a control-plane policy domain while preserving stateful legacy import targets. |
+| `routers/evidence.py`, `routers/evidence_export.py`, `routers/audit_anchors.py`, `routers/attestation.py` implementations | `routes/evidence/*` after a temporary compatibility-alias phase | Groups evidence capture, export, audit anchors, and attestation proof APIs under one evidence domain while preserving stateful legacy import targets. |
+| `routers/compliance.py`, `routers/compliance_export.py`, `routers/kyc_onboarding.py` implementations | `routes/compliance/*` after a temporary compatibility-alias phase | Moves regulatory controls, compliance exports, and Didit KYC onboarding into one compliance domain while preserving stateful legacy import targets. |
+| `routers/x402.py`, `routers/mpp.py`, `routers/mpp_demo.py` implementations | `routes/protocol/*` after a temporary compatibility-alias phase | Groups payment protocol adapters together while keeping x402 and MPP as separate packages and request flows. |
+| `routers/a2a.py`, `routers/a2a_payments.py`, `routers/acp.py`, `routers/erc8183.py`, `routers/spt.py` implementations | `routes/protocol/*` after a temporary compatibility-alias phase | Moves the remaining protocol-adapter routes out of the flat router bucket while preserving old import paths for tests and downstream users. |
+| `routers/fides_identity.py`, `routers/agent_auth.py`, `routers/trust.py` implementations | `routes/identity/*` after a temporary compatibility-alias phase | Separates identity, trust, and agent-authority routes from payment protocol adapters and the legacy flat router bucket. |
+| `routers/agent_activity.py`, `routers/agent_events.py`, `routers/agent_heartbeat.py` implementations | `routes/agents/*` after a temporary compatibility-alias phase | Groups agent lifecycle telemetry and heartbeat routes before moving the larger agent registry/lifecycle files. |
+| `routers/agents.py`, `routers/agent_registry.py` implementations | `routes/agents/*` after a temporary compatibility-alias phase | Moves core agent lifecycle, payment identity, and registry routes into the agent domain so contributors do not have to hunt through the flat router bucket. |
+| `routers/auth.py`, `routers/email_verification.py`, `routers/me.py`, `routers/groups.py`, `routers/api_keys.py`, `routers/organizations.py`, `routers/data_export.py` implementations | `routes/accounts/*` after a temporary compatibility-alias phase | Groups user auth, email verification, current-account state, account groups, organizations, API keys, and GDPR account export away from the flat router bucket and away from protocol identity/trust routes. |
+| `routers/checkout.py`, `routers/checkout_controls.py`, `routers/merchant_checkout.py`, `routers/merchants.py`, `routers/invoices.py`, `routers/service_directory.py` implementations | `routes/commerce/*` after a temporary compatibility-alias phase | Groups merchant, checkout, checkout control, invoice, and agent service discovery APIs as the commerce-facing part of the reference API rather than leaving them scattered in the flat router bucket. |
+| `routers/counterparties.py`, `routers/marketplace.py`, `routers/escrow_disputes.py` implementations | `routes/commerce/*` after a temporary compatibility-alias phase | Moves counterparty trust records, service marketplace, and escrow/dispute APIs into the commerce domain where contributors expect merchant/vendor interaction surfaces. |
+| `routers/analytics.py`, `routers/alerts.py`, `routers/ws_alerts.py`, `routers/event_stream.py`, `routers/reports.py`, `routers/reliability.py`, `routers/dashboard_metrics.py`, `routers/metrics.py`, `routers/outcomes.py`, `routers/execution_modes.py`, `routers/exceptions.py`, `routers/emergency.py` implementations | `routes/operations/*` after a temporary compatibility-alias phase | Moves operational reporting, alerting, SSE, reliability, outcome/risk profiles, execution-mode discovery, exception workflow/retry policies, emergency incident response, dashboard metrics, and Prometheus collectors together under one operations domain. |
+| `routers/striga.py`, `routers/lightspark.py`, `routers/currency.py`, `routers/fiat_rails.py` implementations | `routes/providers/*` after a temporary compatibility-alias phase | Keeps feature-flagged provider and fiat rail adapter surfaces with other provider callback/integration routes. |
+| `routers/enterprise_support.py`, `routers/sdk_metrics.py`, `routers/notifications.py`, `routers/environment_templates.py`, `routers/workflow_templates.py`, `routers/simulation.py`, `routers/faucet.py`, `routers/dev.py`, `routers/sandbox.py` implementations | `routes/developer/*` after a temporary compatibility-alias phase | Moves contributor/developer support ticketing, public SDK install metrics, notification webhook configuration, environment templates, workflow templates, dry-run simulation, dev faucet utilities, no-signup sandbox playground, and testnet faucet routes out of the flat router bucket while preserving existing HTTP paths. |
+| `routers/billing.py`, `routers/usage.py`, `routers/subscriptions.py` implementations | `routes/billing/*` after a temporary compatibility-alias phase | Groups subscription, checkout, billing provider, webhook, recurring subscription, and metered usage reporting APIs under a billing domain instead of leaving them in the flat router bucket. |
+| `routers/admin.py`, `routers/admin_reconciliation.py` implementations | `routes/admin/control.py` and `routes/admin/reconciliation.py` after a temporary compatibility-alias phase | Makes privileged operations easier to find without repeating `admin/admin.py`, and keeps admin rate-limit helpers close to admin-only reconciliation surfaces. |
+| `routers/secure_checkout.py` implementation | `routes/commerce/secure_checkout.py` after a temporary compatibility-alias phase | Moves PAN-safe checkout orchestration next to merchant checkout and checkout controls. |
 
 Final cleanup: after internal imports and tests were migrated to
-`server.routes.<domain>`, the temporary `server.routers` compatibility
-package was removed. The HTTP API paths remain unchanged.
+`server.routes.<domain>`, the temporary compatibility package was removed. The
+HTTP API paths remain unchanged.
 
 The external API remains unchanged:
 
@@ -104,7 +103,7 @@ The external API remains unchanged:
 The concrete contributor pain is path roaming. A file like:
 
 ```text
-packages/reference-api/sardis/routers/webhook_subscriptions.py
+packages/reference-api/server/routers/webhook_subscriptions.py
 ```
 
 is long, repeats API/package concepts, and hides the business domain in a flat
@@ -124,14 +123,14 @@ below it:
 - `routing/<domain>.py` for FastAPI registration/wiring
 - no legacy `routers/` bucket in the active source tree
 
-The package directory itself has already been simplified to `packages/reference-api`.
-Further path cleanup should happen inside the Python package by extracting
-domain registrars from `main.py`, not by reintroducing flat router buckets.
+The package directory itself has already been simplified to
+`packages/reference-api`. Further path cleanup should happen by shrinking
+composition code and improving domain boundaries, not by reintroducing flat
+router buckets.
 
-## Target Layout
+## Current Layout
 
-The long-term target is to replace the flat router directory with grouped route
-domains:
+The flat router directory has been replaced with grouped route domains:
 
 ```text
 server/
@@ -142,10 +141,13 @@ server/
     protocol/
       ap2.py
       a2a.py
+      a2a_payments.py
       x402.py
-      tap.py
       acp.py
+      erc8183.py
       mpp.py
+      mpp_demo.py
+      spt.py
     identity/
       agent_auth.py
       fides_identity.py
@@ -165,17 +167,30 @@ server/
       agent_events.py
       agent_heartbeat.py
     authority/
-      mandates.py
-      facility_requests.py
-      policies.py
+      ap2.py
+      approval_config.py
       approvals.py
+      credentials.py
+      facility_requests.py
+      mandate_delegation.py
+      mandate_subscriptions.py
+      mandates.py
+      mvp.py
+      spending_mandates.py
     money_movement/
-      pay.py
-      onchain_payments.py
       batch_payments.py
-      transactions.py
+      bridge.py
+      fx.py
+      holds.py
+      ledger.py
+      pay.py
+      payment_objects.py
+      payments_refund.py
+      receipts.py
       settlements.py
-      treasury.py
+      streaming_payments.py
+      swap.py
+      transactions.py
     commerce/
       checkout.py
       checkout_controls.py
@@ -186,23 +201,52 @@ server/
       service_directory.py
     billing/
       billing.py
+      subscriptions.py
       usage.py
+    policy/
+      fallback_policies.py
+      policies.py
+      policy_analytics.py
+      policy_simulation.py
+    evidence/
+      attestation.py
+      audit_anchors.py
+      evidence.py
+      evidence_export.py
+    compliance/
+      compliance.py
+      compliance_export.py
+      kyc_onboarding.py
     wallets/
       wallets.py
+      cards.py
+      cpn.py
       funding.py
-      holds.py
+      funding_capabilities.py
+      offramp.py
+      onchain_payments.py
+      onramp.py
+      ramp.py
+      stablecoin_cards.py
+      treasury.py
+      treasury_ops.py
+      virtual_cards.py
     providers/
-      stripe_callbacks.py
-      card_callbacks.py
-      cpn_callbacks.py
+      cpn_webhooks.py
       currency.py
       fiat_rails.py
       lightspark.py
       striga.py
-      visa_tap_callbacks.py
-      mastercard_callbacks.py
+      mastercard_webhooks.py
+      partner_card_webhooks.py
+      polar_webhook.py
+      stripe_connect.py
+      stripe_funding.py
+      stripe_spt_webhooks.py
+      stripe_webhooks.py
+      visa_tap_webhooks.py
     developer/
-      api_keys.py
+      dev.py
       enterprise_support.py
       environment_templates.py
       faucet.py
@@ -216,7 +260,9 @@ server/
       alerts.py
       analytics.py
       dashboard_metrics.py
+      emergency.py
       event_stream.py
+      exceptions.py
       execution_modes.py
       metrics.py
       outcomes.py
@@ -225,18 +271,15 @@ server/
       ws_alerts.py
 ```
 
-This should continue after `server.main` is split into router registration
-functions. Moving 120+ files before extracting registration would create a large
-rename diff without enough architectural payoff. The first extracted registrars
-are `server.routing.developer.register_webhook_subscriptions`,
-`server.routing.money_movement.register_pay_endpoint`, and
-`server.routing.authority.register_authority_routes`.
+Route registration now lives in `server.routing.<domain>` modules, keeping
+`server.main` closer to a composition root instead of a file-by-file router
+mount list.
 
 ## Recommended Move Order
 
-Proceed bucket-by-bucket. The temporary compatibility wrappers were used during
-the migration and then removed after internal imports moved to
-`sardis.routes.<domain>`.
+The migration proceeded bucket-by-bucket. Temporary compatibility wrappers were
+used during the migration and then removed after internal imports moved to
+`server.routes.<domain>`.
 
 1. Authority: completed for `mandates`, `ap2`, `mvp`, `approvals`, and
    `approval_config`.
