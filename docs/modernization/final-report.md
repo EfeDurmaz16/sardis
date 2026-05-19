@@ -257,7 +257,9 @@ source layout directly. The reference API must stay at
 `routes/` modules, registration must stay under `routing/`, and the old
 repeated API package/source shape must not return. Published Python libraries
 may still use `src/<import_package>` when that is the package-correct library
-layout.
+layout. The contributor tree helper now has an API-focused command,
+`pnpm repo:api-tree`, and the source-layout gate rejects route implementation
+files nested deeper than `routes/<domain>/<module>.py`.
 
 ## Test, Build, And Lint Results
 

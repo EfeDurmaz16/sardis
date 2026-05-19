@@ -36,6 +36,8 @@ REQUIRED_DOC_SNIPPETS = {
     ),
 }
 
+MAX_ROUTE_RELATIVE_PARTS = 2
+
 
 def main() -> int:
     errors: list[str] = []
@@ -63,6 +65,16 @@ def main() -> int:
                     f"{snippet}"
                 )
 
+    route_root = ROOT / "packages/api/sardis_server/routes"
+    if route_root.exists():
+        for path in route_root.rglob("*.py"):
+            relative_parts = path.relative_to(route_root).parts
+            if len(relative_parts) > MAX_ROUTE_RELATIVE_PARTS:
+                errors.append(
+                    "Route implementation is nested too deeply: "
+                    f"{path.relative_to(ROOT).as_posix()}"
+                )
+
     if errors:
         print("Source layout check failed:")
         for error in errors:
@@ -70,7 +82,8 @@ def main() -> int:
         print(
             "\nThe API source tree must stay at packages/api/sardis_server. "
             "Do not reintroduce packages/sardis-api, packages/api/src, "
-            "sardis_api, or the legacy sardis_server/routers bucket."
+            "sardis_api, or the legacy sardis_server/routers bucket. Route "
+            "implementations should stay at routes/<domain>/<module>.py."
         )
         return 1
 

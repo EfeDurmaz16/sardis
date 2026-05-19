@@ -25,6 +25,24 @@ This is intentional:
 
 The API package should not be reintroduced under longer names that repeat `api` or `server`; those names make path roaming harder without improving the import model.
 
+For day-to-day server-source navigation, do not use raw `find` from the
+repository root. It will include ignored local artifacts such as `.venv`,
+`node_modules`, `dist`, and `__pycache__`, and it will also bury the API source
+under migration files. Use the contributor tree helper instead:
+
+```bash
+pnpm repo:api-tree
+```
+
+The API source tree should stay at this depth:
+
+```text
+packages/api/sardis_server/routes/<domain>/<module>.py
+```
+
+Do not add route implementation folders below the domain layer unless a
+separate architecture decision explains why the extra depth is worth it.
+
 ## Root Python Client
 
 The root public Python client facade lives at:

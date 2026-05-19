@@ -33,6 +33,10 @@ package, and the second layer is a Python import package. We keep
 `server.main` are collision-prone and unclear in test runners, ASGI loaders, and
 editable installs.
 
+The short version: `packages/api/sardis_server` is the maximum acceptable API
+nesting. `packages/sardis-api/src/sardis_api` is not acceptable because it says
+the same thing three times.
+
 There should not be a third generic `src/` layer inside the API package. The old
 `packages/sardis-api/src/sardis_api/` shape made paths harder to scan and
 repeated the same concept across the distribution directory, source root, and
@@ -51,6 +55,18 @@ FastAPI registration and dependency wiring should live under:
 
 ```text
 packages/api/sardis_server/routing/
+```
+
+Do not add more route nesting below the domain layer. This is acceptable:
+
+```text
+routes/protocol/x402.py
+```
+
+This is not:
+
+```text
+routes/protocol/payments/x402/handlers.py
 ```
 
 `packages/api/sardis_server/main.py` should remain a composition root, not a
@@ -89,6 +105,7 @@ editable installs, tests, and downstream imports.
 Run this before opening layout, routing, or contribution-path PRs:
 
 ```bash
+pnpm repo:api-tree
 python3 scripts/source_layout_check.py
 python3 scripts/stale_api_path_check.py
 pnpm run check:contributor
