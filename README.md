@@ -317,6 +317,9 @@ sardis/
 - **[Development Guide](docs/development.md)** — Local setup and contribution checks
 - **[Public CI/CD Map](docs/oss/ci-cd.md)** — Which public checks protect the OSS surface
 - **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
+- **[Support](SUPPORT.md)** — Where to ask for OSS help and what belongs outside the public repo
+- **[Security Policy](SECURITY.md)** — Private vulnerability reporting and payment safety invariants
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** — Community expectations for public collaboration
 
 ---
 

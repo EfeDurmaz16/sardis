@@ -29,6 +29,8 @@ Read:
 - `docs/development.md`
 - `docs/oss/testing.md`
 - `SECURITY.md`
+- `CODE_OF_CONDUCT.md`
+- `SUPPORT.md`
 
 ## Setup
 
@@ -55,6 +57,7 @@ pnpm run check:generated
 pnpm run check:docs-links
 pnpm run check:ci-map
 pnpm run check:github-templates
+pnpm run check:community
 pnpm run check:contribution-map
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
@@ -63,8 +66,8 @@ uv run pytest packages/api/tests/test_merchant_checkout.py -q
 
 `pnpm run check:contributor` is the fast public-surface gate for most docs,
 package metadata, contribution-map, generated-artifact, local-doc-link, CI-map,
-GitHub-template, and API routing cleanup PRs. It intentionally avoids private
-services and production provider credentials.
+GitHub-template, community-health, and API routing cleanup PRs. It
+intentionally avoids private services and production provider credentials.
 
 For contracts:
 
