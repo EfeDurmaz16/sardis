@@ -3,6 +3,8 @@
 Sardis optimizes the public tree for contributor navigation first. Package and
 module names should make it clear whether a contributor is editing the
 reference API, a public SDK, a protocol primitive, or a provider integration.
+Use this file for API source-tree rules and `docs/oss/package-layout.md` for
+repo-wide package naming and nesting policy.
 
 ## Reference API
 

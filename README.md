@@ -313,7 +313,10 @@ sardis/
 - **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
 - **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
-- **[Package Layout](docs/architecture/package-layout.md)** — Why repo package paths and Python import namespaces are separate
+- **[Architecture Package Layout](docs/architecture/package-layout.md)** — Why repo package paths and Python import namespaces are separate
+- **[OSS Package Layout Policy](docs/oss/package-layout.md)** — Contributor-facing naming, nesting, and rename rules
+- **[Source Layout Policy](docs/oss/source-layout.md)** — API source-tree guardrails and route placement rules
+- **[x402 and MPP Boundary](docs/architecture/x402-and-mpp.md)** — How paid HTTP protocol surfaces split across packages
 - **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it
 - **[Development Guide](docs/development.md)** — Local setup and contribution checks
 - **[Public CI/CD Map](docs/oss/ci-cd.md)** — Which public checks protect the OSS surface

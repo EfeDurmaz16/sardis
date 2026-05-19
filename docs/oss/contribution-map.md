@@ -29,6 +29,9 @@ suite.
   API source tree is `packages/reference-api/server`; do not reintroduce the old
   repeated API package names, extra API `src` layer, or legacy flat router
   bucket.
+- Keep package layout aligned with `docs/oss/package-layout.md`. Package names
+  should describe the contribution surface clearly, and deployable apps should
+  use short role-based source roots rather than repeated product names.
 
 ## Core Contribution Paths
 

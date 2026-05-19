@@ -21,7 +21,9 @@ This is intentional:
 - `packages/reference-api` is the monorepo package boundary contributors navigate to.
 - `server` is the short Python import namespace for the FastAPI server.
 - The API package intentionally omits an extra `src/` layer because `packages/reference-api` already provides the local package boundary in this monorepo.
-- `sardis-api` remains the Python distribution name for packaging compatibility.
+- `sardis-reference-api` is the Python distribution name for packaging
+  compatibility. The old `sardis-api` distribution name must not be
+  reintroduced.
 
 The API package should not be reintroduced under longer names that repeat
 `sardis`, `api`, or `server`; those names make path roaming harder without

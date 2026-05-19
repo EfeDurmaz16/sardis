@@ -31,6 +31,7 @@ The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[t
 ```bash
 python3 scripts/repo_inventory.py
 pnpm repo:ignored-artifacts
+pnpm repo:package-layout
 pnpm repo:package-validation
 pnpm repo:stale-paths:local
 pnpm check:openapi
@@ -45,6 +46,11 @@ uv run pytest packages/reference-api/tests/test_merchant_checkout.py -q
 is a dry run by default; use `python3 scripts/ignored_artifact_inventory.py
 --delete` only when you intentionally want to prune those generated artifacts
 from your local checkout.
+
+`pnpm repo:package-layout` checks package layout and source-root rules that keep
+the public tree readable for contributors. It blocks repeated API application
+path shapes while allowing normal `src/<import_package>` layouts for published
+Python libraries.
 
 `pnpm repo:package-validation` prints every tracked public package, its maturity
 status from `docs/packages.md`, its manifest type, and the most specific
