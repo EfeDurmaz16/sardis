@@ -225,7 +225,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build SDK
         run: pnpm --filter @sardis/sdk build
@@ -272,7 +272,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build landing page
         run: pnpm --filter @sardis/app-landing typecheck && pnpm --filter @sardis/app-landing build

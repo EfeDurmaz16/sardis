@@ -53,7 +53,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
-          version: 10.18.1
+          version: 9.15.4
 
       - name: Resolve release metadata
         id: meta
