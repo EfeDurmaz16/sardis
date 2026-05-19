@@ -82,7 +82,6 @@ from .routes.commerce import secure_checkout as secure_checkout_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
-from .routes.money_movement import swap as swap_router
 from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -131,6 +130,7 @@ from .routing.money_movement import (
     register_refund_routes,
     register_settlement_routes,
     register_streaming_payment_routes,
+    register_swap_routes,
     register_transaction_routes,
 )
 from .routing.operations import (
@@ -1711,7 +1711,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_notification_routes(app)
 
     register_alert_routes(app)
-    app.include_router(swap_router.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
+    register_swap_routes(app)
     register_realtime_operations_routes(app)
 
     register_admin_routes(app)

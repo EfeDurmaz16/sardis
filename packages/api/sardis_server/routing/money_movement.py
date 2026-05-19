@@ -18,6 +18,7 @@ from sardis_server.routes.money_movement import (
     receipts,
     settlements,
     streaming_payments,
+    swap,
     transactions,
 )
 
@@ -123,3 +124,8 @@ def register_batch_payment_routes(app: FastAPI) -> None:
 def register_streaming_payment_routes(app: FastAPI) -> None:
     """Register streaming payment routes."""
     app.include_router(streaming_payments.router, prefix="/api/v2", tags=["streaming-payments"])
+
+
+def register_swap_routes(app: FastAPI) -> None:
+    """Register swap, bridge quote, and verification helper routes."""
+    app.include_router(swap.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
