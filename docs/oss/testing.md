@@ -27,7 +27,7 @@ changing paid HTTP protocol behavior:
 ```bash
 PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
 PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
-PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q
+PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q
 ```
 
 Run those protocol targets separately. The package-local protocol tests and

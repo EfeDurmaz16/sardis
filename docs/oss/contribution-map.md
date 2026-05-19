@@ -42,7 +42,7 @@ highest review rigor and the best tests.
 | --- | --- | --- | --- |
 | Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers; use `docs/architecture/sdk-packages.md` before moving SDK ownership | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
 | Authority primitives | `packages/sardis-core/`, `packages/sardis-protocol/` | Mandate semantics, AP2/TAP fixtures, policy evaluation, replay safety | `uv run pytest packages/sardis-core/tests -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q` |
-| Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/reference-api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q`; `PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q` |
+| Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/reference-api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q` |
 | Evidence and ledger | `packages/sardis-ledger/` | Audit packet fixtures, tamper-evidence tests, reconciliation examples | `uv run pytest packages/sardis-ledger/tests -q` |
 | Reference API | `packages/reference-api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest packages/reference-api/tests -q`; `pnpm run check:contributor` |
 | Agent tooling | `packages/sardis-mcp-server/` | MCP schema improvements, examples, simulated-response labeling | `pnpm --filter @sardis/mcp-server build`; `pnpm --filter @sardis/mcp-server test` |
@@ -125,5 +125,5 @@ pytest invocation.
 ```bash
 PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
 PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
-PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q
+PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q
 ```
