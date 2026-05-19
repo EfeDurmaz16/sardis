@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.providers import stripe_funding, stripe_webhooks
+from sardis_server.routes.providers import partner_card_webhooks, stripe_funding, stripe_webhooks
 from sardis_server.routing.providers import (
     register_mastercard_webhook_routes,
+    register_partner_card_webhook_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
@@ -15,6 +16,41 @@ def test_register_mastercard_webhook_routes_mounts_public_route():
 
     paths = {route.path for route in app.routes}
     assert "/mastercard/webhooks" in paths
+
+
+def test_register_partner_card_webhook_routes_wires_dependencies_and_routes():
+    app = FastAPI()
+    card_repo = object()
+    wallet_repo = object()
+    agent_repo = object()
+    canonical_repo = object()
+    treasury_repo = object()
+
+    register_partner_card_webhook_routes(
+        app,
+        card_repo=card_repo,
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        canonical_repo=canonical_repo,
+        treasury_repo=treasury_repo,
+        rain_webhook_secret="rain_secret",
+        bridge_webhook_secret="bridge_secret",
+        environment="prod",
+    )
+
+    deps = app.dependency_overrides[partner_card_webhooks.get_deps]()
+    assert deps.card_repo is card_repo
+    assert deps.wallet_repo is wallet_repo
+    assert deps.agent_repo is agent_repo
+    assert deps.canonical_repo is canonical_repo
+    assert deps.treasury_repo is treasury_repo
+    assert deps.rain_webhook_secret == "rain_secret"
+    assert deps.bridge_webhook_secret == "bridge_secret"
+    assert deps.environment == "prod"
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/webhooks/cards/rain" in paths
+    assert "/api/v2/webhooks/cards/bridge" in paths
 
 
 def test_register_stripe_funding_routes_wires_dependencies_and_routes():

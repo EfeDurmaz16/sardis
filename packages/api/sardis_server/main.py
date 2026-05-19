@@ -83,7 +83,6 @@ from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
-from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.wallets import cards as cards_router
 from .routes.wallets import funding as funding_router
@@ -159,6 +158,7 @@ from .routing.protocol import (
 )
 from .routing.providers import (
     register_mastercard_webhook_routes,
+    register_partner_card_webhook_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
@@ -1331,22 +1331,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             asa_handler=asa_handler,
         )
         app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
-        app.dependency_overrides[partner_card_webhooks_router.get_deps] = (
-            lambda: partner_card_webhooks_router.PartnerCardWebhookDeps(
-                card_repo=card_repo,
-                wallet_repo=wallet_repo,
-                agent_repo=agent_repo,
-                canonical_repo=canonical_ledger_repo,
-                treasury_repo=treasury_repo,
-                rain_webhook_secret=settings.rain.webhook_secret or os.getenv("RAIN_WEBHOOK_SECRET", ""),
-                bridge_webhook_secret=(
-                    settings.bridge_cards.webhook_secret
-                    or os.getenv("BRIDGE_CARDS_WEBHOOK_SECRET", "")
-                ),
-                environment=settings.environment,
-            )
+        register_partner_card_webhook_routes(
+            app,
+            card_repo=card_repo,
+            wallet_repo=wallet_repo,
+            agent_repo=agent_repo,
+            canonical_repo=canonical_ledger_repo,
+            treasury_repo=treasury_repo,
+            rain_webhook_secret=settings.rain.webhook_secret or os.getenv("RAIN_WEBHOOK_SECRET", ""),
+            bridge_webhook_secret=(
+                settings.bridge_cards.webhook_secret
+                or os.getenv("BRIDGE_CARDS_WEBHOOK_SECRET", "")
+            ),
+            environment=settings.environment,
         )
-        app.include_router(partner_card_webhooks_router.router, prefix="/api/v2", tags=["partner-card-webhooks"])
     else:
         app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
 

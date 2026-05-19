@@ -7,6 +7,7 @@ from fastapi import FastAPI
 
 from sardis_server.routes.providers import (
     mastercard_webhooks,
+    partner_card_webhooks,
     stripe_funding,
     stripe_webhooks,
 )
@@ -18,6 +19,38 @@ def register_mastercard_webhook_routes(app: FastAPI) -> None:
     """Register Mastercard Agent Pay inbound webhook routes."""
     app.include_router(mastercard_webhooks.router)
     logger.info("Mastercard webhook router enabled at /mastercard/webhooks")
+
+
+def register_partner_card_webhook_routes(
+    app: FastAPI,
+    *,
+    card_repo,
+    wallet_repo,
+    agent_repo,
+    canonical_repo,
+    treasury_repo,
+    rain_webhook_secret: str,
+    bridge_webhook_secret: str,
+    environment: str,
+) -> None:
+    """Register Rain and Bridge partner-card inbound webhook routes."""
+    app.dependency_overrides[partner_card_webhooks.get_deps] = (
+        lambda: partner_card_webhooks.PartnerCardWebhookDeps(
+            card_repo=card_repo,
+            wallet_repo=wallet_repo,
+            agent_repo=agent_repo,
+            canonical_repo=canonical_repo,
+            treasury_repo=treasury_repo,
+            rain_webhook_secret=rain_webhook_secret,
+            bridge_webhook_secret=bridge_webhook_secret,
+            environment=environment,
+        )
+    )
+    app.include_router(
+        partner_card_webhooks.router,
+        prefix="/api/v2",
+        tags=["partner-card-webhooks"],
+    )
 
 
 def register_stripe_funding_routes(
