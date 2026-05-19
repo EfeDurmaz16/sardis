@@ -113,6 +113,7 @@ def test_configure_merchant_checkout_runtime_wires_dependencies() -> None:
     assert runtime.settlement_service.offramp_service is None
     assert runtime.settlement_service.merchant_webhook_service is runtime.merchant_webhook_service
     assert isinstance(runtime.settlement_service.stripe_connect_provider, FakeStripeConnectProvider)
+    assert runtime.stripe_connect_provider is runtime.settlement_service.stripe_connect_provider
     assert runtime.sardis_native_connector.kwargs == {
         "chain_executor": chain_executor,
         "wallet_manager": wallet_manager,
@@ -140,4 +141,5 @@ def test_configure_merchant_checkout_runtime_uses_defaults_and_skips_stripe_conn
     )
 
     assert runtime.settlement_service.stripe_connect_provider is None
+    assert runtime.stripe_connect_provider is None
     assert runtime.checkout_base_url == "https://checkout.sardis.sh"

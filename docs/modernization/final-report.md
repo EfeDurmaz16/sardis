@@ -331,6 +331,9 @@ Checkout and Pay with Sardis merchant runtime construction now lives in
 no-key behavior, merchant repository/webhook/settlement wiring, Sardis-native
 connector dependencies, Stripe Connect settlement fallback, and checkout base
 URL defaults.
+Stripe Connect route registration now reuses the checkout runtime's resolved
+Stripe Connect provider instead of constructing a second provider inline in
+`server.main`.
 
 ## Test, Build, And Lint Results
 

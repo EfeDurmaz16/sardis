@@ -27,6 +27,7 @@ class MerchantCheckoutRuntime:
     merchant_webhook_service: Any
     settlement_service: Any
     sardis_native_connector: Any
+    stripe_connect_provider: Any | None
     checkout_base_url: str
 
 
@@ -127,6 +128,7 @@ def configure_merchant_checkout_runtime(
         merchant_webhook_service=merchant_webhook_service,
         settlement_service=settlement_service,
         sardis_native_connector=sardis_native_connector,
+        stripe_connect_provider=stripe_connect_provider,
         checkout_base_url=env.get(
             "SARDIS_CHECKOUT_BASE_URL",
             "https://checkout.sardis.sh",

@@ -939,6 +939,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     merchant_webhook_service = merchant_checkout_runtime.merchant_webhook_service
     settlement_service = merchant_checkout_runtime.settlement_service
     sardis_native_connector = merchant_checkout_runtime.sardis_native_connector
+    stripe_connect_provider = merchant_checkout_runtime.stripe_connect_provider
 
     checkout_runtime.orchestrator.register_connector("sardis", sardis_native_connector)
 
@@ -955,17 +956,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         checkout_base_url=checkout_base_url,
     )
 
-    # --- Stripe Connect (Sardis Connect) ---
-    try:
-        from sardis_v2_core.stripe_connect import StripeConnectProvider
-        stripe_connect_provider = StripeConnectProvider()
+    if stripe_connect_provider is not None:
         register_stripe_connect_routes(
             app,
             merchant_repo=merchant_repo,
             stripe_connect_provider=stripe_connect_provider,
         )
-    except (ImportError, ValueError) as e:
-        logger.warning("Stripe Connect not configured, skipping: %s", e)
+    else:
+        logger.warning("Stripe Connect not configured, skipping")
 
     register_merchant_checkout_routes(
         app,
