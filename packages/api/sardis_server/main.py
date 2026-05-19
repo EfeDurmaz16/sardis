@@ -48,8 +48,6 @@ from .routes.protocol import a2a as a2a_router
 from .routes.protocol import a2a_payments as a2a_payments_router
 from .routes.protocol import acp as acp_router
 from .routes.commerce import checkout as checkout_router
-from .routes.commerce import checkout_controls as checkout_controls_router
-from .routes.commerce import invoices as invoices_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
 from .routes.money_movement import batch_payments as batch_payments_router
@@ -70,12 +68,10 @@ from .routes.money_movement import bridge as bridge_router
 from .routes.wallets import cards as cards_router
 from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
-from .routes.commerce import counterparties as counterparties_router
 from .routes.wallets import cpn as cpn_router
 from .routes.authority import credentials as credentials_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
-from .routes.commerce import escrow_disputes as escrow_disputes_router
 from .routes.authority import facility_requests as facility_requests_router
 from .routes.policy import fallback_policies as fallback_policies_router
 from .routes.developer import faucet as faucet_router
@@ -84,7 +80,6 @@ from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.authority import mandate_delegation as mandate_delegation_router
 from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
-from .routes.commerce import marketplace as marketplace_router
 from .routes.providers import mastercard_webhooks as mastercard_webhooks_router
 from .routes.developer import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
@@ -96,7 +91,6 @@ from .routes.policy import policy_analytics as policy_analytics_router
 from .routes.policy import policy_simulation as policy_simulation_router
 from .routes.wallets import ramp as ramp_router
 from .routes.commerce import secure_checkout as secure_checkout_router
-from .routes.commerce import service_directory as service_directory_router
 from .routes.protocol import spt as spt_router
 from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
@@ -114,7 +108,6 @@ from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
 from sardis_v2_core.agents import AgentRepository
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
-from sardis_v2_core.marketplace import MarketplaceRepository
 from sardis_v2_core.wallet_repository import WalletRepository
 from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 
@@ -156,6 +149,13 @@ from .routing.accounts import (
 from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
 from .routing.authority import register_authority_routes
+from .routing.commerce import (
+    register_commerce_support_routes,
+    register_escrow_dispute_routes,
+    register_invoice_routes,
+    register_marketplace_routes,
+    register_service_directory_routes,
+)
 from .routing.developer import register_developer_utility_routes, register_webhook_subscriptions
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
 from .routing.money_movement import register_pay_endpoint
@@ -769,11 +769,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     )
     app.include_router(transactions_router.router, prefix="/api/v2/transactions")
 
-    marketplace_repo = MarketplaceRepository(dsn=database_url if use_postgres else "memory://")
-    app.dependency_overrides[marketplace_router.get_deps] = lambda: marketplace_router.MarketplaceDependencies(  # type: ignore[arg-type]
-        repository=marketplace_repo,
-    )
-    app.include_router(marketplace_router.router, prefix="/api/v2/marketplace")
+    register_marketplace_routes(app, database_url=database_url, use_postgres=use_postgres)
 
     register_auth_routes(app)
 
@@ -1789,7 +1785,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_account_self_service_routes(app)
 
-    app.include_router(invoices_router.router, prefix="/api/v2/invoices", tags=["invoices"])
+    register_invoice_routes(app)
 
     # Notification webhook config
     app.include_router(notifications_router.router, prefix="/api/v2/notifications", tags=["notifications"])
@@ -1959,7 +1955,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(merchant_checkout_router.public_router, prefix="/api/v2/merchant-checkout", tags=["merchant-checkout"])
 
     # --- Service Directory, Compliance Export, Agent Registry ---
-    app.include_router(service_directory_router.router)
+    register_service_directory_routes(app)
     app.include_router(compliance_export_router.router)
     register_agent_registry_routes(app)
 
@@ -1978,8 +1974,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(environment_templates_router.router, prefix="/api/v2/environments", tags=["Environment Templates"])
     app.include_router(fallback_policies_router.router, prefix="/api/v2/fallback", tags=["Fallback Policies"])
     logger.info("Fallback policies router registered at /api/v2/fallback")
-    app.include_router(checkout_controls_router.router, prefix="/api/v2/checkout-controls", tags=["checkout-controls"])
-    app.include_router(counterparties_router.router, prefix="/api/v2/counterparties", tags=["counterparties"])
+    register_commerce_support_routes(app)
     register_dashboard_metrics_routes(app)
 
     # Protocol v1.0 routers
@@ -1988,7 +1983,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
     app.include_router(fx_router.router, prefix="/api/v2", tags=["fx"])
     app.include_router(usage_router.router, prefix="/api/v2", tags=["usage"])
-    app.include_router(escrow_disputes_router.router, prefix="/api/v2", tags=["escrow", "disputes"])
+    register_escrow_dispute_routes(app)
     app.include_router(batch_payments_router.router, prefix="/api/v2", tags=["batch-payments"])
     app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
     app.include_router(streaming_payments_router.router, prefix="/api/v2", tags=["streaming-payments"])
