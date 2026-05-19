@@ -135,6 +135,10 @@ BLOCKED_TEXT_SNIPPETS = {
         "Public environment examples must use deployment-owned merchant "
         "onboarding return URLs."
     ),
+    "- **Dashboard:** https://app.sardis.sh": (
+        "Public LLM metadata must not present the private hosted product as "
+        "part of the OSS repo surface."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {

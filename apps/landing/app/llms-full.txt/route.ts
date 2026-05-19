@@ -322,7 +322,6 @@ Stablecoin checkout: 0% merchant fee on USDC payments.
 - **Founded:** 2024
 - **Founder:** Efe Baran Durmaz
 - **Website:** https://sardis.sh
-- **Dashboard:** https://app.sardis.sh
 - **Documentation:** https://docs.sardis.sh
 - **API Docs:** https://api.sardis.sh/api/v2/docs
 - **GitHub:** https://github.com/EfeDurmaz16/sardis
