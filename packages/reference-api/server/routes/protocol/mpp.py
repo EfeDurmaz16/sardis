@@ -12,7 +12,6 @@ when DATABASE_URL is set. Falls back to in-memory for dev/demo.
 """
 from __future__ import annotations
 
-import json as json_module
 import logging
 import os
 from datetime import UTC, datetime
@@ -32,39 +31,20 @@ from server.models.mpp import (
     PolicyEvaluateRequest,
     PolicyEvaluateResponse,
 )
+from server.repositories.mpp_session_repository import (
+    close_session_record,
+    create_session_record,
+    deduct_memory_session,
+    get_db_pool,
+    get_memory_session,
+    load_session,
+    mark_session_expired,
+    record_payment,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Database connection helper — lazy-loaded
-_db_pool = None
-
-
-async def _get_db():
-    """Get asyncpg connection pool, or None if no DATABASE_URL."""
-    global _db_pool
-    if _db_pool is not None:
-        return _db_pool
-
-    db_url = os.getenv("DATABASE_URL")
-    if not db_url:
-        return None
-
-    try:
-        import asyncpg
-        _db_pool = await asyncpg.create_pool(db_url, min_size=1, max_size=5)
-        logger.info("MPP: PostgreSQL pool initialized")
-        return _db_pool
-    except Exception as e:
-        logger.warning("MPP: Failed to connect to PostgreSQL, using in-memory: %s", e)
-        return None
-
-
-# ── In-memory session store (replaced by DB in production) ─────────────
-
-_sessions: dict[str, dict] = {}
-_payments: dict[str, list[dict]] = {}
 
 
 def _session_to_response(s: dict) -> MPPSessionResponse:
@@ -107,46 +87,30 @@ async def create_session(
         expires_at_dt = now + timedelta(seconds=req.expires_in_seconds)
         expires_at = expires_at_dt.isoformat()
 
-    # Try PostgreSQL first
-    pool = await _get_db()
-    if pool:
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """INSERT INTO mpp_sessions
-                   (session_id, org_id, mandate_id, wallet_id, agent_id,
-                    method, chain, currency, spending_limit, remaining,
-                    total_spent, payment_count, status, created_at, expires_at, metadata)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)""",
-                session_id, principal.org_id, req.mandate_id, req.wallet_id, req.agent_id,
-                req.method, req.chain, req.currency, req.spending_limit, req.spending_limit,
-                Decimal("0"), 0, "active", now, expires_at_dt,
-                json_module.dumps(req.metadata or {}),
-            )
-        logger.info("MPP session created (DB): %s (limit=%s %s)", session_id, req.spending_limit, req.currency)
-    else:
-        # In-memory fallback
-        session = {
-            "session_id": session_id,
-            "org_id": principal.org_id,
-            "mandate_id": req.mandate_id,
-            "wallet_id": req.wallet_id,
-            "agent_id": req.agent_id,
-            "method": req.method,
-            "chain": req.chain,
-            "currency": req.currency,
-            "spending_limit": req.spending_limit,
-            "remaining": req.spending_limit,
-            "total_spent": Decimal("0"),
-            "payment_count": 0,
-            "status": "active",
-            "created_at": now_iso,
-            "closed_at": None,
-            "expires_at": expires_at,
-            "metadata": req.metadata or {},
-        }
-        _sessions[session_id] = session
-        _payments[session_id] = []
-        logger.info("MPP session created (memory): %s (limit=%s %s)", session_id, req.spending_limit, req.currency)
+    session = {
+        "session_id": session_id,
+        "org_id": principal.org_id,
+        "mandate_id": req.mandate_id,
+        "wallet_id": req.wallet_id,
+        "agent_id": req.agent_id,
+        "method": req.method,
+        "chain": req.chain,
+        "currency": req.currency,
+        "spending_limit": req.spending_limit,
+        "remaining": req.spending_limit,
+        "total_spent": Decimal("0"),
+        "payment_count": 0,
+        "status": "active",
+        "created_at": now,
+        "closed_at": None,
+        "expires_at": expires_at,
+    }
+    await create_session_record(
+        session=session,
+        metadata=req.metadata or {},
+        expires_at_dt=expires_at_dt,
+    )
+    logger.info("MPP session created: %s (limit=%s %s)", session_id, req.spending_limit, req.currency)
 
     return MPPSessionResponse(
         session_id=session_id,
@@ -172,19 +136,7 @@ async def create_session(
 
 async def _load_session(session_id: str, org_id: str) -> dict:
     """Load session from DB or memory, with org ownership check."""
-    pool = await _get_db()
-    if pool:
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM mpp_sessions WHERE session_id = $1", session_id
-            )
-            if not row:
-                raise HTTPException(status_code=404, detail="MPP session not found")
-            if row["org_id"] != org_id:
-                raise HTTPException(status_code=403, detail="Access denied")
-            return dict(row)
-
-    session = _sessions.get(session_id)
+    session = await load_session(session_id, org_id)
     if not session:
         raise HTTPException(status_code=404, detail="MPP session not found")
     if session["org_id"] != org_id:
@@ -258,16 +210,7 @@ async def execute_payment(
         except Exception:
             is_expired = False
         if is_expired:
-            # Mark expired
-            pool = await _get_db()
-            if pool:
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE mpp_sessions SET status = 'expired' WHERE session_id = $1",
-                        session_id,
-                    )
-            elif session_id in _sessions:
-                _sessions[session_id]["status"] = "expired"
+            await mark_session_expired(session_id)
             raise HTTPException(status_code=409, detail="Session has expired")
 
     remaining = Decimal(str(session["remaining"]))
@@ -314,7 +257,7 @@ async def execute_payment(
             from_address = None
             if wallet_id:
                 try:
-                    pool = await _get_db()
+                    pool = await get_db_pool()
                     if pool:
                         async with pool.acquire() as conn:
                             # wallets table: external_id = "wallet_xxx", addresses = JSONB
@@ -378,45 +321,23 @@ async def execute_payment(
     else:
         logger.warning("MPP execute: no chain_executor on app.state — budget-only mode")
 
-    # ── Persist payment + update session budget ───────────────────────
-    pool = await _get_db()
-    if pool:
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    """UPDATE mpp_sessions
-                       SET remaining = $1, total_spent = $2, payment_count = $3, status = $4
-                       WHERE session_id = $5""",
-                    new_remaining, new_total, new_count, new_status, session_id,
-                )
-                await conn.execute(
-                    """INSERT INTO mpp_payments
-                       (payment_id, session_id, amount, currency, merchant, merchant_url,
-                        status, tx_hash, chain, created_at, metadata)
-                       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)""",
-                    payment_id, session_id, req.amount, session["currency"],
-                    req.merchant, req.merchant_url or "",
-                    pay_status, tx_hash, session["chain"], datetime.now(UTC),
-                    json_module.dumps(req.metadata or {}),
-                )
-    else:
-        # In-memory fallback
-        mem = _sessions.get(session_id)
-        if mem:
-            mem["remaining"] = new_remaining
-            mem["total_spent"] = new_total
-            mem["payment_count"] = new_count
-            mem["status"] = new_status
-            _payments.setdefault(session_id, []).append({
-                "payment_id": payment_id,
-                "session_id": session_id,
-                "amount": req.amount,
-                "merchant": req.merchant,
-                "status": pay_status,
-                "tx_hash": tx_hash,
-                "chain": session["chain"],
-                "created_at": datetime.now(UTC).isoformat(),
-            })
+    await record_payment(
+        session_id=session_id,
+        amount=req.amount,
+        merchant=req.merchant,
+        merchant_url=req.merchant_url,
+        metadata=req.metadata or {},
+        payment_id=payment_id,
+        currency=session["currency"],
+        chain=session["chain"],
+        new_remaining=new_remaining,
+        new_total=new_total,
+        new_count=new_count,
+        new_status=new_status,
+        pay_status=pay_status,
+        tx_hash=tx_hash,
+        created_at=datetime.now(UTC),
+    )
 
     logger.info(
         "MPP payment executed: %s in session %s (amount=%s, remaining=%s, tx=%s)",
@@ -452,18 +373,7 @@ async def close_session(
 
     closed_at = datetime.now(UTC)
 
-    pool = await _get_db()
-    if pool:
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE mpp_sessions SET status = 'closed', closed_at = $1 WHERE session_id = $2",
-                closed_at, session_id,
-            )
-    else:
-        mem = _sessions.get(session_id)
-        if mem:
-            mem["status"] = "closed"
-            mem["closed_at"] = closed_at.isoformat()
+    await close_session_record(session_id, closed_at)
 
     session["status"] = "closed"
     session["closed_at"] = closed_at.isoformat()
@@ -540,7 +450,7 @@ async def issue_virtual_card(
     """
     # If session provided, check budget
     if req.session_id:
-        session = _sessions.get(req.session_id)
+        session = get_memory_session(req.session_id)
         if not session:
             raise HTTPException(status_code=404, detail="MPP session not found")
         if session["org_id"] != principal.org_id:
@@ -569,11 +479,8 @@ async def issue_virtual_card(
         expiry = f"{expiry_month}/{now.year + 2}"
 
         # Deduct from session if applicable
-        if req.session_id and req.session_id in _sessions:
-            session = _sessions[req.session_id]
-            session["remaining"] = session["remaining"] - req.amount
-            session["total_spent"] = session["total_spent"] + req.amount
-            session["payment_count"] += 1
+        if req.session_id:
+            deduct_memory_session(req.session_id, req.amount)
 
         logger.info("Sandbox virtual card issued: %s amount=%s for org %s", card_id, req.amount, principal.org_id)
 
@@ -597,11 +504,8 @@ async def issue_virtual_card(
         card = await laso.issue_card(amount=req.amount, currency=req.currency)
 
         # Deduct from session if applicable
-        if req.session_id and req.session_id in _sessions:
-            session = _sessions[req.session_id]
-            session["remaining"] = session["remaining"] - req.amount
-            session["total_spent"] = session["total_spent"] + req.amount
-            session["payment_count"] += 1
+        if req.session_id:
+            deduct_memory_session(req.session_id, req.amount)
 
         logger.info("Virtual card issued: %s amount=%s via Laso/Locus MPP", card.card_id, req.amount)
 

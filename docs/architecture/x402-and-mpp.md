@@ -97,7 +97,7 @@ non-HTTP logic out of the route file:
 | Concern | Target location |
 | --- | --- |
 | Request/response models | `server/models/mpp.py` |
-| Session persistence | `server/repositories/` |
+| Session persistence | `server/repositories/mpp_session_repository.py` |
 | Policy/session orchestration | `server/domains/` or `server/services/` |
 | Provider-specific execution | provider or service modules |
 | FastAPI path functions | `server/routes/protocol/mpp.py` |
