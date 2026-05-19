@@ -92,8 +92,6 @@ from .routes.wallets import cards as cards_router
 from .routes.wallets import cpn as cpn_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routes.wallets import treasury as treasury_router
-from .routes.wallets import treasury_ops as treasury_ops_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -168,6 +166,7 @@ from .routing.wallets import (
     register_onchain_payment_routes,
     register_ramp_edge_routes,
     register_ramp_routes,
+    register_treasury_routes,
     register_wallet_core_routes,
 )
 
@@ -1017,19 +1016,13 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.treasury_repo = treasury_repo
     app.state.canonical_ledger_repo = canonical_ledger_repo
     app.state.lithic_treasury_client = lithic_treasury_client
-    app.dependency_overrides[treasury_router.get_deps] = lambda: treasury_router.TreasuryDependencies(
+    register_treasury_routes(
+        app,
         treasury_repo=treasury_repo,
-        lithic_client=lithic_treasury_client,
         lithic_webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET", ""),
-        canonical_repo=canonical_ledger_repo,
+        lithic_treasury_client=lithic_treasury_client,
+        canonical_ledger_repo=canonical_ledger_repo,
     )
-    app.include_router(treasury_router.router, prefix="/api/v2/treasury", tags=["treasury"])
-    if hasattr(treasury_router, "public_router"):
-        app.include_router(treasury_router.public_router, prefix="/api/v2/webhooks/lithic", tags=["treasury-webhooks"])
-    app.dependency_overrides[treasury_ops_router.get_deps] = lambda: treasury_ops_router.TreasuryOpsDependencies(
-        canonical_repo=canonical_ledger_repo,
-    )
-    app.include_router(treasury_ops_router.router, prefix="/api/v2/treasury/ops", tags=["treasury-ops"])
     cpn_client = None
     circle_cpn_api_key_for_router = (
         settings.circle_cpn.api_key

@@ -10,6 +10,8 @@ from sardis_server.routes.wallets import (
     onchain_payments,
     onramp,
     ramp,
+    treasury,
+    treasury_ops,
     virtual_cards,
     wallets,
 )
@@ -105,6 +107,39 @@ def register_ramp_routes(
     app.include_router(ramp.router, prefix="/api/v2/ramp", tags=["ramp"])
     if hasattr(ramp, "public_router"):
         app.include_router(ramp.public_router, prefix="/api/v2/ramp", tags=["ramp"])
+
+
+def register_treasury_routes(
+    app: FastAPI,
+    *,
+    treasury_repo: Any,
+    lithic_treasury_client: Any,
+    lithic_webhook_secret: str,
+    canonical_ledger_repo: Any,
+) -> None:
+    """Register treasury and treasury ops routes."""
+    app.dependency_overrides[treasury.get_deps] = lambda: treasury.TreasuryDependencies(
+        treasury_repo=treasury_repo,
+        lithic_client=lithic_treasury_client,
+        lithic_webhook_secret=lithic_webhook_secret,
+        canonical_repo=canonical_ledger_repo,
+    )
+    app.include_router(treasury.router, prefix="/api/v2/treasury", tags=["treasury"])
+    if hasattr(treasury, "public_router"):
+        app.include_router(
+            treasury.public_router,
+            prefix="/api/v2/webhooks/lithic",
+            tags=["treasury-webhooks"],
+        )
+
+    app.dependency_overrides[treasury_ops.get_deps] = lambda: treasury_ops.TreasuryOpsDependencies(
+        canonical_repo=canonical_ledger_repo,
+    )
+    app.include_router(
+        treasury_ops.router,
+        prefix="/api/v2/treasury/ops",
+        tags=["treasury-ops"],
+    )
 
 
 def register_ramp_edge_routes(app: FastAPI) -> None:

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.wallets import ramp
-from sardis_server.routing.wallets import register_ramp_routes
+from sardis_server.routes.wallets import ramp, treasury, treasury_ops
+from sardis_server.routing.wallets import register_ramp_routes, register_treasury_routes
 
 
 def test_register_ramp_routes_wires_dependencies_and_public_routes():
@@ -35,3 +35,32 @@ def test_register_ramp_routes_wires_dependencies_and_public_routes():
     assert "/api/v2/ramp/onramp/widget" in paths
     assert "/api/v2/ramp/onramp/webhook" in paths
     assert "/api/v2/ramp/bridge/webhook" in paths
+
+
+def test_register_treasury_routes_wires_dependencies_and_public_routes():
+    app = FastAPI()
+    treasury_repo = object()
+    lithic_client = object()
+    canonical_repo = object()
+
+    register_treasury_routes(
+        app,
+        treasury_repo=treasury_repo,
+        lithic_treasury_client=lithic_client,
+        lithic_webhook_secret="lithic_secret",
+        canonical_ledger_repo=canonical_repo,
+    )
+
+    treasury_deps = app.dependency_overrides[treasury.get_deps]()
+    assert treasury_deps.treasury_repo is treasury_repo
+    assert treasury_deps.lithic_client is lithic_client
+    assert treasury_deps.lithic_webhook_secret == "lithic_secret"
+    assert treasury_deps.canonical_repo is canonical_repo
+
+    treasury_ops_deps = app.dependency_overrides[treasury_ops.get_deps]()
+    assert treasury_ops_deps.canonical_repo is canonical_repo
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/treasury/financial-accounts" in paths
+    assert "/api/v2/webhooks/lithic/payments" in paths
+    assert "/api/v2/treasury/ops/journeys" in paths
