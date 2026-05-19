@@ -8,16 +8,16 @@ execution, and evidence control plane. They are not separate products.
 | Surface | Role | Code owner |
 | --- | --- | --- |
 | `packages/sardis-protocol/src/sardis_protocol/x402*.py` | x402 challenge, verification, ERC-3009, and settlement primitives. | Protocol package |
-| `packages/api/sardis_server/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
-| `packages/api/sardis_server/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
+| `packages/reference-api/sardis_server/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
+| `packages/reference-api/sardis_server/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
 | `packages/sardis-mpp/` | Sardis policy-governed MPP client, session helpers, payment records, and payment methods. | MPP package |
-| `packages/api/sardis_server/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
-| `packages/api/sardis_server/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
-| `packages/api/sardis_server/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
-| `packages/api/sardis_server/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
-| `packages/api/sardis_server/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
-| `packages/api/sardis_server/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
-| `packages/api/sardis_server/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
+| `packages/reference-api/sardis_server/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
+| `packages/reference-api/sardis_server/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
+| `packages/reference-api/sardis_server/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
+| `packages/reference-api/sardis_server/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
+| `packages/reference-api/sardis_server/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
+| `packages/reference-api/sardis_server/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
+| `packages/reference-api/sardis_server/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
 
 ## Request Flow Difference
 

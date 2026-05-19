@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-export PYTHONPATH="${ROOT_DIR}/packages/sardis-cards/src:${ROOT_DIR}/packages/api:${ROOT_DIR}/packages/sardis-core/src:${ROOT_DIR}/packages/sardis-ledger/src:${ROOT_DIR}/packages/sardis-protocol/src:${PYTHONPATH:-}"
+export PYTHONPATH="${ROOT_DIR}/packages/sardis-cards/src:${ROOT_DIR}/packages/reference-api:${ROOT_DIR}/packages/sardis-core/src:${ROOT_DIR}/packages/sardis-ledger/src:${ROOT_DIR}/packages/sardis-protocol/src:${PYTHONPATH:-}"
 
 echo "[nightly] Sardis sandbox smoke started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -13,7 +13,7 @@ python3 scripts/check_issuer_readiness.py
 
 echo "[nightly] Running deterministic provider/policy smoke tests"
 python3 -m pytest -q packages/sardis-cards/tests/test_provider_contract_matrix.py
-python3 -m pytest -q packages/api/tests/test_partner_card_webhooks.py::test_partner_webhook_duplicate_event_is_idempotent
+python3 -m pytest -q packages/reference-api/tests/test_partner_card_webhooks.py::test_partner_webhook_duplicate_event_is_idempotent
 python3 -m pytest -q tests/test_agent_payment_rate_limit.py tests/test_erc4337_guardrails.py
 
 if [[ -n "${SARDIS_SANDBOX_BASE_URL:-}" ]]; then

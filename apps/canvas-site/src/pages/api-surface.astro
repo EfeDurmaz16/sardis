@@ -76,7 +76,7 @@ const styles = `
           <div class="eyebrow">The Spine</div>
           <h2>Middleware stack — outermost first.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Registered in <code>packages/api/sardis_server/main.py</code>. FastAPI/Starlette
+            Registered in <code>packages/reference-api/sardis_server/main.py</code>. FastAPI/Starlette
             middleware executes outermost-registered-first on request, innermost-first on response. If you
             need to add a cross-cutting concern, add it here, not in a router.
           </p>
@@ -772,7 +772,7 @@ flowchart TD
           <div class="eyebrow">Full catalogue</div>
           <h2>All 123 routers.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Source: <code>find packages/api/sardis_server/routes -type f</code> on 2026-04-19. If this list
+            Source: <code>find packages/reference-api/sardis_server/routes -type f</code> on 2026-04-19. If this list
             and the filesystem disagree, trust the filesystem and open a fix.
           </p>
         </div>

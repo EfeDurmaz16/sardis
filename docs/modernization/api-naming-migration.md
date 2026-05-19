@@ -6,7 +6,7 @@ The API package uses a standard Python `src` layout. The legacy routing layer
 had grown into a flat directory:
 
 ```text
-packages/api/sardis/routers/*.py
+packages/reference-api/sardis/routers/*.py
 ```
 
 That path is technically normal for Python packaging, but the last segment is
@@ -23,8 +23,8 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 
 The repeated-looking path prefix is tracked separately in
 `docs/modernization/package-path-simplification.md`. The short version: the
-current contributor path is `packages/api/sardis_server/...`; both
-the old `packages/sardis-api` package directory, the too-generic `packages/api`
+current contributor path is `packages/reference-api/sardis_server/...`; both
+the old `packages/sardis-api` package directory, the too-generic `packages/reference-api`
 directory, and the old `sardis_api` import package name have been removed.
 
 ## Naming Principles
@@ -104,7 +104,7 @@ The external API remains unchanged:
 The concrete contributor pain is path roaming. A file like:
 
 ```text
-packages/api/sardis/routers/webhook_subscriptions.py
+packages/reference-api/sardis/routers/webhook_subscriptions.py
 ```
 
 is long, repeats API/package concepts, and hides the business domain in a flat
@@ -112,7 +112,7 @@ is long, repeats API/package concepts, and hides the business domain in a flat
 shorter mental paths:
 
 ```text
-packages/api/sardis_server/routes/developer/webhook_subscriptions.py
+packages/reference-api/sardis_server/routes/developer/webhook_subscriptions.py
 ```
 
 The top-level Python package now uses `sardis_server` because that is the
@@ -124,7 +124,7 @@ below it:
 - `routing/<domain>.py` for FastAPI registration/wiring
 - no legacy `routers/` bucket in the active source tree
 
-The package directory itself has already been simplified to `packages/api`.
+The package directory itself has already been simplified to `packages/reference-api`.
 Further path cleanup should happen inside the Python package by extracting
 domain registrars from `main.py`, not by reintroducing flat router buckets.
 
@@ -282,15 +282,15 @@ the migration and then removed after internal imports moved to
 Run these commands after each route move:
 
 ```bash
-python3 -m compileall -q packages/api/sardis_server
+python3 -m compileall -q packages/reference-api/sardis_server
 pnpm check:openapi
-uv run pytest packages/api/tests -q
+uv run pytest packages/reference-api/tests -q
 ```
 
 For small route-only moves, the minimum acceptable validation is:
 
 ```bash
-python3 -m compileall -q packages/api/sardis_server
+python3 -m compileall -q packages/reference-api/sardis_server
 pnpm check:openapi
 ```
 

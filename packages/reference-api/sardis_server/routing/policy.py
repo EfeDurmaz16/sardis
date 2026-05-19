@@ -6,7 +6,12 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_server.routes.policy import fallback_policies, policies, policy_analytics, policy_simulation
+from sardis_server.routes.policy import (
+    fallback_policies,
+    policies,
+    policy_analytics,
+    policy_simulation,
+)
 
 logger = logging.getLogger("sardis_server.api.routing.policy")
 

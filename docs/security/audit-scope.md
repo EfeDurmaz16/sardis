@@ -29,7 +29,7 @@ This document defines the scope for an independent security audit of the Sardis 
 - Rate limiting (100/min standard, 10/min admin, 5/min sensitive)
 - OAuth CSRF protection
 
-**Location:** `packages/api/src/sardis/authz.py`, `middleware/`
+**Location:** `packages/reference-api/src/sardis/authz.py`, `middleware/`
 
 ### 3. MPC Signing Flow
 

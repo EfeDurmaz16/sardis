@@ -11,7 +11,7 @@
 # =============================================================================
 set -euo pipefail
 
-MIGRATIONS_DIR="$(cd "$(dirname "$0")/../packages/api/migrations" && pwd)"
+MIGRATIONS_DIR="$(cd "$(dirname "$0")/../packages/reference-api/migrations" && pwd)"
 
 if [ -z "${DATABASE_URL:-}" ]; then
     echo "ERROR: DATABASE_URL environment variable is required"

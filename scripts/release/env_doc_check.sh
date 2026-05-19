@@ -11,7 +11,7 @@ trap 'rm -f "$tmp_runtime" "$tmp_documented"' EXIT
 echo "[env-doc] scanning runtime env variable usage"
 rg -No \
   "os\\.getenv\\(\\s*\\\"[A-Z0-9_]+\\\"|os\\.environ\\.get\\(\\s*\\\"[A-Z0-9_]+\\\"|os\\.environ\\[\\s*\\\"[A-Z0-9_]+\\\"" \
-  packages/api \
+  packages/reference-api \
   packages/sardis-core/src \
   packages/sardis-wallet/src \
   --glob '*.py' \

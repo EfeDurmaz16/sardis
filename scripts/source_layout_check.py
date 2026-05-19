@@ -6,29 +6,33 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 FORBIDDEN_PATHS = (
     "packages/sardis-api",
     "packages/server-api",
+    "packages/api",
     "packages/api/src",
     "packages/api/sardis_api",
     "packages/api/sardis",
-    "packages/api/sardis_server/routers",
+    "packages/api/sardis_server",
+    "packages/reference-api/src",
+    "packages/reference-api/sardis_api",
+    "packages/reference-api/sardis",
+    "packages/reference-api/sardis_server/routers",
 )
 
 REQUIRED_PATHS = (
-    "packages/api/sardis_server",
-    "packages/api/sardis_server/routes",
-    "packages/api/sardis_server/routing",
+    "packages/reference-api/sardis_server",
+    "packages/reference-api/sardis_server/routes",
+    "packages/reference-api/sardis_server/routing",
     "docs/oss/source-layout.md",
 )
 
 REQUIRED_DOC_SNIPPETS = {
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
-        "packages/api/sardis_server",
+        "packages/reference-api/sardis_server",
     ),
     "docs/oss/testing.md": (
         "python3 scripts/source_layout_check.py",
@@ -65,7 +69,7 @@ def main() -> int:
                     f"{snippet}"
                 )
 
-    route_root = ROOT / "packages/api/sardis_server/routes"
+    route_root = ROOT / "packages/reference-api/sardis_server/routes"
     if route_root.exists():
         for path in route_root.rglob("*.py"):
             relative_parts = path.relative_to(route_root).parts
@@ -80,8 +84,9 @@ def main() -> int:
         for error in errors:
             print(f"  - {error}")
         print(
-            "\nThe API source tree must stay at packages/api/sardis_server. "
-            "Do not reintroduce packages/sardis-api, packages/api/src, "
+            "\nThe API source tree must stay at packages/reference-api/sardis_server. "
+            "Do not reintroduce packages/sardis-api, packages/api, "
+            "packages/reference-api/src, "
             "sardis_api, or the legacy sardis_server/routers bucket. Route "
             "implementations should stay at routes/<domain>/<module>.py."
         )

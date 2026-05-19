@@ -1,13 +1,13 @@
 # Root Test Migration Inventory
 
 The repository-root `tests/` tree is a legacy migration backlog, not the default contributor test suite.
-Maintained tests live under package-owned `tests/` directories such as `packages/api/tests/`, `packages/sardis-core/tests/`, `packages/sardis-ledger/tests/`, and `packages/sardis-chain/tests/`.
+Maintained tests live under package-owned `tests/` directories such as `packages/reference-api/tests/`, `packages/sardis-core/tests/`, `packages/sardis-ledger/tests/`, and `packages/sardis-chain/tests/`.
 
 ## Current Snapshot
 
 - Root Python test files: `233`
 - Files with stale API import/path references: `0`
-- Default pytest path: `packages/api/tests` from root `pyproject.toml`
+- Default pytest path: `packages/reference-api/tests` from root `pyproject.toml`
 - Default npm test path: package-owned suites from `package.json`
 
 ## Owner Buckets
@@ -17,7 +17,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 | `needs owner review` | 95 |
 | `package docs/tests or package-owned examples` | 3 |
 | `package-owned integration test or archive-candidate` | 17 |
-| `packages/api/tests` | 72 |
+| `packages/reference-api/tests` | 72 |
 | `packages/sardis-chain/tests` | 19 |
 | `packages/sardis-core/tests` | 19 |
 | `packages/sardis-ledger/tests` | 8 |

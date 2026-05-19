@@ -35,7 +35,7 @@ BLOCKED_FILE_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 ALLOWED_PATHS = {
-    "packages/api/dist/.gitignore",
+    "packages/reference-api/dist/.gitignore",
 }
 
 

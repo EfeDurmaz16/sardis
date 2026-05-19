@@ -9,21 +9,21 @@ reference API, a public SDK, a protocol primitive, or a provider integration.
 The reference API uses this active source layout:
 
 ```text
-packages/api/sardis_server/
+packages/reference-api/sardis_server/
 ```
 
 Do not reintroduce any of these old shapes:
 
 ```text
 packages/sardis-api/src/sardis_api/
-packages/api/src/sardis_api/
-packages/api/src/sardis/
-packages/api/sardis_server/routers/
+packages/reference-api/src/sardis_api/
+packages/reference-api/src/sardis/
+packages/reference-api/sardis_server/routers/
 ```
 
 The package has two explicit boundaries:
 
-- `packages/api/` is the monorepo package boundary for the deployable
+- `packages/reference-api/` is the monorepo package boundary for the deployable
   reference API service.
 - `sardis_server/` is the Python import boundary for the FastAPI application.
 
@@ -33,7 +33,7 @@ package, and the second layer is a Python import package. We keep
 `server.main` are collision-prone and unclear in test runners, ASGI loaders, and
 editable installs.
 
-The short version: `packages/api/sardis_server` is the maximum acceptable API
+The short version: `packages/reference-api/sardis_server` is the maximum acceptable API
 nesting. `packages/sardis-api/src/sardis_api` is not acceptable because it says
 the same thing three times.
 
@@ -45,16 +45,16 @@ import package.
 Route implementation files should live under domain folders:
 
 ```text
-packages/api/sardis_server/routes/protocol/x402.py
-packages/api/sardis_server/routes/protocol/mpp.py
-packages/api/sardis_server/routes/providers/stripe_webhooks.py
-packages/api/sardis_server/routes/wallets/wallets.py
+packages/reference-api/sardis_server/routes/protocol/x402.py
+packages/reference-api/sardis_server/routes/protocol/mpp.py
+packages/reference-api/sardis_server/routes/providers/stripe_webhooks.py
+packages/reference-api/sardis_server/routes/wallets/wallets.py
 ```
 
 FastAPI registration and dependency wiring should live under:
 
 ```text
-packages/api/sardis_server/routing/
+packages/reference-api/sardis_server/routing/
 ```
 
 Do not add more route nesting below the domain layer. This is acceptable:
@@ -69,7 +69,7 @@ This is not:
 routes/protocol/payments/x402/handlers.py
 ```
 
-`packages/api/sardis_server/main.py` should remain a composition root, not a
+`packages/reference-api/sardis_server/main.py` should remain a composition root, not a
 catch-all file for every route, provider, and bootstrap concern.
 
 ## Python Libraries

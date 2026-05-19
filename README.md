@@ -354,7 +354,7 @@ python3 scripts/stale_api_path_check.py
 pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
-uv run uvicorn --app-dir packages/api sardis_server.main:create_app --factory --port 8000
+uv run uvicorn --app-dir packages/reference-api sardis_server.main:create_app --factory --port 8000
 ```
 
 ---

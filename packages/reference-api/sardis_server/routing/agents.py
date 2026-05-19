@@ -5,7 +5,13 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_server.routes.agents import agent_activity, agent_events, agent_heartbeat, agent_registry, agents
+from sardis_server.routes.agents import (
+    agent_activity,
+    agent_events,
+    agent_heartbeat,
+    agent_registry,
+    agents,
+)
 from sardis_server.routes.identity import fides_identity
 
 

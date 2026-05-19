@@ -2,7 +2,7 @@
 Vercel serverless function entry point for Sardis API.
 
 This file is the entry point for Vercel's Python runtime.
-It imports and exposes the FastAPI app from packages/api.
+It imports and exposes the FastAPI app from packages/reference-api.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import sys
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 packages_dir = os.path.join(root_dir, "packages")
 sys.path[:0] = [
-    os.path.join(packages_dir, "api"),
+    os.path.join(packages_dir, "reference-api"),
     os.path.join(packages_dir, "sardis-core", "src"),
     os.path.join(packages_dir, "sardis-wallet", "src"),
     os.path.join(packages_dir, "sardis-protocol", "src"),

@@ -11,8 +11,8 @@ import pathlib
 import re
 import sys
 
-sql_dir = pathlib.Path("packages/api/migrations")
-alembic_dir = pathlib.Path("packages/api/alembic/versions")
+sql_dir = pathlib.Path("packages/reference-api/migrations")
+alembic_dir = pathlib.Path("packages/reference-api/alembic/versions")
 
 sql_versions = sorted(
     int(m.group(1))

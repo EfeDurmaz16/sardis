@@ -4,7 +4,7 @@
 
 ### High: Root file traversal can include local environment artifacts
 
-- Evidence: local traversal found `packages/api/.venv`, `.pytest_cache`, `.ruff_cache`, `.next`, and other build folders. They are ignored, but scripts using plain `find` can still traverse them.
+- Evidence: local traversal found `packages/reference-api/.venv`, `.pytest_cache`, `.ruff_cache`, `.next`, and other build folders. They are ignored, but scripts using plain `find` can still traverse them.
 - Impact: Audits and ad hoc scripts report dependency tests or generated files as project code.
 - Recommended action: Add a repo inventory/validation script that prunes ignored/generated folders.
 - Action type: Tooling.

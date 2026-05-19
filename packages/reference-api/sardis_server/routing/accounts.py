@@ -4,7 +4,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 from sardis_v2_core.agent_groups import AgentGroupRepository
 
-from sardis_server.routes.accounts import api_keys, auth, data_export, email_verification, groups, me
+from sardis_server.routes.accounts import (
+    api_keys,
+    auth,
+    data_export,
+    email_verification,
+    groups,
+    me,
+)
 
 
 def register_auth_routes(app: FastAPI) -> None:

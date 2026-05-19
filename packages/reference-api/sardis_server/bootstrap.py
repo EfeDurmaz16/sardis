@@ -6,7 +6,6 @@ import os
 import sys
 from pathlib import Path
 
-
 MONOREPO_SOURCE_PACKAGES = (
     "sardis-core",
     "sardis-wallet",
