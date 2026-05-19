@@ -1,8 +1,11 @@
 from types import SimpleNamespace
 
+import pytest
+
 from server.funding_runtime import (
     StripeFundingRuntimeConfig,
     configure_funding_adapters,
+    configure_recurring_autofund_handler,
     resolve_stripe_funding_runtime_config,
 )
 
@@ -287,3 +290,122 @@ def test_configure_funding_adapters_skips_unknown_and_missing_credentials() -> N
     assert config.primary_adapter is None
     assert config.fallback_adapter is None
     assert config.ordered_adapters == []
+
+
+class FakeRecurringBillingService:
+    def __init__(self) -> None:
+        self.handler = None
+        self.allow_simulated_fallback = None
+
+    def configure_autofund_handler(self, handler, *, allow_simulated_fallback: bool) -> None:
+        self.handler = handler
+        self.allow_simulated_fallback = allow_simulated_fallback
+
+
+class FakeFundingRequest:
+    def __init__(self, **kwargs) -> None:
+        self.kwargs = kwargs
+
+
+def _token_type(token_raw: str) -> str:
+    if token_raw not in {"USDC", "EURC"}:
+        raise ValueError(token_raw)
+    return token_raw
+
+
+@pytest.mark.asyncio
+async def test_configure_recurring_autofund_handler_routes_request() -> None:
+    service = FakeRecurringBillingService()
+    adapter = object()
+    captured = {}
+
+    async def execute_funding_with_failover(adapters, request):
+        captured["adapters"] = adapters
+        captured["request"] = request
+        return SimpleNamespace(provider="rain", transfer_id="tr_123"), [object(), object()]
+
+    configured = configure_recurring_autofund_handler(
+        service,
+        [adapter],
+        chain_mode="live",
+        funding_request_cls=FakeFundingRequest,
+        execute_funding_with_failover_func=execute_funding_with_failover,
+        token_type_cls=_token_type,
+        normalize_token_amount_func=lambda token_type, amount_minor: amount_minor / 100,
+    )
+
+    assert configured is True
+    assert service.allow_simulated_fallback is False
+    assert await service.handler(
+        {
+            "id": "sub_123",
+            "wallet_id": "wallet_123",
+            "chain": "base",
+            "token": "usdc",
+        },
+        1234,
+    ) == "tr_123"
+    assert captured["adapters"] == [adapter]
+    assert captured["request"].kwargs == {
+        "amount": 12.34,
+        "currency": "USD",
+        "description": "Recurring auto-fund for subscription sub_123",
+        "metadata": {
+            "source": "recurring_billing",
+            "subscription_id": "sub_123",
+            "wallet_id": "wallet_123",
+            "chain": "base",
+            "token": "USDC",
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_configure_recurring_autofund_handler_rejects_invalid_requests() -> None:
+    service = FakeRecurringBillingService()
+
+    async def execute_funding_with_failover(adapters, request):
+        return SimpleNamespace(provider="rain", transfer_id="tr_123"), []
+
+    configure_recurring_autofund_handler(
+        service,
+        [object()],
+        chain_mode="live",
+        funding_request_cls=FakeFundingRequest,
+        execute_funding_with_failover_func=execute_funding_with_failover,
+        token_type_cls=_token_type,
+        normalize_token_amount_func=lambda token_type, amount_minor: amount_minor,
+    )
+
+    with pytest.raises(ValueError, match="unsupported_autofund_token:BAD"):
+        await service.handler({"token": "bad"}, 100)
+    with pytest.raises(ValueError, match="autofund_amount_must_be_positive"):
+        await service.handler({"token": "USDC"}, 0)
+
+
+def test_configure_recurring_autofund_handler_fails_closed_in_live_mode() -> None:
+    service = FakeRecurringBillingService()
+
+    configured = configure_recurring_autofund_handler(
+        service,
+        [],
+        chain_mode="live",
+    )
+
+    assert configured is False
+    assert service.handler is None
+    assert service.allow_simulated_fallback is False
+
+
+def test_configure_recurring_autofund_handler_leaves_simulated_mode_unconfigured() -> None:
+    service = FakeRecurringBillingService()
+
+    configured = configure_recurring_autofund_handler(
+        service,
+        [],
+        chain_mode="simulated",
+    )
+
+    assert configured is False
+    assert service.handler is None
+    assert service.allow_simulated_fallback is None

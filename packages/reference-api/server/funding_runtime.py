@@ -232,3 +232,87 @@ def configure_funding_adapters(
         fallback_adapter=fallback_adapter,
         ordered_adapters=ordered_adapters,
     )
+
+
+def configure_recurring_autofund_handler(
+    recurring_billing_service: Any,
+    ordered_funding_adapters: list[Any],
+    *,
+    chain_mode: str,
+    funding_request_cls: Any = _DEFAULT_PROVIDER,
+    execute_funding_with_failover_func: Any = _DEFAULT_PROVIDER,
+    token_type_cls: Any = _DEFAULT_PROVIDER,
+    normalize_token_amount_func: Any = _DEFAULT_PROVIDER,
+) -> bool:
+    """Wire recurring billing auto-fund execution for configured adapters."""
+    if ordered_funding_adapters:
+        if funding_request_cls is _DEFAULT_PROVIDER:
+            from sardis_v2_core.funding import FundingRequest
+
+            funding_request_cls = FundingRequest
+        if execute_funding_with_failover_func is _DEFAULT_PROVIDER:
+            from sardis_v2_core.funding import execute_funding_with_failover
+
+            execute_funding_with_failover_func = execute_funding_with_failover
+        if token_type_cls is _DEFAULT_PROVIDER:
+            from sardis_v2_core.tokens import TokenType
+
+            token_type_cls = TokenType
+        if normalize_token_amount_func is _DEFAULT_PROVIDER:
+            from sardis_v2_core.tokens import normalize_token_amount
+
+            normalize_token_amount_func = normalize_token_amount
+
+        async def recurring_autofund_handler(
+            subscription: dict[str, object],
+            amount_minor: int,
+        ) -> str:
+            token_raw = str(subscription.get("token") or "USDC").upper()
+            try:
+                token_type = token_type_cls(token_raw)
+            except ValueError as exc:
+                raise ValueError(f"unsupported_autofund_token:{token_raw}") from exc
+            amount = normalize_token_amount_func(token_type, max(int(amount_minor), 0))
+            if amount <= 0:
+                raise ValueError("autofund_amount_must_be_positive")
+            request = funding_request_cls(
+                amount=amount,
+                currency="USD",
+                description=f"Recurring auto-fund for subscription {subscription.get('id', 'unknown')}",
+                metadata={
+                    "source": "recurring_billing",
+                    "subscription_id": str(subscription.get("id", "")),
+                    "wallet_id": str(subscription.get("wallet_id", "")),
+                    "chain": str(subscription.get("chain", "")),
+                    "token": token_raw,
+                },
+            )
+            transfer, attempts = await execute_funding_with_failover_func(
+                ordered_funding_adapters,
+                request,
+            )
+            logger.info(
+                "Recurring auto-fund routed provider=%s transfer_id=%s attempts=%d",
+                transfer.provider,
+                transfer.transfer_id,
+                len(attempts),
+            )
+            return transfer.transfer_id
+
+        recurring_billing_service.configure_autofund_handler(
+            recurring_autofund_handler,
+            allow_simulated_fallback=False,
+        )
+        return True
+
+    if chain_mode == "live":
+        recurring_billing_service.configure_autofund_handler(
+            None,
+            allow_simulated_fallback=False,
+        )
+        logger.warning(
+            "Live recurring auto-fund is enabled but no funding adapters are configured; "
+            "autofund requests will fail closed."
+        )
+
+    return False
