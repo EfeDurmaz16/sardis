@@ -4,6 +4,7 @@ import pytest
 
 from sardis_server.dependencies import (
     configure_kyc_service,
+    configure_sanctions_service,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -420,4 +421,160 @@ def test_configure_kyc_service_uses_factory_outside_production_without_provider(
         "template_id": None,
         "webhook_secret": "secret",
         "environment": "sandbox",
+    }
+
+
+class FakeSanctionsService:
+    def __init__(self, *, provider: object) -> None:
+        self.provider = provider
+
+
+class FakeFailoverSanctionsProvider:
+    def __init__(self, primary: object, fallback: object) -> None:
+        self.primary = primary
+        self.fallback = fallback
+
+
+class FakeEllipticProvider:
+    def __init__(self, *, api_key: str, api_secret: str) -> None:
+        self.api_key = api_key
+        self.api_secret = api_secret
+
+
+class FakeScorechainProvider:
+    def __init__(self, *, api_key: str) -> None:
+        self.api_key = api_key
+
+
+class FakeMockSanctionsProvider:
+    pass
+
+
+def _configure_sanctions(
+    settings=None,
+    environ=None,
+    scorechain_provider_cls=FakeScorechainProvider,
+    create_sanctions_service_fn=None,
+):
+    return configure_sanctions_service(
+        settings or _settings(),
+        environ=environ or {},
+        sanctions_service_cls=FakeSanctionsService,
+        failover_provider_cls=FakeFailoverSanctionsProvider,
+        elliptic_provider_cls=FakeEllipticProvider,
+        scorechain_provider_cls=scorechain_provider_cls,
+        mock_provider_cls=FakeMockSanctionsProvider,
+        create_sanctions_service_fn=(
+            create_sanctions_service_fn or (lambda **kwargs: SimpleNamespace(**kwargs))
+        ),
+    )
+
+
+def test_configure_sanctions_service_uses_elliptic_primary() -> None:
+    config = _configure_sanctions(
+        environ={
+            "ELLIPTIC_API_KEY": "elliptic_key",
+            "ELLIPTIC_API_SECRET": "elliptic_secret",
+        }
+    )
+
+    assert config.mode == "primary"
+    assert config.primary_name == "elliptic"
+    assert isinstance(config.service, FakeSanctionsService)
+    assert isinstance(config.service.provider, FakeEllipticProvider)
+    assert config.service.provider.api_key == "elliptic_key"
+    assert config.service.provider.api_secret == "elliptic_secret"
+
+
+def test_configure_sanctions_service_requires_complete_elliptic_credentials() -> None:
+    config = _configure_sanctions(
+        environ={
+            "ELLIPTIC_API_KEY": "elliptic_key",
+            "SARDIS_SANCTIONS_FALLBACK_PROVIDER": "mock",
+        }
+    )
+
+    assert config.mode == "fallback"
+    assert isinstance(config.service.provider, FakeMockSanctionsProvider)
+
+
+def test_configure_sanctions_service_uses_scorechain_primary() -> None:
+    config = _configure_sanctions(
+        environ={
+            "SARDIS_SANCTIONS_PRIMARY_PROVIDER": "scorechain",
+            "SCORECHAIN_API_KEY": "scorechain_key",
+        }
+    )
+
+    assert config.mode == "primary"
+    assert isinstance(config.service.provider, FakeScorechainProvider)
+    assert config.service.provider.api_key == "scorechain_key"
+
+
+def test_configure_sanctions_service_skips_scorechain_when_provider_unavailable() -> None:
+    config = _configure_sanctions(
+        environ={
+            "SARDIS_SANCTIONS_PRIMARY_PROVIDER": "scorechain",
+            "SARDIS_SANCTIONS_FALLBACK_PROVIDER": "mock",
+            "SCORECHAIN_API_KEY": "scorechain_key",
+        },
+        scorechain_provider_cls=None,
+    )
+
+    assert config.mode == "fallback"
+    assert isinstance(config.service.provider, FakeMockSanctionsProvider)
+
+
+def test_configure_sanctions_service_builds_failover_provider() -> None:
+    config = _configure_sanctions(
+        environ={
+            "SARDIS_SANCTIONS_PRIMARY_PROVIDER": "elliptic",
+            "SARDIS_SANCTIONS_FALLBACK_PROVIDER": "scorechain",
+            "ELLIPTIC_API_KEY": "elliptic_key",
+            "ELLIPTIC_API_SECRET": "elliptic_secret",
+            "SCORECHAIN_API_KEY": "scorechain_key",
+        }
+    )
+
+    assert config.mode == "failover"
+    assert isinstance(config.service.provider, FakeFailoverSanctionsProvider)
+    assert isinstance(config.service.provider.primary, FakeEllipticProvider)
+    assert isinstance(config.service.provider.fallback, FakeScorechainProvider)
+
+
+def test_configure_sanctions_service_ignores_duplicate_fallback_provider() -> None:
+    config = _configure_sanctions(
+        environ={
+            "SARDIS_SANCTIONS_PRIMARY_PROVIDER": "mock",
+            "SARDIS_SANCTIONS_FALLBACK_PROVIDER": "mock",
+        }
+    )
+
+    assert config.mode == "primary"
+    assert config.fallback_name == "mock"
+    assert isinstance(config.service.provider, FakeMockSanctionsProvider)
+
+
+def test_configure_sanctions_service_requires_provider_in_production() -> None:
+    with pytest.raises(RuntimeError, match="Production requires at least one sanctions provider"):
+        _configure_sanctions(settings=_settings(is_production=True), environ={})
+
+
+def test_configure_sanctions_service_uses_factory_outside_production_without_provider() -> None:
+    captured = {}
+
+    def fake_create_sanctions_service(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(name="factory")
+
+    config = _configure_sanctions(
+        environ={"ELLIPTIC_API_KEY": "partial_key"},
+        create_sanctions_service_fn=fake_create_sanctions_service,
+    )
+
+    assert config.mode == "factory"
+    assert config.service.name == "factory"
+    assert captured == {
+        "api_key": "partial_key",
+        "api_secret": None,
     }

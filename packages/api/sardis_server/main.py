@@ -51,6 +51,7 @@ from sardis_wallet.manager import WalletManager
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
     configure_kyc_service,
+    configure_sanctions_service,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -474,14 +475,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from sardis_compliance.checks import create_audit_store
     audit_store = create_audit_store(dsn=database_url)
     from sardis_compliance import (
-        EllipticProvider,
-        FailoverSanctionsProvider,
-        MockSanctionsProvider,
-        SanctionsService,
         create_kya_service,
-        create_sanctions_service,
     )
-    from sardis_compliance.providers import ScorechainProvider
 
     kyc_config = configure_kyc_service(settings)
     kyc_service = kyc_config.service
@@ -499,67 +494,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             kyc_config.fallback_name,
         )
 
-    sanctions_primary_name = (os.getenv("SARDIS_SANCTIONS_PRIMARY_PROVIDER", "elliptic") or "elliptic").strip().lower()
-    sanctions_fallback_name = (os.getenv("SARDIS_SANCTIONS_FALLBACK_PROVIDER", "") or "").strip().lower()
-
-    def _build_sanctions_provider(name: str):
-        if not name:
-            return None
-        if name == "elliptic":
-            elliptic_api_key = os.getenv("ELLIPTIC_API_KEY", "")
-            elliptic_api_secret = os.getenv("ELLIPTIC_API_SECRET", "")
-            if not elliptic_api_key or not elliptic_api_secret:
-                return None
-            return EllipticProvider(
-                api_key=elliptic_api_key,
-                api_secret=elliptic_api_secret,
-            )
-        if name == "scorechain":
-            scorechain_api_key = os.getenv("SCORECHAIN_API_KEY", "")
-            if not scorechain_api_key or ScorechainProvider is None:
-                return None
-            return ScorechainProvider(api_key=scorechain_api_key)
-        if name == "mock":
-            return MockSanctionsProvider()
-        return None
-
-    sanctions_primary_provider = _build_sanctions_provider(sanctions_primary_name)
-    sanctions_fallback_provider = (
-        _build_sanctions_provider(sanctions_fallback_name)
-        if sanctions_fallback_name and sanctions_fallback_name != sanctions_primary_name
-        else None
-    )
-    if sanctions_primary_provider and sanctions_fallback_provider:
-        sanctions_service = SanctionsService(
-            provider=FailoverSanctionsProvider(
-                sanctions_primary_provider,
-                sanctions_fallback_provider,
-            )
-        )
+    sanctions_config = configure_sanctions_service(settings)
+    sanctions_service = sanctions_config.service
+    if sanctions_config.mode == "failover":
         logger.info(
             "Sanctions service configured with failover primary=%s fallback=%s",
-            sanctions_primary_name,
-            sanctions_fallback_name,
+            sanctions_config.primary_name,
+            sanctions_config.fallback_name,
         )
-    elif sanctions_primary_provider:
-        sanctions_service = SanctionsService(provider=sanctions_primary_provider)
-        logger.info("Sanctions service configured with provider=%s", sanctions_primary_name)
-    elif sanctions_fallback_provider:
-        sanctions_service = SanctionsService(provider=sanctions_fallback_provider)
+    elif sanctions_config.mode == "primary":
+        logger.info("Sanctions service configured with provider=%s", sanctions_config.primary_name)
+    elif sanctions_config.mode == "fallback":
         logger.warning(
             "Sanctions primary provider unavailable; using fallback provider=%s",
-            sanctions_fallback_name,
-        )
-    else:
-        if settings.is_production:
-            raise RuntimeError(
-                "Production requires at least one sanctions provider. "
-                "Configure Elliptic (ELLIPTIC_API_KEY, ELLIPTIC_API_SECRET) or "
-                "Scorechain (SCORECHAIN_API_KEY)."
-            )
-        sanctions_service = create_sanctions_service(
-            api_key=os.getenv("ELLIPTIC_API_KEY"),
-            api_secret=os.getenv("ELLIPTIC_API_SECRET"),
+            sanctions_config.fallback_name,
         )
 
     kya_service = create_kya_service(

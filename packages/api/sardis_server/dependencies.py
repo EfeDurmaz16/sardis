@@ -21,6 +21,7 @@ from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+_DEFAULT_PROVIDER = object()
 
 
 @dataclass
@@ -87,6 +88,16 @@ class LiveExecutionConfig:
 @dataclass(frozen=True)
 class KYCServiceConfig:
     """Resolved KYC service and provider selection metadata."""
+
+    service: Any
+    primary_name: str
+    fallback_name: str
+    mode: str
+
+
+@dataclass(frozen=True)
+class SanctionsServiceConfig:
+    """Resolved sanctions service and provider selection metadata."""
 
     service: Any
     primary_name: str
@@ -319,6 +330,125 @@ def configure_kyc_service(
             template_id=env.get("PERSONA_TEMPLATE_ID"),
             webhook_secret=env.get("PERSONA_WEBHOOK_SECRET"),
             environment=kyc_environment,
+        ),
+        primary_name=primary_name,
+        fallback_name=fallback_name,
+        mode="factory",
+    )
+
+
+def configure_sanctions_service(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    sanctions_service_cls: Any | None = None,
+    failover_provider_cls: Any | None = None,
+    elliptic_provider_cls: Any | None = None,
+    scorechain_provider_cls: Any = _DEFAULT_PROVIDER,
+    mock_provider_cls: Any | None = None,
+    create_sanctions_service_fn: Any | None = None,
+) -> SanctionsServiceConfig:
+    """Resolve the sanctions provider stack and enforce production configuration."""
+    env = environ if environ is not None else os.environ
+    primary_name = (
+        env.get("SARDIS_SANCTIONS_PRIMARY_PROVIDER", "elliptic") or "elliptic"
+    ).strip().lower()
+    fallback_name = (env.get("SARDIS_SANCTIONS_FALLBACK_PROVIDER", "") or "").strip().lower()
+
+    if (
+        sanctions_service_cls is None
+        or failover_provider_cls is None
+        or elliptic_provider_cls is None
+        or mock_provider_cls is None
+        or create_sanctions_service_fn is None
+    ):
+        from sardis_compliance import (
+            EllipticProvider,
+            FailoverSanctionsProvider,
+            MockSanctionsProvider,
+            SanctionsService,
+            create_sanctions_service,
+        )
+
+        sanctions_service_cls = sanctions_service_cls or SanctionsService
+        failover_provider_cls = failover_provider_cls or FailoverSanctionsProvider
+        elliptic_provider_cls = elliptic_provider_cls or EllipticProvider
+        mock_provider_cls = mock_provider_cls or MockSanctionsProvider
+        create_sanctions_service_fn = (
+            create_sanctions_service_fn or create_sanctions_service
+        )
+
+    if scorechain_provider_cls is _DEFAULT_PROVIDER:
+        try:
+            from sardis_compliance.providers import ScorechainProvider
+        except ImportError:
+            scorechain_provider_cls = None
+        else:
+            scorechain_provider_cls = ScorechainProvider
+
+    def build_provider(name: str) -> Any | None:
+        if not name:
+            return None
+        if name == "elliptic":
+            elliptic_api_key = env.get("ELLIPTIC_API_KEY", "")
+            elliptic_api_secret = env.get("ELLIPTIC_API_SECRET", "")
+            if not elliptic_api_key or not elliptic_api_secret:
+                return None
+            return elliptic_provider_cls(
+                api_key=elliptic_api_key,
+                api_secret=elliptic_api_secret,
+            )
+        if name == "scorechain":
+            scorechain_api_key = env.get("SCORECHAIN_API_KEY", "")
+            if not scorechain_api_key or scorechain_provider_cls is None:
+                return None
+            return scorechain_provider_cls(api_key=scorechain_api_key)
+        if name == "mock":
+            return mock_provider_cls()
+        return None
+
+    primary_provider = build_provider(primary_name)
+    fallback_provider = (
+        build_provider(fallback_name)
+        if fallback_name and fallback_name != primary_name
+        else None
+    )
+
+    if primary_provider and fallback_provider:
+        return SanctionsServiceConfig(
+            service=sanctions_service_cls(
+                provider=failover_provider_cls(primary_provider, fallback_provider)
+            ),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="failover",
+        )
+    if primary_provider:
+        return SanctionsServiceConfig(
+            service=sanctions_service_cls(provider=primary_provider),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="primary",
+        )
+    if fallback_provider:
+        return SanctionsServiceConfig(
+            service=sanctions_service_cls(provider=fallback_provider),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="fallback",
+        )
+
+    if getattr(settings, "is_production", False):
+        raise RuntimeError(
+            "Production requires at least one sanctions provider. "
+            "Configure Elliptic (ELLIPTIC_API_KEY, ELLIPTIC_API_SECRET) or "
+            "Scorechain (SCORECHAIN_API_KEY)."
+        )
+
+    return SanctionsServiceConfig(
+        service=create_sanctions_service_fn(
+            api_key=env.get("ELLIPTIC_API_KEY"),
+            api_secret=env.get("ELLIPTIC_API_SECRET"),
         ),
         primary_name=primary_name,
         fallback_name=fallback_name,

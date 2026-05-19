@@ -265,6 +265,9 @@ Latest API bootstrap pass: KYC provider/service construction moved out of
 `sardis_server.main` into a tested dependency helper. The production
 fail-closed requirement, Persona credential checks, mock fallback behavior, and
 non-production factory fallback are now covered without booting the full app.
+Sanctions provider/service construction now follows the same pattern, covering
+Elliptic, Scorechain, mock fallback, duplicate fallback suppression, production
+fail-closed behavior, and non-production factory fallback outside the full app.
 
 ## Test, Build, And Lint Results
 
