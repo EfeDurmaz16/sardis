@@ -137,6 +137,16 @@ class PaymentRuntimeConfig:
     orchestrator: Any
 
 
+@dataclass(frozen=True)
+class APISupportServicesConfig:
+    """Resolved API support services exposed through app.state."""
+
+    cache_service: Any
+    api_key_manager: Any
+    redis_url: str | None
+    api_key_manager_dsn: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -697,6 +707,43 @@ def configure_payment_runtime(
         replay_cache=replay_cache,
         verifier=verifier,
         orchestrator=orchestrator,
+    )
+
+
+def configure_api_support_services(
+    settings: Any,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    environ: Mapping[str, str] | None = None,
+    create_cache_service_fn: Any | None = None,
+    api_key_manager_cls: Any | None = None,
+    set_api_key_manager_fn: Any | None = None,
+) -> APISupportServicesConfig:
+    """Create cache and API-key manager services shared by middleware/routes."""
+    if create_cache_service_fn is None:
+        from sardis_v2_core.cache import create_cache_service
+
+        create_cache_service_fn = create_cache_service
+
+    if api_key_manager_cls is None or set_api_key_manager_fn is None:
+        from .middleware import APIKeyManager, set_api_key_manager
+
+        api_key_manager_cls = api_key_manager_cls or APIKeyManager
+        set_api_key_manager_fn = set_api_key_manager_fn or set_api_key_manager
+
+    cache_backend = resolve_cache_backend(settings, environ=environ)
+    redis_url = cache_backend.redis_url
+    cache_service = create_cache_service_fn(redis_url)
+    api_key_manager_dsn = database_url if use_postgres else "memory://"
+    api_key_manager = api_key_manager_cls(dsn=api_key_manager_dsn)
+    set_api_key_manager_fn(api_key_manager)
+
+    return APISupportServicesConfig(
+        cache_service=cache_service,
+        api_key_manager=api_key_manager,
+        redis_url=redis_url,
+        api_key_manager_dsn=api_key_manager_dsn,
     )
 
 

@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from sardis_server.dependencies import (
+    configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
     configure_kyc_service,
@@ -874,3 +875,68 @@ def test_configure_payment_runtime_uses_memory_replay_cache_for_non_sqlite_dsn()
     assert config.archive.dsn == "memory://mandates"
     assert isinstance(config.replay_cache, FakeReplayCache)
     assert config.replay_cache.dsn == "memory://"
+
+
+class FakeAPIKeyManager:
+    def __init__(self, *, dsn: str) -> None:
+        self.dsn = dsn
+
+
+def test_configure_api_support_services_wires_redis_cache_and_postgres_api_keys() -> None:
+    installed = []
+
+    def fake_create_cache_service(redis_url):
+        return SimpleNamespace(redis_url=redis_url)
+
+    def fake_set_api_key_manager(manager):
+        installed.append(manager)
+
+    config = configure_api_support_services(
+        _settings(redis_url="redis://settings"),
+        database_url="postgresql://localhost/sardis",
+        use_postgres=True,
+        environ={"SARDIS_REDIS_URL": "redis://env"},
+        create_cache_service_fn=fake_create_cache_service,
+        api_key_manager_cls=FakeAPIKeyManager,
+        set_api_key_manager_fn=fake_set_api_key_manager,
+    )
+
+    assert config.redis_url == "redis://env"
+    assert config.cache_service.redis_url == "redis://env"
+    assert isinstance(config.api_key_manager, FakeAPIKeyManager)
+    assert config.api_key_manager.dsn == "postgresql://localhost/sardis"
+    assert config.api_key_manager_dsn == "postgresql://localhost/sardis"
+    assert installed == [config.api_key_manager]
+
+
+def test_configure_api_support_services_uses_memory_api_key_manager_without_postgres() -> None:
+    installed = []
+
+    config = configure_api_support_services(
+        _settings(redis_url=None),
+        database_url="sqlite:///api.db",
+        use_postgres=False,
+        environ={},
+        create_cache_service_fn=lambda redis_url: SimpleNamespace(redis_url=redis_url),
+        api_key_manager_cls=FakeAPIKeyManager,
+        set_api_key_manager_fn=installed.append,
+    )
+
+    assert config.redis_url is None
+    assert config.cache_service.redis_url is None
+    assert config.api_key_manager.dsn == "memory://"
+    assert config.api_key_manager_dsn == "memory://"
+    assert installed == [config.api_key_manager]
+
+
+def test_configure_api_support_services_keeps_production_redis_requirement() -> None:
+    with pytest.raises(RuntimeError, match="Redis is required in production"):
+        configure_api_support_services(
+            _settings(is_production=True),
+            database_url="postgresql://localhost/sardis",
+            use_postgres=True,
+            environ={},
+            create_cache_service_fn=lambda redis_url: SimpleNamespace(redis_url=redis_url),
+            api_key_manager_cls=FakeAPIKeyManager,
+            set_api_key_manager_fn=lambda manager: None,
+        )

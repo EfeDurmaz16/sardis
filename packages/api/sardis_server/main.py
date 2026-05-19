@@ -27,27 +27,25 @@ if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
 from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.cache import create_cache_service
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
+    configure_api_support_services,
     configure_compliance_services,
     configure_core_services,
     configure_kyc_service,
     configure_payment_runtime,
     configure_sanctions_service,
     initialize_turnkey_client,
-    resolve_cache_backend,
     resolve_storage_backend,
     validate_live_execution_config,
 )
 from .lifespan import lifespan, shutdown_state
 from .middleware import (
     API_VERSION,
-    APIKeyManager,
     RateLimitConfig,
     RateLimitMiddleware,
     RequestBodyLimitMiddleware,
@@ -58,7 +56,6 @@ from .middleware import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,
     register_exception_handlers,
-    set_api_key_manager,
     setup_logging,
 )
 from .openapi_schema import custom_openapi
@@ -563,15 +560,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         dsn=database_url if use_postgres else "memory://",
     )
 
-    cache_backend = resolve_cache_backend(settings)
-    redis_url = cache_backend.redis_url
-    cache_service = create_cache_service(redis_url)
+    support_services = configure_api_support_services(
+        settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+    )
+    cache_service = support_services.cache_service
+    redis_url = support_services.redis_url
     app.state.cache_service = cache_service
     logger.info(f"Cache initialized: {'Redis' if redis_url else 'In-memory'}")
 
-    api_key_manager = APIKeyManager(dsn=database_url if use_postgres else "memory://")
-    set_api_key_manager(api_key_manager)
-    app.state.api_key_manager = api_key_manager
+    app.state.api_key_manager = support_services.api_key_manager
 
     register_transaction_routes(
         app,

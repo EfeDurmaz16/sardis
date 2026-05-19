@@ -277,6 +277,9 @@ wallet manager, chain executor, and ledger store selection.
 Mandate archive, replay cache, verifier, and payment orchestrator construction
 now sit behind a tested payment runtime helper, including Postgres, SQLite, and
 in-memory replay-cache selection.
+Cache service and API-key manager construction now sit behind a tested support
+services helper, preserving production Redis requirements and Postgres versus
+memory API-key manager storage selection.
 
 ## Test, Build, And Lint Results
 
