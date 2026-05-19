@@ -13,6 +13,9 @@ The hosted dashboard, managed provider operations, sales material, investor mate
 - Improve package READMEs using the standard in `docs/packages.md`.
 - Add conformance fixtures for AP2, TAP, x402, UCP, or A2A interoperability.
 
+For package-specific contribution paths and validation commands, use
+`docs/oss/contribution-map.md`.
+
 ## Before You Start
 
 Read:
@@ -20,6 +23,7 @@ Read:
 - `README.md`
 - `docs/oss/goal.md`
 - `docs/oss/public-private-boundary.md`
+- `docs/oss/contribution-map.md`
 - `docs/packages.md`
 - `docs/development.md`
 - `docs/oss/testing.md`

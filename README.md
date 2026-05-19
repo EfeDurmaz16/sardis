@@ -313,6 +313,7 @@ sardis/
 - **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
 - **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
+- **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it
 - **[Development Guide](docs/development.md)** — Local setup and contribution checks
 - **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
 
@@ -326,7 +327,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Fork the repository
 - Create a feature branch: `git checkout -b feature/your-feature`
 - Make your changes with tests
-- Run the maintained API test suite: `uv run pytest packages/server-api/tests/`
+- Run the contributor gate: `pnpm run check:contributor`
 - Submit a pull request
 
 **Development setup:**
