@@ -134,7 +134,7 @@ When changing Python package metadata or root extras, run:
 uv lock --check
 uv run --extra api python - <<'PY'
 from importlib import metadata
-for name in ["sardis-api", "sardis-chain", "sardis-compliance", "sardis-ledger", "sardis-sdk"]:
+for name in ["sardis-reference-api", "sardis-chain", "sardis-compliance", "sardis-ledger", "sardis-sdk"]:
     direct_url = metadata.distribution(name).read_text("direct_url.json")
     assert direct_url and "file://" in direct_url and '"editable":true' in direct_url
 print("local editable sources verified")

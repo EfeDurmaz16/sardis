@@ -1,14 +1,15 @@
-# sardis-api
+# sardis-reference-api
 
-[![PyPI version](https://badge.fury.io/py/sardis-api.svg)](https://badge.fury.io/py/sardis-api)
+[![PyPI version](https://badge.fury.io/py/sardis-reference-api.svg)](https://badge.fury.io/py/sardis-reference-api)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-FastAPI gateway for Sardis stablecoin execution.
+Reference FastAPI implementation for Sardis protocol and developer-platform APIs.
 
 ## Overview
 
-`sardis-api` provides a production-ready REST API for the Sardis payment infrastructure:
+`sardis-reference-api` provides the open-source reference implementation for the
+Sardis HTTP API surface:
 
 - **Mandate Processing**: AP2 Intent/Cart/Payment mandate ingestion and verification
 - **Wallet Operations**: Orchestration, approvals, and balance queries
@@ -19,13 +20,13 @@ FastAPI gateway for Sardis stablecoin execution.
 ## Installation
 
 ```bash
-pip install sardis-api
+pip install sardis-reference-api
 ```
 
 ### Development Installation
 
 ```bash
-pip install sardis-api[dev]
+pip install sardis-reference-api[dev]
 ```
 
 ## Quick Start

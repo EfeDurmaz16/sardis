@@ -3,9 +3,9 @@ requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sardis-api"
+name = "sardis-reference-api"
 version = "1.0.0"
-description = "FastAPI gateway for Sardis stablecoin execution"
+description = "Reference FastAPI implementation for Sardis protocol and developer-platform APIs"
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}

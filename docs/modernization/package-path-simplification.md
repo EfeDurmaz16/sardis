@@ -62,8 +62,14 @@ This keeps a clear server-only import path:
 from server.main import create_app
 ```
 
-The Python distribution name remains `sardis-api`. That is a package/release
-identity and should not be bundled with a repository path cleanup.
+The Python distribution name is now `sardis-reference-api`. That keeps package
+metadata aligned with the monorepo package role and avoids repeating the product
+API name in contributor-facing package identity. The FastAPI import package
+remains `server`, so runtime imports stay short:
+
+```python
+from server.main import create_app
+```
 
 ## Execution Notes
 

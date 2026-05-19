@@ -254,7 +254,7 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 
 Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
 
-Latest path-layout pass: the deployable API package now lives at `packages/reference-api`, while the API Python import package remains `server` and the distribution name remains `sardis-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
+Latest path-layout pass: the deployable API package now lives at `packages/reference-api`, while the API Python import package remains `server` and the distribution name is `sardis-reference-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary and package metadata more explicit without changing HTTP routes or server imports.
 
 Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/reference-api/server` during local import probes.
 

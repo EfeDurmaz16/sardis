@@ -15,7 +15,7 @@
 #   ./scripts/publish-all.sh --python-only
 #
 # This script publishes all packages in the correct dependency order:
-#   1. Python packages (sardis-core → sardis-api → sardis-sdk-python → sardis-cli)
+#   1. Python packages (sardis-core → sardis-reference-api → sardis-sdk-python → sardis-cli)
 #   2. npm packages (sardis-sdk-js → sardis-mcp-server)
 
 set -euo pipefail

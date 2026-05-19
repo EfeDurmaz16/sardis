@@ -51,7 +51,7 @@ ledger = ["sardis-ledger>=1.0.0"]
 wallet = ["sardis-wallet>=1.0.0"]
 cards = ["sardis-cards>=1.0.0"]
 ramp = ["sardis-ramp>=1.0.0"]
-api = ["sardis-api>=1.0.0"]
+api = ["sardis-reference-api>=1.0.0"]
 protocols = [
     "sardis-protocol>=1.0.0",
     "sardis-a2a>=1.0.0",
@@ -144,7 +144,7 @@ sardis-a2a = { path = "packages/sardis-a2a", editable = true }
 sardis-adk = { path = "packages/sardis-adk", editable = true }
 sardis-agent-sdk = { path = "packages/sardis-agent-sdk", editable = true }
 sardis-agentkit = { path = "packages/sardis-agentkit", editable = true }
-sardis-api = { path = "packages/reference-api", editable = true }
+sardis-reference-api = { path = "packages/reference-api", editable = true }
 sardis-autogpt = { path = "packages/sardis-autogpt", editable = true }
 sardis-browser-use = { path = "packages/sardis-browser-use", editable = true }
 sardis-cards = { path = "packages/sardis-cards", editable = true }
@@ -181,7 +181,7 @@ dev = [
     "hypothesis>=6.112",
     "mypy>=1.8",
     "ruff>=0.2",
-    # Required by root-level tests that import from sardis-api, sardis-chain, etc.
+    # Required by root-level tests that import from the reference API, sardis-chain, etc.
     "fastapi>=0.115,<1.0",
     "starlette>=0.41",
     "python-multipart>=0.0.9",

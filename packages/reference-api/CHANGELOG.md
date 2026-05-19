@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Renamed the Python distribution from `sardis-api` to `sardis-reference-api`
+  so package metadata matches the `packages/reference-api/` source layout and
+  avoids repeating the product API name in contributor-facing paths.
+
 ## [0.3.1] - 2026-02-26
 
 ### Added
@@ -62,7 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-01-27
 
 ### Added
-- Initial release of sardis-api
+- Initial release of the Sardis API reference implementation
 - FastAPI application with OpenAPI documentation
 - REST endpoints for:
   - Wallet management (create, get, balance)
@@ -88,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Input validation on all endpoints
 - Secure header configuration
 
-[Unreleased]: https://github.com/sardis-io/sardis-api/compare/v0.3.1...HEAD
-[0.3.1]: https://github.com/sardis-io/sardis-api/compare/v0.2.0...v0.3.1
-[0.2.0]: https://github.com/sardis-io/sardis-api/releases/tag/v0.2.0
-[0.1.0]: https://github.com/sardis-io/sardis-api/releases/tag/v0.1.0
+[Unreleased]: https://github.com/EfeDurmaz16/sardis/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/EfeDurmaz16/sardis/compare/v0.2.0...v0.3.1
+[0.2.0]: https://github.com/EfeDurmaz16/sardis/releases/tag/v0.2.0
+[0.1.0]: https://github.com/EfeDurmaz16/sardis/releases/tag/v0.1.0

@@ -2033,7 +2033,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sardis-api"
+name = "sardis-reference-api"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

@@ -71,7 +71,7 @@ PYTHON_PACKAGES=(
   # Top-level SDKs
   "sardis-sdk-python"
   "sardis-cli"
-  "sardis-api"
+  "reference-api"
 )
 
 list_packages() {
@@ -79,7 +79,8 @@ list_packages() {
   for pkg in "${PYTHON_PACKAGES[@]}"; do
     if [ -f "$REPO_ROOT/packages/$pkg/pyproject.toml" ]; then
       VERSION=$(grep '^version' "$REPO_ROOT/packages/$pkg/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')
-      echo "  - $pkg (v$VERSION)"
+      DIST_NAME=$(grep '^name' "$REPO_ROOT/packages/$pkg/pyproject.toml" | head -1 | sed 's/name = "\(.*\)"/\1/')
+      echo "  - $pkg -> $DIST_NAME (v$VERSION)"
     fi
   done
 }
@@ -100,6 +101,10 @@ done
 if [ -z "$PACKAGE_NAME" ]; then
   PACKAGES_TO_PUBLISH=("${PYTHON_PACKAGES[@]}")
 else
+  if [ "$PACKAGE_NAME" = "sardis-reference-api" ]; then
+    PACKAGE_NAME="reference-api"
+  fi
+
   # Validate package name
   VALID=false
   for pkg in "${PYTHON_PACKAGES[@]}"; do
