@@ -30,6 +30,34 @@ credentials, or managed-provider accounts.
 - Scheduled uptime and monitoring workflows are operational signals, not a
   required local contributor gate.
 
+## Workflow Inventory
+
+Every workflow file must be listed here so public CI/CD scope changes are
+reviewable. Required PR checks belong in the required-gates table above; the
+inventory below classifies the rest of the workflow surface.
+
+| Workflow | Class | Public contribution role |
+| --- | --- | --- |
+| `.github/workflows/ci-integrations.yml` | optional PR/package integration | Builds and tests integration packages when their surfaces change. |
+| `.github/workflows/dependabot-auto-merge.yml` | maintainer automation | Handles trusted dependency-update housekeeping, not a contributor gate. |
+| `.github/workflows/deploy-api-cloudrun.yml` | deploy-only | Deploys the public API surface; must not be required for ordinary PRs. |
+| `.github/workflows/deploy-landing.yml` | deploy-only | Deploys the public landing site; must not be required for protocol/package PRs. |
+| `.github/workflows/deploy.yml` | deploy-only | Legacy broader deploy workflow; keep outside required OSS PR checks. |
+| `.github/workflows/fuzz.yml` | scheduled/manual security | Fuzzing signal for maintainers; useful but not a fast contributor gate. |
+| `.github/workflows/monitoring.yml` | scheduled operations | Runtime monitoring signal, not a contributor gate. |
+| `.github/workflows/nightly-sandbox-e2e.yml` | scheduled integration | Sandbox provider E2E signal; may need secrets and must stay outside required PR checks. |
+| `.github/workflows/pr-maintenance.yml` | maintainer automation | Produces PR maintenance reports. |
+| `.github/workflows/publish.yml` | publish-only | Publishes packages with release credentials. |
+| `.github/workflows/release-npm.yml` | publish-only | Publishes npm packages with release credentials. |
+| `.github/workflows/release-python-integrations.yml` | publish-only | Publishes Python integration packages with release credentials. |
+| `.github/workflows/release-python-sdk.yml` | publish-only | Publishes the Python SDK with release credentials. |
+| `.github/workflows/sign-artifacts.yml` | release/security | Signs release artifacts; not a contributor gate. |
+| `.github/workflows/uptime-graphs.yml` | scheduled operations | Generates uptime graph artifacts. |
+| `.github/workflows/uptime-response-time.yml` | scheduled operations | Captures response-time telemetry. |
+| `.github/workflows/uptime-static-site.yml` | scheduled operations | Checks static site uptime. |
+| `.github/workflows/uptime-summary.yml` | scheduled operations | Summarizes uptime signals. |
+| `.github/workflows/uptime.yml` | scheduled operations | Runs uptime checks. |
+
 ## Branch Protection Source
 
 Branch protection expected checks are recorded in

@@ -36,6 +36,8 @@ def documented_jobs(text: str) -> set[str]:
         cells = [cell.strip() for cell in row.strip("|").split("|")]
         if len(cells) < 3 or cells[0] in {"Gate", "---"}:
             continue
+        if not cells[1].strip("`").startswith(".github/workflows/"):
+            continue
         for job in cells[2].split(","):
             job = job.strip().strip("`")
             if job and not job.endswith("jobs"):
@@ -52,6 +54,18 @@ def workflow_job_names() -> set[str]:
         text = workflow.read_text(encoding="utf-8")
         names.update(re.findall(r"^\s{4}name:\s*(.+?)\s*$", text, flags=re.MULTILINE))
     return names
+
+
+def workflow_files() -> set[str]:
+    workflows = {
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / ".github" / "workflows").glob("*.yml")
+    }
+    workflows.update(
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / ".github" / "workflows").glob("*.yaml")
+    )
+    return workflows
 
 
 def package_scripts() -> set[str]:
@@ -76,6 +90,7 @@ def main() -> int:
     missing_workflows = sorted(
         workflow for workflow in documented_workflows(text) if not (ROOT / workflow).exists()
     )
+    undocumented_workflows = sorted(workflow_files() - documented_workflows(text))
     missing_scripts = sorted(documented_scripts(text) - package_scripts())
     missing_jobs = sorted(doc_jobs - actual_jobs)
     missing_required_jobs = sorted(contexts - actual_jobs)
@@ -86,6 +101,11 @@ def main() -> int:
         errors.append(
             "docs/oss/ci-cd.md references missing workflow files:\n"
             + "\n".join(f"  - {path}" for path in missing_workflows)
+        )
+    if undocumented_workflows:
+        errors.append(
+            "Workflow files missing from docs/oss/ci-cd.md inventory:\n"
+            + "\n".join(f"  - {path}" for path in undocumented_workflows)
         )
     if missing_scripts:
         errors.append(
@@ -112,7 +132,7 @@ def main() -> int:
         print("\n\n".join(errors))
         return 1
 
-    print("CI/CD map check passed: documented workflows, jobs, and scripts exist.")
+    print("CI/CD map check passed: workflow inventory, documented jobs, and scripts exist.")
     return 0
 
 
