@@ -13,6 +13,7 @@ Tests:
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -204,6 +205,10 @@ class TestAmountValidation:
 
 
 class TestDailyLimits:
+    @staticmethod
+    def _today() -> str:
+        return datetime.now(UTC).strftime("%Y-%m-%d")
+
     def test_check_daily_limits_fresh(self):
         svc = LasoMPPService()
         # Should not raise
@@ -212,14 +217,14 @@ class TestDailyLimits:
     def test_check_daily_limits_card_count(self):
         svc = LasoMPPService()
         svc._cards_issued_today = LASO_MAX_DAILY_CARDS
-        svc._last_reset = "2026-03-25"
+        svc._last_reset = self._today()
         with pytest.raises(LasoLimitExceeded, match="card limit"):
             svc._check_daily_limits(Decimal("100"))
 
     def test_check_daily_limits_amount(self):
         svc = LasoMPPService()
         svc._daily_amount = Decimal("5500")
-        svc._last_reset = "2026-03-25"
+        svc._last_reset = self._today()
         with pytest.raises(LasoLimitExceeded, match="amount limit"):
             svc._check_daily_limits(Decimal("600"))
 
