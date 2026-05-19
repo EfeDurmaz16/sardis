@@ -184,6 +184,16 @@ class RampRuntimeConfig:
     fiat_ramp: Any | None
 
 
+@dataclass(frozen=True)
+class TreasuryRuntimeConfig:
+    """Resolved treasury repositories and optional Lithic client."""
+
+    treasury_repository: Any
+    canonical_ledger_repository: Any
+    lithic_treasury_client: Any | None
+    lithic_webhook_secret: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -1032,6 +1042,66 @@ def configure_ramp_runtime(
     )
 
 
+def configure_treasury_runtime(
+    settings: Any,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    environ: Mapping[str, str] | None = None,
+    treasury_repository_cls: Any = _DEFAULT_PROVIDER,
+    canonical_ledger_repository_cls: Any = _DEFAULT_PROVIDER,
+    lithic_treasury_client_cls: Any = _DEFAULT_PROVIDER,
+) -> TreasuryRuntimeConfig:
+    """Create treasury repositories and the optional Lithic treasury client."""
+    env = environ if environ is not None else os.environ
+    dsn = database_url if use_postgres else None
+
+    if treasury_repository_cls is _DEFAULT_PROVIDER:
+        from .repositories.treasury_repository import TreasuryRepository
+
+        treasury_repository_cls = TreasuryRepository
+    if canonical_ledger_repository_cls is _DEFAULT_PROVIDER:
+        from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
+
+        canonical_ledger_repository_cls = CanonicalLedgerRepository
+
+    treasury_repository = treasury_repository_cls(dsn=dsn)
+    canonical_ledger_repository = canonical_ledger_repository_cls(dsn=dsn)
+    lithic_webhook_secret = env.get("LITHIC_WEBHOOK_SECRET", "")
+    lithic_treasury_client = None
+
+    lithic_api_key = env.get("LITHIC_API_KEY", "")
+    if lithic_api_key:
+        if lithic_treasury_client_cls is _DEFAULT_PROVIDER:
+            from .providers.lithic_treasury import LithicTreasuryClient
+
+            lithic_treasury_client_cls = LithicTreasuryClient
+        try:
+            lithic_treasury_client = lithic_treasury_client_cls(
+                api_key=lithic_api_key,
+                environment=(
+                    "production"
+                    if getattr(settings, "is_production", False)
+                    else "sandbox"
+                ),
+                webhook_secret=env.get("LITHIC_WEBHOOK_SECRET"),
+            )
+            logger.info("Treasury initialized with Lithic client")
+        except Exception as exc:
+            logger.warning("Failed to initialize Lithic treasury client: %s", exc)
+    else:
+        logger.warning(
+            "Treasury enabled without Lithic API key; endpoints will return 503 for provider actions"
+        )
+
+    return TreasuryRuntimeConfig(
+        treasury_repository=treasury_repository,
+        canonical_ledger_repository=canonical_ledger_repository,
+        lithic_treasury_client=lithic_treasury_client,
+        lithic_webhook_secret=lithic_webhook_secret,
+    )
+
+
 def expose_runtime_state(
     app: Any,
     *,
@@ -1085,6 +1155,17 @@ def expose_inbound_payment_state(
     """Expose inbound payment runtime services required by wallet routes/lifespan."""
     app.state.inbound_payment_service = inbound_runtime.inbound_payment_service
     app.state.event_bus = inbound_runtime.event_bus
+
+
+def expose_treasury_runtime_state(
+    app: Any,
+    *,
+    treasury_runtime: TreasuryRuntimeConfig,
+) -> None:
+    """Expose treasury runtime services required by wallet and ledger routes."""
+    app.state.treasury_repo = treasury_runtime.treasury_repository
+    app.state.canonical_ledger_repo = treasury_runtime.canonical_ledger_repository
+    app.state.lithic_treasury_client = treasury_runtime.lithic_treasury_client
 
 
 class DependencyContainer:

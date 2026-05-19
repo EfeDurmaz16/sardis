@@ -292,21 +292,24 @@ memory API-key manager storage selection.
 Facility Gate repository and adapter construction now also sits behind a tested
 helper, preserving the Postgres versus memory repository DSN selection used by
 facility request routes.
+Provider runtime, inbound payment runtime, fiat ramp runtime, and treasury
+runtime construction now follow the same tested bootstrap-helper pattern. The
+treasury pass removed Lithic client and treasury repository construction from
+`server.main` while preserving the route dependency handoff and no-key warning
+behavior.
 
 ## Test, Build, And Lint Results
 
-Current validation after the latest source-layout and import-root cleanup:
+Current validation after the latest API bootstrap cleanup:
 
-- `python3 -m compileall -q packages/reference-api/server packages/reference-api/tests tests/conftest.py tests/test_monorepo_bootstrap_guard.py` passed.
-- `uv run ruff check packages/reference-api/server packages/reference-api/tests tests/conftest.py tests/test_monorepo_bootstrap_guard.py` passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests -q` passed: 972 passed, 5 skipped.
-- `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
-- `pnpm check:openapi` passed: 540 paths, 592 schemas.
-- `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.
-- `git diff --check` passed before commit.
+- `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
+- `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/dependencies.py packages/reference-api/tests/test_storage_backend_config.py` passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_storage_backend_config.py -q` passed: 68 passed.
 
 Representative earlier validation during the modernization run:
 
+- Full maintained API package tests passed during the prior import-root cleanup: 972 passed, 5 skipped.
+- `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py`, `pnpm check:openapi`, `pnpm run check:contributor`, and `git diff --check` passed during the prior docs/source-layout cleanup.
 - Maintained API package tests passed repeatedly during route placement and runtime bootstrap extraction.
 - `packages/sardis-core`, `packages/sardis-ledger`, `packages/sardis-chain`, and `packages/sardis-zk-policy` package-owned tests passed during earlier package validation passes.
 - `pnpm --filter @sardis/sdk typecheck`, `pnpm --filter @sardis/mcp-server build`, `pnpm --filter @sardis/app-landing typecheck`, `pnpm --filter @sardis/app-landing build`, `pnpm --filter @sardis/docs build`, and `pnpm --filter canvas-site build` passed during earlier OSS surface and docs cleanup passes.

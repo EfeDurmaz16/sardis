@@ -13,10 +13,12 @@ from server.dependencies import (
     configure_provider_runtime,
     configure_ramp_runtime,
     configure_sanctions_service,
+    configure_treasury_runtime,
     expose_inbound_payment_state,
     expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
+    expose_treasury_runtime_state,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -1367,3 +1369,108 @@ def test_configure_ramp_runtime_keeps_fiat_ramp_when_bridge_key_exists_without_s
     assert isinstance(config.fiat_ramp, FakeFiatRamp)
     assert config.fiat_ramp.bridge_api_key == "bridge_key"
     assert config.fiat_ramp.environment == "sandbox"
+
+
+class FakeTreasuryRepository:
+    def __init__(self, *, dsn=None) -> None:
+        self.dsn = dsn
+
+
+class FakeCanonicalLedgerRepository:
+    def __init__(self, *, dsn=None) -> None:
+        self.dsn = dsn
+
+
+class FakeLithicTreasuryClient:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        environment: str,
+        webhook_secret: str | None,
+    ) -> None:
+        self.api_key = api_key
+        self.environment = environment
+        self.webhook_secret = webhook_secret
+
+
+class ExplodingLithicTreasuryClient:
+    def __init__(self, **kwargs) -> None:
+        raise RuntimeError("boom")
+
+
+def _configure_treasury(settings=None, environ=None, *, use_postgres=True):
+    return configure_treasury_runtime(
+        settings or _settings(),
+        database_url="postgresql://localhost/sardis",
+        use_postgres=use_postgres,
+        environ=environ or {},
+        treasury_repository_cls=FakeTreasuryRepository,
+        canonical_ledger_repository_cls=FakeCanonicalLedgerRepository,
+        lithic_treasury_client_cls=FakeLithicTreasuryClient,
+    )
+
+
+def test_configure_treasury_runtime_uses_postgres_dsn_and_lithic_client() -> None:
+    config = _configure_treasury(
+        settings=_settings(is_production=True),
+        environ={
+            "LITHIC_API_KEY": "lithic_key",
+            "LITHIC_WEBHOOK_SECRET": "lithic_webhook",
+        },
+    )
+
+    assert config.treasury_repository.dsn == "postgresql://localhost/sardis"
+    assert config.canonical_ledger_repository.dsn == "postgresql://localhost/sardis"
+    assert isinstance(config.lithic_treasury_client, FakeLithicTreasuryClient)
+    assert config.lithic_treasury_client.api_key == "lithic_key"
+    assert config.lithic_treasury_client.environment == "production"
+    assert config.lithic_treasury_client.webhook_secret == "lithic_webhook"
+    assert config.lithic_webhook_secret == "lithic_webhook"
+
+
+def test_configure_treasury_runtime_uses_none_dsn_without_postgres() -> None:
+    config = _configure_treasury(use_postgres=False)
+
+    assert config.treasury_repository.dsn is None
+    assert config.canonical_ledger_repository.dsn is None
+
+
+def test_configure_treasury_runtime_leaves_lithic_unconfigured_without_key() -> None:
+    config = _configure_treasury(environ={"LITHIC_WEBHOOK_SECRET": "lithic_webhook"})
+
+    assert config.lithic_treasury_client is None
+    assert config.lithic_webhook_secret == "lithic_webhook"
+
+
+def test_configure_treasury_runtime_recovers_from_lithic_client_failure() -> None:
+    config = configure_treasury_runtime(
+        _settings(),
+        database_url="postgresql://localhost/sardis",
+        use_postgres=True,
+        environ={"LITHIC_API_KEY": "lithic_key"},
+        treasury_repository_cls=FakeTreasuryRepository,
+        canonical_ledger_repository_cls=FakeCanonicalLedgerRepository,
+        lithic_treasury_client_cls=ExplodingLithicTreasuryClient,
+    )
+
+    assert config.lithic_treasury_client is None
+    assert config.treasury_repository.dsn == "postgresql://localhost/sardis"
+
+
+def test_expose_treasury_runtime_state_sets_route_dependencies() -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    treasury_runtime = _configure_treasury(
+        environ={
+            "LITHIC_API_KEY": "lithic_key",
+            "LITHIC_WEBHOOK_SECRET": "lithic_webhook",
+        },
+    )
+
+    expose_treasury_runtime_state(app, treasury_runtime=treasury_runtime)
+
+    assert app.state.treasury_repo is treasury_runtime.treasury_repository
+    assert app.state.canonical_ledger_repo is (
+        treasury_runtime.canonical_ledger_repository
+    )
+    assert app.state.lithic_treasury_client is treasury_runtime.lithic_treasury_client

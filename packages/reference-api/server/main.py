@@ -41,10 +41,12 @@ from .dependencies import (
     configure_provider_runtime,
     configure_ramp_runtime,
     configure_sanctions_service,
+    configure_treasury_runtime,
     expose_inbound_payment_state,
     expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
+    expose_treasury_runtime_state,
     initialize_turnkey_client,
     resolve_storage_backend,
     validate_live_execution_config,
@@ -65,9 +67,6 @@ from .middleware import (
     setup_logging,
 )
 from .openapi_schema import custom_openapi
-from .providers.lithic_treasury import LithicTreasuryClient
-from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from .repositories.treasury_repository import TreasuryRepository
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -705,30 +704,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_provider_integration_routes(app, settings=settings)
 
-    # Treasury routes (Lithic financial accounts + ACH payments)
-    treasury_repo = TreasuryRepository(dsn=database_url if use_postgres else None)
-    canonical_ledger_repo = CanonicalLedgerRepository(dsn=database_url if use_postgres else None)
-    lithic_treasury_client = None
-    if os.getenv("LITHIC_API_KEY"):
-        try:
-            lithic_treasury_client = LithicTreasuryClient(
-                api_key=os.getenv("LITHIC_API_KEY", ""),
-                environment="production" if settings.is_production else "sandbox",
-                webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET"),
-            )
-            logger.info("Treasury initialized with Lithic client")
-        except Exception as exc:
-            logger.warning("Failed to initialize Lithic treasury client: %s", exc)
-    else:
-        logger.warning("Treasury enabled without Lithic API key; endpoints will return 503 for provider actions")
-
-    app.state.treasury_repo = treasury_repo
-    app.state.canonical_ledger_repo = canonical_ledger_repo
-    app.state.lithic_treasury_client = lithic_treasury_client
+    treasury_runtime = configure_treasury_runtime(
+        settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+    )
+    treasury_repo = treasury_runtime.treasury_repository
+    canonical_ledger_repo = treasury_runtime.canonical_ledger_repository
+    lithic_treasury_client = treasury_runtime.lithic_treasury_client
+    expose_treasury_runtime_state(app, treasury_runtime=treasury_runtime)
     register_treasury_routes(
         app,
         treasury_repo=treasury_repo,
-        lithic_webhook_secret=os.getenv("LITHIC_WEBHOOK_SECRET", ""),
+        lithic_webhook_secret=treasury_runtime.lithic_webhook_secret,
         lithic_treasury_client=lithic_treasury_client,
         canonical_ledger_repo=canonical_ledger_repo,
     )
