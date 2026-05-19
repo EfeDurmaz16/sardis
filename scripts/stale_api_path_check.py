@@ -74,6 +74,8 @@ def main() -> int:
     for path in tracked_files():
         if not should_check(path):
             continue
+        if not Path(path).exists():
+            continue
         try:
             text = Path(path).read_text(encoding="utf-8")
         except UnicodeDecodeError:
