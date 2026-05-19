@@ -15,6 +15,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from server.services.onchain_verification import (
     TRANSFER_EVENT_TOPIC,
     verify_usdc_transfer,
