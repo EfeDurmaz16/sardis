@@ -92,7 +92,6 @@ from .routes.wallets import cards as cards_router
 from .routes.wallets import cpn as cpn_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
-from .routes.wallets import ramp as ramp_router
 from .routes.wallets import treasury as treasury_router
 from .routes.wallets import treasury_ops as treasury_ops_router
 from .routing.accounts import (
@@ -168,6 +167,7 @@ from .routing.protocol import (
 from .routing.wallets import (
     register_onchain_payment_routes,
     register_ramp_edge_routes,
+    register_ramp_routes,
     register_wallet_core_routes,
 )
 
@@ -962,7 +962,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         except Exception as e:
             logger.warning("Failed to initialize SardisFiatRamp: %s", e)
 
-    app.dependency_overrides[ramp_router.get_deps] = lambda: ramp_router.RampDependencies(
+    register_ramp_routes(
+        app,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         offramp_service=offramp_service,
@@ -971,9 +972,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         bridge_webhook_secret=bridge_webhook_secret,
         fiat_ramp=fiat_ramp,
     )
-    app.include_router(ramp_router.router, prefix="/api/v2/ramp", tags=["ramp"])
-    if hasattr(ramp_router, "public_router"):
-        app.include_router(ramp_router.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
     register_mpp_routes(app)
 

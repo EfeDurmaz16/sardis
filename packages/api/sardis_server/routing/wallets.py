@@ -5,7 +5,14 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_server.routes.wallets import offramp, onchain_payments, onramp, virtual_cards, wallets
+from sardis_server.routes.wallets import (
+    offramp,
+    onchain_payments,
+    onramp,
+    ramp,
+    virtual_cards,
+    wallets,
+)
 
 
 def register_wallet_core_routes(
@@ -72,6 +79,32 @@ def register_onchain_payment_routes(
         )
     )
     app.include_router(onchain_payments.router, prefix="/api/v2/wallets", tags=["wallets"])
+
+
+def register_ramp_routes(
+    app: FastAPI,
+    *,
+    wallet_repo: Any,
+    agent_repo: Any,
+    offramp_service: Any,
+    onramper_api_key: str,
+    onramper_webhook_secret: str,
+    bridge_webhook_secret: str,
+    fiat_ramp: Any,
+) -> None:
+    """Register fiat on-ramp and off-ramp routes."""
+    app.dependency_overrides[ramp.get_deps] = lambda: ramp.RampDependencies(
+        wallet_repo=wallet_repo,
+        agent_repo=agent_repo,
+        offramp_service=offramp_service,
+        onramper_api_key=onramper_api_key,
+        onramper_webhook_secret=onramper_webhook_secret,
+        bridge_webhook_secret=bridge_webhook_secret,
+        fiat_ramp=fiat_ramp,
+    )
+    app.include_router(ramp.router, prefix="/api/v2/ramp", tags=["ramp"])
+    if hasattr(ramp, "public_router"):
+        app.include_router(ramp.public_router, prefix="/api/v2/ramp", tags=["ramp"])
 
 
 def register_ramp_edge_routes(app: FastAPI) -> None:
