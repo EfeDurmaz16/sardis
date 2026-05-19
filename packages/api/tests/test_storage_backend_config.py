@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from sardis_server.dependencies import (
+    configure_kyc_service,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -279,3 +280,144 @@ def test_initialize_turnkey_client_uses_settings_credentials() -> None:
     assert client.api_key == "settings_public"
     assert client.api_private_key == "settings_private"
     assert client.organization_id == "settings_org"
+
+
+class FakeKYCService:
+    def __init__(self, *, provider: object) -> None:
+        self.provider = provider
+
+
+class FakeFailoverKYCProvider:
+    def __init__(self, primary: object, fallback: object) -> None:
+        self.primary = primary
+        self.fallback = fallback
+
+
+class FakePersonaKYCProvider:
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        template_id: str,
+        webhook_secret: str | None,
+        environment: str,
+    ) -> None:
+        self.api_key = api_key
+        self.template_id = template_id
+        self.webhook_secret = webhook_secret
+        self.environment = environment
+
+
+class FakeMockKYCProvider:
+    pass
+
+
+def _configure_kyc(settings=None, environ=None, create_kyc_service_fn=None):
+    return configure_kyc_service(
+        settings or _settings(),
+        environ=environ or {},
+        kyc_service_cls=FakeKYCService,
+        failover_provider_cls=FakeFailoverKYCProvider,
+        persona_provider_cls=FakePersonaKYCProvider,
+        mock_provider_cls=FakeMockKYCProvider,
+        create_kyc_service_fn=create_kyc_service_fn or (lambda **kwargs: SimpleNamespace(**kwargs)),
+    )
+
+
+def test_configure_kyc_service_uses_persona_primary() -> None:
+    config = _configure_kyc(
+        environ={
+            "PERSONA_API_KEY": "persona_key",
+            "PERSONA_TEMPLATE_ID": "template_123",
+            "PERSONA_WEBHOOK_SECRET": "secret",
+        }
+    )
+
+    assert config.mode == "primary"
+    assert config.primary_name == "persona"
+    assert isinstance(config.service, FakeKYCService)
+    assert isinstance(config.service.provider, FakePersonaKYCProvider)
+    assert config.service.provider.api_key == "persona_key"
+    assert config.service.provider.template_id == "template_123"
+    assert config.service.provider.webhook_secret == "secret"
+    assert config.service.provider.environment == "sandbox"
+
+
+def test_configure_kyc_service_uses_production_persona_environment() -> None:
+    config = _configure_kyc(
+        settings=_settings(is_production=True),
+        environ={
+            "PERSONA_API_KEY": "persona_key",
+            "PERSONA_TEMPLATE_ID": "template_123",
+        },
+    )
+
+    assert config.service.provider.environment == "production"
+
+
+def test_configure_kyc_service_builds_failover_provider() -> None:
+    config = _configure_kyc(
+        environ={
+            "SARDIS_KYC_PRIMARY_PROVIDER": "persona",
+            "SARDIS_KYC_FALLBACK_PROVIDER": "mock",
+            "PERSONA_API_KEY": "persona_key",
+            "PERSONA_TEMPLATE_ID": "template_123",
+        }
+    )
+
+    assert config.mode == "failover"
+    assert isinstance(config.service.provider, FakeFailoverKYCProvider)
+    assert isinstance(config.service.provider.primary, FakePersonaKYCProvider)
+    assert isinstance(config.service.provider.fallback, FakeMockKYCProvider)
+
+
+def test_configure_kyc_service_uses_fallback_when_primary_unavailable() -> None:
+    config = _configure_kyc(
+        environ={
+            "SARDIS_KYC_PRIMARY_PROVIDER": "persona",
+            "SARDIS_KYC_FALLBACK_PROVIDER": "mock",
+        }
+    )
+
+    assert config.mode == "fallback"
+    assert isinstance(config.service.provider, FakeMockKYCProvider)
+
+
+def test_configure_kyc_service_ignores_duplicate_fallback_provider() -> None:
+    config = _configure_kyc(
+        environ={
+            "SARDIS_KYC_PRIMARY_PROVIDER": "mock",
+            "SARDIS_KYC_FALLBACK_PROVIDER": "mock",
+        }
+    )
+
+    assert config.mode == "primary"
+    assert config.fallback_name == "mock"
+    assert isinstance(config.service.provider, FakeMockKYCProvider)
+
+
+def test_configure_kyc_service_requires_provider_in_production() -> None:
+    with pytest.raises(RuntimeError, match="Production requires at least one KYC provider"):
+        _configure_kyc(settings=_settings(is_production=True), environ={})
+
+
+def test_configure_kyc_service_uses_factory_outside_production_without_provider() -> None:
+    captured = {}
+
+    def fake_create_kyc_service(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(name="factory")
+
+    config = _configure_kyc(
+        environ={"PERSONA_WEBHOOK_SECRET": "secret"},
+        create_kyc_service_fn=fake_create_kyc_service,
+    )
+
+    assert config.mode == "factory"
+    assert config.service.name == "factory"
+    assert captured == {
+        "api_key": None,
+        "template_id": None,
+        "webhook_secret": "secret",
+        "environment": "sandbox",
+    }

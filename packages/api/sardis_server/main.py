@@ -50,6 +50,7 @@ from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
+    configure_kyc_service,
     initialize_turnkey_client,
     resolve_cache_backend,
     resolve_storage_backend,
@@ -474,75 +475,28 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     audit_store = create_audit_store(dsn=database_url)
     from sardis_compliance import (
         EllipticProvider,
-        FailoverKYCProvider,
         FailoverSanctionsProvider,
-        KYCService,
-        MockKYCProvider,
         MockSanctionsProvider,
-        PersonaKYCProvider,
         SanctionsService,
         create_kya_service,
-        create_kyc_service,
         create_sanctions_service,
     )
     from sardis_compliance.providers import ScorechainProvider
 
-    kyc_environment = "production" if settings.is_production else "sandbox"
-    kyc_primary_name = (os.getenv("SARDIS_KYC_PRIMARY_PROVIDER", "persona") or "persona").strip().lower()
-    kyc_fallback_name = (os.getenv("SARDIS_KYC_FALLBACK_PROVIDER", "") or "").strip().lower()
-
-    def _build_kyc_provider(name: str):
-        if not name:
-            return None
-        if name == "persona":
-            persona_api_key = os.getenv("PERSONA_API_KEY", "")
-            persona_template_id = os.getenv("PERSONA_TEMPLATE_ID", "")
-            if not persona_api_key or not persona_template_id:
-                return None
-            return PersonaKYCProvider(
-                api_key=persona_api_key,
-                template_id=persona_template_id,
-                webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-                environment=kyc_environment,
-            )
-        if name == "mock":
-            return MockKYCProvider()
-        return None
-
-    kyc_primary_provider = _build_kyc_provider(kyc_primary_name)
-    kyc_fallback_provider = (
-        _build_kyc_provider(kyc_fallback_name)
-        if kyc_fallback_name and kyc_fallback_name != kyc_primary_name
-        else None
-    )
-    if kyc_primary_provider and kyc_fallback_provider:
-        kyc_service = KYCService(provider=FailoverKYCProvider(kyc_primary_provider, kyc_fallback_provider))
+    kyc_config = configure_kyc_service(settings)
+    kyc_service = kyc_config.service
+    if kyc_config.mode == "failover":
         logger.info(
             "KYC service configured with failover primary=%s fallback=%s",
-            kyc_primary_name,
-            kyc_fallback_name,
+            kyc_config.primary_name,
+            kyc_config.fallback_name,
         )
-    elif kyc_primary_provider:
-        kyc_service = KYCService(provider=kyc_primary_provider)
-        logger.info("KYC service configured with provider=%s", kyc_primary_name)
-    elif kyc_fallback_provider:
-        kyc_service = KYCService(provider=kyc_fallback_provider)
+    elif kyc_config.mode == "primary":
+        logger.info("KYC service configured with provider=%s", kyc_config.primary_name)
+    elif kyc_config.mode == "fallback":
         logger.warning(
             "KYC primary provider unavailable; using fallback provider=%s",
-            kyc_fallback_name,
-        )
-    else:
-        if settings.is_production:
-            raise RuntimeError(
-                "Production requires at least one KYC provider. "
-                "Configure Persona (PERSONA_API_KEY, PERSONA_TEMPLATE_ID) or "
-                "iDenfy (IDENFY_API_KEY, IDENFY_API_SECRET)."
-            )
-        kyc_service = create_kyc_service(
-            api_key=os.getenv("PERSONA_API_KEY"),
-            template_id=os.getenv("PERSONA_TEMPLATE_ID"),
-            webhook_secret=os.getenv("PERSONA_WEBHOOK_SECRET"),
-            environment=kyc_environment,
+            kyc_config.fallback_name,
         )
 
     sanctions_primary_name = (os.getenv("SARDIS_SANCTIONS_PRIMARY_PROVIDER", "elliptic") or "elliptic").strip().lower()

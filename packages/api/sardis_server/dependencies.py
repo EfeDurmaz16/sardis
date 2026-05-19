@@ -84,6 +84,16 @@ class LiveExecutionConfig:
     mpc_name: str
 
 
+@dataclass(frozen=True)
+class KYCServiceConfig:
+    """Resolved KYC service and provider selection metadata."""
+
+    service: Any
+    primary_name: str
+    fallback_name: str
+    mode: str
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -207,6 +217,112 @@ def initialize_turnkey_client(
         api_key=api_key,
         api_private_key=api_private_key,
         organization_id=organization_id,
+    )
+
+
+def configure_kyc_service(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    kyc_service_cls: Any | None = None,
+    failover_provider_cls: Any | None = None,
+    persona_provider_cls: Any | None = None,
+    mock_provider_cls: Any | None = None,
+    create_kyc_service_fn: Any | None = None,
+) -> KYCServiceConfig:
+    """Resolve the KYC provider stack and enforce production configuration."""
+    env = environ if environ is not None else os.environ
+    kyc_environment = "production" if getattr(settings, "is_production", False) else "sandbox"
+    primary_name = (env.get("SARDIS_KYC_PRIMARY_PROVIDER", "persona") or "persona").strip().lower()
+    fallback_name = (env.get("SARDIS_KYC_FALLBACK_PROVIDER", "") or "").strip().lower()
+
+    if (
+        kyc_service_cls is None
+        or failover_provider_cls is None
+        or persona_provider_cls is None
+        or mock_provider_cls is None
+        or create_kyc_service_fn is None
+    ):
+        from sardis_compliance import (
+            FailoverKYCProvider,
+            KYCService,
+            MockKYCProvider,
+            PersonaKYCProvider,
+            create_kyc_service,
+        )
+
+        kyc_service_cls = kyc_service_cls or KYCService
+        failover_provider_cls = failover_provider_cls or FailoverKYCProvider
+        persona_provider_cls = persona_provider_cls or PersonaKYCProvider
+        mock_provider_cls = mock_provider_cls or MockKYCProvider
+        create_kyc_service_fn = create_kyc_service_fn or create_kyc_service
+
+    def build_provider(name: str) -> Any | None:
+        if not name:
+            return None
+        if name == "persona":
+            persona_api_key = env.get("PERSONA_API_KEY", "")
+            persona_template_id = env.get("PERSONA_TEMPLATE_ID", "")
+            if not persona_api_key or not persona_template_id:
+                return None
+            return persona_provider_cls(
+                api_key=persona_api_key,
+                template_id=persona_template_id,
+                webhook_secret=env.get("PERSONA_WEBHOOK_SECRET"),
+                environment=kyc_environment,
+            )
+        if name == "mock":
+            return mock_provider_cls()
+        return None
+
+    primary_provider = build_provider(primary_name)
+    fallback_provider = (
+        build_provider(fallback_name)
+        if fallback_name and fallback_name != primary_name
+        else None
+    )
+
+    if primary_provider and fallback_provider:
+        return KYCServiceConfig(
+            service=kyc_service_cls(
+                provider=failover_provider_cls(primary_provider, fallback_provider)
+            ),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="failover",
+        )
+    if primary_provider:
+        return KYCServiceConfig(
+            service=kyc_service_cls(provider=primary_provider),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="primary",
+        )
+    if fallback_provider:
+        return KYCServiceConfig(
+            service=kyc_service_cls(provider=fallback_provider),
+            primary_name=primary_name,
+            fallback_name=fallback_name,
+            mode="fallback",
+        )
+
+    if getattr(settings, "is_production", False):
+        raise RuntimeError(
+            "Production requires at least one KYC provider. "
+            "Configure Persona (PERSONA_API_KEY, PERSONA_TEMPLATE_ID) or "
+            "iDenfy (IDENFY_API_KEY, IDENFY_API_SECRET)."
+        )
+
+    return KYCServiceConfig(
+        service=create_kyc_service_fn(
+            api_key=env.get("PERSONA_API_KEY"),
+            template_id=env.get("PERSONA_TEMPLATE_ID"),
+            webhook_secret=env.get("PERSONA_WEBHOOK_SECRET"),
+            environment=kyc_environment,
+        ),
+        primary_name=primary_name,
+        fallback_name=fallback_name,
+        mode="factory",
     )
 
 
