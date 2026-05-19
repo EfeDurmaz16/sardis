@@ -64,7 +64,7 @@ Status meanings:
 | `packages/sardis-openai/` | Generic OpenAI API function/tool integration. | Keep package-owned tests passing and avoid moving Agents SDK behavior out of `packages/sardis-openai-agents/`. |
 | `packages/sardis-openclaw/` | OpenClaw integration. | Keep static manifest and registry tests passing before adding live API examples. |
 | `packages/sardis-gpt/` | ChatGPT Custom GPT actions surface. | Keep OpenAPI/action files aligned with public API contract. |
-| `packages/sardis-e2b/` | E2B sandbox template for Sardis-enabled code execution agents. | Add reproducible template smoke test or archive. |
+| `packages/sardis-e2b/` | E2B sandbox template for Sardis-enabled code execution agents. | Keep credential-free template smoke tests passing; E2B CLI build remains optional for template publishing. |
 | `packages/n8n-nodes-sardis/` | n8n integration. | Add build/test gate before publication. |
 | `packages/sardis-activepieces/` | Activepieces integration. | Add build/test gate before publication. |
 

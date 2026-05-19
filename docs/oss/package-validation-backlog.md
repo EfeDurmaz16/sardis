@@ -28,7 +28,6 @@ tool that is not part of the default contributor loop.
 
 | Package | External tool | Validation | Required next step |
 | --- | --- | --- | --- |
-| `packages/sardis-e2b/` | E2B CLI | `(cd packages/sardis-e2b && e2b template build --name sardis-agent)` | Add a static template smoke test that does not require E2B auth. |
 | `packages/sardis-zkp/` | Nargo | `(cd packages/sardis-zkp && nargo check)` | Document Nargo install/version and add fixtures before using these circuits in runtime decisions. |
 
 ## Maintenance Rule
