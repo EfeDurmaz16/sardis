@@ -14,8 +14,13 @@ PUBLIC_DOCS = [
     ROOT / "README.md",
     ROOT / "CONTRIBUTING.md",
     ROOT / "SECURITY.md",
+    ROOT / "SUPPORT.md",
     ROOT / "docs" / "development.md",
+    ROOT / "docs" / "packages.md",
+    ROOT / "docs" / "docs" / "index.md",
+    ROOT / "docs" / "quickstart" / "README.md",
     *sorted((ROOT / "docs" / "oss").glob("*.md")),
+    *sorted((ROOT / "docs" / "architecture").glob("*.md")),
 ]
 
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
