@@ -89,7 +89,6 @@ from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routes.wallets import cards as cards_router
-from .routes.wallets import cpn as cpn_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routing.accounts import (
@@ -163,6 +162,7 @@ from .routing.protocol import (
     register_x402_routes,
 )
 from .routing.wallets import (
+    register_cpn_routes,
     register_onchain_payment_routes,
     register_ramp_edge_routes,
     register_ramp_routes,
@@ -1056,7 +1056,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             logger.warning("Circle CPN client init failed for router: %s", exc)
             cpn_client = None
 
-    app.dependency_overrides[cpn_router.get_deps] = lambda: cpn_router.CPNDependencies(
+    register_cpn_routes(
+        app,
         treasury_repo=treasury_repo,
         cpn_client=cpn_client,
         webhook_secret=(
@@ -1066,8 +1067,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         ),
         environment=settings.environment,
     )
-    app.include_router(cpn_router.router, prefix="/api/v2")
-    app.include_router(cpn_router.public_router, prefix="/api/v2")
 
     # Virtual Card routes (gated behind feature flag)
     card_repo = None

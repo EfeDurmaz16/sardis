@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.wallets import ramp, treasury, treasury_ops
-from sardis_server.routing.wallets import register_ramp_routes, register_treasury_routes
+from sardis_server.routes.wallets import cpn, ramp, treasury, treasury_ops
+from sardis_server.routing.wallets import (
+    register_cpn_routes,
+    register_ramp_routes,
+    register_treasury_routes,
+)
 
 
 def test_register_ramp_routes_wires_dependencies_and_public_routes():
@@ -64,3 +68,27 @@ def test_register_treasury_routes_wires_dependencies_and_public_routes():
     assert "/api/v2/treasury/financial-accounts" in paths
     assert "/api/v2/webhooks/lithic/payments" in paths
     assert "/api/v2/treasury/ops/journeys" in paths
+
+
+def test_register_cpn_routes_wires_dependencies_and_webhook_route():
+    app = FastAPI()
+    treasury_repo = object()
+    cpn_client = object()
+
+    register_cpn_routes(
+        app,
+        treasury_repo=treasury_repo,
+        cpn_client=cpn_client,
+        webhook_secret="cpn_secret",
+        environment="sandbox",
+    )
+
+    deps = app.dependency_overrides[cpn.get_deps]()
+    assert deps.treasury_repo is treasury_repo
+    assert deps.cpn_client is cpn_client
+    assert deps.webhook_secret == "cpn_secret"
+    assert deps.environment == "sandbox"
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/cpn/payouts" in paths
+    assert "/api/v2/webhooks/cpn" in paths

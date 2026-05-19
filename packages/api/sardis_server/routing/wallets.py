@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from sardis_server.routes.wallets import (
+    cpn,
     offramp,
     onchain_payments,
     onramp,
@@ -140,6 +141,25 @@ def register_treasury_routes(
         prefix="/api/v2/treasury/ops",
         tags=["treasury-ops"],
     )
+
+
+def register_cpn_routes(
+    app: FastAPI,
+    *,
+    treasury_repo: Any,
+    cpn_client: Any,
+    webhook_secret: str,
+    environment: str,
+) -> None:
+    """Register Circle CPN routes and webhooks."""
+    app.dependency_overrides[cpn.get_deps] = lambda: cpn.CPNDependencies(
+        treasury_repo=treasury_repo,
+        cpn_client=cpn_client,
+        webhook_secret=webhook_secret,
+        environment=environment,
+    )
+    app.include_router(cpn.router, prefix="/api/v2")
+    app.include_router(cpn.public_router, prefix="/api/v2")
 
 
 def register_ramp_edge_routes(app: FastAPI) -> None:
