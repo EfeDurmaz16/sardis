@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PACKAGE_LAYOUT_DOC = ROOT / "docs" / "oss" / "package-layout.md"
+CONNECT_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "connect-packages.md"
 SOURCE_LAYOUT_DOC = ROOT / "docs" / "oss" / "source-layout.md"
 DEVELOPMENT_DOC = ROOT / "docs" / "development.md"
 CONTRIBUTION_MAP = ROOT / "docs" / "oss" / "contribution-map.md"
@@ -53,6 +54,16 @@ REQUIRED_DOC_SNIPPETS = {
         "Rename Candidates",
         "packages/sardis-connect/",
         "packages/sardis-connect-js/",
+        "docs/architecture/connect-packages.md",
+    ),
+    CONNECT_BOUNDARY_DOC: (
+        "Python FastAPI",
+        "TypeScript Node",
+        "packages/sardis-connect/",
+        "packages/sardis-connect-js/",
+        "packages/sardis-sdk-js/",
+        "PYTHONPATH=packages/sardis-connect/src uv run pytest packages/sardis-connect/tests -q",
+        "pnpm --filter @sardis/connect build",
     ),
     SOURCE_LAYOUT_DOC: (
         "docs/oss/package-layout.md",

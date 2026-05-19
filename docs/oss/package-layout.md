@@ -54,7 +54,7 @@ controlled by `package.json`.
 | SDKs | `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/`, `packages/sardis-ai-sdk/` | Keep public package names stable; improve docs and tests first. |
 | Agent integrations | `packages/sardis-mcp-server/`, `packages/sardis-openai-agents/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-adk/`, `packages/sardis-agentkit/` | Keep package-specific validation; archive stale integrations before broad renames. |
 | Provider adapters | `packages/sardis-cards/`, `packages/sardis-ramp/`, `packages/sardis-coinbase/`, `packages/sardis-lightspark/`, `packages/sardis-striga/` | Keep sandbox-safe adapter packages until provider status is rechecked. |
-| Connect packages | `packages/sardis-connect/`, `packages/sardis-connect-js/` | Clarify Python middleware versus JS embed/SDK boundary before renaming either side. |
+| Connect packages | `packages/sardis-connect/`, `packages/sardis-connect-js/` | Keep the boundary in `docs/architecture/connect-packages.md`: Python FastAPI middleware versus TypeScript Node/Express middleware. |
 
 ## Rename Candidates
 
@@ -63,7 +63,7 @@ renamed only through focused migration commits, not as a broad mechanical sweep.
 
 | Candidate | Why it is confusing | Preferred next action |
 | --- | --- | --- |
-| `packages/sardis-connect/` and `packages/sardis-connect-js/` | Same product word with language split hidden at the suffix. | Decide whether Python is server middleware and JS is browser/client embed. Then rename docs and package paths in one package at a time if needed. |
+| `packages/sardis-connect/` and `packages/sardis-connect-js/` | Same product word with language split hidden at the suffix. | Boundary is documented in `docs/architecture/connect-packages.md`. Rename only after preserving published package names, local filters, README commands, validation, and imports. |
 | `packages/sardis-openai/` and `packages/sardis-openai-agents/` | The boundary between generic OpenAI API helpers and Agents SDK integration is not obvious. | Keep both until package-owned tests prove current upstream compatibility; archive or merge the weaker one. |
 | `packages/sardis-agent-sdk/` and `packages/sardis-sdk-python/` | Both sound like the primary Python SDK. | Document the public SDK facade versus agent-runtime helper boundary, then rename or archive after compatibility checks. |
 | `packages/sardis-core/src/sardis_v2_core/` | The `v2` import name looks stale and prototype-like even though the package is core. | `sardis_core` is now the preferred import shim. Keep `sardis_v2_core` working while internal imports migrate in focused commits. |
