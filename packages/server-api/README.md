@@ -134,10 +134,11 @@ Interactive API documentation is available at:
 ```
 packages/server-api/
 └── src/sardis_server/
-    ├── main.py           # Application entry point
+    ├── main.py           # FastAPI composition root
+    ├── bootstrap.py      # Local monorepo import bootstrap for dev/test
     ├── dependencies.py   # FastAPI dependencies
     ├── routes/           # Domain-grouped route implementations
-    ├── routers/          # Temporary compatibility imports
+    ├── routing/          # Route registration helpers for larger domains
     └── middleware/       # Request/auth/security middleware
 ```
 

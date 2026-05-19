@@ -16,64 +16,17 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sys
 import time
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .bootstrap import bootstrap_monorepo_sys_path, should_bootstrap_monorepo_sys_path
+
+if should_bootstrap_monorepo_sys_path():
+    bootstrap_monorepo_sys_path()
+
 from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore, SardisSettings, load_settings
-
-
-def _bootstrap_monorepo_sys_path() -> None:
-    """
-    Make monorepo packages importable without requiring PYTHONPATH.
-
-    This helps local dev commands like:
-      `uv run uvicorn sardis_server.main:create_app --factory`
-
-    In a packaged/installed deployment this is a no-op.
-    """
-    here = Path(__file__).resolve()
-    repo_root: Path | None = None
-    for parent in here.parents:
-        if (parent / "packages").is_dir():
-            repo_root = parent
-            break
-    if repo_root is None:
-        return
-
-    packages_dir = repo_root / "packages"
-    for pkg in (
-        "sardis-core",
-        "sardis-wallet",
-        "sardis-chain",
-        "sardis-protocol",
-        "sardis-ledger",
-        "sardis-cards",
-        "sardis-compliance",
-        "sardis-checkout",
-        "sardis-coinbase",
-        "sardis-striga",
-        "sardis-lightspark",
-        "sardis-guardrails",
-    ):
-        src = packages_dir / pkg / "src"
-        if src.is_dir():
-            p = str(src)
-            if p not in sys.path:
-                sys.path.insert(0, p)
-
-def _should_bootstrap_monorepo_sys_path() -> bool:
-    """Keep monorepo import bootstrapping for local dev only."""
-    if os.getenv("SARDIS_DISABLE_MONOREPO_BOOTSTRAP", "").strip().lower() in {"1", "true", "yes", "on"}:
-        return False
-    env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
-    return env in {"dev", "development", "sandbox", "staging", "test"}
-
-
-if _should_bootstrap_monorepo_sys_path():
-    _bootstrap_monorepo_sys_path()
 
 from sardis_chain.executor import ChainExecutor
 from sardis_compliance.checks import ComplianceEngine

@@ -133,6 +133,8 @@ The clean migration target is therefore domain placement below
 `sardis_server`, plus accurate public docs and generated artifacts.
 
 Remaining path cleanup should focus below `src/sardis_server`: continue moving
-route registration and bootstrap concerns out of the oversized `main.py` into
-domain registrars and bootstrap modules. The legacy `routers/` bucket and the
-unused `sardis_v2_api` package have been removed.
+route registration concerns out of the oversized `main.py` into domain
+registrars. Local monorepo import bootstrapping now lives in
+`sardis_server.bootstrap`, so `main.py` is closer to a composition root instead
+of a mixed bootstrap plus app-factory module. The legacy `routers/` bucket and
+the unused `sardis_v2_api` package have been removed.
