@@ -85,7 +85,6 @@ from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.providers import stripe_connect as stripe_connect_router
-from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routes.wallets import cards as cards_router
 from .routes.wallets import funding as funding_router
@@ -159,7 +158,7 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
-from .routing.providers import register_mastercard_webhook_routes
+from .routing.providers import register_mastercard_webhook_routes, register_stripe_funding_routes
 from .routing.wallets import (
     register_cpn_routes,
     register_funding_capability_routes,
@@ -1548,22 +1547,19 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                     "autofund requests will fail closed."
                 )
 
-            app.dependency_overrides[stripe_funding_router.get_deps] = (
-                lambda: stripe_funding_router.StripeFundingDeps(
-                    treasury_provider=treasury_provider,
-                    funding_adapter=configured_primary_adapter,
-                    fallback_funding_adapter=configured_fallback_adapter,
-                    treasury_repo=treasury_repo,
-                    canonical_repo=canonical_ledger_repo,
-                    default_connected_account_id=stripe_connected_account_default,
-                    connected_account_map=connected_account_map,
-                    funding_strategy=settings.funding.strategy,
-                    stablecoin_prefund_enabled=settings.funding.stablecoin_prefund_enabled,
-                    require_connected_account=settings.funding.require_connected_account,
-                )
+            register_stripe_funding_routes(
+                app,
+                treasury_provider=treasury_provider,
+                funding_adapter=configured_primary_adapter,
+                fallback_funding_adapter=configured_fallback_adapter,
+                treasury_repo=treasury_repo,
+                canonical_repo=canonical_ledger_repo,
+                default_connected_account_id=stripe_connected_account_default,
+                connected_account_map=connected_account_map,
+                funding_strategy=settings.funding.strategy,
+                stablecoin_prefund_enabled=settings.funding.stablecoin_prefund_enabled,
+                require_connected_account=settings.funding.require_connected_account,
             )
-            app.include_router(stripe_funding_router.router, prefix="/api/v2")
-            logger.info("Stripe funding router enabled at /api/v2/stripe/funding")
         except Exception as exc:
             logger.warning("Stripe funding router not enabled: %s", exc)
 

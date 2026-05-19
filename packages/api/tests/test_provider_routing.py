@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 
-from sardis_server.routing.providers import register_mastercard_webhook_routes
+from sardis_server.routes.providers import stripe_funding
+from sardis_server.routing.providers import (
+    register_mastercard_webhook_routes,
+    register_stripe_funding_routes,
+)
 
 
 def test_register_mastercard_webhook_routes_mounts_public_route():
@@ -10,3 +14,42 @@ def test_register_mastercard_webhook_routes_mounts_public_route():
 
     paths = {route.path for route in app.routes}
     assert "/mastercard/webhooks" in paths
+
+
+def test_register_stripe_funding_routes_wires_dependencies_and_routes():
+    app = FastAPI()
+    treasury_provider = object()
+    funding_adapter = object()
+    fallback_funding_adapter = object()
+    treasury_repo = object()
+    canonical_repo = object()
+
+    register_stripe_funding_routes(
+        app,
+        treasury_provider=treasury_provider,
+        funding_adapter=funding_adapter,
+        fallback_funding_adapter=fallback_funding_adapter,
+        treasury_repo=treasury_repo,
+        canonical_repo=canonical_repo,
+        default_connected_account_id="acct_default",
+        connected_account_map={"org_demo": "acct_org"},
+        funding_strategy="stablecoin_first",
+        stablecoin_prefund_enabled=True,
+        require_connected_account=True,
+    )
+
+    deps = app.dependency_overrides[stripe_funding.get_deps]()
+    assert deps.treasury_provider is treasury_provider
+    assert deps.funding_adapter is funding_adapter
+    assert deps.fallback_funding_adapter is fallback_funding_adapter
+    assert deps.treasury_repo is treasury_repo
+    assert deps.canonical_repo is canonical_repo
+    assert deps.default_connected_account_id == "acct_default"
+    assert deps.connected_account_map == {"org_demo": "acct_org"}
+    assert deps.funding_strategy == "stablecoin_first"
+    assert deps.stablecoin_prefund_enabled is True
+    assert deps.require_connected_account is True
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/stripe/funding/issuing/topups" in paths
+    assert "/api/v2/stripe/funding/issuing/topups/strategy" in paths
