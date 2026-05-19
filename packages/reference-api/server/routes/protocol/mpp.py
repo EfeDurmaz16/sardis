@@ -35,12 +35,12 @@ from server.repositories.mpp_session_repository import (
     close_session_record,
     create_session_record,
     deduct_memory_session,
-    get_db_pool,
     get_memory_session,
     load_session,
     mark_session_expired,
     record_payment,
 )
+from server.services.mpp_execution import execute_chain_payment
 
 logger = logging.getLogger(__name__)
 
@@ -234,76 +234,12 @@ async def execute_payment(
     chain_executor = getattr(request.app.state, "chain_executor", None)
     if chain_executor:
         try:
-            from sardis_v2_core.mandates import PaymentMandate, VCProof
-
-            chain = session["chain"]
-            # Map MPP chain names to executor chain names
-            chain_key = {
-                "tempo": "tempo",
-                "tempo_testnet": "tempo_testnet",
-                "tempo_moderato": "tempo_testnet",
-            }.get(chain, chain)
-
-            wallet_id = session.get("wallet_id")
-            if not wallet_id:
-                raise RuntimeError("Session has no wallet_id — cannot sign transaction")
-
-            # Convert decimal amount to minor units (6 decimals for USDC)
-            amount_minor = int(req.amount * Decimal("1000000"))
-
-            # Resolve the wallet's on-chain address from DB so we don't
-            # need to call Turnkey's list_wallet_accounts (which expects
-            # the Turnkey wallet ID, not Sardis's internal wallet_id).
-            from_address = None
-            if wallet_id:
-                try:
-                    pool = await get_db_pool()
-                    if pool:
-                        async with pool.acquire() as conn:
-                            # wallets table: external_id = "wallet_xxx", addresses = JSONB
-                            addr_row = await conn.fetchrow(
-                                "SELECT addresses FROM wallets WHERE external_id = $1",
-                                wallet_id,
-                            )
-                            if addr_row and addr_row["addresses"]:
-                                import json as _json
-                                addrs = addr_row["addresses"] if isinstance(addr_row["addresses"], dict) else _json.loads(addr_row["addresses"])
-                                from_address = addrs.get("tempo") or addrs.get("base_sepolia") or addrs.get("base") or next(iter(addrs.values()), None)
-                                logger.info("Resolved wallet address from DB: %s -> %s", wallet_id, from_address)
-                except Exception as addr_err:
-                    logger.warning("Could not resolve wallet address from DB: %s", addr_err)
-
-            mandate = PaymentMandate(
-                mandate_id=payment_id,
-                mandate_type="payment",
-                issuer=f"sardis:mpp:{session_id}",
-                subject=principal.org_id,
-                expires_at=int(datetime.now(UTC).timestamp()) + 300,
-                nonce=uuid4().hex,
-                proof=VCProof(
-                    verification_method="sardis:mpp:internal",
-                    created=datetime.now(UTC).isoformat(),
-                    proof_value="mpp-session-authorized",
-                ),
-                domain=req.merchant,
-                purpose="checkout",
-                chain=chain_key,
-                token=session.get("currency", "USDC"),
-                amount_minor=amount_minor,
-                destination=req.destination or req.merchant,
-                audit_hash=f"mpp:{session_id}:{payment_id}",
-                wallet_id=wallet_id,
-                from_address=from_address,
-                ai_agent_presence=True,
-                transaction_modality="human_not_present",
-                merchant_domain=req.merchant_url or req.merchant,
-            )
-
-            receipt = await chain_executor.dispatch_payment(mandate)
-            tx_hash = receipt.tx_hash
-            logger.info(
-                "MPP on-chain payment success: %s tx=%s chain=%s",
-                payment_id, tx_hash, chain_key,
+            tx_hash = await execute_chain_payment(
+                chain_executor=chain_executor,
+                session=session,
+                request=req,
+                payment_id=payment_id,
+                organization_id=principal.org_id,
             )
 
         except Exception as exc:
