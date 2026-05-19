@@ -1482,7 +1482,7 @@ tdcodeconfig.py/code, codespending_policy.py/code, codeorchestrator.py/code, cod
 tdDomain models, config, policy engine, orchestrator. Every other package imports from here. Split out so downstream can upgrade policy logic without touching transport.
 
 trtdcodesardis-api/code
-tdcodesardis/routes/domain/*.py/code, codesardis/routing/*.py/code, codesardis/main.py/code, codealembic//code
+tdcodepackages/api/sardis_server/routes/domain/*.py/code, codepackages/api/sardis_server/routing/*.py/code, codepackages/api/sardis_server/main.py/code, codepackages/api/alembic//code
 tdFastAPI composition root, domain route modules, route registrars, and Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.
 
 trtdcodesardis-chain/code

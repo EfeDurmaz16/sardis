@@ -27,9 +27,16 @@ The package has two explicit boundaries:
   reference API service.
 - `sardis_server/` is the Python import boundary for the FastAPI application.
 
-There should not be a third generic `src/` layer inside the API package. It
-made paths harder to scan and repeated the same concept across the distribution
-directory, source root, and import package.
+This is not meant to say "Sardis API" twice. The first layer is a repository
+package, and the second layer is a Python import package. We keep
+`sardis_server` instead of a generic `server` package because imports such as
+`server.main` are collision-prone and unclear in test runners, ASGI loaders, and
+editable installs.
+
+There should not be a third generic `src/` layer inside the API package. The old
+`packages/sardis-api/src/sardis_api/` shape made paths harder to scan and
+repeated the same concept across the distribution directory, source root, and
+import package.
 
 Route implementation files should live under domain folders:
 

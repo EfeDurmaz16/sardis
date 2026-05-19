@@ -127,13 +127,16 @@ This still contains two naming layers:
 - `sardis_server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
 
-That duplication is intentional only at the Python import boundary. The old
-`src/` layer was removed from the API package because `packages/api` is already
-the package boundary in this monorepo. Public docs may reference
+That remaining naming layer is intentional only at the Python import boundary.
+Do not rename it to a bare `server` package unless a dedicated migration proves
+all ASGI, pytest, editable install, and deployment imports remain unambiguous.
+The old `src/` layer was removed from the API package because `packages/api` is
+already the package boundary in this monorepo. Public docs may reference
 `packages/api/sardis_server` when they point to internal server code, but they
-must not describe the removed `sardis-api/src/sardis_api` shape. The active
-source tree must also avoid an extra generic `routers/` bucket below
-`sardis_server`. A contributor should land in a domain path such as:
+must not describe the removed `sardis-api/src/sardis_api` shape or the obsolete
+`sardis/routes` import path. The active source tree must also avoid an extra
+generic `routers/` bucket below `sardis_server`. A contributor should land in a
+domain path such as:
 
 ```text
 packages/api/sardis_server/routes/protocol/x402.py
