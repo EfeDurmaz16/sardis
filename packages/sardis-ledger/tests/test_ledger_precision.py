@@ -6,7 +6,6 @@ and that float() is never used on financial amounts.
 from __future__ import annotations
 
 import ast
-import inspect
 from decimal import Decimal
 from pathlib import Path
 
@@ -16,7 +15,7 @@ import pytest
 # Static analysis: ensure float() is not used on financial fields
 # ---------------------------------------------------------------------------
 
-LEDGER_PKG = Path(__file__).resolve().parent.parent / "packages" / "sardis-ledger" / "src" / "sardis_ledger"
+LEDGER_PKG = Path(__file__).resolve().parents[1] / "src" / "sardis_ledger"
 
 
 def _find_float_calls_in_file(filepath: Path) -> list[tuple[int, str]]:
