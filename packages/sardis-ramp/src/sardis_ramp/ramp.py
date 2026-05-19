@@ -48,7 +48,7 @@ class SardisFiatRamp:
 
     Example:
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_...",
+            sardis_key="sk_...",
             bridge_api_key="bridge_..."
         )
 
@@ -81,7 +81,7 @@ class SardisFiatRamp:
 
     def __init__(
         self,
-        sardis_api_key: Optional[str] = None,
+        sardis_key: Optional[str] = None,
         bridge_api_key: Optional[str] = None,
         environment: Literal["sandbox", "production"] = "sandbox",
         config: Optional[RampConfig] = None,
@@ -91,22 +91,22 @@ class SardisFiatRamp:
         Initialize the fiat ramp.
 
         Args:
-            sardis_api_key: Sardis API key (or set SARDIS_API_KEY env var)
+            sardis_key: Sardis API key (or set SARDIS_API_KEY env var)
             bridge_api_key: Bridge API key (or set BRIDGE_API_KEY env var)
             environment: "sandbox" or "production"
             config: Optional RampConfig object
             kyc_threshold_usd: KYC verification threshold in USD (default: $1000)
         """
         if config:
-            self.sardis_api_key = config.sardis_api_key
+            self.sardis_key = config.sardis_key
             self.bridge_api_key = config.bridge_api_key
             self.environment = config.environment
         else:
-            self.sardis_api_key = sardis_api_key or os.environ.get("SARDIS_API_KEY")
+            self.sardis_key = sardis_key or os.environ.get("SARDIS_API_KEY")
             self.bridge_api_key = bridge_api_key or os.environ.get("BRIDGE_API_KEY")
             self.environment = environment
 
-        if not self.sardis_api_key:
+        if not self.sardis_key:
             raise ValueError("Sardis API key required")
         if not self.bridge_api_key:
             raise ValueError("Bridge API key required")
@@ -128,7 +128,7 @@ class SardisFiatRamp:
             method,
             f"{self.SARDIS_API_URL}{path}",
             headers={
-                "Authorization": f"Bearer {self.sardis_api_key}",
+                "Authorization": f"Bearer {self.sardis_key}",
                 "Content-Type": "application/json",
             },
             **kwargs

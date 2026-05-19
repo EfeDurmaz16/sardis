@@ -1,6 +1,6 @@
 /* ============================================================
    Sardis Canvas — Design Tokens
-   Pulled from apps/dashboard + apps/landing live design system.
+   Pulled from the public landing/canvas design system.
    Monokrom grayscale, no gradients, no emoji icons.
    ============================================================ */
 
@@ -72,7 +72,7 @@
   --duration-slow: 500ms;
 }
 
-/* Dark theme — mirrors apps/dashboard .dark surfaces */
+/* Dark theme — mirrors Sardis public documentation surfaces */
 [data-theme="dark"] {
   --background: #1a1a1a;
   --foreground: #ededed;

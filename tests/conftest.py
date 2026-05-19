@@ -10,7 +10,7 @@ import pytest
 # Add package paths for testing FIRST
 root_dir = Path(__file__).parent.parent
 packages_dir = root_dir / "packages"
-for pkg in ["sardis-core", "sardis-api", "sardis-wallet", "sardis-protocol",
+for pkg in ["sardis-core", "api", "sardis-wallet", "sardis-protocol",
             "sardis-chain", "sardis-ledger", "sardis-compliance", "sardis-checkout",
             "sardis-cards", "sardis-ramp", "sardis-sdk-python", "sardis-ucp",
             "sardis-guardrails"]:
@@ -137,7 +137,7 @@ async def test_client():
     import time as _time
 
     from httpx import ASGITransport, AsyncClient
-    from sardis_api.main import create_app
+    from server.main import create_app
 
     app = create_app()
 

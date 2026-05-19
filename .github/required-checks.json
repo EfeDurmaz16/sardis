@@ -1,9 +1,9 @@
 {
   "strict": true,
   "contexts": [
+    "Contributor Gate",
     "Python Lint & Test",
     "TypeScript SDK Build & Type Check",
-    "Dashboard Build",
-    "Landing Page Build"
+    "Contracts Strict Forge"
   ]
 }

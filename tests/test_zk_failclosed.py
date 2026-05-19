@@ -162,7 +162,7 @@ async def test_saml_handler_returns_501() -> None:
     """SAMLHandler.validate_response must raise HTTPException(501),
     not NotImplementedError (which would surface as 500)."""
     from fastapi import HTTPException
-    from sardis_api.middleware.sso import SAMLHandler, SSOConfig
+    from server.middleware.sso import SAMLHandler, SSOConfig
 
     config = SSOConfig(
         id="test",
@@ -189,9 +189,9 @@ def test_saml_handler_source_no_notimplementederror() -> None:
     source_path = (
         Path(__file__).parent.parent
         / "packages"
-        / "sardis-api"
+        / "api"
         / "src"
-        / "sardis_api"
+        / "server"
         / "middleware"
         / "sso.py"
     )
@@ -214,17 +214,17 @@ def test_no_stub_proof_references() -> None:
     routers_dir = (
         Path(__file__).parent.parent
         / "packages"
-        / "sardis-api"
+        / "api"
         / "src"
-        / "sardis_api"
-        / "routers"
+        / "server"
+        / "routes"
     )
 
     files_to_check = [
-        "mvp.py",
-        "mandates.py",
-        "onchain_payments.py",
-        "wallets.py",
+        "authority/mvp.py",
+        "authority/mandates.py",
+        "wallets/onchain_payments.py",
+        "wallets/wallets.py",
     ]
 
     for filename in files_to_check:

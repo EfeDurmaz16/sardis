@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 echo "[reconciliation-chaos] validating reconciliation chaos coverage"
 
 failures=0
+export PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}"
 
 require_file() {
   local file="$1"
@@ -26,14 +27,14 @@ require_match() {
   fi
 }
 
-require_file "docs/design-partner/reconciliation-load-chaos-slos.md"
+require_file "docs/security/reconciliation-load-chaos-slos.md"
 require_file "tests/test_canonical_ledger_repository.py"
 require_file "tests/test_reconciliation_engine_load.py"
 require_file "tests/test_treasury_ops_api.py"
 
-require_match 'SLO' docs/design-partner/reconciliation-load-chaos-slos.md "runbook must define reconciliation SLOs"
-require_match 'out-of-order' docs/design-partner/reconciliation-load-chaos-slos.md "runbook must include out-of-order scenario"
-require_match 'Duplicate event suppression' docs/design-partner/reconciliation-load-chaos-slos.md "runbook must include duplicate suppression target"
+require_match 'SLO' docs/security/reconciliation-load-chaos-slos.md "runbook must define reconciliation SLOs"
+require_match 'out-of-order' docs/security/reconciliation-load-chaos-slos.md "runbook must include out-of-order scenario"
+require_match 'Duplicate event suppression' docs/security/reconciliation-load-chaos-slos.md "runbook must include duplicate suppression target"
 
 if ! pytest -q tests/test_canonical_ledger_repository.py tests/test_reconciliation_engine_load.py tests/test_treasury_ops_api.py; then
   echo "[reconciliation-chaos][fail] reconciliation test suite failed"
@@ -46,4 +47,3 @@ if [[ "$failures" -gt 0 ]]; then
 fi
 
 echo "[reconciliation-chaos] pass"
-

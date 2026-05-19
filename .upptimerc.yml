@@ -7,20 +7,8 @@ sites:
     expectedStatusCodes:
       - 200
     icon: https://sardis.sh/favicon.ico
-  - name: Dashboard
-    url: https://dashboard.sardis.sh
-    expectedStatusCodes:
-      - 200
-      - 301
-      - 302
   - name: Landing
     url: https://sardis.sh
-    expectedStatusCodes:
-      - 200
-      - 301
-      - 302
-  - name: Checkout
-    url: https://checkout.sardis.sh
     expectedStatusCodes:
       - 200
       - 301

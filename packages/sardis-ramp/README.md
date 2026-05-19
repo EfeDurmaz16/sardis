@@ -8,6 +8,15 @@ Bridge crypto wallets to traditional banking. Fund agent wallets from bank accou
 pip install sardis-ramp
 ```
 
+## Validation
+
+Run the package-owned smoke suite before changing provider selection,
+credential handling, or public exports:
+
+```bash
+PYTHONPATH=packages/sardis-ramp/src uv run pytest packages/sardis-ramp/tests -q
+```
+
 ## Quick Start
 
 ```python
@@ -15,7 +24,7 @@ from sardis_ramp import SardisFiatRamp, BankAccount
 
 # Initialize
 ramp = SardisFiatRamp(
-    sardis_api_key="sk_...",
+    sardis_key="sk_...",
     bridge_api_key="bridge_..."
 )
 
@@ -75,4 +84,4 @@ All funds flow through the Sardis wallet as USDC, enabling:
 
 ## License
 
-Apache 2.0
+MIT

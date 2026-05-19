@@ -64,6 +64,11 @@ class TestAPIError:
         assert err.code == ErrorCode.VALIDATION_ERROR.value
         assert "errors" in err.details
 
+    def test_from_response_401_guides_to_public_auth_docs(self):
+        err = APIError.from_response(401, {"error": {"message": "Unauthorized"}})
+        assert "https://sardis.sh/docs/authentication" in err.message
+        assert "dashboard.sardis.sh" not in err.message
+
 
 class TestAuthenticationError:
     def test_defaults(self):

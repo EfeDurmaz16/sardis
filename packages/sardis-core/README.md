@@ -23,6 +23,9 @@ Core AP2/TAP-aligned domain primitives for the Sardis stablecoin execution layer
 pip install sardis-core
 ```
 
+Use `sardis_core` for new imports. The legacy `sardis_v2_core` namespace remains
+available as a compatibility shim while internal imports migrate.
+
 ### Optional Dependencies
 
 ```bash
@@ -39,7 +42,7 @@ pip install sardis-core[all]
 ## Quick Start
 
 ```python
-from sardis_v2_core import (
+from sardis_core import (
     # Configuration
     load_config_from_env,
     validate_startup,
@@ -76,7 +79,7 @@ async def fetch_wallet(wallet_id: str) -> Wallet:
 ### Domain Models
 
 ```python
-from sardis_v2_core import Wallet, Transaction, TransactionStatus
+from sardis_core import Wallet, Transaction, TransactionStatus
 
 # Create a wallet
 wallet = Wallet(
@@ -98,7 +101,7 @@ tx = Transaction(
 ### Resilience Patterns
 
 ```python
-from sardis_v2_core import (
+from sardis_core import (
     retry_async,
     get_circuit_breaker,
     CircuitBreakerConfig,
@@ -120,7 +123,7 @@ async with cb:
 ### Structured Logging
 
 ```python
-from sardis_v2_core import get_logger, mask_sensitive_data
+from sardis_core import get_logger, mask_sensitive_data
 
 logger = get_logger("payments")
 

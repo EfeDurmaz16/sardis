@@ -5,17 +5,16 @@ on:
     branches: [main]
     paths:
       - 'apps/landing/**'
-      - 'packages/ui-web/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
   pull_request:
     paths:
       - 'apps/landing/**'
-      - 'packages/ui-web/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   NODE_VERSION: '22'
@@ -37,7 +36,7 @@ jobs:
           run_install: false
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm --filter @sardis/app-landing lint
@@ -66,7 +65,7 @@ jobs:
           run_install: false
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm --filter @sardis/app-landing build

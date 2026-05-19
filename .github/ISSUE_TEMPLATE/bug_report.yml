@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible Sardis OSS bug
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include commands, inputs, and minimal code where possible.
+      render: bash
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Protocol / API
+        - Python SDK
+        - TypeScript SDK
+        - MCP server
+        - CLI
+        - Contracts
+        - Docs / examples
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python, Node, pnpm, uv, package versions. Run `pnpm run doctor` when possible.
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Include `pnpm run check:contributor` or the narrow package command from docs/oss/contribution-map.md when possible.
+      render: bash
+    validations:
+      required: false

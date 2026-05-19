@@ -170,7 +170,7 @@ def calculate_fee_for_plan(
         FeeCalculation with plan-specific fee applied
     """
     try:
-        from sardis_api.billing.config import PLAN_LIMITS
+        from sardis.billing.config import PLAN_LIMITS
         plan_limits = PLAN_LIMITS.get(plan, {})
         plan_fee_bps = plan_limits.get("tx_fee_bps")
     except ImportError:

@@ -9,11 +9,10 @@ SIMULATION MODE (no setup required):
     pip install sardis
     python examples/quickstart_5min.py
 
-PRODUCTION MODE (requires API key):
-    1. Sign up at https://app.sardis.sh/signup
-    2. Create an API key at https://app.sardis.sh/api-keys
-    3. Set env: export SARDIS_API_KEY=your_api_key_here
-    4. python examples/quickstart_5min.py --production
+LIVE API MODE (requires an API key from your Sardis deployment):
+    1. Set env: export SARDIS_API_KEY=your_api_key_here
+    2. Optional: export SARDIS_API_URL=https://your-api.example.com
+    3. python examples/quickstart_5min.py --production
 """
 from __future__ import annotations
 
@@ -70,9 +69,9 @@ def run_simulation():
     print(f"   Total spent: ${wallet.spent_total}")
     print()
 
-    print("Done! To use real payments:")
-    print("  1. Sign up: https://app.sardis.sh/signup")
-    print("  2. Get API key: https://app.sardis.sh/api-keys")
+    print("Done! To use a live Sardis API deployment:")
+    print("  1. export SARDIS_API_KEY=your_api_key_here")
+    print("  2. Optional: export SARDIS_API_URL=https://your-api.example.com")
     print("  3. Run: python examples/quickstart_5min.py --production")
 
 
@@ -84,10 +83,10 @@ def run_production():
     if not api_key:
         print("ERROR: SARDIS_API_KEY not set")
         print()
-        print("To get an API key:")
-        print("  1. Sign up at https://app.sardis.sh/signup")
-        print("  2. Create a key at https://app.sardis.sh/api-keys")
-        print("  3. export SARDIS_API_KEY=your_api_key_here")
+        print("To use live API mode:")
+        print("  1. Create or obtain an API key from your Sardis deployment")
+        print("  2. export SARDIS_API_KEY=your_api_key_here")
+        print("  3. Optional: export SARDIS_API_URL=https://your-api.example.com")
         sys.exit(1)
 
     print(f"Mode: PRODUCTION (key: {api_key[:12]}...)")

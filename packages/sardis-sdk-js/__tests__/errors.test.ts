@@ -133,12 +133,22 @@ describe('Error Classes', () => {
       expect(error.message).toBe('Unknown API error');
       expect(error.code).toBe('SOME_CODE');
     });
+
+    it('should guide 401 errors to public authentication docs', () => {
+      const error = APIError.fromResponse(401, {
+        error: { message: 'Unauthorized' },
+      });
+      expect(error.message).toContain('https://sardis.sh/docs/authentication');
+      expect(error.message).not.toContain('dashboard.sardis.sh');
+    });
   });
 
   describe('AuthenticationError', () => {
     it('should create with default message', () => {
       const error = new AuthenticationError();
-      expect(error.message).toBe('Invalid or missing API key. Get one at https://dashboard.sardis.sh/api-keys');
+      expect(error.message).toBe(
+        'Invalid or missing API key. Configure one with https://sardis.sh/docs/authentication'
+      );
       expect(error.code).toBe('SARDIS_2000');
       expect(error.name).toBe('AuthenticationError');
     });

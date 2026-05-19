@@ -106,9 +106,9 @@ Install the SDK, create a wallet, define a policy, and make your first payment i
 ```python
 pip install sardis
 
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
 wallet = client.wallets.create(
     name="procurement-agent",
     policy="Max $100/tx, $500/day, SaaS only, require approval above $200"

@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-from sardis_api.routers import agent_auth
-from sardis_api.routers.agent_auth import _verify_agent_jwt
+import server.routes.identity.agent_auth as agent_auth
+from server.routes.identity.agent_auth import _verify_agent_jwt
 
 
 def _make_request_with_jwt(token: str | None) -> MagicMock:
@@ -30,6 +30,7 @@ class _MockVerifyClient:
 
 @pytest.fixture(autouse=True)
 def _reset_http_client(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("SARDIS_AGENT_AUTH_MODE", "proxy")
     monkeypatch.setattr(agent_auth, "_http_client", None)
 
 

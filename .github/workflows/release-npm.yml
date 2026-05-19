@@ -28,7 +28,8 @@ on:
         type: boolean
         default: true
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   NODE_VERSION: "22"
@@ -52,7 +53,7 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
-          version: 10.18.1
+          version: 9.15.4
 
       - name: Resolve release metadata
         id: meta
@@ -147,7 +148,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Run release quality gates
         shell: bash

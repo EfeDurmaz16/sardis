@@ -12,45 +12,40 @@ In explicit mode, you specify the exact recipient, amount, and token. Sardis eva
 ### Python
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-client = Sardis(api_key="sk_live_...")
+client = SardisClient(api_key="sk_live_...")
 
 # Simple payment
-result = await client.pay(
-    wallet_id="wal_abc123",
+result = client.pay(
     to="0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68",
     amount="29.99",
-    token="USDC",
+    currency="USDC",
     chain="base",
-    merchant="openai.com",
-    memo="API credits for March"
 )
 
 print(result.status)      # "completed"
 print(result.tx_hash)     # "0xabc123..."
-print(result.ap2_chain)   # Full AP2 mandate chain
 ```
 
 ### TypeScript
 
 ```typescript
-import { Sardis } from '@sardis/sdk';
+import { SardisClient } from '@sardis/sdk';
 
-const client = new Sardis({ apiKey: 'sk_live_...' });
+const client = new SardisClient({ apiKey: 'sk_live_...' });
 
-const result = await client.pay({
-  walletId: 'wal_abc123',
-  to: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68',
-  amount: '29.99',
-  token: 'USDC',
-  chain: 'base',
-  merchant: 'openai.com',
-  memo: 'API credits for March',
+const result = await client.request('POST', '/pay', {
+  data: {
+    to: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD68',
+    amount: '29.99',
+    currency: 'USDC',
+    chain: 'base',
+  },
 });
 
 console.log(result.status);    // "completed"
-console.log(result.txHash);    // "0xabc123..."
+console.log(result.tx_hash);    // "0xabc123..."
 ```
 
 ### MCP (Claude / Cursor)

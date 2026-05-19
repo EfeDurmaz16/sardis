@@ -30,7 +30,6 @@ const ORDER = [
   "protocols",
   "sdks",
   "integrations",
-  "dashboard",
   "external",
   "cicd",
   "security",
@@ -93,7 +92,7 @@ Safe to paste into any large-context AI (Claude, ChatGPT, Gemini) for summarizat
 Q&A, or architecture review.
 
 Canvases are ordered as they appear in the sidebar.
-Last built: ${new Date().toISOString()}
+Build: generated from apps/canvas-site/src/pages
 
 ---
 

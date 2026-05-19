@@ -30,7 +30,7 @@ class BridgeProvider(RampProvider):
 
     def __init__(
         self,
-        sardis_api_key: Optional[str] = None,
+        sardis_key: Optional[str] = None,
         bridge_api_key: Optional[str] = None,
         environment: Literal["sandbox", "production"] = "sandbox",
         ach_enabled: bool = True,
@@ -42,7 +42,7 @@ class BridgeProvider(RampProvider):
         Initialize Bridge provider.
 
         Args:
-            sardis_api_key: Sardis API key
+            sardis_key: Sardis API key
             bridge_api_key: Bridge API key
             environment: "sandbox" or "production"
             ach_enabled: Enable ACH (US bank transfer) rail
@@ -51,7 +51,7 @@ class BridgeProvider(RampProvider):
             wire_enabled: Enable international wire transfer rail
         """
         self._ramp = SardisFiatRamp(
-            sardis_api_key=sardis_api_key,
+            sardis_key=sardis_key,
             bridge_api_key=bridge_api_key,
             environment=environment,
         )

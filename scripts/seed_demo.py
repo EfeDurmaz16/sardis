@@ -203,7 +203,7 @@ async def seed_database():
         print("  - Agents: agent_alice, agent_bob, agent_charlie")
         print("  - Wallets: Each agent has 1000 USDC (Alice has 975 after demo tx)")
         print(f"\nAPI Key: {api_key}")
-        print("\nYou can now start the API and dashboard!")
+        print("\nYou can now start the reference API and run public SDK/API demos.")
 
     await pool.close()
 

@@ -281,7 +281,7 @@ class TestSwapPaymentFlow:
 
 class TestSwapAPIModels:
     def test_swap_quote_request(self):
-        from sardis_api.routers.swap import SwapQuoteRequest
+        from server.routes.money_movement.swap import SwapQuoteRequest
 
         req = SwapQuoteRequest(
             from_token="USDC",
@@ -292,12 +292,14 @@ class TestSwapAPIModels:
         assert req.slippage_bps == 100
 
     def test_bridge_quote_request(self):
-        from sardis_api.routers.swap import BridgeQuoteRequest
+        from server.routes.money_movement.bridge import BridgeQuoteRequest
 
         req = BridgeQuoteRequest(
-            from_chain="ethereum",
-            to_chain="base",
+            source_chain_id=1,
+            dest_chain_id=8453,
             token="USDC",
-            amount=Decimal("1000"),
+            amount="1000",
+            wallet_id="wallet_123",
         )
-        assert req.from_chain == "ethereum"
+        assert req.source_chain_id == 1
+        assert req.dest_chain_id == 8453

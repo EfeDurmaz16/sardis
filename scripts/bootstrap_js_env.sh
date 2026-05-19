@@ -11,7 +11,7 @@ Usage:
   bash ./scripts/bootstrap_js_env.sh [--install] [--verify]
 
 Options:
-  --install   Run pnpm install --no-frozen-lockfile after preflight checks.
+  --install   Run pnpm install --frozen-lockfile after preflight checks.
   --verify    Run JS package test/build verification after checks (and install if requested).
 
 Notes:
@@ -73,7 +73,7 @@ if [[ "$DO_INSTALL" == "1" ]]; then
   echo "[bootstrap-js] Installing dependencies..."
   (
     cd "$ROOT_DIR"
-    pnpm install --no-frozen-lockfile
+    pnpm install --frozen-lockfile
   )
 fi
 

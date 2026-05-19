@@ -1,1 +1,0 @@
-"""Sardis API test suite."""

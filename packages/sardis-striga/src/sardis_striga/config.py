@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class StrigaConfig(BaseSettings):
@@ -23,5 +23,4 @@ class StrigaConfig(BaseSettings):
     standing_orders_enabled: bool = False
     kyc_enabled: bool = True
 
-    class Config:
-        env_prefix = "SARDIS_STRIGA_"
+    model_config = SettingsConfigDict(env_prefix="SARDIS_STRIGA_")

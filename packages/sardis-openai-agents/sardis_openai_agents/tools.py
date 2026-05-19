@@ -338,29 +338,34 @@ def get_sardis_tools(include_experimental: bool = False) -> list:
     Returns:
         List of tool functions.
     """
-    # Production-ready tools (4)
+    # Production-ready tools.
     tools = [
         sardis_pay,
         sardis_check_balance,
         sardis_check_policy,
-        sardis_list_transactions,
     ]
+    list_transactions = globals().get("sardis_list_transactions")
+    if list_transactions is not None:
+        tools.append(list_transactions)
 
     if include_experimental:
         # Experimental tools — these catch NotImplementedError/AttributeError
         # and return error strings. They require SDK features not yet shipped.
-        tools.extend([
-            sardis_set_policy,           # experimental: policies.update
-            sardis_create_hold,          # experimental: holds.create
-            sardis_capture_hold,         # experimental: holds.capture
-            sardis_void_hold,            # experimental: holds.void
-            sardis_get_mandate,          # experimental: mandates.get
-            sardis_list_mandates,        # experimental: mandates.list
-            sardis_mint_payment,         # experimental: payment_objects.mint
-            sardis_get_fx_quote,         # experimental: fx.get_quote
-            sardis_create_subscription,  # experimental: subscriptions.create
-            sardis_create_escrow,        # experimental: escrow.create
-            sardis_get_payment_object,   # experimental: payment_objects.get
-        ])
+        for name in [
+            "sardis_set_policy",
+            "sardis_create_hold",
+            "sardis_capture_hold",
+            "sardis_void_hold",
+            "sardis_get_mandate",
+            "sardis_list_mandates",
+            "sardis_mint_payment",
+            "sardis_get_fx_quote",
+            "sardis_create_subscription",
+            "sardis_create_escrow",
+            "sardis_get_payment_object",
+        ]:
+            tool = globals().get(name)
+            if tool is not None:
+                tools.append(tool)
 
     return tools

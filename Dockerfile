@@ -9,13 +9,14 @@ RUN pip install --no-cache-dir uv
 
 # Copy workspace files
 COPY pyproject.toml README.md uv.lock* ./
-COPY sardis/ ./sardis/
+COPY src/ ./src/
+COPY apps/ ./apps/
 COPY packages/ ./packages/
 
 # Install dependencies with uv
 RUN uv sync --frozen --no-dev
 
-# Install monorepo packages (editable) so sardis_api and its transitive deps
+# Install monorepo packages (editable) so sardis and its transitive deps
 # are importable with matching runtime dependencies inside the venv.
 RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-core \
@@ -28,7 +29,7 @@ RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-checkout \
     -e /app/packages/sardis-coinbase \
     -e /app/packages/sardis-ramp \
-    -e /app/packages/sardis-api \
+    -e /app/apps/api \
     "gunicorn>=25" "uvicorn[standard]"
 
 # Stage 2: Runtime
@@ -36,12 +37,19 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Apply patched Debian packages before installing runtime Python tooling. This
+# keeps the final image below the HIGH/CRITICAL vulnerability gate without
+# relying on a newer base image tag being published immediately.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install uv for runtime
 RUN pip install --no-cache-dir uv
 
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /app/sardis /app/sardis
+COPY --from=builder /app/src /app/src
+COPY --from=builder /app/apps /app/apps
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
@@ -69,8 +77,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Run with gunicorn + uvicorn workers for production concurrency.
 # SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
-CMD PYTHONPATH="$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
-    gunicorn "sardis_api.main:create_app()" \
+CMD cd /app/apps/api && \
+    PYTHONPATH="/app/apps/api:$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
+    gunicorn "server.main:create_app()" \
     -w ${SARDIS_WORKERS:-4} \
     -k uvicorn.workers.UvicornWorker \
     -b 0.0.0.0:${PORT} \

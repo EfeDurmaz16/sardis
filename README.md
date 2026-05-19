@@ -44,6 +44,9 @@ Read the boundaries:
 
 - [Open-core model](OPEN_CORE.md)
 - [Provider abstraction](PROVIDER_ABSTRACTION.md)
+- [OSS goal](docs/oss/goal.md)
+- [Public/private boundary](docs/oss/public-private-boundary.md)
+- [Package maturity matrix](docs/packages.md)
 - [Legal and compliance disclaimer](DISCLAIMER.md)
 - [Agent authority demo](examples/agent-authority-demo/)
 
@@ -138,14 +141,14 @@ Sardis can route approved actions to provider adapters. Live-money deployments d
 ### Python (5 lines)
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 
-sardis = Sardis(api_key="sk_...")
-result = sardis.payments.create(
-    agent_id="agent_abc",
+client = SardisClient(api_key="sk_...")
+result = client.pay(
+    to="merchant@example.com",
     amount="50.00",
-    token="USDC",
-    recipient="merchant@example.com"
+    currency="USDC",
+    chain="base",
 )
 print(f"Payment: {result.tx_hash}")
 ```
@@ -266,9 +269,11 @@ Every financial action follows a **single authority path** before execution. The
 
 ```
 sardis/
+├── apps/api/               # FastAPI reference API implementation
+├── apps/landing/           # Public website source
+├── apps/canvas-site/       # Technical canvas source
 ├── packages/               # Core monorepo packages
 │   ├── sardis-core/        # Domain models, config, database
-│   ├── sardis-api/         # FastAPI REST endpoints
 │   ├── sardis-chain/       # Blockchain execution, chain routing
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
@@ -280,21 +285,17 @@ sardis/
 │   ├── sardis-sdk-js/      # TypeScript SDK
 │   ├── sardis-cli/         # Command-line tool
 │   └── sardis-checkout/    # Merchant checkout flows
-├── sardis/                 # Simple Python SDK (public interface)
+├── src/sardis/             # Simple Python SDK (public interface)
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
-├── apps/
-│   ├── dashboard/          # React admin dashboard
-│   ├── landing/            # Public website
-│   └── canvas-site/        # Technical canvas source
 ├── playground/             # Interactive demo sandbox
 ├── examples/               # Usage examples
 ├── demos/                  # Demo applications
 ├── docs/                   # Public technical documentation
-└── tests/                  # Integration tests
+└── tests/                  # Legacy root migration backlog; prefer package tests
 ```
 
 ---
@@ -310,6 +311,21 @@ sardis/
 - **[Security Model](https://docs.sardis.sh/security)** — MPC architecture and threat model
 - **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
 - **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
+- **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
+- **[Architecture Package Layout](docs/architecture/package-layout.md)** — Why repo package paths and Python import namespaces are separate
+- **[OSS Package Layout Policy](docs/oss/package-layout.md)** — Contributor-facing naming, nesting, and rename rules
+- **[Source Layout Policy](docs/oss/source-layout.md)** — API source-tree guardrails and route placement rules
+- **[x402 and MPP Boundary](docs/architecture/x402-and-mpp.md)** — How paid HTTP protocol surfaces split across packages
+- **[SDK Package Boundary](docs/architecture/sdk-packages.md)** — Official SDKs versus framework-specific agent integrations
+- **[Connect Package Boundary](docs/architecture/connect-packages.md)** — Python FastAPI versus TypeScript Node/Express Connect ownership
+- **[OpenAI Package Boundary](docs/architecture/openai-packages.md)** — OpenAI API tool calling versus OpenAI Agents SDK ownership
+- **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it
+- **[Development Guide](docs/development.md)** — Local setup and contribution checks
+- **[Public CI/CD Map](docs/oss/ci-cd.md)** — Which public checks protect the OSS surface
+- **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
+- **[Support](SUPPORT.md)** — Where to ask for OSS help and what belongs outside the public repo
+- **[Security Policy](SECURITY.md)** — Private vulnerability reporting and payment safety invariants
+- **[Code of Conduct](CODE_OF_CONDUCT.md)** — Community expectations for public collaboration
 
 ---
 
@@ -321,7 +337,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Fork the repository
 - Create a feature branch: `git checkout -b feature/your-feature`
 - Make your changes with tests
-- Run the test suite: `uv run pytest tests/`
+- Run the contributor gate: `pnpm run check:contributor`
 - Submit a pull request
 
 **Development setup:**
@@ -332,13 +348,18 @@ git clone https://github.com/EfeDurmaz16/sardis.git
 cd sardis
 
 # Install dependencies
+pnpm run doctor
 uv sync
+pnpm install --frozen-lockfile
 
-# Run tests
-uv run pytest tests/
+# Run fast OSS checks
+python3 scripts/repo_inventory.py
+python3 scripts/oss_surface_check.py
+python3 scripts/stale_api_path_check.py
+pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
-uvicorn sardis_api.main:create_app --factory --port 8000
+uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
 ```
 
 ---

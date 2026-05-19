@@ -1,27 +1,7 @@
-# Import the module directly to avoid sardis_api.__init__ side effects
-import importlib.util
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-_repo_root = Path(__file__).resolve().parents[1]
-_module_path = (
-    _repo_root
-    / "packages"
-    / "sardis-api"
-    / "src"
-    / "sardis_api"
-    / "repositories"
-    / "card_repository.py"
-)
-_spec = importlib.util.spec_from_file_location(
-    "sardis_api.repositories.card_repository",
-    str(_module_path),
-)
-_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_mod)
-CardRepository = _mod.CardRepository
+from server.repositories.card_repository import CardRepository
 
 
 def _make_pool_and_conn():

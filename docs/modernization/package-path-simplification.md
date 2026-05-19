@@ -1,0 +1,177 @@
+# Package Path Simplification Decision
+
+## Problem
+
+The API implementation path went through several readability cleanups. The
+early tree repeated `sardis-api` at both package and import-package levels.
+The monorepo package directory was then renamed to `apps/api`. The
+remaining problem was that the server import package still used `sardis`, which
+collided conceptually and technically with the public Python SDK:
+
+```text
+apps/api/sardis/...
+```
+
+That path was technically valid, but it made the package boundary too vague:
+
+- `api` did not say whether this was a schema package, generated client, or deployable server.
+- `src/sardis/` collided with the root public SDK package name.
+- `src/` is still the standard Python source layout used to avoid accidental
+  imports from the repository root.
+
+For a contributor, the package directory should be short enough to scan quickly
+from the repository root. The package is the deployable/reference API, and it
+already sits under `packages/`, so `apps/api` is clearer than
+repeating the same concept in the removed `packages/server-api` path.
+
+## Decision
+
+The API package now intentionally omits the extra `src/` layer because
+`apps/api` is already an explicit monorepo package boundary. In other
+words, the old shape:
+
+```text
+packages/sardis-api/src/sardis_api/
+```
+
+should not come back. It repeated "API" across the distribution directory,
+source root, and import package, which made basic navigation feel heavier than
+the product warranted.
+
+Keep the API import package as:
+
+```text
+apps/api/server/
+```
+
+Rename the monorepo package directory from:
+
+```text
+packages/server-api/
+```
+
+to:
+
+```text
+apps/api/
+```
+
+This keeps a clear server-only import path:
+
+```python
+from server.main import create_app
+```
+
+The Python distribution name is now `sardis-reference-api`. That keeps package
+metadata aligned with the monorepo package role and avoids repeating the product
+API name in contributor-facing package identity. The FastAPI import package
+remains `server`, so runtime imports stay short:
+
+```python
+from server.main import create_app
+```
+
+## Execution Notes
+
+The server package path is referenced by build, validation, Docker, OpenAPI,
+deploy, docs, and tests. The rename therefore updated:
+
+- root and package-local Python package source mappings
+- API Dockerfiles and local server commands
+- CI workflows and deployment jobs
+- package docs and README examples
+- tests and scripts that import the API package
+- generated OpenAPI commands and package-local scripts
+
+This was intentionally executed as its own atomic path-layout commit with a
+broad reference update and validation pass. The HTTP API path contract and
+public SDK import path are not part of this rename and must stay stable.
+
+## Migration Shape
+
+The current migration sequence is:
+
+1. Confirm the deployable FastAPI package is still the OSS reference server, not only a protocol schema package.
+2. Rename the package directory with `git mv packages/server-api apps/api`.
+3. Update path references in packaging config, scripts, CI, Docker, OpenAPI, docs, and tests.
+4. Rename the server import package from `sardis` to `server`.
+5. Keep the root public SDK import package as `src/sardis`.
+6. Run compile, focused tests, OpenAPI, package maturity, and whitespace checks.
+
+## Validation
+
+Minimum validation for the server package-directory rename:
+
+```bash
+python3 -m compileall -q apps/api/server apps/api/scripts/generate_openapi.py api/index.py
+PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest apps/api/tests/test_funding_bootstrap.py apps/api/tests/test_sandbox_isolation.py apps/api/tests/test_facility_requests_router.py -q
+pnpm check:openapi
+python3 scripts/package_maturity_check.py
+git diff --check
+```
+
+Recommended broader validation:
+
+```bash
+python3 scripts/repo_inventory.py
+pnpm check
+uv run pytest apps/api/tests -q
+```
+
+## Current State
+
+The contributor-facing API path is now:
+
+```text
+apps/api/server/...
+```
+
+This still contains two filesystem layers:
+
+- `apps/api` is the monorepo package boundary: the deployable
+  reference API service.
+- `server` is the Python import boundary: the package imported by
+  tests, ASGI servers, and internal modules.
+
+That remaining layer is intentional only at the Python import boundary. It
+replaces the old repeated `sardis_api` import package; it is not a second
+"Sardis API" directory. Do not rename it again unless a dedicated migration
+proves all ASGI, pytest, editable install, and deployment imports remain
+unambiguous.
+The old `src/` layer was removed from the API package because `apps/api` is
+already the package boundary in this monorepo. Public docs may reference
+`apps/api/server` when they point to internal server code, but they
+must not describe the removed `sardis-api/src/sardis_api` shape or the obsolete
+`sardis/routes` import path. The active source tree must also avoid an extra
+generic `routers/` bucket below `server`. A contributor should land in a
+domain path such as:
+
+```text
+apps/api/server/routes/protocol/x402.py
+apps/api/server/routes/protocol/mpp.py
+apps/api/server/routes/commerce/merchant_checkout.py
+```
+
+The clean migration target is therefore domain placement below
+`server`, plus accurate public docs and generated artifacts.
+
+For day-to-day navigation, use the clean tree helper instead of raw `find`:
+
+```bash
+pnpm repo:tree
+python3 scripts/repo_tree.py --max-depth 4
+```
+
+The helper hides ignored local artifacts such as `node_modules`, `dist`,
+`.venv`, `.pytest_cache`, `.ruff_cache`, `.vercel`, `.omc`, and
+`__pycache__`. Those directories should not influence source-layout decisions.
+
+Remaining path cleanup should focus below `server`: continue moving
+route registration concerns out of the oversized `main.py` into domain
+registrars. Local monorepo import bootstrapping now lives in
+`server.bootstrap`, so `main.py` is closer to a composition root instead
+of a mixed bootstrap plus app-factory module. Developer utility routes
+(`sdk_metrics`, simulation, non-production dev routes, and sandbox onboarding)
+now register through `server.route_registry.developer` instead of being wired
+inline in `main.py`. The legacy `routers/` bucket and the unused
+`sardis_v2_api` package have been removed.

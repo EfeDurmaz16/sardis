@@ -390,13 +390,13 @@ app.use(sardis.middleware());
           </thead>
           <tbody>
             <tr><td>Who calls it</td><td>An AI agent, programmatically</td><td>A human buyer, in a browser</td></tr>
-            <tr><td>UI</td><td>None — JSON over HTTP</td><td>Hosted React checkout at <code>checkout.sardis.sh</code></td></tr>
+            <tr><td>UI</td><td>None — JSON over HTTP</td><td>Product-private hosted checkout client backed by public session APIs</td></tr>
             <tr><td>Discovery</td><td><code>/.well-known/sardis.json</code> on the merchant domain</td><td>Merchant-issued checkout link / embedded button</td></tr>
             <tr><td>Payer source</td><td>Agent's Sardis wallet + signed mandate</td><td>External wallet (WalletConnect, Coinbase, MetaMask) or Sardis <code>wal_…</code></td></tr>
             <tr><td>Auth</td><td>Merchant <code>mch_live_…</code> key + session <code>client_secret</code></td><td>Session <code>client_secret</code>; merchant endpoints use <code>require_principal</code></td></tr>
             <tr><td>Settlement</td><td>Bank rail → USD</td><td>Same settlement engine; Stripe/Striga/Bridge</td></tr>
             <tr><td>Typical ticket</td><td>$0.001 – $10 per call</td><td>$5 – $500 per order</td></tr>
-            <tr><td>SDK</td><td><code>sardis-connect</code> (py) + <code>@sardis/connect</code> (js)</td><td><code>sardis-checkout-ui</code> + embed SDK</td></tr>
+            <tr><td>SDK</td><td><code>sardis-connect</code> (py) + <code>@sardis/connect</code> (js)</td><td>Hosted client package lives in the private product repo</td></tr>
             <tr><td>Canvas</td><td>This page</td><td>Canvas 11 · Checkout &amp; Merchants</td></tr>
           </tbody>
         </table>
@@ -418,8 +418,8 @@ app.use(sardis.middleware());
             <tr><td><code>packages/sardis-connect/README.md</code></td><td>The quickstart; source of the Python example above.</td></tr>
             <tr><td><code>packages/sardis-connect-js/src/middleware.ts</code></td><td>Node/Express middleware; same three routes, hand-rolled with <code>fetch</code> to avoid SDK bloat.</td></tr>
             <tr><td><code>packages/sardis-connect-js/src/types.ts</code></td><td>TS types shared with the Python models by contract.</td></tr>
-            <tr><td><code>packages/sardis-api/src/sardis_api/routers/merchants.py</code></td><td>Merchant registration + key issuance. Upstream of every Connect flow.</td></tr>
-            <tr><td><code>packages/sardis-api/src/sardis_api/routers/service_directory.py</code></td><td>Registry side: where discovered services can be listed globally.</td></tr>
+            <tr><td><code>apps/api/server/routes/commerce/merchants.py</code></td><td>Merchant registration + key issuance. Upstream of every Connect flow.</td></tr>
+            <tr><td><code>apps/api/server/routes/commerce/service_directory.py</code></td><td>Registry side: where discovered services can be listed globally.</td></tr>
             <tr><td><code>demos/sardis_connect_e2e_demo.py</code></td><td>The seven-step reference walkthrough.</td></tr>
           </tbody>
         </table>
@@ -435,7 +435,7 @@ app.use(sardis.middleware());
           <a class="canvas-card" href="/checkout">
             <div class="canvas-card-num">11 · Product</div>
             <div class="canvas-card-title">Checkout &amp; Merchants</div>
-            <div class="canvas-card-desc">The buyer-facing sibling of Connect. Hosted checkout UI, embed SDK, merchant dashboard.</div>
+            <div class="canvas-card-desc">The buyer-facing sibling of Connect. Public session API, webhook, and settlement contract.</div>
           </a>
           <a class="canvas-card" href="/osp-integration">
             <div class="canvas-card-num">21 · Extended</div>

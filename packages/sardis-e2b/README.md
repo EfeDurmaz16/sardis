@@ -23,6 +23,18 @@ e2b template build --name sardis-agent
 
 This produces a template ID (e.g., `sardis-agent-abc123`).
 
+## Local Validation
+
+Contributors can validate this package without E2B authentication:
+
+```bash
+PYTHONPATH=packages/sardis-e2b uv run pytest packages/sardis-e2b/tests -q
+```
+
+That static smoke test checks the template manifest, Dockerfile safety defaults,
+and lazy helper imports. Use the E2B CLI build only when publishing or testing a
+real sandbox template.
+
 ### 2. Use the Template in Your Agent
 
 ```python

@@ -3,7 +3,6 @@
 node_modules
 packages/*/node_modules
 packages/sardis-solana-program
-packages/sardis-checkout-ui
 landing/node_modules
 dashboard/node_modules
 contracts/out
@@ -29,8 +28,6 @@ dashboard
 mobile
 video
 dist
-packages/sardis-checkout-ui/dist
-packages/sardis-checkout-ui/node_modules
 .vercel
 .turbo
 .pytest_cache

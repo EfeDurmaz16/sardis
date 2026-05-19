@@ -95,6 +95,13 @@ coverage/
 # Foundry build artifacts
 contracts/out/
 contracts/cache/
+contracts/broadcast/
+
+# Generated uptime / response-time snapshots
+/api/*/*.json
+
+# Generated local validator ledgers
+packages/sardis-solana-program/.anchor/test-ledger/
 
 # Local/temporary files
 .serena/
@@ -111,23 +118,37 @@ pitch-deck/
 # Internal docs (keep locally, not in repo)
 /docs/*
 !/docs/README.md
-!/docs/PRODUCTION_DEPLOYMENT.md
-!/docs/production-runbook.md
+!/docs/development.md
+!/docs/packages.md
 !/docs/audits/
+docs/audits/*
+!docs/audits/smart-contract-formal-audit-plan.md
+!docs/audits/sql-query-composition-review.md
+!/docs/modernization/
+!/docs/modernization/**
+!/docs/oss/
+!/docs/oss/**
 !/docs/quickstart/
 !/docs/docs/
-!/docs/cdp/
-!/docs/runbooks/
-/docs/runbooks/*
-!/docs/runbooks/incident-response.md
-!/docs/runbooks/ops-readiness.md
-!/docs/runbooks/rollback.md
+!/docs/security/
+docs/security/*
+!/docs/security/escrow-governance-timelock.md
+!/docs/security/key-governance.md
+!/docs/security/reconciliation-load-chaos-slos.md
+!/docs/security/payment-hardening/
+!/docs/security/payment-hardening/**
 /demos/sardis-demo-video/
 docs/marketing/
 docs/investor/
 docs/design-partner/
 docs/outreach/
 docs/plans/
+docs/compliance/
+docs/runbooks/
+docs/superpowers/
+apps/dashboard/
+packages/sardis-checkout-ui/
+packages/ui-web/
 
 # Root-level internal files
 AUDIT_SUMMARY*.md

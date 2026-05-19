@@ -13,7 +13,7 @@ import pytest
 packages_dir = Path(__file__).parent.parent / "packages"
 for pkg in ["sardis-core", "sardis-wallet", "sardis-chain", "sardis-protocol",
             "sardis-ledger", "sardis-cards", "sardis-compliance", "sardis-checkout",
-            "sardis-coinbase", "sardis-api"]:
+            "sardis-coinbase", "api"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists() and str(pkg_path) not in sys.path:
         sys.path.insert(0, str(pkg_path))
@@ -25,7 +25,7 @@ os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_purposes_only_3
 
 
 def _make_admin_principal():
-    from sardis_api.authz import Principal
+    from server.authz import Principal
     return Principal(
         kind="api_key",
         organization_id="org_test",
@@ -34,7 +34,7 @@ def _make_admin_principal():
 
 
 def _make_user_principal():
-    from sardis_api.authz import Principal
+    from server.authz import Principal
     return Principal(
         kind="api_key",
         organization_id="org_test",
@@ -46,13 +46,13 @@ class TestEmergencyFreezeModels:
     """Test request/response models."""
 
     def test_freeze_all_request_defaults(self):
-        from sardis_api.routers.emergency import FreezeAllRequest
+        from server.routes.operations.emergency import FreezeAllRequest
         req = FreezeAllRequest()
         assert req.reason == "manual_emergency"
         assert req.notes is None
 
     def test_freeze_all_response_fields(self):
-        from sardis_api.routers.emergency import FreezeAllResponse
+        from server.routes.operations.emergency import FreezeAllResponse
         resp = FreezeAllResponse(
             event_id="evt_123",
             action="freeze_all",
@@ -65,7 +65,7 @@ class TestEmergencyFreezeModels:
         assert resp.action == "freeze_all"
 
     def test_emergency_status_response(self):
-        from sardis_api.routers.emergency import EmergencyStatusResponse
+        from server.routes.operations.emergency import EmergencyStatusResponse
         status = EmergencyStatusResponse(is_frozen=False, last_event=None)
         assert not status.is_frozen
 
@@ -98,9 +98,9 @@ class TestEmergencyFreezeLogic:
         mock_pool = AsyncMock()
         mock_pool.acquire = MagicMock(return_value=mock_conn)
 
-        with patch("sardis_api.routers.emergency.log_admin_action", new_callable=AsyncMock):
+        with patch("server.routes.operations.emergency.log_admin_action", new_callable=AsyncMock):
             with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
-                from sardis_api.routers.emergency import FreezeAllRequest, freeze_all_wallets
+                from server.routes.operations.emergency import FreezeAllRequest, freeze_all_wallets
                 # Create a mock request
                 mock_request = MagicMock()
                 mock_request.client = MagicMock()
@@ -115,7 +115,7 @@ class TestEmergencyFreezeLogic:
     @pytest.mark.asyncio
     async def test_freeze_response_includes_count(self):
         """Verify the response includes wallet count."""
-        from sardis_api.routers.emergency import FreezeAllResponse
+        from server.routes.operations.emergency import FreezeAllResponse
         resp = FreezeAllResponse(
             event_id="evt_test",
             action="freeze_all",
@@ -132,16 +132,16 @@ class TestEmergencyFreezeRouter:
     """Test router configuration."""
 
     def test_router_has_correct_prefix(self):
-        from sardis_api.routers.emergency import router
+        from server.routes.operations.emergency import router
         assert router.prefix == "/api/v2/admin/emergency"
 
     def test_router_has_admin_tag(self):
-        from sardis_api.routers.emergency import router
+        from server.routes.operations.emergency import router
         assert "admin" in router.tags
         assert "emergency" in router.tags
 
     def test_router_has_three_routes(self):
-        from sardis_api.routers.emergency import router
+        from server.routes.operations.emergency import router
         paths = [route.path for route in router.routes]
         # Routes include the router prefix
         assert any("freeze-all" in p for p in paths)

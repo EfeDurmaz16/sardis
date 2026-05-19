@@ -30,7 +30,7 @@ from sardis_mpp import SardisMPPClient
 
 # Initialize with Sardis policy enforcement
 client = SardisMPPClient(
-    sardis_api_key="sk_live_...",
+    sardis_key="sk_live_...",
     agent_id="agent_procurement",
     tempo_rpc_url="https://rpc.tempo.xyz",  # or testnet
 )
@@ -60,7 +60,7 @@ MPP supports the **x402** protocol for automatic micro-payments. When an API ret
 ```python
 # Enable x402 auto-pay with policy limits
 client = SardisMPPClient(
-    sardis_api_key="sk_live_...",
+    sardis_key="sk_live_...",
     agent_id="agent_researcher",
     x402_auto_pay=True,
     x402_max_per_request=1.00,  # Max $1 per auto-pay

@@ -29,10 +29,10 @@ Get pricing   Apply policy   Get receipt
 Here is how it works with Sardis:
 
 ```python
-from sardis import Sardis
+from sardis import SardisClient
 from sardis.protocols import UCP
 
-client = Sardis(api_key="sk_...")
+client = SardisClient(api_key="sk_...")
 
 # Discover products from a UCP-enabled merchant
 products = await UCP.discover(

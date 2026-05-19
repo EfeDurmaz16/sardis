@@ -1,0 +1,39 @@
+name: Contribution task
+description: Suggest an OSS contribution task
+title: "[Task]: "
+labels: ["triage"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be improved?
+    validations:
+      required: true
+  - type: dropdown
+    id: maturity
+    attributes:
+      label: Package maturity area
+      options:
+        - core
+        - supported
+        - experimental
+        - demo
+        - private-candidate
+        - archive-candidate
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Likely files
+      description: Include paths if known. Use docs/oss/contribution-map.md to find the owning package.
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: What command or behavior should prove this is done? Prefer `pnpm run check:contributor` plus the package-specific command.
+    validations:
+      required: false

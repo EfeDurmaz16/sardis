@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.routers.wallets import WalletDependencies, get_deps
-from sardis_api.routers.wallets import router as wallets_router
+from server.routes.wallets.lifecycle import WalletDependencies, get_deps
+from server.routes.wallets.lifecycle import router as wallets_router
 
 
 @pytest.fixture

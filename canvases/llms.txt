@@ -36,7 +36,6 @@ AI agents can reason, but they cannot be trusted with money by default. Sardis i
 - [Protocol Gateway](pages/protocols.html): AP2, Visa TAP, Coinbase x402, Google A2A, Stripe MPP, Mastercard Agent Pay, ERC-8183, ERC-8004 — all as transport adapters into a single policy pipeline.
 - [SDKs & CLIs](pages/sdks.html): Python, TypeScript, CLI (Go + JS), MCP server, n8n node, Telegram bot, spend widget.
 - [AI Framework Integrations](pages/integrations.html): 18 adapters — LangChain, CrewAI, AutoGPT, OpenAI Agents, Claude Agent SDK, Google ADK, A2A, AgentKit, Browser Use, Composio, OpenClaw, Stagehand, Vercel AI, Activepieces, E2B, ChatGPT, MCP, n8n.
-- [Dashboard UI](pages/dashboard.html): 43 Next.js operator pages — policies, approvals, kill switch, evidence, analytics, merchant controls.
 
 ## Extended canvases
 

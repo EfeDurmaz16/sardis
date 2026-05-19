@@ -5,27 +5,12 @@ using mocked external providers.
 """
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-
-def _load_cards_module():
-    import importlib.util
-    import sys
-    repo_root = Path(__file__).resolve().parents[1]
-    cards_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "cards.py"
-    spec = importlib.util.spec_from_file_location(
-        "cards_router_e2e",
-        str(cards_path),
-    )
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["cards_router_e2e"] = mod
-    spec.loader.exec_module(mod)
-    return mod
+from server.routes.wallets.cards import create_cards_router
 
 
 @pytest.fixture
@@ -79,9 +64,8 @@ def e2e_app(mock_deps):
     repo.record_transaction.side_effect = fake_record_txn
     repo.list_transactions.side_effect = fake_list_txns
 
-    cards_mod = _load_cards_module()
     app = FastAPI()
-    router = cards_mod.create_cards_router(card_repo=repo, card_provider=provider)
+    router = create_cards_router(card_repo=repo, card_provider=provider)
     app.include_router(router, prefix="/api/v2/cards")
     return app, repo, provider
 

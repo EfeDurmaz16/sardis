@@ -14,6 +14,7 @@ from sardis_cli.commands.demo import (
     handle_port_in_use,
     handle_rpc_down,
     handle_wallet_creation_failure,
+    show_post_payment_experience,
 )
 from sardis_cli.main import cli
 
@@ -127,3 +128,22 @@ class TestDegradedStates:
         handle_no_network()
         captured = capsys.readouterr()
         assert "No Network" in captured.out or "offline" in captured.out.lower() or "Offline" in captured.out
+
+
+class TestPostPaymentExperience:
+    """Test post-payment onboarding stays public and contributor-friendly."""
+
+    def test_success_output_points_to_public_audit_path(self, capsys):
+        show_post_payment_experience(
+            tx_id="tx_demo_123",
+            tx_hash="0xabc123",
+            amount=12.5,
+            merchant="example.com",
+            chain="base_sepolia",
+        )
+
+        captured = capsys.readouterr()
+        assert "sardis ledger list" in captured.out
+        assert "https://sardis.sh/docs" in captured.out
+        assert "https://app.sardis.sh" not in captured.out
+        assert ("Open " + "dashboard") not in captured.out

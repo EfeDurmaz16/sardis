@@ -2,15 +2,16 @@
 import Canvas from "../layouts/Canvas.astro";
 ---
 
-<Canvas title="03 · Packages (51) — Sardis Canvas" currentId="packages">
+<Canvas title="03 · Public Packages — Sardis Canvas" currentId="packages">
 
 <section class="hero">
         <span class="eyebrow">Canvas 03 · System</span>
-        <h1>Packages · 51 units of shipped behavior</h1>
+        <h1>Public Packages</h1>
         <p class="hero-lead">
           A unit ships as a separate package when its boundary is real — a provider that can be swapped,
           a framework adapter with its own release cadence, or a protocol surface that external auditors
-          will pin to a version. This canvas walks all 51, grouped by purpose.
+          will pin to a version. This canvas maps the OSS protocol, SDK, and integration packages that
+          remain public after the hosted product UI moved private.
         </p>
       </section>
 
@@ -19,8 +20,8 @@ import Canvas from "../layouts/Canvas.astro";
           <span class="callout-title">TL;DR</span>
           Core platform (12 packages) carries every line of money-moving logic. Framework integrations
           (19) are thin adapters that mostly forward to the Python SDK. Payment providers (6) sit behind
-          uniform interfaces in <code>sardis-core</code>. SDKs + CLIs (6) are the public surface. The
-          rest are experimental or provider-specific shims.
+          uniform interfaces in <code>sardis-core</code>. SDKs + CLIs are the public surface. Hosted
+          dashboard and checkout UI packages are intentionally not part of this public package catalog.
         </div>
       </section>
 
@@ -84,7 +85,7 @@ flowchart LR
           </thead>
           <tbody>
             <tr><td><code>sardis-core</code></td><td><code>config.py</code>, <code>spending_policy.py</code>, <code>orchestrator.py</code>, <code>agit_policy_engine.py</code>, <code>anomaly_detection.py</code></td><td>Domain models, config, policy engine, orchestrator. Every other package imports from here. Split out so downstream can upgrade policy logic without touching transport.</td></tr>
-            <tr><td><code>sardis-api</code></td><td><code>sardis_api/routers/*.py</code>, <code>sardis_v2_api/routes/*.py</code>, <code>main.py</code>, <code>alembic/</code></td><td>FastAPI composition root + 123 routers + 107 Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.</td></tr>
+            <tr><td><code>sardis-api</code></td><td><code>apps/api/server/routes/&lt;domain&gt;/*.py</code>, <code>apps/api/server/route_registry/*.py</code>, <code>apps/api/server/main.py</code>, <code>apps/api/alembic/</code></td><td>FastAPI composition root, domain route modules, route registrars, and Alembic migrations. The only package that binds to a port. Separated so contributors can iterate routes without rebuilding policy.</td></tr>
             <tr><td><code>sardis-chain</code></td><td><code>executor.py</code> (v2), <code>safe_account.py</code>, <code>smart_router.py</code>, <code>cctp_forwarding.py</code>, <code>tempo/executor.py</code></td><td>Multi-chain transaction execution. Dedicated Tempo executor lives here. Isolated from wallet so chain-specific RPC quirks don't leak into signing.</td></tr>
             <tr><td><code>sardis-wallet</code></td><td><code>manager.py</code>, <code>tempo_keychain.py</code>, <code>tempo_accounts.py</code>, <code>multisig.py</code>, <code>circle_client.py</code>, <code>session_manager.py</code>, <code>key_rotation.py</code></td><td>MPC signing abstraction (Turnkey / Fireblocks / Circle / Lit). Separated because swapping custody providers must be a zero-day change.</td></tr>
             <tr><td><code>sardis-protocol</code></td><td><code>ap2.py</code>, <code>tap.py</code>, <code>x402_settlement.py</code>, <code>erc8122.py</code>, <code>erc8126.py</code>, <code>replay_cache_redis.py</code>, <code>nonce_registry.py</code></td><td>AP2, TAP, x402, ERC-8122/8126/8033 mandate-chain verifiers + replay protection. Pinned independently so external auditors can version-lock the verifier.</td></tr>
@@ -104,10 +105,10 @@ flowchart LR
       <section class="section">
         <div class="section-header">
           <div class="eyebrow">Group 2 · Checkout &amp; merchant</div>
-          <h2>Four packages that turn Sardis into a PSP.</h2>
+          <h2>Three public packages for merchant/payment primitives.</h2>
           <p class="text-muted" style="max-width:720px;">
-            The merchant-facing surface. UI and SDK are both cross-origin embeddable; the Python side
-            handles settlement and policy.
+            The public repo keeps the backend checkout engine and Connect SDKs. Hosted browser checkout
+            UI lives in the private product repo until Sardis deliberately publishes it as a stable OSS widget.
           </p>
         </div>
         <table class="data">
@@ -116,7 +117,6 @@ flowchart LR
           </thead>
           <tbody>
             <tr><td><code>sardis-checkout</code></td><td>(see group 1)</td><td>Core backend — sessions, links, connectors.</td></tr>
-            <tr><td><code>sardis-checkout-ui</code></td><td><code>index.html</code>, <code>package.json</code>, Vite + React + wagmi</td><td>The checkout page users actually see, plus the embed SDK. Served from <code>checkout.sardis.sh</code>. Separate deploy because it's a browser artefact, not a Python module.</td></tr>
             <tr><td><code>sardis-connect</code></td><td><code>src/sardis_connect/*</code>, <code>pyproject.toml</code>, <code>uv.lock</code></td><td>Sardis Connect — zero-crypto agent-payment onboarding. Separated because Connect has a distinct onboarding flow and its own sales narrative.</td></tr>
             <tr><td><code>sardis-connect-js</code></td><td><code>src/</code>, <code>package.json</code>, <code>tsconfig.json</code></td><td>JS client for Sardis Connect. Consumed by partner frontends.</td></tr>
           </tbody>

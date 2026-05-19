@@ -2,10 +2,13 @@
 
 ## API Key
 
-Get your API key from [sardis.sh](https://sardis.sh) and set it as an environment variable:
+Simulation and sandbox examples do not require an API key. For live hosted or
+self-hosted API calls, create an API key from your Sardis deployment and set it
+as an environment variable:
 
 ```bash
 export SARDIS_API_KEY="sk_..."
+export SARDIS_API_URL="https://api.example.com"
 ```
 
 Or pass it directly:

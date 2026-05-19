@@ -14,7 +14,8 @@ on:
           - "false"
           - "true"
 
-permissions: read-all
+permissions:
+  contents: read
 
 env:
   PYTHON_VERSION: "3.12"

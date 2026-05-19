@@ -33,6 +33,15 @@ This adds three endpoints to your API:
 | `POST /sardis/pay` | Create payment session before accessing priced endpoint |
 | `POST /sardis/verify` | Verify payment was completed |
 
+## Validation
+
+Run the package-owned smoke suite before changing manifest generation, route
+registration, pricing models, or webhook signature behavior:
+
+```bash
+PYTHONPATH=packages/sardis-connect/src uv run pytest packages/sardis-connect/tests -q
+```
+
 ## How Agents Use It
 
 ```python

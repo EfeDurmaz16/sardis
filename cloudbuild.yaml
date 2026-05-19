@@ -1,0 +1,15 @@
+substitutions:
+  _SERVICE_NAME: sardis-api
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest
+      - --file
+      - Dockerfile
+      - .
+
+images:
+  - gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest

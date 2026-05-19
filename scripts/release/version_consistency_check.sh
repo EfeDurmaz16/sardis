@@ -18,9 +18,9 @@ extract_py_version() {
 
 echo "[version] checking root sardis package version parity"
 root_toml_version="$(extract_toml_version pyproject.toml)"
-root_init_version="$(extract_py_version sardis/__init__.py)"
+root_init_version="$(extract_py_version src/sardis/__init__.py)"
 if [[ "$root_toml_version" != "$root_init_version" ]]; then
-  echo "[version][fail] root version mismatch: pyproject=$root_toml_version, sardis/__init__.py=$root_init_version"
+  echo "[version][fail] root version mismatch: pyproject=$root_toml_version, src/sardis/__init__.py=$root_init_version"
   failures=$((failures + 1))
 else
   echo "[version][pass] root sardis version: $root_toml_version"

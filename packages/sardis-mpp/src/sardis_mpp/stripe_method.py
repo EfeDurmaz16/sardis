@@ -74,13 +74,13 @@ class SardisStripeMPPMethod:
         mandate_id: str | None = None,
         payment_method: str = "pm_card_visa",
         network_id: str = "internal",
-        sardis_api_url: str = "",
+        sardis_url: str = "",
     ) -> None:
         self._api_key = api_key or os.getenv("STRIPE_SECRET_KEY", "")
         self._mandate_id = mandate_id
         self._payment_method = payment_method
         self._network_id = network_id
-        self._sardis_api_url = sardis_api_url or os.getenv(
+        self._sardis_url = sardis_url or os.getenv(
             "SARDIS_API_URL", "https://api.sardis.sh"
         )
 
@@ -97,12 +97,12 @@ class SardisStripeMPPMethod:
         currency = getattr(challenge, "currency", "usd")
 
         # Grant SPT via Sardis API (which enforces mandate limits)
-        if self._sardis_api_url and self._mandate_id:
+        if self._sardis_url and self._mandate_id:
             try:
                 sardis_key = os.getenv("SARDIS_API_KEY", "")
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.post(
-                        f"{self._sardis_api_url}/api/v2/spt/grant",
+                        f"{self._sardis_url}/api/v2/spt/grant",
                         headers={"Authorization": f"Bearer {sardis_key}"},
                         json={
                             "mandate_id": self._mandate_id,

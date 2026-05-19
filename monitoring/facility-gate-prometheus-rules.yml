@@ -1,98 +1,21 @@
 groups:
   - name: sardis-facility-gate
     rules:
-      - alert: FacilityGateExceptionSpike
-        expr: increase(sardis_facility_exceptions_total[10m]) > 3
-        for: 5m
-        labels:
-          severity: critical
-          component: facility_gate
-          surface: exceptions
-        annotations:
-          summary: Facility Gate exception events are increasing
-          description: Facility Gate exception events exceeded the pilot threshold and need operator review.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateAdapterExecutionFailure
-        expr: increase(sardis_facility_adapter_events_total{operation="execute",status="failed"}[10m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          component: facility_gate
-          surface: adapter
-        annotations:
-          summary: Facility Gate adapter execution failed
-          description: A simulator or provider adapter execution failed after Facility Gate approval.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateRevocationPropagationFailure
-        expr: increase(sardis_facility_adapter_events_total{operation="revoke",status="failed"}[5m]) > 0
-        for: 0m
-        labels:
-          severity: critical
-          component: facility_gate
-          surface: revocation
-        annotations:
-          summary: Facility Gate revocation propagation failed
-          description: A revocation was recorded but adapter propagation failed. Previously approved authority may remain usable at the adapter.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateManualReviewBacklog
-        expr: sardis_facility_manual_review_queue_depth > 25
-        for: 15m
+      - alert: SardisFacilityGateAuthorizationFailures
+        expr: increase(sardis_facility_gate_authorization_failures_total[5m]) > 0
+        for: 2m
         labels:
           severity: warning
-          component: facility_gate
-          surface: approvals
+          service: sardis-api
         annotations:
-          summary: Facility Gate manual-review backlog above threshold
-          description: Step-up/manual-review queue depth is above the pilot operating threshold.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateDenialSpike
-        expr: increase(sardis_facility_decisions_total{verdict="denied"}[15m]) > 20
-        for: 5m
-        labels:
-          severity: warning
-          component: facility_gate
-          surface: decisioning
-        annotations:
-          summary: Facility Gate denial spike detected
-          description: Denial decisions increased sharply. Check policy drift, stale persisted authority, or merchant probing.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateStepUpSpike
-        expr: increase(sardis_facility_decisions_total{verdict="step_up_required"}[15m]) > 20
-        for: 5m
-        labels:
-          severity: warning
-          component: facility_gate
-          surface: approvals
-        annotations:
-          summary: Facility Gate step-up spike detected
-          description: Step-up volume increased sharply. Review evidence quality, approval fatigue, and merchant novelty.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateProjectionDrift
-        expr: sardis_facility_projection_drift_count > 0
-        for: 0m
+          summary: Facility Gate authorization failures detected
+          description: Facility Gate rejected one or more authorization attempts in the last five minutes.
+      - alert: SardisFacilityGateAdapterErrors
+        expr: increase(sardis_facility_gate_adapter_errors_total[5m]) > 0
+        for: 2m
         labels:
           severity: critical
-          component: facility_gate
-          surface: projections
+          service: sardis-api
         annotations:
-          summary: Facility Gate projection drift detected
-          description: Replay verification found materialized request-state drift. Run the projection replay runbook before relying on operator state.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
-
-      - alert: FacilityGateReplayNotRunning
-        expr: absent_over_time(sardis_facility_projection_replay_runs_total[24h])
-        for: 0m
-        labels:
-          severity: warning
-          component: facility_gate
-          surface: projections
-        annotations:
-          summary: Facility Gate replay verification has not run recently
-          description: No replay verification metric was observed in 24 hours. Schedule the replay check or run it manually during pilot operations.
-          runbook: docs/design-partner/facility-gate/incident-runbook.md
+          summary: Facility Gate adapter errors detected
+          description: Facility Gate provider adapter calls are failing and may block pilot traffic.

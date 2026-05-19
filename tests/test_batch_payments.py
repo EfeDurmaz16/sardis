@@ -19,8 +19,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sardis_api.authz import Principal, require_principal
-from sardis_api.routers.batch_payments import (
+from server.authz import Principal, require_principal
+from server.routes.money_movement.batch_payments import (
     BatchPaymentRequest,
     BatchPaymentResponse,
     TransferItem,

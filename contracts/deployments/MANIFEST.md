@@ -51,7 +51,7 @@ These addresses are identical across all supported EVM chains. Sardis does not d
 | RefundProtocol | -- | `pending_deploy` | Custom |
 | Zodiac Roles Module | `0x9646fDAD...D337` | `canonical_live` | Pre-deployed |
 
-**Status:** Pending deployment. See `scripts/deploy-mainnet-contracts.sh`.
+**Status:** Pending deployment. Use `scripts/deploy-contracts.sh mainnet --confirm` only after reviewing addresses, deployer funding, and verifier settings.
 
 ### Ethereum (Chain ID: 1)
 

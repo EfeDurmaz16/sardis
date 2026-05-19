@@ -15,7 +15,8 @@ on:
           - npm-mcp-server
           - npm-ai-sdk
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   publish-python-core:
@@ -37,7 +38,7 @@ jobs:
       - name: Build packages
         run: |
           cd packages/sardis-core && uv build
-          cd packages/sardis-api && uv build
+          cd apps/api && uv build
           cd packages/sardis-chain && uv build
           cd packages/sardis-wallet && uv build
           cd packages/sardis-protocol && uv build
@@ -49,7 +50,7 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           cd packages/sardis-core && uv publish
-          cd packages/sardis-api && uv publish
+          cd apps/api && uv publish
           cd packages/sardis-chain && uv publish
           cd packages/sardis-wallet && uv publish
           cd packages/sardis-protocol && uv publish
@@ -91,19 +92,19 @@ jobs:
       - name: Set up Node 22
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
-          version: 8
+          version: 9.15.4
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build SDK
-        run: pnpm --filter @sardis/sdk-js build
+        run: pnpm --filter @sardis/sdk build
 
       - name: Publish to npm
         working-directory: packages/sardis-sdk-js
@@ -122,16 +123,16 @@ jobs:
       - name: Set up Node 22
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
-          version: 8
+          version: 9.15.4
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build MCP Server
         run: pnpm --filter @sardis/mcp-server build
@@ -153,16 +154,16 @@ jobs:
       - name: Set up Node 22
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install pnpm
         uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
         with:
-          version: 8
+          version: 9.15.4
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build AI SDK
         run: pnpm --filter @sardis/ai-sdk build

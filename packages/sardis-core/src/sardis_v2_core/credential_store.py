@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class CredentialEncryption:
     """Fernet symmetric encryption for credential tokens.
 
-    Follows pattern from sardis_api.middleware.sso._get_encryption_key().
+    Follows pattern from sardis.middleware.sso._get_encryption_key().
     """
 
     def __init__(self, key: bytes | None = None) -> None:

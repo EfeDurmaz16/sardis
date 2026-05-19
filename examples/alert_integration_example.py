@@ -19,8 +19,8 @@ async def payment_with_alerts_example():
 
     This would typically be integrated into the payment orchestrator or API routes.
     """
-    from sardis_v2_core.alert_channels import AlertDispatcher, SlackChannel
-    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis_core.alert_channels import AlertDispatcher, SlackChannel
+    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # Initialize dispatcher
     dispatcher = AlertDispatcher()
@@ -59,8 +59,8 @@ async def budget_threshold_alert_example():
     """
     Example showing budget threshold alerts.
     """
-    from sardis_api.routers.alerts import dispatch_alert
-    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from server.routes.operations.alerts import dispatch_alert
 
     # Simulate budget tracking
     budget_total = Decimal("10000.00")
@@ -91,7 +91,7 @@ async def policy_violation_alert_example():
     """
     Example showing policy violation alerts.
     """
-    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
 
     alert = Alert(
         alert_type=AlertType.POLICY_VIOLATION,
@@ -229,7 +229,7 @@ async def rule_engine_example():
     """
     from decimal import Decimal
 
-    from sardis_v2_core.alert_rules import AlertRule, AlertRuleEngine, ConditionType
+    from sardis_core.alert_rules import AlertRule, AlertRuleEngine, ConditionType
 
     # Initialize engine
     engine = AlertRuleEngine()
@@ -266,10 +266,10 @@ async def integrate_alerts_in_orchestrator():
     """
     Example showing how to integrate alerts into the payment orchestrator.
 
-    This would be added to sardis_v2_core/orchestrator.py
+    This would be added to sardis_core/orchestrator.py
     """
-    from sardis_api.routers.alerts import dispatch_alert
-    from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from server.routes.operations.alerts import dispatch_alert
 
     # After successful payment execution:
     async def after_payment_success(

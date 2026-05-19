@@ -43,7 +43,7 @@ python run_demo.py
 **With Sardis API**:
 ```bash
 # Set environment variables
-export SARDIS_API_KEY="sk_test_your_key"
+export SARDIS_API_KEY="replace-with-your-api-key"
 export SARDIS_API_URL="http://localhost:8000"
 
 python run_demo.py
@@ -62,7 +62,7 @@ python run_demo.py --interactive
 python run_demo.py --wallet-id wallet_abc123
 
 # Specify API endpoint
-python run_demo.py --api-url http://localhost:8000 --api-key sk_test_xxx
+python run_demo.py --api-url http://localhost:8000 --api-key replace-with-your-api-key
 ```
 
 ## Demo Scenarios
@@ -193,8 +193,8 @@ pip install -e ../../packages/sardis-sdk-python
 **"Connection refused"**
 ```bash
 # Start the Sardis API server first:
-cd ../../packages/sardis-api
-uvicorn sardis_api.main:app --port 8000
+cd ../../apps/api
+uvicorn server.main:create_app --factory --port 8000
 ```
 
 **Running in simulation mode**

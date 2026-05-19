@@ -13,9 +13,8 @@ from . import (
     ledger,
     payments,
     policies,
-    projects,
     spending,
     wallets,
 )
 
-__all__ = ["agents", "approvals", "auth", "chains", "demo", "fiat", "groups", "holds", "init", "ledger", "payments", "policies", "projects", "spending", "wallets"]
+__all__ = ["agents", "approvals", "auth", "chains", "demo", "fiat", "groups", "holds", "init", "ledger", "payments", "policies", "spending", "wallets"]

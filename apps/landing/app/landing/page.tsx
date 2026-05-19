@@ -189,9 +189,9 @@ export default function LandingPage() {
   const isDark = mounted && resolvedTheme === "dark"
   const t = isDark ? dark : light
 
-  const codeLines = `from sardis import Sardis
+  const codeLines = `from sardis import SardisClient
 
-client = Sardis(api_key="sk_demo_live_redacted")
+client = SardisClient(api_key="sk_demo_live_redacted")
 
 agent = client.agents.create(
     name="Procurement Bot",

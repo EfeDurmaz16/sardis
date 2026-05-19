@@ -100,6 +100,15 @@ pip install sardis-openclaw
 npm install @sardis/sdk
 ```
 
+## Validation
+
+Run the package-owned static smoke suite before changing OpenClaw manifests,
+skill registry exports, or package metadata:
+
+```bash
+PYTHONPATH=packages/sardis-openclaw/src uv run pytest packages/sardis-openclaw/tests -q
+```
+
 ### 3. Use Skills
 
 All skills work with curl-based API calls (no SDK required):

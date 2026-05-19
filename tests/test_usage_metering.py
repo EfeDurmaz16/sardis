@@ -12,7 +12,7 @@ import pytest
 packages_dir = Path(__file__).parent.parent / "packages"
 for pkg in ["sardis-core", "sardis-wallet", "sardis-chain", "sardis-protocol",
             "sardis-ledger", "sardis-cards", "sardis-compliance", "sardis-checkout",
-            "sardis-coinbase", "sardis-api"]:
+            "sardis-coinbase", "api"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists() and str(pkg_path) not in sys.path:
         sys.path.insert(0, str(pkg_path))
@@ -29,7 +29,7 @@ class TestUsageMeteringService:
     @pytest.mark.asyncio
     async def test_track_event_best_effort(self):
         """track_event should not raise even if DB is unavailable."""
-        from sardis_api.services.usage_metering import UsageMeteringService
+        from server.services.usage_metering import UsageMeteringService
 
         with patch("sardis_v2_core.database.Database.get_pool", side_effect=Exception("DB down")):
             svc = UsageMeteringService()
@@ -39,7 +39,7 @@ class TestUsageMeteringService:
     @pytest.mark.asyncio
     async def test_get_usage_returns_summary(self):
         """get_usage should return a UsageSummary with correct totals."""
-        from sardis_api.services.usage_metering import UsageMeteringService
+        from server.services.usage_metering import UsageMeteringService
 
         mock_rows = [
             {"event_type": "transaction", "total": 150},
@@ -66,7 +66,7 @@ class TestUsageMeteringService:
     @pytest.mark.asyncio
     async def test_get_usage_handles_db_error(self):
         """get_usage should return empty summary on DB error."""
-        from sardis_api.services.usage_metering import UsageMeteringService
+        from server.services.usage_metering import UsageMeteringService
 
         with patch("sardis_v2_core.database.Database.get_pool", side_effect=Exception("DB down")):
             svc = UsageMeteringService()
@@ -79,25 +79,25 @@ class TestTierLimits:
     """Test tier limit definitions."""
 
     def test_dev_tier_limits(self):
-        from sardis_api.services.usage_metering import TIER_LIMITS
+        from server.services.usage_metering import TIER_LIMITS
         dev = TIER_LIMITS["dev"]
         assert dev["transaction"] == 100
         assert dev["card_issued"] == 1
 
     def test_growth_tier_limits(self):
-        from sardis_api.services.usage_metering import TIER_LIMITS
+        from server.services.usage_metering import TIER_LIMITS
         growth = TIER_LIMITS["growth"]
         assert growth["transaction"] == -1  # unlimited
         assert growth["card_issued"] == -1  # unlimited
 
     def test_starter_tier_limits(self):
-        from sardis_api.services.usage_metering import TIER_LIMITS
+        from server.services.usage_metering import TIER_LIMITS
         starter = TIER_LIMITS["starter"]
         assert starter["transaction"] == -1  # unlimited
         assert starter["card_issued"] == 25
 
     def test_enterprise_all_unlimited(self):
-        from sardis_api.services.usage_metering import TIER_LIMITS
+        from server.services.usage_metering import TIER_LIMITS
         enterprise = TIER_LIMITS["enterprise"]
         for limit in enterprise.values():
             assert limit == -1
@@ -109,7 +109,7 @@ class TestCheckLimit:
     @pytest.mark.asyncio
     async def test_under_limit_returns_true(self):
         """Should return True when under the limit."""
-        from sardis_api.services.usage_metering import UsageMeteringService, UsageSummary
+        from server.services.usage_metering import UsageMeteringService, UsageSummary
 
         svc = UsageMeteringService()
         with patch.object(svc, "get_usage", return_value=UsageSummary(
@@ -124,7 +124,7 @@ class TestCheckLimit:
     @pytest.mark.asyncio
     async def test_over_limit_returns_false(self):
         """Should return False when at or over the limit."""
-        from sardis_api.services.usage_metering import UsageMeteringService, UsageSummary
+        from server.services.usage_metering import UsageMeteringService, UsageSummary
 
         svc = UsageMeteringService()
         with patch.object(svc, "get_usage", return_value=UsageSummary(
@@ -139,7 +139,7 @@ class TestCheckLimit:
     @pytest.mark.asyncio
     async def test_unlimited_always_returns_true(self):
         """Enterprise/scale unlimited should always return True."""
-        from sardis_api.services.usage_metering import UsageMeteringService, UsageSummary
+        from server.services.usage_metering import UsageMeteringService, UsageSummary
 
         svc = UsageMeteringService()
         with patch.object(svc, "get_usage", return_value=UsageSummary(
@@ -156,16 +156,16 @@ class TestSDKMetrics:
     """Test SDK metrics service."""
 
     def test_pypi_packages_defined(self):
-        from sardis_api.services.sdk_metrics import PYPI_PACKAGES
+        from server.services.sdk_metrics import PYPI_PACKAGES
         assert "sardis" in PYPI_PACKAGES
         assert len(PYPI_PACKAGES) > 0
 
     def test_npm_packages_defined(self):
-        from sardis_api.services.sdk_metrics import NPM_PACKAGES
+        from server.services.sdk_metrics import NPM_PACKAGES
         assert "@sardis/sdk" in NPM_PACKAGES
 
     def test_sdk_metrics_router_routes(self):
-        from sardis_api.routers.sdk_metrics import router
+        from server.routes.developer.sdk_metrics import router
         paths = [route.path for route in router.routes]
         # Routes include the router prefix
         assert any("sdk-installs" in p for p in paths)

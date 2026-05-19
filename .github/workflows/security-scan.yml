@@ -7,7 +7,8 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   dependency-scan:
@@ -65,7 +66,7 @@ jobs:
 
       - name: Run Bandit security linter
         run: |
-          bandit -r sardis/ packages/sardis-api/src/ packages/sardis-core/src/ \
+          bandit -r src/sardis/ apps/api/server/ packages/sardis-core/src/ \
             -f txt \
             --severity-level medium \
             --confidence-level medium \

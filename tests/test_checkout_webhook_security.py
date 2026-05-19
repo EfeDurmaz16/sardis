@@ -1,25 +1,16 @@
 from __future__ import annotations
 
-import importlib.util
 import json
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-
-def _load_checkout_module(module_name: str):
-    repo_root = Path(__file__).resolve().parents[1]
-    checkout_path = repo_root / "packages" / "sardis-api" / "src" / "sardis_api" / "routers" / "checkout.py"
-    spec = importlib.util.spec_from_file_location(module_name, str(checkout_path))
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = mod
-    assert spec.loader is not None
-    spec.loader.exec_module(mod)
-    return mod
+from server.routes.commerce.checkout import (
+    CheckoutDependencies,
+    get_deps,
+    public_router,
+)
 
 
 class _DummyConnector:
@@ -42,12 +33,11 @@ class _DummyOrchestrator:
 
 @pytest.fixture
 def checkout_app():
-    checkout_mod = _load_checkout_module("checkout_router_security")
     app = FastAPI()
     orchestrator = _DummyOrchestrator()
-    deps = checkout_mod.CheckoutDependencies(wallet_repo=MagicMock(), orchestrator=orchestrator)
-    app.dependency_overrides[checkout_mod.get_deps] = lambda: deps
-    app.include_router(checkout_mod.public_router, prefix="/api/v2/checkout")
+    deps = CheckoutDependencies(wallet_repo=MagicMock(), orchestrator=orchestrator)
+    app.dependency_overrides[get_deps] = lambda: deps
+    app.include_router(public_router, prefix="/api/v2/checkout")
     return app, orchestrator
 
 

@@ -822,9 +822,9 @@ for event in events:
               The TypeScript SDK follows the same patterns:
             </p>
 
-            <CodeBlock>{`import { Sardis } from "@sardis/sdk"
+            <CodeBlock>{`import { SardisClient } from "@sardis/sdk"
 
-const sardis = new Sardis({ apiKey: "sk_live_..." })
+const sardis = new SardisClient({ apiKey: "sk_live_..." })
 
 const agent = await sardis.agents.create({
   name: "procurement-bot",

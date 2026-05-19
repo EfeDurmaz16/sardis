@@ -20,9 +20,9 @@ curl https://api.sardis.sh/v2/wallets \
 
 ### Getting an API Key
 
-1. Sign up at [sardis.sh](https://sardis.sh)
-2. Navigate to Settings → API Keys
-3. Create a new key (starts with `sk_`)
+For self-hosted deployments, create or provision an API key through your
+deployment's admin flow. For managed Sardis deployments, use the key issued by
+your workspace administrator. Keys start with `sk_`.
 
 **Security:** Never commit API keys to version control. Use environment variables:
 

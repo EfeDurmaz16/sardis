@@ -1,3 +1,0 @@
-Ledger location: .anchor/test-ledger
-Log: .anchor/test-ledger/validator.log
-Initializing...
