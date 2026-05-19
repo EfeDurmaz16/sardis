@@ -224,7 +224,7 @@ class TestWalletManagerCircle:
     @pytest.mark.asyncio
     async def test_create_wallet_defaults_to_circle(self):
         """The default MPC provider in CreateWalletRequest should be circle."""
-        from server.routes.wallets.wallets import CreateWalletRequest
+        from server.routes.wallets.lifecycle import CreateWalletRequest
 
         req = CreateWalletRequest(agent_id="agent_1")
         assert req.mpc_provider == "circle"

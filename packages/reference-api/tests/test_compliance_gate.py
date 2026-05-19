@@ -428,7 +428,7 @@ class TestComplianceInRouters:
     def test_wallets_has_compliance(self):
         import inspect
 
-        import server.routes.wallets.wallets as wallets
+        import server.routes.wallets.lifecycle as wallets
         source = inspect.getsource(wallets)
         assert "compliance" in source
         assert "payment_orchestrator" in source

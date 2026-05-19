@@ -53,10 +53,10 @@ require_match '_signed_policy_snapshot_required' \
   'on-chain signed policy snapshot requirement guard must be present'
 
 require_match 'cursor_scope_mismatch' \
-  'packages/reference-api/server/routes/compliance/compliance.py' \
+  'packages/reference-api/server/routes/compliance/screening.py' \
   'evidence export cursor scope binding must be enforced'
 require_match 'Opaque replay-safe pagination cursor' \
-  'packages/reference-api/server/routes/compliance/compliance.py' \
+  'packages/reference-api/server/routes/compliance/screening.py' \
   'evidence export must expose replay-safe cursor API'
 
 require_match 'card_details_invalid' \

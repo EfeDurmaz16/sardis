@@ -115,6 +115,16 @@ def main() -> int:
                     "Route implementation is nested too deeply: "
                     f"{path.relative_to(ROOT).as_posix()}"
                 )
+            if len(relative_parts) == MAX_ROUTE_RELATIVE_PARTS:
+                domain, filename = relative_parts
+                module_name = Path(filename).stem
+                if module_name == domain:
+                    errors.append(
+                        "Route implementation repeats its domain folder: "
+                        f"{path.relative_to(ROOT).as_posix()}. Rename the file "
+                        "to the route role, such as lifecycle, accounts, screening, "
+                        "records, webhooks, or capabilities."
+                    )
 
     main_py = ROOT / "packages/reference-api/server/main.py"
     if main_py.exists():

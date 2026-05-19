@@ -117,19 +117,19 @@ class TestBillingRouter:
     """Test billing router configuration."""
 
     def test_router_has_correct_prefix(self):
-        from server.routes.billing.billing import router
+        from server.routes.billing.accounts import router
         assert router.prefix == "/api/v2/billing"
 
     def test_router_has_billing_tag(self):
-        from server.routes.billing.billing import router
+        from server.routes.billing.accounts import router
         assert "billing" in router.tags
 
     def test_webhook_router_exists(self):
-        from server.routes.billing.billing import webhook_router
+        from server.routes.billing.accounts import webhook_router
         assert webhook_router.prefix == "/api/v2/billing"
 
     def test_router_has_expected_routes(self):
-        from server.routes.billing.billing import router
+        from server.routes.billing.accounts import router
         paths = [route.path for route in router.routes]
         # Routes include the router prefix
         assert any("usage" in p for p in paths)
@@ -142,13 +142,13 @@ class TestBillingModels:
     """Test Pydantic models."""
 
     def test_subscribe_request(self):
-        from server.routes.billing.billing import SubscribeRequest
+        from server.routes.billing.accounts import SubscribeRequest
         req = SubscribeRequest(plan="growth")
         assert req.plan == "growth"
         assert req.stripe_customer_id is None
 
     def test_usage_response(self):
-        from server.routes.billing.billing import UsageResponse
+        from server.routes.billing.accounts import UsageResponse
         resp = UsageResponse(
             org_id="org_test",
             period_start="2026-03-01T00:00:00",
@@ -159,7 +159,7 @@ class TestBillingModels:
         assert resp.transactions == 500
 
     def test_plan_response(self):
-        from server.routes.billing.billing import PlanResponse
+        from server.routes.billing.accounts import PlanResponse
         resp = PlanResponse(
             plan="growth",
             display_name="Growth",

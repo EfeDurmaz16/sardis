@@ -31,9 +31,9 @@ from server.routes.wallets.ramp import (
 from server.routes.wallets.ramp import (
     router as ramp_router,
 )
-from server.routes.wallets.wallets import WalletDependencies
-from server.routes.wallets.wallets import get_deps as wallets_get_deps
-from server.routes.wallets.wallets import router as wallets_router
+from server.routes.wallets.lifecycle import WalletDependencies
+from server.routes.wallets.lifecycle import get_deps as wallets_get_deps
+from server.routes.wallets.lifecycle import router as wallets_router
 from sardis_cards.offramp import (
     OfframpProvider,
     OfframpQuote,

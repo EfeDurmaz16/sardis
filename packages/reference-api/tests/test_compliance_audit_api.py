@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from server.authz import Principal, require_admin_principal, require_principal
-from server.routes.compliance.compliance import ComplianceDependencies, get_deps, router
+from server.routes.compliance.screening import ComplianceDependencies, get_deps, router
 
 
 class _MockProvider:

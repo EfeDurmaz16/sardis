@@ -10,6 +10,7 @@ from server.routes.wallets import (
     cpn,
     funding,
     funding_capabilities,
+    lifecycle,
     offramp,
     onchain_payments,
     onramp,
@@ -17,7 +18,6 @@ from server.routes.wallets import (
     treasury,
     treasury_ops,
     virtual_cards,
-    wallets,
 )
 
 
@@ -73,8 +73,8 @@ def register_wallet_core_routes(
     circle_nanopayments_client: Any,
 ) -> None:
     """Register core wallet and receive routes."""
-    def get_wallet_deps() -> wallets.WalletDependencies:
-        return wallets.WalletDependencies(  # type: ignore[arg-type]
+    def get_wallet_deps() -> lifecycle.WalletDependencies:
+        return lifecycle.WalletDependencies(  # type: ignore[arg-type]
             wallet_repo=wallet_repo,
             agent_repo=agent_repo,
             chain_executor=chain_executor,
@@ -87,8 +87,8 @@ def register_wallet_core_routes(
             circle_nanopayments_client=circle_nanopayments_client,
         )
 
-    app.dependency_overrides[wallets.get_deps] = get_wallet_deps
-    app.include_router(wallets.router, prefix="/api/v2/wallets", tags=["wallets"])
+    app.dependency_overrides[lifecycle.get_deps] = get_wallet_deps
+    app.include_router(lifecycle.router, prefix="/api/v2/wallets", tags=["wallets"])
 
 
 def register_onchain_payment_routes(

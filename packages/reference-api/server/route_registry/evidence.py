@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from server.routes.evidence import attestation, audit_anchors, evidence, evidence_export
+from server.routes.evidence import attestation, audit_anchors, evidence_export, records
 
 logger = logging.getLogger("server.api.route_registry.evidence")
 
@@ -50,6 +50,6 @@ def register_audit_anchor_routes(
 
 def register_evidence_routes(app: FastAPI) -> None:
     """Register evidence capture, export, and attestation routes."""
-    app.include_router(evidence.router, prefix="/api/v2/evidence", tags=["evidence"])
+    app.include_router(records.router, prefix="/api/v2/evidence", tags=["evidence"])
     app.include_router(evidence_export.router, prefix="/api/v2/evidence/export", tags=["evidence-export"])
     app.include_router(attestation.router, prefix="/api/v2", tags=["attestation"])

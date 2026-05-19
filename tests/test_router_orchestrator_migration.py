@@ -70,7 +70,7 @@ def _mock_orchestrator(*, success: bool = True, status: str = "submitted"):
 
 
 def _wallets_source() -> str:
-    import server.routes.wallets.wallets as wallets
+    import server.routes.wallets.lifecycle as wallets
     return inspect.getsource(wallets)
 
 

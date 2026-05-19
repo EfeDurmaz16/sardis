@@ -94,7 +94,7 @@
 - Updated on-chain payment tests from the stale `chain_executor.dispatch_payment` dependency shape to the current `payment_orchestrator.execute_chain` execution boundary.
 - Moved fiat onramp route and webhook handling to `server.routes.wallets.onramp`.
 - Updated Turnkey and Conduit onramp tests to import and patch the real wallet-domain route module instead of the compatibility wrapper.
-- Moved core wallet lifecycle, balance, transfer, and x402 wallet routes to `server.routes.wallets.wallets`.
+- Moved core wallet lifecycle, balance, transfer, and x402 wallet routes to `server.routes.wallets.lifecycle`.
 - Updated wallet x402 and remaining wallet source-inspection tests to use the real wallet-domain implementation module.
 - Moved inbound provider callback routes to `server.routes.providers`: Stripe, Stripe SPT, Mastercard, Visa TAP, partner card, CPN, and Polar callbacks now sit apart from outbound customer webhook subscriptions.
 - Moved feature-flagged provider and fiat rail adapter routes to `server.routes.providers`: Striga, Lightspark Grid, currency, and unified fiat rails now sit with provider integrations instead of the flat router bucket.

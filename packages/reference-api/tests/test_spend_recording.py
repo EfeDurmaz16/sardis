@@ -23,7 +23,7 @@ def _source(module_name: str) -> str:
     [
         "server.routes.authority.mandates",
         "server.routes.authority.mvp",
-        "server.routes.wallets.wallets",
+        "server.routes.wallets.lifecycle",
     ],
 )
 def test_payment_orchestrator_routes_execute_mandate_chains(module_name):

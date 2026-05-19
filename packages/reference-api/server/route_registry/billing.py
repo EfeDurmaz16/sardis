@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from server.routes.billing import billing, subscriptions, usage
+from server.routes.billing import accounts, subscriptions, usage
 
 
 def register_subscription_routes(
@@ -53,8 +53,8 @@ def register_subscription_routes(
 
 def register_billing_routes(app: FastAPI) -> None:
     """Register billing account and billing webhook routes."""
-    app.include_router(billing.router)
-    app.include_router(billing.webhook_router)
+    app.include_router(accounts.router)
+    app.include_router(accounts.webhook_router)
 
 
 def register_usage_routes(app: FastAPI) -> None:

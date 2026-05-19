@@ -54,7 +54,7 @@ Route implementation files should live under domain folders:
 packages/reference-api/server/routes/protocol/x402.py
 packages/reference-api/server/routes/protocol/mpp.py
 packages/reference-api/server/routes/providers/stripe_webhooks.py
-packages/reference-api/server/routes/wallets/wallets.py
+packages/reference-api/server/routes/wallets/lifecycle.py
 ```
 
 Protocol adapters use the same rule. Public HTTP handlers for x402 and MPP live
@@ -93,13 +93,19 @@ Do not add more route nesting below the domain layer. This is acceptable:
 
 ```text
 routes/protocol/x402.py
+routes/wallets/lifecycle.py
 ```
 
 This is not:
 
 ```text
 routes/protocol/payments/x402/handlers.py
+routes/wallets/wallets.py
 ```
+
+Route modules should not repeat their parent domain folder. Use the file name
+to describe the route role: `lifecycle.py`, `accounts.py`, `screening.py`,
+`records.py`, `webhooks.py`, or `capabilities.py`.
 
 `packages/reference-api/server/main.py` should remain a composition root, not a
 catch-all file for every route, provider, and bootstrap concern. New runtime

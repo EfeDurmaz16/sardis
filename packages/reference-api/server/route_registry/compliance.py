@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from server.routes.compliance import compliance, compliance_export, kyc_onboarding
+from server.routes.compliance import compliance_export, kyc_onboarding, screening
 
 
 def register_compliance_routes(
@@ -19,7 +19,7 @@ def register_compliance_routes(
     approval_service: Any,
 ) -> None:
     """Register compliance screening, KYC/KYA, audit, and provider webhook routes."""
-    app.dependency_overrides[compliance.get_deps] = lambda: compliance.ComplianceDependencies(
+    app.dependency_overrides[screening.get_deps] = lambda: screening.ComplianceDependencies(
         kyc_service=kyc_service,
         sanctions_service=sanctions_service,
         audit_store=audit_store,
@@ -27,9 +27,9 @@ def register_compliance_routes(
         policy_store=policy_store,
         approval_service=approval_service,
     )
-    app.include_router(compliance.router, prefix="/api/v2/compliance", tags=["compliance"])
-    if hasattr(compliance, "public_router"):
-        app.include_router(compliance.public_router, prefix="/api/v2/compliance", tags=["compliance"])
+    app.include_router(screening.router, prefix="/api/v2/compliance", tags=["compliance"])
+    if hasattr(screening, "public_router"):
+        app.include_router(screening.public_router, prefix="/api/v2/compliance", tags=["compliance"])
 
 
 def register_kyc_onboarding_routes(app: FastAPI) -> None:
