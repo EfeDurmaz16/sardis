@@ -37,6 +37,7 @@
     "check:oss-surface": "python3 scripts/oss_surface_check.py && python3 scripts/stale_api_path_check.py",
     "check:packages": "python3 scripts/package_maturity_check.py",
     "check:root-tests": "python3 scripts/root_test_inventory.py --check",
+    "check:contributor": "python3 scripts/oss_surface_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/root_test_inventory.py --check && uv run pytest packages/server-api/tests/test_sandbox_isolation.py tests/test_monorepo_bootstrap_guard.py -q",
     "repo:prs": "python3 scripts/pr_maintenance.py",
     "repo:prs:json": "python3 scripts/pr_maintenance.py --json",
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase"

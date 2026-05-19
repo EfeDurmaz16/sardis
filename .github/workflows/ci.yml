@@ -17,7 +17,7 @@ env:
 
 jobs:
   oss-surface:
-    name: OSS Surface Check
+    name: Contributor Gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,8 +25,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Run OSS surface check
-        run: python3 scripts/oss_surface_check.py
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      - name: Run contributor gate
+        run: pnpm run check:contributor
 
   python-lint-test:
     name: Python Lint & Test

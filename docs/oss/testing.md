@@ -7,6 +7,7 @@ Sardis uses package-owned test suites as the public contributor path.
 Run the narrowest suite that covers your change:
 
 ```bash
+pnpm run check:contributor
 uv run pytest packages/server-api/tests/ -q
 uv run pytest packages/sardis-core/tests/ -q
 uv run pytest packages/sardis-ledger/tests/ -q
@@ -18,6 +19,11 @@ pnpm --filter @sardis/mcp-server test
 The root `package.json` `test` script runs the maintained package-owned suites.
 Root `pyproject.toml` also points pytest at `packages/server-api/tests` by
 default.
+
+`pnpm run check:contributor` is the recommended first check for public OSS
+cleanup PRs. It verifies the public/private surface guard, stale API path guard,
+package maturity matrix, root-test migration inventory, and a small mixed
+root/package pytest smoke suite.
 
 ## Legacy Root Tests
 
