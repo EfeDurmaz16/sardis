@@ -13,7 +13,6 @@ when DATABASE_URL is set. Falls back to in-memory for dev/demo.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -41,6 +40,7 @@ from server.repositories.mpp_session_repository import (
     record_payment,
 )
 from server.services.mpp_execution import execute_chain_payment
+from server.services.mpp_virtual_cards import issue_mpp_virtual_card
 
 logger = logging.getLogger(__name__)
 
@@ -399,64 +399,12 @@ async def issue_virtual_card(
                 detail=f"Card amount {req.amount} exceeds remaining session budget {session['remaining']}",
             )
 
-    # ── Sandbox mode: return simulated card when not in live mode ────
-    chain_mode = os.getenv("SARDIS_CHAIN_MODE", "simulated").strip().lower()
-    sandbox_override = os.getenv("SARDIS_VIRTUAL_CARDS_SANDBOX", "").strip().lower() == "true"
-    if chain_mode != "live" or sandbox_override:
-        import hashlib
-        import uuid as _uuid
-
-        card_id = f"sandbox_card_{_uuid.uuid4().hex[:12]}"
-        now = datetime.now(UTC)
-        seed = hashlib.sha256(f"{card_id}{req.amount}{now.isoformat()[:10]}".encode()).hexdigest()
-        card_number = f"4000 00{seed[:2]} {seed[2:6]} {seed[6:10]}"
-        cvv = seed[10:13]
-        expiry_month = str((int(seed[13:15], 16) % 12) + 1).zfill(2)
-        expiry = f"{expiry_month}/{now.year + 2}"
-
-        # Deduct from session if applicable
-        if req.session_id:
-            deduct_memory_session(req.session_id, req.amount)
-
-        logger.info("Sandbox virtual card issued: %s amount=%s for org %s", card_id, req.amount, principal.org_id)
-
-        return IssueCardResponse(
-            card_id=card_id,
-            card_number=card_number,
-            cvv=cvv,
-            expiry=expiry,
-            amount=str(req.amount),
-            currency=req.currency,
-            status="ready",
-            card_type="single_use",
-            sandbox=True,
-        )
-
-    # ── Live mode: issue real card via Laso MPP service ───────────────
     try:
-        from sardis_mpp.services.laso import LasoMPPService
-
-        laso = LasoMPPService()
-        card = await laso.issue_card(amount=req.amount, currency=req.currency)
-
-        # Deduct from session if applicable
+        response = await issue_mpp_virtual_card(req)
         if req.session_id:
             deduct_memory_session(req.session_id, req.amount)
-
-        logger.info("Virtual card issued: %s amount=%s via Laso/Locus MPP", card.card_id, req.amount)
-
-        return IssueCardResponse(
-            card_id=card.card_id,
-            card_number=card.card_number,
-            cvv=card.cvv,
-            expiry=card.expiry,
-            amount=str(card.amount),
-            currency=card.currency,
-            status=card.status,
-            card_type=card.card_type,
-            sandbox=False,
-        )
-
+        logger.info("MPP virtual card issued: %s amount=%s for org %s", response.card_id, req.amount, principal.org_id)
+        return response
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

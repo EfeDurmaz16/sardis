@@ -100,6 +100,7 @@ non-HTTP logic out of the route file:
 | Session persistence | `server/repositories/mpp_session_repository.py` |
 | Policy/session orchestration | `server/domains/` or `server/services/` |
 | Provider-specific execution | `server/services/mpp_execution.py` |
+| Virtual card issuance | `server/services/mpp_virtual_cards.py` |
 | FastAPI path functions | `server/routes/protocol/mpp.py` |
 
 This keeps the contributor path shallow while preventing a single route file
