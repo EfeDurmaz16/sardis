@@ -165,6 +165,14 @@ class ProviderRuntimeConfig:
     circle_gateway_nanopayments_client: Any | None
 
 
+@dataclass(frozen=True)
+class InboundPaymentRuntimeConfig:
+    """Resolved inbound payment runtime services."""
+
+    event_bus: Any
+    inbound_payment_service: Any
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -893,6 +901,40 @@ def configure_provider_runtime(
     )
 
 
+def configure_inbound_payment_runtime(
+    *,
+    webhook_service: Any,
+    ledger_store: Any,
+    sanctions_service: Any,
+    wallet_repository: Any,
+    get_default_bus_fn: Any | None = None,
+    inbound_payment_service_cls: Any | None = None,
+) -> InboundPaymentRuntimeConfig:
+    """Create inbound payment event bus wiring and receive service."""
+    if get_default_bus_fn is None:
+        from sardis_v2_core.event_bus import get_default_bus
+
+        get_default_bus_fn = get_default_bus
+    if inbound_payment_service_cls is None:
+        from sardis_v2_core.inbound_payment_service import InboundPaymentService
+
+        inbound_payment_service_cls = InboundPaymentService
+
+    event_bus = get_default_bus_fn()
+    event_bus.set_webhook_service(webhook_service)
+    inbound_payment_service = inbound_payment_service_cls(
+        event_bus=event_bus,
+        ledger=ledger_store,
+        sanctions_service=sanctions_service,
+        wallet_repo=wallet_repository,
+    )
+
+    return InboundPaymentRuntimeConfig(
+        event_bus=event_bus,
+        inbound_payment_service=inbound_payment_service,
+    )
+
+
 def expose_runtime_state(
     app: Any,
     *,
@@ -936,6 +978,16 @@ def expose_provider_runtime_state(app: Any, *, provider_runtime: ProviderRuntime
     app.state.circle_gateway_nanopayments_client = (
         provider_runtime.circle_gateway_nanopayments_client
     )
+
+
+def expose_inbound_payment_state(
+    app: Any,
+    *,
+    inbound_runtime: InboundPaymentRuntimeConfig,
+) -> None:
+    """Expose inbound payment runtime services required by wallet routes/lifespan."""
+    app.state.inbound_payment_service = inbound_runtime.inbound_payment_service
+    app.state.event_bus = inbound_runtime.event_bus
 
 
 class DependencyContainer:

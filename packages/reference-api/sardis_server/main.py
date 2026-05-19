@@ -28,7 +28,6 @@ if should_bootstrap_monorepo_sys_path():
 
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.identity import IdentityRegistry
-from sardis_v2_core.inbound_payment_service import InboundPaymentService
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
@@ -36,10 +35,12 @@ from .dependencies import (
     configure_compliance_services,
     configure_core_services,
     configure_facility_gate_services,
+    configure_inbound_payment_runtime,
     configure_kyc_service,
     configure_payment_runtime,
     configure_provider_runtime,
     configure_sanctions_service,
+    expose_inbound_payment_state,
     expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
@@ -598,19 +599,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     circle_gateway_nanopayments_client = provider_runtime.circle_gateway_nanopayments_client
     expose_provider_runtime_state(app, provider_runtime=provider_runtime)
 
-    # Inbound payment service (deposit monitoring + receive endpoints)
-    from sardis_v2_core.event_bus import get_default_bus
-    event_bus = get_default_bus()
-    event_bus.set_webhook_service(webhook_service)
-
-    inbound_payment_service = InboundPaymentService(
-        event_bus=event_bus,
-        ledger=ledger_store,
+    inbound_runtime = configure_inbound_payment_runtime(
+        webhook_service=webhook_service,
+        ledger_store=ledger_store,
         sanctions_service=sanctions_service,
-        wallet_repo=wallet_repo,
+        wallet_repository=wallet_repo,
     )
-    app.state.inbound_payment_service = inbound_payment_service
-    app.state.event_bus = event_bus
+    inbound_payment_service = inbound_runtime.inbound_payment_service
+    expose_inbound_payment_state(app, inbound_runtime=inbound_runtime)
 
     register_wallet_core_routes(
         app,

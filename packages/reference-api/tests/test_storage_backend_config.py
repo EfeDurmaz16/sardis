@@ -7,10 +7,12 @@ from sardis_server.dependencies import (
     configure_compliance_services,
     configure_core_services,
     configure_facility_gate_services,
+    configure_inbound_payment_runtime,
     configure_kyc_service,
     configure_payment_runtime,
     configure_provider_runtime,
     configure_sanctions_service,
+    expose_inbound_payment_state,
     expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
@@ -983,6 +985,29 @@ class FakeCircleGatewayClient:
         self.timeout_seconds = timeout_seconds
 
 
+class FakeEventBus:
+    def __init__(self) -> None:
+        self.webhook_service = None
+
+    def set_webhook_service(self, webhook_service: object) -> None:
+        self.webhook_service = webhook_service
+
+
+class FakeInboundPaymentService:
+    def __init__(
+        self,
+        *,
+        event_bus: object,
+        ledger: object,
+        sanctions_service: object,
+        wallet_repo: object,
+    ) -> None:
+        self.event_bus = event_bus
+        self.ledger = ledger
+        self.sanctions_service = sanctions_service
+        self.wallet_repo = wallet_repo
+
+
 def test_configure_facility_gate_services_uses_postgres_dsn() -> None:
     config = configure_facility_gate_services(
         database_url="postgresql://localhost/sardis",
@@ -1200,3 +1225,45 @@ def test_expose_provider_runtime_state_sets_optional_provider_clients() -> None:
         app.state.circle_gateway_nanopayments_client
         is provider_runtime.circle_gateway_nanopayments_client
     )
+
+
+def test_configure_inbound_payment_runtime_wires_event_bus_and_service() -> None:
+    event_bus = FakeEventBus()
+    webhook_service = object()
+    ledger_store = object()
+    sanctions_service = object()
+    wallet_repository = object()
+
+    config = configure_inbound_payment_runtime(
+        webhook_service=webhook_service,
+        ledger_store=ledger_store,
+        sanctions_service=sanctions_service,
+        wallet_repository=wallet_repository,
+        get_default_bus_fn=lambda: event_bus,
+        inbound_payment_service_cls=FakeInboundPaymentService,
+    )
+
+    assert config.event_bus is event_bus
+    assert event_bus.webhook_service is webhook_service
+    assert isinstance(config.inbound_payment_service, FakeInboundPaymentService)
+    assert config.inbound_payment_service.event_bus is event_bus
+    assert config.inbound_payment_service.ledger is ledger_store
+    assert config.inbound_payment_service.sanctions_service is sanctions_service
+    assert config.inbound_payment_service.wallet_repo is wallet_repository
+
+
+def test_expose_inbound_payment_state_sets_lifespan_and_wallet_dependencies() -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    inbound_runtime = configure_inbound_payment_runtime(
+        webhook_service=object(),
+        ledger_store=object(),
+        sanctions_service=object(),
+        wallet_repository=object(),
+        get_default_bus_fn=FakeEventBus,
+        inbound_payment_service_cls=FakeInboundPaymentService,
+    )
+
+    expose_inbound_payment_state(app, inbound_runtime=inbound_runtime)
+
+    assert app.state.event_bus is inbound_runtime.event_bus
+    assert app.state.inbound_payment_service is inbound_runtime.inbound_payment_service
