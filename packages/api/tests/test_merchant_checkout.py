@@ -347,10 +347,13 @@ class TestMerchantCheckoutRouterWiring:
         assert "/links/{slug}" in public_paths
 
     def test_main_wires_merchant_routers(self):
+        from sardis_server.routing import commerce
+
+        source = Path(commerce.__file__).read_text()
+        assert "register_merchant_routes" in source
+        assert "merchants.router" in source
         main_path = Path(__file__).parent.parent / "sardis_server" / "main.py"
-        source = main_path.read_text()
-        assert "merchants_router" in source
-        assert "merchant_checkout_router" in source
+        assert "merchant_checkout_router" in main_path.read_text()
 
 
 class TestMerchantCheckoutSandboxSessions:
@@ -409,8 +412,9 @@ class TestMerchantCheckoutMandateSafety:
     @pytest.mark.asyncio
     async def test_mandate_validation_errors_fail_closed(self, monkeypatch):
         from fastapi import HTTPException
-        from sardis_server.routes.commerce import merchant_checkout
         from sardis_v2_core.database import Database
+
+        from sardis_server.routes.commerce import merchant_checkout
 
         session = _make_session(
             amount=Decimal("0"),

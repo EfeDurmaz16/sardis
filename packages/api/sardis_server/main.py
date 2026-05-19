@@ -75,7 +75,6 @@ from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.treasury_repository import TreasuryRepository
 from .routes.commerce import merchant_checkout as merchant_checkout_router
-from .routes.commerce import merchants as merchants_router
 from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
@@ -102,6 +101,7 @@ from .routing.commerce import (
     register_escrow_dispute_routes,
     register_invoice_routes,
     register_marketplace_routes,
+    register_merchant_routes,
     register_secure_checkout_routes,
     register_service_directory_routes,
 )
@@ -1794,13 +1794,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.settlement_service = settlement_service
     app.state.merchant_webhook_service = merchant_webhook_service
 
-    app.dependency_overrides[merchants_router.get_deps] = lambda: merchants_router.MerchantDependencies(
+    checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
+    register_merchant_routes(
+        app,
         merchant_repo=merchant_repo,
         wallet_manager=wallet_mgr,
         settlement_service=settlement_service,
         checkout_base_url=checkout_base_url,
     )
-    app.include_router(merchants_router.router, prefix="/api/v2/merchants", tags=["merchants"])
 
     # --- Stripe Connect (Sardis Connect) ---
     try:
@@ -1814,7 +1815,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except (ImportError, ValueError) as e:
         logger.warning("Stripe Connect not configured, skipping: %s", e)
 
-    checkout_base_url = os.getenv("SARDIS_CHECKOUT_BASE_URL", "https://checkout.sardis.sh")
     app.dependency_overrides[merchant_checkout_router.get_deps] = lambda: merchant_checkout_router.MerchantCheckoutDependencies(
         merchant_repo=merchant_repo,
         sardis_connector=sardis_native_connector,

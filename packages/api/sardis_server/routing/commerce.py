@@ -13,6 +13,7 @@ from sardis_server.routes.commerce import (
     escrow_disputes,
     invoices,
     marketplace,
+    merchants,
     secure_checkout,
     service_directory,
 )
@@ -89,6 +90,24 @@ def register_secure_checkout_routes(
             prefix="/api/v2/checkout",
             tags=["checkout-secure"],
         )
+
+
+def register_merchant_routes(
+    app: FastAPI,
+    *,
+    merchant_repo: Any,
+    wallet_manager: Any,
+    settlement_service: Any,
+    checkout_base_url: str,
+) -> None:
+    """Register merchant management and checkout-link routes."""
+    app.dependency_overrides[merchants.get_deps] = lambda: merchants.MerchantDependencies(
+        merchant_repo=merchant_repo,
+        wallet_manager=wallet_manager,
+        settlement_service=settlement_service,
+        checkout_base_url=checkout_base_url,
+    )
+    app.include_router(merchants.router, prefix="/api/v2/merchants", tags=["merchants"])
 
 
 def register_marketplace_routes(
