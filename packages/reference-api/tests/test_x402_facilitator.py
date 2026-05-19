@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.routes.protocol.x402 import router
 
 
