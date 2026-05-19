@@ -315,6 +315,7 @@ sardis/
 - **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
 - **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it
 - **[Development Guide](docs/development.md)** — Local setup and contribution checks
+- **[Public CI/CD Map](docs/oss/ci-cd.md)** — Which public checks protect the OSS surface
 - **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
 
 ---
