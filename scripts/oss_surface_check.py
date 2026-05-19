@@ -139,6 +139,10 @@ BLOCKED_TEXT_SNIPPETS = {
         "Public LLM metadata must not present the private hosted product as "
         "part of the OSS repo surface."
     ),
+    'url: "https://app.sardis.sh"': (
+        "The public sitemap must not index the private hosted product as part "
+        "of the OSS landing surface."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {
@@ -165,6 +169,17 @@ TEXT_FILE_SUFFIXES = {
 
 TEXT_SNIPPET_SCAN_EXCLUDED_FILES = {
     "scripts/oss_surface_check.py",
+    "docs/oss/landing-surface.md",
+}
+
+REQUIRED_DOC_SNIPPETS = {
+    "docs/oss/landing-surface.md": (
+        "Public-First Surfaces",
+        "Commercial CTA Surfaces",
+        "apps/landing/app/sitemap.ts",
+        "apps/landing/app/llms-full.txt/route.ts",
+        "product handoff links",
+    ),
 }
 
 
@@ -217,6 +232,23 @@ def main() -> int:
         for url, reason in blocked_uptime_urls:
             print(f"  - {uptime_config}: {url} ({reason})")
         print("\nMove these files to a private repository or add a public-safe replacement.")
+        return 1
+
+    missing_doc_snippets: list[tuple[str, str]] = []
+    for path, snippets in REQUIRED_DOC_SNIPPETS.items():
+        if path not in tracked:
+            missing_doc_snippets.append((path, "tracked file is missing"))
+            continue
+        with open(path, encoding="utf-8") as file:
+            text = file.read()
+        for snippet in snippets:
+            if snippet not in text:
+                missing_doc_snippets.append((path, snippet))
+
+    if missing_doc_snippets:
+        print("Required OSS surface policy documentation is incomplete:")
+        for path, snippet in missing_doc_snippets:
+            print(f"  - {path}: missing {snippet!r}")
         return 1
 
     print("OSS surface check passed: no blocked private/company paths are tracked.")

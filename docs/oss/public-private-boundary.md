@@ -16,6 +16,7 @@ Sardis should use a clean open-core split:
 | MCP and framework integrations | `packages/sardis-mcp-server/`, `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `examples/` | These are the main contribution surface for agent ecosystems. |
 | Simulators and demos | `demos/`, `examples/`, sandbox-only provider adapters | Useful for adoption when they run without private credentials. |
 | Public docs | `README.md`, `SECURITY.md`, `docs/docs/`, `docs/quickstart/`, `docs/architecture/`, `docs/oss/` | Public explanation and contributor onboarding. |
+| Public landing explanation | `apps/landing/` | May explain Sardis and link to docs/GitHub; hosted-product CTAs must follow `docs/oss/landing-surface.md`. |
 
 ## Move Private
 
@@ -36,6 +37,7 @@ Sardis should use a clean open-core split:
 3. Public CI must not depend on dashboard secrets, hosted billing, customer data, or provider accounts.
 4. Provider-specific code may stay public only when it is a generic adapter or sandbox integration.
 5. Product-only paths should be marked `private-candidate` until moved.
+6. Public indexing surfaces such as sitemap, LLM metadata, SDK examples, CLI demos, docs, and environment templates must not route contributors into the private hosted product. See `docs/oss/landing-surface.md`.
 
 ## Extraction Plan
 
