@@ -86,6 +86,11 @@ The source-layout guard enforces a 1,000-line ceiling for
 move route registration into `route_registry/` or runtime construction into a
 focused `*_runtime.py` helper first.
 
+The same guard rejects direct `app.include_router(...)`, `APIRouter`, and
+`server.routes` imports in `main.py`. New endpoint mounting belongs in
+`route_registry/<domain>.py` or `route_registry/static_routes.py`; `main.py`
+should call registrars, not know individual route modules.
+
 ## Python Libraries
 
 Published Python libraries may keep the standard `src/<import_package>` layout
@@ -102,6 +107,11 @@ from the repository root and mirrors common Python packaging practice. Do not
 flatten a published library solely to shorten the path. Flatten only when a
 package-specific migration proves that the shorter layout preserves packaging,
 editable installs, tests, and downstream imports.
+
+Application packages are different. A deployable app should not use a repeated
+shape such as `packages/sardis-api/src/sardis_api/`; the package name already
+tells contributors they are inside the API, so the import package must be short
+and role-based.
 
 ## Naming Rules
 

@@ -38,6 +38,8 @@ REQUIRED_DOC_SNIPPETS = {
         "checkout_runtime.py",
         "funding_runtime.py",
         "1,000-line ceiling",
+        "app.include_router",
+        "packages/sardis-api/src/sardis_api/",
     ),
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
@@ -52,6 +54,17 @@ REQUIRED_DOC_SNIPPETS = {
 MAX_ROUTE_RELATIVE_PARTS = 2
 MAX_MAIN_LINES = 1000
 
+FORBIDDEN_MAIN_SNIPPETS = {
+    ".include_router(": "route mounting must stay in route_registry helpers",
+    "APIRouter": "main.py must not define route implementations",
+    "from server.routes": "route implementation imports must stay out of main.py",
+    "from .routes": "route implementation imports must stay out of main.py",
+}
+
+FORBIDDEN_API_PACKAGE_PARTS = {
+    "sardis_api",
+}
+
 
 def main() -> int:
     errors: list[str] = []
@@ -60,6 +73,20 @@ def main() -> int:
         path = ROOT / relative_path
         if path.exists():
             errors.append(f"Forbidden source layout path exists: {relative_path}")
+
+    packages_root = ROOT / "packages"
+    if packages_root.exists():
+        for path in packages_root.rglob("*"):
+            if not path.is_dir():
+                continue
+            relative = path.relative_to(ROOT).as_posix()
+            if path.name in FORBIDDEN_API_PACKAGE_PARTS:
+                errors.append(
+                    "Forbidden repeated API import package exists: "
+                    f"{relative}. Use packages/reference-api/server for the "
+                    "reference API and reserve src/<import_name> for published "
+                    "library packages."
+                )
 
     for relative_path in REQUIRED_PATHS:
         path = ROOT / relative_path
@@ -91,7 +118,8 @@ def main() -> int:
 
     main_py = ROOT / "packages/reference-api/server/main.py"
     if main_py.exists():
-        main_line_count = len(main_py.read_text(encoding="utf-8").splitlines())
+        main_lines = main_py.read_text(encoding="utf-8").splitlines()
+        main_line_count = len(main_lines)
         if main_line_count > MAX_MAIN_LINES:
             errors.append(
                 "API composition root is too large: "
@@ -99,6 +127,17 @@ def main() -> int:
                 f"(limit {MAX_MAIN_LINES}). Move route registration into "
                 "route_registry/ or runtime construction into focused *_runtime.py helpers."
             )
+        for line_no, line in enumerate(main_lines, start=1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            for snippet, reason in FORBIDDEN_MAIN_SNIPPETS.items():
+                if snippet in line:
+                    errors.append(
+                        "Forbidden API composition-root route wiring in "
+                        f"packages/reference-api/server/main.py:{line_no}: "
+                        f"{reason}."
+                    )
 
     if errors:
         print("Source layout check failed:")
