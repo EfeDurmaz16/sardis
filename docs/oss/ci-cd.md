@@ -9,7 +9,7 @@ credentials, or managed-provider accounts.
 
 | Gate | Workflow | Job | What it proves | Local command |
 | --- | --- | --- | --- | --- |
-| Contributor surface | `.github/workflows/ci.yml` | `Contributor Gate` | OSS/private boundary, stale API paths, generated-artifact hygiene, public doc links, package maturity, contribution map coverage, root-test backlog drift, and a small API/bootstrap smoke suite. | `pnpm run check:contributor` |
+| Contributor surface | `.github/workflows/ci.yml` | `Contributor Gate` | OSS/private boundary, stale API paths, generated-artifact hygiene, public doc links, CI inventory, workflow secret scoping, package maturity, contribution map coverage, root-test backlog drift, and a small API/bootstrap smoke suite. | `pnpm run check:contributor` |
 | Python API and core packages | `.github/workflows/ci.yml` | `Python Lint & Test` | Ruff, maintained API tests, package-owned core/ledger/chain suites, and OpenAPI route snapshot stability. | `pnpm run check:openapi`; `uv run pytest packages/api/tests/ -q` |
 | API-focused integration gate | `.github/workflows/test-api.yml` | `API Lint & Test` | API/core lint, package API tests against test Postgres, and Facility Gate tabletop/readiness artifacts. | `uv run pytest packages/api/tests/ -q` |
 | TypeScript SDK and MCP | `.github/workflows/ci.yml` | `TypeScript SDK Build & Type Check` | SDK build, SDK typecheck, SDK tests, and MCP server build. | `pnpm run build:ts-sdks`; `pnpm run test:ts-sdks`; `pnpm run build:mcp` |
@@ -85,6 +85,9 @@ those surfaces.
 
 - Keep public CI credential-free unless a job is explicitly marked deploy-only
   or publish-only.
+- Jobs triggered by `pull_request` or `pull_request_target` must not use
+  private deploy, publish, provider, or operations secrets unless the job has a
+  job-level condition that excludes public PR events.
 - Keep dashboard/product deployment out of required OSS PR checks.
 - Pin or constrain tool versions in workflow files, especially Node, pnpm,
   Python, uv, Foundry, and security scanners.
