@@ -45,14 +45,15 @@ pnpm run check:contributor
 python3 scripts/repo_inventory.py
 python3 scripts/oss_surface_check.py
 python3 scripts/stale_api_path_check.py
+pnpm run check:contribution-map
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
 uv run pytest packages/api/tests/test_merchant_checkout.py -q
 ```
 
 `pnpm run check:contributor` is the fast public-surface gate for most docs,
-package metadata, and API routing cleanup PRs. It intentionally avoids private
-services and production provider credentials.
+package metadata, contribution-map, and API routing cleanup PRs. It
+intentionally avoids private services and production provider credentials.
 
 For contracts:
 
