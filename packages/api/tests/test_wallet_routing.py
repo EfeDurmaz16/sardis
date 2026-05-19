@@ -2,12 +2,59 @@ from fastapi import FastAPI
 
 from sardis_server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
 from sardis_server.routing.wallets import (
+    register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,
     register_funding_routes,
     register_ramp_routes,
     register_treasury_routes,
 )
+
+
+def test_register_card_routes_mounts_provider_injected_routes():
+    app = FastAPI()
+
+    register_card_routes(
+        app,
+        card_repo=object(),
+        card_provider=object(),
+        webhook_secret="webhook_secret",
+        environment="test",
+        offramp_service=object(),
+        chain_executor=object(),
+        wallet_repo=object(),
+        policy_store=object(),
+        treasury_repo=object(),
+        agent_repo=object(),
+        canonical_repo=object(),
+    )
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/cards" in paths
+    assert "/api/v2/cards/providers/readiness" in paths
+    assert "/api/v2/cards/webhooks" in paths
+
+
+def test_register_card_routes_allows_empty_fallback_router():
+    app = FastAPI()
+
+    register_card_routes(
+        app,
+        card_repo=object(),
+        card_provider=None,
+        webhook_secret=None,
+        environment="test",
+        offramp_service=None,
+        chain_executor=None,
+        wallet_repo=None,
+        policy_store=None,
+        treasury_repo=None,
+        agent_repo=None,
+        canonical_repo=None,
+    )
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/cards" not in paths
 
 
 def test_register_ramp_routes_wires_dependencies_and_public_routes():

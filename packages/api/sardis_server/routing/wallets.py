@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from sardis_server.routes.wallets import (
+    cards,
     cpn,
     funding,
     funding_capabilities,
@@ -18,6 +19,44 @@ from sardis_server.routes.wallets import (
     virtual_cards,
     wallets,
 )
+
+
+def register_card_routes(
+    app: FastAPI,
+    *,
+    card_repo: Any,
+    card_provider: Any,
+    webhook_secret: str | None,
+    environment: str,
+    offramp_service: Any,
+    chain_executor: Any,
+    wallet_repo: Any,
+    policy_store: Any,
+    treasury_repo: Any,
+    agent_repo: Any,
+    canonical_repo: Any,
+    asa_handler: Any = None,
+) -> None:
+    """Register card routes with provider-injected dependencies when available."""
+    if card_provider:
+        injected_router = cards.create_cards_router(
+            card_repo,
+            card_provider,
+            webhook_secret,
+            environment=environment,
+            offramp_service=offramp_service,
+            chain_executor=chain_executor,
+            wallet_repo=wallet_repo,
+            policy_store=policy_store,
+            treasury_repo=treasury_repo,
+            agent_repo=agent_repo,
+            canonical_repo=canonical_repo,
+            asa_handler=asa_handler,
+        )
+        app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
+        return
+
+    app.include_router(cards.router, prefix="/api/v2/cards", tags=["cards"])
 
 
 def register_wallet_core_routes(

@@ -74,7 +74,6 @@ from .providers.lithic_treasury import LithicTreasuryClient
 from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.treasury_repository import TreasuryRepository
-from .routes.wallets import cards as cards_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -164,6 +163,7 @@ from .routing.providers import (
     register_stripe_webhook_routes,
 )
 from .routing.wallets import (
+    register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,
     register_funding_routes,
@@ -1300,10 +1300,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 )
                 logger.info("Lithic ASA handler enabled")
 
-        injected_router = cards_router.create_cards_router(
-            card_repo,
-            card_provider,
-            webhook_secret,
+        register_card_routes(
+            app,
+            card_repo=card_repo,
+            card_provider=card_provider,
+            webhook_secret=webhook_secret,
             environment=settings.environment,
             offramp_service=offramp_service,
             chain_executor=chain_exec,
@@ -1314,7 +1315,6 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             canonical_repo=canonical_ledger_repo,
             asa_handler=asa_handler,
         )
-        app.include_router(injected_router, prefix="/api/v2/cards", tags=["cards"])
         register_partner_card_webhook_routes(
             app,
             card_repo=card_repo,
@@ -1330,7 +1330,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             environment=settings.environment,
         )
     else:
-        app.include_router(cards_router.router, prefix="/api/v2/cards", tags=["cards"])
+        register_card_routes(
+            app,
+            card_repo=card_repo,
+            card_provider=None,
+            webhook_secret=None,
+            environment=settings.environment,
+            offramp_service=offramp_service,
+            chain_executor=chain_exec,
+            wallet_repo=wallet_repo,
+            policy_store=policy_store,
+            treasury_repo=treasury_repo,
+            agent_repo=agent_repo,
+            canonical_repo=canonical_ledger_repo,
+        )
 
     # Stripe treasury + funding + inbound webhooks
     stripe_api_key = (
