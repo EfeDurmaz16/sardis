@@ -69,6 +69,15 @@ def register_a2a_routes(
     app.include_router(a2a_payments.router, prefix="/api/v2", tags=["a2a-payments"])
 
 
+def register_a2a_discovery_routes(app: FastAPI) -> None:
+    """Register A2A discovery routes that live outside the versioned API prefix."""
+
+    @app.get("/.well-known/agent-card.json", tags=["a2a"])
+    async def well_known_agent_card():
+        """A2A agent card for discovery at the standard .well-known path."""
+        return await a2a.get_agent_card()
+
+
 def register_mpp_routes(app: FastAPI) -> None:
     """Register MPP and MPP demo routes."""
     app.include_router(mpp.router, prefix="/api/v2/mpp", tags=["mpp"])

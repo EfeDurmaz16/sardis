@@ -150,6 +150,7 @@ from .routing.policy import (
     register_policy_simulation_routes,
 )
 from .routing.protocol import (
+    register_a2a_discovery_routes,
     register_a2a_routes,
     register_erc8183_routes,
     register_mpp_routes,
@@ -1815,13 +1816,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_streaming_payment_routes(app)
     register_protocol_v1_routes(app)
     register_ramp_edge_routes(app)
-
-    # A2A discovery: /.well-known/agent-card.json
-    @app.get("/.well-known/agent-card.json", tags=["a2a"])
-    async def well_known_agent_card():
-        """A2A agent card for discovery (standard .well-known path)."""
-        from .routes.protocol.a2a import get_agent_card
-        return await get_agent_card()
+    register_a2a_discovery_routes(app)
 
     # -----------------------------------------------------------------------
     # Health endpoints (extracted to health.py)
