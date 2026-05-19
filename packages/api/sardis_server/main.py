@@ -75,10 +75,6 @@ from .repositories.canonical_ledger_repository import CanonicalLedgerRepository
 from .repositories.facility_gate_repository import FacilityGateRepository
 from .repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from .repositories.treasury_repository import TreasuryRepository
-from .routes.authority import credentials as credentials_router
-from .routes.authority import facility_requests as facility_requests_router
-from .routes.authority import mandate_delegation as mandate_delegation_router
-from .routes.authority import mandate_subscriptions as mandate_subscriptions_router
 from .routes.commerce import checkout as checkout_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
@@ -111,7 +107,13 @@ from .routing.accounts import (
 )
 from .routing.admin import register_admin_routes
 from .routing.agents import register_agent_lifecycle_routes, register_agent_registry_routes
-from .routing.authority import register_authority_routes
+from .routing.authority import (
+    register_authority_routes,
+    register_credential_routes,
+    register_facility_request_routes,
+    register_mandate_delegation_routes,
+    register_mandate_subscription_routes,
+)
 from .routing.billing import (
     register_billing_routes,
     register_subscription_routes,
@@ -1782,33 +1784,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_developer_utility_routes(app, is_production=is_production)
 
     register_evidence_routes(app)
-    from sardis_server.services.facility_gate_authority import (
-        RepositoryBackedFacilityMandateResolver,
-        RepositoryBackedFacilityPolicyResolver,
-        RepositoryBackedFacilityRecordResolver,
-    )
-
-    app.dependency_overrides[facility_requests_router.get_deps] = lambda: facility_requests_router.FacilityDependencies(
+    register_facility_request_routes(
+        app,
         repository=facility_gate_repo,
         adapter=facility_gate_adapter,
         approval_service=approval_service,
-        mandate_resolver=RepositoryBackedFacilityMandateResolver(
-            facility_gate_repo,
-            fallback=facility_requests_router.SnapshotBackedFacilityMandateResolver(),
-        ),
-        facility_resolver=RepositoryBackedFacilityRecordResolver(
-            facility_gate_repo,
-            fallback=facility_requests_router.SnapshotBackedFacilityRecordResolver(
-                facility_requests_router._facility_from_snapshot
-            ),
-        ),
-        policy_resolver=RepositoryBackedFacilityPolicyResolver(facility_gate_repo),
-    )
-    app.include_router(facility_requests_router.router, prefix="/api/v2/facility-requests", tags=["facility-gate"])
-    app.include_router(
-        facility_requests_router.provider_webhooks_router,
-        prefix="/api/v2/provider-webhooks",
-        tags=["facility-gate-webhooks"],
     )
 
     # SSO (SAML/OIDC) authentication
@@ -1898,7 +1878,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_agent_registry_routes(app)
 
     # --- Delegated payment rails routers ---
-    app.include_router(credentials_router.router)
+    register_credential_routes(app)
     register_execution_mode_routes(app)
     register_settlement_routes(app)
 
@@ -1916,12 +1896,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Protocol v1.0 routers
     register_payment_object_routes(app)
     app.include_router(funding_router.router, prefix="/api/v2", tags=["funding"])
-    app.include_router(mandate_delegation_router.router, prefix="/api/v2", tags=["mandate-delegation"])
+    register_mandate_delegation_routes(app)
     register_fx_routes(app)
     register_usage_routes(app)
     register_escrow_dispute_routes(app)
     register_batch_payment_routes(app)
-    app.include_router(mandate_subscriptions_router.router, prefix="/api/v2", tags=["mandate-subscriptions"])
+    register_mandate_subscription_routes(app)
     register_streaming_payment_routes(app)
     register_protocol_v1_routes(app)
     app.include_router(offramp_router.router, prefix="/api/v2", tags=["offramp"])

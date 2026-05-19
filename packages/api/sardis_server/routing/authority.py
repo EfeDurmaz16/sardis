@@ -6,8 +6,10 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from sardis_server.routes.authority import ap2, mandates, mvp
+from sardis_server.routes.authority import ap2, credentials, facility_requests, mandates, mvp
 from sardis_server.routes.authority import approval_config as approval_config_router
+from sardis_server.routes.authority import mandate_delegation as mandate_delegation_router
+from sardis_server.routes.authority import mandate_subscriptions as mandate_subscriptions_router
 
 try:
     from sardis_server.routes.authority import approvals as approvals_router
@@ -104,3 +106,68 @@ def register_authority_routes(
         logger.info("Approvals router not yet available (dependencies not complete)")
 
     return approval_service
+
+
+def register_facility_request_routes(
+    app: FastAPI,
+    *,
+    repository: Any,
+    adapter: Any,
+    approval_service: Any,
+) -> None:
+    """Register facility gate request and provider webhook routes."""
+    from sardis_server.services.facility_gate_authority import (
+        RepositoryBackedFacilityMandateResolver,
+        RepositoryBackedFacilityPolicyResolver,
+        RepositoryBackedFacilityRecordResolver,
+    )
+
+    app.dependency_overrides[facility_requests.get_deps] = lambda: facility_requests.FacilityDependencies(
+        repository=repository,
+        adapter=adapter,
+        approval_service=approval_service,
+        mandate_resolver=RepositoryBackedFacilityMandateResolver(
+            repository,
+            fallback=facility_requests.SnapshotBackedFacilityMandateResolver(),
+        ),
+        facility_resolver=RepositoryBackedFacilityRecordResolver(
+            repository,
+            fallback=facility_requests.SnapshotBackedFacilityRecordResolver(
+                facility_requests._facility_from_snapshot
+            ),
+        ),
+        policy_resolver=RepositoryBackedFacilityPolicyResolver(repository),
+    )
+    app.include_router(
+        facility_requests.router,
+        prefix="/api/v2/facility-requests",
+        tags=["facility-gate"],
+    )
+    app.include_router(
+        facility_requests.provider_webhooks_router,
+        prefix="/api/v2/provider-webhooks",
+        tags=["facility-gate-webhooks"],
+    )
+
+
+def register_credential_routes(app: FastAPI) -> None:
+    """Register delegated credential authority routes."""
+    app.include_router(credentials.router)
+
+
+def register_mandate_delegation_routes(app: FastAPI) -> None:
+    """Register scoped mandate delegation routes."""
+    app.include_router(
+        mandate_delegation_router.router,
+        prefix="/api/v2",
+        tags=["mandate-delegation"],
+    )
+
+
+def register_mandate_subscription_routes(app: FastAPI) -> None:
+    """Register recurring mandate subscription routes."""
+    app.include_router(
+        mandate_subscriptions_router.router,
+        prefix="/api/v2",
+        tags=["mandate-subscriptions"],
+    )
