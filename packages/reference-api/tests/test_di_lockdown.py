@@ -80,7 +80,7 @@ class TestChainExecutorPrivate:
 
     def test_private_cached_property_exists(self):
         """DependencyContainer must define ``_chain_executor`` as a cached_property."""
-        from sardis_server.dependencies import DependencyContainer
+        from server.dependencies import DependencyContainer
 
         descriptor = DependencyContainer.__dict__.get("_chain_executor")
         assert descriptor is not None, "_chain_executor not found on DependencyContainer"
@@ -90,7 +90,7 @@ class TestChainExecutorPrivate:
 
     def test_public_accessor_emits_deprecation_warning(self):
         """Accessing ``container.chain_executor`` must emit DeprecationWarning."""
-        from sardis_server.dependencies import DependencyContainer
+        from server.dependencies import DependencyContainer
 
         container = DependencyContainer.__new__(DependencyContainer)
         container._cache = {}
@@ -108,7 +108,7 @@ class TestChainExecutorPrivate:
 
     def test_public_accessor_returns_same_instance(self):
         """Deprecated accessor must return the exact same object as _chain_executor."""
-        from sardis_server.dependencies import DependencyContainer
+        from server.dependencies import DependencyContainer
 
         container = DependencyContainer.__new__(DependencyContainer)
         container._cache = {}
@@ -121,7 +121,7 @@ class TestChainExecutorPrivate:
 
     def test_payment_orchestrator_uses_private_chain_executor(self):
         """payment_orchestrator property must reference self._chain_executor, not self.chain_executor."""
-        from sardis_server.dependencies import DependencyContainer
+        from server.dependencies import DependencyContainer
 
         source = inspect.getsource(DependencyContainer.payment_orchestrator.func)  # type: ignore[union-attr]
         # Must use the private accessor
@@ -135,7 +135,7 @@ class TestChainExecutorPrivate:
 
     def test_payment_orchestrator_no_deprecation_warning(self):
         """Creating payment_orchestrator must not trigger the deprecation warning."""
-        from sardis_server.dependencies import DependencyContainer
+        from server.dependencies import DependencyContainer
 
         container = DependencyContainer.__new__(DependencyContainer)
         container._cache = {}

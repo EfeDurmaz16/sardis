@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
-from sardis_server.routing.wallets import (
+from server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
+from server.routing.wallets import (
     register_card_routes,
     register_cpn_routes,
     register_funding_capability_routes,

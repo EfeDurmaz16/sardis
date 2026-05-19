@@ -7,8 +7,8 @@ from decimal import Decimal
 import pytest
 from fastapi import HTTPException
 
-from sardis_server.authz import Principal
-from sardis_server.execution_mode import (
+from server.authz import Principal
+from server.execution_mode import (
     STAGING_LIVE_MODE,
     enforce_staging_live_guard,
     get_pilot_execution_policy,

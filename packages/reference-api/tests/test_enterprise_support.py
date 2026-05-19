@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.repositories.enterprise_support_repository import EnterpriseSupportRepository
-from sardis_server.routes.developer.enterprise_support import (
+from server.authz import Principal, require_principal
+from server.repositories.enterprise_support_repository import EnterpriseSupportRepository
+from server.routes.developer.enterprise_support import (
     EnterpriseSupportDependencies,
     get_deps,
     router,

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from sardis_server.dependencies import (
+from server.dependencies import (
     configure_api_support_services,
     configure_compliance_services,
     configure_core_services,

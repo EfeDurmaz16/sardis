@@ -59,7 +59,7 @@ async def budget_threshold_alert_example():
     """
     Example showing budget threshold alerts.
     """
-    from sardis_server.routes.operations.alerts import dispatch_alert
+    from server.routes.operations.alerts import dispatch_alert
     from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # Simulate budget tracking
@@ -268,7 +268,7 @@ async def integrate_alerts_in_orchestrator():
 
     This would be added to sardis_v2_core/orchestrator.py
     """
-    from sardis_server.routes.operations.alerts import dispatch_alert
+    from server.routes.operations.alerts import dispatch_alert
     from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
 
     # After successful payment execution:

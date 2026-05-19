@@ -41,7 +41,7 @@ the product warranted.
 Keep the API import package as:
 
 ```text
-packages/reference-api/sardis_server/
+packages/reference-api/server/
 ```
 
 Rename the monorepo package directory from:
@@ -59,7 +59,7 @@ packages/reference-api/
 This keeps a clear server-only import path:
 
 ```python
-from sardis_server.main import create_app
+from server.main import create_app
 ```
 
 The Python distribution name remains `sardis-api`. That is a package/release
@@ -88,7 +88,7 @@ The current migration sequence is:
 1. Confirm the deployable FastAPI package is still the OSS reference server, not only a protocol schema package.
 2. Rename the package directory with `git mv packages/server-api packages/reference-api`.
 3. Update path references in packaging config, scripts, CI, Docker, OpenAPI, docs, and tests.
-4. Rename the server import package from `sardis` to `sardis_server`.
+4. Rename the server import package from `sardis` to `server`.
 5. Keep the root public SDK import package as `src/sardis`.
 6. Run compile, focused tests, OpenAPI, package maturity, and whitespace checks.
 
@@ -97,7 +97,7 @@ The current migration sequence is:
 Minimum validation for the server package-directory rename:
 
 ```bash
-python3 -m compileall -q packages/reference-api/sardis_server packages/reference-api/scripts/generate_openapi.py api/index.py
+python3 -m compileall -q packages/reference-api/server packages/reference-api/scripts/generate_openapi.py api/index.py
 PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/reference-api/tests/test_funding_bootstrap.py packages/reference-api/tests/test_sandbox_isolation.py packages/reference-api/tests/test_facility_requests_router.py -q
 pnpm check:openapi
 python3 scripts/package_maturity_check.py
@@ -117,14 +117,14 @@ uv run pytest packages/reference-api/tests -q
 The contributor-facing API path is now:
 
 ```text
-packages/reference-api/sardis_server/...
+packages/reference-api/server/...
 ```
 
 This still contains two naming layers:
 
 - `packages/reference-api` is the monorepo package boundary: the deployable
   reference API service.
-- `sardis_server` is the Python import boundary: the package imported by
+- `server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
 
 That remaining naming layer is intentional only at the Python import boundary.
@@ -132,20 +132,20 @@ Do not rename it to a bare `server` package unless a dedicated migration proves
 all ASGI, pytest, editable install, and deployment imports remain unambiguous.
 The old `src/` layer was removed from the API package because `packages/reference-api` is
 already the package boundary in this monorepo. Public docs may reference
-`packages/reference-api/sardis_server` when they point to internal server code, but they
+`packages/reference-api/server` when they point to internal server code, but they
 must not describe the removed `sardis-api/src/sardis_api` shape or the obsolete
 `sardis/routes` import path. The active source tree must also avoid an extra
-generic `routers/` bucket below `sardis_server`. A contributor should land in a
+generic `routers/` bucket below `server`. A contributor should land in a
 domain path such as:
 
 ```text
-packages/reference-api/sardis_server/routes/protocol/x402.py
-packages/reference-api/sardis_server/routes/protocol/mpp.py
-packages/reference-api/sardis_server/routes/commerce/merchant_checkout.py
+packages/reference-api/server/routes/protocol/x402.py
+packages/reference-api/server/routes/protocol/mpp.py
+packages/reference-api/server/routes/commerce/merchant_checkout.py
 ```
 
 The clean migration target is therefore domain placement below
-`sardis_server`, plus accurate public docs and generated artifacts.
+`server`, plus accurate public docs and generated artifacts.
 
 For day-to-day navigation, use the clean tree helper instead of raw `find`:
 
@@ -158,12 +158,12 @@ The helper hides ignored local artifacts such as `node_modules`, `dist`,
 `.venv`, `.pytest_cache`, `.ruff_cache`, `.vercel`, `.omc`, and
 `__pycache__`. Those directories should not influence source-layout decisions.
 
-Remaining path cleanup should focus below `sardis_server`: continue moving
+Remaining path cleanup should focus below `server`: continue moving
 route registration concerns out of the oversized `main.py` into domain
 registrars. Local monorepo import bootstrapping now lives in
-`sardis_server.bootstrap`, so `main.py` is closer to a composition root instead
+`server.bootstrap`, so `main.py` is closer to a composition root instead
 of a mixed bootstrap plus app-factory module. Developer utility routes
 (`sdk_metrics`, simulation, non-production dev routes, and sandbox onboarding)
-now register through `sardis_server.routing.developer` instead of being wired
+now register through `server.routing.developer` instead of being wired
 inline in `main.py`. The legacy `routers/` bucket and the unused
 `sardis_v2_api` package have been removed.

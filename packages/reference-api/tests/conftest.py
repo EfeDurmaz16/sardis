@@ -36,7 +36,7 @@ os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_32chars"  # Min 32 chars required
 os.environ["SARDIS_TEST_API_KEY"] = "sk_test_demo123"  # nosecret: test-only dummy key
 
-from sardis_server.main import create_app
+from server.main import create_app
 
 
 @pytest.fixture(scope="session")

@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.evidence import evidence_export
+from server.authz import Principal, require_principal
+from server.routes.evidence import evidence_export
 
 
 def _build_client() -> TestClient:

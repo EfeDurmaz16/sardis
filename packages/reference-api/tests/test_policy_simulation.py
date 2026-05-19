@@ -6,8 +6,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.policy import policy_simulation
+from server.authz import Principal, require_principal
+from server.routes.policy import policy_simulation
 
 
 def _build_client() -> TestClient:

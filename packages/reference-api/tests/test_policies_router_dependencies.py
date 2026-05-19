@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, optional_principal, require_principal
-from sardis_server.routes.policy import policies
+from server.authz import Principal, optional_principal, require_principal
+from server.routes.policy import policies
 
 
 class _Policy:

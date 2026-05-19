@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.routes.wallets.cards import create_cards_router
+from server.routes.wallets.cards import create_cards_router
 
 
 @pytest.fixture

@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_server.routes.wallets.onramp import (
+from server.routes.wallets.onramp import (
     _CHAIN_TO_STRIPE_NETWORK,
     StripeOnrampLinkResponse,
     StripeOnrampSessionRequest,
@@ -233,7 +233,7 @@ class TestGetClientIp:
 
 try:
     from fastapi.testclient import TestClient
-    from sardis_server.main import create_app
+    from server.main import create_app
 
     _APP_AVAILABLE = True
 except Exception:
@@ -402,7 +402,7 @@ class TestCreateStripeOnrampSession:
 
     @pytest.mark.asyncio
     async def test_success(self):
-        from sardis_server.routes.wallets.onramp import _create_stripe_onramp_session
+        from server.routes.wallets.onramp import _create_stripe_onramp_session
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -420,7 +420,7 @@ class TestCreateStripeOnrampSession:
 
         with (
             patch.dict(os.environ, {"STRIPE_SECRET_KEY": "test_fixture_key"}),
-            patch("sardis_server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
+            patch("server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
         ):
             result = await _create_stripe_onramp_session(
                 wallet_address="0x1234567890abcdef1234567890abcdef12345678",
@@ -450,7 +450,7 @@ class TestCreateStripeOnrampSession:
 
     @pytest.mark.asyncio
     async def test_no_api_key_raises_503(self):
-        from sardis_server.routes.wallets.onramp import _create_stripe_onramp_session
+        from server.routes.wallets.onramp import _create_stripe_onramp_session
 
         env_copy = os.environ.copy()
         env_copy.pop("STRIPE_SECRET_KEY", None)
@@ -471,7 +471,7 @@ class TestCreateStripeOnrampSession:
 
     @pytest.mark.asyncio
     async def test_stripe_error_raises_502(self):
-        from sardis_server.routes.wallets.onramp import _create_stripe_onramp_session
+        from server.routes.wallets.onramp import _create_stripe_onramp_session
 
         mock_response = MagicMock()
         mock_response.status_code = 400
@@ -485,7 +485,7 @@ class TestCreateStripeOnrampSession:
 
         with (
             patch.dict(os.environ, {"STRIPE_SECRET_KEY": "test_fixture_key"}),
-            patch("sardis_server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
+            patch("server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await _create_stripe_onramp_session(
@@ -503,7 +503,7 @@ class TestCreateStripeOnrampSession:
     @pytest.mark.asyncio
     async def test_evm_addresses_populated(self):
         """All common EVM chain addresses should be set to the same address."""
-        from sardis_server.routes.wallets.onramp import _create_stripe_onramp_session
+        from server.routes.wallets.onramp import _create_stripe_onramp_session
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -518,7 +518,7 @@ class TestCreateStripeOnrampSession:
 
         with (
             patch.dict(os.environ, {"STRIPE_SECRET_KEY": "test_fixture_key"}),
-            patch("sardis_server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
+            patch("server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
         ):
             await _create_stripe_onramp_session(
                 wallet_address=wallet,
@@ -537,7 +537,7 @@ class TestCreateStripeOnrampSession:
     @pytest.mark.asyncio
     async def test_no_amount_omits_source_amount(self):
         """When amount is None, source_amount should not be in the request."""
-        from sardis_server.routes.wallets.onramp import _create_stripe_onramp_session
+        from server.routes.wallets.onramp import _create_stripe_onramp_session
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -550,7 +550,7 @@ class TestCreateStripeOnrampSession:
 
         with (
             patch.dict(os.environ, {"STRIPE_SECRET_KEY": "test_fixture_key"}),
-            patch("sardis_server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
+            patch("server.routes.wallets.onramp.httpx.AsyncClient", return_value=mock_client),
         ):
             await _create_stripe_onramp_session(
                 wallet_address="0x1234",
@@ -577,13 +577,13 @@ class TestStripeOnrampLinkUrl:
     @pytest.mark.asyncio
     async def test_link_url_contains_expected_params(self):
         """The URL should contain destination_currency, network, and wallet."""
-        from sardis_server.routes.wallets.onramp import get_stripe_onramp_link
+        from server.routes.wallets.onramp import get_stripe_onramp_link
 
         # Mock the wallet resolution and auth
         wallet_addr = "0xAABBCCDDEEFF00112233445566778899AABBCCDD"
         mock_principal = MagicMock()
 
-        with patch("sardis_server.routes.wallets.onramp._resolve_wallet_address", return_value=wallet_addr):
+        with patch("server.routes.wallets.onramp._resolve_wallet_address", return_value=wallet_addr):
             resp = await get_stripe_onramp_link(
                 wallet_id="wal_test",
                 chain="base",
@@ -602,12 +602,12 @@ class TestStripeOnrampLinkUrl:
     @pytest.mark.asyncio
     async def test_link_url_no_amount(self):
         """When amount is None, source_amount should not be in the URL."""
-        from sardis_server.routes.wallets.onramp import get_stripe_onramp_link
+        from server.routes.wallets.onramp import get_stripe_onramp_link
 
         wallet_addr = "0x1234567890abcdef1234567890abcdef12345678"
         mock_principal = MagicMock()
 
-        with patch("sardis_server.routes.wallets.onramp._resolve_wallet_address", return_value=wallet_addr):
+        with patch("server.routes.wallets.onramp._resolve_wallet_address", return_value=wallet_addr):
             resp = await get_stripe_onramp_link(
                 wallet_id="wal_test",
                 chain="ethereum",
@@ -624,12 +624,12 @@ class TestStripeOnrampLinkUrl:
     @pytest.mark.asyncio
     async def test_link_wallet_not_found(self):
         """Should raise 404 if wallet cannot be resolved."""
-        from sardis_server.routes.wallets.onramp import get_stripe_onramp_link
+        from server.routes.wallets.onramp import get_stripe_onramp_link
 
         mock_principal = MagicMock()
 
         with patch(
-            "sardis_server.routes.wallets.onramp._resolve_wallet_address",
+            "server.routes.wallets.onramp._resolve_wallet_address",
             side_effect=ValueError("Wallet wal_bad not found"),
         ):
             with pytest.raises(HTTPException) as exc_info:

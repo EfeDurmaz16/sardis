@@ -21,7 +21,7 @@ from fastapi.testclient import TestClient
 class TestLightsparkGrid:
     @pytest.fixture
     def client(self):
-        from sardis_server.routes.providers.lightspark import router
+        from server.routes.providers.lightspark import router
         app = FastAPI()
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False)
@@ -77,7 +77,7 @@ class TestLightsparkGrid:
 class TestStriga:
     @pytest.fixture
     def client(self):
-        from sardis_server.routes.providers.striga import router
+        from server.routes.providers.striga import router
         app = FastAPI()
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False)
@@ -120,7 +120,7 @@ class TestStriga:
 class TestCurrency:
     @pytest.fixture
     def client(self):
-        from sardis_server.routes.providers.currency import router
+        from server.routes.providers.currency import router
         app = FastAPI()
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False)
@@ -150,7 +150,7 @@ class TestCurrency:
 class TestFiatRails:
     @pytest.fixture
     def client(self):
-        from sardis_server.routes.providers.fiat_rails import router
+        from server.routes.providers.fiat_rails import router
         app = FastAPI()
         app.include_router(router)
         return TestClient(app, raise_server_exceptions=False)
@@ -184,11 +184,11 @@ class TestFiatRails:
 class TestCounterpartyTrustProfile:
     @pytest.fixture
     def client(self):
-        from sardis_server.routes.commerce.counterparties import router
+        from server.routes.commerce.counterparties import router
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/counterparties")
 
-        from sardis_server.authz import Principal, require_principal
+        from server.authz import Principal, require_principal
         app.dependency_overrides[require_principal] = lambda: Principal(
             kind="api_key",
             organization_id="test_org",
@@ -242,7 +242,7 @@ class TestRampBridgeFallback:
 
         offramp_service = AsyncMock()
 
-        from sardis_server.routes.wallets.ramp import RampDependencies
+        from server.routes.wallets.ramp import RampDependencies
         return RampDependencies(
             wallet_repo=wallet_repo,
             agent_repo=agent_repo,
@@ -251,13 +251,13 @@ class TestRampBridgeFallback:
 
     @pytest.fixture
     def client(self, mock_deps):
-        from sardis_server.routes.wallets.ramp import get_deps
-        from sardis_server.routes.wallets.ramp import router as ramp_router
+        from server.routes.wallets.ramp import get_deps
+        from server.routes.wallets.ramp import router as ramp_router
 
         app = FastAPI()
         app.dependency_overrides[get_deps] = lambda: mock_deps
 
-        from sardis_server.authz import Principal, require_principal
+        from server.authz import Principal, require_principal
         app.dependency_overrides[require_principal] = lambda: Principal(
             kind="api_key",
             organization_id="org_demo",

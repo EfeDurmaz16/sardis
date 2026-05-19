@@ -10,8 +10,8 @@ from fastapi.testclient import TestClient
 from sardis_v2_core.database import Database
 from sardis_v2_core.wallets import Wallet
 
-from sardis_server.authz import Principal, require_principal
-import sardis_server.routes.wallets.wallets as wallets
+import server.routes.wallets.wallets as wallets
+from server.authz import Principal, require_principal
 
 
 class _StubWalletRepo:

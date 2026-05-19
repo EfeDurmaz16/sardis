@@ -14,7 +14,7 @@ Prerequisites:
 
 Run:
     # Terminal 1: Start the API server
-    uvicorn sardis_server.main:create_app --factory --port 8000
+    uvicorn server.main:create_app --factory --port 8000
 
     # Terminal 2: Run this demo
     python examples/api_demo.py
@@ -66,13 +66,13 @@ async def main():
             else:
                 print(f"  ✗ API returned status {response.status_code}")
                 print("  Make sure the API server is running:")
-                print("    uvicorn sardis_server.main:create_app --factory --port 8000")
+                print("    uvicorn server.main:create_app --factory --port 8000")
                 return
         except httpx.ConnectError:
             print("  ✗ Could not connect to API server")
             print()
             print("  Please start the API server first:")
-            print("    uvicorn sardis_server.main:create_app --factory --port 8000")
+            print("    uvicorn server.main:create_app --factory --port 8000")
             print()
             print("  Then run this demo again.")
             return

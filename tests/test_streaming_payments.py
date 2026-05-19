@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.money_movement.streaming_payments import (
+from server.authz import Principal, require_principal
+from server.routes.money_movement.streaming_payments import (
     _active_streams,
     router,
 )
@@ -132,7 +132,7 @@ class TestOpenStream:
             "sardis_chain.tempo.stream_channel.TempoStreamChannel",
             return_value=mock_channel,
         ), patch(
-            "sardis_server.routes.money_movement.streaming_payments._persist_stream_meta",
+            "server.routes.money_movement.streaming_payments._persist_stream_meta",
             new_callable=AsyncMock,
         ):
             resp = client.post("/payments/stream/open", json={
@@ -163,7 +163,7 @@ class TestOpenStream:
             "sardis_chain.tempo.stream_channel.TempoStreamChannel",
             return_value=mock_channel,
         ), patch(
-            "sardis_server.routes.money_movement.streaming_payments._persist_stream_meta",
+            "server.routes.money_movement.streaming_payments._persist_stream_meta",
             new_callable=AsyncMock,
         ):
             resp = client.post("/payments/stream/open", json={

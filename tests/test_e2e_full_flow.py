@@ -17,23 +17,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.wallets.cards import create_cards_router
-from sardis_server.routes.wallets.ramp import (
+from server.authz import Principal, require_principal
+from server.routes.wallets.cards import create_cards_router
+from server.routes.wallets.ramp import (
     RampDependencies,
 )
-from sardis_server.routes.wallets.ramp import (
+from server.routes.wallets.ramp import (
     get_deps as ramp_get_deps,
 )
-from sardis_server.routes.wallets.ramp import (
+from server.routes.wallets.ramp import (
     public_router as ramp_public_router,
 )
-from sardis_server.routes.wallets.ramp import (
+from server.routes.wallets.ramp import (
     router as ramp_router,
 )
-from sardis_server.routes.wallets.wallets import WalletDependencies
-from sardis_server.routes.wallets.wallets import get_deps as wallets_get_deps
-from sardis_server.routes.wallets.wallets import router as wallets_router
+from server.routes.wallets.wallets import WalletDependencies
+from server.routes.wallets.wallets import get_deps as wallets_get_deps
+from server.routes.wallets.wallets import router as wallets_router
 from sardis_cards.offramp import (
     OfframpProvider,
     OfframpQuote,

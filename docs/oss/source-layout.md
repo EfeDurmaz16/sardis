@@ -9,7 +9,7 @@ reference API, a public SDK, a protocol primitive, or a provider integration.
 The reference API uses this active source layout:
 
 ```text
-packages/reference-api/sardis_server/
+packages/reference-api/server/
 ```
 
 Do not reintroduce any of these old shapes:
@@ -18,22 +18,22 @@ Do not reintroduce any of these old shapes:
 packages/sardis-api/src/sardis_api/
 packages/reference-api/src/sardis_api/
 packages/reference-api/src/sardis/
-packages/reference-api/sardis_server/routers/
+packages/reference-api/server/routers/
 ```
 
 The package has two explicit boundaries:
 
 - `packages/reference-api/` is the monorepo package boundary for the deployable
   reference API service.
-- `sardis_server/` is the Python import boundary for the FastAPI application.
+- `server/` is the Python import boundary for the FastAPI application.
 
 This is not meant to say "Sardis API" twice. The first layer is a repository
 package, and the second layer is a Python import package. We keep
-`sardis_server` instead of a generic `server` package because imports such as
+`server` instead of a generic `server` package because imports such as
 `server.main` are collision-prone and unclear in test runners, ASGI loaders, and
 editable installs.
 
-The short version: `packages/reference-api/sardis_server` is the maximum acceptable API
+The short version: `packages/reference-api/server` is the maximum acceptable API
 nesting. `packages/sardis-api/src/sardis_api` is not acceptable because it says
 the same thing three times.
 
@@ -45,16 +45,16 @@ import package.
 Route implementation files should live under domain folders:
 
 ```text
-packages/reference-api/sardis_server/routes/protocol/x402.py
-packages/reference-api/sardis_server/routes/protocol/mpp.py
-packages/reference-api/sardis_server/routes/providers/stripe_webhooks.py
-packages/reference-api/sardis_server/routes/wallets/wallets.py
+packages/reference-api/server/routes/protocol/x402.py
+packages/reference-api/server/routes/protocol/mpp.py
+packages/reference-api/server/routes/providers/stripe_webhooks.py
+packages/reference-api/server/routes/wallets/wallets.py
 ```
 
 FastAPI registration and dependency wiring should live under:
 
 ```text
-packages/reference-api/sardis_server/routing/
+packages/reference-api/server/routing/
 ```
 
 Do not add more route nesting below the domain layer. This is acceptable:
@@ -69,7 +69,7 @@ This is not:
 routes/protocol/payments/x402/handlers.py
 ```
 
-`packages/reference-api/sardis_server/main.py` should remain a composition root, not a
+`packages/reference-api/server/main.py` should remain a composition root, not a
 catch-all file for every route, provider, and bootstrap concern.
 
 ## Python Libraries

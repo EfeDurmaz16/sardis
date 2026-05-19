@@ -72,11 +72,11 @@ class TestMPPRouterImport:
     """Verify MPP router can be imported."""
 
     def test_router_import(self):
-        from sardis_server.routes.protocol.mpp import router
+        from server.routes.protocol.mpp import router
         assert router is not None
 
     def test_router_has_endpoints(self):
-        from sardis_server.routes.protocol.mpp import router
+        from server.routes.protocol.mpp import router
         paths = [r.path for r in router.routes]
         assert "/sessions" in paths
         assert "/sessions/{session_id}" in paths

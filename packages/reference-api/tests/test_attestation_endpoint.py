@@ -12,8 +12,8 @@ from sardis_v2_core.attestation_envelope import (
     verify_attestation_signature,
 )
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.evidence.attestation import router
+from server.authz import Principal, require_principal
+from server.routes.evidence.attestation import router
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

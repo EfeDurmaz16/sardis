@@ -1,5 +1,5 @@
 """
-Comprehensive tests for sardis_server.middleware.exceptions module.
+Comprehensive tests for server.middleware.exceptions module.
 
 Tests cover:
 - RFC 7807 Problem Details format compliance
@@ -30,7 +30,7 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis_server.middleware.exceptions import (
+from server.middleware.exceptions import (
     ERROR_TYPE_BASE,
     ERROR_TYPES,
     ExceptionHandlerMiddleware,

@@ -4,8 +4,8 @@ import asyncio
 import random
 
 import pytest
-from sardis_server.canonical_state_machine import normalize_stablecoin_event
-from sardis_server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from server.canonical_state_machine import normalize_stablecoin_event
+from server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
 
 
 @pytest.mark.asyncio

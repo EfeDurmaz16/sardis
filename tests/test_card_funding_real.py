@@ -79,7 +79,7 @@ def mock_wallet_repo():
 
 @pytest.fixture
 def app_with_cards(mock_card_repo, mock_card_provider, mock_offramp_service, mock_chain_executor, mock_wallet_repo):
-    from sardis_server.routes.wallets.cards import create_cards_router
+    from server.routes.wallets.cards import create_cards_router
     app = FastAPI()
     router = create_cards_router(
         card_repo=mock_card_repo,
@@ -128,7 +128,7 @@ class TestRealCardFunding:
 
     def test_fund_card_fallback_no_offramp(self, mock_card_repo, mock_card_provider):
         """Without offramp_service, stablecoin funding returns 503; fiat falls back to provider."""
-        from sardis_server.routes.wallets.cards import create_cards_router
+        from server.routes.wallets.cards import create_cards_router
         app = FastAPI()
         router = create_cards_router(
             card_repo=mock_card_repo,

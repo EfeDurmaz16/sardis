@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_server.routes.authority.ap2 import PROMPT_INJECTION_PATTERNS
+from server.routes.authority.ap2 import PROMPT_INJECTION_PATTERNS
 
 # ── Prompt injection detection tests ─────────────────────────────────
 
@@ -68,7 +68,7 @@ class TestAP2RequestValidation:
 
     def test_compliance_check_result_defaults(self):
         """ComplianceCheckResult has sane defaults."""
-        from sardis_server.routes.authority.ap2 import ComplianceCheckResult
+        from server.routes.authority.ap2 import ComplianceCheckResult
 
         result = ComplianceCheckResult(passed=True)
         assert result.passed is True
@@ -77,7 +77,7 @@ class TestAP2RequestValidation:
 
     def test_dependencies_dataclass(self):
         """Dependencies dataclass is constructable with required fields."""
-        from sardis_server.routes.authority.ap2 import Dependencies
+        from server.routes.authority.ap2 import Dependencies
 
         deps = Dependencies(
             verifier=MagicMock(),
@@ -96,7 +96,7 @@ class TestAP2Helpers:
     """Test AP2 module helper functions."""
 
     def test_is_truthy_env(self):
-        from sardis_server.routes.authority.ap2 import _is_truthy_env
+        from server.routes.authority.ap2 import _is_truthy_env
         assert _is_truthy_env("1") is True
         assert _is_truthy_env("true") is True
         assert _is_truthy_env("yes") is True
@@ -106,7 +106,7 @@ class TestAP2Helpers:
         assert _is_truthy_env("") is False
 
     def test_risk_rank_ordering(self):
-        from sardis_server.routes.authority.ap2 import _risk_rank
+        from server.routes.authority.ap2 import _risk_rank
         assert _risk_rank("low") < _risk_rank("medium")
         assert _risk_rank("medium") < _risk_rank("high")
         assert _risk_rank("high") < _risk_rank("severe")
@@ -114,7 +114,7 @@ class TestAP2Helpers:
         assert _risk_rank("unknown") == 0
 
     def test_sanctions_risk_level_extracts_value(self):
-        from sardis_server.routes.authority.ap2 import _sanctions_risk_level
+        from server.routes.authority.ap2 import _sanctions_risk_level
 
         # Object with .risk_level attribute
         mock = MagicMock()

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 from fastapi import HTTPException
-from sardis_server.middleware.agent_payment_rate_limit import (
+from server.middleware.agent_payment_rate_limit import (
     AgentPaymentRateLimitConfig,
     InMemoryAgentSlidingWindowLimiter,
     enforce_agent_payment_rate_limit,

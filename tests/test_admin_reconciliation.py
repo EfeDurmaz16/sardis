@@ -112,14 +112,14 @@ def _build_app(
         "SARDIS_ENVIRONMENT": "dev",
         "BETTER_AUTH_JWKS_URL": "",
     }):
-        import sardis_server.routes.accounts.auth as _auth_mod
+        import server.routes.accounts.auth as _auth_mod
         importlib.reload(_auth_mod)
 
-        from sardis_server.authz import Principal
-        from sardis_server.middleware.mfa import require_mfa_if_enabled
-        from sardis_server.routes.admin.control import require_admin_rate_limit
-        from sardis_server.routes.admin.reconciliation import router as recon_router
-        from sardis_server.routes.accounts.auth import UserInfo
+        from server.authz import Principal
+        from server.middleware.mfa import require_mfa_if_enabled
+        from server.routes.admin.control import require_admin_rate_limit
+        from server.routes.admin.reconciliation import router as recon_router
+        from server.routes.accounts.auth import UserInfo
 
         app = FastAPI()
 
@@ -147,7 +147,7 @@ def _build_app(
         # The router uses Depends(require_admin_rate_limit(is_sensitive=True)).
         # Since require_admin_rate_limit is a factory, we patch it at module level.
         with patch(
-            "sardis_server.routes.admin.reconciliation.require_admin_rate_limit",
+            "server.routes.admin.reconciliation.require_admin_rate_limit",
             _fake_rate_limit,
         ):
             # Re-import to pick up the patch (router is created at import time,

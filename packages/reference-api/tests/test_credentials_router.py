@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.authority.credentials import router
+from server.authz import Principal, require_principal
+from server.routes.authority.credentials import router
 
 
 class _Credential:

@@ -1,6 +1,6 @@
 """Tests for monorepo sys.path bootstrap guard behavior."""
 
-from sardis_server.bootstrap import should_bootstrap_monorepo_sys_path
+from server.bootstrap import should_bootstrap_monorepo_sys_path
 
 
 def test_monorepo_bootstrap_enabled_for_dev(monkeypatch) -> None:

@@ -5,8 +5,8 @@ from types import SimpleNamespace
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.protocol import a2a
+from server.authz import Principal, require_principal
+from server.routes.protocol import a2a
 
 
 class _AgentRepo:

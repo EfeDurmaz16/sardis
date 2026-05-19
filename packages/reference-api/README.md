@@ -32,7 +32,7 @@ pip install sardis-api[dev]
 
 ```python
 import uvicorn
-from sardis_server import create_app
+from server import create_app
 
 # Create the FastAPI application
 app = create_app()
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 Or use the CLI:
 
 ```bash
-uvicorn sardis_server.main:create_app --factory --host 0.0.0.0 --port 8000
+uvicorn server.main:create_app --factory --host 0.0.0.0 --port 8000
 ```
 
 ## API Endpoints
@@ -133,7 +133,7 @@ Interactive API documentation is available at:
 
 ```
 packages/reference-api/
-└── sardis_server/
+└── server/
     ├── main.py           # FastAPI composition root
     ├── bootstrap.py      # Local monorepo import bootstrap for dev/test
     ├── dependencies.py   # FastAPI dependencies

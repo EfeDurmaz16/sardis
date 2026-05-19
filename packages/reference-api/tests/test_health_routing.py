@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 
-from sardis_server.routing.health import register_health_routes
+from server.routing.health import register_health_routes
 
 
 def test_register_health_routes_mounts_liveness_readiness_and_discovery_paths() -> None:

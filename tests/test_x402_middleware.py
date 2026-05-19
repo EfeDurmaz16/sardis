@@ -7,7 +7,7 @@ import json
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.middleware.x402 import (
+from server.middleware.x402 import (
     X402MiddlewareConfig,
     X402PaymentMiddleware,
     X402PricingRegistry,

@@ -7,8 +7,8 @@ import time
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.routes.money_movement.ledger import LedgerDependencies, get_deps
-from sardis_server.routes.money_movement.ledger import router as ledger_router
+from server.routes.money_movement.ledger import LedgerDependencies, get_deps
+from server.routes.money_movement.ledger import router as ledger_router
 from sardis_ledger.records import ChainReceipt, LedgerStore
 from sardis_v2_core.mandates import PaymentMandate, VCProof
 

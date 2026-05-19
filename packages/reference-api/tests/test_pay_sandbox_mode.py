@@ -1,4 +1,4 @@
-"""Tests for sardis_server.pay() sandbox/simulated mode.
+"""Tests for server.pay() sandbox/simulated mode.
 
 When chain_mode != "live", the /pay endpoint returns a simulated successful
 payment without hitting the orchestrator or requiring funded wallets.
@@ -70,15 +70,15 @@ def app_sandbox(mock_orchestrator):
     """App with chain_mode='simulated' (sandbox mode)."""
     from unittest.mock import patch
 
-    with patch("sardis_server.routes.money_movement.pay.IntentMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.CartMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.PaymentMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.MandateChain", StubMandateChain):
+    with patch("server.routes.money_movement.pay.IntentMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.CartMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.PaymentMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.MandateChain", StubMandateChain):
 
         from fastapi import FastAPI
 
-        from sardis_server.authz import require_principal
-        from sardis_server.routes.money_movement.pay import PayDependencies, get_deps, router
+        from server.authz import require_principal
+        from server.routes.money_movement.pay import PayDependencies, get_deps, router
 
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/pay")
@@ -97,15 +97,15 @@ def app_live(mock_orchestrator):
     """App with chain_mode='live' (live mode)."""
     from unittest.mock import patch
 
-    with patch("sardis_server.routes.money_movement.pay.IntentMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.CartMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.PaymentMandate", StubMandate), \
-         patch("sardis_server.routes.money_movement.pay.MandateChain", StubMandateChain):
+    with patch("server.routes.money_movement.pay.IntentMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.CartMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.PaymentMandate", StubMandate), \
+         patch("server.routes.money_movement.pay.MandateChain", StubMandateChain):
 
         from fastapi import FastAPI
 
-        from sardis_server.authz import require_principal
-        from sardis_server.routes.money_movement.pay import PayDependencies, get_deps, router
+        from server.authz import require_principal
+        from server.routes.money_movement.pay import PayDependencies, get_deps, router
 
         app = FastAPI()
         app.include_router(router, prefix="/api/v2/pay")

@@ -34,7 +34,7 @@ for _pkg in ("sardis-core", "api"):
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_server.middleware.auth import (
+from server.middleware.auth import (
     APIKey,
     APIKeyManager,
     AuthContext,

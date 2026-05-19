@@ -1,8 +1,8 @@
 import pytest
 from fastapi import FastAPI
 
-from sardis_server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
-from sardis_server.routing.commerce import (
+from server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
+from server.routing.commerce import (
     register_checkout_routes,
     register_merchant_checkout_routes,
     register_merchant_routes,

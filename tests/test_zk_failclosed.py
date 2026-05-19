@@ -162,7 +162,7 @@ async def test_saml_handler_returns_501() -> None:
     """SAMLHandler.validate_response must raise HTTPException(501),
     not NotImplementedError (which would surface as 500)."""
     from fastapi import HTTPException
-    from sardis_server.middleware.sso import SAMLHandler, SSOConfig
+    from server.middleware.sso import SAMLHandler, SSOConfig
 
     config = SSOConfig(
         id="test",
@@ -191,7 +191,7 @@ def test_saml_handler_source_no_notimplementederror() -> None:
         / "packages"
         / "api"
         / "src"
-        / "sardis_server"
+        / "server"
         / "middleware"
         / "sso.py"
     )
@@ -216,7 +216,7 @@ def test_no_stub_proof_references() -> None:
         / "packages"
         / "api"
         / "src"
-        / "sardis_server"
+        / "server"
         / "routes"
     )
 

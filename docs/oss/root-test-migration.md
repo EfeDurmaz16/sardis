@@ -26,7 +26,7 @@ Maintained tests live under package-owned `tests/` directories such as `packages
 
 1. Do not add new tests to root `tests/` unless the test genuinely spans multiple packages and has no clearer package owner.
 2. When touching a root test, either move it to the owning package suite or mark it as archive-candidate in the PR.
-3. API route tests should import `sardis_server.routes.<domain>` or test HTTP behavior through the maintained API app.
+3. API route tests should import `server.routes.<domain>` or test HTTP behavior through the maintained API app.
 4. Compatibility imports such as `sardis_api` and `sardis.routers` must not be reintroduced.
 5. Cross-package tests should document the packages they bind together and their required credentials or local services.
 

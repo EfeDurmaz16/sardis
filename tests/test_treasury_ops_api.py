@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.authz import Principal, require_admin_principal
-from sardis_server.canonical_state_machine import normalize_stablecoin_event
-from sardis_server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
-from sardis_server.routes.wallets import treasury_ops as treasury_ops_router
+from server.authz import Principal, require_admin_principal
+from server.canonical_state_machine import normalize_stablecoin_event
+from server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
+from server.routes.wallets import treasury_ops as treasury_ops_router
 
 
 @pytest.mark.asyncio

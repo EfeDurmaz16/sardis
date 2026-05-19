@@ -398,7 +398,7 @@ class TestVisaTapWebhookEndpoint:
         """Build an httpx AsyncClient against a minimal FastAPI app."""
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
-        from sardis_server.routes.providers.visa_tap_webhooks import router
+        from server.routes.providers.visa_tap_webhooks import router
 
         app = FastAPI()
         app.include_router(router)

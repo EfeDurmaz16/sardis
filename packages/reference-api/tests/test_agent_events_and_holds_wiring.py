@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_admin_principal, require_principal
-from sardis_server.routes.agents import agent_events
-from sardis_server.routes.money_movement import holds
+from server.authz import Principal, require_admin_principal, require_principal
+from server.routes.agents import agent_events
+from server.routes.money_movement import holds
 
 
 def _principal() -> Principal:

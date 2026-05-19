@@ -5,8 +5,8 @@ from datetime import date
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_server.authz import Principal, require_principal
-from sardis_server.routes.operations import outcomes, reliability, reports
+from server.authz import Principal, require_principal
+from server.routes.operations import outcomes, reliability, reports
 
 
 def _principal() -> Principal:

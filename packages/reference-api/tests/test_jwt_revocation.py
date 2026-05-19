@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 import secrets
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from sardis_server.routes.accounts.auth import create_jwt_token
+from server.routes.accounts.auth import create_jwt_token
 
 
 @pytest.mark.asyncio

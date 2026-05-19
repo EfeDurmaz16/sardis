@@ -13,13 +13,13 @@ from sardis_v2_core.trust_graph import TrustPathNode, TrustPathResult
 @pytest.fixture
 def app():
     """Create test FastAPI app with fides_identity router."""
-    from sardis_server.routes.identity.fides_identity import router
+    from server.routes.identity.fides_identity import router
 
     test_app = FastAPI()
     test_app.include_router(router, prefix="/api/v2")
 
     # Override auth dependency to bypass authentication
-    from sardis_server.authz import Principal, require_principal
+    from server.authz import Principal, require_principal
     test_app.dependency_overrides[require_principal] = lambda: Principal(
         kind="api_key",
         organization_id="test_org",
@@ -37,7 +37,7 @@ def client(app):
 @pytest.fixture(autouse=True)
 def reset_singletons():
     """Reset module-level singletons between tests."""
-    import sardis_server.routes.identity.fides_identity as mod
+    import server.routes.identity.fides_identity as mod
     mod._did_bridge = None
     mod._fides_adapter = None
     mod._agit_engine = None
@@ -62,7 +62,7 @@ def test_register_fides_did(client):
         verification_signature="sig_hex",
     )
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.post(
             "/api/v2/agents/agent_001/fides/register",
             json={
@@ -86,7 +86,7 @@ def test_register_fides_did_invalid(client):
     mock_bridge = MagicMock(spec=DIDBridge)
     mock_bridge.register_fides_did.side_effect = DIDRegistrationError("Invalid format")
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.post(
             "/api/v2/agents/agent_001/fides/register",
             json={
@@ -111,7 +111,7 @@ def test_get_fides_identity(client):
         verified_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.get("/api/v2/agents/agent_001/fides/identity")
 
     assert resp.status_code == 200
@@ -125,7 +125,7 @@ def test_get_fides_identity_not_linked(client):
     mock_bridge = MagicMock(spec=DIDBridge)
     mock_bridge.get_mapping.return_value = None
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.get("/api/v2/agents/agent_001/fides/identity")
 
     assert resp.status_code == 200
@@ -154,8 +154,8 @@ def test_get_trust_score_with_fides(client):
     mock_bridge = MagicMock(spec=DIDBridge)
     mock_bridge.resolve_to_fides.return_value = "did:fides:agent_001"
 
-    with patch("sardis_server.routes.identity.fides_identity._get_trust_scorer", return_value=mock_scorer), \
-         patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_trust_scorer", return_value=mock_scorer), \
+         patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.get("/api/v2/agents/agent_001/trust-score")
 
     assert resp.status_code == 200
@@ -182,8 +182,8 @@ def test_trust_path_query(client):
         hops=1,
     ))
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge), \
-         patch("sardis_server.routes.identity.fides_identity._get_fides_adapter", return_value=mock_adapter):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge), \
+         patch("server.routes.identity.fides_identity._get_fides_adapter", return_value=mock_adapter):
         resp = client.get("/api/v2/agents/agent_001/trust-path/did:fides:target")
 
     assert resp.status_code == 200
@@ -198,7 +198,7 @@ def test_trust_path_no_fides_did(client):
     mock_bridge = MagicMock(spec=DIDBridge)
     mock_bridge.resolve_to_fides.return_value = None
 
-    with patch("sardis_server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
+    with patch("server.routes.identity.fides_identity._get_did_bridge", return_value=mock_bridge):
         resp = client.get("/api/v2/agents/agent_001/trust-path/did:fides:target")
 
     assert resp.status_code == 404
@@ -214,7 +214,7 @@ def test_policy_history_endpoint(client):
         {"commit_hash": "def456", "created_at": "2026-01-02T00:00:00", "signed": True, "signer_did": "did:fides:signer"},
     ]
 
-    with patch("sardis_server.routes.identity.fides_identity._get_agit_engine", return_value=mock_engine):
+    with patch("server.routes.identity.fides_identity._get_agit_engine", return_value=mock_engine):
         resp = client.get("/api/v2/agents/agent_001/policy-history")
 
     assert resp.status_code == 200
@@ -233,7 +233,7 @@ def test_policy_chain_verify_endpoint(client):
         chain_length=5,
     )
 
-    with patch("sardis_server.routes.identity.fides_identity._get_agit_engine", return_value=mock_engine):
+    with patch("server.routes.identity.fides_identity._get_agit_engine", return_value=mock_engine):
         resp = client.post("/api/v2/agents/agent_001/policy-history/verify")
 
     assert resp.status_code == 200

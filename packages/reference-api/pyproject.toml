@@ -84,11 +84,11 @@ Changelog = "https://github.com/EfeDurmaz16/sardis/blob/main/CHANGELOG.md"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["sardis_server"]
+packages = ["server"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/sardis_server",
+    "/server",
     "/tests",
     "/scripts",
     "/README.md",
@@ -118,7 +118,7 @@ ignore = ["E501", "B008", "B904", "E402", "N806", "N801", "N818", "F821", "B017"
 "tests/**" = ["F401", "F811", "F841", "E722", "B007", "N802"]
 
 [tool.coverage.run]
-source = ["sardis_server"]
+source = ["server"]
 branch = true
 
 [tool.coverage.report]

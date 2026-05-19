@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # POST /api/v2/kyc/initiate
 # ---------------------------------------------------------------------------
@@ -15,7 +14,7 @@ import pytest
 async def test_initiate_returns_503_without_didit_key(client, monkeypatch):
     """POST /kyc/initiate returns 503 when DIDIT_API_KEY is not set."""
     monkeypatch.delenv("DIDIT_API_KEY", raising=False)
-    monkeypatch.setattr("sardis_server.routes.compliance.kyc_onboarding._didit_provider", None)
+    monkeypatch.setattr("server.routes.compliance.kyc_onboarding._didit_provider", None)
 
     resp = await client.post("/api/v2/kyc/initiate")
     assert resp.status_code == 503
@@ -36,7 +35,7 @@ async def test_initiate_returns_redirect_when_didit_provider_configured(client, 
             )
 
     monkeypatch.setattr(
-        "sardis_server.routes.compliance.kyc_onboarding._get_didit_provider",
+        "server.routes.compliance.kyc_onboarding._get_didit_provider",
         lambda: FakeDiditProvider(),
     )
 

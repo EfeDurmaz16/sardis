@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-import sardis_server.routes.providers.stripe_webhooks as stripe_webhooks
-from sardis_server.routes.providers.stripe_webhooks import (
+import server.routes.providers.stripe_webhooks as stripe_webhooks
+from server.routes.providers.stripe_webhooks import (
     ISSUING_EVENTS,
     TREASURY_EVENTS,
     StripeWebhookDeps,

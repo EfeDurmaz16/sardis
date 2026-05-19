@@ -32,7 +32,7 @@ for _pkg in ("sardis-core", "api"):
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_server.middleware.rbac import (
+from server.middleware.rbac import (
     RBACMiddleware,
     get_org_context,
     get_user_id,

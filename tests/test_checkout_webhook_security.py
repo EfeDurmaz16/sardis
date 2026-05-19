@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.routes.commerce.checkout import (
+from server.routes.commerce.checkout import (
     CheckoutDependencies,
     get_deps,
     public_router,

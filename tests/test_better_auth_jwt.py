@@ -80,7 +80,7 @@ class TestVerifyJwtTokenHS256:
             "BETTER_AUTH_JWKS_URL": "",
         }):
             # Reload so module-level env reads pick up the new values.
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             importlib.reload(_auth_mod)
             return _auth_mod
 
@@ -169,7 +169,7 @@ class TestJwtSecretSecurityCheck:
             "SARDIS_ENVIRONMENT": "production",
             "BETTER_AUTH_JWKS_URL": "",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             with pytest.raises(RuntimeError, match="too short"):
                 importlib.reload(_auth_mod)
 
@@ -180,7 +180,7 @@ class TestJwtSecretSecurityCheck:
             "SARDIS_ENVIRONMENT": "prod",
             "BETTER_AUTH_JWKS_URL": "",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
                 importlib.reload(_auth_mod)
 
@@ -191,7 +191,7 @@ class TestJwtSecretSecurityCheck:
             "SARDIS_ENVIRONMENT": "dev",
             "BETTER_AUTH_JWKS_URL": "",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             # Should not raise
             importlib.reload(_auth_mod)
             assert _auth_mod.JWT_SECRET == "short"
@@ -226,7 +226,7 @@ class TestVerifyJwtTokenJWKS:
             "SARDIS_ENVIRONMENT": "dev",
             "BETTER_AUTH_JWKS_URL": "https://auth.sardis.sh/.well-known/jwks.json",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             importlib.reload(_auth_mod)
 
             # Inject the mock JWKS client after reload
@@ -270,7 +270,7 @@ class TestVerifyJwtTokenJWKS:
             "SARDIS_ENVIRONMENT": "dev",
             "BETTER_AUTH_JWKS_URL": "https://auth.sardis.sh/.well-known/jwks.json",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             importlib.reload(_auth_mod)
 
             original_client = _auth_mod._jwks_client
@@ -290,7 +290,7 @@ class TestVerifyJwtTokenJWKS:
             "SARDIS_ENVIRONMENT": "dev",
             "BETTER_AUTH_JWKS_URL": "",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             importlib.reload(_auth_mod)
             assert _auth_mod._jwks_client is None
 
@@ -315,7 +315,7 @@ class TestGetCurrentUserEndpoint:
             "SARDIS_ENVIRONMENT": "dev",
             "BETTER_AUTH_JWKS_URL": "",
         }):
-            import sardis_server.routes.accounts.auth as _auth_mod
+            import server.routes.accounts.auth as _auth_mod
             importlib.reload(_auth_mod)
 
             app = FastAPI()

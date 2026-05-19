@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_server.routes.wallets.cards import create_cards_router
+from server.routes.wallets.cards import create_cards_router
 
 
 def _auth_headers() -> dict[str, str]:
@@ -14,7 +14,7 @@ def _auth_headers() -> dict[str, str]:
     import secrets
     import time
 
-    from sardis_server.routes.accounts.auth import create_jwt_token
+    from server.routes.accounts.auth import create_jwt_token
 
     now = int(time.time())
     token = create_jwt_token(

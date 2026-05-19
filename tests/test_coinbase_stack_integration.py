@@ -281,7 +281,7 @@ class TestSwapPaymentFlow:
 
 class TestSwapAPIModels:
     def test_swap_quote_request(self):
-        from sardis_server.routes.money_movement.swap import SwapQuoteRequest
+        from server.routes.money_movement.swap import SwapQuoteRequest
 
         req = SwapQuoteRequest(
             from_token="USDC",
@@ -292,7 +292,7 @@ class TestSwapAPIModels:
         assert req.slippage_bps == 100
 
     def test_bridge_quote_request(self):
-        from sardis_server.routes.money_movement.bridge import BridgeQuoteRequest
+        from server.routes.money_movement.bridge import BridgeQuoteRequest
 
         req = BridgeQuoteRequest(
             source_chain_id=1,

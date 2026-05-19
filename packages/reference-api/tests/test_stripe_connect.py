@@ -448,14 +448,14 @@ class TestStripeConnectSettlement:
 
 class TestStripeConnectRouterWiring:
     def test_connect_router_has_endpoints(self):
-        from sardis_server.routes.providers.stripe_connect import router
+        from server.routes.providers.stripe_connect import router
         paths = [r.path for r in router.routes]
         assert "/{merchant_id}/connect" in paths
         assert "/{merchant_id}/connect/status" in paths
         assert "/{merchant_id}/connect/refresh" in paths
 
     def test_webhook_router_has_endpoint(self):
-        from sardis_server.routes.providers.stripe_connect import webhook_router
+        from server.routes.providers.stripe_connect import webhook_router
         paths = [r.path for r in webhook_router.routes]
         # webhook_router has prefix="/stripe-connect", so path is /stripe-connect/webhooks
         assert "/stripe-connect/webhooks" in paths
@@ -463,7 +463,7 @@ class TestStripeConnectRouterWiring:
     def test_stripe_connect_registrar_mounts_public_routes(self):
         from fastapi import FastAPI
 
-        from sardis_server.routing.providers import register_stripe_connect_routes
+        from server.routing.providers import register_stripe_connect_routes
 
         app = FastAPI()
         register_stripe_connect_routes(
@@ -523,7 +523,7 @@ class TestMerchantStripeFields:
 
 class TestMerchantResponseStripeFields:
     def test_merchant_response_includes_stripe_fields(self):
-        from sardis_server.routes.commerce.merchants import MerchantResponse
+        from server.routes.commerce.merchants import MerchantResponse
         fields = MerchantResponse.model_fields
         assert "stripe_account_id" in fields
         assert "stripe_onboarding_state" in fields
@@ -531,13 +531,13 @@ class TestMerchantResponseStripeFields:
         assert "stripe_payouts_enabled" in fields
 
     def test_settlement_preference_allows_stripe_connect(self):
-        from sardis_server.routes.commerce.merchants import CreateMerchantRequest
+        from server.routes.commerce.merchants import CreateMerchantRequest
         req = CreateMerchantRequest(name="Test", settlement_preference="stripe_connect")
         assert req.settlement_preference == "stripe_connect"
 
     def test_settlement_preference_rejects_invalid(self):
         from pydantic import ValidationError
 
-        from sardis_server.routes.commerce.merchants import CreateMerchantRequest
+        from server.routes.commerce.merchants import CreateMerchantRequest
         with pytest.raises(ValidationError):
             CreateMerchantRequest(name="Test", settlement_preference="bitcoin")

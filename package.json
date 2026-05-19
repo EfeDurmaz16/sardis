@@ -51,7 +51,7 @@
     "repo:prs:json": "python3 scripts/pr_maintenance.py --json",
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase",
     "repo:tree": "python3 scripts/repo_tree.py",
-    "repo:api-tree": "python3 scripts/repo_tree.py --root packages/reference-api/sardis_server --max-depth 3 --files"
+    "repo:api-tree": "python3 scripts/repo_tree.py --root packages/reference-api/server --max-depth 3 --files"
   },
   "pnpm": {
     "overrides": {

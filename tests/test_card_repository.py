@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_server.repositories.card_repository import CardRepository
+from server.repositories.card_repository import CardRepository
 
 
 def _make_pool_and_conn():

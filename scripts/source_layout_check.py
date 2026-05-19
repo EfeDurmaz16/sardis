@@ -15,24 +15,24 @@ FORBIDDEN_PATHS = (
     "packages/api/src",
     "packages/api/sardis_api",
     "packages/api/sardis",
-    "packages/api/sardis_server",
+    "packages/api/server",
     "packages/reference-api/src",
     "packages/reference-api/sardis_api",
     "packages/reference-api/sardis",
-    "packages/reference-api/sardis_server/routers",
+    "packages/reference-api/server/routers",
 )
 
 REQUIRED_PATHS = (
-    "packages/reference-api/sardis_server",
-    "packages/reference-api/sardis_server/routes",
-    "packages/reference-api/sardis_server/routing",
+    "packages/reference-api/server",
+    "packages/reference-api/server/routes",
+    "packages/reference-api/server/routing",
     "docs/oss/source-layout.md",
 )
 
 REQUIRED_DOC_SNIPPETS = {
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
-        "packages/reference-api/sardis_server",
+        "packages/reference-api/server",
     ),
     "docs/oss/testing.md": (
         "python3 scripts/source_layout_check.py",
@@ -69,7 +69,7 @@ def main() -> int:
                     f"{snippet}"
                 )
 
-    route_root = ROOT / "packages/reference-api/sardis_server/routes"
+    route_root = ROOT / "packages/reference-api/server/routes"
     if route_root.exists():
         for path in route_root.rglob("*.py"):
             relative_parts = path.relative_to(route_root).parts
@@ -84,10 +84,10 @@ def main() -> int:
         for error in errors:
             print(f"  - {error}")
         print(
-            "\nThe API source tree must stay at packages/reference-api/sardis_server. "
+            "\nThe API source tree must stay at packages/reference-api/server. "
             "Do not reintroduce packages/sardis-api, packages/api, "
             "packages/reference-api/src, "
-            "sardis_api, or the legacy sardis_server/routers bucket. Route "
+            "sardis_api, or the legacy server/routers bucket. Route "
             "implementations should stay at routes/<domain>/<module>.py."
         )
         return 1

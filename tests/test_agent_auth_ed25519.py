@@ -10,8 +10,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-import sardis_server.routes.identity.agent_auth as agent_auth
-from sardis_server.routes.identity.agent_auth import _verify_agent_jwt
+import server.routes.identity.agent_auth as agent_auth
+from server.routes.identity.agent_auth import _verify_agent_jwt
 
 
 def _make_request_with_jwt(token: str | None) -> MagicMock:

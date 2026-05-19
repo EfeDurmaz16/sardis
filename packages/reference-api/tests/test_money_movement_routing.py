@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from sardis_server.routing.money_movement import register_swap_routes
+from server.routing.money_movement import register_swap_routes
 
 
 def test_register_swap_routes_mounts_swap_exchange_and_verification_paths() -> None:

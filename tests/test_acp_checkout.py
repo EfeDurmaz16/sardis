@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clean_acp_state():
     """Reset in-memory ACP state between tests."""
-    from sardis_server.routes.protocol.acp import _delegate_tokens, _sessions
+    from server.routes.protocol.acp import _delegate_tokens, _sessions
     _sessions.clear()
     _delegate_tokens.clear()
     yield
@@ -37,8 +37,8 @@ def _clean_acp_state():
 @pytest.fixture
 def acp_app():
     """Create a test FastAPI app with the ACP router."""
-    from sardis_server.authz import Principal, require_principal
-    from sardis_server.routes.protocol.acp import router
+    from server.authz import Principal, require_principal
+    from server.routes.protocol.acp import router
 
     app = FastAPI()
 
@@ -400,7 +400,7 @@ class TestCompleteCheckoutSession:
     def test_complete_with_delegate_payment(self, client):
         """Complete with delegate payment token (dev mode)."""
         # First create a delegate token
-        from sardis_server.routes.protocol.acp import _delegate_tokens
+        from server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_test123"] = {
             "id": "vt_test123",
             "stripe_payment_method_id": None,
@@ -430,7 +430,7 @@ class TestCompleteCheckoutSession:
 
     def test_complete_delegate_wrong_session(self, client):
         """Reject delegate token scoped to a different session."""
-        from sardis_server.routes.protocol.acp import _delegate_tokens
+        from server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_scoped"] = {
             "id": "vt_scoped",
             "stripe_payment_method_id": None,
@@ -460,7 +460,7 @@ class TestCompleteCheckoutSession:
 
     def test_complete_delegate_exceeds_allowance(self, client):
         """Reject when amount exceeds delegate allowance."""
-        from sardis_server.routes.protocol.acp import _delegate_tokens
+        from server.routes.protocol.acp import _delegate_tokens
         _delegate_tokens["vt_small"] = {
             "id": "vt_small",
             "stripe_payment_method_id": None,
@@ -818,7 +818,7 @@ class TestACPWebhooks:
 
     def test_webhook_emitted_on_create(self, client):
         """Webhook is emitted when session is created."""
-        with patch("sardis_server.routes.protocol.acp._send_acp_webhook", new_callable=AsyncMock) as mock_send:
+        with patch("server.routes.protocol.acp._send_acp_webhook", new_callable=AsyncMock) as mock_send:
             resp = client.post(
                 "/api/v2/acp/checkout_sessions",
                 json={

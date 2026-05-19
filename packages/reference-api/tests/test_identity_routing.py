@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from sardis_server.routing.identity import register_agent_auth_routes, register_sso_routes
+from server.routing.identity import register_agent_auth_routes, register_sso_routes
 
 
 def test_register_agent_auth_routes_mounts_discovery_and_management_routes():

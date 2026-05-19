@@ -27,32 +27,32 @@ class TestBillingPlans:
     """Test billing plan definitions."""
 
     def test_all_plans_defined(self):
-        from sardis_server.services.stripe_billing import PLANS
+        from server.services.stripe_billing import PLANS
         assert "dev" in PLANS
         assert "starter" in PLANS
         assert "growth" in PLANS
         assert "enterprise" in PLANS
 
     def test_dev_plan_pricing(self):
-        from sardis_server.services.stripe_billing import PLANS
+        from server.services.stripe_billing import PLANS
         assert PLANS["dev"].monthly_price_cents == 4900
         assert PLANS["dev"].tx_fee_bps == 150
         assert PLANS["dev"].tx_limit == 100
 
     def test_growth_plan_pricing(self):
-        from sardis_server.services.stripe_billing import PLANS
+        from server.services.stripe_billing import PLANS
         assert PLANS["growth"].monthly_price_cents == 49900
         assert PLANS["growth"].tx_fee_bps == 75
         assert PLANS["growth"].tx_limit == -1  # unlimited
 
     def test_starter_plan_pricing(self):
-        from sardis_server.services.stripe_billing import PLANS
+        from server.services.stripe_billing import PLANS
         assert PLANS["starter"].monthly_price_cents == 19900
         assert PLANS["starter"].tx_fee_bps == 100
         assert PLANS["starter"].tx_limit == -1  # unlimited
 
     def test_enterprise_unlimited(self):
-        from sardis_server.services.stripe_billing import PLANS
+        from server.services.stripe_billing import PLANS
         assert PLANS["enterprise"].tx_limit == -1
         assert PLANS["enterprise"].agent_limit == -1
         assert PLANS["enterprise"].card_limit == -1
@@ -62,14 +62,14 @@ class TestStripeBillingService:
     """Test StripeBillingService."""
 
     def test_stripe_not_configured_by_default(self):
-        from sardis_server.services.stripe_billing import StripeBillingService
+        from server.services.stripe_billing import StripeBillingService
         svc = StripeBillingService()
         assert not svc.stripe_configured
 
     @pytest.mark.asyncio
     async def test_get_subscription_returns_free_default(self):
         """When no DB row exists, return free tier."""
-        from sardis_server.services.stripe_billing import StripeBillingService
+        from server.services.stripe_billing import StripeBillingService
 
         mock_conn = AsyncMock()
         mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -89,7 +89,7 @@ class TestStripeBillingService:
         """Creating a subscription with an invalid plan should raise."""
         import asyncio
 
-        from sardis_server.services.stripe_billing import StripeBillingService
+        from server.services.stripe_billing import StripeBillingService
         svc = StripeBillingService()
         with pytest.raises(ValueError, match="Invalid plan"):
             asyncio.run(svc.create_subscription("org_test", "invalid_plan"))
@@ -97,7 +97,7 @@ class TestStripeBillingService:
     @pytest.mark.asyncio
     async def test_get_invoices_empty_without_stripe(self):
         """Without Stripe configured, invoices should be empty."""
-        from sardis_server.services.stripe_billing import StripeBillingService
+        from server.services.stripe_billing import StripeBillingService
 
         mock_conn = AsyncMock()
         mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -117,19 +117,19 @@ class TestBillingRouter:
     """Test billing router configuration."""
 
     def test_router_has_correct_prefix(self):
-        from sardis_server.routes.billing.billing import router
+        from server.routes.billing.billing import router
         assert router.prefix == "/api/v2/billing"
 
     def test_router_has_billing_tag(self):
-        from sardis_server.routes.billing.billing import router
+        from server.routes.billing.billing import router
         assert "billing" in router.tags
 
     def test_webhook_router_exists(self):
-        from sardis_server.routes.billing.billing import webhook_router
+        from server.routes.billing.billing import webhook_router
         assert webhook_router.prefix == "/api/v2/billing"
 
     def test_router_has_expected_routes(self):
-        from sardis_server.routes.billing.billing import router
+        from server.routes.billing.billing import router
         paths = [route.path for route in router.routes]
         # Routes include the router prefix
         assert any("usage" in p for p in paths)
@@ -142,13 +142,13 @@ class TestBillingModels:
     """Test Pydantic models."""
 
     def test_subscribe_request(self):
-        from sardis_server.routes.billing.billing import SubscribeRequest
+        from server.routes.billing.billing import SubscribeRequest
         req = SubscribeRequest(plan="growth")
         assert req.plan == "growth"
         assert req.stripe_customer_id is None
 
     def test_usage_response(self):
-        from sardis_server.routes.billing.billing import UsageResponse
+        from server.routes.billing.billing import UsageResponse
         resp = UsageResponse(
             org_id="org_test",
             period_start="2026-03-01T00:00:00",
@@ -159,7 +159,7 @@ class TestBillingModels:
         assert resp.transactions == 500
 
     def test_plan_response(self):
-        from sardis_server.routes.billing.billing import PlanResponse
+        from server.routes.billing.billing import PlanResponse
         resp = PlanResponse(
             plan="growth",
             display_name="Growth",

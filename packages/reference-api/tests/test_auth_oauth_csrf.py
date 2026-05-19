@@ -27,7 +27,7 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis_server.routes.accounts import auth
+from server.routes.accounts import auth
 
 
 @pytest.fixture

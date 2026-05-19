@@ -26,7 +26,7 @@ suite.
 - Security-sensitive work must include fail-closed tests or a clear validation
   command.
 - Keep source placement aligned with `docs/oss/source-layout.md`. The reference
-  API source tree is `packages/reference-api/sardis_server`; do not reintroduce the old
+  API source tree is `packages/reference-api/server`; do not reintroduce the old
   repeated API package names, extra API `src` layer, or legacy flat router
   bucket.
 

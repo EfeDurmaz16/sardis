@@ -137,7 +137,7 @@ async def test_client():
     import time as _time
 
     from httpx import ASGITransport, AsyncClient
-    from sardis_server.main import create_app
+    from server.main import create_app
 
     app = create_app()
 

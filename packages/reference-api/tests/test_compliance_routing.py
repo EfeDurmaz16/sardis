@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.compliance import compliance
-from sardis_server.routing.compliance import (
+from server.routes.compliance import compliance
+from server.routing.compliance import (
     register_compliance_export_routes,
     register_compliance_routes,
     register_kyc_onboarding_routes,

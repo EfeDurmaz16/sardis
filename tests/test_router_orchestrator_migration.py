@@ -70,17 +70,17 @@ def _mock_orchestrator(*, success: bool = True, status: str = "submitted"):
 
 
 def _wallets_source() -> str:
-    import sardis_server.routes.wallets.wallets as wallets
+    import server.routes.wallets.wallets as wallets
     return inspect.getsource(wallets)
 
 
 def _mandates_source() -> str:
-    import sardis_server.routes.authority.mandates as mandates
+    import server.routes.authority.mandates as mandates
     return inspect.getsource(mandates)
 
 
 def _ap2_source() -> str:
-    import sardis_server.routes.authority.ap2 as ap2
+    import server.routes.authority.ap2 as ap2
     return inspect.getsource(ap2)
 
 

@@ -25,7 +25,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 # ---------------------------------------------------------------------------
-# Direct module loading — bypasses sardis_server.__init__ which imports main.py
+# Direct module loading — bypasses server.__init__ which imports main.py
 # and pulls in the full (heavy) dependency tree.
 # ---------------------------------------------------------------------------
 _src_dir = Path(__file__).parent.parent
@@ -47,41 +47,41 @@ def _load_module(name: str, file_path: Path) -> types.ModuleType:
     return mod
 
 
-# Register a stub sardis_server package so sub-module imports resolve
+# Register a stub server package so sub-module imports resolve
 # without executing the real __init__.py.
-_stub_pkg = types.ModuleType("sardis_server")
-_stub_pkg.__path__ = [str(_src_dir / "sardis_server")]
-_stub_pkg.__package__ = "sardis_server"
-sys.modules.setdefault("sardis_server", _stub_pkg)
+_stub_pkg = types.ModuleType("server")
+_stub_pkg.__path__ = [str(_src_dir / "server")]
+_stub_pkg.__package__ = "server"
+sys.modules.setdefault("server", _stub_pkg)
 
 # Stub out the middleware sub-package as well
-_stub_mw = types.ModuleType("sardis_server.middleware")
-_stub_mw.__path__ = [str(_src_dir / "sardis_server" / "middleware")]
-_stub_mw.__package__ = "sardis_server.middleware"
-sys.modules.setdefault("sardis_server.middleware", _stub_mw)
+_stub_mw = types.ModuleType("server.middleware")
+_stub_mw.__path__ = [str(_src_dir / "server" / "middleware")]
+_stub_mw.__package__ = "server.middleware"
+sys.modules.setdefault("server.middleware", _stub_mw)
 
 # Stub out the route sub-packages
-_stub_routes = types.ModuleType("sardis_server.routes")
-_stub_routes.__path__ = [str(_src_dir / "sardis_server" / "routes")]
-_stub_routes.__package__ = "sardis_server.routes"
-sys.modules.setdefault("sardis_server.routes", _stub_routes)
+_stub_routes = types.ModuleType("server.routes")
+_stub_routes.__path__ = [str(_src_dir / "server" / "routes")]
+_stub_routes.__package__ = "server.routes"
+sys.modules.setdefault("server.routes", _stub_routes)
 
-_stub_accounts = types.ModuleType("sardis_server.routes.accounts")
-_stub_accounts.__path__ = [str(_src_dir / "sardis_server" / "routes" / "accounts")]
-_stub_accounts.__package__ = "sardis_server.routes.accounts"
-sys.modules.setdefault("sardis_server.routes.accounts", _stub_accounts)
+_stub_accounts = types.ModuleType("server.routes.accounts")
+_stub_accounts.__path__ = [str(_src_dir / "server" / "routes" / "accounts")]
+_stub_accounts.__package__ = "server.routes.accounts"
+sys.modules.setdefault("server.routes.accounts", _stub_accounts)
 
 # Now load the actual modules we need
 _auth_middleware = _load_module(
-    "sardis_server.middleware.auth",
-    _src_dir / "sardis_server" / "middleware" / "auth.py",
+    "server.middleware.auth",
+    _src_dir / "server" / "middleware" / "auth.py",
 )
 APIKeyManager = _auth_middleware.APIKeyManager
 set_api_key_manager = _auth_middleware.set_api_key_manager
 
 _auth_router_mod = _load_module(
-    "sardis_server.routes.accounts.auth",
-    _src_dir / "sardis_server" / "routes" / "accounts" / "auth.py",
+    "server.routes.accounts.auth",
+    _src_dir / "server" / "routes" / "accounts" / "auth.py",
 )
 router = _auth_router_mod.router
 _signup_ip_timestamps = _auth_router_mod._signup_ip_timestamps

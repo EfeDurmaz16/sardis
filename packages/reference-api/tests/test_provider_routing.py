@@ -2,13 +2,13 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 
-from sardis_server.routes.providers import (
+from server.routes.providers import (
     partner_card_webhooks,
     stripe_connect,
     stripe_funding,
     stripe_webhooks,
 )
-from sardis_server.routing.providers import (
+from server.routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
     register_polar_webhook_routes,

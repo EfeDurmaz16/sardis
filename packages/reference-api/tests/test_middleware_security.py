@@ -1,5 +1,5 @@
 """
-Comprehensive tests for sardis_server.middleware.security module.
+Comprehensive tests for server.middleware.security module.
 
 Tests cover:
 - SecurityHeadersMiddleware - HSTS, CSP, X-Frame-Options, etc.
@@ -30,7 +30,7 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis_server.middleware.security import (
+from server.middleware.security import (
     API_VERSION,
     SECURITY_HEADERS_PERMISSIVE,
     SECURITY_HEADERS_STRICT,

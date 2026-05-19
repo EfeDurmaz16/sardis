@@ -20,14 +20,14 @@ STALE_PATTERNS = (
     re.compile(r"packages/api/src/sardis_api"),
     re.compile(r"packages/api/src/sardis/routers"),
     re.compile(r"packages/api/src/sardis/main\.py"),
-    re.compile(r"packages/api/src/sardis_server"),
+    re.compile(r"packages/api/src/server"),
     re.compile(r"packages/api/sardis_api"),
     re.compile(r"packages/api/sardis/routers"),
     re.compile(r"packages/api/sardis/main\.py"),
     re.compile(r"packages/reference-api/src/sardis_api"),
     re.compile(r"packages/reference-api/src/sardis/routers"),
     re.compile(r"packages/reference-api/src/sardis/main\.py"),
-    re.compile(r"packages/reference-api/src/sardis_server"),
+    re.compile(r"packages/reference-api/src/server"),
     re.compile(r"packages/reference-api/sardis_api"),
     re.compile(r"packages/reference-api/sardis/routers"),
     re.compile(r"packages/reference-api/sardis/main\.py"),
@@ -105,12 +105,12 @@ def main() -> int:
         for path, line_no, line in violations:
             print(f"  - {path}:{line_no}: {line}")
         print(
-            "\nUse sardis_server imports and packages/reference-api/sardis_server paths, "
+            "\nUse server imports and packages/reference-api/server paths, "
             "or move legacy material behind an explicit migration/archive boundary."
         )
         return 1
 
-    print("Stale API path check passed: active public surfaces use sardis_server paths.")
+    print("Stale API path check passed: active public surfaces use server paths.")
     return 0
 
 

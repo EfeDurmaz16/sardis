@@ -6,7 +6,7 @@ import pytest
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 
-from sardis_server.routes.authority.ap2 import (
+from server.routes.authority.ap2 import (
     HIGH_VALUE_THRESHOLD_MINOR,
     KYC_THRESHOLD_MINOR,
     perform_compliance_checks,
