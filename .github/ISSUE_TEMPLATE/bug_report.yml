@@ -43,6 +43,14 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Python, Node, pnpm, uv, package versions.
+      description: OS, Python, Node, pnpm, uv, package versions. Run `pnpm run doctor` when possible.
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: Include `pnpm run check:contributor` or the narrow package command from docs/oss/contribution-map.md when possible.
+      render: bash
     validations:
       required: false

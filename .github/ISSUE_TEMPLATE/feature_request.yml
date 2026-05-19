@@ -37,6 +37,13 @@ body:
     id: validation
     attributes:
       label: Validation
-      description: How should maintainers verify this works?
+      description: How should maintainers verify this works? Include the relevant package command from docs/oss/contribution-map.md when possible.
     validations:
       required: false
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: OSS boundary
+      options:
+        - label: This proposal belongs in the public protocol, SDK, tooling, docs, or examples surface rather than the private hosted product.
+          required: true

@@ -27,13 +27,13 @@ body:
     id: files
     attributes:
       label: Likely files
-      description: Include paths if known.
+      description: Include paths if known. Use docs/oss/contribution-map.md to find the owning package.
     validations:
       required: false
   - type: textarea
     id: validation
     attributes:
       label: Validation
-      description: What command or behavior should prove this is done?
+      description: What command or behavior should prove this is done? Prefer `pnpm run check:contributor` plus the package-specific command.
     validations:
       required: false

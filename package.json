@@ -39,10 +39,11 @@
     "check:generated": "python3 scripts/generated_artifact_check.py",
     "check:docs-links": "python3 scripts/public_doc_link_check.py",
     "check:ci-map": "python3 scripts/ci_cd_map_check.py",
+    "check:github-templates": "python3 scripts/github_template_check.py",
     "check:packages": "python3 scripts/package_maturity_check.py",
     "check:contribution-map": "python3 scripts/contribution_map_check.py",
     "check:root-tests": "python3 scripts/root_test_inventory.py --check",
-    "check:contributor": "python3 scripts/oss_surface_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/generated_artifact_check.py && python3 scripts/public_doc_link_check.py && python3 scripts/ci_cd_map_check.py && python3 scripts/package_maturity_check.py && python3 scripts/contribution_map_check.py && python3 scripts/root_test_inventory.py --check && uv run pytest packages/api/tests/test_sandbox_isolation.py tests/test_monorepo_bootstrap_guard.py -q",
+    "check:contributor": "python3 scripts/oss_surface_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/generated_artifact_check.py && python3 scripts/public_doc_link_check.py && python3 scripts/ci_cd_map_check.py && python3 scripts/github_template_check.py && python3 scripts/package_maturity_check.py && python3 scripts/contribution_map_check.py && python3 scripts/root_test_inventory.py --check && uv run pytest packages/api/tests/test_sandbox_isolation.py tests/test_monorepo_bootstrap_guard.py -q",
     "repo:prs": "python3 scripts/pr_maintenance.py",
     "repo:prs:json": "python3 scripts/pr_maintenance.py --json",
     "repo:dependabot:rebase": "python3 scripts/pr_maintenance.py --comment-rebase"
