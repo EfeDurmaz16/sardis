@@ -73,7 +73,6 @@ from .routes.authority import credentials as credentials_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.authority import facility_requests as facility_requests_router
-from .routes.policy import fallback_policies as fallback_policies_router
 from .routes.developer import faucet as faucet_router
 from .routes.wallets import funding as funding_router
 from .routes.wallets import funding_capabilities as funding_capabilities_router
@@ -86,9 +85,6 @@ from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router
 from .routes.wallets import onramp as onramp_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
-from .routes.policy import policies as policies_router
-from .routes.policy import policy_analytics as policy_analytics_router
-from .routes.policy import policy_simulation as policy_simulation_router
 from .routes.wallets import ramp as ramp_router
 from .routes.commerce import secure_checkout as secure_checkout_router
 from .routes.protocol import spt as spt_router
@@ -166,6 +162,12 @@ from .routing.operations import (
     register_execution_mode_routes,
     register_outcome_reliability_routes,
     register_realtime_operations_routes,
+)
+from .routing.policy import (
+    register_fallback_policy_routes,
+    register_policy_analytics_routes,
+    register_policy_routes,
+    register_policy_simulation_routes,
 )
 from .services.recurring_billing import RecurringBillingService
 
@@ -1762,11 +1764,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
             tags=["checkout-secure"],
         )
 
-    app.dependency_overrides[policies_router.get_deps] = lambda: policies_router.PolicyDependencies(  # type: ignore[attr-defined]
-        policy_store=policy_store,
-        agent_repo=agent_repo,
-    )
-    app.include_router(policies_router.router, prefix="/api/v2/policies", tags=["policies"])
+    register_policy_routes(app, policy_store=policy_store, agent_repo=agent_repo)
 
     app.dependency_overrides[compliance_router.get_deps] = lambda: compliance_router.ComplianceDependencies(
         kyc_service=kyc_service,
@@ -1965,15 +1963,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(settlements_router.router)
 
     # --- Trust & Evidence Platform routers ---
-    app.include_router(policy_simulation_router.router, prefix="/api/v2/policies", tags=["policy-dsl"])
+    register_policy_simulation_routes(app)
     app.include_router(receipts_router.router, prefix="/api/v2/receipts", tags=["receipts"])
     register_outcome_reliability_routes(app)
-    app.include_router(policy_analytics_router.router, prefix="/api/v2/policies/analytics", tags=["policy-analytics"])
+    register_policy_analytics_routes(app)
     register_exception_routes(app)
     app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
     app.include_router(environment_templates_router.router, prefix="/api/v2/environments", tags=["Environment Templates"])
-    app.include_router(fallback_policies_router.router, prefix="/api/v2/fallback", tags=["Fallback Policies"])
-    logger.info("Fallback policies router registered at /api/v2/fallback")
+    register_fallback_policy_routes(app)
     register_commerce_support_routes(app)
     register_dashboard_metrics_routes(app)
 
