@@ -49,9 +49,6 @@ from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
-from .health import create_health_router
-
-# Extracted modules
 from .lifespan import lifespan, shutdown_state
 from .middleware import (
     API_VERSION,
@@ -119,6 +116,7 @@ from .routing.developer import (
     register_webhook_subscriptions,
 )
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
+from .routing.health import register_health_routes
 from .routing.identity import register_agent_auth_routes, register_sso_routes
 from .routing.money_movement import (
     register_batch_payment_routes,
@@ -1818,17 +1816,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_ramp_edge_routes(app)
     register_a2a_discovery_routes(app)
 
-    # -----------------------------------------------------------------------
-    # Health endpoints (extracted to health.py)
-    # -----------------------------------------------------------------------
-    health_router = create_health_router(
+    register_health_routes(
+        app,
         shutdown_state=shutdown_state,
         use_postgres=use_postgres,
         database_url=database_url,
         redis_url=redis_url or "",
         settings=settings,
     )
-    app.include_router(health_router)
 
     return app
 
