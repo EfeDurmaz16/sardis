@@ -51,7 +51,7 @@ Status meanings:
 | `packages/sardis-lightspark/` | Lightspark/Grid-related adapter work. | Confirm provider state and sandbox viability. |
 | `packages/sardis-striga/` | Striga adapter work. | Reassess after provider status changes. |
 | `packages/sardis-mpp/` | Policy-governed MPP client and payment-method adapters. | Add contract tests for policy-before-payment and receipt recording. |
-| `packages/sardis-connect/` | Python connect package. | Clarify overlap with JS connect package. |
+| `packages/sardis-connect/` | Python connect package. | Keep credential-free manifest, route, and webhook signature tests passing while clarifying overlap with JS connect. |
 | `packages/sardis-connect-js/` | JS connect package. | Clarify embed versus SDK boundary. |
 | `packages/sardis-zk-policy/` | ZK policy experiments. | Add reproducible proving/verifying dev setup. |
 | `packages/sardis-zkp/` | Experimental ZK proof circuits for identity, mandate, and funding proofs. | Add reproducible proving/verifying dev setup and fixtures. |
