@@ -271,6 +271,9 @@ fail-closed behavior, and non-production factory fallback outside the full app.
 KYA service, audit store, and ComplianceEngine wiring are now constructed by a
 tested dependency helper, leaving `main.py` closer to a composition root instead
 of a mixed provider-bootstrap module.
+Core API service construction now also sits behind a tested helper covering the
+Postgres versus in-memory policy store, wallet repository, agent repository,
+wallet manager, chain executor, and ledger store selection.
 
 ## Test, Build, And Lint Results
 

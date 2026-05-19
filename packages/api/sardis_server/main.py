@@ -26,8 +26,6 @@ from .bootstrap import bootstrap_monorepo_sys_path, should_bootstrap_monorepo_sy
 if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
-from sardis_chain.executor import ChainExecutor
-from sardis_ledger.records import LedgerStore
 from sardis_protocol.storage import (
     MandateArchive,
     PostgresReplayCache,
@@ -35,21 +33,17 @@ from sardis_protocol.storage import (
     SqliteReplayCache,
 )
 from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore, SardisSettings, load_settings
-from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
-from sardis_v2_core.agents import AgentRepository
+from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.cache import create_cache_service
 from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
 from sardis_v2_core.identity import IdentityRegistry
 from sardis_v2_core.inbound_payment_service import InboundPaymentService
 from sardis_v2_core.orchestrator import PaymentOrchestrator
-from sardis_v2_core.wallet_repository import WalletRepository
-from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
-from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
 from .dependencies import (
     configure_compliance_services,
+    configure_core_services,
     configure_kyc_service,
     configure_sanctions_service,
     initialize_turnkey_client,
@@ -460,18 +454,20 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # Core services
     # -----------------------------------------------------------------------
-    policy_store = PostgresPolicyStore(database_url) if use_postgres else InMemoryPolicyStore()
+    core_services = configure_core_services(
+        settings=settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+        turnkey_client=turnkey_client,
+    )
+    policy_store = core_services.policy_store
     app.state.policy_store = policy_store
 
-    wallet_repo = PostgresWalletRepository(database_url) if use_postgres else WalletRepository(dsn="memory://")
-    agent_repo = PostgresAgentRepository(database_url) if use_postgres else AgentRepository(dsn="memory://")
-    wallet_mgr = WalletManager(
-        settings=settings,
-        turnkey_client=turnkey_client,
-        async_policy_store=policy_store,
-    )
-    chain_exec = ChainExecutor(settings=settings, turnkey_client=turnkey_client)
-    ledger_store = LedgerStore(dsn=database_url if use_postgres else settings.ledger_dsn)
+    wallet_repo = core_services.wallet_repository
+    agent_repo = core_services.agent_repository
+    wallet_mgr = core_services.wallet_manager
+    chain_exec = core_services.chain_executor
+    ledger_store = core_services.ledger_store
 
     kyc_config = configure_kyc_service(settings)
     kyc_service = kyc_config.service

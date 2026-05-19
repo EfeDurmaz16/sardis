@@ -115,6 +115,18 @@ class ComplianceServicesConfig:
     kya_liveness_timeout: int
 
 
+@dataclass(frozen=True)
+class CoreServicesConfig:
+    """Resolved core API service graph used by route registrars."""
+
+    policy_store: Any
+    wallet_repository: Any
+    agent_repository: Any
+    wallet_manager: Any
+    chain_executor: Any
+    ledger_store: Any
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -511,6 +523,93 @@ def configure_compliance_services(
         kya_service=kya_service,
         compliance_engine=compliance_engine,
         kya_liveness_timeout=liveness_timeout,
+    )
+
+
+def configure_core_services(
+    settings: Any,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    turnkey_client: Any | None,
+    postgres_policy_store_cls: Any | None = None,
+    in_memory_policy_store_cls: Any | None = None,
+    postgres_wallet_repository_cls: Any | None = None,
+    wallet_repository_cls: Any | None = None,
+    postgres_agent_repository_cls: Any | None = None,
+    agent_repository_cls: Any | None = None,
+    wallet_manager_cls: Any | None = None,
+    chain_executor_cls: Any | None = None,
+    ledger_store_cls: Any | None = None,
+) -> CoreServicesConfig:
+    """Create the core service graph shared by payment, authority, and wallet routes."""
+    if postgres_policy_store_cls is None or in_memory_policy_store_cls is None:
+        from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore
+
+        postgres_policy_store_cls = postgres_policy_store_cls or PostgresPolicyStore
+        in_memory_policy_store_cls = in_memory_policy_store_cls or InMemoryPolicyStore
+
+    if postgres_wallet_repository_cls is None or wallet_repository_cls is None:
+        from sardis_v2_core.wallet_repository import WalletRepository
+        from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
+
+        postgres_wallet_repository_cls = (
+            postgres_wallet_repository_cls or PostgresWalletRepository
+        )
+        wallet_repository_cls = wallet_repository_cls or WalletRepository
+
+    if postgres_agent_repository_cls is None or agent_repository_cls is None:
+        from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
+        from sardis_v2_core.agents import AgentRepository
+
+        postgres_agent_repository_cls = postgres_agent_repository_cls or PostgresAgentRepository
+        agent_repository_cls = agent_repository_cls or AgentRepository
+
+    if wallet_manager_cls is None:
+        from sardis_wallet.manager import WalletManager
+
+        wallet_manager_cls = WalletManager
+    if chain_executor_cls is None:
+        from sardis_chain.executor import ChainExecutor
+
+        chain_executor_cls = ChainExecutor
+    if ledger_store_cls is None:
+        from sardis_ledger.records import LedgerStore
+
+        ledger_store_cls = LedgerStore
+
+    policy_store = (
+        postgres_policy_store_cls(database_url)
+        if use_postgres
+        else in_memory_policy_store_cls()
+    )
+    wallet_repository = (
+        postgres_wallet_repository_cls(database_url)
+        if use_postgres
+        else wallet_repository_cls(dsn="memory://")
+    )
+    agent_repository = (
+        postgres_agent_repository_cls(database_url)
+        if use_postgres
+        else agent_repository_cls(dsn="memory://")
+    )
+    wallet_manager = wallet_manager_cls(
+        settings=settings,
+        turnkey_client=turnkey_client,
+        async_policy_store=policy_store,
+    )
+    chain_executor = chain_executor_cls(settings=settings, turnkey_client=turnkey_client)
+    ledger_store = ledger_store_cls(
+        dsn=database_url if use_postgres else settings.ledger_dsn
+    )
+
+    return CoreServicesConfig(
+        policy_store=policy_store,
+        wallet_repository=wallet_repository,
+        agent_repository=agent_repository,
+        wallet_manager=wallet_manager,
+        chain_executor=chain_executor,
+        ledger_store=ledger_store,
     )
 
 

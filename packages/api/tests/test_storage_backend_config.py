@@ -4,6 +4,7 @@ import pytest
 
 from sardis_server.dependencies import (
     configure_compliance_services,
+    configure_core_services,
     configure_kyc_service,
     configure_sanctions_service,
     initialize_turnkey_client,
@@ -656,3 +657,101 @@ def test_configure_compliance_services_uses_default_kya_liveness_timeout() -> No
     assert config.kya_liveness_timeout == 300
     assert config.kya_service.liveness_timeout == 300
     assert config.kya_service.dsn == "memory://"
+
+
+class FakePostgresPolicyStore:
+    def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+
+
+class FakeInMemoryPolicyStore:
+    pass
+
+
+class FakePostgresWalletRepository:
+    def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+
+
+class FakeWalletRepository:
+    def __init__(self, *, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakePostgresAgentRepository:
+    def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
+
+
+class FakeAgentRepository:
+    def __init__(self, *, dsn: str) -> None:
+        self.dsn = dsn
+
+
+class FakeWalletManager:
+    def __init__(self, *, settings: object, turnkey_client: object, async_policy_store: object) -> None:
+        self.settings = settings
+        self.turnkey_client = turnkey_client
+        self.async_policy_store = async_policy_store
+
+
+class FakeChainExecutor:
+    def __init__(self, *, settings: object, turnkey_client: object) -> None:
+        self.settings = settings
+        self.turnkey_client = turnkey_client
+
+
+class FakeLedgerStore:
+    def __init__(self, *, dsn: str) -> None:
+        self.dsn = dsn
+
+
+def _configure_core_services(settings=None, database_url="postgresql://localhost/sardis", use_postgres=True):
+    return configure_core_services(
+        settings or _settings(ledger_dsn="sqlite:///ledger.db"),
+        database_url=database_url,
+        use_postgres=use_postgres,
+        turnkey_client=SimpleNamespace(name="turnkey"),
+        postgres_policy_store_cls=FakePostgresPolicyStore,
+        in_memory_policy_store_cls=FakeInMemoryPolicyStore,
+        postgres_wallet_repository_cls=FakePostgresWalletRepository,
+        wallet_repository_cls=FakeWalletRepository,
+        postgres_agent_repository_cls=FakePostgresAgentRepository,
+        agent_repository_cls=FakeAgentRepository,
+        wallet_manager_cls=FakeWalletManager,
+        chain_executor_cls=FakeChainExecutor,
+        ledger_store_cls=FakeLedgerStore,
+    )
+
+
+def test_configure_core_services_uses_postgres_backends() -> None:
+    config = _configure_core_services()
+
+    assert isinstance(config.policy_store, FakePostgresPolicyStore)
+    assert config.policy_store.database_url == "postgresql://localhost/sardis"
+    assert isinstance(config.wallet_repository, FakePostgresWalletRepository)
+    assert config.wallet_repository.database_url == "postgresql://localhost/sardis"
+    assert isinstance(config.agent_repository, FakePostgresAgentRepository)
+    assert config.agent_repository.database_url == "postgresql://localhost/sardis"
+    assert isinstance(config.wallet_manager, FakeWalletManager)
+    assert config.wallet_manager.async_policy_store is config.policy_store
+    assert config.wallet_manager.turnkey_client.name == "turnkey"
+    assert isinstance(config.chain_executor, FakeChainExecutor)
+    assert config.chain_executor.turnkey_client.name == "turnkey"
+    assert isinstance(config.ledger_store, FakeLedgerStore)
+    assert config.ledger_store.dsn == "postgresql://localhost/sardis"
+
+
+def test_configure_core_services_uses_memory_backends_outside_postgres() -> None:
+    config = _configure_core_services(
+        settings=_settings(ledger_dsn="sqlite:///ledger.db"),
+        database_url="sqlite:///api.db",
+        use_postgres=False,
+    )
+
+    assert isinstance(config.policy_store, FakeInMemoryPolicyStore)
+    assert isinstance(config.wallet_repository, FakeWalletRepository)
+    assert config.wallet_repository.dsn == "memory://"
+    assert isinstance(config.agent_repository, FakeAgentRepository)
+    assert config.agent_repository.dsn == "memory://"
+    assert config.ledger_store.dsn == "sqlite:///ledger.db"
