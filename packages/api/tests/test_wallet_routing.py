@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.wallets import cpn, ramp, treasury, treasury_ops
+from sardis_server.routes.wallets import cpn, funding_capabilities, ramp, treasury, treasury_ops
 from sardis_server.routing.wallets import (
     register_cpn_routes,
+    register_funding_capability_routes,
     register_ramp_routes,
     register_treasury_routes,
 )
@@ -92,3 +93,16 @@ def test_register_cpn_routes_wires_dependencies_and_webhook_route():
     paths = {route.path for route in app.routes}
     assert "/api/v2/cpn/payouts" in paths
     assert "/api/v2/webhooks/cpn" in paths
+
+
+def test_register_funding_capability_routes_wires_dependencies_and_route():
+    app = FastAPI()
+    settings = object()
+
+    register_funding_capability_routes(app, settings=settings)
+
+    deps = app.dependency_overrides[funding_capabilities.get_deps]()
+    assert deps.settings is settings
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/funding/capabilities" in paths

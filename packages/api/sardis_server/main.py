@@ -90,7 +90,6 @@ from .routes.providers import stripe_funding as stripe_funding_router
 from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routes.wallets import cards as cards_router
 from .routes.wallets import funding as funding_router
-from .routes.wallets import funding_capabilities as funding_capabilities_router
 from .routing.accounts import (
     register_account_group_routes,
     register_account_self_service_routes,
@@ -163,6 +162,7 @@ from .routing.protocol import (
 )
 from .routing.wallets import (
     register_cpn_routes,
+    register_funding_capability_routes,
     register_onchain_payment_routes,
     register_ramp_edge_routes,
     register_ramp_routes,
@@ -1622,10 +1622,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.include_router(mastercard_webhooks_router.router)
     logger.info("Mastercard webhook router enabled at /mastercard/webhooks")
 
-    app.dependency_overrides[funding_capabilities_router.get_deps] = (
-        lambda: funding_capabilities_router.FundingCapabilitiesDeps(settings=settings)
-    )
-    app.include_router(funding_capabilities_router.router, prefix="/api/v2")
+    register_funding_capability_routes(app, settings=settings)
 
     register_agent_lifecycle_routes(
         app,
