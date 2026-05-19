@@ -317,6 +317,7 @@ sardis/
 - **[OSS Package Layout Policy](docs/oss/package-layout.md)** — Contributor-facing naming, nesting, and rename rules
 - **[Source Layout Policy](docs/oss/source-layout.md)** — API source-tree guardrails and route placement rules
 - **[x402 and MPP Boundary](docs/architecture/x402-and-mpp.md)** — How paid HTTP protocol surfaces split across packages
+- **[SDK Package Boundary](docs/architecture/sdk-packages.md)** — Official SDKs versus framework-specific agent integrations
 - **[Connect Package Boundary](docs/architecture/connect-packages.md)** — Python FastAPI versus TypeScript Node/Express Connect ownership
 - **[OpenAI Package Boundary](docs/architecture/openai-packages.md)** — OpenAI API tool calling versus OpenAI Agents SDK ownership
 - **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it

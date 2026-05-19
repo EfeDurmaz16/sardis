@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_LAYOUT_DOC = ROOT / "docs" / "oss" / "package-layout.md"
 CONNECT_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "connect-packages.md"
 OPENAI_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "openai-packages.md"
+SDK_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "sdk-packages.md"
 SOURCE_LAYOUT_DOC = ROOT / "docs" / "oss" / "source-layout.md"
 DEVELOPMENT_DOC = ROOT / "docs" / "development.md"
 CONTRIBUTION_MAP = ROOT / "docs" / "oss" / "contribution-map.md"
@@ -57,6 +58,7 @@ REQUIRED_DOC_SNIPPETS = {
         "packages/sardis-connect-js/",
         "docs/architecture/connect-packages.md",
         "docs/architecture/openai-packages.md",
+        "docs/architecture/sdk-packages.md",
     ),
     CONNECT_BOUNDARY_DOC: (
         "Python FastAPI",
@@ -74,6 +76,14 @@ REQUIRED_DOC_SNIPPETS = {
         "packages/sardis-openai-agents/",
         "uv run pytest packages/sardis-openai/tests -q",
         "uv run pytest packages/sardis-openai-agents/tests -q",
+    ),
+    SDK_BOUNDARY_DOC: (
+        "Official Python API SDK",
+        "Anthropic Claude Agent SDK",
+        "packages/sardis-sdk-python/",
+        "packages/sardis-agent-sdk/",
+        "uv run pytest packages/sardis-sdk-python/tests -q",
+        "PYTHONPATH=packages/sardis-agent-sdk/src uv run pytest packages/sardis-agent-sdk/tests -q",
     ),
     SOURCE_LAYOUT_DOC: (
         "docs/oss/package-layout.md",

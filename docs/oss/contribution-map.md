@@ -40,7 +40,7 @@ highest review rigor and the best tests.
 
 | Area | Packages | Good contributions | Validation |
 | --- | --- | --- | --- |
-| Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
+| Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers; use `docs/architecture/sdk-packages.md` before moving SDK ownership | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
 | Authority primitives | `packages/sardis-core/`, `packages/sardis-protocol/` | Mandate semantics, AP2/TAP fixtures, policy evaluation, replay safety | `uv run pytest packages/sardis-core/tests -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q` |
 | Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/reference-api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q`; `PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q` |
 | Evidence and ledger | `packages/sardis-ledger/` | Audit packet fixtures, tamper-evidence tests, reconciliation examples | `uv run pytest packages/sardis-ledger/tests -q` |
@@ -57,7 +57,7 @@ than the core packages.
 | Local tooling | `packages/sardis-cli/` | CLI smoke commands, clearer errors, local demo setup | package README command plus `pnpm run check:contributor` |
 | Chain and wallet adapters | `packages/sardis-chain/`, `packages/sardis-wallet/` | Simulator/live boundary tests, non-custodial docs, chain routing fixes | `uv run pytest packages/sardis-chain/tests -q`; `uv run pytest packages/sardis-wallet/tests -q` |
 | Compliance and checkout | `packages/sardis-compliance/`, `packages/sardis-checkout/` | Sandbox provider docs, fail-closed KYC/KYT tests, checkout mandate validation | package-owned pytest suite |
-| Framework integrations | `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-agent-sdk/`, `packages/sardis-openai/`, `packages/sardis-openai-agents/` | Current framework examples, import compatibility, smoke tests; use `docs/architecture/openai-packages.md` before changing OpenAI ownership | package README command plus integration CI when present |
+| Framework integrations | `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-agent-sdk/`, `packages/sardis-openai/`, `packages/sardis-openai-agents/` | Current framework examples, import compatibility, smoke tests; use `docs/architecture/sdk-packages.md` and `docs/architecture/openai-packages.md` before changing SDK or OpenAI ownership | package README command plus integration CI when present |
 | Protocol integrations | `packages/sardis-a2a/`, `packages/sardis-ucp/` | Conformance fixtures, schema examples, interoperability docs | package-owned pytest suite |
 
 ## Experimental Package Paths

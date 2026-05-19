@@ -20,7 +20,7 @@ Status meanings:
 | `packages/reference-api/` | Reference FastAPI implementation for public API contracts. | Split hosted-only routes from protocol/reference routes. |
 | `packages/sardis-protocol/` | AP2/TAP/mandate verification plus x402 protocol primitives. | Add conformance fixtures and versioned schemas. |
 | `packages/sardis-ledger/` | Append-only audit/evidence ledger primitives. | Add tamper-evidence and replay fixtures. |
-| `packages/sardis-sdk-python/` | Python SDK package. | Keep smoke tests and quickstarts current. |
+| `packages/sardis-sdk-python/` | Official Python API SDK package. | Keep smoke tests and quickstarts current; use `docs/architecture/sdk-packages.md` before moving SDK ownership. |
 | `packages/sardis-sdk-js/` | TypeScript SDK package. | Keep build, typecheck, and tests in required CI. |
 | `packages/sardis-mcp-server/` | MCP surface for agent tools. | Keep schema tests and examples current. |
 
@@ -36,7 +36,7 @@ Status meanings:
 | `packages/sardis-ai-sdk/` | Vercel AI SDK integration. | Keep published package CI green. |
 | `packages/sardis-langchain/` | LangChain integration. | Add minimal integration test. |
 | `packages/sardis-crewai/` | CrewAI integration. | Add minimal integration test. |
-| `packages/sardis-agent-sdk/` | Claude Agent SDK integration. | Keep examples aligned with current agent SDK package shape. |
+| `packages/sardis-agent-sdk/` | Anthropic Claude Agent SDK integration. | Keep examples aligned with current agent SDK package shape and do not absorb canonical Python SDK behavior. |
 | `packages/sardis-openai-agents/` | OpenAI Agents SDK integration. | Keep package-owned tests passing and use `docs/architecture/openai-packages.md` before changing ownership. |
 | `packages/sardis-a2a/` | Agent-to-agent protocol integration. | Add conformance tests. |
 | `packages/sardis-ucp/` | UCP transport/protocol work. | Clarify API stability. |
