@@ -38,7 +38,9 @@ from .dependencies import (
     configure_facility_gate_services,
     configure_kyc_service,
     configure_payment_runtime,
+    configure_provider_runtime,
     configure_sanctions_service,
+    expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
     initialize_turnkey_client,
@@ -590,67 +592,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_auth_routes(app)
 
-    configured_on_chain_provider = (
-        (settings.cards.on_chain_provider or os.getenv("SARDIS_CARDS_ON_CHAIN_PROVIDER", "")).strip().lower()
-        or None
-    )
-    coinbase_cdp_provider = None
-    coinbase_enabled = configured_on_chain_provider == "coinbase_cdp" or settings.coinbase.x402_enabled
-    if coinbase_enabled:
-        cdp_api_key_name = settings.coinbase.api_key_name or os.getenv("COINBASE_CDP_API_KEY_NAME", "")
-        cdp_api_key_private_key = (
-            settings.coinbase.api_key_private_key
-            or os.getenv("COINBASE_CDP_API_KEY_PRIVATE_KEY", "")
-        )
-        cdp_network_id = settings.coinbase.network_id or os.getenv("COINBASE_CDP_NETWORK_ID", "base-mainnet")
-        if cdp_api_key_name and cdp_api_key_private_key:
-            try:
-                from sardis_coinbase import CoinbaseCDPProvider
-
-                coinbase_cdp_provider = CoinbaseCDPProvider(
-                    api_key_name=cdp_api_key_name,
-                    api_key_private_key=cdp_api_key_private_key,
-                    network_id=cdp_network_id,
-                )
-                logger.info("Coinbase CDP provider initialized (network=%s)", cdp_network_id)
-            except Exception as exc:
-                logger.warning("Coinbase CDP provider initialization failed: %s", exc)
-        else:
-            logger.warning(
-                "Coinbase CDP is enabled but credentials are missing "
-                "(COINBASE_CDP_API_KEY_NAME / COINBASE_CDP_API_KEY_PRIVATE_KEY)"
-            )
-    app.state.coinbase_cdp_provider = coinbase_cdp_provider
-    app.state.on_chain_provider = configured_on_chain_provider
-
-    circle_gateway_nanopayments_client = None
-    if bool(getattr(settings.circle_gateway, "x402_enabled", False)):
-        circle_gateway_api_key = (
-            settings.circle_gateway.api_key
-            or os.getenv("CIRCLE_GATEWAY_API_KEY", "")
-        )
-        if circle_gateway_api_key:
-            try:
-                from .providers.circle_gateway_nanopayments import (
-                    CircleGatewayNanopaymentsClient,
-                )
-
-                circle_gateway_nanopayments_client = CircleGatewayNanopaymentsClient(
-                    api_key=circle_gateway_api_key,
-                    base_url=(
-                        settings.circle_gateway.base_url
-                        or os.getenv("CIRCLE_GATEWAY_BASE_URL", "")
-                    ),
-                    timeout_seconds=float(settings.circle_gateway.timeout_seconds),
-                )
-                logger.info("Circle Gateway nanopayments provider initialized")
-            except Exception as exc:
-                logger.warning("Circle Gateway nanopayments initialization failed: %s", exc)
-        else:
-            logger.warning(
-                "Circle Gateway x402 is enabled but CIRCLE_GATEWAY_API_KEY is missing"
-            )
-    app.state.circle_gateway_nanopayments_client = circle_gateway_nanopayments_client
+    provider_runtime = configure_provider_runtime(settings)
+    configured_on_chain_provider = provider_runtime.on_chain_provider
+    coinbase_cdp_provider = provider_runtime.coinbase_cdp_provider
+    circle_gateway_nanopayments_client = provider_runtime.circle_gateway_nanopayments_client
+    expose_provider_runtime_state(app, provider_runtime=provider_runtime)
 
     # Inbound payment service (deposit monitoring + receive endpoints)
     from sardis_v2_core.event_bus import get_default_bus

@@ -9,7 +9,9 @@ from sardis_server.dependencies import (
     configure_facility_gate_services,
     configure_kyc_service,
     configure_payment_runtime,
+    configure_provider_runtime,
     configure_sanctions_service,
+    expose_provider_runtime_state,
     expose_runtime_state,
     expose_support_services_state,
     initialize_turnkey_client,
@@ -31,6 +33,19 @@ def _settings(**overrides):
             api_public_key="",
             api_private_key="",
             organization_id="",
+        ),
+        "cards": SimpleNamespace(on_chain_provider=""),
+        "coinbase": SimpleNamespace(
+            x402_enabled=False,
+            api_key_name="",
+            api_key_private_key="",
+            network_id="",
+        ),
+        "circle_gateway": SimpleNamespace(
+            x402_enabled=False,
+            api_key="",
+            base_url="",
+            timeout_seconds=10.0,
         ),
     }
     defaults.update(overrides)
@@ -954,6 +969,20 @@ class FakeFacilityGateAdapter:
     pass
 
 
+class FakeCoinbaseCDPProvider:
+    def __init__(self, *, api_key_name: str, api_key_private_key: str, network_id: str) -> None:
+        self.api_key_name = api_key_name
+        self.api_key_private_key = api_key_private_key
+        self.network_id = network_id
+
+
+class FakeCircleGatewayClient:
+    def __init__(self, *, api_key: str, base_url: str, timeout_seconds: float) -> None:
+        self.api_key = api_key
+        self.base_url = base_url
+        self.timeout_seconds = timeout_seconds
+
+
 def test_configure_facility_gate_services_uses_postgres_dsn() -> None:
     config = configure_facility_gate_services(
         database_url="postgresql://localhost/sardis",
@@ -978,6 +1007,117 @@ def test_configure_facility_gate_services_uses_memory_dsn_without_postgres() -> 
 
     assert config.dsn == "memory://"
     assert config.repository.dsn == "memory://"
+
+
+def test_configure_provider_runtime_uses_coinbase_settings_credentials() -> None:
+    config = configure_provider_runtime(
+        _settings(
+            cards=SimpleNamespace(on_chain_provider="coinbase_cdp"),
+            coinbase=SimpleNamespace(
+                x402_enabled=False,
+                api_key_name="settings_key",
+                api_key_private_key="settings_private",
+                network_id="base-sepolia",
+            ),
+        ),
+        environ={},
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert config.on_chain_provider == "coinbase_cdp"
+    assert isinstance(config.coinbase_cdp_provider, FakeCoinbaseCDPProvider)
+    assert config.coinbase_cdp_provider.api_key_name == "settings_key"
+    assert config.coinbase_cdp_provider.api_key_private_key == "settings_private"
+    assert config.coinbase_cdp_provider.network_id == "base-sepolia"
+    assert config.circle_gateway_nanopayments_client is None
+
+
+def test_configure_provider_runtime_uses_coinbase_env_credentials() -> None:
+    config = configure_provider_runtime(
+        _settings(coinbase=SimpleNamespace(x402_enabled=True)),
+        environ={
+            "COINBASE_CDP_API_KEY_NAME": "env_key",
+            "COINBASE_CDP_API_KEY_PRIVATE_KEY": "env_private",
+            "COINBASE_CDP_NETWORK_ID": "base-mainnet",
+        },
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert config.on_chain_provider is None
+    assert isinstance(config.coinbase_cdp_provider, FakeCoinbaseCDPProvider)
+    assert config.coinbase_cdp_provider.api_key_name == "env_key"
+    assert config.coinbase_cdp_provider.api_key_private_key == "env_private"
+    assert config.coinbase_cdp_provider.network_id == "base-mainnet"
+
+
+def test_configure_provider_runtime_skips_coinbase_without_credentials() -> None:
+    config = configure_provider_runtime(
+        _settings(cards=SimpleNamespace(on_chain_provider="coinbase_cdp")),
+        environ={},
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert config.on_chain_provider == "coinbase_cdp"
+    assert config.coinbase_cdp_provider is None
+
+
+def test_configure_provider_runtime_uses_circle_gateway_settings() -> None:
+    config = configure_provider_runtime(
+        _settings(
+            circle_gateway=SimpleNamespace(
+                x402_enabled=True,
+                api_key="settings_circle_key",
+                base_url="https://circle.example",
+                timeout_seconds="3.5",
+            )
+        ),
+        environ={},
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert isinstance(config.circle_gateway_nanopayments_client, FakeCircleGatewayClient)
+    assert config.circle_gateway_nanopayments_client.api_key == "settings_circle_key"
+    assert config.circle_gateway_nanopayments_client.base_url == "https://circle.example"
+    assert config.circle_gateway_nanopayments_client.timeout_seconds == 3.5
+
+
+def test_configure_provider_runtime_uses_circle_gateway_env_key_and_base_url() -> None:
+    config = configure_provider_runtime(
+        _settings(
+            circle_gateway=SimpleNamespace(
+                x402_enabled=True,
+                api_key="",
+                base_url="",
+                timeout_seconds=10,
+            )
+        ),
+        environ={
+            "CIRCLE_GATEWAY_API_KEY": "env_circle_key",
+            "CIRCLE_GATEWAY_BASE_URL": "https://env.circle.example",
+        },
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert isinstance(config.circle_gateway_nanopayments_client, FakeCircleGatewayClient)
+    assert config.circle_gateway_nanopayments_client.api_key == "env_circle_key"
+    assert config.circle_gateway_nanopayments_client.base_url == "https://env.circle.example"
+    assert config.circle_gateway_nanopayments_client.timeout_seconds == 10.0
+
+
+def test_configure_provider_runtime_skips_circle_gateway_without_key() -> None:
+    config = configure_provider_runtime(
+        _settings(circle_gateway=SimpleNamespace(x402_enabled=True, api_key="")),
+        environ={},
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    assert config.circle_gateway_nanopayments_client is None
 
 
 def test_expose_runtime_state_sets_route_dependency_state() -> None:
@@ -1027,3 +1167,36 @@ def test_expose_support_services_state_sets_late_bound_services() -> None:
 
     assert app.state.cache_service is cache_service
     assert app.state.api_key_manager is api_key_manager
+
+
+def test_expose_provider_runtime_state_sets_optional_provider_clients() -> None:
+    app = SimpleNamespace(state=SimpleNamespace())
+    provider_runtime = configure_provider_runtime(
+        _settings(
+            cards=SimpleNamespace(on_chain_provider="coinbase_cdp"),
+            coinbase=SimpleNamespace(
+                x402_enabled=False,
+                api_key_name="settings_key",
+                api_key_private_key="settings_private",
+                network_id="base-sepolia",
+            ),
+            circle_gateway=SimpleNamespace(
+                x402_enabled=True,
+                api_key="settings_circle_key",
+                base_url="https://circle.example",
+                timeout_seconds=3,
+            ),
+        ),
+        environ={},
+        coinbase_provider_cls=FakeCoinbaseCDPProvider,
+        circle_gateway_client_cls=FakeCircleGatewayClient,
+    )
+
+    expose_provider_runtime_state(app, provider_runtime=provider_runtime)
+
+    assert app.state.on_chain_provider == "coinbase_cdp"
+    assert app.state.coinbase_cdp_provider is provider_runtime.coinbase_cdp_provider
+    assert (
+        app.state.circle_gateway_nanopayments_client
+        is provider_runtime.circle_gateway_nanopayments_client
+    )

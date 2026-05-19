@@ -156,6 +156,15 @@ class FacilityGateServicesConfig:
     dsn: str
 
 
+@dataclass(frozen=True)
+class ProviderRuntimeConfig:
+    """Resolved optional provider runtime clients used by payment routes."""
+
+    on_chain_provider: str | None
+    coinbase_cdp_provider: Any | None
+    circle_gateway_nanopayments_client: Any | None
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -784,6 +793,106 @@ def configure_facility_gate_services(
     )
 
 
+def configure_provider_runtime(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    coinbase_provider_cls: Any = _DEFAULT_PROVIDER,
+    circle_gateway_client_cls: Any = _DEFAULT_PROVIDER,
+) -> ProviderRuntimeConfig:
+    """Create optional payment provider clients for route registrars."""
+    env = environ if environ is not None else os.environ
+    cards_settings = getattr(settings, "cards", None)
+    coinbase_settings = getattr(settings, "coinbase", None)
+    circle_gateway_settings = getattr(settings, "circle_gateway", None)
+
+    configured_on_chain_provider = (
+        (
+            getattr(cards_settings, "on_chain_provider", "")
+            or env.get("SARDIS_CARDS_ON_CHAIN_PROVIDER", "")
+        )
+        .strip()
+        .lower()
+        or None
+    )
+
+    coinbase_cdp_provider = None
+    coinbase_enabled = configured_on_chain_provider == "coinbase_cdp" or bool(
+        getattr(coinbase_settings, "x402_enabled", False)
+    )
+    if coinbase_enabled:
+        cdp_api_key_name = getattr(coinbase_settings, "api_key_name", "") or env.get(
+            "COINBASE_CDP_API_KEY_NAME",
+            "",
+        )
+        cdp_api_key_private_key = getattr(
+            coinbase_settings,
+            "api_key_private_key",
+            "",
+        ) or env.get("COINBASE_CDP_API_KEY_PRIVATE_KEY", "")
+        cdp_network_id = getattr(coinbase_settings, "network_id", "") or env.get(
+            "COINBASE_CDP_NETWORK_ID",
+            "base-mainnet",
+        )
+        if cdp_api_key_name and cdp_api_key_private_key:
+            try:
+                if coinbase_provider_cls is _DEFAULT_PROVIDER:
+                    from sardis_coinbase import CoinbaseCDPProvider
+
+                    coinbase_provider_cls = CoinbaseCDPProvider
+                coinbase_cdp_provider = coinbase_provider_cls(
+                    api_key_name=cdp_api_key_name,
+                    api_key_private_key=cdp_api_key_private_key,
+                    network_id=cdp_network_id,
+                )
+                logger.info("Coinbase CDP provider initialized (network=%s)", cdp_network_id)
+            except Exception as exc:
+                logger.warning("Coinbase CDP provider initialization failed: %s", exc)
+        else:
+            logger.warning(
+                "Coinbase CDP is enabled but credentials are missing "
+                "(COINBASE_CDP_API_KEY_NAME / COINBASE_CDP_API_KEY_PRIVATE_KEY)"
+            )
+
+    circle_gateway_nanopayments_client = None
+    if bool(getattr(circle_gateway_settings, "x402_enabled", False)):
+        circle_gateway_api_key = getattr(circle_gateway_settings, "api_key", "") or env.get(
+            "CIRCLE_GATEWAY_API_KEY",
+            "",
+        )
+        if circle_gateway_api_key:
+            try:
+                if circle_gateway_client_cls is _DEFAULT_PROVIDER:
+                    from .providers.circle_gateway_nanopayments import (
+                        CircleGatewayNanopaymentsClient,
+                    )
+
+                    circle_gateway_client_cls = CircleGatewayNanopaymentsClient
+                circle_gateway_nanopayments_client = circle_gateway_client_cls(
+                    api_key=circle_gateway_api_key,
+                    base_url=(
+                        getattr(circle_gateway_settings, "base_url", "")
+                        or env.get("CIRCLE_GATEWAY_BASE_URL", "")
+                    ),
+                    timeout_seconds=float(
+                        getattr(circle_gateway_settings, "timeout_seconds", 10.0)
+                    ),
+                )
+                logger.info("Circle Gateway nanopayments provider initialized")
+            except Exception as exc:
+                logger.warning("Circle Gateway nanopayments initialization failed: %s", exc)
+        else:
+            logger.warning(
+                "Circle Gateway x402 is enabled but CIRCLE_GATEWAY_API_KEY is missing"
+            )
+
+    return ProviderRuntimeConfig(
+        on_chain_provider=configured_on_chain_provider,
+        coinbase_cdp_provider=coinbase_cdp_provider,
+        circle_gateway_nanopayments_client=circle_gateway_nanopayments_client,
+    )
+
+
 def expose_runtime_state(
     app: Any,
     *,
@@ -818,6 +927,15 @@ def expose_support_services_state(
     """Expose late-bound API support services required by middleware/routes."""
     app.state.cache_service = cache_service
     app.state.api_key_manager = api_key_manager
+
+
+def expose_provider_runtime_state(app: Any, *, provider_runtime: ProviderRuntimeConfig) -> None:
+    """Expose optional payment provider clients required by wallet routes."""
+    app.state.coinbase_cdp_provider = provider_runtime.coinbase_cdp_provider
+    app.state.on_chain_provider = provider_runtime.on_chain_provider
+    app.state.circle_gateway_nanopayments_client = (
+        provider_runtime.circle_gateway_nanopayments_client
+    )
 
 
 class DependencyContainer:
