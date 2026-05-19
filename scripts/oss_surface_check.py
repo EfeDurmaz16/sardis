@@ -86,6 +86,11 @@ BLOCKED_TEXT_SNIPPETS = {
     ),
 }
 
+BLOCKED_UPTIME_URLS = {
+    "https://dashboard.sardis.sh": "hosted dashboard uptime belongs in the private product repo",
+    "https://checkout.sardis.sh": "hosted checkout uptime belongs in the private product repo",
+}
+
 TEXT_FILE_SUFFIXES = {
     ".md",
     ".py",
@@ -114,9 +119,11 @@ def tracked_files() -> list[str]:
 
 
 def main() -> int:
+    tracked = tracked_files()
     blocked: list[str] = []
     blocked_text: list[tuple[str, str, str]] = []
-    for path in tracked_files():
+    blocked_uptime_urls: list[tuple[str, str]] = []
+    for path in tracked:
         if path in BLOCKED_FILES or path.startswith(BLOCKED_PREFIXES):
             blocked.append(path)
             continue
@@ -133,12 +140,22 @@ def main() -> int:
             if snippet in text:
                 blocked_text.append((path, snippet, reason))
 
-    if blocked or blocked_text:
+    uptime_config = ".upptimerc.yml"
+    if uptime_config in tracked:
+        with open(uptime_config, encoding="utf-8") as file:
+            text = file.read()
+        for url, reason in BLOCKED_UPTIME_URLS.items():
+            if url in text:
+                blocked_uptime_urls.append((url, reason))
+
+    if blocked or blocked_text or blocked_uptime_urls:
         print("Private/company material is tracked in the public OSS repo:")
         for path in blocked:
             print(f"  - {path}")
         for path, snippet, reason in blocked_text:
             print(f"  - {path}: {snippet!r} ({reason})")
+        for url, reason in blocked_uptime_urls:
+            print(f"  - {uptime_config}: {url} ({reason})")
         print("\nMove these files to a private repository or add a public-safe replacement.")
         return 1
 
