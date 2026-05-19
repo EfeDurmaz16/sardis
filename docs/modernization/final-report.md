@@ -8,6 +8,11 @@
 - Allowed `docs/modernization/**` through the existing docs ignore policy.
 - Fixed TypeScript SDK CI/publish filters from the non-existent `@sardis/sdk-js` package name to the actual `@sardis/sdk` package.
 - Aligned the legacy publish workflow's npm lanes with Node 22 and pnpm 9.15.4.
+- Added public CI/CD inventory, workflow secret-scope, and workflow toolchain guards to the default contributor gate.
+- Broadened the public docs link guard to cover README, contribution/security/support docs, package docs, quickstart, OSS docs, and architecture docs.
+- Reduced deploy, publish, operations, and public PR workflow permissions from broad `read-all` defaults to explicit least-privilege permissions where practical.
+- Required PR-triggered workflows and private-secret workflows to avoid top-level `permissions: read-all`.
+- Required public workflows that install JavaScript dependencies to use Node 22, pnpm 9.15.4 when explicitly pinned, and `pnpm install --frozen-lockfile`.
 - Fixed public quickstarts to use the existing `SardisClient` export.
 - Removed unused `apps/landing/lib/sardis-api.ts`, which contained stale browser-readable token and direct API auth assumptions.
 - Changed merchant checkout mandate validation to fail closed when a required mandate cannot be validated.
@@ -207,6 +212,8 @@ Latest contributor-test pass: the public default Python test path now exercises 
 Latest path-layout pass: the deployable API package now lives at `packages/api`, while the API Python import package remains `sardis_server` and the distribution name remains `sardis-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary more explicit without changing HTTP routes or published package identity.
 
 Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/api/src/sardis_server` during local import probes.
+
+Latest CI/CD guardrail pass: the public CI map now inventories every workflow file, required check metadata is cross-checked against workflow job names, public docs links are checked across the main contributor docs and architecture docs, PR-triggered workflows cannot use private deploy/publish/provider secrets without a PR-excluding job condition, private-secret workflows cannot use top-level `permissions: read-all`, public PR workflows cannot use top-level `permissions: read-all`, and workflow Node/pnpm/install commands are checked against the repo's Node 22, pnpm 9.15.4, and frozen-lockfile policy.
 
 ## Test, Build, And Lint Results
 
@@ -498,6 +505,12 @@ Latest root package pass: the public simulation/client facade now uses the same 
 - `python3 -m compileall -q packages/api/src/sardis_server packages/api/scripts/generate_openapi.py packages/api/scripts/facility_gate_pilot_tabletop.py api/index.py` passed after renaming the legacy API import package to `sardis_server`.
 - `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_funding_bootstrap.py packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_facility_requests_router.py -q` passed after the import-package rename: 39 tests.
 - `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, `git diff --check`, and the path cleanup smoke check passed after the import-package rename. OpenAPI remained 540 paths and 592 schemas.
+- `python3 scripts/public_doc_link_check.py` passed after broadening the public docs link guard: 23 files scanned.
+- `python3 scripts/ci_cd_map_check.py` passed after requiring every workflow file to be represented in the public CI/CD inventory.
+- `python3 scripts/workflow_secret_scope_check.py` passed after adding PR secret-scope and workflow permission checks.
+- `python3 scripts/workflow_toolchain_check.py` passed after aligning workflow Node, pnpm, and install commands with repo policy.
+- `python3 -m compileall -q scripts/workflow_secret_scope_check.py scripts/workflow_toolchain_check.py` passed after adding the CI guard scripts.
+- `pnpm run check:contributor` passed after wiring the expanded public docs, CI inventory, workflow secret-scope, workflow toolchain, community health, package maturity, contribution map, and root-test inventory checks into the default contributor gate: 10 tests passed.
 
 Notes:
 
@@ -601,3 +614,15 @@ Notes:
 - `218695ad chore: keep readiness wrapper executable`
 - `d77ef988 docs: record public release gate cleanup`
 - `b2dff4e3 chore: move product UI source out of public repo`
+- `af1eba12 ci: check public doc links`
+- `d597b842 docs: map public ci gates`
+- `b6286241 chore: strengthen contributor templates`
+- `1c2e9087 ci: align required check metadata`
+- `a08ed4af docs: add community health guard`
+- `1292fc12 docs: clarify package layout boundaries`
+- `340a5a8b ci: broaden public doc link guard`
+- `8d819468 ci: require workflow inventory coverage`
+- `372fcb01 ci: guard workflow secret scope`
+- `40e7a800 ci: reduce secret workflow permissions`
+- `02205d84 ci: reduce public pr workflow permissions`
+- `8f6bfc7c ci: guard workflow toolchain drift`
