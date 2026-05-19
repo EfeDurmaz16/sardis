@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'packages/reference-api/**'
+      - 'apps/api/**'
       - 'packages/sardis-core/**'
       - 'docs/security/**'
       - 'monitoring/alerts.yml'
       - 'ops/grafana/**'
   pull_request:
     paths:
-      - 'packages/reference-api/**'
+      - 'apps/api/**'
       - 'packages/sardis-core/**'
       - 'docs/security/**'
       - 'monitoring/alerts.yml'
@@ -59,11 +59,11 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uv run ruff check packages/reference-api/ packages/sardis-core/
+        run: uv run ruff check apps/api/ packages/sardis-core/
 
       - name: Package test drift report
         continue-on-error: true
-        run: uv run pytest packages/reference-api/tests/ -v --tb=short -q
+        run: uv run pytest apps/api/tests/ -v --tb=short -q
         env:
           SARDIS_SECRET_KEY: test-secret-key
           JWT_SECRET_KEY: test-jwt-secret
@@ -72,7 +72,7 @@ jobs:
 
       - name: Facility Gate pilot tabletop
         run: |
-          uv run python packages/reference-api/scripts/facility_gate_pilot_tabletop.py \
+          uv run python apps/api/scripts/facility_gate_pilot_tabletop.py \
             --output facility-gate-tabletop.json
         env:
           SARDIS_SECRET_KEY: test-secret-key
@@ -81,7 +81,7 @@ jobs:
 
       - name: Facility Gate pilot readiness
         run: |
-          uv run python packages/reference-api/scripts/facility_gate_pilot_readiness.py org_tabletop \
+          uv run python apps/api/scripts/facility_gate_pilot_readiness.py org_tabletop \
             --run-tabletop \
             --require-alerts \
             --output facility-gate-readiness.json

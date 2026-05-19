@@ -19,6 +19,7 @@ STALE_PATTERNS = (
     re.compile(r"\bsardis/main\.py\b"),
     re.compile(r"packages/sardis-api"),
     re.compile(r"packages/server-api"),
+    re.compile(r"packages/reference-api"),
     re.compile(r"packages/api/src/sardis_api"),
     re.compile(r"packages/api/src/sardis/routers"),
     re.compile(r"packages/api/src/sardis/main\.py"),
@@ -26,13 +27,13 @@ STALE_PATTERNS = (
     re.compile(r"packages/api/sardis_api"),
     re.compile(r"packages/api/sardis/routers"),
     re.compile(r"packages/api/sardis/main\.py"),
-    re.compile(r"packages/reference-api/src/sardis_api"),
-    re.compile(r"packages/reference-api/src/sardis/routers"),
-    re.compile(r"packages/reference-api/src/sardis/main\.py"),
-    re.compile(r"packages/reference-api/src/server"),
-    re.compile(r"packages/reference-api/sardis_api"),
-    re.compile(r"packages/reference-api/sardis/routers"),
-    re.compile(r"packages/reference-api/sardis/main\.py"),
+    re.compile(r"apps/api/src/sardis_api"),
+    re.compile(r"apps/api/src/sardis/routers"),
+    re.compile(r"apps/api/src/sardis/main\.py"),
+    re.compile(r"apps/api/src/server"),
+    re.compile(r"apps/api/sardis_api"),
+    re.compile(r"apps/api/sardis/routers"),
+    re.compile(r"apps/api/sardis/main\.py"),
 )
 
 # Root tests are a documented legacy migration backlog. They are excluded from
@@ -171,7 +172,7 @@ def main() -> int:
         for path, line_no, line in violations:
             print(f"  - {path}:{line_no}: {line}")
         print(
-            "\nUse server imports and packages/reference-api/server paths, "
+            "\nUse server imports and apps/api/server paths, "
             "or move legacy material behind an explicit migration/archive boundary."
         )
         return 1

@@ -4,7 +4,7 @@
 
 ### Medium: App startup has too many optional integrations in one path
 
-- Evidence: `packages/reference-api/server/main.py` constructs many repositories/providers and imports optional modules inside `create_app`.
+- Evidence: `apps/api/server/main.py` constructs many repositories/providers and imports optional modules inside `create_app`.
 - Impact: Cold start and test startup become slower and less deterministic.
 - Recommended action: Group optional integrations behind lazy registrars and only initialize enabled domains.
 - Action type: Refactor.
@@ -13,7 +13,7 @@
 
 ### Medium: In-memory fallbacks are safe for dev but can hide scale issues
 
-- Evidence: production guards in `packages/reference-api/server/lifespan.py` reject missing Redis/JWKS in production-like modes, but many repositories still fall back to `memory://` in app setup.
+- Evidence: production guards in `apps/api/server/lifespan.py` reject missing Redis/JWKS in production-like modes, but many repositories still fall back to `memory://` in app setup.
 - Impact: Tests may pass while distributed runtime behavior differs.
 - Recommended action: Add a Postgres/Redis integration profile for critical flows.
 - Action type: Tests.

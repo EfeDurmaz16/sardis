@@ -8,7 +8,7 @@ Run the narrowest suite that covers your change:
 
 ```bash
 pnpm run check:contributor
-uv run pytest packages/reference-api/tests/ -q
+uv run pytest apps/api/tests/ -q
 uv run pytest packages/sardis-core/tests/ -q
 uv run pytest packages/sardis-ledger/tests/ -q
 uv run pytest packages/sardis-chain/tests/ -q
@@ -17,7 +17,7 @@ pnpm --filter @sardis/mcp-server test
 ```
 
 The root `package.json` `test` script runs the maintained package-owned suites.
-Root `pyproject.toml` also points pytest at `packages/reference-api/tests` by
+Root `pyproject.toml` also points pytest at `apps/api/tests` by
 default.
 
 Some protocol packages are intentionally validated with package-local source
@@ -27,7 +27,7 @@ changing paid HTTP protocol behavior:
 ```bash
 PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
 PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
-PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q
+PYTHONPATH=apps/api uv run pytest apps/api/tests/test_x402_middleware.py apps/api/tests/test_mpp_router.py -q
 ```
 
 Run those protocol targets separately. The package-local protocol tests and
@@ -59,7 +59,7 @@ it into the owning package first:
 
 | Test kind | Target |
 | --- | --- |
-| API route and middleware tests | `packages/reference-api/tests/` |
+| API route and middleware tests | `apps/api/tests/` |
 | Policy, mandate, orchestration, and authority tests | `packages/sardis-core/tests/` |
 | Ledger, receipt, and reconciliation tests | `packages/sardis-ledger/tests/` |
 | Chain, token, Tempo, and Solana tests | `packages/sardis-chain/tests/` |
@@ -87,7 +87,7 @@ Active public surfaces must use the current API import package and path layout:
 
 ```text
 server
-packages/reference-api/server
+apps/api/server
 ```
 
 Run this guard before opening PRs that touch docs, examples, or test routing:
@@ -116,7 +116,7 @@ prevents older package names from coming back:
 python3 scripts/source_layout_check.py
 ```
 
-It requires the active API tree to stay at `packages/reference-api/server` with
+It requires the active API tree to stay at `apps/api/server` with
 domain route modules under `routes/` and FastAPI registration under `route_registry/`.
 Published Python libraries may still use `src/<import_package>` when that is
 the package-correct layout for a library.

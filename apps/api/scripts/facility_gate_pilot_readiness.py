@@ -6,8 +6,8 @@ pilot evidence before a Facility Gate pilot org is enabled. It does not touch
 live provider rails.
 
 Usage:
-  python packages/reference-api/scripts/facility_gate_pilot_readiness.py org_123
-  python packages/reference-api/scripts/facility_gate_pilot_readiness.py org_123 --run-tabletop --require-alerts
+  python apps/api/scripts/facility_gate_pilot_readiness.py org_123
+  python apps/api/scripts/facility_gate_pilot_readiness.py org_123 --run-tabletop --require-alerts
 """
 from __future__ import annotations
 

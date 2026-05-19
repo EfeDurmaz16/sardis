@@ -6,7 +6,7 @@ The API package previously used deeper and less contributor-readable source
 paths. During the migration, the routing layer had grown into a flat directory:
 
 ```text
-packages/reference-api/server/routers/*.py
+apps/api/server/routers/*.py
 ```
 
 That path was not contributor-friendly. It contained protocol endpoints,
@@ -22,7 +22,7 @@ right file. Names like `webhooks.py` are also ambiguous because Sardis has both:
 
 The repeated-looking path prefix is tracked separately in
 `docs/modernization/package-path-simplification.md`. The current contributor
-path is `packages/reference-api/server/...`; the old `packages/sardis-api`
+path is `apps/api/server/...`; the old `packages/sardis-api`
 package directory, the extra API `src/` layer, the legacy `routers/` bucket,
 and the old `sardis_api` import package name have been removed.
 
@@ -103,7 +103,7 @@ The external API remains unchanged:
 The concrete contributor pain is path roaming. A file like:
 
 ```text
-packages/reference-api/server/routers/webhook_subscriptions.py
+apps/api/server/routers/webhook_subscriptions.py
 ```
 
 is long, repeats API/package concepts, and hides the business domain in a flat
@@ -111,7 +111,7 @@ is long, repeats API/package concepts, and hides the business domain in a flat
 shorter mental paths:
 
 ```text
-packages/reference-api/server/routes/developer/webhook_subscriptions.py
+apps/api/server/routes/developer/webhook_subscriptions.py
 ```
 
 The top-level Python package now uses `server` because that is the
@@ -124,7 +124,7 @@ below it:
 - no legacy `routers/` bucket in the active source tree
 
 The package directory itself has already been simplified to
-`packages/reference-api`. Further path cleanup should happen by shrinking
+`apps/api`. Further path cleanup should happen by shrinking
 composition code and improving domain boundaries, not by reintroducing flat
 router buckets.
 
@@ -325,15 +325,15 @@ used during the migration and then removed after internal imports moved to
 Run these commands after each route move:
 
 ```bash
-python3 -m compileall -q packages/reference-api/server
+python3 -m compileall -q apps/api/server
 pnpm check:openapi
-uv run pytest packages/reference-api/tests -q
+uv run pytest apps/api/tests -q
 ```
 
 For small route-only moves, the minimum acceptable validation is:
 
 ```bash
-python3 -m compileall -q packages/reference-api/server
+python3 -m compileall -q apps/api/server
 pnpm check:openapi
 ```
 

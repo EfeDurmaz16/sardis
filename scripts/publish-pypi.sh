@@ -77,12 +77,22 @@ PYTHON_PACKAGES=(
 list_packages() {
   echo "Publishable Python packages (in dependency order):"
   for pkg in "${PYTHON_PACKAGES[@]}"; do
-    if [ -f "$REPO_ROOT/packages/$pkg/pyproject.toml" ]; then
-      VERSION=$(grep '^version' "$REPO_ROOT/packages/$pkg/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')
-      DIST_NAME=$(grep '^name' "$REPO_ROOT/packages/$pkg/pyproject.toml" | head -1 | sed 's/name = "\(.*\)"/\1/')
+    PKG_DIR="$(package_dir "$pkg")"
+    if [ -f "$PKG_DIR/pyproject.toml" ]; then
+      VERSION=$(grep '^version' "$PKG_DIR/pyproject.toml" | head -1 | sed 's/version = "\(.*\)"/\1/')
+      DIST_NAME=$(grep '^name' "$PKG_DIR/pyproject.toml" | head -1 | sed 's/name = "\(.*\)"/\1/')
       echo "  - $pkg -> $DIST_NAME (v$VERSION)"
     fi
   done
+}
+
+package_dir() {
+  local pkg="$1"
+  if [ "$pkg" = "reference-api" ]; then
+    echo "$REPO_ROOT/apps/api"
+  else
+    echo "$REPO_ROOT/packages/$pkg"
+  fi
 }
 
 # Parse arguments
@@ -141,7 +151,7 @@ FAILED=0
 SKIPPED=0
 
 for pkg in "${PACKAGES_TO_PUBLISH[@]}"; do
-  PKG_DIR="$REPO_ROOT/packages/$pkg"
+  PKG_DIR="$(package_dir "$pkg")"
 
   if [ ! -f "$PKG_DIR/pyproject.toml" ]; then
     echo "SKIP: $pkg (no pyproject.toml)"

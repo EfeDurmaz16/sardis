@@ -14,15 +14,15 @@ Deployable applications use role-based source roots. The reference API source
 root is:
 
 ```text
-packages/reference-api/server
+apps/api/server
 ```
 
 Do not use repeated application layouts such as:
 
 ```text
 packages/sardis-api/src/sardis_api
-packages/reference-api/src/sardis_api
-packages/reference-api/server/routers
+apps/api/src/sardis_api
+apps/api/server/routers
 ```
 
 The package directory already says this is the reference API. The import root
@@ -49,7 +49,7 @@ controlled by `package.json`.
 
 | Family | Current paths | Layout stance |
 | --- | --- | --- |
-| Reference service | `packages/reference-api/` | Keep `server/` as the app source root. No `src/sardis_api`. |
+| Reference service | `apps/api/` | Keep `server/` as the app source root. No `src/sardis_api`. |
 | Core protocols | `packages/sardis-core/`, `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/sardis-ledger/` | Keep published library import roots stable; migrate stale-looking import names only with compatibility shims. |
 | SDKs | `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/`, `packages/sardis-ai-sdk/`, `packages/sardis-agent-sdk/` | Keep public package names stable; use `docs/architecture/sdk-packages.md` before changing official SDK versus framework-integration ownership. |
 | Agent integrations | `packages/sardis-mcp-server/`, `packages/sardis-openai/`, `packages/sardis-openai-agents/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-adk/`, `packages/sardis-agentkit/` | Keep package-specific validation; use `docs/architecture/openai-packages.md` before changing OpenAI package ownership. |
@@ -63,7 +63,7 @@ renamed only through focused migration commits, not as a broad mechanical sweep.
 
 | Candidate | Why it is confusing | Preferred next action |
 | --- | --- | --- |
-| oversized protocol route modules | `packages/reference-api/server/routes/protocol/mpp.py` currently mixes HTTP handlers, request models, persistence fallback, policy checks, and provider execution in one route module. | Keep x402 and MPP HTTP adapters under `routes/protocol/`, but extract reusable MPP logic into focused domain/service/repository modules before adding new behavior. Preserve public HTTP paths. |
+| oversized protocol route modules | `apps/api/server/routes/protocol/mpp.py` currently mixes HTTP handlers, request models, persistence fallback, policy checks, and provider execution in one route module. | Keep x402 and MPP HTTP adapters under `routes/protocol/`, but extract reusable MPP logic into focused domain/service/repository modules before adding new behavior. Preserve public HTTP paths. |
 | route files named after their parent folder | Old names like `routes/billing/billing.py`, `routes/compliance/compliance.py`, `routes/evidence/evidence.py`, and `routes/wallets/wallets.py` made navigation feel duplicated even when the domain folder was correct. | Keep route modules named by role, for example `accounts.py`, `screening.py`, `records.py`, `lifecycle.py`, or `webhooks.py`. Preserve public HTTP paths and route registration behavior. |
 | `packages/sardis-connect/` and `packages/sardis-connect-js/` | Same product word with language split hidden at the suffix. | Boundary is documented in `docs/architecture/connect-packages.md`. Rename only after preserving published package names, local filters, README commands, validation, and imports. |
 | `packages/sardis-openai/` and `packages/sardis-openai-agents/` | The boundary between generic OpenAI API helpers and Agents SDK integration is not obvious. | Boundary is documented in `docs/architecture/openai-packages.md`. Keep both unless a migration preserves install commands, imports, optional dependencies, examples, and validation. |

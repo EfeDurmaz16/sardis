@@ -96,7 +96,7 @@ BLOCKED_TEXT_SNIPPETS = {
         "as part of the OSS source layout."
     ),
     "│   ├── api/": (
-        "Tracked public repo maps must use packages/reference-api, not the old "
+        "Tracked public repo maps must use apps/api, not the old "
         "generic API package."
     ),
     "https://app.sardis.sh/transactions": (

@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir uv
 # Copy workspace files
 COPY pyproject.toml README.md uv.lock* ./
 COPY src/ ./src/
+COPY apps/ ./apps/
 COPY packages/ ./packages/
 
 # Install dependencies with uv
@@ -28,7 +29,7 @@ RUN uv pip install --python /app/.venv/bin/python \
     -e /app/packages/sardis-checkout \
     -e /app/packages/sardis-coinbase \
     -e /app/packages/sardis-ramp \
-    -e /app/packages/reference-api \
+    -e /app/apps/api \
     "gunicorn>=25" "uvicorn[standard]"
 
 # Stage 2: Runtime
@@ -42,6 +43,7 @@ RUN pip install --no-cache-dir uv
 # Copy installed dependencies and source code from builder
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
+COPY --from=builder /app/apps /app/apps
 COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
@@ -69,8 +71,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Run with gunicorn + uvicorn workers for production concurrency.
 # SARDIS_WORKERS defaults to 4; set to 1 for development or memory-constrained environments.
-CMD cd /app/packages/reference-api && \
-    PYTHONPATH="/app/packages/reference-api:$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
+CMD cd /app/apps/api && \
+    PYTHONPATH="/app/apps/api:$(find /app/packages -type d -name src | tr '\n' ':')${PYTHONPATH:+:$PYTHONPATH}" \
     gunicorn "server.main:create_app()" \
     -w ${SARDIS_WORKERS:-4} \
     -k uvicorn.workers.UvicornWorker \

@@ -14,19 +14,19 @@ reference API.
 | --- | --- | --- |
 | `packages/sardis-protocol/src/sardis_protocol/x402*.py` | x402 challenge, verification, ERC-3009, and settlement primitives. | Protocol package |
 | `packages/sardis-core/src/sardis_v2_core/x402_policy_guard.py` | Shared x402 policy-before-settlement guard used by higher-level surfaces. | Core policy package |
-| `packages/reference-api/server/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
-| `packages/reference-api/server/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
+| `apps/api/server/routes/protocol/x402.py` | x402 facilitator API: generate, verify, dry-run, settle, and inspect x402 payments. | API protocol routes |
+| `apps/api/server/middleware/x402.py` | Optional server-side x402 paid-endpoint middleware. | API middleware |
 | `packages/sardis-mpp/` | Sardis policy-governed MPP client, session helpers, payment records, and payment methods. | MPP package |
-| `packages/reference-api/server/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
-| `packages/reference-api/server/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
+| `apps/api/server/routes/protocol/mpp.py` | Sardis-hosted MPP session lifecycle and budgeted payment execution API. | API protocol routes |
+| `apps/api/server/middleware/mpp_gate.py` | Per-endpoint MPP 402 challenge dependency for public paid APIs. | API middleware |
 | `packages/sardis-sdk-python/src/sardis_sdk/client.py` | Public Python SDK client methods that call Sardis API protocol endpoints. | Python SDK |
 | `packages/sardis-mcp-server/src/tools/x402.ts` | MCP tool wrapper for x402 protocol operations. | MCP package |
 | `packages/sardis-mcp-server/src/tools/mpp.ts` | MCP tool wrapper for MPP protocol operations. | MCP package |
-| `packages/reference-api/server/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
-| `packages/reference-api/server/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
-| `packages/reference-api/server/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
-| `packages/reference-api/server/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
-| `packages/reference-api/server/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
+| `apps/api/server/routes/protocol/a2a.py` | Agent-to-agent protocol messaging, trust checks, and payment requests. | API protocol routes |
+| `apps/api/server/routes/protocol/a2a_payments.py` | A2A escrow and settlement route surface. | API protocol routes |
+| `apps/api/server/routes/protocol/acp.py` | Agentic Commerce Protocol checkout and delegated payment session surface. | API protocol routes |
+| `apps/api/server/routes/protocol/erc8183.py` | ERC-8183 agentic commerce job lifecycle surface. | API protocol routes |
+| `apps/api/server/routes/protocol/spt.py` | Shared Payment Token grant and use surface. | API protocol routes |
 
 ## Request Flow Difference
 
@@ -90,7 +90,7 @@ these becomes true:
 
 ## Current Cleanup Target
 
-`packages/reference-api/server/routes/protocol/mpp.py` is too large for a route
+`apps/api/server/routes/protocol/mpp.py` is too large for a route
 adapter. It should remain at the same public HTTP path, but new work should move
 non-HTTP logic out of the route file:
 

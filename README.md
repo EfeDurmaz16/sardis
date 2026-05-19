@@ -269,9 +269,11 @@ Every financial action follows a **single authority path** before execution. The
 
 ```
 sardis/
+├── apps/api/               # FastAPI reference API implementation
+├── apps/landing/           # Public website source
+├── apps/canvas-site/       # Technical canvas source
 ├── packages/               # Core monorepo packages
 │   ├── sardis-core/        # Domain models, config, database
-│   ├── reference-api/      # FastAPI reference API implementation
 │   ├── sardis-chain/       # Blockchain execution, chain routing
 │   ├── sardis-protocol/    # AP2/TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC
@@ -289,9 +291,6 @@ sardis/
 │       ├── SardisWalletFactory.sol
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
-├── apps/
-│   ├── landing/            # Public website source
-│   └── canvas-site/        # Technical canvas source
 ├── playground/             # Interactive demo sandbox
 ├── examples/               # Usage examples
 ├── demos/                  # Demo applications
@@ -360,7 +359,7 @@ python3 scripts/stale_api_path_check.py
 pnpm --filter @sardis/sdk typecheck
 
 # Start local API server
-uv run uvicorn --app-dir packages/reference-api server.main:create_app --factory --port 8000
+uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
 ```
 
 ---

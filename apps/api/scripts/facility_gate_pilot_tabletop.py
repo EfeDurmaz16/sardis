@@ -5,8 +5,8 @@ This harness is intentionally simulator-only. It proves the control-plane
 surfaces needed for a pilot without touching live provider rails.
 
 Usage:
-  python packages/reference-api/scripts/facility_gate_pilot_tabletop.py
-  python packages/reference-api/scripts/facility_gate_pilot_tabletop.py --output tabletop.json
+  python apps/api/scripts/facility_gate_pilot_tabletop.py
+  python apps/api/scripts/facility_gate_pilot_tabletop.py --output tabletop.json
 """
 from __future__ import annotations
 

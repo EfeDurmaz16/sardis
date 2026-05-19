@@ -295,7 +295,7 @@ flowchart LR
           </p>
         </div>
         <dl class="defs">
-          <dt>Migration</dt><dd><code>packages/reference-api/migrations/048_settlement_tracking.sql</code></dd>
+          <dt>Migration</dt><dd><code>apps/api/migrations/048_settlement_tracking.sql</code></dd>
           <dt>Table</dt><dd><code>settlement_records</code></dd>
           <dt>Key fields</dt><dd><code>settlement_id</code> (unique), <code>intent_id</code>, <code>receipt_id</code>, <code>mode</code>, <code>status</code>, <code>amount</code>, <code>currency</code>, <code>fee</code>, <code>network_reference</code>, <code>credential_id</code></dd>
           <dt>Card-path fields</dt><dd><code>authorization_status</code>, <code>capture_status</code>, <code>dispute_status</code>, <code>reversal_reference</code>, <code>liability_party</code></dd>
@@ -315,7 +315,7 @@ flowchart LR
           </p>
         </div>
         <dl class="defs">
-          <dt>Migration</dt><dd><code>packages/reference-api/migrations/053_provider_rail_tracking.sql</code></dd>
+          <dt>Migration</dt><dd><code>apps/api/migrations/053_provider_rail_tracking.sql</code></dd>
           <dt>Columns on <code>transactions</code></dt><dd><code>provider_rail VARCHAR(50)</code>, <code>provider_payment_reference VARCHAR(255)</code></dd>
           <dt>Valid values</dt><dd><code>stripe_spt</code>, <code>visa_tap</code>, <code>mastercard_agent_pay</code>, <code>circle_cpn</code>, <code>bridge_ach</code>, <code>bridge_sepa</code>, <code>bridge_pix</code></dd>
           <dt>Index</dt><dd><code>idx_transactions_provider(provider_rail, created_at)</code> — powers the "costs by rail this month" dashboard query.</dd>
@@ -335,7 +335,7 @@ flowchart LR
           </p>
         </div>
         <dl class="defs">
-          <dt>Migration</dt><dd><code>packages/reference-api/migrations/057_reconciliation_queue.sql</code></dd>
+          <dt>Migration</dt><dd><code>apps/api/migrations/057_reconciliation_queue.sql</code></dd>
           <dt>Table</dt><dd><code>reconciliation_queue</code></dd>
           <dt>Schema</dt><dd><code>entry_type TEXT</code>, <code>payload_json JSONB</code>, <code>status</code> (pending / processing / resolved / failed), <code>retry_count</code>, <code>created_at</code>, <code>processed_at</code></dd>
           <dt>Index</dt><dd>Partial <code>idx_recon_queue_status</code> WHERE status='pending' — the worker only ever scans pending rows.</dd>

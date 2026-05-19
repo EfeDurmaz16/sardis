@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Renamed the Python distribution from `sardis-api` to `sardis-reference-api`
-  so package metadata matches the `packages/reference-api/` source layout and
+  so package metadata matches the `apps/api/` source layout and
   avoids repeating the product API name in contributor-facing paths.
 
 ## [0.3.1] - 2026-02-26

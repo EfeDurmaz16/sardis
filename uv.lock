@@ -7196,7 +7196,7 @@ requires-dist = [
     { name = "sardis-openai-agents", marker = "extra == 'openai-agents'", editable = "packages/sardis-openai-agents" },
     { name = "sardis-protocol", marker = "extra == 'protocols'", editable = "packages/sardis-protocol" },
     { name = "sardis-ramp", marker = "extra == 'ramp'", editable = "packages/sardis-ramp" },
-    { name = "sardis-reference-api", marker = "extra == 'api'", editable = "packages/reference-api" },
+    { name = "sardis-reference-api", marker = "extra == 'api'", editable = "apps/api" },
     { name = "sardis-sdk", editable = "packages/sardis-sdk-python" },
     { name = "sardis-ucp", marker = "extra == 'protocols'", editable = "packages/sardis-ucp" },
     { name = "sardis-wallet", marker = "extra == 'wallet'", editable = "packages/sardis-wallet" },
@@ -7641,7 +7641,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "sardis-reference-api"
 version = "1.0.0"
-source = { editable = "packages/reference-api" }
+source = { editable = "apps/api" }
 dependencies = [
     { name = "alembic" },
     { name = "asyncpg" },

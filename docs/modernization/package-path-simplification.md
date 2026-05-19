@@ -4,12 +4,12 @@
 
 The API implementation path went through several readability cleanups. The
 early tree repeated `sardis-api` at both package and import-package levels.
-The monorepo package directory was then renamed to `packages/reference-api`. The
+The monorepo package directory was then renamed to `apps/api`. The
 remaining problem was that the server import package still used `sardis`, which
 collided conceptually and technically with the public Python SDK:
 
 ```text
-packages/reference-api/sardis/...
+apps/api/sardis/...
 ```
 
 That path was technically valid, but it made the package boundary too vague:
@@ -21,13 +21,13 @@ That path was technically valid, but it made the package boundary too vague:
 
 For a contributor, the package directory should be short enough to scan quickly
 from the repository root. The package is the deployable/reference API, and it
-already sits under `packages/`, so `packages/reference-api` is clearer than
+already sits under `packages/`, so `apps/api` is clearer than
 repeating the same concept in the removed `packages/server-api` path.
 
 ## Decision
 
 The API package now intentionally omits the extra `src/` layer because
-`packages/reference-api` is already an explicit monorepo package boundary. In other
+`apps/api` is already an explicit monorepo package boundary. In other
 words, the old shape:
 
 ```text
@@ -41,7 +41,7 @@ the product warranted.
 Keep the API import package as:
 
 ```text
-packages/reference-api/server/
+apps/api/server/
 ```
 
 Rename the monorepo package directory from:
@@ -53,7 +53,7 @@ packages/server-api/
 to:
 
 ```text
-packages/reference-api/
+apps/api/
 ```
 
 This keeps a clear server-only import path:
@@ -92,7 +92,7 @@ public SDK import path are not part of this rename and must stay stable.
 The current migration sequence is:
 
 1. Confirm the deployable FastAPI package is still the OSS reference server, not only a protocol schema package.
-2. Rename the package directory with `git mv packages/server-api packages/reference-api`.
+2. Rename the package directory with `git mv packages/server-api apps/api`.
 3. Update path references in packaging config, scripts, CI, Docker, OpenAPI, docs, and tests.
 4. Rename the server import package from `sardis` to `server`.
 5. Keep the root public SDK import package as `src/sardis`.
@@ -103,8 +103,8 @@ The current migration sequence is:
 Minimum validation for the server package-directory rename:
 
 ```bash
-python3 -m compileall -q packages/reference-api/server packages/reference-api/scripts/generate_openapi.py api/index.py
-PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/reference-api/tests/test_funding_bootstrap.py packages/reference-api/tests/test_sandbox_isolation.py packages/reference-api/tests/test_facility_requests_router.py -q
+python3 -m compileall -q apps/api/server apps/api/scripts/generate_openapi.py api/index.py
+PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest apps/api/tests/test_funding_bootstrap.py apps/api/tests/test_sandbox_isolation.py apps/api/tests/test_facility_requests_router.py -q
 pnpm check:openapi
 python3 scripts/package_maturity_check.py
 git diff --check
@@ -115,7 +115,7 @@ Recommended broader validation:
 ```bash
 python3 scripts/repo_inventory.py
 pnpm check
-uv run pytest packages/reference-api/tests -q
+uv run pytest apps/api/tests -q
 ```
 
 ## Current State
@@ -123,12 +123,12 @@ uv run pytest packages/reference-api/tests -q
 The contributor-facing API path is now:
 
 ```text
-packages/reference-api/server/...
+apps/api/server/...
 ```
 
 This still contains two filesystem layers:
 
-- `packages/reference-api` is the monorepo package boundary: the deployable
+- `apps/api` is the monorepo package boundary: the deployable
   reference API service.
 - `server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
@@ -138,18 +138,18 @@ replaces the old repeated `sardis_api` import package; it is not a second
 "Sardis API" directory. Do not rename it again unless a dedicated migration
 proves all ASGI, pytest, editable install, and deployment imports remain
 unambiguous.
-The old `src/` layer was removed from the API package because `packages/reference-api` is
+The old `src/` layer was removed from the API package because `apps/api` is
 already the package boundary in this monorepo. Public docs may reference
-`packages/reference-api/server` when they point to internal server code, but they
+`apps/api/server` when they point to internal server code, but they
 must not describe the removed `sardis-api/src/sardis_api` shape or the obsolete
 `sardis/routes` import path. The active source tree must also avoid an extra
 generic `routers/` bucket below `server`. A contributor should land in a
 domain path such as:
 
 ```text
-packages/reference-api/server/routes/protocol/x402.py
-packages/reference-api/server/routes/protocol/mpp.py
-packages/reference-api/server/routes/commerce/merchant_checkout.py
+apps/api/server/routes/protocol/x402.py
+apps/api/server/routes/protocol/mpp.py
+apps/api/server/routes/commerce/merchant_checkout.py
 ```
 
 The clean migration target is therefore domain placement below

@@ -447,7 +447,7 @@ flowchart TD
           <p class="text-muted" style="max-width:760px;">
             Policy changes are risky: tighten too much, block legitimate spending; loosen too much, invite
             incidents. The <code>policy_simulation</code> router
-            (<code>packages/reference-api/server/routes/policy/policy_simulation.py</code>) replays historical
+            (<code>apps/api/server/routes/policy/policy_simulation.py</code>) replays historical
             traffic against a proposed policy and returns what would have changed — allows that became denies,
             denies that became allows, new approval routes.
           </p>
@@ -481,8 +481,8 @@ flowchart TD
           </p>
         </div>
         <dl class="defs">
-          <dt>Router</dt><dd><code>packages/reference-api/server/routes/operations/emergency.py</code></dd>
-          <dt>Dependency</dt><dd><code>packages/reference-api/server/kill_switch_dep.py</code> — enforced on every write path.</dd>
+          <dt>Router</dt><dd><code>apps/api/server/routes/operations/emergency.py</code></dd>
+          <dt>Dependency</dt><dd><code>apps/api/server/kill_switch_dep.py</code> — enforced on every write path.</dd>
           <dt>Effect</dt><dd>Global flag flips; <code>SpendingPolicy.evaluate()</code> short-circuits to deny with reason <code>kill_switch_active</code>; no new mandates accept; in-flight signatures are aborted at the wallet manager.</dd>
           <dt>Scope modes</dt><dd>Global, per-tenant, per-agent, per-chain — you don't always want to freeze everyone.</dd>
           <dt>Audit</dt><dd>Activation, reason, operator identity, and deactivation all log to the decision stream.</dd>
@@ -507,9 +507,9 @@ flowchart TD
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/mandate_tree.py</code></td><td>Parent/child mandate invariants.</td></tr>
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/goal_drift_detector.py</code></td><td>Drift scoring — input to the drift check.</td></tr>
             <tr><td><code>packages/sardis-core/src/sardis_v2_core/kya_trust_scoring.py</code></td><td>Trust tiers + per-tier caps merged into per-tx limit.</td></tr>
-            <tr><td><code>packages/reference-api/server/routes/policy/policy_simulation.py</code></td><td>What-if / replay endpoints.</td></tr>
-            <tr><td><code>packages/reference-api/server/routes/operations/emergency.py</code></td><td>Kill-switch activation and status.</td></tr>
-            <tr><td><code>packages/reference-api/server/kill_switch_dep.py</code></td><td>FastAPI dependency that enforces the flag on every write.</td></tr>
+            <tr><td><code>apps/api/server/routes/policy/policy_simulation.py</code></td><td>What-if / replay endpoints.</td></tr>
+            <tr><td><code>apps/api/server/routes/operations/emergency.py</code></td><td>Kill-switch activation and status.</td></tr>
+            <tr><td><code>apps/api/server/kill_switch_dep.py</code></td><td>FastAPI dependency that enforces the flag on every write.</td></tr>
           </tbody>
         </table>
       </section>

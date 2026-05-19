@@ -126,12 +126,12 @@
 - Expanded `server.route_registry.wallets` with treasury and treasury-ops registration, keeping repository/client construction in `main.py` while moving route dependency wiring and Lithic webhook mounting into the wallet registrar.
 - Expanded `server.route_registry.wallets` with Circle CPN registration and extended the wallet routing test to cover CPN dependencies plus public webhook mounting.
 - Removed the temporary compatibility package after migrating internal source and tests to the new domain route modules.
-- Added and executed a package path simplification decision: keep the Python import package `server`, but consolidate the monorepo API package directory at `packages/reference-api`.
+- Added and executed a package path simplification decision: keep the Python import package `server`, but consolidate the monorepo API package directory at `apps/api`.
 - Renamed the reference API import root from `sardis_server` to `server`, so the
-  active source path is now `packages/reference-api/server/...` instead of a
+  active source path is now `apps/api/server/...` instead of a
   repeated product/API namespace.
 - Updated repo imports/startup docs and removed the unused `sardis_v2_api` prototype package.
-- Removed the extra API `src/` layer so the contributor-facing server path is now `packages/reference-api/server/...` instead of the old nested source layout.
+- Removed the extra API `src/` layer so the contributor-facing server path is now `apps/api/server/...` instead of the old nested source layout.
 - Updated API packaging, OpenAPI generation, Vercel/Docker startup paths, local run scripts, API test bootstrapping, architecture docs, canvas references, and stale-path guardrails for the flatter API layout.
 - Added a contributor-facing clean tree helper, `pnpm repo:tree`, so maintainers can inspect source layout without local `node_modules`, `dist`, `.venv`, `.pytest_cache`, private ignored app folders, or generated build artifacts overwhelming the repository map.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
@@ -162,8 +162,8 @@
 - Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.
 - Added public Facility Gate alert/dashboard artifacts required by the pilot readiness gate.
 - Updated JWT logout regression coverage to test the current internal-token revocation path instead of the removed shared admin password fallback.
-- Consolidated the deployable FastAPI/reference API package directory at `packages/reference-api` so contributors can distinguish it from protocol schemas, generated clients, or generic API artifacts at a glance.
-- Updated CI, Docker, Vercel/serverless entrypoints, package source mappings, OpenAPI scripts, migration scripts, tests, docs, and generated public canvas references to the new `packages/reference-api` path.
+- Consolidated the deployable FastAPI/reference API package directory at `apps/api` so contributors can distinguish it from protocol schemas, generated clients, or generic API artifacts at a glance.
+- Updated CI, Docker, Vercel/serverless entrypoints, package source mappings, OpenAPI scripts, migration scripts, tests, docs, and generated public canvas references to the new `apps/api` path.
 - Adjusted local/serverless startup paths so `server.main` resolves to the server package rather than the root simulation SDK package when launching the API.
 - Moved the root public Python client facade from `sardis/` to `src/sardis/` so the repository root no longer shadows the server package's `server.main` import.
 - Updated root package build metadata, Docker copy paths, version consistency checks, package docs, and security scope references for the new root `src` layout.
@@ -218,7 +218,7 @@
 - Deleted `agent_identity.py`, an unregistered legacy identity router from the old flat router bucket.
 - Deleted `anomaly.py`, an unregistered anomaly API prototype from the old flat router bucket with no live app wiring.
 - Deleted `plugins.py`, an unregistered plugin-management API prototype from the old flat router bucket with no live app wiring.
-- Deleted `packages/reference-api/sardis_v2_api/routes/budgets.py`, an unused early budget-allocation prototype package that was not imported or mounted by the live API.
+- Deleted `apps/api/sardis_v2_api/routes/budgets.py`, an unused early budget-allocation prototype package that was not imported or mounted by the live API.
 
 ## What Was Rewritten
 
@@ -254,15 +254,15 @@ Latest API layout pass: the first route naming cleanup removed one dead prototyp
 
 Latest contributor-test pass: the public default Python test path now exercises maintained package-owned suites instead of the stale root `tests/` backlog. The newly exposed API-suite failures were fixed in the holds router wiring, Facility Gate readiness artifacts, and JWT logout regression test.
 
-Latest path-layout pass: the deployable API package now lives at `packages/reference-api`, while the API Python import package remains `server` and the distribution name is `sardis-reference-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary and package metadata more explicit without changing HTTP routes or server imports.
+Latest path-layout pass: the deployable API package now lives at `apps/api`, while the API Python import package remains `server` and the distribution name is `sardis-reference-api`. The root public client facade remains `src/sardis`. This makes the monorepo package boundary and package metadata more explicit without changing HTTP routes or server imports.
 
-Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `packages/reference-api/server` during local import probes.
+Latest root package pass: the public simulation/client facade now uses the same standard `src` layout as the server package. This removes the repo-root `sardis/` directory that previously shadowed `apps/api/server` during local import probes.
 
 Latest CI/CD guardrail pass: the public CI map now inventories every workflow file, required check metadata is cross-checked against workflow job names, public docs links are checked across the main contributor docs and architecture docs, PR-triggered workflows cannot use private deploy/publish/provider secrets without a PR-excluding job condition, private-secret workflows cannot use top-level `permissions: read-all`, public PR workflows cannot use top-level `permissions: read-all`, and workflow Node/pnpm/install commands are checked against the repo's Node 22, pnpm 9.15.4, and frozen-lockfile policy.
 
 Latest source-layout pass: the contributor gate now enforces the current API
 source layout directly. The reference API must stay at
-`packages/reference-api/server`, route implementations must stay under domain
+`apps/api/server`, route implementations must stay under domain
 `routes/` modules, registration must stay under `route_registry/`, and the old
 repeated API package/source shape must not return. Published Python libraries
 may still use `src/<import_package>` when that is the package-correct library
@@ -344,11 +344,11 @@ batch payment, streaming payment, ACP, ramp, and A2A discovery paths.
 
 Current validation after the latest API bootstrap cleanup:
 
-- `python3 -m compileall -q packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
-- `uv run ruff check packages/reference-api/server/main.py packages/reference-api/server/funding_runtime.py packages/reference-api/tests/test_funding_runtime.py` passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 18 passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_checkout_runtime.py packages/reference-api/tests/test_funding_runtime.py packages/reference-api/tests/test_funding_bootstrap.py -q` passed: 22 passed.
-- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):packages/reference-api" uv run pytest packages/reference-api/tests/test_static_routes.py packages/reference-api/tests/test_commerce_routing.py packages/reference-api/tests/test_money_movement_routing.py packages/reference-api/tests/test_protocol_routing.py -q` passed: 10 passed.
+- `python3 -m compileall -q apps/api/server/main.py apps/api/server/funding_runtime.py apps/api/tests/test_funding_runtime.py` passed.
+- `uv run ruff check apps/api/server/main.py apps/api/server/funding_runtime.py apps/api/tests/test_funding_runtime.py` passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):apps/api" uv run pytest apps/api/tests/test_funding_runtime.py apps/api/tests/test_funding_bootstrap.py -q` passed: 18 passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):apps/api" uv run pytest apps/api/tests/test_checkout_runtime.py apps/api/tests/test_funding_runtime.py apps/api/tests/test_funding_bootstrap.py -q` passed: 22 passed.
+- `PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':'):apps/api" uv run pytest apps/api/tests/test_static_routes.py apps/api/tests/test_commerce_routing.py apps/api/tests/test_money_movement_routing.py apps/api/tests/test_protocol_routing.py -q` passed: 10 passed.
 - `python3 scripts/source_layout_check.py && python3 scripts/stale_api_path_check.py && python3 scripts/package_maturity_check.py && python3 scripts/public_doc_link_check.py` passed.
 - `pnpm check:openapi` passed: 540 paths, 592 schemas.
 - `pnpm run check:contributor` passed, including OSS surface, stale path, source layout, generated artifact, public doc link, CI/CD, workflow, template, community health, package maturity, contribution map, root-test inventory, and focused smoke tests.
@@ -371,7 +371,7 @@ Notes:
 
 - Some money-moving routes still need replay tests and a unified execution service; `/api/v2/pay`, `/api/v2/payments/batch`, and `/api/v2/transactions/batch` now have client-idempotency replay coverage.
 - Database migration history remains split between Alembic and raw SQL.
-- `packages/reference-api/server/main.py` is now below 1,000 lines, but it still owns several stateful bootstrap handoffs that should continue moving into focused runtime helpers.
+- `apps/api/server/main.py` is now below 1,000 lines, but it still owns several stateful bootstrap handoffs that should continue moving into focused runtime helpers.
 - Public/private repo hygiene still needs actual private-repo creation and history-preserving recovery of dashboard/product surfaces from git history.
 - Dashboard deployment automation and source are no longer in the public OSS repo; the private product repo must recreate its CI/CD from the moved history.
 - Private staging/mainnet/demo/partner/monitoring automation is no longer in the public OSS repo; the private product/cloud repo needs a clean replacement from history or fresh infrastructure-as-code.

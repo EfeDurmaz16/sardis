@@ -38,7 +38,7 @@ pnpm repo:stale-paths:local
 pnpm check:openapi
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest packages/reference-api/tests/test_merchant_checkout.py -q
+uv run pytest apps/api/tests/test_merchant_checkout.py -q
 ```
 
 `pnpm repo:ignored-artifacts` reports ignored generated folders such as
@@ -75,7 +75,7 @@ local audit before declaring the checkout clean from a navigation standpoint.
 The default maintained Python API suite is:
 
 ```bash
-uv run pytest packages/reference-api/tests/
+uv run pytest apps/api/tests/
 ```
 
 The root `tests/` directory is a legacy migration backlog and is not part of

@@ -17,7 +17,7 @@ Status meanings:
 | --- | --- | --- |
 | `src/sardis/` | Root Python client facade for the public SDK. | Keep examples aligned with real imports. |
 | `packages/sardis-core/` | Domain models, shared primitives, and configuration. | Ensure all local packages resolve from workspace sources. |
-| `packages/reference-api/` | Reference FastAPI implementation for public API contracts. | Split hosted-only routes from protocol/reference routes. |
+| `apps/api/` | Reference FastAPI implementation for public API contracts. | Split hosted-only routes from protocol/reference routes. |
 | `packages/sardis-protocol/` | AP2/TAP/mandate verification plus x402 protocol primitives. | Add conformance fixtures and versioned schemas. |
 | `packages/sardis-ledger/` | Append-only audit/evidence ledger primitives. | Add tamper-evidence and replay fixtures. |
 | `packages/sardis-sdk-python/` | Official Python API SDK package. | Keep smoke tests and quickstarts current; use `docs/architecture/sdk-packages.md` before moving SDK ownership. |

@@ -218,7 +218,7 @@ def main():
     parser.add_argument(
         "--output",
         default=None,
-        help="Output JSON path. Defaults to packages/reference-api/openapi.json.",
+        help="Output JSON path. Defaults to apps/api/openapi.json.",
     )
     args = parser.parse_args()
 

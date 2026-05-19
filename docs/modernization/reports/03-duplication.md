@@ -4,7 +4,7 @@
 
 ### High: Database migration history exists in two systems
 
-- Evidence: `packages/reference-api/alembic/versions/001_initial_schema.py` through `030_facility_gate.py`; raw SQL migrations continue through `packages/reference-api/migrations/106_agent_registry.sql`.
+- Evidence: `apps/api/alembic/versions/001_initial_schema.py` through `030_facility_gate.py`; raw SQL migrations continue through `apps/api/migrations/106_agent_registry.sql`.
 - Impact: It is unclear whether Alembic or raw SQL is canonical, and drift can create production migration gaps.
 - Recommended action: Declare one canonical migration path. Keep historical files, but add drift checks and stop adding to both without an explicit policy.
 - Action type: Migration.

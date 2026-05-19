@@ -7,20 +7,20 @@ Sardis uses a monorepo package name and a language import package name for each 
 The reference API implementation lives at:
 
 ```text
-packages/reference-api/
+apps/api/
 ```
 
 Its Python import package lives at:
 
 ```text
-packages/reference-api/server/
+apps/api/server/
 ```
 
 This is intentional:
 
-- `packages/reference-api` is the monorepo package boundary contributors navigate to.
+- `apps/api` is the monorepo package boundary contributors navigate to.
 - `server` is the short Python import namespace for the FastAPI server.
-- The API package intentionally omits an extra `src/` layer because `packages/reference-api` already provides the local package boundary in this monorepo.
+- The API package intentionally omits an extra `src/` layer because `apps/api` already provides the local package boundary in this monorepo.
 - `sardis-reference-api` is the Python distribution name for packaging
   compatibility. The old `sardis-api` distribution name must not be
   reintroduced.
@@ -41,7 +41,7 @@ pnpm repo:api-tree
 The API source tree should stay at this depth:
 
 ```text
-packages/reference-api/server/routes/<domain>/<module>.py
+apps/api/server/routes/<domain>/<module>.py
 ```
 
 Do not add route implementation folders below the domain layer unless a
@@ -50,8 +50,8 @@ separate architecture decision explains why the extra depth is worth it.
 Route registration lives separately from endpoint implementation:
 
 ```text
-packages/reference-api/server/route_registry/<domain>.py
-packages/reference-api/server/route_registry/static_routes.py
+apps/api/server/route_registry/<domain>.py
+apps/api/server/route_registry/static_routes.py
 ```
 
 Domain registrars own FastAPI `include_router` calls, dependency overrides, and
@@ -65,9 +65,9 @@ Runtime construction also stays outside `main.py` once it becomes testable on
 its own. Current examples include:
 
 ```text
-packages/reference-api/server/card_runtime.py
-packages/reference-api/server/checkout_runtime.py
-packages/reference-api/server/funding_runtime.py
+apps/api/server/card_runtime.py
+apps/api/server/checkout_runtime.py
+apps/api/server/funding_runtime.py
 ```
 
 `main.py` should remain the composition root: create the app, call runtime
@@ -87,7 +87,7 @@ This package owns the public SDK-style import:
 from sardis import SardisClient
 ```
 
-Keep `src/sardis` separate from `packages/reference-api/server`. The former is
+Keep `src/sardis` separate from `apps/api/server`. The former is
 the public client facade; the latter is the server implementation.
 
 ## Protocol Packages

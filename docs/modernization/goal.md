@@ -15,13 +15,13 @@ The durable product behavior to preserve is:
 ## Current Architecture Summary
 
 - Python public client facade at `src/sardis/`.
-- FastAPI backend in `packages/reference-api/server`, with a large `main.py` composition root, many routers, middleware, repositories, services, and lifecycle jobs.
+- FastAPI backend in `apps/api/server`, with a large `main.py` composition root, many routers, middleware, repositories, services, and lifecycle jobs.
 - Python packages under `packages/sardis-*`, including core, API, chain, ledger, wallet, compliance, protocol, integrations, and agent-framework adapters.
 - TypeScript packages for SDKs and integrations under `packages/sardis-sdk-js`, `packages/sardis-ai-sdk`, `packages/sardis-connect-js`, `packages/sardis-mcp-server`, and workflow adapters.
 - Public apps in `apps/landing` and `apps/canvas-site`, plus a `docs-site`, generated static `canvases`, and serverless `api`/`api-proxy` folders.
 - Solidity/Foundry contracts in `contracts/`.
 - Noir policy circuit in `packages/sardis-zk-policy`.
-- PostgreSQL schema history exists in both Alembic migrations and raw SQL migrations under `packages/reference-api`.
+- PostgreSQL schema history exists in both Alembic migrations and raw SQL migrations under `apps/api`.
 - CI covers Python lint/tests, package tests, idempotency replay, JS builds/typechecks, CodeQL, gitleaks, scorecard, release dry-runs, and deploy workflows.
 
 ## Target Architecture Principles
@@ -55,7 +55,7 @@ The durable product behavior to preserve is:
 
 ## Rewrite Candidates
 
-- Small internal composition modules inside `packages/reference-api/server` may be extracted from `main.py`.
+- Small internal composition modules inside `apps/api/server` may be extracted from `main.py`.
 - Product/frontend API clients should converge on generated SDK/OpenAPI contracts outside the OSS protocol repo, with public SDK contracts kept stable.
 - Prototype/demo integrations should be moved behind clearer examples or archived if not maintained.
 - Raw SQL and Alembic migration duplication should be reconciled through a documented canonical path.

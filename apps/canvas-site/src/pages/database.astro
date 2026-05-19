@@ -35,7 +35,7 @@ const styles = `
         <h1>Database Schema</h1>
         <p class="hero-lead">
           One Neon Postgres database. 107 sequentially-numbered SQL migrations under
-          <code>packages/reference-api/migrations/</code>. No ORM is doing the heavy lifting — tables are
+          <code>apps/api/migrations/</code>. No ORM is doing the heavy lifting — tables are
           defined by hand, in SQL, and applied in strict order. When Postgres is the source of truth for
           money, legibility beats abstraction.
         </p>
@@ -67,7 +67,7 @@ const styles = `
           <div class="card">
             <div class="card-title">Hand-written SQL, applied in order</div>
             <div class="card-description">
-              Migrations live in <code>packages/reference-api/migrations/</code> as
+              Migrations live in <code>apps/api/migrations/</code> as
               <code>NNN_description.sql</code>. Applied with
               <code>psql $DATABASE_URL -f &lt;file&gt;</code>. A <code>schema_migrations</code> table guards
               against double-apply. No Alembic, no Django, no Drizzle — direct SQL keeps the diff honest.
@@ -384,7 +384,7 @@ erDiagram
           <div class="eyebrow">Full catalogue</div>
           <h2>All 107 migrations.</h2>
           <p class="text-muted" style="max-width:720px;">
-            Source: <code>ls packages/reference-api/migrations/</code> on 2026-04-19.
+            Source: <code>ls apps/api/migrations/</code> on 2026-04-19.
           </p>
         </div>
         <div class="migration-chip-grid">

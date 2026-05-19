@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Builder - Install dependencies and build wheels
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -35,7 +35,9 @@ RUN pip install --no-cache-dir --upgrade pip wheel setuptools
 # Install the package with all dependencies
 # Note: This assumes sardis-core and other packages are available
 # In production, use a requirements.txt or pip install from registry
-COPY src/ ./src/
+COPY server/ ./server/
+COPY scripts/ ./scripts/
+COPY README.md CHANGELOG.md LICENSE ./
 RUN pip install --no-cache-dir -e .
 
 # Install additional production dependencies
@@ -50,7 +52,7 @@ RUN pip install --no-cache-dir \
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime - Minimal production image
 # -----------------------------------------------------------------------------
-FROM python:3.11-slim as runtime
+FROM python:3.12-slim as runtime
 
 # Security: Run as non-root user
 RUN useradd --create-home --shell /bin/bash sardis
@@ -68,7 +70,7 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
-COPY --chown=sardis:sardis src/ ./src/
+COPY --chown=sardis:sardis server/ ./server/
 COPY --chown=sardis:sardis scripts/ ./scripts/
 
 # Set environment variables

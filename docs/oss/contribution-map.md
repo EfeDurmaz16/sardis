@@ -26,7 +26,7 @@ suite.
 - Security-sensitive work must include fail-closed tests or a clear validation
   command.
 - Keep source placement aligned with `docs/oss/source-layout.md`. The reference
-  API source tree is `packages/reference-api/server`; do not reintroduce the old
+  API source tree is `apps/api/server`; do not reintroduce the old
   repeated API package names, extra API `src` layer, or legacy flat router
   bucket.
 - Keep package layout aligned with `docs/oss/package-layout.md`. Package names
@@ -42,9 +42,9 @@ highest review rigor and the best tests.
 | --- | --- | --- | --- |
 | Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers; use `docs/architecture/sdk-packages.md` before moving SDK ownership | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
 | Authority primitives | `packages/sardis-core/`, `packages/sardis-protocol/` | Mandate semantics, AP2/TAP fixtures, policy evaluation, replay safety | `uv run pytest packages/sardis-core/tests -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q` |
-| Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/reference-api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q` |
+| Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `apps/api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=apps/api uv run pytest apps/api/tests/test_x402_middleware.py apps/api/tests/test_mpp_router.py -q`; `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q` |
 | Evidence and ledger | `packages/sardis-ledger/` | Audit packet fixtures, tamper-evidence tests, reconciliation examples | `uv run pytest packages/sardis-ledger/tests -q` |
-| Reference API | `packages/reference-api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest packages/reference-api/tests -q`; `pnpm run check:contributor` |
+| Reference API | `apps/api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest apps/api/tests -q`; `pnpm run check:contributor` |
 | Agent tooling | `packages/sardis-mcp-server/` | MCP schema improvements, examples, simulated-response labeling | `pnpm --filter @sardis/mcp-server build`; `pnpm --filter @sardis/mcp-server test` |
 
 ## Supported Package Paths
@@ -91,7 +91,7 @@ Use `docs/oss/public-private-boundary.md` and
 
 | Change | Put tests in |
 | --- | --- |
-| API route, middleware, auth, webhooks | `packages/reference-api/tests/` |
+| API route, middleware, auth, webhooks | `apps/api/tests/` |
 | Policy, mandate, authority, orchestration | `packages/sardis-core/tests/` or `packages/sardis-protocol/tests/` |
 | Ledger, audit packet, reconciliation | `packages/sardis-ledger/tests/` |
 | Chain, wallet, provider execution | owning package tests |
@@ -107,12 +107,12 @@ unless it genuinely spans multiple packages.
 x402 and MPP are separate protocol surfaces, not duplicate packages:
 
 - x402 primitives live in `packages/sardis-protocol/`; API facilitator routes
-  and middleware live in `packages/reference-api/`.
+  and middleware live in `apps/api/`.
 - MPP client/session primitives live in `packages/sardis-mpp/`; API session
-  routes and middleware live in `packages/reference-api/`.
+  routes and middleware live in `apps/api/`.
 - Shared Sardis behavior belongs in policy, execution, receipt, and evidence
   code, not in a new `x402_mpp` bucket.
-- `packages/reference-api/server/routes/protocol/mpp.py` is the current
+- `apps/api/server/routes/protocol/mpp.py` is the current
   cleanup target: keep the public route file, but move persistence,
   orchestration, and provider execution into focused repository/domain/service
   modules before adding new MPP behavior.
@@ -125,5 +125,5 @@ pytest invocation.
 ```bash
 PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
 PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
-PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q
+PYTHONPATH=apps/api uv run pytest apps/api/tests/test_x402_middleware.py apps/api/tests/test_mpp_router.py -q
 ```

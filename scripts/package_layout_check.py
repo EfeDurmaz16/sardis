@@ -27,30 +27,31 @@ FORBIDDEN_TRACKED_PREFIXES = (
     "packages/sardis-api/",
     "packages/server-api/",
     "packages/api/",
-    "packages/reference-api/src/",
-    "packages/reference-api/sardis_api/",
-    "packages/reference-api/sardis/",
-    "packages/reference-api/server/routers/",
+    "packages/reference-api/",
+    "apps/api/src/",
+    "apps/api/sardis_api/",
+    "apps/api/sardis/",
+    "apps/api/server/routers/",
 )
 
 FORBIDDEN_TRACKED_SEGMENTS = {
     "sardis_api": (
         "Do not reintroduce the repeated API import package. Use "
-        "packages/reference-api/server for the deployable reference API."
+        "apps/api/server for the deployable reference API."
     ),
 }
 
 REFERENCE_API_REQUIRED_PATHS = (
-    "packages/reference-api/server/__init__.py",
-    "packages/reference-api/server/main.py",
-    "packages/reference-api/server/routes/",
-    "packages/reference-api/server/route_registry/",
+    "apps/api/server/__init__.py",
+    "apps/api/server/main.py",
+    "apps/api/server/routes/",
+    "apps/api/server/route_registry/",
 )
 
 REQUIRED_DOC_SNIPPETS = {
     PACKAGE_LAYOUT_DOC: (
         "Deployable applications use role-based source roots",
-        "packages/reference-api/server",
+        "apps/api/server",
         "Python libraries may keep `src/<import_package>`",
         "Do not flatten published libraries only to shorten paths.",
         "Rename Candidates",
@@ -87,7 +88,7 @@ REQUIRED_DOC_SNIPPETS = {
     ),
     SOURCE_LAYOUT_DOC: (
         "docs/oss/package-layout.md",
-        "packages/reference-api/server",
+        "apps/api/server",
         "packages/sardis-api/src/sardis_api/",
     ),
     DEVELOPMENT_DOC: (
@@ -140,7 +141,7 @@ def main() -> int:
         if not has_tracked_path(files, required_path):
             errors.append(f"Reference API layout path is missing: {required_path}")
 
-    if has_tracked_path(files, "packages/reference-api/src/"):
+    if has_tracked_path(files, "apps/api/src/"):
         errors.append(
             "The reference API must not use a nested src/ layer. It is a "
             "deployable application package; the source root is server/."
@@ -165,7 +166,8 @@ def main() -> int:
         print(
             "\nDeployable apps must use short role-based source roots. Published "
             "libraries may keep src/<import_package>, but repeated API layouts "
-            "such as packages/sardis-api/src/sardis_api are forbidden."
+            "such as packages/sardis-api/src/sardis_api are forbidden, and the "
+            "reference API must stay at apps/api/server."
         )
         return 1
 

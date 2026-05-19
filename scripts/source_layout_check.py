@@ -16,23 +16,27 @@ FORBIDDEN_PATHS = (
     "packages/api/sardis_api",
     "packages/api/sardis",
     "packages/api/server",
-    "packages/reference-api/src",
-    "packages/reference-api/sardis_api",
-    "packages/reference-api/sardis",
-    "packages/reference-api/server/routers",
+    "apps/api/src",
+    "apps/api/sardis_api",
+    "apps/api/sardis",
+    "apps/api/server/routers",
+)
+
+FORBIDDEN_TRACKED_PREFIXES = (
+    "packages/reference-api/",
 )
 
 REQUIRED_PATHS = (
-    "packages/reference-api/server",
-    "packages/reference-api/server/routes",
-    "packages/reference-api/server/route_registry",
-    "packages/reference-api/server/route_registry/static_routes.py",
+    "apps/api/server",
+    "apps/api/server/routes",
+    "apps/api/server/route_registry",
+    "apps/api/server/route_registry/static_routes.py",
     "docs/oss/source-layout.md",
 )
 
 REQUIRED_DOC_SNIPPETS = {
     "docs/oss/source-layout.md": (
-        "packages/reference-api/server/route_registry/",
+        "apps/api/server/route_registry/",
         "route_registry/static_routes.py",
         "card_runtime.py",
         "checkout_runtime.py",
@@ -43,7 +47,7 @@ REQUIRED_DOC_SNIPPETS = {
     ),
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
-        "packages/reference-api/server",
+        "apps/api/server",
     ),
     "docs/oss/testing.md": (
         "python3 scripts/source_layout_check.py",
@@ -69,6 +73,16 @@ FORBIDDEN_API_PACKAGE_PARTS = {
 def main() -> int:
     errors: list[str] = []
 
+    tracked_paths = tracked_files()
+
+    for prefix in FORBIDDEN_TRACKED_PREFIXES:
+        matches = [path for path in tracked_paths if path.startswith(prefix)]
+        if matches:
+            errors.append(
+                "Forbidden tracked API app path exists:\n"
+                + "\n".join(f"  - {path}" for path in matches[:20])
+            )
+
     for relative_path in FORBIDDEN_PATHS:
         path = ROOT / relative_path
         if path.exists():
@@ -83,7 +97,7 @@ def main() -> int:
             if path.name in FORBIDDEN_API_PACKAGE_PARTS:
                 errors.append(
                     "Forbidden repeated API import package exists: "
-                    f"{relative}. Use packages/reference-api/server for the "
+                    f"{relative}. Use apps/api/server for the "
                     "reference API and reserve src/<import_name> for published "
                     "library packages."
                 )
@@ -106,7 +120,7 @@ def main() -> int:
                     f"{snippet}"
                 )
 
-    route_root = ROOT / "packages/reference-api/server/routes"
+    route_root = ROOT / "apps/api/server/routes"
     if route_root.exists():
         for path in route_root.rglob("*.py"):
             relative_parts = path.relative_to(route_root).parts
@@ -126,14 +140,14 @@ def main() -> int:
                         "records, webhooks, or capabilities."
                     )
 
-    main_py = ROOT / "packages/reference-api/server/main.py"
+    main_py = ROOT / "apps/api/server/main.py"
     if main_py.exists():
         main_lines = main_py.read_text(encoding="utf-8").splitlines()
         main_line_count = len(main_lines)
         if main_line_count > MAX_MAIN_LINES:
             errors.append(
                 "API composition root is too large: "
-                f"packages/reference-api/server/main.py has {main_line_count} lines "
+                f"apps/api/server/main.py has {main_line_count} lines "
                 f"(limit {MAX_MAIN_LINES}). Move route registration into "
                 "route_registry/ or runtime construction into focused *_runtime.py helpers."
             )
@@ -145,7 +159,7 @@ def main() -> int:
                 if snippet in line:
                     errors.append(
                         "Forbidden API composition-root route wiring in "
-                        f"packages/reference-api/server/main.py:{line_no}: "
+                        f"apps/api/server/main.py:{line_no}: "
                         f"{reason}."
                     )
 
@@ -154,9 +168,9 @@ def main() -> int:
         for error in errors:
             print(f"  - {error}")
         print(
-            "\nThe API source tree must stay at packages/reference-api/server. "
+            "\nThe API source tree must stay at apps/api/server. "
             "Do not reintroduce packages/sardis-api, packages/api, "
-            "packages/reference-api/src, "
+            "apps/api/src, "
             "sardis_api, or the legacy server/routers bucket. Route "
             "implementations should stay at routes/<domain>/<module>.py."
         )
@@ -164,6 +178,19 @@ def main() -> int:
 
     print("Source layout check passed: API package paths are contributor-readable.")
     return 0
+
+
+def tracked_files() -> list[str]:
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "ls-files"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
 if __name__ == "__main__":

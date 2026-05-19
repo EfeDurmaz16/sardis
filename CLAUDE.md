@@ -46,11 +46,11 @@ sardis/
 │       ├── developer-advocacy.md
 │       └── launch-coordinator.md
 ├── src/sardis/             # Simple Python SDK (public interface)
+├── apps/api/               # FastAPI reference API implementation
 ├── packages/               # Core monorepo packages (⚠️ list below may be stale — run `ls packages/` for truth)
 │   │
 │   │ ── Core platform ──
 │   ├── sardis-core/        # Domain models, config, database, spending policy
-│   ├── reference-api/      # FastAPI reference API implementation
 │   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
 │   ├── sardis-protocol/    # AP2 / TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain
@@ -100,7 +100,6 @@ sardis/
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
 ├── apps/landing/           # Public landing/docs website
-├── packages/reference-api/ # Reference API package and server import package
 ├── tests/                  # Legacy root migration backlog; prefer package tests
 ├── examples/               # Usage examples
 ├── demos/                  # Demo applications
@@ -147,7 +146,7 @@ sardis/
 # Python environment
 uv sync                              # Install dependencies
 pnpm run check:contributor           # Public OSS contributor gate
-uv run pytest packages/reference-api/tests/ -q
+uv run pytest apps/api/tests/ -q
 uv run python examples/simple_payment.py
 
 # TypeScript SDK
@@ -156,7 +155,7 @@ pnpm --filter @sardis/sdk build      # Build SDK
 pnpm --filter @sardis/sdk test       # Test SDK
 
 # API Server
-uv run uvicorn --app-dir packages/reference-api server.main:create_app --factory --port 8000
+uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
 
 # Smart Contracts
 cd contracts && forge build          # Compile
@@ -241,7 +240,7 @@ UPSTASH_REDIS_URL=...        # Caching
 3. Update SDK types
 
 ### Creating a New API Endpoint
-1. Add route in `packages/reference-api/server/routes/`
+1. Add route in `apps/api/server/routes/`
 2. Add request/response models
 3. Add tests
 4. Update OpenAPI docs

@@ -11,7 +11,7 @@ repo-wide package naming and nesting policy.
 The reference API uses this active source layout:
 
 ```text
-packages/reference-api/server/
+apps/api/server/
 ```
 
 There is no active `packages/sardis-api/` source package in this repository.
@@ -23,14 +23,14 @@ notes or validation scripts only as forbidden examples:
 
 ```text
 packages/sardis-api/src/sardis_api/
-packages/reference-api/src/sardis_api/
-packages/reference-api/src/sardis/
-packages/reference-api/server/routers/
+apps/api/src/sardis_api/
+apps/api/src/sardis/
+apps/api/server/routers/
 ```
 
 The package has two explicit boundaries:
 
-- `packages/reference-api/` is the monorepo package boundary for the deployable
+- `apps/api/` is the monorepo package boundary for the deployable
   reference API service.
 - `server/` is the Python import boundary for the FastAPI application.
 
@@ -40,7 +40,7 @@ package for the FastAPI application. We keep that import package named `server`
 instead of `sardis_api` so contributors do not have to read the same API concept
 three times in one path.
 
-The short version: `packages/reference-api/server` is the maximum acceptable API
+The short version: `apps/api/server` is the maximum acceptable API
 nesting. `packages/sardis-api/src/sardis_api` is not acceptable because it says
 the same thing three times.
 
@@ -51,18 +51,18 @@ package boundary already provides the isolation that `src/` would otherwise add.
 Route implementation files should live under domain folders:
 
 ```text
-packages/reference-api/server/routes/protocol/x402.py
-packages/reference-api/server/routes/protocol/mpp.py
-packages/reference-api/server/routes/providers/stripe_webhooks.py
-packages/reference-api/server/routes/wallets/lifecycle.py
+apps/api/server/routes/protocol/x402.py
+apps/api/server/routes/protocol/mpp.py
+apps/api/server/routes/providers/stripe_webhooks.py
+apps/api/server/routes/wallets/lifecycle.py
 ```
 
 Protocol adapters use the same rule. Public HTTP handlers for x402 and MPP live
 in the reference API because they are FastAPI routes:
 
 ```text
-packages/reference-api/server/routes/protocol/x402.py
-packages/reference-api/server/routes/protocol/mpp.py
+apps/api/server/routes/protocol/x402.py
+apps/api/server/routes/protocol/mpp.py
 ```
 
 Canonical protocol primitives live in protocol packages, not in route files:
@@ -80,7 +80,7 @@ with domain-owned route adapters and protocol packages for reusable semantics.
 FastAPI registration and dependency wiring should live under:
 
 ```text
-packages/reference-api/server/route_registry/
+apps/api/server/route_registry/
 ```
 
 Use one registrar module per domain when route mounting needs dependencies or
@@ -107,14 +107,14 @@ Route modules should not repeat their parent domain folder. Use the file name
 to describe the route role: `lifecycle.py`, `accounts.py`, `screening.py`,
 `records.py`, `webhooks.py`, or `capabilities.py`.
 
-`packages/reference-api/server/main.py` should remain a composition root, not a
+`apps/api/server/main.py` should remain a composition root, not a
 catch-all file for every route, provider, and bootstrap concern. New runtime
 construction should go into focused helpers such as `card_runtime.py`,
 `checkout_runtime.py`, or `funding_runtime.py` when it can be tested without
 booting the full FastAPI app.
 
 The source-layout guard enforces a 1,000-line ceiling for
-`packages/reference-api/server/main.py`. If a change would exceed that limit,
+`apps/api/server/main.py`. If a change would exceed that limit,
 move route registration into `route_registry/` or runtime construction into a
 focused `*_runtime.py` helper first.
 

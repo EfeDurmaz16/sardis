@@ -62,8 +62,8 @@ def main() -> int:
         "x402 and MPP are separate protocol surfaces",
         "docs/architecture/x402-and-mpp.md",
         "PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q",
-        "packages/reference-api/tests/test_x402_middleware.py",
-        "packages/reference-api/tests/test_mpp_router.py",
+        "apps/api/tests/test_x402_middleware.py",
+        "apps/api/tests/test_mpp_router.py",
     ]
     missing_protocol_boundary_refs = [
         ref for ref in required_protocol_boundary_refs if ref not in contribution_map_text
@@ -78,7 +78,7 @@ def main() -> int:
     required_protocol_testing_refs = [
         "PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q",
         "PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q",
-        "PYTHONPATH=packages/reference-api uv run pytest packages/reference-api/tests/test_x402_middleware.py packages/reference-api/tests/test_mpp_router.py -q",
+        "PYTHONPATH=apps/api uv run pytest apps/api/tests/test_x402_middleware.py apps/api/tests/test_mpp_router.py -q",
         "Run those protocol targets separately.",
     ]
     missing_protocol_testing_refs = [
