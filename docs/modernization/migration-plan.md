@@ -58,7 +58,7 @@
 
 - Goal: Reduce contributor-visible ambiguity by consolidating the monorepo API package directory at `packages/reference-api` while keeping the server import package `server` stable.
 - Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and API package path references.
-- Implementation notes: Do not remove `server`; it is the stable Python import package and the standard `src` layout. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
+- Implementation notes: Do not remove `server`; it is the stable Python import package for the FastAPI application. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
 - Risk: High.
 - Rollback plan: Revert the directory rename commit and path-reference updates together.
 - Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/reference-api/tests/test_agent_auth.py packages/reference-api/tests/test_agent_events_and_holds_wiring.py -q`.

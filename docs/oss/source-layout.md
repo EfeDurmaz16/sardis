@@ -12,7 +12,8 @@ The reference API uses this active source layout:
 packages/reference-api/server/
 ```
 
-Do not reintroduce any of these old shapes:
+Do not reintroduce the old repeated API shapes. They may appear in migration
+notes or validation scripts only as forbidden examples:
 
 ```text
 packages/sardis-api/src/sardis_api/
@@ -27,20 +28,19 @@ The package has two explicit boundaries:
   reference API service.
 - `server/` is the Python import boundary for the FastAPI application.
 
-This is not meant to say "Sardis API" twice. The first layer is a repository
-package, and the second layer is a Python import package. We keep
-`server` instead of a generic `server` package because imports such as
-`server.main` are collision-prone and unclear in test runners, ASGI loaders, and
-editable installs.
+This is not meant to say "Sardis API" twice. The first layer is the repository
+package for the deployable reference API. The second layer is the Python import
+package for the FastAPI application. We keep that import package named `server`
+instead of `sardis_api` so contributors do not have to read the same API concept
+three times in one path.
 
 The short version: `packages/reference-api/server` is the maximum acceptable API
 nesting. `packages/sardis-api/src/sardis_api` is not acceptable because it says
 the same thing three times.
 
-There should not be a third generic `src/` layer inside the API package. The old
-`packages/sardis-api/src/sardis_api/` shape made paths harder to scan and
-repeated the same concept across the distribution directory, source root, and
-import package.
+There should not be a third generic `src/` layer inside the API package. The API
+is an application package, not a small import-only library, so the monorepo
+package boundary already provides the isolation that `src/` would otherwise add.
 
 Route implementation files should live under domain folders:
 

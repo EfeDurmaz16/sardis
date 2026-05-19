@@ -120,16 +120,18 @@ The contributor-facing API path is now:
 packages/reference-api/server/...
 ```
 
-This still contains two naming layers:
+This still contains two filesystem layers:
 
 - `packages/reference-api` is the monorepo package boundary: the deployable
   reference API service.
 - `server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
 
-That remaining naming layer is intentional only at the Python import boundary.
-Do not rename it to a bare `server` package unless a dedicated migration proves
-all ASGI, pytest, editable install, and deployment imports remain unambiguous.
+That remaining layer is intentional only at the Python import boundary. It
+replaces the old repeated `sardis_api` import package; it is not a second
+"Sardis API" directory. Do not rename it again unless a dedicated migration
+proves all ASGI, pytest, editable install, and deployment imports remain
+unambiguous.
 The old `src/` layer was removed from the API package because `packages/reference-api` is
 already the package boundary in this monorepo. Public docs may reference
 `packages/reference-api/server` when they point to internal server code, but they
