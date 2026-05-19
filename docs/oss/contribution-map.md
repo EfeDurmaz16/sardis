@@ -57,7 +57,7 @@ than the core packages.
 | Local tooling | `packages/sardis-cli/` | CLI smoke commands, clearer errors, local demo setup | package README command plus `pnpm run check:contributor` |
 | Chain and wallet adapters | `packages/sardis-chain/`, `packages/sardis-wallet/` | Simulator/live boundary tests, non-custodial docs, chain routing fixes | `uv run pytest packages/sardis-chain/tests -q`; `uv run pytest packages/sardis-wallet/tests -q` |
 | Compliance and checkout | `packages/sardis-compliance/`, `packages/sardis-checkout/` | Sandbox provider docs, fail-closed KYC/KYT tests, checkout mandate validation | package-owned pytest suite |
-| Framework integrations | `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-agent-sdk/`, `packages/sardis-openai-agents/` | Current framework examples, import compatibility, smoke tests | package README command plus integration CI when present |
+| Framework integrations | `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `packages/sardis-agent-sdk/`, `packages/sardis-openai/`, `packages/sardis-openai-agents/` | Current framework examples, import compatibility, smoke tests; use `docs/architecture/openai-packages.md` before changing OpenAI ownership | package README command plus integration CI when present |
 | Protocol integrations | `packages/sardis-a2a/`, `packages/sardis-ucp/` | Conformance fixtures, schema examples, interoperability docs | package-owned pytest suite |
 
 ## Experimental Package Paths
@@ -70,7 +70,7 @@ API instability and provider caveats.
 | Provider adapters | `packages/sardis-cards/`, `packages/sardis-ramp/`, `packages/sardis-coinbase/`, `packages/sardis-lightspark/`, `packages/sardis-striga/` | Sandbox-only examples, capability declarations, provider-not-configured tests | package-owned pytest suite or focused route test |
 | Payment protocols | `packages/sardis-mpp/`, `packages/sardis-connect/`, `packages/sardis-connect-js/` | Policy-before-payment tests, receipt recording, API boundary docs; use `docs/architecture/connect-packages.md` before changing Connect package ownership | package README command plus `pnpm run check:contributor` |
 | ZK experiments | `packages/sardis-zk-policy/`, `packages/sardis-zkp/` | Reproducible dev setup, fail-closed verifier tests, fixture docs | package README command and relevant root migration test if not yet moved |
-| Agent ecosystem experiments | `packages/sardis-adk/`, `packages/sardis-agentkit/`, `packages/sardis-browser-use/`, `packages/sardis-composio/`, `packages/sardis-autogpt/`, `packages/sardis-openai/`, `packages/sardis-openclaw/`, `packages/sardis-gpt/`, `packages/sardis-e2b/`, `packages/sardis-guardrails/` | Refresh against current upstream APIs, add minimal smoke tests, archive stale packages when justified | package README command or a new package-owned smoke test |
+| Agent ecosystem experiments | `packages/sardis-adk/`, `packages/sardis-agentkit/`, `packages/sardis-browser-use/`, `packages/sardis-composio/`, `packages/sardis-autogpt/`, `packages/sardis-openclaw/`, `packages/sardis-gpt/`, `packages/sardis-e2b/`, `packages/sardis-guardrails/` | Refresh against current upstream APIs, add minimal smoke tests, archive stale packages when justified | package README command or a new package-owned smoke test |
 | Workflow integrations | `packages/n8n-nodes-sardis/`, `packages/sardis-activepieces/` | Build gates, credential-safe examples, node/action metadata cleanup | package build/test command |
 
 ## What Not To Put In Public PRs

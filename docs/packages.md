@@ -37,7 +37,7 @@ Status meanings:
 | `packages/sardis-langchain/` | LangChain integration. | Add minimal integration test. |
 | `packages/sardis-crewai/` | CrewAI integration. | Add minimal integration test. |
 | `packages/sardis-agent-sdk/` | Claude Agent SDK integration. | Keep examples aligned with current agent SDK package shape. |
-| `packages/sardis-openai-agents/` | OpenAI Agents integration. | Add current SDK examples and tests. |
+| `packages/sardis-openai-agents/` | OpenAI Agents SDK integration. | Keep package-owned tests passing and use `docs/architecture/openai-packages.md` before changing ownership. |
 | `packages/sardis-a2a/` | Agent-to-agent protocol integration. | Add conformance tests. |
 | `packages/sardis-ucp/` | UCP transport/protocol work. | Clarify API stability. |
 
@@ -61,7 +61,7 @@ Status meanings:
 | `packages/sardis-browser-use/` | Browser-use integration. | Add smoke test or archive. |
 | `packages/sardis-composio/` | Composio integration. | Add smoke test or archive. |
 | `packages/sardis-autogpt/` | AutoGPT integration. | Revalidate current AutoGPT plugin shape. |
-| `packages/sardis-openai/` | OpenAI function/tool integration. | Clarify overlap with OpenAI Agents package. |
+| `packages/sardis-openai/` | Generic OpenAI API function/tool integration. | Keep package-owned tests passing and avoid moving Agents SDK behavior out of `packages/sardis-openai-agents/`. |
 | `packages/sardis-openclaw/` | OpenClaw integration. | Keep static manifest and registry tests passing before adding live API examples. |
 | `packages/sardis-gpt/` | ChatGPT Custom GPT actions surface. | Keep OpenAPI/action files aligned with public API contract. |
 | `packages/sardis-e2b/` | E2B sandbox template for Sardis-enabled code execution agents. | Add reproducible template smoke test or archive. |

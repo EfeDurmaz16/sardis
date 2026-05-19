@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 PACKAGE_LAYOUT_DOC = ROOT / "docs" / "oss" / "package-layout.md"
 CONNECT_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "connect-packages.md"
+OPENAI_BOUNDARY_DOC = ROOT / "docs" / "architecture" / "openai-packages.md"
 SOURCE_LAYOUT_DOC = ROOT / "docs" / "oss" / "source-layout.md"
 DEVELOPMENT_DOC = ROOT / "docs" / "development.md"
 CONTRIBUTION_MAP = ROOT / "docs" / "oss" / "contribution-map.md"
@@ -55,6 +56,7 @@ REQUIRED_DOC_SNIPPETS = {
         "packages/sardis-connect/",
         "packages/sardis-connect-js/",
         "docs/architecture/connect-packages.md",
+        "docs/architecture/openai-packages.md",
     ),
     CONNECT_BOUNDARY_DOC: (
         "Python FastAPI",
@@ -64,6 +66,14 @@ REQUIRED_DOC_SNIPPETS = {
         "packages/sardis-sdk-js/",
         "PYTHONPATH=packages/sardis-connect/src uv run pytest packages/sardis-connect/tests -q",
         "pnpm --filter @sardis/connect build",
+    ),
+    OPENAI_BOUNDARY_DOC: (
+        "OpenAI API Chat Completions",
+        "OpenAI Agents SDK",
+        "packages/sardis-openai/",
+        "packages/sardis-openai-agents/",
+        "uv run pytest packages/sardis-openai/tests -q",
+        "uv run pytest packages/sardis-openai-agents/tests -q",
     ),
     SOURCE_LAYOUT_DOC: (
         "docs/oss/package-layout.md",
