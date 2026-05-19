@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from sardis_server.routes.providers import (
     mastercard_webhooks,
     partner_card_webhooks,
+    stripe_connect,
     stripe_funding,
     stripe_webhooks,
 )
@@ -84,6 +85,32 @@ def register_stripe_funding_routes(
     )
     app.include_router(stripe_funding.router, prefix="/api/v2")
     logger.info("Stripe funding router enabled at /api/v2/stripe/funding")
+
+
+def register_stripe_connect_routes(
+    app: FastAPI,
+    *,
+    merchant_repo,
+    stripe_connect_provider,
+) -> None:
+    """Register Stripe Connect merchant onboarding and webhook routes."""
+    app.dependency_overrides[stripe_connect.get_deps] = (
+        lambda: stripe_connect.StripeConnectDeps(
+            merchant_repo=merchant_repo,
+            stripe_connect_provider=stripe_connect_provider,
+        )
+    )
+    app.include_router(
+        stripe_connect.router,
+        prefix="/api/v2/merchants",
+        tags=["stripe-connect"],
+    )
+    app.include_router(
+        stripe_connect.webhook_router,
+        prefix="/api/v2/webhooks",
+        tags=["stripe-connect-webhooks"],
+    )
+    logger.info("Stripe Connect router enabled")
 
 
 def register_stripe_webhook_routes(

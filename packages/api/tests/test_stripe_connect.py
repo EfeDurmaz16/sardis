@@ -460,11 +460,21 @@ class TestStripeConnectRouterWiring:
         # webhook_router has prefix="/stripe-connect", so path is /stripe-connect/webhooks
         assert "/stripe-connect/webhooks" in paths
 
-    def test_main_imports_stripe_connect(self):
-        main_path = Path(__file__).parent.parent / "sardis_server" / "main.py"
-        source = main_path.read_text()
-        assert "stripe_connect_router" in source
-        assert "StripeConnectProvider" in source
+    def test_stripe_connect_registrar_mounts_public_routes(self):
+        from fastapi import FastAPI
+
+        from sardis_server.routing.providers import register_stripe_connect_routes
+
+        app = FastAPI()
+        register_stripe_connect_routes(
+            app,
+            merchant_repo=object(),
+            stripe_connect_provider=object(),
+        )
+
+        paths = {r.path for r in app.routes}
+        assert "/api/v2/merchants/{merchant_id}/connect" in paths
+        assert "/api/v2/webhooks/stripe-connect/webhooks" in paths
 
 
 # ── Merchant Model Stripe Fields ─────────────────────────────────

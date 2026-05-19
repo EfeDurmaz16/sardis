@@ -83,7 +83,6 @@ from .routes.compliance import compliance as compliance_router
 from .routes.compliance import compliance_export as compliance_export_router
 from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
-from .routes.providers import stripe_connect as stripe_connect_router
 from .routes.wallets import cards as cards_router
 from .routes.wallets import funding as funding_router
 from .routing.accounts import (
@@ -159,6 +158,7 @@ from .routing.protocol import (
 from .routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
@@ -1830,13 +1830,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     try:
         from sardis_v2_core.stripe_connect import StripeConnectProvider
         stripe_connect_provider = StripeConnectProvider()
-        app.dependency_overrides[stripe_connect_router.get_deps] = lambda: stripe_connect_router.StripeConnectDeps(
+        register_stripe_connect_routes(
+            app,
             merchant_repo=merchant_repo,
             stripe_connect_provider=stripe_connect_provider,
         )
-        app.include_router(stripe_connect_router.router, prefix="/api/v2/merchants", tags=["stripe-connect"])
-        app.include_router(stripe_connect_router.webhook_router, prefix="/api/v2/webhooks", tags=["stripe-connect-webhooks"])
-        logger.info("Stripe Connect router enabled")
     except (ImportError, ValueError) as e:
         logger.warning("Stripe Connect not configured, skipping: %s", e)
 

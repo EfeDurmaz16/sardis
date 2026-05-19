@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 
-from sardis_server.routes.providers import partner_card_webhooks, stripe_funding, stripe_webhooks
+from sardis_server.routes.providers import (
+    partner_card_webhooks,
+    stripe_connect,
+    stripe_funding,
+    stripe_webhooks,
+)
 from sardis_server.routing.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
+    register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
 )
@@ -90,6 +96,27 @@ def test_register_stripe_funding_routes_wires_dependencies_and_routes():
     paths = {route.path for route in app.routes}
     assert "/api/v2/stripe/funding/issuing/topups" in paths
     assert "/api/v2/stripe/funding/issuing/topups/strategy" in paths
+
+
+def test_register_stripe_connect_routes_wires_dependencies_and_routes():
+    app = FastAPI()
+    merchant_repo = object()
+    stripe_connect_provider = object()
+
+    register_stripe_connect_routes(
+        app,
+        merchant_repo=merchant_repo,
+        stripe_connect_provider=stripe_connect_provider,
+    )
+
+    deps = app.dependency_overrides[stripe_connect.get_deps]()
+    assert deps.merchant_repo is merchant_repo
+    assert deps.stripe_connect_provider is stripe_connect_provider
+
+    paths = {route.path for route in app.routes}
+    assert "/api/v2/merchants/{merchant_id}/connect" in paths
+    assert "/api/v2/merchants/{merchant_id}/connect/status" in paths
+    assert "/api/v2/webhooks/stripe-connect/webhooks" in paths
 
 
 def test_register_stripe_webhook_routes_wires_dependencies_and_route():
