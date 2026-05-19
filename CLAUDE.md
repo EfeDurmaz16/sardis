@@ -24,7 +24,7 @@ This doc is a **starting point**, not the source of truth. It drifts. It has dri
 - **Framework:** FastAPI
 - **Database:** PostgreSQL (Neon serverless)
 - **Smart Contracts:** Solidity + Foundry
-- **Frontend:** React + Vite
+- **Frontend:** Next.js public landing/docs surfaces; hosted product UI source is private
 - **Deployment:** Vercel
 
 ## Repository Structure
@@ -50,7 +50,7 @@ sardis/
 │   │
 │   │ ── Core platform ──
 │   ├── sardis-core/        # Domain models, config, database, spending policy
-│   ├── api/         # FastAPI reference API implementation
+│   ├── reference-api/      # FastAPI reference API implementation
 │   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
 │   ├── sardis-protocol/    # AP2 / TAP protocol verification
 │   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain
@@ -92,21 +92,19 @@ sardis/
 │   ├── sardis-coinbase/    # Coinbase services (CDP, x402, onramp)
 │   ├── sardis-lightspark/  # Lightning Network payments
 │   ├── sardis-striga/      # Striga banking/cards
-│   ├── sardis-mpp/         # Stripe MPP + Tempo (Merchant Payment Protocol)
+│   ├── sardis-mpp/         # Machine Payments Protocol + Tempo payment methods
 │   ├── sardis-ramp/        # On/off ramp providers
 ├── contracts/              # Solidity smart contracts
 │   └── src/
 │       ├── SardisWalletFactory.sol
 │       ├── SardisAgentWallet.sol
 │       └── SardisEscrow.sol
-├── dashboard/              # React admin dashboard
-├── landing/                # Marketing website
-├── api/                    # Vercel API routes
-├── tests/                  # Integration tests
+├── apps/landing/           # Public landing/docs website
+├── packages/reference-api/ # Reference API package and server import package
+├── tests/                  # Legacy root migration backlog; prefer package tests
 ├── examples/               # Usage examples
 ├── demos/                  # Demo applications
-├── docs/                   # Documentation
-│   └── marketing/          # GTM content and strategies
+├── docs/                   # Public documentation, architecture, OSS policy
 └── scripts/                # Utility scripts
 ```
 
@@ -148,7 +146,8 @@ sardis/
 ```bash
 # Python environment
 uv sync                              # Install dependencies
-uv run pytest tests/                 # Run tests
+pnpm run check:contributor           # Public OSS contributor gate
+uv run pytest packages/reference-api/tests/ -q
 uv run python examples/simple_payment.py
 
 # TypeScript SDK
@@ -164,11 +163,8 @@ cd contracts && forge build          # Compile
 cd contracts && forge test           # Test
 
 # Landing Page
-cd landing && pnpm dev               # Dev server
-cd landing && pnpm build             # Production build
-
-# Dashboard
-cd dashboard && pnpm dev             # Dev server
+pnpm dev:landing                     # Dev server
+pnpm build:landing                   # Production build
 ```
 
 ## Code Style Guidelines
@@ -259,8 +255,10 @@ UPSTASH_REDIS_URL=...        # Caching
 - `packages/sardis-protocol/src/sardis_v2_protocol/ap2.py` - AP2 verification
 - `contracts/src/SardisAgentWallet.sol` - Agent wallet contract
 
-### Marketing & GTM
-- `docs/marketing/gtm-content.md` - GTM strategy, X/Reddit/PH content templates
+### OSS Policy
+- `docs/oss/public-private-boundary.md` - Public/private repository boundary
+- `docs/oss/contribution-map.md` - Package contribution paths and validation
+- `docs/oss/testing.md` - Maintained public test suites
 
 ## External Services
 

@@ -84,6 +84,21 @@ BLOCKED_TEXT_SNIPPETS = {
         "Public demo tooling must not direct contributors to the private "
         "hosted dashboard surface."
     ),
+    "cd dashboard && pnpm dev": (
+        "Public contributor instructions must not point to the private hosted "
+        "dashboard source tree."
+    ),
+    "cd landing && pnpm dev": (
+        "Public contributor instructions must use apps/landing via root package scripts."
+    ),
+    "├── dashboard/": (
+        "Tracked public repo maps must not present the removed private dashboard "
+        "as part of the OSS source layout."
+    ),
+    "│   ├── api/": (
+        "Tracked public repo maps must use packages/reference-api, not the old "
+        "generic API package."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {
