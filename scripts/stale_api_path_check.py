@@ -77,12 +77,17 @@ SKIPPED_LOCAL_DIRS = {
     ".ruff_cache",
     ".turbo",
     ".venv",
+    ".playwright-mcp",
     "__pycache__",
     "coverage",
     "dist",
     "htmlcov",
     "node_modules",
 }
+
+SKIPPED_LOCAL_FILE_PATTERNS = (
+    re.compile(r"^2026-\d{2}-\d{2}-\d{6}-this-session-.*\.txt$"),
+)
 
 MAX_LOCAL_FILE_BYTES = 1_000_000
 
@@ -114,6 +119,8 @@ def local_files() -> list[str]:
 
 def should_check(path: str) -> bool:
     if path.startswith(IGNORED_PREFIXES):
+        return False
+    if any(pattern.search(path) for pattern in SKIPPED_LOCAL_FILE_PATTERNS):
         return False
     path_obj = Path(path)
     return path_obj.suffix in TEXT_SUFFIXES and path_obj.is_file()

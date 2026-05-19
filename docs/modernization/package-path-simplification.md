@@ -21,8 +21,8 @@ That path was technically valid, but it made the package boundary too vague:
 
 For a contributor, the package directory should be short enough to scan quickly
 from the repository root. The package is the deployable/reference API, and it
-already sits under `packages/`, so `packages/reference-api` is clearer than repeating the
-same concept in `packages/server-api`.
+already sits under `packages/`, so `packages/reference-api` is clearer than
+repeating the same concept in the removed `packages/server-api` path.
 
 ## Decision
 
