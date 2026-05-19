@@ -30,11 +30,19 @@ The root `pyproject.toml` maps every tracked Python `sardis-*` package under `[t
 
 ```bash
 python3 scripts/repo_inventory.py
+pnpm repo:ignored-artifacts
 pnpm check:openapi
 pnpm --filter @sardis/sdk typecheck
 pnpm --filter @sardis/mcp-server build
 uv run pytest packages/reference-api/tests/test_merchant_checkout.py -q
 ```
+
+`pnpm repo:ignored-artifacts` reports ignored generated folders such as
+`node_modules`, `dist`, `.venv`, `.pytest_cache`, `.ruff_cache`, `.next`, and
+`__pycache__` without reporting private ignored docs or local secret files. It
+is a dry run by default; use `python3 scripts/ignored_artifact_inventory.py
+--delete` only when you intentionally want to prune those generated artifacts
+from your local checkout.
 
 The default maintained Python API suite is:
 

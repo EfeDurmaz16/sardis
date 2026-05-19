@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Fail if generated or local-only artifacts are tracked in git."""
+"""Fail if generated or local-only artifacts are tracked in git.
+
+Use `python3 scripts/ignored_artifact_inventory.py` when the checkout is noisy
+because ignored generated artifacts exist locally but are not tracked.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 
