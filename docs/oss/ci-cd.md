@@ -88,6 +88,9 @@ those surfaces.
 - Jobs triggered by `pull_request` or `pull_request_target` must not use
   private deploy, publish, provider, or operations secrets unless the job has a
   job-level condition that excludes public PR events.
+- Workflows that use private deploy, publish, provider, or operations secrets
+  must use explicit least-privilege permissions instead of `permissions:
+  read-all`.
 - Keep dashboard/product deployment out of required OSS PR checks.
 - Pin or constrain tool versions in workflow files, especially Node, pnpm,
   Python, uv, Foundry, and security scanners.

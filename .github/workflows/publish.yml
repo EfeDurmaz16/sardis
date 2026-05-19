@@ -15,7 +15,8 @@ on:
           - npm-mcp-server
           - npm-ai-sdk
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   publish-python-core:

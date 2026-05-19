@@ -5,7 +5,8 @@ on:
   schedule:
     - cron: "*/10 * * * *"
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   health-check:

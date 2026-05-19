@@ -52,6 +52,22 @@ def non_github_secrets(text: str) -> set[str]:
     }
 
 
+def top_level_permissions(text: str) -> str:
+    match = re.search(r"^permissions:\s*(.*?)$", text, flags=re.MULTILINE)
+    if not match:
+        return ""
+    if match.group(1).strip():
+        return match.group(1).strip()
+    lines = text[match.end() :].splitlines()
+    block: list[str] = []
+    for line in lines:
+        if line and not line.startswith((" ", "\t")):
+            break
+        if line.strip():
+            block.append(line.strip())
+    return "\n".join(block)
+
+
 def job_condition(job_text: str) -> str:
     header = job_text.split("\n    steps:", maxsplit=1)[0]
     match = re.search(r"^\s{4}if:\s*(.+?)\s*$", header, flags=re.MULTILINE)
@@ -74,6 +90,13 @@ def main() -> int:
 
     for workflow in sorted(WORKFLOWS.glob("*.yml")) + sorted(WORKFLOWS.glob("*.yaml")):
         text = workflow.read_text(encoding="utf-8")
+        workflow_secrets = non_github_secrets(text)
+        if workflow_secrets and top_level_permissions(text) == "read-all":
+            errors.append(
+                f"{workflow.relative_to(ROOT)} uses private secrets with top-level permissions: read-all; "
+                "use explicit least-privilege permissions instead"
+            )
+
         events = workflow_pr_events(text)
         if not events:
             continue
