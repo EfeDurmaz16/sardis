@@ -52,13 +52,6 @@ from .routes.commerce import checkout_controls as checkout_controls_router
 from .routes.commerce import invoices as invoices_router
 from .routes.commerce import merchant_checkout as merchant_checkout_router
 from .routes.commerce import merchants as merchants_router
-from .routes.operations import alerts as alerts_router
-from .routes.operations import analytics as analytics_router
-from .routes.operations import dashboard_metrics as dashboard_metrics_router
-from .routes.operations import event_stream as event_stream_router
-from .routes.operations import metrics as metrics_router
-from .routes.operations import reliability as reliability_router
-from .routes.operations import ws_alerts as ws_alerts_router
 from .routes.money_movement import batch_payments as batch_payments_router
 from .routes.money_movement import fx as fx_router
 from .routes.money_movement import holds as holds_router
@@ -83,8 +76,6 @@ from .routes.authority import credentials as credentials_router
 from .routes.developer import enterprise_support as enterprise_support_router
 from .routes.developer import environment_templates as environment_templates_router
 from .routes.commerce import escrow_disputes as escrow_disputes_router
-from .routes.operations import exceptions as exceptions_router
-from .routes.operations import execution_modes as execution_modes_router
 from .routes.authority import facility_requests as facility_requests_router
 from .routes.policy import fallback_policies as fallback_policies_router
 from .routes.developer import faucet as faucet_router
@@ -99,7 +90,6 @@ from .routes.developer import notifications as notifications_router
 from .routes.wallets import offramp as offramp_router
 from .routes.wallets import onchain_payments as onchain_payments_router
 from .routes.wallets import onramp as onramp_router
-from .routes.operations import outcomes as outcomes_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.policy import policies as policies_router
 from .routes.policy import policy_analytics as policy_analytics_router
@@ -169,6 +159,14 @@ from .routing.authority import register_authority_routes
 from .routing.developer import register_developer_utility_routes, register_webhook_subscriptions
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
 from .routing.money_movement import register_pay_endpoint
+from .routing.operations import (
+    register_alert_routes,
+    register_dashboard_metrics_routes,
+    register_exception_routes,
+    register_execution_mode_routes,
+    register_outcome_reliability_routes,
+    register_realtime_operations_routes,
+)
 from .services.recurring_billing import RecurringBillingService
 
 # Configure structured logging
@@ -1796,17 +1794,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Notification webhook config
     app.include_router(notifications_router.router, prefix="/api/v2/notifications", tags=["notifications"])
 
-    # Alert routes (REST API and WebSocket)
-    app.include_router(alerts_router.router, prefix="/api/v2/alerts", tags=["alerts"])
+    register_alert_routes(app)
     app.include_router(swap_router.router, prefix="/api/v2", tags=["swap", "bridge", "verifications"])
-    app.include_router(ws_alerts_router.router, prefix="/api/v2")
-
-    # SSE event stream for real-time dashboard updates
-    app.include_router(event_stream_router.router, prefix="/api/v2/events", tags=["events"])
-
-    # Analytics routes
-    app.include_router(analytics_router.router)
-    app.include_router(metrics_router.router)
+    register_realtime_operations_routes(app)
 
     register_admin_routes(app)
 
@@ -1975,23 +1965,22 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     # --- Delegated payment rails routers ---
     app.include_router(credentials_router.router)
-    app.include_router(execution_modes_router.router)
+    register_execution_mode_routes(app)
     app.include_router(settlements_router.router)
 
     # --- Trust & Evidence Platform routers ---
     app.include_router(policy_simulation_router.router, prefix="/api/v2/policies", tags=["policy-dsl"])
     app.include_router(receipts_router.router, prefix="/api/v2/receipts", tags=["receipts"])
-    app.include_router(outcomes_router.router, prefix="/api/v2", tags=["outcomes"])
-    app.include_router(reliability_router.router, prefix="/api/v2/reliability", tags=["reliability"])
+    register_outcome_reliability_routes(app)
     app.include_router(policy_analytics_router.router, prefix="/api/v2/policies/analytics", tags=["policy-analytics"])
-    app.include_router(exceptions_router.router, prefix="/api/v2", tags=["exceptions"])
+    register_exception_routes(app)
     app.include_router(workflow_templates_router.router, prefix="/api/v2/templates", tags=["workflow-templates"])
     app.include_router(environment_templates_router.router, prefix="/api/v2/environments", tags=["Environment Templates"])
     app.include_router(fallback_policies_router.router, prefix="/api/v2/fallback", tags=["Fallback Policies"])
     logger.info("Fallback policies router registered at /api/v2/fallback")
     app.include_router(checkout_controls_router.router, prefix="/api/v2/checkout-controls", tags=["checkout-controls"])
     app.include_router(counterparties_router.router, prefix="/api/v2/counterparties", tags=["counterparties"])
-    app.include_router(dashboard_metrics_router.router, prefix="/api/v2/dashboard", tags=["dashboard"])
+    register_dashboard_metrics_routes(app)
 
     # Protocol v1.0 routers
     app.include_router(payment_objects_router.router, prefix="/api/v2", tags=["payment-objects"])

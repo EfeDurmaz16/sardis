@@ -66,6 +66,7 @@
 - Added `sardis_server.routing.admin.register_admin_routes` and moved admin control, reconciliation, and emergency-freeze wiring out of `sardis_server.main`.
 - Added `sardis_server.routing.agents` agent-domain registrars and moved agent lifecycle, telemetry, heartbeat, events, FIDES identity, and registry wiring out of `sardis_server.main`.
 - Added `sardis_server.routing.evidence` evidence-domain registrars and moved audit-anchor, evidence capture/export, and attestation wiring out of `sardis_server.main`.
+- Added `sardis_server.routing.operations` operations-domain registrars and moved alert, realtime event, analytics, metrics, execution-mode, outcome, reliability, exception, and dashboard-metric route wiring out of `sardis_server.main` while preserving route order.
 - Repaired stale authority/payment policy tests by replacing brittle implementation-string assertions with current orchestrator/control-plane boundary checks and fixed FastAPI dependency overrides in the mandates router tests.
 - Started the physical route placement migration by moving the outbound webhook subscription implementation to `sardis_server.routes.developer.webhook_subscriptions`.
 - Kept `sardis_server.routers.webhook_subscriptions` as a temporary compatibility import while new code moves to domain-grouped `routes/<domain>/...` modules.
@@ -110,7 +111,7 @@
 - Removed the temporary `sardis_server.routers` compatibility package after migrating internal source and tests to the new domain route modules.
 - Added and executed a package path simplification decision: keep the Python import package `sardis_server`, but consolidate the monorepo API package directory at `packages/api`.
 - Preserved the API import package at `packages/api/sardis_server`, updated repo imports/startup docs, and removed the unused `sardis_v2_api` prototype package.
-- Removed the extra API `src/` layer so the contributor-facing server path is now `packages/api/sardis_server/...` instead of `packages/api/src/sardis_server/...`.
+- Removed the extra API `src/` layer so the contributor-facing server path is now `packages/api/sardis_server/...` instead of the old nested source layout.
 - Updated API packaging, OpenAPI generation, Vercel/Docker startup paths, local run scripts, API test bootstrapping, architecture docs, canvas references, and stale-path guardrails for the flatter API layout.
 - Added `docs/architecture/x402-and-mpp.md` to document the difference between x402 direct HTTP payments and MPP method-negotiated machine payments.
 - Updated the API naming migration note to explicitly treat path roaming and overly nested/flat placement as a contributor-readability problem, not only a naming problem.
@@ -514,6 +515,7 @@ Latest CI/CD guardrail pass: the public CI map now inventories every workflow fi
 - `python3 -m compileall -q scripts/workflow_secret_scope_check.py scripts/workflow_toolchain_check.py` passed after adding the CI guard scripts.
 - `pnpm run check:contributor` passed after wiring the expanded public docs, CI inventory, workflow secret-scope, workflow toolchain, community health, package maturity, contribution map, and root-test inventory checks into the default contributor gate: 10 tests passed.
 - `python3 -m compileall -q packages/api/sardis_server packages/api/scripts/generate_openapi.py api/index.py scripts/stale_api_path_check.py`, `pnpm check:openapi`, `python3 scripts/package_maturity_check.py`, `python3 scripts/stale_api_path_check.py`, `uv run pytest packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_wallets_x402.py packages/api/tests/test_a2a_message_security.py -q`, `git diff --check`, and `pnpm run check:contributor` passed after removing the API `src/` layer.
+- `python3 -m compileall -q packages/api/sardis_server/main.py packages/api/sardis_server/routing/operations.py packages/api/sardis_server/routes/operations`, `pnpm check:openapi`, `uv run pytest packages/api/tests/test_reports_outcomes_reliability_truthfulness.py packages/api/tests/test_metrics_hardening.py packages/api/tests/test_exceptions_retry_policies.py -q`, `python3 scripts/package_maturity_check.py`, and `git diff --check` passed after extracting operations route registration. OpenAPI remained 540 paths and 592 schemas.
 
 Notes:
 
