@@ -3,6 +3,11 @@
 Sardis treats x402 and MPP as protocol adapters into the same policy,
 execution, and evidence control plane. They are not separate products.
 
+Contributor navigation rule: x402 and MPP should feel like two protocol
+adapters, not two different Sardis applications. The reusable protocol/client
+semantics live in protocol packages; the HTTP request handlers live in the
+reference API.
+
 ## Current Boundary
 
 | Surface | Role | Code owner |
@@ -59,8 +64,8 @@ SPT, Lightning, or another MPP-compatible method.
 
 ## Package Decision
 
-Keep x402 and MPP as separate packages because their public APIs and wire
-formats are different:
+Keep x402 and MPP as separate protocol surfaces because their public APIs and
+wire formats are different:
 
 - x402 belongs in `sardis-protocol` because it is a protocol primitive Sardis
   can verify, settle, and compose with AP2/TAP.
@@ -70,6 +75,35 @@ formats are different:
 The API should group their HTTP routes together under
 `server.routes.protocol` because contributors looking for protocol
 adapters should not search the legacy flat `routers/` directory.
+
+Do not split the reference API into `sardis-x402-api` and `sardis-mpp-api`
+packages at the current maturity level. That would create more folders and
+release surfaces without improving the public contract. Split only if one of
+these becomes true:
+
+- a protocol needs a materially different deployment/runtime profile
+- a protocol needs heavy optional dependencies that should not load with the
+  reference API
+- a protocol needs independent versioning or release cadence
+- conformance tests prove the shared paid-request adapter is stable enough to
+  publish separately
+
+## Current Cleanup Target
+
+`packages/reference-api/server/routes/protocol/mpp.py` is too large for a route
+adapter. It should remain at the same public HTTP path, but new work should move
+non-HTTP logic out of the route file:
+
+| Concern | Target location |
+| --- | --- |
+| Request/response models | route module until an OpenAPI model package is justified |
+| Session persistence | `server/repositories/` |
+| Policy/session orchestration | `server/domains/` or `server/services/` |
+| Provider-specific execution | provider or service modules |
+| FastAPI path functions | `server/routes/protocol/mpp.py` |
+
+This keeps the contributor path shallow while preventing a single route file
+from becoming a hidden application.
 
 ## Shared Sardis Invariant
 

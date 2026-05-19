@@ -14,6 +14,10 @@ The reference API uses this active source layout:
 packages/reference-api/server/
 ```
 
+There is no active `packages/sardis-api/` source package in this repository.
+If that path appears in this document or in layout guard scripts, it is a
+forbidden legacy example, not a source location to edit.
+
 Do not reintroduce the old repeated API shapes. They may appear in migration
 notes or validation scripts only as forbidden examples:
 
@@ -53,6 +57,26 @@ packages/reference-api/server/routes/providers/stripe_webhooks.py
 packages/reference-api/server/routes/wallets/wallets.py
 ```
 
+Protocol adapters use the same rule. Public HTTP handlers for x402 and MPP live
+in the reference API because they are FastAPI routes:
+
+```text
+packages/reference-api/server/routes/protocol/x402.py
+packages/reference-api/server/routes/protocol/mpp.py
+```
+
+Canonical protocol primitives live in protocol packages, not in route files:
+
+```text
+packages/sardis-protocol/src/sardis_protocol/x402.py
+packages/sardis-protocol/src/sardis_protocol/x402_settlement.py
+```
+
+Do not create one deployable package per protocol (`sardis-x402-api`,
+`sardis-mpp-api`, and similar) unless a protocol needs independent release
+cadence, dependencies, or deployment. The current target is one reference API
+with domain-owned route adapters and protocol packages for reusable semantics.
+
 FastAPI registration and dependency wiring should live under:
 
 ```text
@@ -87,6 +111,13 @@ The source-layout guard enforces a 1,000-line ceiling for
 `packages/reference-api/server/main.py`. If a change would exceed that limit,
 move route registration into `route_registry/` or runtime construction into a
 focused `*_runtime.py` helper first.
+
+Large route files should be split before they become mini-applications. When a
+single route module mixes request models, persistence, policy evaluation, and
+provider execution, move reusable logic into `domains/`, `services/`, or
+`repositories/` while keeping the public route path stable. As of this policy,
+`routes/protocol/mpp.py` is the next protocol candidate for that extraction; it
+must not grow new persistence or provider logic inline.
 
 The same guard rejects direct `app.include_router(...)`, `APIRouter`, and
 `server.routes` imports in `main.py`. New endpoint mounting belongs in

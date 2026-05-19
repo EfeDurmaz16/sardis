@@ -112,6 +112,10 @@ x402 and MPP are separate protocol surfaces, not duplicate packages:
   routes and middleware live in `packages/reference-api/`.
 - Shared Sardis behavior belongs in policy, execution, receipt, and evidence
   code, not in a new `x402_mpp` bucket.
+- `packages/reference-api/server/routes/protocol/mpp.py` is the current
+  cleanup target: keep the public route file, but move persistence,
+  orchestration, and provider execution into focused repository/domain/service
+  modules before adding new MPP behavior.
 
 Use `docs/architecture/x402-and-mpp.md` before changing either surface. Run the
 validation targets separately; package-local and root pytest suites currently

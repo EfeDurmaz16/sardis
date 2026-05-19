@@ -27,7 +27,7 @@ packages/reference-api/server/routers
 
 The package directory already says this is the reference API. The import root
 therefore stays `server`, not `sardis_api`, and route files live under
-`server/routes/<domain>.py`.
+`server/routes/<domain>/<module>.py`.
 
 Python libraries may keep `src/<import_package>` when that protects packaging
 correctness and editable installs. Examples:
@@ -63,6 +63,7 @@ renamed only through focused migration commits, not as a broad mechanical sweep.
 
 | Candidate | Why it is confusing | Preferred next action |
 | --- | --- | --- |
+| oversized protocol route modules | `packages/reference-api/server/routes/protocol/mpp.py` currently mixes HTTP handlers, request models, persistence fallback, policy checks, and provider execution in one route module. | Keep x402 and MPP HTTP adapters under `routes/protocol/`, but extract reusable MPP logic into focused domain/service/repository modules before adding new behavior. Preserve public HTTP paths. |
 | `packages/sardis-connect/` and `packages/sardis-connect-js/` | Same product word with language split hidden at the suffix. | Boundary is documented in `docs/architecture/connect-packages.md`. Rename only after preserving published package names, local filters, README commands, validation, and imports. |
 | `packages/sardis-openai/` and `packages/sardis-openai-agents/` | The boundary between generic OpenAI API helpers and Agents SDK integration is not obvious. | Boundary is documented in `docs/architecture/openai-packages.md`. Keep both unless a migration preserves install commands, imports, optional dependencies, examples, and validation. |
 | `packages/sardis-agent-sdk/` and `packages/sardis-sdk-python/` | Both sound like the primary Python SDK. | Document the public SDK facade versus agent-runtime helper boundary, then rename or archive after compatibility checks. |
