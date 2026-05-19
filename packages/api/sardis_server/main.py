@@ -49,6 +49,7 @@ from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
 from sardis_wallet.manager import WalletManager
 
 from .card_adapter import CardProviderCompatAdapter
+from .dependencies import resolve_storage_backend
 from .lifespan import lifespan, shutdown_state
 from .middleware import (
     API_VERSION,
@@ -426,21 +427,9 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # -----------------------------------------------------------------------
     # Storage backend
     # -----------------------------------------------------------------------
-    database_url = (
-        os.getenv("DATABASE_URL")
-        or settings.database_url
-        or settings.ledger_dsn
-        or ""
-    )
-    use_postgres = database_url.startswith("postgresql://") or database_url.startswith("postgres://")
-    if settings.is_production:
-        if not database_url:
-            raise RuntimeError("CRITICAL: DATABASE_URL is required in production.")
-        if not use_postgres:
-            raise RuntimeError(
-                "CRITICAL: Production requires PostgreSQL. "
-                "Set DATABASE_URL to a postgres/postgresql URL."
-            )
+    storage_backend = resolve_storage_backend(settings)
+    database_url = storage_backend.database_url
+    use_postgres = storage_backend.use_postgres
 
     app.state.settings = settings
     app.state.database_url = database_url

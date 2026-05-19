@@ -144,6 +144,7 @@
 - Expanded `sardis_server.routing.providers` so Polar billing-provider webhook registration no longer lives inline in `sardis_server.main`.
 - Expanded `sardis_server.routing.protocol` so the A2A `.well-known/agent-card.json` discovery route no longer lives inline in `sardis_server.main`.
 - Added `sardis_server.routing.health` so liveness, readiness, service discovery, and deep-health route registration no longer lives inline in `sardis_server.main`.
+- Added a tested `resolve_storage_backend` helper so database URL selection and production PostgreSQL enforcement no longer live inline in `sardis_server.main`.
 - Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
 - Documented root `tests/` as a legacy migration backlog until individual tests are moved to their owning packages or updated to the current package layout.
 - Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.

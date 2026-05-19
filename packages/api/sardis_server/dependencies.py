@@ -13,7 +13,7 @@ import os
 import warnings
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, TypeVar
+from typing import Any, Mapping, TypeVar
 
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
@@ -59,6 +59,41 @@ class DependencyConfig:
             lithic_enabled=bool(os.getenv("LITHIC_API_KEY")),
             didit_enabled=bool(os.getenv("DIDIT_API_KEY")),
         )
+
+
+@dataclass(frozen=True)
+class StorageBackendConfig:
+    """Resolved API storage backend configuration."""
+
+    database_url: str
+    use_postgres: bool
+
+
+def resolve_storage_backend(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> StorageBackendConfig:
+    """Resolve storage backend settings and enforce production durability."""
+    env = environ if environ is not None else os.environ
+    database_url = (
+        env.get("DATABASE_URL")
+        or getattr(settings, "database_url", "")
+        or getattr(settings, "ledger_dsn", "")
+        or ""
+    )
+    use_postgres = database_url.startswith(("postgresql://", "postgres://"))
+
+    if getattr(settings, "is_production", False):
+        if not database_url:
+            raise RuntimeError("CRITICAL: DATABASE_URL is required in production.")
+        if not use_postgres:
+            raise RuntimeError(
+                "CRITICAL: Production requires PostgreSQL. "
+                "Set DATABASE_URL to a postgres/postgresql URL."
+            )
+
+    return StorageBackendConfig(database_url=database_url, use_postgres=use_postgres)
 
 
 class DependencyContainer:
