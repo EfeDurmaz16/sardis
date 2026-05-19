@@ -39,6 +39,7 @@ from .dependencies import (
     configure_kyc_service,
     configure_payment_runtime,
     configure_provider_runtime,
+    configure_ramp_runtime,
     configure_sanctions_service,
     expose_inbound_payment_state,
     expose_provider_runtime_state,
@@ -684,60 +685,18 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         approval_service=approval_service,
     )
 
-    # OfframpService (used by ramp + cards)
-    offramp_service = None
-    bridge_api_key = os.getenv("BRIDGE_API_KEY")
-    bridge_api_secret = os.getenv("BRIDGE_API_SECRET")
-    if bridge_api_key and bridge_api_secret:
-        from sardis_cards.offramp import BridgeOfframpProvider, OfframpService
-        bridge_env = "sandbox" if not settings.is_production else "production"
-        bridge_provider = BridgeOfframpProvider(
-            api_key=bridge_api_key,
-            api_secret=bridge_api_secret,
-            environment=bridge_env,
-        )
-        offramp_service = OfframpService(provider=bridge_provider)
-        logger.info("OfframpService initialized with Bridge provider")
-    else:
-        if settings.is_production:
-            logger.warning(
-                "OfframpService NOT initialized: BRIDGE_API_KEY missing in production. "
-                "Off-ramp endpoints will return 503 until BRIDGE_API_KEY is set."
-            )
-            offramp_service = None
-        else:
-            from sardis_cards.offramp import MockOfframpProvider, OfframpService
-            offramp_service = OfframpService(provider=MockOfframpProvider())
-            logger.info("OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)")
-
-    # Ramp routes (fiat on-ramp / off-ramp)
-    onramper_api_key = os.getenv("ONRAMPER_API_KEY", "")
-    onramper_webhook_secret = os.getenv("ONRAMPER_WEBHOOK_SECRET", "")
-    bridge_webhook_secret = os.getenv("BRIDGE_WEBHOOK_SECRET", "")
-
-    # SardisFiatRamp for bank withdrawal and merchant payment
-    fiat_ramp = None
-    if bridge_api_key:
-        try:
-            from sardis_ramp.ramp import SardisFiatRamp
-            fiat_ramp = SardisFiatRamp(
-                sardis_key=os.getenv("SARDIS_API_KEY", ""),
-                bridge_api_key=bridge_api_key,
-                environment="sandbox" if not settings.is_production else "production",
-            )
-            logger.info("SardisFiatRamp initialized for bank withdrawal/merchant payment")
-        except Exception as e:
-            logger.warning("Failed to initialize SardisFiatRamp: %s", e)
+    ramp_runtime = configure_ramp_runtime(settings)
+    offramp_service = ramp_runtime.offramp_service
 
     register_ramp_routes(
         app,
         wallet_repo=wallet_repo,
         agent_repo=agent_repo,
         offramp_service=offramp_service,
-        onramper_api_key=onramper_api_key,
-        onramper_webhook_secret=onramper_webhook_secret,
-        bridge_webhook_secret=bridge_webhook_secret,
-        fiat_ramp=fiat_ramp,
+        onramper_api_key=ramp_runtime.onramper_api_key,
+        onramper_webhook_secret=ramp_runtime.onramper_webhook_secret,
+        bridge_webhook_secret=ramp_runtime.bridge_webhook_secret,
+        fiat_ramp=ramp_runtime.fiat_ramp,
     )
 
     register_mpp_routes(app)

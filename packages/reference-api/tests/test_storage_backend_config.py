@@ -11,6 +11,7 @@ from sardis_server.dependencies import (
     configure_kyc_service,
     configure_payment_runtime,
     configure_provider_runtime,
+    configure_ramp_runtime,
     configure_sanctions_service,
     expose_inbound_payment_state,
     expose_provider_runtime_state,
@@ -1008,6 +1009,29 @@ class FakeInboundPaymentService:
         self.wallet_repo = wallet_repo
 
 
+class FakeBridgeOfframpProvider:
+    def __init__(self, *, api_key: str, api_secret: str, environment: str) -> None:
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.environment = environment
+
+
+class FakeMockOfframpProvider:
+    pass
+
+
+class FakeOfframpService:
+    def __init__(self, *, provider: object) -> None:
+        self.provider = provider
+
+
+class FakeFiatRamp:
+    def __init__(self, *, sardis_key: str, bridge_api_key: str, environment: str) -> None:
+        self.sardis_key = sardis_key
+        self.bridge_api_key = bridge_api_key
+        self.environment = environment
+
+
 def test_configure_facility_gate_services_uses_postgres_dsn() -> None:
     config = configure_facility_gate_services(
         database_url="postgresql://localhost/sardis",
@@ -1267,3 +1291,79 @@ def test_expose_inbound_payment_state_sets_lifespan_and_wallet_dependencies() ->
 
     assert app.state.event_bus is inbound_runtime.event_bus
     assert app.state.inbound_payment_service is inbound_runtime.inbound_payment_service
+
+
+def test_configure_ramp_runtime_uses_bridge_provider_and_fiat_ramp() -> None:
+    config = configure_ramp_runtime(
+        _settings(is_production=True),
+        environ={
+            "BRIDGE_API_KEY": "bridge_key",
+            "BRIDGE_API_SECRET": "bridge_secret",
+            "BRIDGE_WEBHOOK_SECRET": "bridge_webhook",
+            "ONRAMPER_API_KEY": "onramper_key",
+            "ONRAMPER_WEBHOOK_SECRET": "onramper_webhook",
+            "SARDIS_API_KEY": "sardis_key",
+        },
+        bridge_offramp_provider_cls=FakeBridgeOfframpProvider,
+        mock_offramp_provider_cls=FakeMockOfframpProvider,
+        offramp_service_cls=FakeOfframpService,
+        fiat_ramp_cls=FakeFiatRamp,
+    )
+
+    assert isinstance(config.offramp_service, FakeOfframpService)
+    assert isinstance(config.offramp_service.provider, FakeBridgeOfframpProvider)
+    assert config.offramp_service.provider.api_key == "bridge_key"
+    assert config.offramp_service.provider.api_secret == "bridge_secret"
+    assert config.offramp_service.provider.environment == "production"
+    assert isinstance(config.fiat_ramp, FakeFiatRamp)
+    assert config.fiat_ramp.sardis_key == "sardis_key"
+    assert config.fiat_ramp.bridge_api_key == "bridge_key"
+    assert config.fiat_ramp.environment == "production"
+    assert config.onramper_api_key == "onramper_key"
+    assert config.onramper_webhook_secret == "onramper_webhook"
+    assert config.bridge_webhook_secret == "bridge_webhook"
+
+
+def test_configure_ramp_runtime_uses_mock_offramp_without_bridge_credentials_outside_production() -> None:
+    config = configure_ramp_runtime(
+        _settings(is_production=False),
+        environ={},
+        bridge_offramp_provider_cls=FakeBridgeOfframpProvider,
+        mock_offramp_provider_cls=FakeMockOfframpProvider,
+        offramp_service_cls=FakeOfframpService,
+        fiat_ramp_cls=FakeFiatRamp,
+    )
+
+    assert isinstance(config.offramp_service, FakeOfframpService)
+    assert isinstance(config.offramp_service.provider, FakeMockOfframpProvider)
+    assert config.fiat_ramp is None
+
+
+def test_configure_ramp_runtime_leaves_offramp_unconfigured_without_bridge_credentials_in_production() -> None:
+    config = configure_ramp_runtime(
+        _settings(is_production=True),
+        environ={},
+        bridge_offramp_provider_cls=FakeBridgeOfframpProvider,
+        mock_offramp_provider_cls=FakeMockOfframpProvider,
+        offramp_service_cls=FakeOfframpService,
+        fiat_ramp_cls=FakeFiatRamp,
+    )
+
+    assert config.offramp_service is None
+    assert config.fiat_ramp is None
+
+
+def test_configure_ramp_runtime_keeps_fiat_ramp_when_bridge_key_exists_without_secret() -> None:
+    config = configure_ramp_runtime(
+        _settings(is_production=False),
+        environ={"BRIDGE_API_KEY": "bridge_key"},
+        bridge_offramp_provider_cls=FakeBridgeOfframpProvider,
+        mock_offramp_provider_cls=FakeMockOfframpProvider,
+        offramp_service_cls=FakeOfframpService,
+        fiat_ramp_cls=FakeFiatRamp,
+    )
+
+    assert isinstance(config.offramp_service.provider, FakeMockOfframpProvider)
+    assert isinstance(config.fiat_ramp, FakeFiatRamp)
+    assert config.fiat_ramp.bridge_api_key == "bridge_key"
+    assert config.fiat_ramp.environment == "sandbox"

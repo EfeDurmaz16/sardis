@@ -173,6 +173,17 @@ class InboundPaymentRuntimeConfig:
     inbound_payment_service: Any
 
 
+@dataclass(frozen=True)
+class RampRuntimeConfig:
+    """Resolved fiat ramp/off-ramp services and webhook credentials."""
+
+    offramp_service: Any | None
+    onramper_api_key: str
+    onramper_webhook_secret: str
+    bridge_webhook_secret: str
+    fiat_ramp: Any | None
+
+
 def resolve_storage_backend(
     settings: Any,
     *,
@@ -932,6 +943,92 @@ def configure_inbound_payment_runtime(
     return InboundPaymentRuntimeConfig(
         event_bus=event_bus,
         inbound_payment_service=inbound_payment_service,
+    )
+
+
+def configure_ramp_runtime(
+    settings: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+    bridge_offramp_provider_cls: Any = _DEFAULT_PROVIDER,
+    mock_offramp_provider_cls: Any = _DEFAULT_PROVIDER,
+    offramp_service_cls: Any = _DEFAULT_PROVIDER,
+    fiat_ramp_cls: Any = _DEFAULT_PROVIDER,
+) -> RampRuntimeConfig:
+    """Create fiat ramp and off-ramp services used by wallet routes."""
+    env = environ if environ is not None else os.environ
+    is_production = bool(getattr(settings, "is_production", False))
+    bridge_api_key = env.get("BRIDGE_API_KEY", "")
+    bridge_api_secret = env.get("BRIDGE_API_SECRET", "")
+    bridge_environment = "production" if is_production else "sandbox"
+
+    if (
+        bridge_offramp_provider_cls is _DEFAULT_PROVIDER
+        or mock_offramp_provider_cls is _DEFAULT_PROVIDER
+        or offramp_service_cls is _DEFAULT_PROVIDER
+    ):
+        from sardis_cards.offramp import (
+            BridgeOfframpProvider,
+            MockOfframpProvider,
+            OfframpService,
+        )
+
+        bridge_offramp_provider_cls = (
+            BridgeOfframpProvider
+            if bridge_offramp_provider_cls is _DEFAULT_PROVIDER
+            else bridge_offramp_provider_cls
+        )
+        mock_offramp_provider_cls = (
+            MockOfframpProvider
+            if mock_offramp_provider_cls is _DEFAULT_PROVIDER
+            else mock_offramp_provider_cls
+        )
+        offramp_service_cls = (
+            OfframpService if offramp_service_cls is _DEFAULT_PROVIDER else offramp_service_cls
+        )
+
+    offramp_service = None
+    if bridge_api_key and bridge_api_secret:
+        bridge_provider = bridge_offramp_provider_cls(
+            api_key=bridge_api_key,
+            api_secret=bridge_api_secret,
+            environment=bridge_environment,
+        )
+        offramp_service = offramp_service_cls(provider=bridge_provider)
+        logger.info("OfframpService initialized with Bridge provider")
+    elif is_production:
+        logger.warning(
+            "OfframpService NOT initialized: BRIDGE_API_KEY missing in production. "
+            "Off-ramp endpoints will return 503 until BRIDGE_API_KEY is set."
+        )
+    else:
+        offramp_service = offramp_service_cls(provider=mock_offramp_provider_cls())
+        logger.info(
+            "OfframpService initialized with Mock provider (set BRIDGE_API_KEY for real offramp)"
+        )
+
+    fiat_ramp = None
+    if bridge_api_key:
+        try:
+            if fiat_ramp_cls is _DEFAULT_PROVIDER:
+                from sardis_ramp.ramp import SardisFiatRamp
+
+                fiat_ramp_cls = SardisFiatRamp
+            fiat_ramp = fiat_ramp_cls(
+                sardis_key=env.get("SARDIS_API_KEY", ""),
+                bridge_api_key=bridge_api_key,
+                environment=bridge_environment,
+            )
+            logger.info("SardisFiatRamp initialized for bank withdrawal/merchant payment")
+        except Exception as exc:
+            logger.warning("Failed to initialize SardisFiatRamp: %s", exc)
+
+    return RampRuntimeConfig(
+        offramp_service=offramp_service,
+        onramper_api_key=env.get("ONRAMPER_API_KEY", ""),
+        onramper_webhook_secret=env.get("ONRAMPER_WEBHOOK_SECRET", ""),
+        bridge_webhook_secret=env.get("BRIDGE_WEBHOOK_SECRET", ""),
+        fiat_ramp=fiat_ramp,
     )
 
 
