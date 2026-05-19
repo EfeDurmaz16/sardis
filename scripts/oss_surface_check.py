@@ -99,6 +99,14 @@ BLOCKED_TEXT_SNIPPETS = {
         "Tracked public repo maps must use packages/reference-api, not the old "
         "generic API package."
     ),
+    "https://app.sardis.sh/transactions": (
+        "Public CLI demo receipts must point contributors to local evidence "
+        "inspection or public docs, not the private hosted product."
+    ),
+    "Open dashboard": (
+        "Public CLI demo next steps must not route contributors into the private "
+        "hosted product surface."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {

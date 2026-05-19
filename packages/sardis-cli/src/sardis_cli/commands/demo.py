@@ -253,7 +253,7 @@ def show_post_payment_experience(
             f"  TX Hash:   [cyan]{tx_hash}[/cyan]\n"
             f"  Chain:     [cyan]{chain}[/cyan]\n"
             f"  Explorer:  [link={explorer_url}]{explorer_url}[/link]\n"
-            f"  Dashboard: [link=https://app.sardis.sh/transactions]https://app.sardis.sh/transactions[/link]",
+            "  Audit:     Run [cyan]sardis ledger list[/cyan] to inspect the local evidence trail.",
             border_style="green",
             title="Transaction Receipt",
         ))
@@ -271,7 +271,7 @@ def show_post_payment_experience(
     next_steps.add_row("2", "Set a custom spending limit", "sardis mandates create --per-tx 50 --daily 200")
     next_steps.add_row("3", "Add wallet to an AI agent", "sardis agents create --name my-agent")
     next_steps.add_row("4", "View audit trail", "sardis ledger list")
-    next_steps.add_row("5", "Open dashboard", "https://app.sardis.sh")
+    next_steps.add_row("5", "Read the public API guide", "https://sardis.sh/docs")
 
     console.print(next_steps)
     console.print()
