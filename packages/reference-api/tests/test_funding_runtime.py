@@ -1,6 +1,10 @@
 from types import SimpleNamespace
 
-from server.funding_runtime import resolve_stripe_funding_runtime_config
+from server.funding_runtime import (
+    StripeFundingRuntimeConfig,
+    configure_funding_adapters,
+    resolve_stripe_funding_runtime_config,
+)
 
 
 def _settings(**overrides):
@@ -13,10 +17,23 @@ def _settings(**overrides):
             connected_account_id="",
             connected_account_map_json="",
         ),
-        "circle_cpn": SimpleNamespace(api_key=""),
+        "circle_cpn": SimpleNamespace(
+            api_key="",
+            base_url="",
+            payout_path="",
+            status_path="",
+            auth_style="",
+            timeout_seconds=10.0,
+            program_id="",
+        ),
         "rain": SimpleNamespace(api_key=""),
         "bridge_cards": SimpleNamespace(api_key=""),
-        "coinbase": SimpleNamespace(topup_api_key=""),
+        "coinbase": SimpleNamespace(
+            topup_api_key="",
+            topup_base_url="",
+            topup_path="",
+        ),
+        "funding": SimpleNamespace(primary_adapter="", fallback_adapter=""),
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -108,3 +125,165 @@ def test_resolve_stripe_funding_runtime_enables_for_non_stripe_adapter_credentia
     assert rain_config.should_configure_funding_runtime is True
     assert bridge_config.should_configure_funding_runtime is True
     assert coinbase_config.should_configure_funding_runtime is True
+
+
+class FakeStripeIssuingFundingAdapter:
+    def __init__(self, treasury_provider: object) -> None:
+        self.treasury_provider = treasury_provider
+
+
+class FakeHttpTopupFundingAdapter:
+    def __init__(self, **kwargs) -> None:
+        self.kwargs = kwargs
+
+
+class FakeCircleCPNFundingAdapter:
+    def __init__(self, **kwargs) -> None:
+        self.kwargs = kwargs
+
+
+def _runtime_config(circle_cpn_api_key: str = "") -> StripeFundingRuntimeConfig:
+    return StripeFundingRuntimeConfig(
+        stripe_api_key="",
+        stripe_webhook_secret="",
+        stripe_financial_account_id="",
+        stripe_connected_account_default="",
+        connected_account_map={},
+        circle_cpn_api_key=circle_cpn_api_key,
+        should_configure_funding_runtime=True,
+    )
+
+
+def _configure_adapters(settings=None, environ=None, treasury_provider=None, cpn_key=""):
+    return configure_funding_adapters(
+        settings or _settings(),
+        treasury_provider=treasury_provider,
+        stripe_funding_runtime=_runtime_config(cpn_key),
+        environ=environ or {},
+        stripe_issuing_funding_adapter_cls=FakeStripeIssuingFundingAdapter,
+        http_topup_funding_adapter_cls=FakeHttpTopupFundingAdapter,
+        circle_cpn_funding_adapter_cls=FakeCircleCPNFundingAdapter,
+    )
+
+
+def test_configure_funding_adapters_builds_stripe_primary() -> None:
+    treasury_provider = object()
+    config = _configure_adapters(
+        settings=_settings(funding=SimpleNamespace(primary_adapter="stripe", fallback_adapter="")),
+        treasury_provider=treasury_provider,
+    )
+
+    assert isinstance(config.primary_adapter, FakeStripeIssuingFundingAdapter)
+    assert config.primary_adapter.treasury_provider is treasury_provider
+    assert config.fallback_adapter is None
+    assert config.ordered_adapters == [config.primary_adapter]
+
+
+def test_configure_funding_adapters_skips_stripe_without_treasury_provider() -> None:
+    config = _configure_adapters(
+        settings=_settings(funding=SimpleNamespace(primary_adapter="stripe", fallback_adapter="")),
+    )
+
+    assert config.primary_adapter is None
+    assert config.ordered_adapters == []
+
+
+def test_configure_funding_adapters_builds_rain_bridge_and_coinbase() -> None:
+    rain_config = _configure_adapters(
+        settings=_settings(
+            funding=SimpleNamespace(primary_adapter="rain", fallback_adapter="bridge"),
+            rain=SimpleNamespace(
+                api_key="rain_key",
+                base_url="https://rain.example",
+                funding_topup_path="/rain/topups",
+                program_id="rain_program",
+            ),
+            bridge_cards=SimpleNamespace(
+                api_key="bridge_key",
+                api_secret="bridge_secret",
+                cards_base_url="https://bridge.example",
+                funding_topup_path="/bridge/topups",
+                program_id="bridge_program",
+            ),
+        )
+    )
+    coinbase_config = _configure_adapters(
+        settings=_settings(
+            funding=SimpleNamespace(primary_adapter="coinbase_cdp", fallback_adapter=""),
+            coinbase=SimpleNamespace(
+                topup_api_key="coinbase_key",
+                topup_base_url="https://coinbase.example",
+                topup_path="/coinbase/topups",
+            ),
+        )
+    )
+
+    assert rain_config.primary_adapter.kwargs == {
+        "provider": "rain",
+        "rail": "stablecoin",
+        "base_url": "https://rain.example",
+        "api_key": "rain_key",
+        "topup_path": "/rain/topups",
+        "auth_style": "bearer",
+        "program_id": "rain_program",
+    }
+    assert rain_config.fallback_adapter.kwargs == {
+        "provider": "bridge",
+        "rail": "stablecoin",
+        "base_url": "https://bridge.example",
+        "api_key": "bridge_key",
+        "api_secret": "bridge_secret",
+        "topup_path": "/bridge/topups",
+        "auth_style": "x_api_key",
+        "program_id": "bridge_program",
+    }
+    assert coinbase_config.primary_adapter.kwargs == {
+        "provider": "coinbase_cdp",
+        "rail": "stablecoin",
+        "base_url": "https://coinbase.example",
+        "api_key": "coinbase_key",
+        "topup_path": "/coinbase/topups",
+        "auth_style": "bearer",
+    }
+
+
+def test_configure_funding_adapters_builds_circle_cpn_from_runtime_config() -> None:
+    config = _configure_adapters(
+        settings=_settings(
+            funding=SimpleNamespace(primary_adapter="circle_cpn", fallback_adapter=""),
+            circle_cpn=SimpleNamespace(
+                api_key="",
+                base_url="https://circle.example",
+                payout_path="/payouts",
+                status_path="/status/{payment_id}",
+                auth_style="x_api_key",
+                timeout_seconds=3.5,
+                program_id="circle_program",
+            ),
+        ),
+        cpn_key="runtime_cpn_key",
+    )
+
+    assert isinstance(config.primary_adapter, FakeCircleCPNFundingAdapter)
+    assert config.primary_adapter.kwargs == {
+        "api_key": "runtime_cpn_key",
+        "base_url": "https://circle.example",
+        "payout_path": "/payouts",
+        "status_path": "/status/{payment_id}",
+        "auth_style": "x_api_key",
+        "timeout_seconds": 3.5,
+        "program_id": "circle_program",
+    }
+
+
+def test_configure_funding_adapters_skips_unknown_and_missing_credentials() -> None:
+    config = _configure_adapters(
+        settings=_settings(
+            funding=SimpleNamespace(primary_adapter="unknown", fallback_adapter="rain"),
+        ),
+        environ={},
+    )
+
+    assert config.primary_adapter is None
+    assert config.fallback_adapter is None
+    assert config.ordered_adapters == []
