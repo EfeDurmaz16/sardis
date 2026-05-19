@@ -118,6 +118,7 @@ from .routing.developer import (
     register_webhook_subscriptions,
 )
 from .routing.evidence import register_audit_anchor_routes, register_evidence_routes
+from .routing.identity import register_agent_auth_routes, register_sso_routes
 from .routing.money_movement import (
     register_batch_payment_routes,
     register_bridge_routes,
@@ -1701,24 +1702,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     except ImportError:
         logger.warning("Spending mandates router not available")
 
-    # Agent Auth Protocol — makes Sardis discoverable by any AI agent
-    try:
-        from sardis_server.routes.identity import agent_auth as agent_auth_router
-
-        # Public discovery endpoints (no auth required)
-        app.include_router(
-            agent_auth_router.discovery_router,
-            tags=["agent-auth"],
-        )
-        # Authenticated agent management + capability execution
-        app.include_router(
-            agent_auth_router.router,
-            prefix="/api/v2",
-            tags=["agent-auth"],
-        )
-        logger.info("Agent Auth Protocol enabled (discovery + capability execution)")
-    except ImportError:
-        logger.warning("Agent Auth Protocol router not available")
+    register_agent_auth_routes(app)
 
     # Polar.sh billing webhook (pre-incorporation MoR)
     try:
@@ -1741,12 +1725,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         approval_service=approval_service,
     )
 
-    # SSO (SAML/OIDC) authentication
-    try:
-        from sardis_server.middleware.sso import router as sso_router
-        app.include_router(sso_router, prefix="/api/v2", tags=["sso"])
-    except ImportError:
-        pass
+    register_sso_routes(app)
 
     # -----------------------------------------------------------------------
     # Merchant checkout ("Pay with Sardis")

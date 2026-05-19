@@ -139,6 +139,7 @@
 - Expanded `sardis_server.routing.commerce` so merchant management and checkout-link route dependency wiring no longer lives inline in `sardis_server.main`.
 - Expanded `sardis_server.routing.commerce` so Pay with Sardis merchant checkout session route dependency wiring no longer lives inline in `sardis_server.main`.
 - Expanded `sardis_server.routing.providers` so feature-flagged Striga, Lightspark Grid, fiat rails, and currency route registration no longer lives inline in `sardis_server.main`.
+- Added `sardis_server.routing.identity` so Agent Auth discovery/management and enterprise SSO route registration no longer live inline in `sardis_server.main`.
 - Redirected default pytest, root `pnpm test`, Python CI, and contributor docs from the stale root `tests/` backlog to maintained package-owned suites.
 - Documented root `tests/` as a legacy migration backlog until individual tests are moved to their owning packages or updated to the current package layout.
 - Fixed the API app's holds dependency wiring so the mounted holds router receives the repository through the request app state used by its live dependency.
