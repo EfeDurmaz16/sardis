@@ -301,10 +301,11 @@ Circle CPN route client construction now also lives behind a tested helper,
 including settings/env precedence, default Circle paths, webhook secret
 resolution, disabled-mode behavior, and client initialization failure recovery.
 Virtual card repository/provider construction now lives behind the same
-bootstrap-helper boundary. The extraction preserves feature-flag behavior,
-mock/Lithic/Stripe/Rain/Bridge provider selection, primary/fallback routing,
-organization overrides, partner webhook secrets, and Lithic ASA handler wiring
-while leaving `server.main` responsible only for route registration.
+bootstrap-helper boundary in `server.card_runtime`, not the generic dependency
+module. The extraction preserves feature-flag behavior, mock/Lithic/Stripe/Rain/
+Bridge provider selection, primary/fallback routing, organization overrides,
+partner webhook secrets, and Lithic ASA handler wiring while leaving
+`server.main` responsible only for route registration.
 
 ## Test, Build, And Lint Results
 

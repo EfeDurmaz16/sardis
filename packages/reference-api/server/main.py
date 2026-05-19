@@ -29,9 +29,9 @@ if should_bootstrap_monorepo_sys_path():
 from sardis_v2_core import SardisSettings, load_settings
 from sardis_v2_core.identity import IdentityRegistry
 
+from .card_runtime import configure_card_runtime
 from .dependencies import (
     configure_api_support_services,
-    configure_card_runtime,
     configure_compliance_services,
     configure_core_services,
     configure_cpn_runtime,
