@@ -39,6 +39,7 @@ highest review rigor and the best tests.
 | --- | --- | --- | --- |
 | Public SDK facade | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/` | API drift fixes, typed examples, error handling, idempotency helpers | `uv run pytest packages/sardis-sdk-python/tests -q`; `pnpm --filter @sardis/sdk test`; `pnpm --filter @sardis/sdk typecheck` |
 | Authority primitives | `packages/sardis-core/`, `packages/sardis-protocol/` | Mandate semantics, AP2/TAP fixtures, policy evaluation, replay safety | `uv run pytest packages/sardis-core/tests -q`; `uv run pytest packages/sardis-protocol/tests -q` |
+| Paid HTTP protocols | `packages/sardis-protocol/`, `packages/sardis-mpp/`, `packages/reference-api/` | x402 challenge/settlement fixes, MPP session negotiation, policy-before-payment conformance, receipt/evidence recording | `PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q`; `PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q`; `PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q` |
 | Evidence and ledger | `packages/sardis-ledger/` | Audit packet fixtures, tamper-evidence tests, reconciliation examples | `uv run pytest packages/sardis-ledger/tests -q` |
 | Reference API | `packages/reference-api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest packages/reference-api/tests -q`; `pnpm run check:contributor` |
 | Agent tooling | `packages/sardis-mcp-server/` | MCP schema improvements, examples, simulated-response labeling | `pnpm --filter @sardis/mcp-server build`; `pnpm --filter @sardis/mcp-server test` |
@@ -97,3 +98,25 @@ Use `docs/oss/public-private-boundary.md` and
 Root tests are a migration backlog, not the default contribution path. If a
 root test becomes important for a new PR, move it to the owning package first
 unless it genuinely spans multiple packages.
+
+## x402 And MPP Contributions
+
+x402 and MPP are separate protocol surfaces, not duplicate packages:
+
+- x402 primitives live in `packages/sardis-protocol/`; API facilitator routes
+  and middleware live in `packages/reference-api/`.
+- MPP client/session primitives live in `packages/sardis-mpp/`; API session
+  routes and middleware live in `packages/reference-api/`.
+- Shared Sardis behavior belongs in policy, execution, receipt, and evidence
+  code, not in a new `x402_mpp` bucket.
+
+Use `docs/architecture/x402-and-mpp.md` before changing either surface. Run the
+validation targets separately; package-local and root pytest suites currently
+load different `tests.conftest` modules and should not be combined into one
+pytest invocation.
+
+```bash
+PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
+PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
+PYTHONPATH=packages/reference-api uv run pytest tests/test_x402_middleware.py tests/test_mpp_router.py -q
+```

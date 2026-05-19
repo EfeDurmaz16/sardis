@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONTRIBUTION_MAP = ROOT / "docs" / "oss" / "contribution-map.md"
 PACKAGES_DOC = ROOT / "docs" / "packages.md"
@@ -44,6 +43,7 @@ def package_refs(path: Path) -> set[str]:
 def main() -> int:
     files = tracked_files()
     tracked = tracked_package_dirs(files)
+    contribution_map_text = CONTRIBUTION_MAP.read_text(encoding="utf-8")
     maturity_refs = package_refs(PACKAGES_DOC)
     contribution_refs = package_refs(CONTRIBUTION_MAP)
 
@@ -54,7 +54,16 @@ def main() -> int:
     missing_non_package_refs = [
         ref
         for ref in required_non_package_refs
-        if f"`{ref}`" not in CONTRIBUTION_MAP.read_text(encoding="utf-8")
+        if f"`{ref}`" not in contribution_map_text
+    ]
+    required_protocol_boundary_refs = [
+        "x402 and MPP are separate protocol surfaces",
+        "docs/architecture/x402-and-mpp.md",
+        "tests/test_x402_middleware.py",
+        "tests/test_mpp_router.py",
+    ]
+    missing_protocol_boundary_refs = [
+        ref for ref in required_protocol_boundary_refs if ref not in contribution_map_text
     ]
 
     errors: list[str] = []
@@ -77,6 +86,11 @@ def main() -> int:
         errors.append(
             "docs/oss/contribution-map.md is missing required non-package roots:\n"
             + "\n".join(f"  - {path}" for path in missing_non_package_refs)
+        )
+    if missing_protocol_boundary_refs:
+        errors.append(
+            "docs/oss/contribution-map.md is missing required paid-protocol boundary guidance:\n"
+            + "\n".join(f"  - {ref}" for ref in missing_protocol_boundary_refs)
         )
 
     if errors:
