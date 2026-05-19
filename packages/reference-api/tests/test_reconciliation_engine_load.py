@@ -4,6 +4,7 @@ import asyncio
 import random
 
 import pytest
+
 from server.canonical_state_machine import normalize_stablecoin_event
 from server.repositories.canonical_ledger_repository import CanonicalLedgerRepository
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+
 from server.canonical_state_machine import (
     normalize_lithic_ach_event,
     normalize_stablecoin_event,
