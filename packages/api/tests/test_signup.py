@@ -28,7 +28,7 @@ from httpx import ASGITransport, AsyncClient
 # Direct module loading — bypasses sardis_server.__init__ which imports main.py
 # and pulls in the full (heavy) dependency tree.
 # ---------------------------------------------------------------------------
-_src_dir = Path(__file__).parent.parent / "src"
+_src_dir = Path(__file__).parent.parent
 _packages_dir = Path(__file__).parent.parent.parent
 
 # Ensure sardis-core src is importable (needed by some transitive imports)

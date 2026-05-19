@@ -6,7 +6,7 @@ Sardis is a substantial monorepo, not a thin prototype. The current OSS stack re
 
 ## Biggest Technical Risks
 
-- `packages/api/src/sardis_server/main.py` is too large and centralizes too many unrelated concerns.
+- `packages/api/sardis_server/main.py` is too large and centralizes too many unrelated concerns.
 - Database migrations are split between Alembic and raw SQL.
 - Frontend authenticated API behavior differs between dashboard and landing.
 - Package manager state is fragmented across root and package-local lockfiles.
@@ -81,7 +81,7 @@ Deletion requires proof. Current candidates:
 - Public `/api/v2` and SDK contracts consumed by the private dashboard/product clients.
 - Existing `/api/v2` route behavior.
 - Existing raw SQL migration history until reconciliation.
-- Production guards in `packages/api/src/sardis_server/lifespan.py`.
+- Production guards in `packages/api/sardis_server/lifespan.py`.
 
 ## Delete Candidates
 
@@ -92,8 +92,8 @@ Deletion requires proof. Current candidates:
 
 ## Recommended Final Architecture
 
-- `packages/api/src/sardis_server/bootstrap/` for middleware, services, routers, and production guards.
-- `packages/api/src/sardis_server/domains/<domain>/` for cohesive payment, policy, wallet, billing, webhook, evidence, and facility modules over time.
+- `packages/api/sardis_server/bootstrap/` for middleware, services, routers, and production guards.
+- `packages/api/sardis_server/domains/<domain>/` for cohesive payment, policy, wallet, billing, webhook, evidence, and facility modules over time.
 - Root-managed `uv` and `pnpm` validation for monorepo development.
 - SDK/generated-contract shared types used by private product apps and public examples.
 - Canonical migration runner with drift tests.

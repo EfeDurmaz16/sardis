@@ -72,7 +72,7 @@ Active public surfaces must use the current API import package and path layout:
 
 ```text
 sardis_server
-packages/api/src/sardis_server
+packages/api/sardis_server
 ```
 
 Run this guard before opening PRs that touch docs, examples, or test routing:

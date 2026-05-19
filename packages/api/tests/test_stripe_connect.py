@@ -461,7 +461,7 @@ class TestStripeConnectRouterWiring:
         assert "/stripe-connect/webhooks" in paths
 
     def test_main_imports_stripe_connect(self):
-        main_path = Path(__file__).parent.parent / "src" / "sardis_server" / "main.py"
+        main_path = Path(__file__).parent.parent / "sardis_server" / "main.py"
         source = main_path.read_text()
         assert "stripe_connect_router" in source
         assert "StripeConnectProvider" in source

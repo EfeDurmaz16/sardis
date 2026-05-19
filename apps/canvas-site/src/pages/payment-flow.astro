@@ -186,7 +186,7 @@ sequenceDiagram
               if Redis is unreachable the request is denied.
             </div>
             <div class="step-meta">
-              <span>file: <code>packages/api/src/sardis_server/main.py</code></span>
+              <span>file: <code>packages/api/sardis_server/main.py</code></span>
               <span>env: <code>SARDIS_REDIS_URL</code> required</span>
               <span class="failmode">fail: 429 on limit; 503 if Redis down</span>
             </div>
@@ -204,7 +204,7 @@ sequenceDiagram
               downstream work.
             </div>
             <div class="step-meta">
-              <span>file: <code>packages/api/src/sardis_server/routes/money_movement/pay.py</code></span>
+              <span>file: <code>packages/api/sardis_server/routes/money_movement/pay.py</code></span>
               <span>principal: org_id, agent_id, scopes[], key_id</span>
               <span class="failmode">fail: 401 — no orchestrator invocation</span>
             </div>
@@ -282,7 +282,7 @@ sequenceDiagram
               Decrements budget atomically via DB row lock.
             </div>
             <div class="step-meta">
-              <span>file: <code>packages/api/src/sardis_server/routes/authority/mandate_delegation.py</code></span>
+              <span>file: <code>packages/api/sardis_server/routes/authority/mandate_delegation.py</code></span>
               <span>SQL: <code>SELECT … FOR UPDATE</code> on mandate row</span>
               <span class="failmode">fail-closed: race → NOWAIT lock, 409 to caller</span>
             </div>

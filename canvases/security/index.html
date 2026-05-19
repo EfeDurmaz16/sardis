@@ -88,7 +88,7 @@ All provider credentials live in env vars loaded from Google Secret Manager or V
 <code>fetch-depth: 0</code>). A matched leak fails the run — no merge.
               API keys are stored in Postgres as SHA-256 hashes, not plaintext.
 </div> </div> <div class="card"> <div class="card-title">Middleware stack (sardis-api)</div> <div class="card-description">
-Order from <code>packages/api/src/sardis_server/main.py</code>: RequestId →
+Order from <code>packages/api/sardis_server/main.py</code>: RequestId →
               StructuredLogging → SecurityHeaders (CSP/HSTS) → RequestBodyLimit (10MB default, 1MB
               webhooks, 512KB checkout, 64KB policies) → RateLimit → TAP → x402 → UsageMetering →
               ActivityLogger → CORS (no wildcards — <code>settings.allowed_origins_list</code>) →

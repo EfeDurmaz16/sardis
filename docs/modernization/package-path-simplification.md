@@ -9,7 +9,7 @@ remaining problem was that the server import package still used `sardis`, which
 collided conceptually and technically with the public Python SDK:
 
 ```text
-packages/api/src/sardis/...
+packages/api/sardis/...
 ```
 
 That path was technically valid, but it made the package boundary too vague:
@@ -26,12 +26,13 @@ same concept in `packages/server-api`.
 
 ## Decision
 
-Do not collapse or remove `src`; keep the standard Python source layout.
+The API package now intentionally omits the extra `src/` layer because
+`packages/api` is already an explicit monorepo package boundary.
 
 Keep the API import package as:
 
 ```text
-packages/api/src/sardis_server/
+packages/api/sardis_server/
 ```
 
 Rename the monorepo package directory from:
@@ -87,7 +88,7 @@ The current migration sequence is:
 Minimum validation for the server package-directory rename:
 
 ```bash
-python3 -m compileall -q packages/api/src/sardis_server packages/api/scripts/generate_openapi.py api/index.py
+python3 -m compileall -q packages/api/sardis_server packages/api/scripts/generate_openapi.py api/index.py
 PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_funding_bootstrap.py packages/api/tests/test_sandbox_isolation.py packages/api/tests/test_facility_requests_router.py -q
 pnpm check:openapi
 python3 scripts/package_maturity_check.py
@@ -107,33 +108,33 @@ uv run pytest packages/api/tests -q
 The contributor-facing API path is now:
 
 ```text
-packages/api/src/sardis_server/...
+packages/api/sardis_server/...
 ```
 
 This still contains two naming layers:
 
 - `packages/api` is the monorepo package boundary: the deployable
   reference API service.
-- `src/sardis_server` is the Python import boundary: the package imported by
+- `sardis_server` is the Python import boundary: the package imported by
   tests, ASGI servers, and internal modules.
 
-That duplication is intentional only at the Python packaging boundary. It
-should not leak into public docs as `sardis-api/src/sardis_api`, and the active
+That duplication is intentional only at the Python import boundary. The old
+`src/` layer was removed from the API package because `packages/api` is already
+the package boundary in this monorepo. It should not leak into public docs as
+`sardis-api/src/sardis_api` or `packages/api/sardis_server`, and the active
 source tree must not keep an extra `routers/` bucket below it. A contributor
 should land in a domain path such as:
 
 ```text
-packages/api/src/sardis_server/routes/protocol/x402.py
-packages/api/src/sardis_server/routes/protocol/mpp.py
-packages/api/src/sardis_server/routes/commerce/merchant_checkout.py
+packages/api/sardis_server/routes/protocol/x402.py
+packages/api/sardis_server/routes/protocol/mpp.py
+packages/api/sardis_server/routes/commerce/merchant_checkout.py
 ```
 
-Further shortening the physical path by removing `src/` would trade readability
-for worse Python packaging behavior and easier accidental import shadowing.
 The clean migration target is therefore domain placement below
 `sardis_server`, plus accurate public docs and generated artifacts.
 
-Remaining path cleanup should focus below `src/sardis_server`: continue moving
+Remaining path cleanup should focus below `sardis_server`: continue moving
 route registration concerns out of the oversized `main.py` into domain
 registrars. Local monorepo import bootstrapping now lives in
 `sardis_server.bootstrap`, so `main.py` is closer to a composition root instead

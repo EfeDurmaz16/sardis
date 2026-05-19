@@ -37,99 +37,99 @@ require_file "docs/security/payment-hardening/pci-approvals-and-db-hardening-che
 require_file "docs/security/payment-hardening/pan-boundary-provider-matrix.md"
 
 require_match 'policy_pin_requires_active_policy' \
-  'packages/api/src/sardis_server/routes/wallets/onchain_payments.py' \
+  'packages/api/sardis_server/routes/wallets/onchain_payments.py' \
   'on-chain policy pin fail-closed guard must be present'
 require_match 'policy_pin_attestation_unavailable' \
-  'packages/api/src/sardis_server/routes/wallets/onchain_payments.py' \
+  'packages/api/sardis_server/routes/wallets/onchain_payments.py' \
   'on-chain policy attestation fail-closed guard must be present'
 require_match 'PROMPT_INJECTION_PATTERNS' \
-  'packages/api/src/sardis_server/routes/wallets/onchain_payments.py' \
+  'packages/api/sardis_server/routes/wallets/onchain_payments.py' \
   'on-chain prompt injection patterns must be defined'
 require_match '_goal_drift_block_threshold' \
-  'packages/api/src/sardis_server/routes/wallets/onchain_payments.py' \
+  'packages/api/sardis_server/routes/wallets/onchain_payments.py' \
   'on-chain goal drift block threshold guard must be present'
 require_match '_signed_policy_snapshot_required' \
-  'packages/api/src/sardis_server/routes/wallets/onchain_payments.py' \
+  'packages/api/sardis_server/routes/wallets/onchain_payments.py' \
   'on-chain signed policy snapshot requirement guard must be present'
 
 require_match 'cursor_scope_mismatch' \
-  'packages/api/src/sardis_server/routes/compliance/compliance.py' \
+  'packages/api/sardis_server/routes/compliance/compliance.py' \
   'evidence export cursor scope binding must be enforced'
 require_match 'Opaque replay-safe pagination cursor' \
-  'packages/api/src/sardis_server/routes/compliance/compliance.py' \
+  'packages/api/sardis_server/routes/compliance/compliance.py' \
   'evidence export must expose replay-safe cursor API'
 
 require_match 'card_details_invalid' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must reject invalid revealed card details'
 require_match '_sanitize_audit_payload' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout audit payload redaction must be present'
 require_match '_pan_executor_runtime_ready' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout PAN runtime readiness gate must be present'
 require_match '_pan_provider_boundary_matrix' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must support provider boundary matrix'
 require_match '_resolve_pan_boundary_mode' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must resolve effective pan boundary mode deterministically'
 require_match 'pan_provider_profile_disallows_pan_entry' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must expose provider profile lock reason'
 require_match '_require_shared_secret_store' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must fail-closed without shared secret store in production'
 require_match '_required_checkout_approvals' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must compute approval quorum requirements deterministically'
 require_match '_checkout_signed_policy_snapshot_required' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout signed policy snapshot guard must be present'
 require_match 'policy_snapshot_signer_not_configured' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must fail closed when signed policy snapshot is required but signer is missing'
 require_match 'approval_distinct_reviewer_quorum_not_met' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout must enforce distinct reviewer quorum when configured'
 require_match '_security_incident_severity' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout incident severity taxonomy must be present'
 require_match '/secure/security-policy' \
-  'packages/api/src/sardis_server/routes/commerce/secure_checkout.py' \
+  'packages/api/sardis_server/routes/commerce/secure_checkout.py' \
   'secure checkout security-policy visibility endpoint must be present'
 require_match '_check_a2a_trust_relation' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A trust table enforcement must be present'
 require_match '_append_a2a_trust_audit_entry' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A trust relation mutations must be audit logged'
 require_match '_validate_trust_mutation_approval' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A trust relation mutations must enforce approval validation'
 require_match '_required_trust_mutation_approvals' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A trust relation mutations must support approval quorum controls'
 require_match '/trust/peers' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A peer discovery endpoint must be present'
 require_match 'include_wallet_addresses' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A peer discovery must support optional wallet address directory visibility'
 require_match 'broadcast_targets' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A peer discovery must expose trusted broadcast targets'
 require_match '/trust/audit/recent' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A trust audit visibility endpoint must be present'
 require_match '/trust/security-policy' \
-  'packages/api/src/sardis_server/routes/protocol/a2a.py' \
+  'packages/api/sardis_server/routes/protocol/a2a.py' \
   'A2A security policy visibility endpoint must be present'
 require_match 'SARDIS_ASA_FAIL_CLOSED_ON_CARD_LOOKUP_ERROR' \
   'packages/sardis-cards/src/sardis_cards/webhooks.py' \
   'ASA card lookup error fail-closed toggle must be present'
 require_match '/asa/security-policy' \
-  'packages/api/src/sardis_server/routes/wallets/cards.py' \
+  'packages/api/sardis_server/routes/wallets/cards.py' \
   'cards router must expose ASA security policy visibility endpoint'
 
 require_match 'test_onchain_payment_adversarial_prompt_patterns_require_approval' \

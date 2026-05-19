@@ -12,7 +12,7 @@
 ### 1a. Payment safety test expansion
 
 - Goal: Cover idempotency fallback, checkout mandate fail-closed behavior, and KYC redaction before deep refactors.
-- Exact files likely affected: `packages/api/src/sardis_server/idempotency.py`, `packages/api/src/sardis_server/routes/commerce/merchant_checkout.py`, `packages/api/src/sardis_server/routes/compliance/kyc_onboarding.py`, related tests.
+- Exact files likely affected: `packages/api/sardis_server/idempotency.py`, `packages/api/sardis_server/routes/commerce/merchant_checkout.py`, `packages/api/sardis_server/routes/compliance/kyc_onboarding.py`, related tests.
 - Implementation notes: Start with narrow tests and bug fixes; defer schema migration until DB fallback contract is fully mapped.
 - Risk: Medium-high.
 - Rollback plan: Revert individual safety fix commit.
@@ -48,7 +48,7 @@
 ## 5. Architecture Restructuring
 
 - Goal: Shrink `create_app` into maintainable registrars.
-- Files likely affected: `packages/api/src/sardis_server/main.py`, new `packages/api/src/sardis_server/bootstrap/*`, route-domain modules under `packages/api/src/sardis_server/routes/*`.
+- Files likely affected: `packages/api/sardis_server/main.py`, new `packages/api/sardis_server/bootstrap/*`, route-domain modules under `packages/api/sardis_server/routes/*`.
 - Implementation notes: Start with pure middleware registration, then router groups. Keep route prefixes unchanged. Continue route-domain migration before any package-directory rename.
 - Risk: Medium-high.
 - Rollback plan: Revert each extraction commit independently.
@@ -58,7 +58,7 @@
 
 - Goal: Reduce contributor-visible ambiguity by consolidating the monorepo API package directory at `packages/api` while keeping the server import package `sardis_server` stable.
 - Exact files likely affected: root `pyproject.toml`, root `package.json`, CI workflows, Docker files, OpenAPI scripts, docs, API test commands, and API package path references.
-- Implementation notes: Do not remove `src/sardis_server`; it is the stable Python import package and the standard `src` layout. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
+- Implementation notes: Do not remove `sardis_server`; it is the stable Python import package and the standard `src` layout. Keep the Python distribution name `sardis-api`; this is a repository path cleanup, not a breaking package rename.
 - Risk: High.
 - Rollback plan: Revert the directory rename commit and path-reference updates together.
 - Validation command: `python3 scripts/package_maturity_check.py && pnpm check:openapi && PYTHONPATH="$(find packages -maxdepth 2 -type d -name src | tr '\n' ':')" uv run pytest packages/api/tests/test_agent_auth.py packages/api/tests/test_agent_events_and_holds_wiring.py -q`.
@@ -70,7 +70,7 @@
 - Implementation notes: Keep the package name `sardis`; only move the source directory into the standard Python `src` layout.
 - Risk: Medium.
 - Rollback plan: Revert the directory move and package metadata update together.
-- Validation command: `uv run python -c 'from sardis import SardisClient; print(SardisClient)' && PYTHONPATH=packages/api/src uv run python -c 'from sardis_server.main import create_app; print(create_app)'`.
+- Validation command: `uv run python -c 'from sardis import SardisClient; print(SardisClient)' && PYTHONPATH=packages/api uv run python -c 'from sardis_server.main import create_app; print(create_app)'`.
 
 ## 6. Language/Framework/Runtime Migrations
 

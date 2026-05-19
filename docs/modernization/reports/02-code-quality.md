@@ -4,7 +4,7 @@
 
 ### High: App bootstrap contains too many responsibilities
 
-- Evidence: `packages/api/src/sardis_server/main.py` configures telemetry, security middleware, rate limiting, TAP, x402, usage metering, repository construction, dozens of router overrides, checkout, merchant, billing, facility, sandbox, and health behavior.
+- Evidence: `packages/api/sardis_server/main.py` configures telemetry, security middleware, rate limiting, TAP, x402, usage metering, repository construction, dozens of router overrides, checkout, merchant, billing, facility, sandbox, and health behavior.
 - Impact: The file is hard to review and makes unrelated changes look dangerous.
 - Recommended action: Extract pure registration helpers with small return types. Start with middleware and router groups because those are easiest to validate.
 - Action type: Refactor.

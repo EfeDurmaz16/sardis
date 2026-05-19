@@ -13,7 +13,7 @@
 
 ### High: Merchant checkout mandate validation can fail open
 
-- Evidence: `packages/api/src/sardis_server/routes/commerce/merchant_checkout.py` logs mandate lookup/validation errors and can continue to payment execution.
+- Evidence: `packages/api/sardis_server/routes/commerce/merchant_checkout.py` logs mandate lookup/validation errors and can continue to payment execution.
 - Impact: payment policy enforcement can be bypassed during storage or parser failures.
 - Recommended action: fail closed when `mandate_id` is present and mandate validation cannot complete.
 - Action type: Code fix plus regression test.
@@ -22,7 +22,7 @@
 
 ### High: KYC webhook handling can log/store raw sensitive payload data
 
-- Evidence: `packages/api/src/sardis_server/routes/compliance/kyc_onboarding.py` logs invalid raw bodies and stores payload-derived metadata.
+- Evidence: `packages/api/sardis_server/routes/compliance/kyc_onboarding.py` logs invalid raw bodies and stores payload-derived metadata.
 - Impact: identity metadata can leak to logs, DB records, observability, or exports.
 - Recommended action: redact logs, store normalized fields and payload hashes, and keep raw payloads only in protected encrypted storage if legally required.
 - Action type: Code fix plus data-retention hardening.
@@ -31,7 +31,7 @@
 
 ### High: DB idempotency fallback does not bind payload hash
 
-- Evidence: `packages/api/src/sardis_server/idempotency.py` Redis path compares `request_hash`, but DB fallback records do not consistently read/write and compare that hash.
+- Evidence: `packages/api/sardis_server/idempotency.py` Redis path compares `request_hash`, but DB fallback records do not consistently read/write and compare that hash.
 - Impact: reused idempotency keys with different payloads can return stale responses if Redis misses and DB hits.
 - Recommended action: add `request_hash` to durable idempotency records and reject mismatch in DB fallback.
 - Action type: Code plus migration plus tests.
@@ -40,7 +40,7 @@
 
 ### High: Payment/security middleware is feature-flag heavy
 
-- Evidence: TAP enforcement is enabled by default only in production in `packages/api/src/sardis_server/main.py`; x402 is feature-flagged; production guards live in `packages/api/src/sardis_server/lifespan.py`.
+- Evidence: TAP enforcement is enabled by default only in production in `packages/api/sardis_server/main.py`; x402 is feature-flagged; production guards live in `packages/api/sardis_server/lifespan.py`.
 - Impact: Dev/test behavior can differ substantially from production, making bypass regressions easy to miss.
 - Recommended action: Add tests for production-like fail-closed startup and protected endpoint behavior.
 - Action type: Tests.

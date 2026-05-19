@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-export PYTHONPATH="${ROOT_DIR}/packages/sardis-cards/src:${ROOT_DIR}/packages/api/src:${ROOT_DIR}/packages/sardis-core/src:${ROOT_DIR}/packages/sardis-ledger/src:${ROOT_DIR}/packages/sardis-protocol/src:${PYTHONPATH:-}"
+export PYTHONPATH="${ROOT_DIR}/packages/sardis-cards/src:${ROOT_DIR}/packages/api:${ROOT_DIR}/packages/sardis-core/src:${ROOT_DIR}/packages/sardis-ledger/src:${ROOT_DIR}/packages/sardis-protocol/src:${PYTHONPATH:-}"
 
 echo "[nightly] Sardis sandbox smoke started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 

@@ -23,7 +23,7 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 # Add source to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 packages_dir = Path(__file__).parent.parent.parent
 for pkg in ["sardis-core"]:
     pkg_path = packages_dir / pkg / "src"

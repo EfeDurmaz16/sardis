@@ -23,8 +23,8 @@ os.environ.setdefault("SARDIS_CHAIN_MODE", "simulated")
 os.environ.setdefault("SARDIS_SECRET_KEY", "openapi-generation-local-secret-key")
 os.environ.setdefault("JWT_SECRET_KEY", "openapi-generation-local-jwt-secret-key")
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+# Add package root to path.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parents[1] / "openapi.json"

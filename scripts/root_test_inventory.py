@@ -20,8 +20,8 @@ STALE_API_PATTERNS = (
     r"\bsardis_api\b",
     r"packages/sardis-api",
     r"packages/server-api",
-    r"packages/api/src/sardis_api",
-    r"packages/api/src/sardis/routers",
+    r"packages/api/sardis_api",
+    r"packages/api/sardis/routers",
     r"\bsardis\.routers\b",
     r"\bsardis\.main:create_app\b",
 )

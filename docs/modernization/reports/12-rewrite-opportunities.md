@@ -15,7 +15,7 @@ A full language/framework/runtime rewrite is not justified now.
 
 ### Targeted rewrite: API bootstrap structure
 
-- Evidence: `packages/api/src/sardis_server/main.py`.
+- Evidence: `packages/api/sardis_server/main.py`.
 - Proposal: Extract registrars and service factories while preserving routes.
 - Risk: Medium.
 - Validation: app startup and route tests.

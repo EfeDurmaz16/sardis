@@ -347,7 +347,7 @@ class TestMerchantCheckoutRouterWiring:
         assert "/links/{slug}" in public_paths
 
     def test_main_wires_merchant_routers(self):
-        main_path = Path(__file__).parent.parent / "src" / "sardis_server" / "main.py"
+        main_path = Path(__file__).parent.parent / "sardis_server" / "main.py"
         source = main_path.read_text()
         assert "merchants_router" in source
         assert "merchant_checkout_router" in source

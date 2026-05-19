@@ -11,7 +11,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 # Ensure local packages are importable when running pytest directly.
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 packages_dir = Path(__file__).parent.parent.parent
 for pkg in [
     "sardis-core",
