@@ -2,12 +2,31 @@
 from __future__ import annotations
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
+from server.main import create_app
+
+
+@pytest.fixture
+async def client():
+    """Create a ready app client for health endpoint tests."""
+    import time as _time
+
+    app = create_app()
+    app.state.ready = True
+    app.state.startup_time = _time.time()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
 
 
 @pytest.mark.anyio
-async def test_root_endpoint(test_client):
+async def test_root_endpoint(client):
     """Test root endpoint returns service info."""
-    response = await test_client.get("/")
+    response = await client.get("/")
 
     assert response.status_code == 200
     data = response.json()
@@ -17,13 +36,13 @@ async def test_root_endpoint(test_client):
 
 
 @pytest.mark.anyio
-async def test_health_endpoint(test_client):
+async def test_health_endpoint(client):
     """Test health endpoint returns component status.
 
     In test environment without a real database, the health check may fail
     with 500 (fail-closed: uncaught DB auth errors are not silenced).
     """
-    response = await test_client.get("/health")
+    response = await client.get("/health")
 
     # 500 is acceptable when DB is unavailable (fail-closed behavior)
     assert response.status_code in (200, 500, 503)
@@ -46,9 +65,9 @@ async def test_health_endpoint(test_client):
 
 
 @pytest.mark.anyio
-async def test_health_components_have_standardized_status(test_client):
+async def test_health_components_have_standardized_status(client):
     """All health components use healthy/degraded/unhealthy status vocabulary."""
-    response = await test_client.get("/health")
+    response = await client.get("/health")
     assert response.status_code in (200, 500, 503)
     if response.status_code == 500:
         return  # fail-closed: DB connection error
@@ -75,9 +94,9 @@ async def test_health_components_have_standardized_status(test_client):
 
 
 @pytest.mark.anyio
-async def test_health_tap_jwks_component(test_client):
+async def test_health_tap_jwks_component(client):
     """Health endpoint should include tap_jwks component."""
-    response = await test_client.get("/health")
+    response = await client.get("/health")
     assert response.status_code in (200, 500, 503)
     if response.status_code == 500:
         return  # fail-closed: DB connection error
@@ -88,9 +107,9 @@ async def test_health_tap_jwks_component(test_client):
 
 
 @pytest.mark.anyio
-async def test_health_failure_entries_are_structured(test_client):
+async def test_health_failure_entries_are_structured(client):
     """Health failures should include machine-readable component and reason code."""
-    response = await test_client.get("/health")
+    response = await client.get("/health")
     assert response.status_code in (200, 500, 503)
     if response.status_code == 500:
         return  # fail-closed: DB connection error
@@ -107,9 +126,9 @@ async def test_health_failure_entries_are_structured(test_client):
 
 
 @pytest.mark.anyio
-async def test_health_live_endpoint(test_client):
+async def test_health_live_endpoint(client):
     """Test /health/live liveness probe returns alive."""
-    response = await test_client.get("/health/live")
+    response = await client.get("/health/live")
 
     assert response.status_code == 200
     data = response.json()
@@ -117,9 +136,9 @@ async def test_health_live_endpoint(test_client):
 
 
 @pytest.mark.anyio
-async def test_live_endpoint_legacy(test_client):
+async def test_live_endpoint_legacy(client):
     """Test /live legacy alias also returns alive."""
-    response = await test_client.get("/live")
+    response = await client.get("/live")
 
     assert response.status_code == 200
     data = response.json()
@@ -127,9 +146,9 @@ async def test_live_endpoint_legacy(test_client):
 
 
 @pytest.mark.anyio
-async def test_ready_endpoint(test_client):
+async def test_ready_endpoint(client):
     """Test /ready endpoint returns ready when app.state.ready is True."""
-    response = await test_client.get("/ready")
+    response = await client.get("/ready")
 
     assert response.status_code == 200
     data = response.json()
@@ -140,6 +159,7 @@ async def test_ready_endpoint(test_client):
 async def test_ready_endpoint_not_ready():
     """Test /ready returns 503 when app.state.ready is not set."""
     from httpx import ASGITransport, AsyncClient
+
     from server.main import create_app
 
     app = create_app()
@@ -160,6 +180,7 @@ async def test_ready_endpoint_not_ready():
 async def test_health_returns_503_when_not_ready():
     """Test /health returns 503 with not_ready when startup incomplete."""
     from httpx import ASGITransport, AsyncClient
+
     from server.main import create_app
 
     app = create_app()
@@ -177,9 +198,9 @@ async def test_health_returns_503_when_not_ready():
 
 
 @pytest.mark.anyio
-async def test_api_v2_health(test_client):
+async def test_api_v2_health(client):
     """Test API v2 health endpoint."""
-    response = await test_client.get("/api/v2/health")
+    response = await client.get("/api/v2/health")
 
     assert response.status_code == 200
     data = response.json()
@@ -188,9 +209,9 @@ async def test_api_v2_health(test_client):
 
 
 @pytest.mark.anyio
-async def test_api_root_discovery(test_client):
+async def test_api_root_discovery(client):
     """Test API root discovery endpoint."""
-    response = await test_client.get("/api")
+    response = await client.get("/api")
 
     assert response.status_code == 200
     data = response.json()
@@ -200,9 +221,9 @@ async def test_api_root_discovery(test_client):
 
 
 @pytest.mark.anyio
-async def test_api_v2_root_discovery(test_client):
+async def test_api_v2_root_discovery(client):
     """Test API v2 root discovery endpoint."""
-    response = await test_client.get("/api/v2")
+    response = await client.get("/api/v2")
 
     assert response.status_code == 200
     data = response.json()
@@ -212,9 +233,9 @@ async def test_api_v2_root_discovery(test_client):
 
 
 @pytest.mark.anyio
-async def test_metrics_health_returns_uptime(test_client):
+async def test_metrics_health_returns_uptime(client):
     """Test /metrics/health returns uptime and ready flag."""
-    response = await test_client.get("/metrics/health")
+    response = await client.get("/metrics/health")
 
     assert response.status_code == 200
     data = response.json()
