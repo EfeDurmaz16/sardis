@@ -27,7 +27,16 @@ same concept in `packages/server-api`.
 ## Decision
 
 The API package now intentionally omits the extra `src/` layer because
-`packages/api` is already an explicit monorepo package boundary.
+`packages/api` is already an explicit monorepo package boundary. In other
+words, the old shape:
+
+```text
+packages/sardis-api/src/sardis_api/
+```
+
+should not come back. It repeated "API" across the distribution directory,
+source root, and import package, which made basic navigation feel heavier than
+the product warranted.
 
 Keep the API import package as:
 
@@ -120,10 +129,11 @@ This still contains two naming layers:
 
 That duplication is intentional only at the Python import boundary. The old
 `src/` layer was removed from the API package because `packages/api` is already
-the package boundary in this monorepo. It should not leak into public docs as
-`sardis-api/src/sardis_api` or `packages/api/sardis_server`, and the active
-source tree must not keep an extra `routers/` bucket below it. A contributor
-should land in a domain path such as:
+the package boundary in this monorepo. Public docs may reference
+`packages/api/sardis_server` when they point to internal server code, but they
+must not describe the removed `sardis-api/src/sardis_api` shape. The active
+source tree must also avoid an extra generic `routers/` bucket below
+`sardis_server`. A contributor should land in a domain path such as:
 
 ```text
 packages/api/sardis_server/routes/protocol/x402.py
@@ -133,6 +143,17 @@ packages/api/sardis_server/routes/commerce/merchant_checkout.py
 
 The clean migration target is therefore domain placement below
 `sardis_server`, plus accurate public docs and generated artifacts.
+
+For day-to-day navigation, use the clean tree helper instead of raw `find`:
+
+```bash
+pnpm repo:tree
+python3 scripts/repo_tree.py --max-depth 4
+```
+
+The helper hides ignored local artifacts such as `node_modules`, `dist`,
+`.venv`, `.pytest_cache`, `.ruff_cache`, `.vercel`, `.omc`, and
+`__pycache__`. Those directories should not influence source-layout decisions.
 
 Remaining path cleanup should focus below `sardis_server`: continue moving
 route registration concerns out of the oversized `main.py` into domain
