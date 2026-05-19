@@ -37,6 +37,7 @@ from server.models.mpp import (
     MPPSessionResponse,
     PolicyEvaluateRequest,
     PolicyEvaluateResponse,
+    mpp_session_response_from_record,
 )
 from server.repositories.mpp_session_repository import (
     close_session_record,
@@ -55,26 +56,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _session_to_response(s: dict) -> MPPSessionResponse:
-    return MPPSessionResponse(
-        session_id=s["session_id"],
-        mandate_id=s.get("mandate_id"),
-        wallet_id=s.get("wallet_id"),
-        agent_id=s.get("agent_id"),
-        method=s["method"],
-        chain=s["chain"],
-        currency=s["currency"],
-        spending_limit=str(s["spending_limit"]),
-        remaining=str(s["remaining"]),
-        total_spent=str(s["total_spent"]),
-        payment_count=s["payment_count"],
-        status=s["status"],
-        created_at=s["created_at"],
-        closed_at=s.get("closed_at"),
-        expires_at=s.get("expires_at"),
-    )
-
-
 # ── Endpoints ──────────────────────────────────────────────────────────
 
 
@@ -88,7 +69,6 @@ async def create_session(
 
     session_id = f"mpp_sess_{uuid4().hex[:16]}"
     now = datetime.now(UTC)
-    now_iso = now.isoformat()
     expires_at_dt = None
     expires_at = None
     if req.expires_in_seconds:
@@ -120,22 +100,8 @@ async def create_session(
     )
     logger.info("MPP session created: %s (limit=%s %s)", session_id, req.spending_limit, req.currency)
 
-    return MPPSessionResponse(
-        session_id=session_id,
-        mandate_id=req.mandate_id,
-        wallet_id=req.wallet_id,
-        agent_id=req.agent_id,
-        method=req.method,
-        chain=req.chain,
-        currency=req.currency,
-        spending_limit=str(req.spending_limit),
-        remaining=str(req.spending_limit),
-        total_spent="0",
-        payment_count=0,
-        status="active",
-        created_at=now_iso,
-        closed_at=None,
-        expires_at=expires_at,
+    return mpp_session_response_from_record(
+        session,
         next_steps=[
             "POST /api/v2/mpp/sessions/{session_id}/execute — Execute payment",
         ],
@@ -152,27 +118,6 @@ async def _load_session(session_id: str, org_id: str) -> dict:
     return session
 
 
-def _row_to_response(s: dict) -> MPPSessionResponse:
-    """Convert DB row or in-memory dict to response model."""
-    return MPPSessionResponse(
-        session_id=s["session_id"],
-        mandate_id=s.get("mandate_id"),
-        wallet_id=s.get("wallet_id"),
-        agent_id=s.get("agent_id"),
-        method=s["method"],
-        chain=s["chain"],
-        currency=s["currency"],
-        spending_limit=str(s["spending_limit"]),
-        remaining=str(s["remaining"]),
-        total_spent=str(s["total_spent"]),
-        payment_count=s["payment_count"],
-        status=s["status"],
-        created_at=str(s["created_at"]),
-        closed_at=str(s["closed_at"]) if s.get("closed_at") else None,
-        expires_at=str(s["expires_at"]) if s.get("expires_at") else None,
-    )
-
-
 @router.get("/sessions/{session_id}", response_model=MPPSessionResponse)
 async def get_session(
     session_id: str,
@@ -180,7 +125,7 @@ async def get_session(
 ):
     """Get MPP session status."""
     session = await _load_session(session_id, principal.org_id)
-    return _row_to_response(session)
+    return mpp_session_response_from_record(session)
 
 
 @router.post("/sessions/{session_id}/execute", response_model=ExecutePaymentResponse)
@@ -307,7 +252,7 @@ async def close_session(
         "MPP session closed: %s (spent=%s, payments=%d)",
         session_id, session["total_spent"], session["payment_count"],
     )
-    return _row_to_response(session)
+    return mpp_session_response_from_record(session)
 
 
 @router.post("/evaluate", response_model=PolicyEvaluateResponse)

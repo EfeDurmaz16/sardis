@@ -90,3 +90,27 @@ class IssueCardResponse(BaseModel):
     status: str
     card_type: str
     sandbox: bool = Field(default=False, description="True when card is simulated (non-live mode)")
+
+
+def mpp_session_response_from_record(
+    record: dict,
+    next_steps: list[str] | None = None,
+) -> MPPSessionResponse:
+    return MPPSessionResponse(
+        session_id=record["session_id"],
+        mandate_id=record.get("mandate_id"),
+        wallet_id=record.get("wallet_id"),
+        agent_id=record.get("agent_id"),
+        method=record["method"],
+        chain=record["chain"],
+        currency=record["currency"],
+        spending_limit=str(record["spending_limit"]),
+        remaining=str(record["remaining"]),
+        total_spent=str(record["total_spent"]),
+        payment_count=record["payment_count"],
+        status=record["status"],
+        created_at=str(record["created_at"]),
+        closed_at=str(record["closed_at"]) if record.get("closed_at") else None,
+        expires_at=str(record["expires_at"]) if record.get("expires_at") else None,
+        next_steps=next_steps or [],
+    )
