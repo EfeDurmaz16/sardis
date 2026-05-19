@@ -115,6 +115,26 @@ BLOCKED_TEXT_SNIPPETS = {
         "Public SDK and docs onboarding must not route contributors into private "
         "hosted product signup."
     ),
+    "api.sardis.sh` and `dashboard.sardis.sh": (
+        "Public docs must not include the private hosted dashboard in the OSS "
+        "uptime target."
+    ),
+    "Complete KYC via the dashboard at [app.sardis.sh]": (
+        "Public troubleshooting docs must describe deployment-owned KYC "
+        "surfaces instead of the private hosted product."
+    ),
+    "Canonical origins: sardis.sh, app.sardis.sh, dashboard.sardis.sh, checkout.sardis.sh": (
+        "Public API surface docs must describe deployment-owned CORS origins "
+        "instead of private hosted product domains."
+    ),
+    "SARDIS_ALLOWED_ORIGINS=https://sardis.sh,https://www.sardis.sh,https://app.sardis.sh": (
+        "Public environment examples must not include private hosted product "
+        "origins by default."
+    ),
+    "SARDIS_CONNECT_RETURN_URL=https://app.sardis.sh/merchants/": (
+        "Public environment examples must use deployment-owned merchant "
+        "onboarding return URLs."
+    ),
 }
 
 BLOCKED_UPTIME_URLS = {
@@ -124,6 +144,7 @@ BLOCKED_UPTIME_URLS = {
 
 TEXT_FILE_SUFFIXES = {
     ".md",
+    ".mdx",
     ".py",
     ".sh",
     ".ts",
@@ -132,6 +153,10 @@ TEXT_FILE_SUFFIXES = {
     ".json",
     ".yaml",
     ".yml",
+    ".astro",
+    ".html",
+    ".txt",
+    ".example",
 }
 
 TEXT_SNIPPET_SCAN_EXCLUDED_FILES = {

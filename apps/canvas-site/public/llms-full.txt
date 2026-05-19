@@ -1922,7 +1922,7 @@ div class="mw-row"
 divspan class="mw-order"09/spanspan class="mw-name"ActivityLoggerMiddleware/spanspan class="mw-desc"Write-ahead of every mutating call into the audit log (feeds Canvas 20)./span
 
 div class="mw-row"
-divspan class="mw-order"10/spanspan class="mw-name"CORSMiddleware/spanspan class="mw-desc"Canonical origins: sardis.sh, app.sardis.sh, dashboard.sardis.sh, checkout.sardis.sh + merchant codeembed_origin/code./span
+divspan class="mw-order"10/spanspan class="mw-name"CORSMiddleware/spanspan class="mw-desc"Canonical origins: public site origins configured by deployment + merchant codeembed_origin/code./span
 
 !-- Mermaid: request flow through middleware --
 section class="section"
