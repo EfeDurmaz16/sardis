@@ -9,6 +9,7 @@ without depending on stale README copy.
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
@@ -153,7 +154,23 @@ def inventory() -> list[PackageValidation]:
     return rows
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Print or check public package validation coverage."
+    )
+    parser.add_argument(
+        "--check-no-fallback",
+        action="store_true",
+        help=(
+            "Fail if any tracked package still falls back to the repo-wide "
+            "contributor gate instead of a package-owned validation command."
+        ),
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     rows = inventory()
     backlog_text = BACKLOG_DOC.read_text(encoding="utf-8") if BACKLOG_DOC.exists() else ""
     errors: list[str] = []
@@ -164,12 +181,18 @@ def main() -> int:
             errors.append(f"{row.path}: fallback validation is missing from {BACKLOG_DOC.relative_to(ROOT)}")
         if row.manifest in EXTERNAL_TOOL_MANIFESTS and f"`{row.path}`" not in backlog_text:
             errors.append(f"{row.path}: external-tool validation is missing from {BACKLOG_DOC.relative_to(ROOT)}")
+        if args.check_no_fallback and row.validation == FALLBACK_VALIDATION:
+            errors.append(f"{row.path}: package-owned validation is required")
 
     if errors:
         print("Package validation inventory is incomplete:")
         for error in errors:
             print(f"  - {error}")
         return 1
+
+    if args.check_no_fallback:
+        print("Package validation check passed: no package falls back to the repo-wide gate.")
+        return 0
 
     print("Package validation inventory")
     print("| Package | Status | Manifest | Validation |")

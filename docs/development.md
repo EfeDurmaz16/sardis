@@ -57,8 +57,9 @@ status from `docs/packages.md`, its manifest type, and the most specific
 credential-free validation command that can be inferred from the package
 manifest.
 
-Packages that still fall back to the repo-wide contributor gate, or that need a
-non-default external tool, are tracked in
+`pnpm run check:contributor` fails if a tracked public package falls back to the
+repo-wide contributor gate instead of a package-owned validation command.
+Packages that need a non-default external tool are tracked in
 `docs/oss/package-validation-backlog.md`.
 
 `pnpm repo:stale-paths:local` scans the full local working tree, including
