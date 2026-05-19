@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.authz import Principal, require_principal
 from server.routes.wallets.funding_capabilities import (
     FundingCapabilitiesDeps,

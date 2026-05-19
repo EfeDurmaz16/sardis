@@ -1,13 +1,13 @@
 import pytest
 from fastapi import FastAPI
 
-from server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
 from server.route_registry.commerce import (
     register_checkout_routes,
     register_merchant_checkout_routes,
     register_merchant_routes,
     register_secure_checkout_routes,
 )
+from server.routes.commerce import checkout, merchant_checkout, merchants, secure_checkout
 
 
 def test_register_checkout_routes_mounts_private_and_public_paths_with_dependencies() -> None:

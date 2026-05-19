@@ -7,6 +7,7 @@ import json
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.middleware.x402 import (
     X402MiddlewareConfig,
     X402PaymentMiddleware,

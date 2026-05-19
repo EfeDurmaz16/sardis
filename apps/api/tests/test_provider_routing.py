@@ -2,12 +2,6 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 
-from server.routes.providers import (
-    partner_card_webhooks,
-    stripe_connect,
-    stripe_funding,
-    stripe_webhooks,
-)
 from server.route_registry.providers import (
     register_mastercard_webhook_routes,
     register_partner_card_webhook_routes,
@@ -16,6 +10,12 @@ from server.route_registry.providers import (
     register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
+)
+from server.routes.providers import (
+    partner_card_webhooks,
+    stripe_connect,
+    stripe_funding,
+    stripe_webhooks,
 )
 
 

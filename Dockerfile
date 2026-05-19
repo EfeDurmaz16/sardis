@@ -37,6 +37,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Apply patched Debian packages before installing runtime Python tooling. This
+# keeps the final image below the HIGH/CRITICAL vulnerability gate without
+# relying on a newer base image tag being published immediately.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install uv for runtime
 RUN pip install --no-cache-dir uv
 

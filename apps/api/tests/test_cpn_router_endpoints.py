@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.authz import Principal, require_admin_principal
 from server.routes.wallets.cpn import CPNDependencies, get_deps, router
 
