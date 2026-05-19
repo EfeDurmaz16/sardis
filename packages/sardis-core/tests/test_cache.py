@@ -5,6 +5,7 @@ import asyncio
 from decimal import Decimal
 
 import pytest
+
 from sardis_v2_core.cache import (
     CacheMetrics,
     CacheService,
