@@ -85,7 +85,6 @@ from .routes.compliance import kyc_onboarding as kyc_onboarding_router
 from .routes.money_movement import swap as swap_router
 from .routes.providers import partner_card_webhooks as partner_card_webhooks_router
 from .routes.providers import stripe_connect as stripe_connect_router
-from .routes.providers import stripe_webhooks as stripe_webhooks_router
 from .routes.wallets import cards as cards_router
 from .routes.wallets import funding as funding_router
 from .routing.accounts import (
@@ -158,7 +157,11 @@ from .routing.protocol import (
     register_protocol_v1_routes,
     register_x402_routes,
 )
-from .routing.providers import register_mastercard_webhook_routes, register_stripe_funding_routes
+from .routing.providers import (
+    register_mastercard_webhook_routes,
+    register_stripe_funding_routes,
+    register_stripe_webhook_routes,
+)
 from .routing.wallets import (
     register_cpn_routes,
     register_funding_capability_routes,
@@ -1601,14 +1604,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
                 webhook_secret=stripe_webhook_secret,
                 policy_evaluator=_stripe_webhooks_policy_evaluator,
             )
-            app.dependency_overrides[stripe_webhooks_router.get_deps] = (
-                lambda: stripe_webhooks_router.StripeWebhookDeps(
-                    treasury_provider=treasury_provider,
-                    issuing_provider=issuing_provider,
-                )
+            register_stripe_webhook_routes(
+                app,
+                treasury_provider=treasury_provider,
+                issuing_provider=issuing_provider,
             )
-            app.include_router(stripe_webhooks_router.router)
-            logger.info("Stripe webhook router enabled at /stripe/webhooks")
         except Exception as exc:
             logger.warning("Stripe webhook router not enabled: %s", exc)
     else:

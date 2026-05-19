@@ -5,7 +5,11 @@ import logging
 
 from fastapi import FastAPI
 
-from sardis_server.routes.providers import mastercard_webhooks, stripe_funding
+from sardis_server.routes.providers import (
+    mastercard_webhooks,
+    stripe_funding,
+    stripe_webhooks,
+)
 
 logger = logging.getLogger("sardis_server.api.routing.providers")
 
@@ -47,3 +51,20 @@ def register_stripe_funding_routes(
     )
     app.include_router(stripe_funding.router, prefix="/api/v2")
     logger.info("Stripe funding router enabled at /api/v2/stripe/funding")
+
+
+def register_stripe_webhook_routes(
+    app: FastAPI,
+    *,
+    treasury_provider,
+    issuing_provider,
+) -> None:
+    """Register Stripe Treasury and Issuing inbound webhook routes."""
+    app.dependency_overrides[stripe_webhooks.get_deps] = (
+        lambda: stripe_webhooks.StripeWebhookDeps(
+            treasury_provider=treasury_provider,
+            issuing_provider=issuing_provider,
+        )
+    )
+    app.include_router(stripe_webhooks.router)
+    logger.info("Stripe webhook router enabled at /stripe/webhooks")
