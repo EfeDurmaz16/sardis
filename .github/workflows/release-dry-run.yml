@@ -14,9 +14,8 @@ on:
       - "apps/api/openapi/**"
       - "apps/api/scripts/generate_openapi.py"
       - "packages/sardis-mcp-server/**"
-      - "packages/sardis-sdk-js/**"
-      - "packages/sardis-ai-sdk/**"
-      - "packages/sardis-sdk-python/**"
+      - "packages/sardis-js/**"
+      - "packages/sardis/**"
       - "pnpm-lock.yaml"
       - "pyproject.toml"
   pull_request:
@@ -31,9 +30,8 @@ on:
       - "apps/api/openapi/**"
       - "apps/api/scripts/generate_openapi.py"
       - "packages/sardis-mcp-server/**"
-      - "packages/sardis-sdk-js/**"
-      - "packages/sardis-ai-sdk/**"
-      - "packages/sardis-sdk-python/**"
+      - "packages/sardis-js/**"
+      - "packages/sardis/**"
       - "pnpm-lock.yaml"
       - "pyproject.toml"
 
@@ -116,8 +114,7 @@ jobs:
           OUT="/tmp/sardis-npm-dry-run"
           mkdir -p "$OUT"
           pnpm --dir packages/sardis-mcp-server pack --pack-destination "$OUT"
-          pnpm --dir packages/sardis-sdk-js pack --pack-destination "$OUT"
-          pnpm --dir packages/sardis-ai-sdk pack --pack-destination "$OUT"
+          pnpm --dir packages/sardis-js pack --pack-destination "$OUT"
           ls -la "$OUT"
 
       - name: Local install smoke check from tarballs
@@ -131,12 +128,10 @@ jobs:
           cd "$SMOKE"
           npm init -y >/dev/null
           npm install \
-            "$OUT"/sardis-sdk-*.tgz \
-            "$OUT"/sardis-ai-sdk-*.tgz \
+            "$OUT"/sardis-*.tgz \
             "$OUT"/sardis-mcp-server-*.tgz
 
-          node -e "import('@sardis/sdk').then(() => console.log('sdk-import-ok')).catch((e) => { console.error(e); process.exit(1); })"
-          node -e "import('@sardis/ai-sdk').then(() => console.log('ai-sdk-import-ok')).catch((e) => { console.error(e); process.exit(1); })"
+          node -e "import('sardis').then(() => console.log('sardis-import-ok')).catch((e) => { console.error(e); process.exit(1); })"
           npx sardis-mcp --help >/dev/null
 
   pypi-package-dry-run:
@@ -158,11 +153,11 @@ jobs:
           python3 -m pip install build twine hatchling
 
       - name: Build python package artifacts
-        working-directory: packages/sardis-sdk-python
+        working-directory: packages/sardis
         run: python3 -m build
 
       - name: Validate distributions
-        working-directory: packages/sardis-sdk-python
+        working-directory: packages/sardis
         run: python3 -m twine check dist/*
 
       - name: Local wheel smoke install
@@ -172,9 +167,9 @@ jobs:
           python3 -m venv /tmp/sardis-py-dry-run
           source /tmp/sardis-py-dry-run/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install packages/sardis-sdk-python/dist/*.whl
+          python -m pip install packages/sardis/dist/*.whl
           python - <<'PY'
-          import sardis_sdk
-          print("sardis-sdk-version", sardis_sdk.__version__)
-          assert sardis_sdk.__version__
+          import sardis
+          print("sardis-version", sardis.__version__)
+          assert sardis.__version__
           PY
