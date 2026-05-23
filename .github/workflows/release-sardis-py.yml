@@ -1,0 +1,116 @@
+name: Release sardis (PyPI)
+
+# Publishes the unified `sardis` Python umbrella to PyPI.
+# Triggered by pushing a tag like `sardis-py-v2.0.0a0` or via workflow_dispatch.
+
+on:
+  push:
+    tags:
+      - "sardis-py-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 2.0.0a0, 2.0.0rc1, 2.0.0)"
+        required: true
+        type: string
+      target:
+        description: "Publish target"
+        required: true
+        type: choice
+        default: "testpypi"
+        options:
+          - testpypi
+          - pypi
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  PACKAGE_DIR: "packages/sardis"
+  PACKAGE_NAME: "sardis"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Resolve release metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TARGET: ${{ inputs.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            TAG="$REF_NAME"
+            if [[ "$TAG" != sardis-py-v* ]]; then
+              echo "::error::Tag must start with sardis-py-v (got: $TAG)"
+              exit 1
+            fi
+            VERSION="${TAG#sardis-py-v}"
+            TARGET="pypi"
+          else
+            VERSION="$INPUT_VERSION"
+            TARGET="$INPUT_TARGET"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package version matches release
+        env:
+          EXPECTED_VERSION: ${{ steps.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYPROJECT_VERSION=$(python3 -c "import tomllib, pathlib; d=tomllib.loads(pathlib.Path('${{ env.PACKAGE_DIR }}/pyproject.toml').read_text()); print(d['project']['version'])")
+          if [[ "$EXPECTED_VERSION" != "$PYPROJECT_VERSION" ]]; then
+            echo "::error::Tag version ($EXPECTED_VERSION) != pyproject ($PYPROJECT_VERSION)"
+            exit 1
+          fi
+
+      - name: Build distribution
+        working-directory: ${{ env.PACKAGE_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv sync
+          uv pip install build twine
+          rm -rf dist/
+          python -m build
+          twine check dist/*
+
+      - name: Publish to TestPyPI
+        if: steps.meta.outputs.target == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.13
+        with:
+          packages-dir: ${{ env.PACKAGE_DIR }}/dist
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: steps.meta.outputs.target == 'pypi'
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # v1.13
+        with:
+          packages-dir: ${{ env.PACKAGE_DIR }}/dist
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sardis-py-${{ steps.meta.outputs.version }}
+          path: ${{ env.PACKAGE_DIR }}/dist/

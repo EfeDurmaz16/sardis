@@ -1,0 +1,144 @@
+name: Release sardis (npm)
+
+# Publishes the unified `sardis` TypeScript umbrella + `@sardis/mcp-server` to npm.
+# Triggered by pushing a tag like `sardis-js-v2.0.0-rc.0` or `mcp-v2.0.0`.
+
+on:
+  push:
+    tags:
+      - "sardis-js-v*"
+      - "mcp-v*"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - sardis
+          - mcp-server
+      version:
+        description: "Version to publish (e.g. 2.0.0-rc.0, 2.0.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Publish with prerelease tag (next)"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@02f6c237bd2518259fed6c71566509edfb3f2b74 # v4
+
+      - name: Resolve release metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_PACKAGE: ${{ inputs.package }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            TAG="$REF_NAME"
+            if [[ "$TAG" == sardis-js-v* ]]; then
+              PACKAGE_KIND="sardis"
+              PACKAGE_DIR="packages/sardis-js"
+              PACKAGE_NAME="sardis"
+              VERSION="${TAG#sardis-js-v}"
+            elif [[ "$TAG" == mcp-v* ]]; then
+              PACKAGE_KIND="mcp-server"
+              PACKAGE_DIR="packages/sardis-mcp-server"
+              PACKAGE_NAME="@sardis/mcp-server"
+              VERSION="${TAG#mcp-v}"
+            else
+              echo "::error::Unknown tag pattern: $TAG"
+              exit 1
+            fi
+          else
+            PACKAGE_KIND="$INPUT_PACKAGE"
+            VERSION="$INPUT_VERSION"
+            case "$PACKAGE_KIND" in
+              sardis)
+                PACKAGE_DIR="packages/sardis-js"
+                PACKAGE_NAME="sardis"
+                ;;
+              mcp-server)
+                PACKAGE_DIR="packages/sardis-mcp-server"
+                PACKAGE_NAME="@sardis/mcp-server"
+                ;;
+              *)
+                echo "::error::Unknown package: $PACKAGE_KIND"
+                exit 1
+                ;;
+            esac
+          fi
+          # Determine npm dist-tag
+          if [[ "$VERSION" == *"-"* ]] || [[ "$INPUT_PRERELEASE" == "true" ]]; then
+            DIST_TAG="next"
+          else
+            DIST_TAG="latest"
+          fi
+          echo "package_dir=$PACKAGE_DIR" >> "$GITHUB_OUTPUT"
+          echo "package_name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package version matches release
+        env:
+          EXPECTED_VERSION: ${{ steps.meta.outputs.version }}
+          PACKAGE_DIR: ${{ steps.meta.outputs.package_dir }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG_VERSION=$(node -p "require('./$PACKAGE_DIR/package.json').version")
+          if [[ "$EXPECTED_VERSION" != "$PKG_VERSION" ]]; then
+            echo "::error::Tag version ($EXPECTED_VERSION) != package.json ($PKG_VERSION)"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build umbrella sardis (always — mcp-server depends on it)
+        run: pnpm --filter sardis build
+
+      - name: Build target package
+        env:
+          PACKAGE_DIR: ${{ steps.meta.outputs.package_dir }}
+        run: pnpm --filter "./$PACKAGE_DIR" build
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGE_DIR: ${{ steps.meta.outputs.package_dir }}
+          DIST_TAG: ${{ steps.meta.outputs.dist_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PACKAGE_DIR"
+          npm publish --access public --tag "$DIST_TAG" --provenance
