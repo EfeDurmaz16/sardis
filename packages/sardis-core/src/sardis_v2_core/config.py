@@ -72,15 +72,28 @@ class ChainConfig(BaseSettings):
 
 
 class LithicConfig(BaseSettings):
-    """Lithic card issuing configuration."""
+    """Lithic card issuing configuration.
+
+    Canonical definition. A dataclass duplicate previously lived in
+    ``config_validation`` and silently shadowed this class via ``__init__``
+    re-export ordering (sardis-python-sdk-redesign Implementation Risks §4).
+    """
 
     api_key: str = ""
     environment: Literal["sandbox", "production"] = "sandbox"
+    base_url: str = "https://api.lithic.com"
     webhook_secret: str = ""
     asa_webhook_secret: str = ""
     asa_enabled: bool = False
 
     model_config = SettingsConfigDict(env_prefix="LITHIC_")
+
+    def validate(self) -> list[str]:
+        """Validate Lithic configuration. Returns a list of error messages."""
+        errors: list[str] = []
+        if not self.api_key:
+            errors.append("LITHIC_API_KEY is required for virtual cards")
+        return errors
 
 
 class StripeConfig(BaseSettings):

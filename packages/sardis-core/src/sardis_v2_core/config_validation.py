@@ -29,6 +29,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .config import LithicConfig
 from .constants import (
     APIConfig,
     CacheTTL,
@@ -215,28 +216,9 @@ class EllipticConfig:
         return errors
 
 
-@dataclass
-class LithicConfig:
-    """Lithic card provider configuration.
-
-    Attributes:
-        api_key: Lithic API key
-        base_url: Lithic API base URL
-        webhook_secret: Webhook signature secret
-    """
-
-    api_key: str = ""
-    base_url: str = "https://api.lithic.com"
-    webhook_secret: str = ""
-
-    def validate(self) -> list[str]:
-        """Validate Lithic configuration."""
-        errors = []
-
-        if not self.api_key:
-            errors.append("LITHIC_API_KEY is required for virtual cards")
-
-        return errors
+# LithicConfig is defined in .config and imported above.
+# A duplicate dataclass previously lived here; it has been removed to keep a
+# single source of truth (sardis-python-sdk-redesign Implementation Risks §4).
 
 
 @dataclass
