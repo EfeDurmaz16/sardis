@@ -142,13 +142,7 @@ dev = [
     "python-multipart>=0.0.9",
     "respx>=0.22.0",
     "PyJWT>=2.12.0",
-]>=3.1,<4.0",
-    "PyJWT>=2.12.0",
-    "respx>=0.22.0",
     "PyNaCl>=1.5",
     "numpy>=2.0",
     "scipy>=1.11",
-    # Sibling packages whose tests run under CI's `Python Lint & Test` lane.
-    # Their runtime imports (e.g. sardis_chain.executor -> sardis_ledger.records)
-    # require these to be present in the root venv after a plain `uv sync`.
 ]
