@@ -7,7 +7,7 @@ and debugging agent payment flows.
 
 Usage::
 
-    from sardis_langchain import SardisCallbackHandler
+    from sardis.integrations.langchain import SardisCallbackHandler
 
     handler = SardisCallbackHandler()
     executor = AgentExecutor(agent=agent, tools=tools, callbacks=[handler])

@@ -6,7 +6,7 @@ wired up with all Sardis payment tools.
 
 Usage::
 
-    from sardis_adk import create_sardis_agent
+    from sardis.integrations.adk import create_sardis_agent
 
     agent = create_sardis_agent(
         api_key="sk_test_...",

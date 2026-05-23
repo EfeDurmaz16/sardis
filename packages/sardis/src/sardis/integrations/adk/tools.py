@@ -8,24 +8,24 @@ pair is configured at import time by ``SardisToolkit``.
 """
 from __future__ import annotations
 
-from sardis import SardisClient
+from sardis import Sardis
 
 # ---------------------------------------------------------------------------
 # Module-level state, configured by SardisToolkit.configure()
 # ---------------------------------------------------------------------------
 
-_client: SardisClient | None = None
+_client: Sardis | None = None
 _wallet_id: str | None = None
 
 
-def configure(client: SardisClient, wallet_id: str) -> None:
-    """Bind a SardisClient and default wallet to the tool functions."""
+def configure(client: Sardis, wallet_id: str) -> None:
+    """Bind a Sardis and default wallet to the tool functions."""
     global _client, _wallet_id
     _client = client
     _wallet_id = wallet_id
 
 
-def _get_client() -> SardisClient:
+def _get_client() -> Sardis:
     if _client is None:
         raise RuntimeError(
             "Sardis tools have not been configured. "

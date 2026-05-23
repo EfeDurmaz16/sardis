@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-crewai"
-version = "1.1.0"
-description = "CrewAI integration for Sardis - agent payment tools, pre-built agents, and task templates"
+version = "0.99.0"
+description = "Deprecation shim — sardis-crewai is now part of sardis (use `pip install sardis[crewai]`)."
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -26,8 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "pydantic>=2.6",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

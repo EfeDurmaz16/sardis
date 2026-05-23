@@ -3,10 +3,10 @@ SardisToolkit -- one-line setup for all Sardis LangChain tools.
 
 Usage::
 
-    from sardis import SardisClient
-    from sardis_langchain import SardisToolkit
+    from sardis import Sardis
+    from sardis.integrations.langchain import SardisToolkit
 
-    client = SardisClient(api_key="sk_...")
+    client = Sardis(api_key="sk_...")
     wallet = client.wallets.create(name="agent", chain="base", policy="Max $100/day")
 
     toolkit = SardisToolkit(client=client, wallet_id=wallet.id)
@@ -42,7 +42,7 @@ class SardisToolkit:
     5. **sardis_list_transactions** -- view recent transaction history
 
     Args:
-        client: An initialised :class:`sardis.SardisClient` instance.
+        client: An initialised :class:`sardis.Sardis` instance.
         wallet_id: The wallet ID that all tools will operate on.
 
     Example::

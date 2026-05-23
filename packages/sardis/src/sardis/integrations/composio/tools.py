@@ -5,18 +5,18 @@ import os
 from decimal import Decimal
 
 try:
-    from sardis_sdk import SardisClient
+    from sardis_sdk import Sardis
 except ImportError:  # pragma: no cover - backwards compatibility
-    from sardis import SardisClient
+    from sardis import Sardis
 
-_cached_clients: dict[str, SardisClient] = {}
+_cached_clients: dict[str, Sardis] = {}
 
 
 def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY") or ""
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     if key not in _cached_clients:
-        _cached_clients[key] = SardisClient(api_key=key or None)
+        _cached_clients[key] = Sardis(api_key=key or None)
     return _cached_clients[key], wid
 
 

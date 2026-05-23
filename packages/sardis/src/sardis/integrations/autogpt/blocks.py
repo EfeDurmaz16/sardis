@@ -25,7 +25,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from sardis import SardisClient
+from sardis import Sardis
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -99,16 +99,16 @@ def _build_headers(api_key: str) -> dict[str, str]:
 # Singleton client with retry
 # ---------------------------------------------------------------------------
 
-_cached_clients: dict[str, SardisClient] = {}
-"""Per-API-key cache of ``SardisClient`` instances for connection reuse."""
+_cached_clients: dict[str, Sardis] = {}
+"""Per-API-key cache of ``Sardis`` instances for connection reuse."""
 
 # Retry config
 _MAX_RETRIES = 3
 _INITIAL_BACKOFF_S = 0.5
 
 
-def _get_client(api_key: str | None = None, wallet_id: str | None = None) -> tuple[SardisClient, str | None]:
-    """Return a ``(SardisClient, wallet_id)`` tuple, reusing clients per API key.
+def _get_client(api_key: str | None = None, wallet_id: str | None = None) -> tuple[Sardis, str | None]:
+    """Return a ``(Sardis, wallet_id)`` tuple, reusing clients per API key.
 
     Clients are cached in ``_cached_clients`` so that connection pools and
     authentication state are shared across block invocations.
@@ -124,7 +124,7 @@ def _get_client(api_key: str | None = None, wallet_id: str | None = None) -> tup
     key = api_key or os.getenv("SARDIS_API_KEY") or ""
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
     if key not in _cached_clients:
-        _cached_clients[key] = SardisClient(api_key=key or None)
+        _cached_clients[key] = Sardis(api_key=key or None)
     return _cached_clients[key], wid
 
 

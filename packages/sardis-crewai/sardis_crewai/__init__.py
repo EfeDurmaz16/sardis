@@ -1,32 +1,24 @@
-"""Sardis payment integration for CrewAI."""
-from sardis_crewai.tools import (
-    SardisBalanceInput,
-    SardisBalanceTool,
-    SardisCheckBalanceTool,
-    SardisCheckPolicyTool,
-    SardisGroupBudgetTool,
-    SardisPaymentInput,
-    SardisPaymentTool,
-    SardisPayTool,
-    SardisPolicyCheckInput,
-    SardisPolicyCheckTool,
-    SardisSetPolicyTool,
-    create_sardis_toolkit,
-    create_sardis_tools,
+"""Deprecation shim — `sardis_crewai` has been consolidated into `sardis.integrations.crewai`.
+
+Install the umbrella package with the integration extra:
+
+    pip install 'sardis[crewai]'
+    from sardis.integrations.crewai import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
+"""
+import warnings
+
+warnings.warn(
+    "sardis_crewai is deprecated. Install `sardis[crewai]` and use "
+    "`from sardis.integrations.crewai import ...`. "
+    "This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__all__ = [
-    "SardisPaymentTool",
-    "SardisPayTool",
-    "SardisBalanceTool",
-    "SardisCheckBalanceTool",
-    "SardisCheckPolicyTool",
-    "SardisPolicyCheckTool",
-    "SardisSetPolicyTool",
-    "SardisGroupBudgetTool",
-    "SardisPaymentInput",
-    "SardisBalanceInput",
-    "SardisPolicyCheckInput",
-    "create_sardis_tools",
-    "create_sardis_toolkit",
-]
+import sardis.integrations.crewai as _module  # noqa: E402
+from sardis.integrations.crewai import *  # noqa: F401, F403, E402
+
+__path__ = _module.__path__
+__version__ = getattr(_module, "__version__", "0.99.0")

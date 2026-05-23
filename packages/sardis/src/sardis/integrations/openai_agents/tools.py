@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import os
 
-from sardis import SardisClient
+from sardis import Sardis
 
 
 def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
-    client = SardisClient(api_key=key)
+    client = Sardis(api_key=key)
     return client, wid
 
 
 # Module-level client for decorator-based tools
-_default_client: SardisClient | None = None
+_default_client: Sardis | None = None
 _default_wallet_id: str | None = None
 
 

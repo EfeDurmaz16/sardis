@@ -3,7 +3,7 @@ SardisToolkit -- bundles all Sardis ADK tools with shared client configuration.
 
 Usage::
 
-    from sardis_adk import SardisToolkit
+    from sardis.integrations.adk import SardisToolkit
 
     toolkit = SardisToolkit(api_key="sk_test_...", wallet_id="wallet_abc123")
     tools = toolkit.get_tools()       # list[FunctionTool]
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sardis import SardisClient
+from sardis import Sardis
 
 from . import tools as _tools
 
@@ -24,7 +24,7 @@ from . import tools as _tools
 class SardisToolkit:
     """Configure and bundle Sardis payment tools for Google ADK agents.
 
-    The toolkit creates a ``SardisClient``, binds it (along with a default
+    The toolkit creates a ``Sardis``, binds it (along with a default
     wallet) to the module-level tool functions, and wraps each function as
     a Google ADK ``FunctionTool``.
 
@@ -48,7 +48,7 @@ class SardisToolkit:
         if base_url:
             client_kwargs["base_url"] = base_url
 
-        self.client = SardisClient(**client_kwargs)
+        self.client = Sardis(**client_kwargs)
         self.wallet_id = wallet_id
 
         # Bind the shared state so tool functions can access it

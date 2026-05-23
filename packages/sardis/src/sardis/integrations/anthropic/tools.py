@@ -8,7 +8,7 @@ for a batteries-included experience.
 Example::
 
     import anthropic
-    from sardis_agent_sdk.tools import ALL_TOOLS
+    from sardis.integrations.anthropic.tools import ALL_TOOLS
 
     client = anthropic.Anthropic()
     response = client.messages.create(

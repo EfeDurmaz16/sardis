@@ -109,7 +109,7 @@ class SardisPayTool(BaseTool):
     )
     args_schema: type[BaseModel] = SardisPayInput
 
-    client: Any = None  # SardisClient
+    client: Any = None  # Sardis
     wallet_id: str = ""
 
     def _run(
@@ -164,7 +164,7 @@ class SardisCheckBalanceTool(BaseTool):
     )
     args_schema: type[BaseModel] = SardisCheckBalanceInput
 
-    client: Any = None  # SardisClient
+    client: Any = None  # Sardis
     wallet_id: str = ""
 
     def _run(
@@ -210,7 +210,7 @@ class SardisCheckPolicyTool(BaseTool):
     )
     args_schema: type[BaseModel] = SardisCheckPolicyInput
 
-    client: Any = None  # SardisClient
+    client: Any = None  # Sardis
     wallet_id: str = ""
 
     def _run(
@@ -311,7 +311,7 @@ class SardisSetPolicyTool(BaseTool):
     )
     args_schema: type[BaseModel] = SardisSetPolicyInput
 
-    client: Any = None  # SardisClient
+    client: Any = None  # Sardis
     wallet_id: str = ""
 
     def _run(
@@ -325,7 +325,7 @@ class SardisSetPolicyTool(BaseTool):
         try:
             wallet = self.client.wallets.get(self.wallet_id)
 
-            # Use the same natural-language parser as SardisClient
+            # Use the same natural-language parser as Sardis
             from sardis.client import _parse_policy
 
             parsed = _parse_policy(policy)
@@ -368,7 +368,7 @@ class SardisListTransactionsTool(BaseTool):
     )
     args_schema: type[BaseModel] = SardisListTransactionsInput
 
-    client: Any = None  # SardisClient
+    client: Any = None  # Sardis
     wallet_id: str = ""
 
     def _run(

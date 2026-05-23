@@ -6,10 +6,10 @@ Anthropic Messages API.
 
 Minimal example::
 
-    from sardis import SardisClient
-    from sardis_agent_sdk import SardisToolkit
+    from sardis import Sardis
+    from sardis.integrations.anthropic import SardisToolkit
 
-    sardis = SardisClient(api_key="sk_test_demo")
+    sardis = Sardis(api_key="sk_test_demo")
     wallet = sardis.wallets.create(name="agent-wallet", chain="base")
 
     toolkit = SardisToolkit(client=sardis, wallet_id=wallet.id)
@@ -26,10 +26,10 @@ Minimal example::
 Full agent loop::
 
     import anthropic
-    from sardis import SardisClient
-    from sardis_agent_sdk import SardisToolkit
+    from sardis import Sardis
+    from sardis.integrations.anthropic import SardisToolkit
 
-    sardis = SardisClient(api_key="sk_test_demo")
+    sardis = Sardis(api_key="sk_test_demo")
     wallet = sardis.wallets.create(name="shopping-agent", chain="base")
     toolkit = SardisToolkit(client=sardis, wallet_id=wallet.id)
 
@@ -47,7 +47,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sardis import SardisClient
+from sardis import Sardis
 
 from .handlers import SardisToolHandler
 from .tools import ALL_TOOLS, READ_ONLY_TOOLS
@@ -57,7 +57,7 @@ class SardisToolkit:
     """Ready-to-use toolkit for Anthropic Claude agents.
 
     Args:
-        client: A configured :class:`sardis.SardisClient` instance.
+        client: A configured :class:`sardis.Sardis` instance.
         wallet_id: The wallet ID this toolkit operates on.
         read_only: If ``True``, only expose read-only tools (balance,
             policy check, transaction history).  Useful for observer
@@ -66,7 +66,7 @@ class SardisToolkit:
 
     def __init__(
         self,
-        client: SardisClient,
+        client: Sardis,
         wallet_id: str,
         *,
         read_only: bool = False,

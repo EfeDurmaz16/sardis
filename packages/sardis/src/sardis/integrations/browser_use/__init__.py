@@ -1,2 +1,4 @@
-# Migration target: see project-directions/sardis-python-sdk-redesign.md
-# Integration: sardis.integrations.browser_use
+"""Sardis payment integration for Browser Use."""
+from sardis.integrations.browser_use.tools import BrowserPaymentContext, register_sardis_actions
+
+__all__ = ["BrowserPaymentContext", "register_sardis_actions"]

@@ -1,54 +1,24 @@
+"""Deprecation shim — `sardis_langchain` has been consolidated into `sardis.integrations.langchain`.
+
+Install the umbrella package with the integration extra:
+
+    pip install 'sardis[langchain]'
+    from sardis.integrations.langchain import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
 """
-sardis-langchain: LangChain integration for the Sardis Payment OS.
+import warnings
 
-Provides LangChain-compatible tools that let AI agents execute real financial
-transactions through Sardis MPC wallets with policy enforcement.
-
-Quick start::
-
-    from sardis import SardisClient
-    from sardis_langchain import SardisToolkit
-
-    client = SardisClient(api_key="sk_...")
-    wallet = client.wallets.create(name="agent", chain="base", policy="Max $100/day")
-
-    toolkit = SardisToolkit(client=client, wallet_id=wallet.id)
-    tools = toolkit.get_tools()
-    # Pass tools to any LangChain agent
-"""
-
-__version__ = "1.0.0"
-
-from .callbacks import SardisCallbackHandler
-from .toolkit import SardisToolkit
-from .tools import (
-    SardisCheckBalanceInput,
-    SardisCheckBalanceTool,
-    SardisCheckPolicyInput,
-    SardisCheckPolicyTool,
-    SardisListTransactionsInput,
-    SardisListTransactionsTool,
-    SardisPayInput,
-    SardisPayTool,
-    SardisSetPolicyInput,
-    SardisSetPolicyTool,
+warnings.warn(
+    "sardis_langchain is deprecated. Install `sardis[langchain]` and use "
+    "`from sardis.integrations.langchain import ...`. "
+    "This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__all__ = [
-    # Callbacks
-    "SardisCallbackHandler",
-    "SardisCheckBalanceInput",
-    "SardisCheckBalanceTool",
-    "SardisCheckPolicyInput",
-    "SardisCheckPolicyTool",
-    "SardisListTransactionsInput",
-    "SardisListTransactionsTool",
-    # Input schemas
-    "SardisPayInput",
-    # Tools
-    "SardisPayTool",
-    "SardisSetPolicyInput",
-    "SardisSetPolicyTool",
-    # Toolkit
-    "SardisToolkit",
-]
+import sardis.integrations.langchain as _module  # noqa: E402
+from sardis.integrations.langchain import *  # noqa: F401, F403, E402
+
+__path__ = _module.__path__
+__version__ = getattr(_module, "__version__", "0.99.0")

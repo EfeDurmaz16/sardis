@@ -5,13 +5,13 @@ import os
 
 from pydantic import BaseModel, Field
 
-from sardis import SardisClient
+from sardis import Sardis
 
 
 def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
-    client = SardisClient(api_key=key)
+    client = Sardis(api_key=key)
     # Auto-register with telemetry if available
     try:
         from sardis.telemetry import ensure_registered_sync
@@ -44,14 +44,14 @@ try:
         description: str = "Execute a policy-controlled payment from the agent's Sardis wallet. Checks spending limits and policies before executing."
         args_schema: type[BaseModel] = SardisPaymentInput
 
-        _client: SardisClient | None = None
+        _client: Sardis | None = None
         _wallet_id: str | None = None
 
         def __init__(
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             super().__init__(**kwargs)
@@ -97,14 +97,14 @@ try:
         description: str = "Check the current wallet balance and remaining spending limits."
         args_schema: type[BaseModel] = SardisBalanceInput
 
-        _client: SardisClient | None = None
+        _client: Sardis | None = None
         _wallet_id: str | None = None
 
         def __init__(
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             super().__init__(**kwargs)
@@ -128,14 +128,14 @@ try:
         description: str = "Check if a payment would be allowed by spending policy before executing it."
         args_schema: type[BaseModel] = SardisPolicyCheckInput
 
-        _client: SardisClient | None = None
+        _client: Sardis | None = None
         _wallet_id: str | None = None
 
         def __init__(
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             super().__init__(**kwargs)
@@ -178,7 +178,7 @@ try:
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             super().__init__(**kwargs)
@@ -210,7 +210,7 @@ except ImportError:
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             if client is not None:
@@ -250,7 +250,7 @@ except ImportError:
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             if client is not None:
@@ -273,7 +273,7 @@ except ImportError:
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             if client is not None:
@@ -312,7 +312,7 @@ except ImportError:
             self,
             api_key: str | None = None,
             wallet_id: str | None = None,
-            client: SardisClient | None = None,
+            client: Sardis | None = None,
             **kwargs,
         ):
             if client is not None:
@@ -348,7 +348,7 @@ SardisCheckPolicyTool = SardisPolicyCheckTool
 
 
 def create_sardis_tools(
-    client: SardisClient | None = None,
+    client: Sardis | None = None,
     wallet_id: str | None = None,
     *,
     api_key: str | None = None,

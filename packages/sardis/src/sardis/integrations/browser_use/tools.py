@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-from sardis import SardisClient
+from sardis import Sardis
 
 # ---------------------------------------------------------------------------
 # Prompt injection detection (mirrors sardis-api patterns)
@@ -105,11 +105,11 @@ class BrowserPaymentContext:
 def _get_client(api_key: str | None = None, wallet_id: str | None = None):
     key = api_key or os.getenv("SARDIS_API_KEY")
     wid = wallet_id or os.getenv("SARDIS_WALLET_ID")
-    client = SardisClient(api_key=key)
+    client = Sardis(api_key=key)
     return client, wid
 
 
-def _execute_payment(client: SardisClient, wid: str, merchant: str, amount: float,
+def _execute_payment(client: Sardis, wid: str, merchant: str, amount: float,
                      purpose: str, memo: str, metadata: dict[str, Any]) -> Any:
     """Execute payment with fallback for production mode compatibility."""
     try:
@@ -137,7 +137,7 @@ def register_sardis_actions(
     api_key: str | None = None,
     wallet_id: str | None = None,
     allowed_origins: list[str] | None = None,
-    client: SardisClient | None = None,
+    client: Sardis | None = None,
 ):
     """Register all Sardis payment actions on a Browser Use controller.
 
@@ -148,7 +148,7 @@ def register_sardis_actions(
         allowed_origins: Optional allowlist of page origins that may trigger
             payments.  When set, ``sardis_pay`` rejects calls from origins
             not in this list.
-        client: Optional pre-configured SardisClient instance.  When provided,
+        client: Optional pre-configured Sardis instance.  When provided,
             ``api_key`` is ignored.
     """
     if client is not None:

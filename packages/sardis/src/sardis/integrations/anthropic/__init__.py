@@ -1,2 +1,63 @@
-# Migration target: see project-directions/sardis-python-sdk-redesign.md
-# Integration: sardis.integrations.anthropic
+"""Anthropic Claude Agent SDK integration for Sardis payments.
+
+Provides tool definitions and handlers that let Claude agents make
+payments, check balances, and manage spending policies through Sardis.
+
+Quick start::
+
+    from sardis import Sardis
+    from sardis.integrations.anthropic import SardisToolkit
+
+    sardis = Sardis(api_key="your-api-key")
+    wallet = sardis.wallets.create(name="agent-wallet", chain="base")
+    toolkit = SardisToolkit(client=sardis, wallet_id=wallet.id)
+
+    # Get tool definitions for the Claude API
+    tools = toolkit.get_tools()
+
+    # Process tool calls from Claude responses
+    for block in response.content:
+        if block.type == "tool_use":
+            result = toolkit.handle_tool_call(block)
+"""
+
+from .handlers import SardisToolHandler
+from .toolkit import SardisToolkit
+from .tools import (
+    ALL_TOOLS,
+    READ_ONLY_TOOLS,
+    SARDIS_CHECK_BALANCE_TOOL,
+    SARDIS_CHECK_POLICY_TOOL,
+    SARDIS_CREATE_ESCROW_TOOL,
+    SARDIS_CREATE_HOLD_TOOL,
+    SARDIS_CREATE_SUBSCRIPTION_TOOL,
+    SARDIS_GET_FX_QUOTE_TOOL,
+    SARDIS_LIST_TRANSACTIONS_TOOL,
+    SARDIS_MINT_PAYMENT_TOOL,
+    SARDIS_PAY_TOOL,
+    SARDIS_SET_POLICY_TOOL,
+    TOOL_NAMES,
+)
+
+__version__ = "1.1.0"
+
+__all__ = [
+    # Main entry points
+    "SardisToolkit",
+    "SardisToolHandler",
+    # Tool collections
+    "ALL_TOOLS",
+    "READ_ONLY_TOOLS",
+    "TOOL_NAMES",
+    # Individual tool definitions
+    "SARDIS_PAY_TOOL",
+    "SARDIS_CHECK_BALANCE_TOOL",
+    "SARDIS_CHECK_POLICY_TOOL",
+    "SARDIS_SET_POLICY_TOOL",
+    "SARDIS_LIST_TRANSACTIONS_TOOL",
+    "SARDIS_CREATE_HOLD_TOOL",
+    "SARDIS_MINT_PAYMENT_TOOL",
+    "SARDIS_GET_FX_QUOTE_TOOL",
+    "SARDIS_CREATE_SUBSCRIPTION_TOOL",
+    "SARDIS_CREATE_ESCROW_TOOL",
+]

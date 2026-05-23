@@ -1,17 +1,24 @@
-"""Sardis payment tools for OpenAI Agents SDK."""
+"""Deprecation shim — `sardis_openai_agents` has been consolidated into `sardis.integrations.openai_agents`.
 
-from sardis_openai_agents.tools import (
-    configure,
-    get_sardis_tools,
-    sardis_check_balance,
-    sardis_check_policy,
-    sardis_pay,
+Install the umbrella package with the integration extra:
+
+    pip install 'sardis[openai-agents]'
+    from sardis.integrations.openai_agents import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
+"""
+import warnings
+
+warnings.warn(
+    "sardis_openai_agents is deprecated. Install `sardis[openai-agents]` and use "
+    "`from sardis.integrations.openai_agents import ...`. "
+    "This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__all__ = [
-    "configure",
-    "get_sardis_tools",
-    "sardis_pay",
-    "sardis_check_balance",
-    "sardis_check_policy",
-]
+import sardis.integrations.openai_agents as _module  # noqa: E402
+from sardis.integrations.openai_agents import *  # noqa: F401, F403, E402
+
+__path__ = _module.__path__
+__version__ = getattr(_module, "__version__", "0.99.0")

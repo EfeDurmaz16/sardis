@@ -1,2 +1,28 @@
-# Migration target: see project-directions/sardis-python-sdk-redesign.md
-# Integration: sardis.integrations.autogpt
+"""Sardis AutoGPT integration - payment blocks for the AutoGPT block system."""
+from sardis.integrations.autogpt.blocks import (
+    BLOCKS,
+    BlockCategory,
+    SardisBalanceBlock,
+    SardisBalanceBlockInput,
+    SardisBalanceBlockOutput,
+    SardisPayBlock,
+    SardisPayBlockInput,
+    SardisPayBlockOutput,
+    SardisPolicyCheckBlock,
+    SardisPolicyCheckBlockInput,
+    SardisPolicyCheckBlockOutput,
+)
+
+__all__ = [
+    "BLOCKS",
+    "BlockCategory",
+    "SardisPayBlock",
+    "SardisPayBlockInput",
+    "SardisPayBlockOutput",
+    "SardisBalanceBlock",
+    "SardisBalanceBlockInput",
+    "SardisBalanceBlockOutput",
+    "SardisPolicyCheckBlock",
+    "SardisPolicyCheckBlockInput",
+    "SardisPolicyCheckBlockOutput",
+]

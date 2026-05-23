@@ -1,63 +1,24 @@
-"""Anthropic Claude Agent SDK integration for Sardis payments.
+"""Deprecation shim — `sardis_agent_sdk` has been consolidated into `sardis.integrations.anthropic`.
 
-Provides tool definitions and handlers that let Claude agents make
-payments, check balances, and manage spending policies through Sardis.
+Install the umbrella package with the integration extra:
 
-Quick start::
+    pip install 'sardis[agent-sdk]'
+    from sardis.integrations.anthropic import ...
 
-    from sardis import SardisClient
-    from sardis_agent_sdk import SardisToolkit
-
-    sardis = SardisClient(api_key="your-api-key")
-    wallet = sardis.wallets.create(name="agent-wallet", chain="base")
-    toolkit = SardisToolkit(client=sardis, wallet_id=wallet.id)
-
-    # Get tool definitions for the Claude API
-    tools = toolkit.get_tools()
-
-    # Process tool calls from Claude responses
-    for block in response.content:
-        if block.type == "tool_use":
-            result = toolkit.handle_tool_call(block)
+This shim will be removed 2026-11-23 (6-month sunset window).
 """
+import warnings
 
-from .handlers import SardisToolHandler
-from .toolkit import SardisToolkit
-from .tools import (
-    ALL_TOOLS,
-    READ_ONLY_TOOLS,
-    SARDIS_CHECK_BALANCE_TOOL,
-    SARDIS_CHECK_POLICY_TOOL,
-    SARDIS_CREATE_ESCROW_TOOL,
-    SARDIS_CREATE_HOLD_TOOL,
-    SARDIS_CREATE_SUBSCRIPTION_TOOL,
-    SARDIS_GET_FX_QUOTE_TOOL,
-    SARDIS_LIST_TRANSACTIONS_TOOL,
-    SARDIS_MINT_PAYMENT_TOOL,
-    SARDIS_PAY_TOOL,
-    SARDIS_SET_POLICY_TOOL,
-    TOOL_NAMES,
+warnings.warn(
+    "sardis_agent_sdk is deprecated. Install `sardis[agent-sdk]` and use "
+    "`from sardis.integrations.anthropic import ...`. "
+    "This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__version__ = "1.1.0"
+import sardis.integrations.anthropic as _module  # noqa: E402
+from sardis.integrations.anthropic import *  # noqa: F401, F403, E402
 
-__all__ = [
-    # Main entry points
-    "SardisToolkit",
-    "SardisToolHandler",
-    # Tool collections
-    "ALL_TOOLS",
-    "READ_ONLY_TOOLS",
-    "TOOL_NAMES",
-    # Individual tool definitions
-    "SARDIS_PAY_TOOL",
-    "SARDIS_CHECK_BALANCE_TOOL",
-    "SARDIS_CHECK_POLICY_TOOL",
-    "SARDIS_SET_POLICY_TOOL",
-    "SARDIS_LIST_TRANSACTIONS_TOOL",
-    "SARDIS_CREATE_HOLD_TOOL",
-    "SARDIS_MINT_PAYMENT_TOOL",
-    "SARDIS_GET_FX_QUOTE_TOOL",
-    "SARDIS_CREATE_SUBSCRIPTION_TOOL",
-    "SARDIS_CREATE_ESCROW_TOOL",
-]
+__path__ = _module.__path__
+__version__ = getattr(_module, "__version__", "0.99.0")

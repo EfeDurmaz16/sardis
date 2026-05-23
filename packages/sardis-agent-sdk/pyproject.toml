@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-agent-sdk"
-version = "1.1.0"
-description = "Anthropic Claude Agent SDK integration for Sardis payments"
+version = "0.99.0"
+description = "Deprecation shim — sardis-agent-sdk is now part of sardis (use `pip install sardis[agent-sdk]`)."
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
@@ -35,8 +35,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=0.3",
-    "anthropic>=0.40",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

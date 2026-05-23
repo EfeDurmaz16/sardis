@@ -2,11 +2,11 @@
 
 For use with the Google Generative AI SDK (google-generativeai) directly,
 without the ADK framework. If you're using Google ADK, use the SardisToolkit
-from sardis_adk.toolkit instead.
+from sardis.integrations.adk.toolkit instead.
 
 Usage:
     import google.generativeai as genai
-    from sardis_adk.gemini_functions import get_sardis_gemini_tools, handle_function_call
+    from sardis.integrations.adk.gemini_functions import get_sardis_gemini_tools, handle_function_call
 
     model = genai.GenerativeModel("gemini-2.0-flash", tools=[get_sardis_gemini_tools()])
     chat = model.start_chat()

@@ -3,7 +3,7 @@
 Processes Claude ``tool_use`` content blocks and returns ``tool_result``
 blocks that can be sent back in the conversation.
 
-Each handler method maps a tool name to the corresponding SardisClient
+Each handler method maps a tool name to the corresponding Sardis
 operation, formats the result as a human-readable string, and wraps
 errors gracefully so the agent always receives useful feedback.
 """
@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
-from sardis import SardisClient
+from sardis import Sardis
 
 from .tools import TOOL_NAMES
 
@@ -26,11 +26,11 @@ class SardisToolHandler:
     """Processes Claude tool_use calls and returns tool_result responses.
 
     Args:
-        client: A configured :class:`sardis.SardisClient` instance.
+        client: A configured :class:`sardis.Sardis` instance.
         wallet_id: The wallet ID to operate on.
     """
 
-    def __init__(self, client: SardisClient, wallet_id: str) -> None:
+    def __init__(self, client: Sardis, wallet_id: str) -> None:
         self.client = client
         self.wallet_id = wallet_id
         self._handlers: dict[str, Any] = {
