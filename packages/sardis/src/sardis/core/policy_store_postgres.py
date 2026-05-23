@@ -1,0 +1,175 @@
+"""PostgreSQL-backed policy store.
+
+Stores SpendingPolicy JSON in `agents.spending_policy` (JSONB).
+This keeps the demo/production API behavior identical.
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import UTC, datetime
+from decimal import Decimal
+
+from .policy_store import AsyncPolicyStore
+from .spending_policy import SpendingPolicy, create_default_policy
+from .spending_policy_json import spending_policy_from_json, spending_policy_to_json
+
+logger = logging.getLogger(__name__)
+
+
+class PostgresPolicyStore(AsyncPolicyStore):
+    def __init__(self, dsn: str):
+        self._dsn = dsn
+        self._pool = None
+
+    async def _get_pool(self):
+        if self._pool is None:
+            from sardis.core.database import Database
+            self._pool = await Database.get_pool()
+        return self._pool
+
+    async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None:
+        import json as _json
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT spending_policy FROM agents WHERE external_id = $1",
+                agent_id,
+            )
+            if not row:
+                return None
+            data = row["spending_policy"]
+            # asyncpg may return JSONB as a string; parse if needed
+            if isinstance(data, str):
+                try:
+                    data = _json.loads(data)
+                except (ValueError, TypeError):
+                    return None
+            if not isinstance(data, dict):
+                return None
+            return spending_policy_from_json(data)
+
+    async def set_policy(
+        self,
+        agent_id: str,
+        policy: SpendingPolicy,
+        *,
+        created_by: str | None = None,
+        policy_text: str | None = None,
+    ) -> None:
+        import json as _json
+        pool = await self._get_pool()
+        payload = spending_policy_to_json(policy)
+        async with pool.acquire() as conn:
+            # Ensure agent exists (minimal upsert).
+            await conn.execute(
+                """
+                INSERT INTO agents (external_id, name)
+                VALUES ($1, $1)
+                ON CONFLICT (external_id) DO NOTHING
+                """,
+                agent_id,
+            )
+            await conn.execute(
+                "UPDATE agents SET spending_policy = $2::jsonb, updated_at = NOW() WHERE external_id = $1",
+                agent_id,
+                _json.dumps(payload),
+            )
+
+        # Persist immutable version record for audit trail
+        try:
+            from .policy_version_store import PolicyVersionStore
+            version_store = PolicyVersionStore()
+            await version_store.create_version(
+                pool, agent_id, payload,
+                policy_text=policy_text,
+                created_by=created_by,
+            )
+        except Exception as e:
+            # Version tracking is best-effort; don't fail the primary write
+            logger.error("Failed to persist policy version for agent %s: %s", agent_id, e)
+
+    async def delete_policy(self, agent_id: str) -> bool:
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            res = await conn.execute(
+                "UPDATE agents SET spending_policy = NULL, updated_at = NOW() WHERE external_id = $1",
+                agent_id,
+            )
+            return "UPDATE 1" in res
+
+    async def record_spend(self, agent_id: str, amount: Decimal) -> SpendingPolicy:
+        """
+        Atomically update spend state inside agents.spending_policy (JSONB).
+
+        Uses row-level locking to prevent concurrent lost updates.
+        """
+        import json as _json
+        if amount <= 0:
+            raise ValueError("amount_must_be_positive")
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                # Ensure agent exists (minimal upsert).
+                await conn.execute(
+                    """
+                    INSERT INTO agents (external_id, name)
+                    VALUES ($1, $1)
+                    ON CONFLICT (external_id) DO NOTHING
+                    """,
+                    agent_id,
+                )
+
+                row = await conn.fetchrow(
+                    "SELECT spending_policy FROM agents WHERE external_id = $1 FOR UPDATE",
+                    agent_id,
+                )
+                data = row["spending_policy"] if row else None
+                if isinstance(data, str):
+                    try:
+                        data = _json.loads(data)
+                    except (ValueError, TypeError):
+                        data = None
+                policy = spending_policy_from_json(data) if isinstance(data, dict) else create_default_policy(agent_id)
+
+                for window in (policy.daily_limit, policy.weekly_limit, policy.monthly_limit):
+                    if window is None:
+                        continue
+                    window.reset_if_expired()
+                    window.record_spend(amount)
+
+                policy.spent_total += amount
+                policy.updated_at = datetime.now(UTC)
+
+                payload = spending_policy_to_json(policy)
+                await conn.execute(
+                    "UPDATE agents SET spending_policy = $2::jsonb, updated_at = NOW() WHERE external_id = $1",
+                    agent_id,
+                    _json.dumps(payload),
+                )
+
+                # Also record velocity entry if spending_velocity table exists
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO spending_velocity (policy_id, tx_timestamp, amount)
+                        SELECT sp.id, NOW(), $2
+                        FROM spending_policies sp WHERE sp.agent_id = (
+                            SELECT a.id FROM agents a WHERE a.external_id = $1
+                        )
+                        """,
+                        agent_id,
+                        float(amount),
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to record spending velocity for agent %s: %s",
+                        agent_id, e,
+                    )  # Table may not exist yet (pre-migration 009)
+
+                return policy
+
+    async def close(self) -> None:
+        # Pool lifecycle managed by Database.close() at app shutdown
+        pass

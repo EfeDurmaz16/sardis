@@ -1,0 +1,248 @@
+"""Wallet repository for CRUD operations."""
+from __future__ import annotations
+
+import builtins
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Literal
+
+from .utils import TTLDict
+from .wallets import Wallet
+
+
+class WalletRepository:
+    """In-memory wallet repository (swap for PostgreSQL in production).
+
+    Uses TTLDict to prevent memory leaks in long-running processes.
+    Default TTL is 7 days, max 10,000 wallets in memory.
+    """
+
+    # 7 days TTL for wallet cache
+    DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60
+    DEFAULT_MAX_ITEMS = 10000
+
+    def __init__(
+        self,
+        dsn: str = "memory://",
+        ttl_seconds: float = DEFAULT_TTL_SECONDS,
+        max_items: int = DEFAULT_MAX_ITEMS,
+    ):
+        self._dsn = dsn
+        self._wallets: TTLDict[str, Wallet] = TTLDict(
+            ttl_seconds=ttl_seconds,
+            max_items=max_items,
+        )
+        # Secondary index: agent_id → wallet_id for O(1) lookup
+        self._agent_to_wallet: dict[str, str] = {}
+
+    async def create(
+        self,
+        agent_id: str,
+        wallet_id: str | None = None,
+        mpc_provider: str = "turnkey",
+        account_type: Literal["mpc_v1", "erc4337_v2"] = "mpc_v1",
+        currency: str = "USDC",
+        limit_per_tx: Decimal = Decimal("100.00"),
+        limit_total: Decimal = Decimal("1000.00"),
+        addresses: dict[str, str] | None = None,
+        smart_account_address: str | None = None,
+        entrypoint_address: str | None = None,
+        paymaster_enabled: bool = False,
+        bundler_profile: str | None = None,
+    ) -> Wallet:
+        """Create a new non-custodial wallet."""
+        wallet = Wallet.new(
+            agent_id,
+            mpc_provider=mpc_provider,
+            account_type=account_type,
+            currency=currency,
+            wallet_id=wallet_id,
+        )
+        wallet.limit_per_tx = limit_per_tx
+        wallet.limit_total = limit_total
+        wallet.smart_account_address = smart_account_address
+        wallet.entrypoint_address = entrypoint_address
+        wallet.paymaster_enabled = paymaster_enabled
+        wallet.bundler_profile = bundler_profile
+        if addresses:
+            wallet.addresses.update(addresses)
+        self._wallets[wallet.wallet_id] = wallet
+        self._agent_to_wallet[agent_id] = wallet.wallet_id
+        return wallet
+
+    async def get(self, wallet_id: str) -> Wallet | None:
+        return self._wallets.get(wallet_id)
+
+    async def get_by_agent(self, agent_id: str) -> Wallet | None:
+        # O(1) lookup via secondary index
+        wallet_id = self._agent_to_wallet.get(agent_id)
+        if wallet_id is not None:
+            return self._wallets.get(wallet_id)
+        return None
+
+    async def list_by_owner(
+        self,
+        owner_id: str,
+        agent_repo: object | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> builtins.list[Wallet]:
+        """List wallets for all agents owned by an organization.
+
+        If a database pool is available, uses a single JOIN query.
+        Otherwise falls back to in-memory filtering via the agent_repo.
+
+        Args:
+            owner_id: Organization external_id.
+            agent_repo: AgentRepository (used for in-memory fallback).
+            limit: Max results.
+            offset: Pagination offset.
+        """
+        # Fast path: in-memory — collect wallets whose agent belongs to org
+        if agent_repo is not None and hasattr(agent_repo, "list"):
+            agents = await agent_repo.list(owner_id=owner_id, limit=10000, offset=0)
+            agent_ids = {a.agent_id for a in agents}
+            wallets = [
+                w for w in self._wallets.values()
+                if w.agent_id in agent_ids
+            ]
+            return wallets[offset: offset + limit]
+        # Fallback: return all wallets (admin path should not hit this)
+        all_wallets = list(self._wallets.values())
+        return all_wallets[offset: offset + limit]
+
+    async def list(
+        self,
+        agent_id: str | None = None,
+        is_active: bool | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> builtins.list[Wallet]:
+        wallets = list(self._wallets.values())
+        if agent_id:
+            wallets = [w for w in wallets if w.agent_id == agent_id]
+        if is_active is not None:
+            wallets = [w for w in wallets if w.is_active == is_active]
+        return wallets[offset : offset + limit]
+
+    async def update(
+        self,
+        wallet_id: str,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+        is_active: bool | None = None,
+        addresses: dict[str, str] | None = None,
+        account_type: Literal["mpc_v1", "erc4337_v2"] | None = None,
+        smart_account_address: str | None = None,
+        entrypoint_address: str | None = None,
+        paymaster_enabled: bool | None = None,
+        bundler_profile: str | None = None,
+    ) -> Wallet | None:
+        """Update wallet (non-custodial - no balance updates)."""
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        if limit_per_tx is not None:
+            wallet.limit_per_tx = limit_per_tx
+        if limit_total is not None:
+            wallet.limit_total = limit_total
+        if is_active is not None:
+            wallet.is_active = is_active
+        if addresses is not None:
+            wallet.addresses.update(addresses)
+        if account_type is not None:
+            wallet.account_type = account_type
+        if smart_account_address is not None:
+            wallet.smart_account_address = smart_account_address
+        if entrypoint_address is not None:
+            wallet.entrypoint_address = entrypoint_address
+        if paymaster_enabled is not None:
+            wallet.paymaster_enabled = paymaster_enabled
+        if bundler_profile is not None:
+            wallet.bundler_profile = bundler_profile
+        wallet.updated_at = datetime.now(UTC)
+        return wallet
+
+    async def set_address(
+        self,
+        wallet_id: str,
+        chain: str,
+        address: str,
+    ) -> Wallet | None:
+        """Set wallet address for a chain."""
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.set_address(chain, address)
+        return wallet
+
+    async def delete(self, wallet_id: str) -> bool:
+        wallet = self._wallets.get(wallet_id)
+        if wallet is not None:
+            self._agent_to_wallet.pop(wallet.agent_id, None)
+            del self._wallets[wallet_id]
+            return True
+        return False
+
+    # Note: deposit() and withdraw() removed - non-custodial wallets don't hold funds
+    # Balances are managed on-chain, not in our database
+
+    async def set_limits(
+        self,
+        wallet_id: str,
+        limit_per_tx: Decimal | None = None,
+        limit_total: Decimal | None = None,
+    ) -> Wallet | None:
+        return await self.update(
+            wallet_id,
+            limit_per_tx=limit_per_tx,
+            limit_total=limit_total,
+        )
+
+    async def freeze(
+        self,
+        wallet_id: str,
+        frozen_by: str,
+        reason: str,
+    ) -> Wallet | None:
+        """
+        Freeze a wallet (blocks all transactions).
+
+        Args:
+            wallet_id: Wallet identifier
+            frozen_by: Admin/system identifier who froze the wallet
+            reason: Reason for freezing (compliance, suspicious activity, etc.)
+
+        Returns:
+            Updated wallet or None if not found
+        """
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.freeze(by=frozen_by, reason=reason)
+        return wallet
+
+    async def unfreeze(self, wallet_id: str) -> Wallet | None:
+        """
+        Unfreeze a wallet (restore transaction capability).
+
+        Args:
+            wallet_id: Wallet identifier
+
+        Returns:
+            Updated wallet or None if not found
+        """
+        wallet = self._wallets.get(wallet_id)
+        if not wallet:
+            return None
+        wallet.unfreeze()
+        return wallet
+
+    async def get_frozen_wallets(self) -> builtins.list[Wallet]:
+        """
+        Get all frozen wallets.
+
+        Returns:
+            List of frozen wallets
+        """
+        return [w for w in self._wallets.values() if w.is_frozen]
