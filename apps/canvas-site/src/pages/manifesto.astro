@@ -5,6 +5,31 @@ const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
   body[data-canvas="manifesto"] {
+    --background: #efe1bf;
+    --foreground: #2a1d12;
+    --card: #f6e9cb;
+    --card-elevated: #fbf0d6;
+    --popover: #f6e9cb;
+    --text-primary: #21160d;
+    --text-secondary: #4a3523;
+    --text-muted: #73583d;
+    --text-faint: rgba(42, 29, 18, 0.52);
+    --text-ghost: rgba(42, 29, 18, 0.32);
+    --text-label: rgba(42, 29, 18, 0.58);
+    --border: #c7ad7b;
+    --border-strong: #9d7d4c;
+    --border-subtle: rgba(80, 52, 30, 0.16);
+    --primary: #70441f;
+    --primary-fg: #fff4d7;
+    --muted: #e4d0a6;
+    --accent: #d6bb85;
+    --shadow-sm: 0 1px 2px rgba(70, 43, 21, 0.08);
+    --shadow-md: 0 2px 8px rgba(70, 43, 21, 0.1);
+    --shadow-lg: 0 8px 24px rgba(70, 43, 21, 0.12);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(255, 246, 219, 0.72), transparent 34rem),
+      var(--background);
+    color: var(--text-primary);
     font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system, sans-serif;
   }
   body[data-canvas="manifesto"] .manifesto,
