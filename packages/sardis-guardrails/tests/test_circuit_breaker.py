@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from sardis_guardrails.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,

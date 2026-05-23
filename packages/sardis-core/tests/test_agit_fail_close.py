@@ -10,7 +10,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
-
 from sardis_v2_core.config import SardisSettings
 from sardis_v2_core.control_plane import ControlPlane
 from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus

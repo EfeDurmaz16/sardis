@@ -1,36 +1,31 @@
-"""Sardis Fiat Ramp - Multi-provider fiat on/off-ramp infrastructure."""
+"""Deprecation shim — `sardis_ramp` is being consolidated into `sardis.ramp`.
 
-# Legacy Bridge-only implementation (preserved for backward compatibility)
-# New multi-provider architecture
-from .base import RampProvider, RampQuote, RampSession, RampStatus
-from .providers import BridgeProvider, CoinbaseOnrampProvider
-from .ramp import SardisFiatRamp
-from .ramp_types import (
-    BankAccount,
-    FundingMethod,
-    FundingResult,
-    MerchantAccount,
-    PaymentResult,
-    WithdrawalResult,
+Install the umbrella package and update imports:
+
+    pip install sardis
+    from sardis.ramp import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
+"""
+import warnings
+
+warnings.warn(
+    "sardis_ramp is deprecated. Install `sardis` and use "
+    "`from sardis.ramp import ...`. This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
-from .router import RampRouter
 
-__version__ = "1.0.0"
-__all__ = [
-    # Legacy exports
-    "SardisFiatRamp",
-    "FundingResult",
-    "WithdrawalResult",
-    "PaymentResult",
-    "BankAccount",
-    "MerchantAccount",
-    "FundingMethod",
-    # New multi-provider exports
-    "RampProvider",
-    "RampQuote",
-    "RampSession",
-    "RampStatus",
-    "BridgeProvider",
-    "CoinbaseOnrampProvider",
-    "RampRouter",
-]
+import sardis.ramp as _new  # noqa: E402
+
+# Re-bind __path__ so submodule imports work (e.g., from sardis_ramp.foo import X)
+__path__ = _new.__path__
+
+
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.ramp."""
+    return getattr(_new, name)
+
+
+def __dir__():
+    return dir(_new)

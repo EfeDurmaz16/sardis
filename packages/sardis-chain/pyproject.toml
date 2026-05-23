@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-chain"
-version = "1.1.0"
-description = "Production-grade multi-chain stablecoin executor for Sardis"
+version = "0.99.0"
+description = "Deprecation shim — sardis-chain is now part of the `sardis` umbrella package (use `from sardis.chain import ...`)."
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
@@ -37,26 +37,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "web3>=6.0",
-    "pydantic>=2.6",
-    "sardis-core>=0.1.0",
-    "sardis-ledger>=0.1.0",
-    "httpx>=0.25.0",
-    "rlp>=3.0.0",
-    "cryptography>=41.0.0",
-    "solana>=0.35.0",
-    "solders>=0.25.0",
-    "pytempo>=0.4.0",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4",
-    "pytest-asyncio>=0.21",
-    "pytest-cov>=4.1",
-    "mypy>=1.7",
-    "ruff>=0.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
+
 
 [project.urls]
 Homepage = "https://sardis.sh"

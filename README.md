@@ -140,9 +140,9 @@ Sardis can route approved actions to provider adapters. Live-money deployments d
 ### Python (5 lines)
 
 ```python
-from sardis import SardisClient
+from sardis import Sardis
 
-client = SardisClient(api_key="sk_...")
+client = Sardis(api_key="sk_...")
 result = client.pay(
     to="merchant@example.com",
     amount="50.00",
@@ -151,6 +151,11 @@ result = client.pay(
 )
 print(f"Payment: {result.tx_hash}")
 ```
+
+> Migrating from v1.x? `from sardis_sdk import SardisClient` still works
+> via a deprecation shim, but `from sardis import Sardis` is the supported
+> entry point. The shim is removed on 2026-11-23 — see
+> `packages/sardis/MIGRATION_NOTES.md`.
 
 ### TypeScript
 

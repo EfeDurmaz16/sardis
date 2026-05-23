@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ucp"
-version = "1.0.0"
-description = "Universal Commerce Protocol (UCP) integration for Sardis"
+version = "0.99.0"
+description = "Deprecation shim — sardis-ucp is now part of the `sardis` umbrella package (use `from sardis.ucp import ...`)."
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -26,8 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "pydantic>=2.6",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +34,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
 ]
+
 
 [project.urls]
 Homepage = "https://sardis.sh"

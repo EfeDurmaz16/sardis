@@ -21,6 +21,7 @@ Status meanings:
 | `packages/sardis-protocol/` | AP2/TAP/mandate verification plus x402 protocol primitives. | Add conformance fixtures and versioned schemas. |
 | `packages/sardis-ledger/` | Append-only audit/evidence ledger primitives. | Add tamper-evidence and replay fixtures. |
 | `packages/sardis-sdk-python/` | Official Python API SDK package. | Keep smoke tests and quickstarts current; use `docs/architecture/sdk-packages.md` before moving SDK ownership. |
+| `packages/sardis/` | Unified Python SDK umbrella (v2.0.0a0). Consolidates 30+ sardis-* packages into one. Submodules: core, cards, ledger, chain, ucp, protocol, compliance, guardrails, checkout, wallet, ramp, cli. Integration extras: langchain, crewai, openai-agents, autogpt, browser-use, composio, adk, a2a, anthropic. | Maintain MIGRATION_NOTES.md; sunset shim packages 2026-11-23. |
 | `packages/sardis-sdk-js/` | TypeScript SDK package. | Keep build, typecheck, and tests in required CI. |
 | `packages/sardis-mcp-server/` | MCP surface for agent tools. | Keep schema tests and examples current. |
 

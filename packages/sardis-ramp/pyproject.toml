@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-ramp"
-version = "1.0.0"
-description = "Sardis Fiat Ramp - Bridge crypto wallets to traditional banking"
+version = "0.99.0"
+description = "Deprecation shim — sardis-ramp is now part of the `sardis` umbrella package (use `from sardis.ramp import ...`)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -23,17 +23,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "httpx>=0.25.0",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio>=0.21",
-    "mypy>=1.0",
-    "ruff>=0.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
+
 
 [project.urls]
 Homepage = "https://sardis.sh"

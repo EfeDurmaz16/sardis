@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-autogpt"
-version = "2.0.0"
-description = "Sardis payment blocks for AutoGPT - policy-controlled AI agent payments"
+version = "0.99.0"
+description = "Deprecation shim — sardis-autogpt is now part of sardis (use `pip install sardis[autogpt]`)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -23,8 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "pydantic>=2.0",
+    "sardis[autogpt]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

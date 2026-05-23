@@ -4,7 +4,6 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from sardis_v2_core.scheduler import SardisScheduler, get_scheduler, init_scheduler
 
 

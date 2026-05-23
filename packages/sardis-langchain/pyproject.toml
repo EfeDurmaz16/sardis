@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-langchain"
-version = "1.0.0"
-description = "LangChain integration for Sardis - Payment OS for the Agent Economy"
+version = "0.99.0"
+description = "Deprecation shim — sardis-langchain is now part of sardis (use `pip install sardis[langchain]`)."
 readme = "README.md"
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
@@ -31,8 +31,7 @@ keywords = [
     "mpc-wallet",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "langchain-core>=0.3",
+    "sardis[langchain]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

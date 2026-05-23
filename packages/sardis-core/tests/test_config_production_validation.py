@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from sardis_v2_core.config import MPCProvider, SardisSettings, validate_production_config
 
 

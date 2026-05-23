@@ -8,9 +8,8 @@ def test_reconciliation_preserves_original_subject():
     """Reconciliation should preserve original mandate subject, not use agent:unknown."""
     import tempfile
 
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
-
     from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis_v2_core.mandates import PaymentMandate, VCProof
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")

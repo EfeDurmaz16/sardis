@@ -5,7 +5,6 @@ import socket
 
 import pytest
 from click.testing import CliRunner
-
 from sardis_cli.commands.demo import (
     _find_free_port,
     _start_merchant_server,

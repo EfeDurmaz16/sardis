@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from sardis_v2_core.pre_execution_pipeline import HookResult, PreExecutionPipeline
 
 

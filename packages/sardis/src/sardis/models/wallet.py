@@ -1,0 +1,105 @@
+"""Wallet models for Sardis SDK."""
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+
+from pydantic import Field
+
+from .base import SardisModel
+
+
+class TokenLimit(SardisModel):
+    """Token-specific spending limits (for policy tracking only, not balance storage)."""
+
+    token: str
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
+    # Note: No balance field - balances are read from chain (non-custodial)
+
+
+class Wallet(SardisModel):
+    """
+    Non-custodial wallet for an agent.
+
+    This wallet never holds funds. It only:
+    - Stores MPC provider and addresses
+    - Signs transactions via MPC
+    - Reads balances from chain (on-demand)
+    """
+
+    wallet_id: str
+    agent_id: str
+    mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    account_type: str = "mpc_v1"  # "mpc_v1" | "erc4337_v2"
+    addresses: dict[str, str] = Field(default_factory=dict)  # chain -> address mapping
+    currency: str = "USDC"  # Default currency for display
+    token_limits: dict[str, TokenLimit] = Field(default_factory=dict)  # Token-specific limits
+    limit_per_tx: Decimal = Decimal("100")
+    limit_total: Decimal = Decimal("1000")
+    smart_account_address: str | None = None
+    entrypoint_address: str | None = None
+    paymaster_enabled: bool = False
+    bundler_profile: str | None = None
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+
+class WalletBalance(SardisModel):
+    """Wallet balance from chain (read-only, non-custodial)."""
+
+    wallet_id: str
+    chain: str
+    token: str
+    balance: Decimal
+    address: str
+
+    @property
+    def remaining(self) -> Decimal:
+        """Available balance (alias for balance on non-custodial wallets).
+
+        CrewAI and BrowserUse integrations access .remaining on balance
+        objects. For non-custodial wallets the available balance equals
+        the on-chain balance.
+        """
+        return self.balance
+
+
+class WalletTransferRequest(SardisModel):
+    """Request to transfer stablecoins from a wallet (agent is sender)."""
+
+    destination: str
+    amount: Decimal
+    token: str = "USDC"
+    chain: str = "base_sepolia"
+    domain: str = "localhost"
+    memo: str | None = None
+
+
+class WalletTransferResponse(SardisModel):
+    tx_hash: str
+    status: str
+    from_address: str
+    to_address: str
+    amount: Decimal
+    token: str
+    chain: str
+    audit_anchor: str | None = None
+    execution_path: str = "legacy_tx"
+    user_op_hash: str | None = None
+
+
+class CreateWalletRequest(SardisModel):
+    """Request to create a non-custodial wallet."""
+    agent_id: str
+    mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"
+    account_type: str = "mpc_v1"  # "mpc_v1" | "erc4337_v2"
+    currency: str = "USDC"
+    limit_per_tx: Decimal | None = None
+    limit_total: Decimal | None = None
+
+
+# Aliases
+WalletCreate = CreateWalletRequest
+TokenBalance = TokenLimit  # Backwards compatibility alias

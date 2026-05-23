@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-openai-agents"
-version = "1.1.0"
-description = "Sardis payment tools for OpenAI Agents SDK"
+version = "0.99.0"
+description = "Deprecation shim — sardis-openai-agents is now part of sardis (use `pip install sardis[openai-agents]`)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "sardis>=1.0.0",
+    "sardis[openai-agents]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

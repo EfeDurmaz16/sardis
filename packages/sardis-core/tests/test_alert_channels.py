@@ -2,7 +2,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis_v2_core.alert_channels import (
     AlertDispatcher,
     DiscordChannel,
@@ -269,7 +268,7 @@ async def test_email_channel_send_success(sample_alert):
             smtp_host="smtp.gmail.com",
             smtp_port=587,
             smtp_user="test@example.com",
-            smtp_password="password",
+            smtp_password="password",  # nosecret
             from_email="alerts@sardis.sh",
             to_emails=["admin@example.com"],
         )

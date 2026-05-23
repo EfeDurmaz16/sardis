@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-compliance"
-version = "1.1.0"
-description = "Compliance and monitoring services for Sardis - KYC, Sanctions, PEP, Risk Scoring, and Reporting"
+version = "0.99.0"
+description = "Deprecation shim — sardis-compliance is now part of the `sardis` umbrella package (use `from sardis.compliance import ...`)."
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
@@ -38,8 +38,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-core>=0.1.0",
-    "httpx>=0.25.0",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

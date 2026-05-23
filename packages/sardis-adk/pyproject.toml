@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-adk"
-version = "1.0.0"
-description = "Google Agent Development Kit (ADK) integration for Sardis"
+version = "0.99.0"
+description = "Deprecation shim — sardis-adk is now part of sardis (use `pip install sardis[adk]`)."
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -26,8 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "google-adk>=0.3",
+    "sardis[adk]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

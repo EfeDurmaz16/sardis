@@ -1,243 +1,31 @@
-"""Sardis Chain - Production-grade multi-chain stablecoin executor.
+"""Deprecation shim — `sardis_chain` is being consolidated into `sardis.chain`.
 
-This package provides the blockchain execution layer for stablecoin operations:
-- Multi-chain support (Ethereum, Base, Polygon, Arbitrum)
-- MPC custody integration (Turnkey, Lit Protocol, Fireblocks)
-- Transaction execution with gas estimation
-- Nonce management and confirmation tracking
-- MEV protection and deposit monitoring
+Install the umbrella package and update imports:
 
-Version: 0.4.0
+    pip install sardis
+    from sardis.chain import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
 """
+import warnings
 
-from .cctp_forwarding import (
-    FUNDING_SOURCE_CHAINS,
-    CCTPForwardingService,
-    ForwardingAddress,
-    ForwardingDeposit,
-    ForwardingStatus,
-)
-from .config import (
-    ChainConfig,
-    ChainId,
-    GasConfig,
-    RPCConfig,
-    TokenConfig,
-    TurnkeyConfig,
-    load_chain_config,
-)
-from .confirmation import (
-    ConfirmationStatus,
-    ConfirmationTracker,
-)
-from .deposit_monitor import (
-    Deposit,
-    DepositMonitor,
-    MonitorConfig,
-)
-from .erc4337 import (
-    ENTRYPOINT_V07_BY_CHAIN,
-    BundlerClient,
-    BundlerConfig,
-    ERC4337ProofArtifact,
-    PaymasterClient,
-    PaymasterConfig,
-    SponsorCapExceeded,
-    SponsorCapGuard,
-    SponsoredUserOperation,
-    StageCaps,
-    UserOperation,
-    get_entrypoint_v07,
-    write_erc4337_proof_artifact,
-)
-from .executor import (
-    EAS_ADDRESSES,
-    PERMIT2_ADDRESS,
-    SAFE_INFRASTRUCTURE,
-    TEMPO_SYSTEM_CONTRACTS,
-    TIP20_TRANSFER_WITH_MEMO_ABI,
-    ChainExecutor,
-    ChainRPCClient,
-    FailoverMPCSigner,
-    GasEstimate,
-    GasPriceProtection,
-    GasPriceSpikeError,
-    MPCSignerPort,
-    SimulatedMPCSigner,
-    TransactionRequest,
-    get_eas_address,
-    get_sardis_contract_address,
-    get_sardis_ledger_anchor,
-    get_sardis_policy_module,
-)
-from .gas_optimizer import (
-    ChainRoute,
-    GasOptimizer,
-    get_gas_optimizer,
-)
-from .gas_optimizer import (
-    GasEstimate as GasOptimizerEstimate,
-)
-from .lit_signer import LitProtocolSigner
-from .logging_utils import (
-    ChainLogger,
-    get_chain_logger,
-    log_operation,
-)
-from .mev_protection import (
-    FlashbotsProvider,
-    MEVConfig,
-    MEVProtectionService,
-)
-from .nonce_manager import (
-    NonceConflictError,
-    NonceManager,
-    StuckTransactionError,
-    TransactionFailedError,
-)
-from .price_oracle import (
-    CHAIN_NATIVE_TOKEN,
-    PriceOracle,
-    get_price_oracle,
-)
-from .redis_nonce_manager import RedisNonceManager
-from .rpc_client import (
-    AllEndpointsFailedError,
-    ChainIDMismatchError,
-    ProductionRPCClient,
-    RPCError,
-    close_all_clients,
-    get_rpc_client,
-)
-from .simulation import (
-    GasEstimation,
-    SimulationError,
-    SimulationResult,
-    TransactionSimulator,
-)
-from .wallet_manager import (
-    WalletInfo,
-    WalletManager,
-)
-from .zodiac_roles import (
-    ZODIAC_ADDRESSES,
-    AllowanceConfig,
-    ConditionFlat,
-    ExecutionOptions,
-    Operator,
-    RoleConfig,
-    RolePermission,
-    ZodiacRolesSetup,
-    build_agent_wallet_setup,
-    build_role_setup_transactions,
-    decode_role_key,
-    encode_role_key,
-    policy_to_role_config,
+warnings.warn(
+    "sardis_chain is deprecated. Install `sardis` and use "
+    "`from sardis.chain import ...`. This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__version__ = "1.1.0"
+import sardis.chain as _new  # noqa: E402
 
-__all__ = [
-    # Version
-    "__version__",
-    # Config
-    "ChainConfig",
-    "ChainId",
-    "TokenConfig",
-    "GasConfig",
-    "RPCConfig",
-    "TurnkeyConfig",
-    "load_chain_config",
-    # RPC Client
-    "ProductionRPCClient",
-    "RPCError",
-    "AllEndpointsFailedError",
-    "ChainIDMismatchError",
-    "get_rpc_client",
-    "close_all_clients",
-    # Nonce Manager
-    "NonceManager",
-    "NonceConflictError",
-    "StuckTransactionError",
-    "TransactionFailedError",
-    # Redis Nonce Manager
-    "RedisNonceManager",
-    # Confirmation
-    "ConfirmationTracker",
-    "ConfirmationStatus",
-    # Simulation
-    "TransactionSimulator",
-    "SimulationResult",
-    "SimulationError",
-    "GasEstimation",
-    # Executor
-    "ChainExecutor",
-    "ChainRPCClient",
-    "TransactionRequest",
-    "GasEstimate",
-    "GasPriceProtection",
-    "GasPriceSpikeError",
-    # MPC Signers
-    "MPCSignerPort",
-    "FailoverMPCSigner",
-    "SimulatedMPCSigner",
-    "LitProtocolSigner",
-    # Deposit Monitor
-    "DepositMonitor",
-    "Deposit",
-    "MonitorConfig",
-    # MEV Protection
-    "MEVProtectionService",
-    "FlashbotsProvider",
-    "MEVConfig",
-    # Wallet Manager
-    "WalletManager",
-    "WalletInfo",
-    # Price Oracle
-    "PriceOracle",
-    "get_price_oracle",
-    "CHAIN_NATIVE_TOKEN",
-    # Logging
-    "get_chain_logger",
-    "ChainLogger",
-    "log_operation",
-    # ERC-4337
-    "ENTRYPOINT_V07_BY_CHAIN",
-    "get_entrypoint_v07",
-    "UserOperation",
-    "BundlerClient",
-    "BundlerConfig",
-    "PaymasterClient",
-    "PaymasterConfig",
-    "SponsoredUserOperation",
-    "SponsorCapGuard",
-    "SponsorCapExceeded",
-    "StageCaps",
-    "ERC4337ProofArtifact",
-    "write_erc4337_proof_artifact",
-    # Gas Optimizer
-    "GasOptimizer",
-    "GasOptimizerEstimate",
-    "ChainRoute",
-    "get_gas_optimizer",
-    # CCTP Forwarding
-    "CCTPForwardingService",
-    "ForwardingAddress",
-    "ForwardingDeposit",
-    "ForwardingStatus",
-    "FUNDING_SOURCE_CHAINS",
-    # Zodiac Roles v2
-    "ZODIAC_ADDRESSES",
-    "AllowanceConfig",
-    "ConditionFlat",
-    "ExecutionOptions",
-    "Operator",
-    "RoleConfig",
-    "RolePermission",
-    "ZodiacRolesSetup",
-    "build_agent_wallet_setup",
-    "build_role_setup_transactions",
-    "encode_role_key",
-    "decode_role_key",
-    "policy_to_role_config",
-]
+# Re-bind __path__ so submodule imports work (e.g., from sardis_chain.foo import X)
+__path__ = _new.__path__
+
+
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.chain."""
+    return getattr(_new, name)
+
+
+def __dir__():
+    return dir(_new)

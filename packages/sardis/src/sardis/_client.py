@@ -1,0 +1,1679 @@
+"""
+Sardis Python SDK - Production-Grade Client
+
+A comprehensive SDK for interacting with the Sardis stablecoin execution layer.
+
+Features:
+- Connection pooling via httpx
+- Sync and Async clients
+- Configurable retry with exponential backoff
+- Request/response logging
+- Per-request timeout configuration
+- Automatic token refresh
+- Comprehensive error handling
+
+Example usage:
+    ```python
+    from sardis import Sardis, AsyncSardis
+
+    # Async client (recommended)
+    async with AsyncSardis(
+        api_key="your-api-key",
+        base_url="https://api.sardis.sh",
+    ) as client:
+        result = await client.payments.execute_mandate(mandate)
+
+    # Sync client
+    with Sardis(
+        api_key="your-api-key",
+        base_url="https://api.sardis.sh",
+    ) as client:
+        result = client.payments.execute_mandate(mandate)
+    ```
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import random
+import re
+import time
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    TypeVar,
+)
+
+import httpx
+
+from .models.errors import (
+    APIError,
+    AuthenticationError,
+    ConnectionError,
+    NetworkError,
+    NotFoundError,
+    RateLimitError,
+    SardisError,
+    TimeoutError,
+    ValidationError,
+)
+from .telemetry import AsyncSardisTelemetry, SardisTelemetry, TelemetryConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .resources.agents import AgentsResource, AsyncAgentsResource
+    from .resources.approvals import ApprovalsResource, AsyncApprovalsResource
+    from .resources.cards import AsyncCardsResource, CardsResource
+    from .resources.escrow import AsyncEscrowResource, EscrowResource
+    from .resources.evidence import AsyncEvidenceResource, EvidenceResource
+    from .resources.exceptions import AsyncExceptionsResource, ExceptionsResource
+    from .resources.facility_gate import AsyncFacilityGateResource, FacilityGateResource
+    from .resources.funding import AsyncFundingResource, FundingResource
+    from .resources.fx import AsyncFXResource, FXResource
+    from .resources.groups import AsyncGroupsResource, GroupsResource
+    from .resources.holds import AsyncHoldsResource, HoldsResource
+    from .resources.kill_switch import AsyncKillSwitchResource, KillSwitchResource
+    from .resources.ledger import AsyncLedgerResource, LedgerResource
+    from .resources.marketplace import AsyncMarketplaceResource, MarketplaceResource
+    from .resources.pay import AsyncPayResource, PayResource
+    from .resources.payment_objects import AsyncPaymentObjectsResource, PaymentObjectsResource
+    from .resources.payments import AsyncPaymentsResource, PaymentsResource
+    from .resources.policies import AsyncPoliciesResource, PoliciesResource
+    from .resources.simulation import AsyncSimulationResource, SimulationResource
+    from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource, SubscriptionsV2Resource
+    from .resources.transactions import AsyncTransactionsResource, TransactionsResource
+    from .resources.treasury import AsyncTreasuryResource, TreasuryResource
+    from .resources.wallets import AsyncWalletsResource, WalletsResource
+    from .resources.webhooks import AsyncWebhooksResource, WebhooksResource
+
+# Configure module logger
+logger = logging.getLogger("sardis_sdk")
+
+# Type variable for generic responses
+T = TypeVar("T")
+
+# SDK Version
+__version__ = "1.1.0"
+
+
+class LogLevel(str, Enum):
+    """Log levels for request/response logging."""
+
+    NONE = "none"
+    BASIC = "basic"  # Log method, URL, status
+    HEADERS = "headers"  # Log headers too
+    BODY = "body"  # Log full request/response bodies
+
+
+@dataclass(frozen=True)
+class RetryConfig:
+    """Configuration for retry behavior.
+
+    Attributes:
+        max_retries: Maximum number of retry attempts (default: 3)
+        initial_delay: Initial delay between retries in seconds (default: 0.5)
+        max_delay: Maximum delay between retries in seconds (default: 30.0)
+        exponential_base: Base for exponential backoff (default: 2.0)
+        jitter: Whether to add random jitter to delays (default: True)
+        retry_on_status: HTTP status codes to retry on
+        retry_on_exceptions: Exception types to retry on
+    """
+
+    max_retries: int = 3
+    initial_delay: float = 0.5
+    max_delay: float = 30.0
+    exponential_base: float = 2.0
+    jitter: bool = True
+    retry_on_status: tuple[int, ...] = (429, 500, 502, 503, 504)
+    retry_on_exceptions: tuple[type[Exception], ...] = (
+        httpx.TimeoutException,
+        httpx.ConnectError,
+        httpx.ReadError,
+        httpx.WriteError,
+    )
+
+    def calculate_delay(self, attempt: int) -> float:
+        """Calculate delay for a given retry attempt."""
+        delay = min(
+            self.initial_delay * (self.exponential_base ** attempt),
+            self.max_delay
+        )
+        if self.jitter:
+            delay = delay * (0.5 + random.random())
+        return delay
+
+
+@dataclass
+class TimeoutConfig:
+    """Configuration for request timeouts.
+
+    Attributes:
+        connect: Timeout for establishing connection (seconds)
+        read: Timeout for reading response (seconds)
+        write: Timeout for writing request (seconds)
+        pool: Timeout for acquiring connection from pool (seconds)
+    """
+
+    connect: float = 10.0
+    read: float = 30.0
+    write: float = 30.0
+    pool: float = 10.0
+
+    def to_httpx_timeout(self) -> httpx.Timeout:
+        """Convert to httpx Timeout object."""
+        return httpx.Timeout(
+            connect=self.connect,
+            read=self.read,
+            write=self.write,
+            pool=self.pool,
+        )
+
+
+@dataclass
+class PoolConfig:
+    """Configuration for connection pooling.
+
+    Attributes:
+        max_connections: Maximum number of connections in pool
+        max_keepalive_connections: Maximum keepalive connections
+        keepalive_expiry: Time to keep idle connections alive (seconds)
+    """
+
+    max_connections: int = 100
+    max_keepalive_connections: int = 20
+    keepalive_expiry: float = 30.0
+
+    def to_httpx_limits(self) -> httpx.Limits:
+        """Convert to httpx Limits object."""
+        return httpx.Limits(
+            max_connections=self.max_connections,
+            max_keepalive_connections=self.max_keepalive_connections,
+            keepalive_expiry=self.keepalive_expiry,
+        )
+
+
+@dataclass
+class TokenInfo:
+    """Information about an API token.
+
+    Attributes:
+        access_token: The current access token
+        refresh_token: Optional refresh token
+        expires_at: When the token expires (if known)
+        token_type: Type of token (usually "Bearer")
+    """
+
+    access_token: str
+    refresh_token: str | None = None
+    expires_at: datetime | None = None
+    token_type: str = "Bearer"
+
+    @property
+    def is_expired(self) -> bool:
+        """Check if the token is expired."""
+        if self.expires_at is None:
+            return False
+        # Consider token expired 5 minutes before actual expiry
+        return datetime.utcnow() >= self.expires_at - timedelta(minutes=5)
+
+
+@dataclass
+class RequestContext:
+    """Context for a single request.
+
+    Attributes:
+        request_id: Unique identifier for the request
+        timeout: Optional per-request timeout override
+        idempotency_key: Optional idempotency key for POST/PUT requests
+        metadata: Additional metadata to include in logs
+    """
+
+    request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timeout: TimeoutConfig | None = None
+    idempotency_key: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+class RequestLogger:
+    """Logger for HTTP requests and responses."""
+
+    def __init__(self, log_level: LogLevel = LogLevel.BASIC):
+        self.log_level = log_level
+        self._logger = logging.getLogger("sardis_sdk.http")
+
+    def log_request(
+        self,
+        method: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
+        context: RequestContext | None = None,
+    ) -> None:
+        """Log an outgoing request."""
+        if self.log_level == LogLevel.NONE:
+            return
+
+        request_id = context.request_id if context else "unknown"
+
+        if self.log_level == LogLevel.BASIC:
+            self._logger.info(
+                "[%s] Request: %s %s",
+                request_id,
+                method,
+                url,
+            )
+        elif self.log_level == LogLevel.HEADERS:
+            self._logger.info(
+                "[%s] Request: %s %s\nHeaders: %s",
+                request_id,
+                method,
+                url,
+                self._sanitize_headers(headers or {}),
+            )
+        elif self.log_level == LogLevel.BODY:
+            self._logger.info(
+                "[%s] Request: %s %s\nHeaders: %s\nBody: %s",
+                request_id,
+                method,
+                url,
+                self._sanitize_headers(headers or {}),
+                self._truncate_body(body),
+            )
+
+    def log_response(
+        self,
+        status_code: int,
+        url: str,
+        headers: dict[str, str] | None = None,
+        body: Any | None = None,
+        duration_ms: float = 0,
+        context: RequestContext | None = None,
+    ) -> None:
+        """Log an incoming response."""
+        if self.log_level == LogLevel.NONE:
+            return
+
+        request_id = context.request_id if context else "unknown"
+
+        if self.log_level == LogLevel.BASIC:
+            self._logger.info(
+                "[%s] Response: %d (%dms)",
+                request_id,
+                status_code,
+                duration_ms,
+            )
+        elif self.log_level == LogLevel.HEADERS:
+            self._logger.info(
+                "[%s] Response: %d (%dms)\nHeaders: %s",
+                request_id,
+                status_code,
+                duration_ms,
+                dict(headers) if headers else {},
+            )
+        elif self.log_level == LogLevel.BODY:
+            self._logger.info(
+                "[%s] Response: %d (%dms)\nHeaders: %s\nBody: %s",
+                request_id,
+                status_code,
+                duration_ms,
+                dict(headers) if headers else {},
+                self._truncate_body(body),
+            )
+
+    def log_retry(
+        self,
+        attempt: int,
+        delay: float,
+        reason: str,
+        context: RequestContext | None = None,
+    ) -> None:
+        """Log a retry attempt."""
+        request_id = context.request_id if context else "unknown"
+        self._logger.warning(
+            "[%s] Retry attempt %d after %.2fs: %s",
+            request_id,
+            attempt,
+            delay,
+            reason,
+        )
+
+    def _sanitize_headers(self, headers: dict[str, str]) -> dict[str, str]:
+        """Remove sensitive headers from logs."""
+        sensitive_keys = {"authorization", "x-api-key", "api-key", "cookie", "set-cookie"}
+        return {
+            k: "[REDACTED]" if k.lower() in sensitive_keys else v
+            for k, v in headers.items()
+        }
+
+    def _truncate_body(self, body: Any, max_length: int = 1000) -> str:
+        """Truncate body for logging."""
+        if body is None:
+            return "null"
+        body_str = str(body)
+        if len(body_str) > max_length:
+            return body_str[:max_length] + "... [truncated]"
+        return body_str
+
+
+class BaseClient:
+    """Base class with shared configuration for sync and async clients."""
+
+    DEFAULT_BASE_URL = "https://api.sardis.sh"
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str = DEFAULT_BASE_URL,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
+        log_level: LogLevel = LogLevel.BASIC,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
+    ):
+        """Initialize the base client.
+
+        Args:
+            api_key: Your Sardis API key (required)
+            base_url: API base URL (default: https://api.sardis.sh)
+            timeout: Request timeout configuration
+            retry: Retry configuration
+            pool: Connection pool configuration
+            log_level: Logging verbosity level
+            token_refresh_callback: Optional callback to refresh API token
+            default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
+        """
+        if not api_key:
+            raise ValueError("API key is required")
+
+        self._api_key = api_key
+        self._base_url = base_url.rstrip("/")
+
+        # Configure timeout
+        if timeout is None:
+            self._timeout = TimeoutConfig()
+        elif isinstance(timeout, (int, float)):
+            self._timeout = TimeoutConfig(
+                connect=float(timeout),
+                read=float(timeout),
+                write=float(timeout),
+            )
+        else:
+            self._timeout = timeout
+
+        # Configure retry
+        self._retry = retry or RetryConfig()
+
+        # Configure pool
+        self._pool = pool or PoolConfig()
+
+        # Configure logging
+        self._request_logger = RequestLogger(log_level)
+
+        # Token refresh
+        self._token_refresh_callback = token_refresh_callback
+        self._token_info: TokenInfo | None = None
+
+        # Configure telemetry
+        if telemetry is False:
+            self._telemetry_config: TelemetryConfig | None = None
+        elif telemetry is True or telemetry is None:
+            self._telemetry_config = TelemetryConfig.from_env()
+        else:
+            self._telemetry_config = telemetry
+
+        # Default headers
+        self._default_headers = {
+            "X-API-Key": self._api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": f"sardis-sdk-python/{__version__}",
+            **(default_headers or {}),
+        }
+
+    def _get_headers(
+        self,
+        context: RequestContext | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, str]:
+        """Build headers for a request."""
+        headers = self._default_headers.copy()
+
+        # Merge telemetry headers (agent_id, session_id)
+        try:
+            if hasattr(self, "_telemetry") and self._telemetry is not None:
+                headers.update(self._telemetry.get_headers())
+        except Exception:
+            pass
+
+        if context:
+            headers["X-Request-ID"] = context.request_id
+            if context.idempotency_key:
+                headers["Idempotency-Key"] = context.idempotency_key
+
+        if extra_headers:
+            headers.update(extra_headers)
+
+        return headers
+
+    def _build_url(self, path: str) -> str:
+        """Build full URL from path."""
+        if path.startswith(("http://", "https://")):
+            return path
+
+        # Add /api/v2/ prefix for resource paths
+        if not path.startswith("/"):
+            path = f"/api/v2/{path}"
+
+        return f"{self._base_url}{path}"
+
+    def _extract_x402_header_details(self, response: httpx.Response) -> dict[str, Any]:
+        """Extract x402 challenge details from response headers."""
+        headers = {k.lower(): v for k, v in response.headers.items()}
+        out: dict[str, Any] = {}
+
+        challenge_value = headers.get("x-payment-challenge") or headers.get("paymentrequired")
+        if challenge_value:
+            try:
+                parsed = json.loads(challenge_value)
+                if isinstance(parsed, dict):
+                    out.update(parsed)
+            except json.JSONDecodeError:
+                pass
+
+        www_authenticate = headers.get("www-authenticate", "")
+        if www_authenticate.lower().startswith("x402"):
+            for match in re.finditer(r'([a-zA-Z0-9_-]+)\s*=\s*"([^"]*)"', www_authenticate):
+                out.setdefault(match.group(1), match.group(2))
+
+        return out
+
+    def _handle_error_response(
+        self,
+        response: httpx.Response,
+        context: RequestContext | None = None,
+    ) -> None:
+        """Handle error responses and raise appropriate exceptions."""
+        status_code = response.status_code
+        request_id = context.request_id if context else None
+
+        try:
+            body = response.json()
+        except Exception:
+            body = {"detail": response.text}
+
+        # Some frameworks return validation errors as a bare list.
+        if isinstance(body, list):
+            body = {"detail": body}
+
+        # Extract error details
+        error_data = body.get("error", body.get("detail", body))
+
+        if isinstance(error_data, str):
+            message = error_data
+            code = None
+            details = None
+        elif isinstance(error_data, list):
+            message = "Validation Error"
+            code = "VALIDATION_ERROR"
+            details = {"errors": error_data}
+        else:
+            message = error_data.get("message", "Unknown error")
+            code = error_data.get("code")
+            details = error_data.get("details")
+
+        if status_code == 402:
+            header_details = self._extract_x402_header_details(response)
+            if header_details:
+                if not isinstance(details, dict):
+                    details = {}
+                for k, v in header_details.items():
+                    details.setdefault(k, v)
+
+        # Map status codes to exceptions
+        if status_code == 401:
+            raise AuthenticationError(message, request_id=request_id)
+        elif status_code == 403:
+            raise AuthenticationError(
+                message or "Forbidden",
+                code="FORBIDDEN",
+                request_id=request_id,
+            )
+        elif status_code == 404:
+            raise NotFoundError(
+                resource_type="Resource",
+                resource_id="unknown",
+                message=message,
+                request_id=request_id,
+            )
+        elif status_code == 422:
+            raise ValidationError(message, details=details, request_id=request_id)
+        elif status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", "5"))
+            raise RateLimitError(
+                message or "Rate limit exceeded",
+                retry_after=retry_after,
+                request_id=request_id,
+            )
+        else:
+            raise APIError(
+                message=message,
+                status_code=status_code,
+                code=code,
+                details=details,
+                request_id=request_id,
+            )
+
+
+class AsyncSardis(BaseClient):
+    """Asynchronous Sardis API client with connection pooling and retry logic.
+
+    This is the recommended client for production use. It provides:
+    - Connection pooling for better performance
+    - Automatic retries with exponential backoff
+    - Request/response logging
+    - Per-request timeout configuration
+    - Automatic token refresh
+
+    Example:
+        ```python
+        async with AsyncSardis(api_key="your-key") as client:
+            agents = await client.agents.list()
+            wallet = await client.wallets.get("wallet_123")
+        ```
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str = BaseClient.DEFAULT_BASE_URL,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
+        log_level: LogLevel = LogLevel.BASIC,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
+    ):
+        """Initialize the async client.
+
+        Args:
+            api_key: Your Sardis API key (required)
+            base_url: API base URL (default: https://api.sardis.sh)
+            timeout: Request timeout configuration
+            retry: Retry configuration
+            pool: Connection pool configuration
+            log_level: Logging verbosity level
+            token_refresh_callback: Optional callback to refresh API token
+            default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
+        """
+        super().__init__(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            retry=retry,
+            pool=pool,
+            log_level=log_level,
+            token_refresh_callback=token_refresh_callback,
+            default_headers=default_headers,
+            telemetry=telemetry,
+        )
+
+        self._client: httpx.AsyncClient | None = None
+
+        # Initialize async telemetry
+        self._telemetry: AsyncSardisTelemetry | None = None
+        if self._telemetry_config and self._telemetry_config.enabled:
+            self._telemetry = AsyncSardisTelemetry(
+                config=self._telemetry_config,
+                base_url=self._base_url,
+                api_key=self._api_key,
+                sdk_version=__version__,
+            )
+
+        # Initialize resources lazily
+        self._agents: AsyncAgentsResource | None = None
+        self._wallets: AsyncWalletsResource | None = None
+        self._payments: AsyncPaymentsResource | None = None
+        self._holds: AsyncHoldsResource | None = None
+        self._cards: AsyncCardsResource | None = None
+        self._policies: AsyncPoliciesResource | None = None
+        self._webhooks: AsyncWebhooksResource | None = None
+        self._marketplace: AsyncMarketplaceResource | None = None
+        self._transactions: AsyncTransactionsResource | None = None
+        self._ledger: AsyncLedgerResource | None = None
+        self._groups: AsyncGroupsResource | None = None
+        self._treasury: AsyncTreasuryResource | None = None
+        self._approvals: AsyncApprovalsResource | None = None
+        self._kill_switch: AsyncKillSwitchResource | None = None
+        self._evidence: AsyncEvidenceResource | None = None
+        self._simulation: AsyncSimulationResource | None = None
+        self._exceptions: AsyncExceptionsResource | None = None
+        self._facility_gate: AsyncFacilityGateResource | None = None
+        self._payment_objects: AsyncPaymentObjectsResource | None = None
+        self._funding: AsyncFundingResource | None = None
+        self._fx: AsyncFXResource | None = None
+        self._subscriptions_v2: AsyncSubscriptionsV2Resource | None = None
+        self._escrow: AsyncEscrowResource | None = None
+        self._pay: AsyncPayResource | None = None
+        self._mandate_delegation: Any = None
+        self._batch: Any = None
+
+    @property
+    def pay(self) -> AsyncPayResource:
+        """Access the pay resource."""
+        if self._pay is None:
+            from .resources.pay import AsyncPayResource
+            self._pay = AsyncPayResource(self)
+        return self._pay
+
+    @property
+    def mandate_delegation(self):
+        """Access the mandate delegation resource."""
+        if self._mandate_delegation is None:
+            from .resources.mandate_delegation import AsyncMandateDelegationResource
+            self._mandate_delegation = AsyncMandateDelegationResource(self)
+        return self._mandate_delegation
+
+    @property
+    def batch(self):
+        """Access the batch payments resource."""
+        if self._batch is None:
+            from .resources.batch import AsyncBatchResource
+            self._batch = AsyncBatchResource(self)
+        return self._batch
+
+    @property
+    def groups(self) -> AsyncGroupsResource:
+        """Access the groups resource."""
+        if self._groups is None:
+            from .resources.groups import AsyncGroupsResource
+            self._groups = AsyncGroupsResource(self)
+        return self._groups
+
+    @property
+    def agents(self) -> AsyncAgentsResource:
+        """Access the agents resource."""
+        if self._agents is None:
+            from .resources.agents import AsyncAgentsResource
+            self._agents = AsyncAgentsResource(self)
+        return self._agents
+
+    @property
+    def wallets(self) -> AsyncWalletsResource:
+        """Access the wallets resource."""
+        if self._wallets is None:
+            from .resources.wallets import AsyncWalletsResource
+            self._wallets = AsyncWalletsResource(self)
+        return self._wallets
+
+    @property
+    def payments(self) -> AsyncPaymentsResource:
+        """Access the payments resource."""
+        if self._payments is None:
+            from .resources.payments import AsyncPaymentsResource
+            self._payments = AsyncPaymentsResource(self)
+        return self._payments
+
+    @property
+    def holds(self) -> AsyncHoldsResource:
+        """Access the holds resource."""
+        if self._holds is None:
+            from .resources.holds import AsyncHoldsResource
+            self._holds = AsyncHoldsResource(self)
+        return self._holds
+
+    @property
+    def cards(self) -> AsyncCardsResource:
+        """Access the cards resource."""
+        if self._cards is None:
+            from .resources.cards import AsyncCardsResource
+            self._cards = AsyncCardsResource(self)
+        return self._cards
+
+    @property
+    def policies(self) -> AsyncPoliciesResource:
+        """Access the policies resource."""
+        if self._policies is None:
+            from .resources.policies import AsyncPoliciesResource
+            self._policies = AsyncPoliciesResource(self)
+        return self._policies
+
+    @property
+    def webhooks(self) -> AsyncWebhooksResource:
+        """Access the webhooks resource."""
+        if self._webhooks is None:
+            from .resources.webhooks import AsyncWebhooksResource
+            self._webhooks = AsyncWebhooksResource(self)
+        return self._webhooks
+
+    @property
+    def marketplace(self) -> AsyncMarketplaceResource:
+        """Access the marketplace resource."""
+        if self._marketplace is None:
+            from .resources.marketplace import AsyncMarketplaceResource
+            self._marketplace = AsyncMarketplaceResource(self)
+        return self._marketplace
+
+    @property
+    def transactions(self) -> AsyncTransactionsResource:
+        """Access the transactions resource."""
+        if self._transactions is None:
+            from .resources.transactions import AsyncTransactionsResource
+            self._transactions = AsyncTransactionsResource(self)
+        return self._transactions
+
+    @property
+    def ledger(self) -> AsyncLedgerResource:
+        """Access the ledger resource."""
+        if self._ledger is None:
+            from .resources.ledger import AsyncLedgerResource
+            self._ledger = AsyncLedgerResource(self)
+        return self._ledger
+
+    @property
+    def treasury(self) -> AsyncTreasuryResource:
+        """Access the treasury resource."""
+        if self._treasury is None:
+            from .resources.treasury import AsyncTreasuryResource
+            self._treasury = AsyncTreasuryResource(self)
+        return self._treasury
+
+    @property
+    def approvals(self) -> AsyncApprovalsResource:
+        """Access the approvals resource."""
+        if self._approvals is None:
+            from .resources.approvals import AsyncApprovalsResource
+            self._approvals = AsyncApprovalsResource(self)
+        return self._approvals
+
+    @property
+    def kill_switch(self) -> AsyncKillSwitchResource:
+        """Access the kill switch resource."""
+        if self._kill_switch is None:
+            from .resources.kill_switch import AsyncKillSwitchResource
+            self._kill_switch = AsyncKillSwitchResource(self)
+        return self._kill_switch
+
+    @property
+    def evidence(self) -> AsyncEvidenceResource:
+        """Access the evidence resource."""
+        if self._evidence is None:
+            from .resources.evidence import AsyncEvidenceResource
+            self._evidence = AsyncEvidenceResource(self)
+        return self._evidence
+
+    @property
+    def simulation(self) -> AsyncSimulationResource:
+        """Access the simulation resource."""
+        if self._simulation is None:
+            from .resources.simulation import AsyncSimulationResource
+            self._simulation = AsyncSimulationResource(self)
+        return self._simulation
+
+    @property
+    def exceptions(self) -> AsyncExceptionsResource:
+        """Access the exceptions resource."""
+        if self._exceptions is None:
+            from .resources.exceptions import AsyncExceptionsResource
+            self._exceptions = AsyncExceptionsResource(self)
+        return self._exceptions
+
+    @property
+    def facility_gate(self) -> AsyncFacilityGateResource:
+        """Access the Facility Gate resource."""
+        if self._facility_gate is None:
+            from .resources.facility_gate import AsyncFacilityGateResource
+            self._facility_gate = AsyncFacilityGateResource(self)
+        return self._facility_gate
+
+    @property
+    def payment_objects(self) -> AsyncPaymentObjectsResource:
+        """Access the payment objects resource."""
+        if self._payment_objects is None:
+            from .resources.payment_objects import AsyncPaymentObjectsResource
+            self._payment_objects = AsyncPaymentObjectsResource(self)
+        return self._payment_objects
+
+    @property
+    def funding(self) -> AsyncFundingResource:
+        """Access the funding resource."""
+        if self._funding is None:
+            from .resources.funding import AsyncFundingResource
+            self._funding = AsyncFundingResource(self)
+        return self._funding
+
+    @property
+    def fx(self) -> AsyncFXResource:
+        """Access the FX resource."""
+        if self._fx is None:
+            from .resources.fx import AsyncFXResource
+            self._fx = AsyncFXResource(self)
+        return self._fx
+
+    @property
+    def subscriptions_v2(self) -> AsyncSubscriptionsV2Resource:
+        """Access the subscriptions v2 resource."""
+        if self._subscriptions_v2 is None:
+            from .resources.subscriptions_v2 import AsyncSubscriptionsV2Resource
+            self._subscriptions_v2 = AsyncSubscriptionsV2Resource(self)
+        return self._subscriptions_v2
+
+    @property
+    def escrow(self) -> AsyncEscrowResource:
+        """Access the escrow resource."""
+        if self._escrow is None:
+            from .resources.escrow import AsyncEscrowResource
+            self._escrow = AsyncEscrowResource(self)
+        return self._escrow
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create the HTTP client with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            try:
+                self._client = httpx.AsyncClient(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=True,  # Enable HTTP/2 for better performance
+                )
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 dependencies not available; falling back to HTTP/1.1"
+                )
+                self._client = httpx.AsyncClient(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=False,
+                )
+        return self._client
+
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        context: RequestContext | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Make an HTTP request with retry logic.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            path: API path
+            params: Query parameters
+            json: JSON body
+            headers: Additional headers
+            context: Request context for logging and tracking
+            timeout: Per-request timeout override
+
+        Returns:
+            Response JSON as dictionary
+
+        Raises:
+            SardisError: On API errors
+            TimeoutError: On request timeout
+            NetworkError: On network errors
+        """
+        context = context or RequestContext()
+        client = await self._get_client()
+        url = self._build_url(path)
+        request_headers = self._get_headers(context, headers)
+
+        # Determine timeout
+        if timeout is not None:
+            if isinstance(timeout, (int, float)):
+                request_timeout = httpx.Timeout(timeout)
+            else:
+                request_timeout = timeout.to_httpx_timeout()
+        elif context.timeout:
+            request_timeout = context.timeout.to_httpx_timeout()
+        else:
+            request_timeout = self._timeout.to_httpx_timeout()
+
+        last_error: Exception | None = None
+
+        for attempt in range(self._retry.max_retries + 1):
+            start_time = time.monotonic()
+
+            try:
+                # Log request
+                self._request_logger.log_request(
+                    method=method,
+                    url=url,
+                    headers=request_headers,
+                    body=json,
+                    context=context,
+                )
+
+                response = await client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=request_headers,
+                    timeout=request_timeout,
+                )
+
+                duration_ms = (time.monotonic() - start_time) * 1000
+
+                # Log response
+                try:
+                    response_body = response.json() if response.content else None
+                except Exception:
+                    response_body = response.text
+
+                self._request_logger.log_response(
+                    status_code=response.status_code,
+                    url=url,
+                    headers=dict(response.headers),
+                    body=response_body,
+                    duration_ms=duration_ms,
+                    context=context,
+                )
+
+                # Check for retryable status codes
+                if response.status_code in self._retry.retry_on_status:
+                    if attempt < self._retry.max_retries:
+                        delay = self._retry.calculate_delay(attempt)
+
+                        # Special handling for rate limits
+                        if response.status_code == 429:
+                            retry_after = int(response.headers.get("Retry-After", str(delay)))
+                            delay = max(delay, retry_after)
+
+                        self._request_logger.log_retry(
+                            attempt=attempt + 1,
+                            delay=delay,
+                            reason=f"Status {response.status_code}",
+                            context=context,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+
+                # Handle error responses
+                if response.status_code >= 400:
+                    self._handle_error_response(response, context)
+
+                return response.json()
+
+            except self._retry.retry_on_exceptions as e:
+                last_error = e
+
+                if attempt < self._retry.max_retries:
+                    delay = self._retry.calculate_delay(attempt)
+                    self._request_logger.log_retry(
+                        attempt=attempt + 1,
+                        delay=delay,
+                        reason=str(e),
+                        context=context,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                # Convert to appropriate error type
+                if isinstance(e, httpx.TimeoutException):
+                    raise TimeoutError(
+                        f"Request timed out after {request_timeout}",
+                        request_id=context.request_id,
+                    ) from e
+                elif isinstance(e, httpx.ConnectError):
+                    raise ConnectionError(
+                        f"Failed to connect to {url}",
+                        request_id=context.request_id,
+                    ) from e
+                else:
+                    raise NetworkError(
+                        f"Network error: {e}",
+                        request_id=context.request_id,
+                    ) from e
+
+            except SardisError:
+                raise
+
+            except Exception as e:
+                raise SardisError(
+                    f"Unexpected error: {e}",
+                    request_id=context.request_id,
+                ) from e
+
+        # Should not reach here, but handle edge case
+        if last_error:
+            raise NetworkError(
+                f"Max retries exceeded: {last_error}",
+                request_id=context.request_id,
+            ) from last_error
+
+        raise SardisError(
+            "Unexpected error in request retry loop",
+            request_id=context.request_id,
+        )
+
+    async def health(self) -> dict[str, Any]:
+        """Check API health status.
+
+        Returns:
+            Health status information
+        """
+        return await self._request("GET", "/health")
+
+    async def execute_payment(
+        self,
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Legacy convenience wrapper for executing a single mandate."""
+        return await self._request(
+            "POST",
+            "/api/v2/mandates/execute",
+            json={"mandate": mandate},
+            timeout=timeout,
+        )
+
+    async def execute_ap2_payment(
+        self,
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Legacy convenience wrapper for executing an AP2 bundle."""
+        return await self._request(
+            "POST",
+            "/api/v2/ap2/payments/execute",
+            json=bundle,
+            timeout=timeout,
+        )
+
+    async def close(self) -> None:
+        """Close the HTTP client and release resources."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    async def __aenter__(self) -> AsyncSardis:
+        """Async context manager entry. Starts telemetry if enabled."""
+        if self._telemetry:
+            try:
+                await self._telemetry.ensure_registered()
+                await self._telemetry.start_heartbeat()
+                await self._telemetry.start_flush_timer()
+            except Exception:
+                logger.debug("Telemetry startup failed", exc_info=True)
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
+    ) -> None:
+        """Async context manager exit. Shuts down telemetry."""
+        if self._telemetry:
+            try:
+                await self._telemetry.shutdown()
+            except Exception:
+                logger.debug("Telemetry shutdown failed", exc_info=True)
+        await self.close()
+
+
+class Sardis(BaseClient):
+    """Synchronous Sardis API client with connection pooling and retry logic.
+
+    This client wraps the async client for synchronous usage.
+    For better performance in async applications, use AsyncSardis.
+
+    Example:
+        ```python
+        with Sardis(api_key="your-key") as client:
+            agents = client.agents.list()
+            wallet = client.wallets.get("wallet_123")
+        ```
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        base_url: str = BaseClient.DEFAULT_BASE_URL,
+        timeout: float | TimeoutConfig | None = None,
+        retry: RetryConfig | None = None,
+        pool: PoolConfig | None = None,
+        log_level: LogLevel = LogLevel.BASIC,
+        token_refresh_callback: Callable[[], str] | None = None,
+        default_headers: dict[str, str] | None = None,
+        telemetry: TelemetryConfig | bool | None = None,
+    ):
+        """Initialize the sync client.
+
+        Args:
+            api_key: Your Sardis API key (required)
+            base_url: API base URL (default: https://api.sardis.sh)
+            timeout: Request timeout configuration
+            retry: Retry configuration
+            pool: Connection pool configuration
+            log_level: Logging verbosity level
+            token_refresh_callback: Optional callback to refresh API token
+            default_headers: Additional headers to include in all requests
+            telemetry: Telemetry configuration. True for defaults, False to disable,
+                       or a TelemetryConfig instance for custom settings.
+        """
+        super().__init__(
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
+            retry=retry,
+            pool=pool,
+            log_level=log_level,
+            token_refresh_callback=token_refresh_callback,
+            default_headers=default_headers,
+            telemetry=telemetry,
+        )
+
+        self._client: httpx.Client | None = None
+
+        # Initialize sync telemetry
+        self._telemetry: SardisTelemetry | None = None
+        if self._telemetry_config and self._telemetry_config.enabled:
+            self._telemetry = SardisTelemetry(
+                config=self._telemetry_config,
+                base_url=self._base_url,
+                api_key=self._api_key,
+                sdk_version=__version__,
+            )
+            try:
+                self._telemetry.ensure_registered()
+                self._telemetry.start_heartbeat()
+                self._telemetry.start_flush_timer()
+            except Exception:
+                logger.debug("Sync telemetry startup failed", exc_info=True)
+
+        # Initialize resources lazily
+        self._agents: AgentsResource | None = None
+        self._wallets: WalletsResource | None = None
+        self._payments: PaymentsResource | None = None
+        self._holds: HoldsResource | None = None
+        self._cards: CardsResource | None = None
+        self._policies: PoliciesResource | None = None
+        self._webhooks: WebhooksResource | None = None
+        self._marketplace: MarketplaceResource | None = None
+        self._transactions: TransactionsResource | None = None
+        self._ledger: LedgerResource | None = None
+        self._groups: GroupsResource | None = None
+        self._treasury: TreasuryResource | None = None
+        self._approvals: ApprovalsResource | None = None
+        self._kill_switch: KillSwitchResource | None = None
+        self._evidence: EvidenceResource | None = None
+        self._simulation: SimulationResource | None = None
+        self._exceptions: ExceptionsResource | None = None
+        self._facility_gate: FacilityGateResource | None = None
+        self._payment_objects: PaymentObjectsResource | None = None
+        self._funding: FundingResource | None = None
+        self._fx: FXResource | None = None
+        self._subscriptions_v2: SubscriptionsV2Resource | None = None
+        self._escrow: EscrowResource | None = None
+        self._pay: PayResource | None = None
+        self._mandate_delegation: Any = None
+        self._batch: Any = None
+
+    @property
+    def pay(self) -> PayResource:
+        """Access the pay resource."""
+        if self._pay is None:
+            from .resources.pay import PayResource
+            self._pay = PayResource(self)
+        return self._pay
+
+    @property
+    def mandate_delegation(self):
+        """Access the mandate delegation resource."""
+        if self._mandate_delegation is None:
+            from .resources.mandate_delegation import MandateDelegationResource
+            self._mandate_delegation = MandateDelegationResource(self)
+        return self._mandate_delegation
+
+    @property
+    def batch(self):
+        """Access the batch payments resource."""
+        if self._batch is None:
+            from .resources.batch import BatchResource
+            self._batch = BatchResource(self)
+        return self._batch
+
+    @property
+    def groups(self) -> GroupsResource:
+        """Access the groups resource."""
+        if self._groups is None:
+            from .resources.groups import GroupsResource
+            self._groups = GroupsResource(self)
+        return self._groups
+
+    @property
+    def agents(self) -> AgentsResource:
+        """Access the agents resource."""
+        if self._agents is None:
+            from .resources.agents import AgentsResource
+            self._agents = AgentsResource(self)
+        return self._agents
+
+    @property
+    def wallets(self) -> WalletsResource:
+        """Access the wallets resource."""
+        if self._wallets is None:
+            from .resources.wallets import WalletsResource
+            self._wallets = WalletsResource(self)
+        return self._wallets
+
+    @property
+    def payments(self) -> PaymentsResource:
+        """Access the payments resource."""
+        if self._payments is None:
+            from .resources.payments import PaymentsResource
+            self._payments = PaymentsResource(self)
+        return self._payments
+
+    @property
+    def holds(self) -> HoldsResource:
+        """Access the holds resource."""
+        if self._holds is None:
+            from .resources.holds import HoldsResource
+            self._holds = HoldsResource(self)
+        return self._holds
+
+    @property
+    def cards(self) -> CardsResource:
+        """Access the cards resource."""
+        if self._cards is None:
+            from .resources.cards import CardsResource
+            self._cards = CardsResource(self)
+        return self._cards
+
+    @property
+    def policies(self) -> PoliciesResource:
+        """Access the policies resource."""
+        if self._policies is None:
+            from .resources.policies import PoliciesResource
+            self._policies = PoliciesResource(self)
+        return self._policies
+
+    @property
+    def webhooks(self) -> WebhooksResource:
+        """Access the webhooks resource."""
+        if self._webhooks is None:
+            from .resources.webhooks import WebhooksResource
+            self._webhooks = WebhooksResource(self)
+        return self._webhooks
+
+    @property
+    def marketplace(self) -> MarketplaceResource:
+        """Access the marketplace resource."""
+        if self._marketplace is None:
+            from .resources.marketplace import MarketplaceResource
+            self._marketplace = MarketplaceResource(self)
+        return self._marketplace
+
+    @property
+    def transactions(self) -> TransactionsResource:
+        """Access the transactions resource."""
+        if self._transactions is None:
+            from .resources.transactions import TransactionsResource
+            self._transactions = TransactionsResource(self)
+        return self._transactions
+
+    @property
+    def ledger(self) -> LedgerResource:
+        """Access the ledger resource."""
+        if self._ledger is None:
+            from .resources.ledger import LedgerResource
+            self._ledger = LedgerResource(self)
+        return self._ledger
+
+    @property
+    def treasury(self) -> TreasuryResource:
+        """Access the treasury resource."""
+        if self._treasury is None:
+            from .resources.treasury import TreasuryResource
+            self._treasury = TreasuryResource(self)
+        return self._treasury
+
+    @property
+    def approvals(self) -> ApprovalsResource:
+        """Access the approvals resource."""
+        if self._approvals is None:
+            from .resources.approvals import ApprovalsResource
+            self._approvals = ApprovalsResource(self)
+        return self._approvals
+
+    @property
+    def kill_switch(self) -> KillSwitchResource:
+        """Access the kill switch resource."""
+        if self._kill_switch is None:
+            from .resources.kill_switch import KillSwitchResource
+            self._kill_switch = KillSwitchResource(self)
+        return self._kill_switch
+
+    @property
+    def evidence(self) -> EvidenceResource:
+        """Access the evidence resource."""
+        if self._evidence is None:
+            from .resources.evidence import EvidenceResource
+            self._evidence = EvidenceResource(self)
+        return self._evidence
+
+    @property
+    def simulation(self) -> SimulationResource:
+        """Access the simulation resource."""
+        if self._simulation is None:
+            from .resources.simulation import SimulationResource
+            self._simulation = SimulationResource(self)
+        return self._simulation
+
+    @property
+    def exceptions(self) -> ExceptionsResource:
+        """Access the exceptions resource."""
+        if self._exceptions is None:
+            from .resources.exceptions import ExceptionsResource
+            self._exceptions = ExceptionsResource(self)
+        return self._exceptions
+
+    @property
+    def facility_gate(self) -> FacilityGateResource:
+        """Access the Facility Gate resource."""
+        if self._facility_gate is None:
+            from .resources.facility_gate import FacilityGateResource
+            self._facility_gate = FacilityGateResource(self)
+        return self._facility_gate
+
+    @property
+    def payment_objects(self) -> PaymentObjectsResource:
+        """Access the payment objects resource."""
+        if self._payment_objects is None:
+            from .resources.payment_objects import PaymentObjectsResource
+            self._payment_objects = PaymentObjectsResource(self)
+        return self._payment_objects
+
+    @property
+    def funding(self) -> FundingResource:
+        """Access the funding resource."""
+        if self._funding is None:
+            from .resources.funding import FundingResource
+            self._funding = FundingResource(self)
+        return self._funding
+
+    @property
+    def fx(self) -> FXResource:
+        """Access the FX resource."""
+        if self._fx is None:
+            from .resources.fx import FXResource
+            self._fx = FXResource(self)
+        return self._fx
+
+    @property
+    def subscriptions_v2(self) -> SubscriptionsV2Resource:
+        """Access the subscriptions v2 resource."""
+        if self._subscriptions_v2 is None:
+            from .resources.subscriptions_v2 import SubscriptionsV2Resource
+            self._subscriptions_v2 = SubscriptionsV2Resource(self)
+        return self._subscriptions_v2
+
+    @property
+    def escrow(self) -> EscrowResource:
+        """Access the escrow resource."""
+        if self._escrow is None:
+            from .resources.escrow import EscrowResource
+            self._escrow = EscrowResource(self)
+        return self._escrow
+
+    def _get_client(self) -> httpx.Client:
+        """Get or create the HTTP client with connection pooling."""
+        if self._client is None or self._client.is_closed:
+            try:
+                self._client = httpx.Client(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=True,
+                )
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 dependencies not available; falling back to HTTP/1.1"
+                )
+                self._client = httpx.Client(
+                    base_url=self._base_url,
+                    timeout=self._timeout.to_httpx_timeout(),
+                    limits=self._pool.to_httpx_limits(),
+                    http2=False,
+                )
+        return self._client
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        context: RequestContext | None = None,
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Make an HTTP request with retry logic.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            path: API path
+            params: Query parameters
+            json: JSON body
+            headers: Additional headers
+            context: Request context for logging and tracking
+            timeout: Per-request timeout override
+
+        Returns:
+            Response JSON as dictionary
+
+        Raises:
+            SardisError: On API errors
+            TimeoutError: On request timeout
+            NetworkError: On network errors
+        """
+        context = context or RequestContext()
+        client = self._get_client()
+        url = self._build_url(path)
+        request_headers = self._get_headers(context, headers)
+
+        # Determine timeout
+        if timeout is not None:
+            if isinstance(timeout, (int, float)):
+                request_timeout = httpx.Timeout(timeout)
+            else:
+                request_timeout = timeout.to_httpx_timeout()
+        elif context.timeout:
+            request_timeout = context.timeout.to_httpx_timeout()
+        else:
+            request_timeout = self._timeout.to_httpx_timeout()
+
+        last_error: Exception | None = None
+
+        for attempt in range(self._retry.max_retries + 1):
+            start_time = time.monotonic()
+
+            try:
+                # Log request
+                self._request_logger.log_request(
+                    method=method,
+                    url=url,
+                    headers=request_headers,
+                    body=json,
+                    context=context,
+                )
+
+                response = client.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json,
+                    headers=request_headers,
+                    timeout=request_timeout,
+                )
+
+                duration_ms = (time.monotonic() - start_time) * 1000
+
+                # Log response
+                try:
+                    response_body = response.json() if response.content else None
+                except Exception:
+                    response_body = response.text
+
+                self._request_logger.log_response(
+                    status_code=response.status_code,
+                    url=url,
+                    headers=dict(response.headers),
+                    body=response_body,
+                    duration_ms=duration_ms,
+                    context=context,
+                )
+
+                # Check for retryable status codes
+                if response.status_code in self._retry.retry_on_status:
+                    if attempt < self._retry.max_retries:
+                        delay = self._retry.calculate_delay(attempt)
+
+                        # Special handling for rate limits
+                        if response.status_code == 429:
+                            retry_after = int(response.headers.get("Retry-After", str(delay)))
+                            delay = max(delay, retry_after)
+
+                        self._request_logger.log_retry(
+                            attempt=attempt + 1,
+                            delay=delay,
+                            reason=f"Status {response.status_code}",
+                            context=context,
+                        )
+                        time.sleep(delay)
+                        continue
+
+                # Handle error responses
+                if response.status_code >= 400:
+                    self._handle_error_response(response, context)
+
+                return response.json()
+
+            except self._retry.retry_on_exceptions as e:
+                last_error = e
+
+                if attempt < self._retry.max_retries:
+                    delay = self._retry.calculate_delay(attempt)
+                    self._request_logger.log_retry(
+                        attempt=attempt + 1,
+                        delay=delay,
+                        reason=str(e),
+                        context=context,
+                    )
+                    time.sleep(delay)
+                    continue
+
+                # Convert to appropriate error type
+                if isinstance(e, httpx.TimeoutException):
+                    raise TimeoutError(
+                        f"Request timed out after {request_timeout}",
+                        request_id=context.request_id,
+                    ) from e
+                elif isinstance(e, httpx.ConnectError):
+                    raise ConnectionError(
+                        f"Failed to connect to {url}",
+                        request_id=context.request_id,
+                    ) from e
+                else:
+                    raise NetworkError(
+                        f"Network error: {e}",
+                        request_id=context.request_id,
+                    ) from e
+
+            except SardisError:
+                raise
+
+            except Exception as e:
+                raise SardisError(
+                    f"Unexpected error: {e}",
+                    request_id=context.request_id,
+                ) from e
+
+        # Should not reach here, but handle edge case
+        if last_error:
+            raise NetworkError(
+                f"Max retries exceeded: {last_error}",
+                request_id=context.request_id,
+            ) from last_error
+
+        raise SardisError(
+            "Unexpected error in request retry loop",
+            request_id=context.request_id,
+        )
+
+    def health(self) -> dict[str, Any]:
+        """Check API health status.
+
+        Returns:
+            Health status information
+        """
+        return self._request("GET", "/health")
+
+    def execute_payment(
+        self,
+        mandate: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Legacy convenience wrapper for executing a single mandate."""
+        return self._request(
+            "POST",
+            "/api/v2/mandates/execute",
+            json={"mandate": mandate},
+            timeout=timeout,
+        )
+
+    def execute_ap2_payment(
+        self,
+        bundle: dict[str, Any],
+        timeout: float | TimeoutConfig | None = None,
+    ) -> dict[str, Any]:
+        """Legacy convenience wrapper for executing an AP2 bundle."""
+        return self._request(
+            "POST",
+            "/api/v2/ap2/payments/execute",
+            json=bundle,
+            timeout=timeout,
+        )
+
+    def close(self) -> None:
+        """Close the HTTP client and release resources."""
+        if self._telemetry:
+            try:
+                self._telemetry.shutdown()
+            except Exception:
+                logger.debug("Sync telemetry shutdown failed", exc_info=True)
+        if self._client and not self._client.is_closed:
+            self._client.close()
+            self._client = None
+
+    def __enter__(self) -> Sardis:
+        """Context manager entry."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
+    ) -> None:
+        """Context manager exit."""
+        self.close()

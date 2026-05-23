@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-guardrails"
-version = "1.1.0"
-description = "Runtime safety guardrails for Sardis agent payments: circuit breakers, kill switches, rate limiting, and behavioral monitoring"
+version = "0.99.0"
+description = "Deprecation shim — sardis-guardrails is now part of the `sardis` umbrella package (use `from sardis.guardrails import ...`)."
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -35,17 +35,13 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "pydantic>=2.6",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4",
-    "pytest-asyncio>=0.21",
-    "pytest-cov>=4.1",
-    "mypy>=1.7",
-    "ruff>=0.1",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.urls]

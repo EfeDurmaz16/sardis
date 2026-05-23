@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
-
 from sardis_compliance.kyc import (
     FailoverKYCProvider,
     InquirySession,

@@ -1,209 +1,31 @@
-"""Sardis Guardrails - Runtime safety for agent payments.
+"""Deprecation shim — `sardis_guardrails` is being consolidated into `sardis.guardrails`.
 
-Provides circuit breakers, kill switches, rate limiting, input validation,
-and behavioral monitoring for safe agent payment execution.
+Install the umbrella package and update imports:
+
+    pip install sardis
+    from sardis.guardrails import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
 """
+import warnings
 
-from sardis_guardrails.agent_threat_detector import (
-    AgentThreatAssessment,
-    AgentThreatDetector,
-    AgentThreatSignals,
-    ThreatCategory,
-    get_agent_threat_detector,
-)
-from sardis_guardrails.anomaly_engine import (
-    AnomalyEngine,
-    RiskAction,
-    RiskAssessment,
-    RiskSignal,
-)
-from sardis_guardrails.behavioral_monitor import (
-    AlertSeverity,
-    BehavioralAlert,
-    BehavioralMonitor,
-    SensitivityLevel,
-    SpendingPattern,
-    TransactionData,
-)
-from sardis_guardrails.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitBreakerError,
-    CircuitBreakerStats,
-    CircuitState,
-)
-from sardis_guardrails.fingerprint import (
-    BotResult,
-    DeviceIntelligence,
-    DeviceRisk,
-    FingerprintError,
-    FingerprintProvider,
-    TamperingResult,
-    VPNResult,
-    get_fingerprint_provider,
-)
-from sardis_guardrails.ft3_taxonomy import (
-    FT3Event,
-    FT3Mitigation,
-    FT3MitigationStatus,
-    FT3Severity,
-    FT3Tactic,
-    FT3TaxonomyRegistry,
-    FT3TaxonomyStats,
-    FT3Technique,
-    classify_event,
-    create_ft3_registry,
-)
-from sardis_guardrails.graph_fraud import (
-    GraphAnalysisResult,
-    GraphFraudAnalyzer,
-    GraphPattern,
-    GraphRiskLevel,
-    PatternMatch,
-    TransactionEdge,
-    TransactionGraph,
-    WalletNode,
-    create_graph_analyzer,
-)
-from sardis_guardrails.input_validator import (
-    AmountValidator,
-    ChainTokenValidator,
-    PaymentInputValidator,
-    StringSanitizer,
-    ValidationError,
-    WalletAddressValidator,
-)
-from sardis_guardrails.kill_switch import (
-    ActivationReason,
-    KillSwitch,
-    KillSwitchActivation,
-    KillSwitchError,
-    get_kill_switch,
-)
-from sardis_guardrails.ml_fraud import (
-    FEATURE_SCHEMA,
-    FraudResult,
-    MLFraudScorer,
-    ModelStatus,
-    ScalerState,
-    TransactionFeatures,
-    extract_features,
-    get_ml_fraud_scorer,
+warnings.warn(
+    "sardis_guardrails is deprecated. Install `sardis` and use "
+    "`from sardis.guardrails import ...`. This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-# Alias to avoid conflict with zen_engine FraudAction
-from sardis_guardrails.ml_fraud import FraudAction as MLFraudAction
-from sardis_guardrails.rate_limiter import (
-    RateLimit,
-    RateLimiter,
-    RateLimitError,
-    TokenBucket,
-    TransactionRecord,
-)
+import sardis.guardrails as _new  # noqa: E402
 
-try:
-    from sardis_guardrails.zen_engine import (
-        FraudAction,
-        FraudRuleResult,
-        ZenFraudEngine,
-        ZenFraudProvider,
-    )
-except ImportError:
-    # zen-engine optional dependency not installed
-    ZenFraudEngine = None  # type: ignore[assignment,misc]
-    ZenFraudProvider = None  # type: ignore[assignment,misc]
-    FraudAction = None  # type: ignore[assignment,misc]
-    FraudRuleResult = None  # type: ignore[assignment,misc]
+# Re-bind __path__ so submodule imports work (e.g., from sardis_guardrails.foo import X)
+__path__ = _new.__path__
 
-__version__ = "1.1.0"
 
-__all__ = [
-    # Circuit Breaker
-    "CircuitBreaker",
-    "CircuitBreakerConfig",
-    "CircuitBreakerError",
-    "CircuitBreakerStats",
-    "CircuitState",
-    # Kill Switch
-    "ActivationReason",
-    "KillSwitch",
-    "KillSwitchActivation",
-    "KillSwitchError",
-    "get_kill_switch",
-    # Rate Limiter
-    "RateLimit",
-    "RateLimiter",
-    "RateLimitError",
-    "TokenBucket",
-    "TransactionRecord",
-    # Input Validator
-    "AmountValidator",
-    "ChainTokenValidator",
-    "PaymentInputValidator",
-    "StringSanitizer",
-    "ValidationError",
-    "WalletAddressValidator",
-    # Behavioral Monitor
-    "AlertSeverity",
-    "BehavioralAlert",
-    "BehavioralMonitor",
-    "SensitivityLevel",
-    "SpendingPattern",
-    "TransactionData",
-    # Anomaly Engine
-    "AnomalyEngine",
-    "RiskAction",
-    "RiskAssessment",
-    "RiskSignal",
-    # Agent Threat Detection
-    "AgentThreatDetector",
-    "AgentThreatAssessment",
-    "AgentThreatSignals",
-    "ThreatCategory",
-    "get_agent_threat_detector",
-    # Zen Fraud Engine
-    "ZenFraudEngine",
-    "ZenFraudProvider",
-    "FraudAction",
-    "FraudRuleResult",
-    # Fingerprint Device Intelligence
-    "FingerprintProvider",
-    "DeviceIntelligence",
-    "DeviceRisk",
-    "BotResult",
-    "VPNResult",
-    "TamperingResult",
-    "FingerprintError",
-    "get_fingerprint_provider",
-    # ML Fraud Detection
-    "MLFraudScorer",
-    "MLFraudAction",
-    "FraudResult",
-    "TransactionFeatures",
-    "ScalerState",
-    "ModelStatus",
-    "FEATURE_SCHEMA",
-    "extract_features",
-    "get_ml_fraud_scorer",
-    # Graph-Based Fraud Detection
-    "GraphFraudAnalyzer",
-    "GraphAnalysisResult",
-    "GraphPattern",
-    "GraphRiskLevel",
-    "PatternMatch",
-    "TransactionEdge",
-    "TransactionGraph",
-    "WalletNode",
-    "create_graph_analyzer",
-    # FT3 Fraud Taxonomy
-    "FT3TaxonomyRegistry",
-    "FT3Tactic",
-    "FT3Technique",
-    "FT3Event",
-    "FT3Severity",
-    "FT3Mitigation",
-    "FT3MitigationStatus",
-    "FT3TaxonomyStats",
-    "create_ft3_registry",
-    "classify_event",
-]
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.guardrails."""
+    return getattr(_new, name)
+
+
+def __dir__():
+    return dir(_new)

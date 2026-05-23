@@ -1,105 +1,31 @@
-"""Universal Commerce Protocol (UCP) integration for Sardis.
+"""Deprecation shim — `sardis_ucp` is being consolidated into `sardis.ucp`.
 
-UCP enables structured commerce between agents and merchants, providing:
-- Checkout sessions with cart management
-- Order lifecycle management
-- Fulfillment tracking
-- Payment mandate translation (AP2 <-> UCP)
+Install the umbrella package and update imports:
 
-This package bridges UCP's commerce primitives with Sardis's payment infrastructure.
+    pip install sardis
+    from sardis.ucp import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
 """
+import warnings
 
-from .capabilities.checkout import (
-    CheckoutError,
-    CheckoutResult,
-    CheckoutSession,
-    CheckoutSessionExpiredError,
-    CheckoutSessionNotFoundError,
-    CheckoutSessionStatus,
-    InvalidCheckoutOperationError,
-    UCPCheckoutCapability,
-)
-from .models.mandates import (
-    UCPCartMandate,
-    UCPCheckoutMandate,
-    UCPCurrency,
-    UCPDiscount,
-    UCPDiscountType,
-    UCPLineItem,
-    UCPPaymentMandate,
-)
-from .models.orders import (
-    UCPFulfillment,
-    UCPFulfillmentEvent,
-    UCPFulfillmentStatus,
-    UCPOrder,
-    UCPOrderStatus,
-    UCPShippingAddress,
-)
-from .models.profiles import (
-    UCPBusinessProfile,
-    UCPCapability,
-    UCPCapabilityType,
-    UCPConformanceProfile,
-    UCPEndpoints,
-    UCPPaymentCapability,
-    UCPPlatformProfile,
-    UCPSecurityLockMode,
+warnings.warn(
+    "sardis_ucp is deprecated. Install `sardis` and use "
+    "`from sardis.ucp import ...`. This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-# UCP Protocol Version
-UCP_PROTOCOL_VERSION = "1.0"
-UCP_SUPPORTED_VERSIONS = ["1.0"]
+import sardis.ucp as _new  # noqa: E402
+
+# Re-bind __path__ so submodule imports work (e.g., from sardis_ucp.foo import X)
+__path__ = _new.__path__
 
 
-def validate_ucp_version(version: str) -> tuple[bool, str | None]:
-    """Validate a UCP protocol version string."""
-    if not version:
-        return True, None
-    if version in UCP_SUPPORTED_VERSIONS:
-        return True, None
-    major = version.split(".")[0] if "." in version else version
-    supported_majors = {v.split(".")[0] for v in UCP_SUPPORTED_VERSIONS}
-    if major not in supported_majors:
-        return False, f"ucp_version_unsupported:{version}"
-    return True, None
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.ucp."""
+    return getattr(_new, name)
 
-__all__ = [
-    # Mandates
-    "UCPCurrency",
-    "UCPDiscountType",
-    "UCPCartMandate",
-    "UCPCheckoutMandate",
-    "UCPPaymentMandate",
-    "UCPLineItem",
-    "UCPDiscount",
-    # Profiles
-    "UCPCapabilityType",
-    "UCPBusinessProfile",
-    "UCPPlatformProfile",
-    "UCPCapability",
-    "UCPPaymentCapability",
-    "UCPEndpoints",
-    "UCPSecurityLockMode",
-    "UCPConformanceProfile",
-    # Orders
-    "UCPOrder",
-    "UCPOrderStatus",
-    "UCPFulfillment",
-    "UCPFulfillmentStatus",
-    "UCPFulfillmentEvent",
-    "UCPShippingAddress",
-    # Checkout
-    "UCPCheckoutCapability",
-    "CheckoutSession",
-    "CheckoutSessionStatus",
-    "CheckoutResult",
-    "CheckoutError",
-    "CheckoutSessionExpiredError",
-    "CheckoutSessionNotFoundError",
-    "InvalidCheckoutOperationError",
-    # Version
-    "UCP_PROTOCOL_VERSION",
-    "UCP_SUPPORTED_VERSIONS",
-    "validate_ucp_version",
-]
+
+def __dir__():
+    return dir(_new)

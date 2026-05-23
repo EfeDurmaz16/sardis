@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-a2a"
-version = "1.1.0"
-description = "Agent-to-Agent (A2A) protocol integration for Sardis"
+version = "0.99.0"
+description = "Deprecation shim — sardis-a2a is now part of sardis (use `pip install sardis[a2a]`)."
 authors = [{name = "Sardis", email = "efe@sardis.sh"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -26,9 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=1.0.0",
-    "pydantic>=2.6",
-    "httpx>=0.25",
+    "sardis[a2a]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

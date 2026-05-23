@@ -4,7 +4,6 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.confidence_router import (
     ApprovalWorkflow,
     ConfidenceLevel,

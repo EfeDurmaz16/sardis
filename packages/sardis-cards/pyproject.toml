@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-cards"
-version = "1.1.0"
-description = "Virtual card integration for Sardis payment platform"
+version = "0.99.0"
+description = "Deprecation shim — sardis-cards is now part of the `sardis` umbrella package (use `from sardis.cards import ...`)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -26,28 +26,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "httpx>=0.25.0",
-    "pydantic>=2.0.0",
-    "sardis-core",
-    "stripe>=7.0.0",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.0.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
-lithic = [
-    "lithic>=0.30.0",
-]
-stripe = [
-    "stripe>=7.0.0",
-]
-all = [
-    "lithic>=0.30.0",
-    "stripe>=7.0.0",
-]
+
 
 [project.urls]
 Homepage = "https://sardis.sh"

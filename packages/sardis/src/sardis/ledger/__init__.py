@@ -1,0 +1,254 @@
+"""
+Sardis Ledger - Production-grade ledger with full transaction support.
+
+This package provides:
+- Append-only ledger with Merkle tree receipts
+- Row-level locking for concurrent transactions
+- Batch transaction processing with atomic commits
+- Balance snapshots for point-in-time queries
+- Blockchain reconciliation
+- Currency conversion
+- Comprehensive audit trail
+
+Example usage:
+
+    from sardis.ledger import LedgerStore, ChainReceipt, LedgerEngine
+
+    # Create a ledger store
+    ledger = LedgerStore("sqlite:///ledger.db")
+
+    # Or use the engine for advanced operations
+    from sardis.ledger.engine import LedgerEngine, LockManager
+    engine = LedgerEngine(lock_manager=LockManager())
+
+    # Create entries with locking
+    entry = engine.create_entry(
+        account_id="acc_123",
+        amount=Decimal("100.50"),
+        entry_type=LedgerEntryType.CREDIT,
+    )
+
+    # Batch processing
+    batch = engine.create_batch([
+        {"account_id": "acc_123", "amount": "50.00", "entry_type": "debit"},
+        {"account_id": "acc_456", "amount": "50.00", "entry_type": "credit"},
+    ])
+
+    # Rollback if needed
+    engine.rollback_batch(batch.batch_id, reason="Customer requested refund")
+"""
+from .content_hash import (
+    HashChainError,
+    canonical_serialize,
+    compute_audit_hash,
+    compute_entry_hash,
+    verify_entry_chain,
+)
+from .db_engine import PostgresLedgerEngine
+from .engine import (
+    BatchProcessingError,
+    ConcurrencyError,
+    InsufficientBalanceError,
+    # Engine
+    LedgerEngine,
+    # Exceptions
+    LedgerError,
+    LockAcquisitionError,
+    # Lock Manager
+    LockManager,
+    LockTimeoutError,
+    RollbackError,
+    ValidationError,
+)
+from .models import (
+    # Constants
+    DECIMAL_PRECISION,
+    DECIMAL_QUANTIZE,
+    DECIMAL_SCALE,
+    AuditAction,
+    AuditLog,
+    BalanceSnapshot,
+    BatchTransaction,
+    CurrencyRate,
+    # Models
+    LedgerEntry,
+    LedgerEntryStatus,
+    # Enums
+    LedgerEntryType,
+    LockRecord,
+    ReconciliationRecord,
+    ReconciliationStatus,
+    # Utilities
+    to_ledger_decimal,
+    validate_amount,
+)
+from .reconciliation import (
+    # Providers
+    ChainProvider,
+    ChainTransaction,
+    CurrencyConverter,
+    Discrepancy,
+    # Types
+    DiscrepancyType,
+    MockChainProvider,
+    # Engines
+    ReconciliationEngine,
+    ReconciliationScheduler,
+    ResolutionStrategy,
+)
+from .records import ChainReceipt, LedgerStore, PendingReconciliation
+
+# Immutable audit trail (optional - requires immudb-py)
+try:
+    from .immutable import (
+        AnchoringError,
+        AuditEntry,
+        BlockchainAnchor,
+        ConsistencyError,
+        # Services
+        ImmutableAuditTrail,
+        # Config
+        ImmutableConfig,
+        ImmutableReceipt,
+        # Errors
+        ImmutableStoreError,
+        # Models
+        MerkleProof,
+        VerificationError,
+        VerificationResult,
+        # Enums
+        VerificationStatus,
+        # Factory
+        create_audit_trail,
+    )
+    IMMUDB_AVAILABLE = True
+except ImportError:
+    IMMUDB_AVAILABLE = False
+
+# Hybrid ledger (PostgreSQL + immudb)
+try:
+    from .hybrid import (
+        ConsistencyReport,
+        DualWriteError,
+        # Config
+        HybridConfig,
+        # Service
+        HybridLedger,
+        # Errors
+        HybridLedgerError,
+        # Models
+        HybridReceipt,
+        # Factory
+        create_hybrid_ledger,
+    )
+    HYBRID_AVAILABLE = True
+except ImportError:
+    HYBRID_AVAILABLE = False
+
+__version__ = "1.1.0"
+
+__all__ = [
+    # Version
+    "__version__",
+    # Feature flags
+    "IMMUDB_AVAILABLE",
+    "HYBRID_AVAILABLE",
+    # Core store
+    "LedgerStore",
+    "ChainReceipt",
+    "PendingReconciliation",
+    # Constants
+    "DECIMAL_PRECISION",
+    "DECIMAL_SCALE",
+    "DECIMAL_QUANTIZE",
+    # Utilities
+    "to_ledger_decimal",
+    "validate_amount",
+    # Enums
+    "LedgerEntryType",
+    "LedgerEntryStatus",
+    "ReconciliationStatus",
+    "AuditAction",
+    # Models
+    "LedgerEntry",
+    "BalanceSnapshot",
+    "AuditLog",
+    "ReconciliationRecord",
+    "BatchTransaction",
+    "CurrencyRate",
+    "LockRecord",
+    # Exceptions
+    "LedgerError",
+    "LockAcquisitionError",
+    "LockTimeoutError",
+    "ConcurrencyError",
+    "InsufficientBalanceError",
+    "BatchProcessingError",
+    "RollbackError",
+    "ValidationError",
+    # Lock Manager
+    "LockManager",
+    # Engine
+    "LedgerEngine",
+    # DB Engine
+    "PostgresLedgerEngine",
+    # Content-addressed hashing (agit pattern)
+    "canonical_serialize",
+    "compute_entry_hash",
+    "compute_audit_hash",
+    "verify_entry_chain",
+    "HashChainError",
+    # Reconciliation types
+    "DiscrepancyType",
+    "ResolutionStrategy",
+    "ChainTransaction",
+    "Discrepancy",
+    # Reconciliation providers
+    "ChainProvider",
+    "MockChainProvider",
+    # Reconciliation engines
+    "ReconciliationEngine",
+    "CurrencyConverter",
+    "ReconciliationScheduler",
+]
+
+# Add immutable audit trail exports if available
+if IMMUDB_AVAILABLE:
+    __all__.extend([
+        # Config
+        "ImmutableConfig",
+        # Errors
+        "ImmutableStoreError",
+        "VerificationError",
+        "ConsistencyError",
+        "AnchoringError",
+        # Enums
+        "VerificationStatus",
+        # Models
+        "MerkleProof",
+        "ImmutableReceipt",
+        "VerificationResult",
+        "AuditEntry",
+        # Services
+        "ImmutableAuditTrail",
+        "BlockchainAnchor",
+        # Factory
+        "create_audit_trail",
+    ])
+
+# Add hybrid ledger exports if available
+if HYBRID_AVAILABLE:
+    __all__.extend([
+        # Config
+        "HybridConfig",
+        # Errors
+        "HybridLedgerError",
+        "DualWriteError",
+        # Models
+        "HybridReceipt",
+        "ConsistencyReport",
+        # Service
+        "HybridLedger",
+        # Factory
+        "create_hybrid_ledger",
+    ])
