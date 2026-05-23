@@ -1,10 +1,28 @@
 # sardis
 
-Official TypeScript SDK for [Sardis](https://sardis.sh) — the Payment OS for the Agent Economy.
+[![npm](https://img.shields.io/npm/v/sardis?color=CB3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/sardis)
+[![npm downloads](https://img.shields.io/npm/dm/sardis.svg)](https://www.npmjs.com/package/sardis)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/sardis?label=gzipped)](https://bundlephobia.com/package/sardis)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/XMA9JwDJ)
+
+Official **TypeScript SDK** for [Sardis](https://sardis.sh) — the Payment OS for the Agent Economy.
+
+One package, Stripe-style namespaced resources, AP2 mandate builders, first-party adapters for Vercel AI SDK / LangChain.js / Mastra, and runtime-agnostic webhooks. Native `fetch` core — runs on Node 18+, Cloudflare Workers, Vercel Edge, Deno, Bun, and modern browsers.
+
+---
+
+## Install
 
 ```bash
 npm install sardis
+# or
+pnpm add sardis
+# or
+bun add sardis
 ```
+
+---
 
 ## 30-second quickstart
 
@@ -13,16 +31,22 @@ import { Sardis } from "sardis";
 
 const sardis = new Sardis({ apiKey: process.env.SARDIS_API_KEY! });
 
-// Send a stablecoin payment
+// One-liner — wraps wallets.transfer
 await sardis.pay({
   from: "wallet_abc",
   to: "merchant_xyz",
   amount: "25.00",
 });
 
-// Read balance
+// Read a balance
 const balance = await sardis.wallets.getBalance("wallet_abc");
+
+// Holds — authorize, then capture
+const hold = await sardis.holds.create({ walletId: "wallet_abc", amount: "50.00" });
+await sardis.holds.capture(hold.holdId, { amount: "42.00" });
 ```
+
+---
 
 ## With Vercel AI SDK
 
@@ -53,9 +77,8 @@ const tools = createSardisTools({
   apiKey: process.env.SARDIS_API_KEY!,
   walletId: "wallet_abc",
 });
-
-// Pass `tools` to a LangChain agent. Each tool has `{ name, description,
-// schema, invoke }` matching @langchain/core/tools.
+// Hand `tools` to any LangChain agent — each tool implements
+// { name, description, schema, invoke } per @langchain/core/tools.
 ```
 
 ## With Mastra
@@ -74,26 +97,18 @@ const agent = new Agent({
 });
 ```
 
-## What's included
-
-- `sardis` — unified client with namespaced resources (Stripe-style)
-- `sardis/ai-sdk` — Vercel AI SDK provider
-- `sardis/langchain` — LangChain.js tools
-- `sardis/mastra` — Mastra tools
-- `sardis/protocol` — AP2 mandate builders (`Mandate.intent()`, `Mandate.cart()`, `Mandate.payment()`)
-- `sardis/cards`, `sardis/ledger`, `sardis/chain`, `sardis/ucp`, `sardis/compliance`, `sardis/guardrails`, `sardis/checkout`, `sardis/wallet`, `sardis/ramp`, `sardis/webhooks` — domain subpaths
-- `sardis/shims/node`, `sardis/shims/web` — runtime crypto shims
+---
 
 ## AP2 mandate flow (Intent → Cart → Payment)
 
-For payments that need the full mandate chain — required for AP2-compliant agent commerce — drop down to `sardis.payments.executeMandate(...)`:
+For agentic-commerce mandates, build the chain explicitly and drop down to `payments.executeAP2`:
 
 ```ts
 import { Mandate } from "sardis/protocol";
 
 const intent = Mandate.intent({
   subjectId: "agent_abc",
-  description: "Purchase OpenAI credits for code generation",
+  description: "Purchase OpenAI credits",
   maxAmount: "100.00",
   domain: "openai.com",
 });
@@ -113,17 +128,39 @@ const payment = Mandate.payment({
 await sardis.payments.executeAP2(intent, cart, payment);
 ```
 
-## Edge runtime support
+---
 
-`sardis` runs on Node 18+, Cloudflare Workers, Vercel Edge, Deno, Bun, and modern browsers. The HTTP core uses native `fetch` — no axios, no polyfills.
+## Subpath exports
 
-For webhook signature verification at the edge, use `sardis/shims/web`:
+Tree-shake friendly — importing one subpath does not pull in the rest.
 
-```ts
-import { hmacSha256Hex, timingSafeEqual } from "sardis/shims/web";
-```
+| Subpath | Purpose | Gzipped |
+| --- | --- | --- |
+| `sardis` | Unified client + namespaced resources | ≤ 30 KB |
+| `sardis/ai-sdk` | Vercel AI SDK provider | ≤ 8 KB |
+| `sardis/langchain` | LangChain.js tools | ≤ 8 KB |
+| `sardis/mastra` | Mastra tools | ≤ 8 KB |
+| `sardis/protocol` | AP2 / TAP mandate builders | — |
+| `sardis/webhooks` | Runtime-agnostic webhook verification | ≤ 5 KB |
+| `sardis/shims/web` | `hmacSha256Hex`, `timingSafeEqual` for edge | ≤ 2 KB |
+| `sardis/shims/node` | Same primitives backed by Node crypto | — |
+| `sardis/cards`, `sardis/ledger`, `sardis/chain`, `sardis/ucp`, `sardis/compliance`, `sardis/guardrails`, `sardis/checkout`, `sardis/wallet`, `sardis/ramp`, `sardis/core` | Domain subpaths | — |
 
-Or use the runtime-agnostic helper:
+---
+
+## Resources on the client
+
+Stripe-style, namespaced — every resource shares the same engine (retry, timeout, telemetry, structured errors):
+
+`payments` · `wallets` · `agents` · `holds` · `cards` · `policies` · `webhooks` · `transactions` · `ledger` · `treasury` · `approvals` · `killSwitch` · `evidence` · `simulation` · `paymentObjects` · `funding` · `fx` · `subscriptionsV2` · `escrow` · `batch` · `streaming` · `mandateDelegation` · `usage` · `facilityGate` · `marketplace` · `checkout` · `groups` · `ucp` · `a2a`
+
+Plus `sardis.pay({ ... })` as the one-liner shortcut over `wallets.transfer`.
+
+---
+
+## Edge & webhooks
+
+The SDK ships no axios, no polyfills — just `fetch`.
 
 ```ts
 import { constructEvent } from "sardis/webhooks";
@@ -131,35 +168,40 @@ import { constructEvent } from "sardis/webhooks";
 const event = await constructEvent(rawBody, signature, secret);
 ```
 
-## Migration from `@sardis/sdk` v1
+For edge runtimes:
+
+```ts
+import { hmacSha256Hex, timingSafeEqual } from "sardis/shims/web";
+```
+
+---
+
+## Migrating from `@sardis/sdk` v1
 
 ```bash
 npx sardis-migrate
 ```
 
-This rewrites:
+Rewrites:
 
 - `import { SardisClient } from "@sardis/sdk"` → `import { Sardis } from "sardis"`
-- `new SardisClient(...)` → `new Sardis(...)`
+- `new SardisClient(opts)` → `new Sardis(opts)`
 - `import { createSardisTools } from "@sardis/ai-sdk"` → `import { createSardis } from "sardis/ai-sdk"`
 - `createSardisTools(opts)` → `createSardis(opts).tools`
 - `new SardisProvider(opts)` → `createSardis(opts)`
 
-See [the migration guide](https://sardis.sh/docs/ts-migration) for the full diff.
+Full diff: [migration guide](https://sardis.sh/docs/ts-migration).
 
-## Bundle size
+---
 
-| Subpath           | gzipped |
-| ----------------- | ------- |
-| `sardis`          | ≤ 30 KB |
-| `sardis/ai-sdk`   | ≤ 8 KB  |
-| `sardis/langchain`| ≤ 8 KB  |
-| `sardis/mastra`   | ≤ 8 KB  |
-| `sardis/webhooks` | ≤ 5 KB  |
-| `sardis/shims/web`| ≤ 2 KB  |
+## Documentation
 
-Tree-shake friendly; importing one subpath does not pull in the rest.
+- [docs.sardis.sh](https://docs.sardis.sh)
+- [Getting started](https://docs.sardis.sh/getting-started)
+- [API reference](https://docs.sardis.sh/api)
+- [Framework guides](https://docs.sardis.sh/frameworks)
+- [Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)
 
 ## License
 
-MIT
+MIT.

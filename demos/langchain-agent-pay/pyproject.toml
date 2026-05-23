@@ -1,0 +1,13 @@
+[project]
+name = "sardis-demo-langchain-agent-pay"
+version = "0.1.0"
+description = "LangChain-style agent paying via Sardis tools"
+requires-python = ">=3.11"
+dependencies = [
+  "sardis",
+  "langchain-core>=0.3",
+  "pydantic>=2.0",
+]
+
+[tool.uv.sources]
+sardis = { path = "../../packages/sardis", editable = true }

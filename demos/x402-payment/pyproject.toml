@@ -1,0 +1,11 @@
+[project]
+name = "sardis-demo-x402"
+version = "0.1.0"
+description = "Sardis x402 HTTP 402 payment demo"
+requires-python = ">=3.11"
+dependencies = [
+  "sardis",
+]
+
+[tool.uv.sources]
+sardis = { path = "../../packages/sardis", editable = true }

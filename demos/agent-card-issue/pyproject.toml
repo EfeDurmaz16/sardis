@@ -1,0 +1,11 @@
+[project]
+name = "sardis-demo-agent-card-issue"
+version = "0.1.0"
+description = "Sardis virtual card issuance + policy demo"
+requires-python = ">=3.11"
+dependencies = [
+  "sardis",
+]
+
+[tool.uv.sources]
+sardis = { path = "../../packages/sardis", editable = true }

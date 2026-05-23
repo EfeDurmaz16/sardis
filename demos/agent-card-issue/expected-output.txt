@@ -1,0 +1,11 @@
+[provider] mock
+[card.issued] id=card_<hex> last4=#### status=active per_tx=250.00 daily=1000.00 monthly=5000.00
+
+--- ASA auth simulation ---
+[asa] APPROVE Anthropic API     mcc=7372 amount=$  42.50 -> ok
+[asa] DECLINE Lottery House     mcc=7995 amount=$  10.00 -> blocked_mcc:7995
+[asa] DECLINE AWS EC2           mcc=7399 amount=$ 310.00 -> over_per_tx_cap:310.00>250.00
+[asa] APPROVE Vercel Pro        mcc=7372 amount=$  20.00 -> ok
+
+[summary] card=card_<hex> approved=2 declined=2
+[demo] OK — virtual card lifecycle complete (issue -> policy -> auth -> decision)

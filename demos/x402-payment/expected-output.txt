@@ -1,0 +1,7 @@
+[agent] GET /api/premium/report
+[server] -> HTTP 402 {"error":"payment_required"}
+[agent] parsed challenge: 1000000 USDC on base-sepolia -> 0xB0bdeadb...
+[agent] signed payment payload, retrying with PAYMENT-SIGNATURE header
+[server] -> HTTP 200 {"report":"agent_economy_q2.json"}
+[agent] settlement header received: ...
+[demo] OK — paid resource fetched in one round-trip after 402

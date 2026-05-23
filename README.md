@@ -1,22 +1,25 @@
 <div align="center">
   <h1>Sardis</h1>
-  <p><strong>Open-source financial authority layer for AI agents</strong></p>
-  <p>Sardis lets agents transact only through signed mandates, deterministic policy checks, approval paths, revocation, and audit evidence before any wallet, card, stablecoin, payment API, or provider rail is used.</p>
-
+  <p><strong>The open-source financial authority layer for AI agents.</strong></p>
   <p>
-    <a href="https://sardis.sh">Website</a> ·
-    <a href="https://sardis.sh/manifesto">Manifesto</a> ·
-    <a href="https://docs.sardis.sh">Docs</a> ·
-    <a href="https://sardis.sh/playground">Playground</a> ·
-    <a href="https://sardis.sh/enterprise">Enterprise</a>
+    Mandates, deterministic policy, approvals, revocation, and audit evidence —
+    enforced before any wallet, card, stablecoin, payment API, or x402 endpoint moves money.
   </p>
 
   <p>
-    <a href="https://www.npmjs.com/package/@sardis/mcp-server"><img src="https://img.shields.io/npm/v/@sardis/mcp-server?label=npm%20%40sardis%2Fmcp-server" alt="npm version"></a>
-    <a href="https://pypi.org/project/sardis/"><img src="https://img.shields.io/pypi/v/sardis?label=PyPI%20sardis" alt="PyPI version"></a>
+    <a href="https://sardis.sh">Website</a> ·
+    <a href="https://docs.sardis.sh">Docs</a> ·
+    <a href="https://sardis.sh/playground">Playground</a> ·
+    <a href="https://discord.gg/XMA9JwDJ">Discord</a>
+  </p>
+
+  <p>
+    <a href="https://pypi.org/project/sardis/"><img src="https://img.shields.io/pypi/v/sardis?label=PyPI&color=3776AB&logo=python&logoColor=white" alt="PyPI"></a>
+    <a href="https://www.npmjs.com/package/sardis"><img src="https://img.shields.io/npm/v/sardis?label=npm&color=CB3837&logo=npm&logoColor=white" alt="npm"></a>
+    <a href="https://www.npmjs.com/package/@sardis/mcp-server"><img src="https://img.shields.io/npm/v/@sardis/mcp-server?label=%40sardis%2Fmcp-server&color=CB3837&logo=npm&logoColor=white" alt="MCP server"></a>
+    <a href="https://github.com/EfeDurmaz16/sardis/stargazers"><img src="https://img.shields.io/github/stars/EfeDurmaz16/sardis?style=flat&logo=github&color=181717" alt="Stars"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-    <a href="https://github.com/EfeDurmaz16/sardis/stargazers"><img src="https://img.shields.io/github/stars/EfeDurmaz16/sardis?style=social" alt="GitHub stars"></a>
-    <a href="https://github.com/EfeDurmaz16/sardis/commits/main"><img src="https://img.shields.io/github/last-commit/EfeDurmaz16/sardis" alt="Last commit"></a>
+    <a href="https://github.com/EfeDurmaz16/sardis/actions"><img src="https://img.shields.io/github/actions/workflow/status/EfeDurmaz16/sardis/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white" alt="CI"></a>
     <a href="https://securityscorecards.dev/viewer/?uri=github.com/EfeDurmaz16/sardis"><img src="https://api.securityscorecards.dev/projects/github.com/EfeDurmaz16/sardis/badge" alt="OpenSSF Scorecard"></a>
     <a href="https://discord.gg/XMA9JwDJ"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
   </p>
@@ -24,17 +27,145 @@
 
 ---
 
-## 🚀 Migrating from v1.x?
+## What Sardis Is
 
-Sardis v2 consolidates 30+ separate `sardis-*` packages into a **single `sardis` umbrella** with submodules + optional extras (Stripe/OpenAI/Anthropic SDK pattern).
+Sardis is the open-source financial authority layer for AI agents. It sits between an autonomous agent and any system that moves money — so every consequential financial action is checked against a signed mandate, deterministic policy, approval path, revocation state, and audit packet **before** it reaches a wallet, card, stablecoin, payment API, or x402 endpoint.
+
+Sardis is not a card wrapper, a custodial wallet, or a rail-specific payment app. It is rail-agnostic governance: bring your own provider (Stripe, Lithic, Privy, Turnkey, Circle, your bank, x402 servers, your own custom adapter) and Sardis enforces the authority layer above them. The deeper thesis is that agents do not have a payments problem — they have a *trust* problem, and money is the sharpest version of it.
+
+---
+
+## 30-second quickstart
+
+### Python
 
 ```bash
-# Old (v1.x — still works for pinned versions)
+pip install sardis
+```
+
+```python
+from sardis import Sardis
+
+client = Sardis(api_key="sk_live_...")
+
+# Unified pay — auto-routes the cheapest chain
+result = client.pay.execute(
+    to="0xabc...",       # address, wallet ID, or merchant domain
+    amount="25.00",
+    currency="USDC",
+)
+print(result["tx_hash"])
+```
+
+### TypeScript
+
+```bash
+npm install sardis
+```
+
+```ts
+import { Sardis } from "sardis";
+
+const sardis = new Sardis({ apiKey: process.env.SARDIS_API_KEY! });
+
+const tx = await sardis.pay({
+  from: "wallet_abc",
+  to: "merchant_xyz",
+  amount: "25.00",
+});
+```
+
+### MCP (Claude Desktop, Cursor, ChatGPT, Windsurf, VS Code)
+
+```json
+{
+  "mcpServers": {
+    "sardis": {
+      "command": "npx",
+      "args": ["-y", "@sardis/mcp-server"],
+      "env": { "SARDIS_API_KEY": "sk_live_..." }
+    }
+  }
+}
+```
+
+Your agent now has a bounded financial surface — 50+ tools for wallets, holds, cards, approvals, policy checks, facility gates, and spending analytics — instead of unconstrained payment access.
+
+---
+
+## Features
+
+|  |  |
+| --- | --- |
+| **Mandates** — Cryptographically signed authority records (AP2 Intent → Cart → Payment chain) verified before execution. | **Policy firewall** — Deterministic NL-to-policy compilation; per-tx, daily, monthly, vendor, and category limits enforced fail-closed. |
+| **Approvals & revocation** — Step-up flows for high-risk actions; kill switch propagates within one decision cycle. | **Provider-neutral adapters** — One contract for cards, stablecoins, fiat APIs, x402, AP2, TAP, and simulator rails. Swap providers without rewriting policy. |
+| **Append-only audit ledger** — Ed25519-signed attestation envelopes; every decision is reconstructable, every state transition is durable. | **15+ framework integrations** — LangChain, CrewAI, OpenAI Agents, Claude Agent SDK, Google ADK, Mastra, Vercel AI SDK, LlamaIndex, A2A, MCP — same policy engine under all of them. |
+
+---
+
+## Use cases
+
+- **Autonomous procurement agents** — Bound a CrewAI or LangChain agent to a $500/day SaaS-only budget; every purchase passes the policy firewall, settles through your existing card program, and lands in an audit packet.
+- **x402 paid HTTP** — Agents pay for API calls per-request; Sardis enforces the mandate and budget envelope before the 402 challenge is honored.
+- **AP2 agentic commerce** — Full Intent → Cart → Payment mandate chain with merchant-side verification; works against any AP2-compatible merchant or your own.
+- **Agent-to-agent (A2A) escrow** — Cryptographic mandate handoff between agents with on-chain or simulator escrow; no agent gets paid without delivery evidence.
+- **Treasury operations agent** — Programmatic transfers, holds, and FX with human-in-the-loop step-up for anything above policy thresholds.
+
+---
+
+## Architecture
+
+Every financial action follows a single authority path. There is no alternative code path that bypasses policy checks.
+
+```
+   AI AGENT  (Claude / Cursor / LangChain / OpenAI / Mastra / ...)
+        │
+        │  MCP  |  Python SDK  |  TypeScript SDK
+        ▼
+┌────────────────────────────────────────────────┐
+│         FinancialActionOrchestrator            │   single entry point
+└────────────────────────────────────────────────┘
+        │
+        ▼
+┌────────────────────────────────────────────────┐
+│           PreExecutionPipeline                 │
+│   • Mandate verification (AP2 / TAP)           │
+│   • Policy evaluation (deterministic)          │
+│   • Atomic spend tracking                      │
+│   • Dedup / idempotency                        │
+│   • Compliance gate (KYC / AML)                │
+│   • KYA trust scoring                          │
+│   Fail-closed: any hook failure blocks the tx  │
+└────────────────────────────────────────────────┘
+        │
+        ▼
+┌────────────────────────────────────────────────┐
+│              PROVIDER ADAPTER                  │
+│   Cards / wallets / fiat / x402 / simulator    │
+└────────────────────────────────────────────────┘
+        │
+        ▼
+┌────────────────────────────────────────────────┐
+│           APPEND-ONLY AUDIT LEDGER             │
+│        Ed25519-signed attestation envelopes    │
+└────────────────────────────────────────────────┘
+```
+
+**Design principles:** fail-closed by default · provider-neutral (no custodial lock-in) · audit everything (signed envelopes, not log lines).
+
+---
+
+## Migrating from v1.x
+
+Sardis v2 consolidates 30+ separate `sardis-*` packages into a small surface — one Python package, one TypeScript package, one MCP binary — with submodules and optional extras (the Stripe / OpenAI / Anthropic SDK pattern).
+
+```bash
+# Python — old
 pip install sardis-core sardis-cli sardis-chain sardis-langchain ...
 
-# New (v2.0.0a0+)
+# Python — new
 pip install sardis
-pip install sardis[langchain,crewai,openai-agents]   # framework extras
+pip install sardis[langchain,crewai,openai-agents]
 ```
 
 ```python
@@ -48,389 +179,117 @@ from sardis.core import Wallet
 from sardis.integrations.langchain import SardisToolkit
 ```
 
-**TypeScript** users: `npm install sardis` (subpath exports for ai-sdk, langchain, mastra). Run `npx sardis-migrate` to codemod legacy imports.
+```bash
+# TypeScript — codemod legacy imports
+npx sardis-migrate
+```
 
-The legacy `sardis-*` packages on PyPI/npm are not removed — pinned production deploys keep working. See [`packages/sardis/MIGRATION_NOTES.md`](packages/sardis/MIGRATION_NOTES.md) for the full migration guide.
+Legacy `sardis-*` packages on PyPI and npm remain published; pinned production deployments keep working. See [`packages/sardis/MIGRATION_NOTES.md`](packages/sardis/MIGRATION_NOTES.md) for the full diff.
 
 ---
 
-## What Sardis Is
+## Sardis vs the alternatives
 
-Sardis is the open-source financial authority layer for AI agents. It sits between autonomous agents and money-moving systems so every consequential financial action is checked against a mandate, policy decision, approval path, revocation path, and audit packet before execution.
+| | Raw provider integration | Stripe / Coinbase / Lithic SDK | **Sardis** |
+| --- | --- | --- | --- |
+| Mandate verification | DIY | None | **Built-in (AP2 / TAP)** |
+| Deterministic policy firewall | DIY | None | **Built-in, fail-closed** |
+| Approval / revocation flows | DIY | None | **Built-in** |
+| Provider neutrality | One per integration | Locked to one provider | **Rail-agnostic adapter contract** |
+| Append-only signed audit | DIY | Partial | **Built-in, Ed25519** |
+| Framework integrations | DIY | DIY | **15+ first-party** |
+| Custody | Up to you | Provider holds funds | **Non-custodial; BYO provider** |
+| License | — | Proprietary | **MIT (open core)** |
 
-Sardis is not a card wrapper, prepaid wallet, or rail-specific payment app. It governs the authority to spend across stablecoin wallets, card programs, fiat payment APIs, x402-style HTTP payments, AP2/TAP mandates, provider-hosted wallets, and simulator rails.
+Sardis does not replace your payment provider. It is the authority layer that sits *above* whichever providers you already use.
 
-The core primitive is verifiable authority before an agent can spend, subscribe, purchase, refund, settle, or trigger paid usage. Customers can bring their own providers; Sardis enforces the authority layer above them without needing to custody funds or become the merchant of record.
+---
 
-The deeper thesis is that agents do not just have a capability problem; they have a trust problem. Sardis treats money as the sharpest version of a broader substrate problem: how non-human actors perform consequential actions with explicit authority, reviewable state transitions, and durable evidence.
+## Maturity
 
-| Layer | Open source | Hosted / commercial |
-|-------|-------------|---------------------|
-| Authority model | Mandates, policies, approvals, revocation, audit packets | Same semantics with managed org, RBAC, SSO, retention, and support |
-| Provider execution | Adapter interfaces, simulator, BYO credentials | Managed credential vault, webhook handling, alerts, provider routing |
+| Feature | Status |
+| --- | --- |
+| Spending policy engine | **Implemented** |
+| AP2 mandate verification | **Implemented** |
+| Provider adapter contract | **Implemented** |
+| Policy attestation API (Ed25519) | **Implemented** |
+| PreExecutionPipeline | **Implemented** |
+| Hosted checkout | **Pilot** |
+| ERC-8183 agentic job escrow | **Pilot** (1% fee cap, USDC-only) |
+| x402 paid HTTP | **Pilot** |
+| Card provider adapters | **Pilot** |
+| Stablecoin provider adapters | **Pilot** |
+| Multi-chain (Polygon, Arbitrum) | **Experimental** |
+| UCP MCP transport | **Experimental** |
+| FIDES trust graph | **Experimental** |
+
+**Implemented** = code + tests in the public repo. **Pilot** = functional under conservative limits, active hardening. **Experimental** = code exists, not production-tested. See [`docs/packages.md`](docs/packages.md) for the package-level matrix.
+
+---
+
+## Roadmap
+
+Live roadmap: [github.com/EfeDurmaz16/sardis/issues](https://github.com/EfeDurmaz16/sardis/issues?q=label%3Aroadmap). Recent shipped work and the next milestones live in [`docs/roadmap.md`](docs/roadmap.md).
+
+---
+
+## Open core boundary
+
+| Layer | Open source (this repo) | Hosted / commercial |
+| --- | --- | --- |
+| Authority model | Mandates, policies, approvals, revocation, audit packets | Same semantics with managed org, RBAC, SSO, retention, support |
+| Provider execution | Adapter interfaces, simulator, BYO credentials | Managed credential vault, webhook handling, alerts, routing |
 | Developer surface | SDKs, MCP server, examples, protocol adapters | Hosted dashboard, approval inbox, compliance workflows, audit export |
 
-Read the boundaries:
+Boundary detail: [`OPEN_CORE.md`](OPEN_CORE.md) · [`PROVIDER_ABSTRACTION.md`](PROVIDER_ABSTRACTION.md) · [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md) · [`DISCLAIMER.md`](DISCLAIMER.md).
 
-- [Open-core model](OPEN_CORE.md)
-- [Provider abstraction](PROVIDER_ABSTRACTION.md)
-- [OSS goal](docs/oss/goal.md)
-- [Public/private boundary](docs/oss/public-private-boundary.md)
+---
+
+## Documentation
+
+- [Getting started](https://docs.sardis.sh/getting-started) — first payment in 5 minutes
+- [API reference](https://docs.sardis.sh/api)
+- [MCP server setup](https://docs.sardis.sh/mcp)
+- [Policy language](https://docs.sardis.sh/policies) — write spending rules in plain English
+- [Framework guides](https://docs.sardis.sh/frameworks) — LangChain, OpenAI, Vercel AI SDK, …
+- [Security model](https://docs.sardis.sh/security) — MPC architecture and threat model
+- [Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)
 - [Package maturity matrix](docs/packages.md)
-- [Legal and compliance disclaimer](DISCLAIMER.md)
+- [Source-tree policy](docs/oss/source-layout.md)
+- [Contribution map](docs/oss/contribution-map.md)
+- [Development guide](docs/development.md)
+- [Security policy](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Support](SUPPORT.md)
 
 ---
 
-## 📦 Quick Install
+## Contributing
+
+Pull requests welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md). Quick path:
 
 ```bash
-# MCP Server (Claude, Cursor, ChatGPT)
-npx @sardis/mcp-server start
-
-# Python SDK
-pip install sardis
-
-# TypeScript SDK
-npm install @sardis/sdk
-
-# LangChain
-pip install sardis  # Uses sardis-sdk under the hood
-
-# CrewAI
-pip install sardis  # Compatible with CrewAI tools
-
-# OpenAI Functions
-pip install sardis  # Use with OpenAI function calling
-
-# Gemini / ADK
-pip install sardis  # Compatible with Google AI SDKs
-
-# Vercel AI SDK
-npm install @sardis/ai-sdk
-```
-
----
-
-## What Problems Sardis Solves
-
-AI agents can draft invoices, call paid APIs, buy tools, book travel, issue refunds, subscribe to services, and interact with merchants. The missing layer is not only "payments." It is the authority system that decides whether the agent was allowed to do the financial action in the first place.
-
-Sardis provides:
-
-- **Mandates** -- who delegated authority to the agent, for what scope, under which limits.
-- **Policy firewall** -- deterministic checks before execution or signing.
-- **Approvals** -- step-up flows for high-risk, high-value, or ambiguous actions.
-- **Revocation** -- stop future execution when authority changes.
-- **Provider adapters** -- route approved actions to wallets, cards, stablecoins, payment APIs, or simulators.
-- **Audit packets** -- immutable evidence for operators, customers, partners, and reviewers.
-
-Sardis can route approved actions to provider adapters. Live-money deployments depend on the configured provider account, jurisdiction, compliance program, and customer policy.
-
----
-
-## Protocol & Feature Maturity
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Spending Policy Engine | **Implemented** | Deterministic NL-to-policy, atomic spend tracking |
-| AP2 Mandate Verification | **Implemented** | Full mandate chain verification with evidence |
-| Provider Adapter Model | **Implemented** | Rail-agnostic execution contract and simulator-first semantics |
-| Policy Attestation API | **Implemented** | Signed attestation envelopes with Ed25519 |
-| PreExecutionPipeline | **Implemented** | Composable hook chain with fail-closed defaults |
-| Hosted Checkout | **Pilot** | Merchant checkout flows with session security |
-| ERC-8183 Agentic Jobs | **Pilot** | On-chain job escrow (conservative caps: 1% fee, USDC-only) |
-| x402 Protocol | **Pilot** | HTTP-native micropayments |
-| Card Provider Adapters | **Pilot** | Provider-backed virtual card execution behind explicit capability checks |
-| Stablecoin Provider Adapters | **Pilot** | Provider-backed stablecoin execution behind explicit capability checks |
-| Multi-chain (Polygon, Arbitrum) | **Experimental** | Chain routing implemented, not production-tested |
-| UCP MCP Transport | **Experimental** | Partial implementation |
-| FIDES Trust Graph | **Experimental** | DID-based trust federation |
-
-> **Status key:** **Implemented** = code and tests exist in the public repository. **Pilot** = functional with conservative limits and active hardening. **Experimental** = code exists, not production-tested.
-
----
-
-## Key Features
-
-- **Provider-neutral authority layer** -- govern cards, wallets, stablecoins, payment APIs, x402, AP2, TAP, and simulator rails
-- **Mandates and spending policy** -- "Max $50/tx, $200/day, SaaS vendors only"
-- **Pre-execution policy firewall** -- fail-closed checks before signing, issuing, paying, refunding, or settling
-- **Approval and revocation flows** -- step-up before risky actions, kill switch when authority changes
-- **Provider adapter contract** -- capability declarations, idempotency, signed webhooks, revocation windows, audit fields
-- **15+ AI framework integrations** -- LangChain, CrewAI, OpenAI Agents, Claude SDK, Google ADK, A2A, AgentKit, Vercel AI SDK, MCP, and more
-- **Agent-to-agent escrow** -- Cryptographic mandate chain for A2A payments
-- **KYA (Know Your Agent)** -- Trust scoring and behavioral anomaly detection
-- **Double-entry audit ledger** -- Append-only transaction history with cryptographic proofs
-- **Protocol support** -- AP2 and TAP (production), x402 (pilot), UCP and A2A (partial)
-
----
-
-## 🚀 Quick Start
-
-### Python (5 lines)
-
-```python
-from sardis import Sardis
-
-client = Sardis(api_key="sk_...")
-result = client.pay(
-    to="merchant@example.com",
-    amount="50.00",
-    currency="USDC",
-    chain="base",
-)
-print(f"Payment: {result.tx_hash}")
-```
-
-> Migrating from v1.x? `from sardis_sdk import SardisClient` still works
-> via a deprecation shim, but `from sardis import Sardis` is the supported
-> entry point. The shim is removed on 2026-11-23 — see
-> `packages/sardis/MIGRATION_NOTES.md`.
-
-### TypeScript
-
-```typescript
-import { SardisClient } from '@sardis/sdk';
-
-const client = new SardisClient({ apiKey: 'sk_...' });
-const agent = await client.agents.create({ name: 'my-agent' });
-const wallet = await client.wallets.create({
-  agent_id: agent.agent_id,
-  currency: 'USDC',
-  limit_per_tx: '100.00',
-});
-const tx = await client.wallets.transfer(wallet.wallet_id, {
-  destination: '0x...',
-  amount: '25.00',
-  token: 'USDC',
-  chain: 'base_sepolia',
-  domain: 'openai.com',
-});
-```
-
-### MCP (Claude Desktop / Cursor)
-
-Add to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "sardis": {
-      "command": "npx",
-      "args": ["@sardis/mcp-server", "start"]
-    }
-  }
-}
-```
-
-**That's it.** Your agent now has a bounded financial authority surface instead of unconstrained payment access.
-
----
-
-## 🎯 Framework Integrations
-
-| Framework | Package | Install |
-|-----------|---------|---------|
-| **MCP** (Claude, Cursor, ChatGPT) | `@sardis/mcp-server` | `npx @sardis/mcp-server start` |
-| **LangChain** | `sardis` | `pip install sardis` |
-| **CrewAI** | `sardis` | `pip install sardis` |
-| **OpenAI Functions** | `sardis` | `pip install sardis` |
-| **Gemini / ADK** | `sardis` | `pip install sardis` |
-| **Vercel AI SDK** | `@sardis/ai-sdk` | `npm install @sardis/ai-sdk` |
-| **Claude Agent SDK** | `sardis` | `pip install sardis` |
-| **LlamaIndex** | `sardis` | `pip install sardis` |
-| **Mastra** | `@sardis/sdk` | `npm install @sardis/sdk` |
-
-All frameworks use the same policy engine, mandate model, provider adapters, and audit semantics.
-
----
-
-## Architecture
-
-Every financial action follows a **single authority path** before execution. There are no alternative code paths that bypass policy checks.
-
-```
-                         AI AGENT
-              (Claude, Cursor, LangChain, OpenAI)
-                          |
-                     MCP / SDK
-                          |
-            ┌─────────────┴─────────────┐
-            │  FinancialActionOrchestrator│
-            │    (single entry point)    │
-            └─────────────┬─────────────┘
-                          |
-            ┌─────────────┴─────────────┐
-            │   PreExecutionPipeline    │
-            │                           │
-            │  Composable hooks:        │
-            │  - Policy evaluation      │
-            │  - Spend tracking         │
-            │  - Dedup check            │
-            │  - Compliance gate        │
-            │  - KYA trust scoring      │
-            │                           │
-            │  Fail-closed: any hook    │
-            │  failure blocks the tx    │
-            └─────────────┬─────────────┘
-                          |
-            ┌─────────────┴─────────────┐
-            │   PROVIDER ADAPTER        │
-            │   Cards / wallets / APIs  │
-            └─────────────┬─────────────┘
-                          |
-               +──────────┴──────────+
-               |                     |
-         Stablecoin Rails      Fiat / Card Rails
-         Wallet providers      Payment providers
-         x402 / AP2 / TAP      BYO provider acct
-               |                     |
-         ┌─────┴─────┐         ┌────┴────┐
-         │  LEDGER   │         │  LEDGER │
-         │  Append   │         │  Append │
-         │  Only     │         │  Only   │
-         └───────────┘         └─────────┘
-```
-
-**Key design principles:**
-- **Fail-closed** -- Default deny on all policy, compliance, and security checks
-- **Provider-neutral** -- Sardis governs execution without requiring one custody, wallet, card, or payment provider
-- **Audit everything** -- Append-only ledger with signed attestation envelopes for every decision
-
----
-
-## 📂 Repository Structure
-
-```
-sardis/
-├── apps/api/               # FastAPI reference API implementation
-├── apps/landing/           # Public website source
-├── apps/canvas-site/       # Technical canvas source
-├── packages/               # Core monorepo packages
-│   ├── sardis-core/        # Domain models, config, database
-│   ├── sardis-chain/       # Blockchain execution, chain routing
-│   ├── sardis-protocol/    # AP2/TAP protocol verification
-│   ├── sardis-wallet/      # Wallet management, MPC
-│   ├── sardis-ledger/      # Append-only audit trail
-│   ├── sardis-compliance/  # KYC (iDenfy) + AML (Elliptic)
-│   ├── sardis-cards/       # Card provider adapter experiments
-│   ├── sardis-mcp-server/  # MCP server for Claude/Cursor
-│   ├── sardis-sdk-python/  # Full Python SDK
-│   ├── sardis-sdk-js/      # TypeScript SDK
-│   ├── sardis-cli/         # Command-line tool
-│   └── sardis-checkout/    # Merchant checkout flows
-├── src/sardis/             # Simple Python SDK (public interface)
-├── contracts/              # Solidity smart contracts
-│   └── src/
-│       ├── SardisWalletFactory.sol
-│       ├── SardisAgentWallet.sol
-│       └── SardisEscrow.sol
-├── playground/             # Interactive demo sandbox
-├── examples/               # Usage examples
-├── demos/                  # Demo applications
-├── docs/                   # Public technical documentation
-└── tests/                  # Legacy root migration backlog; prefer package tests
-```
-
----
-
-## 📚 Documentation
-
-- **[Getting Started Guide](https://docs.sardis.sh/getting-started)** — First payment in 5 minutes
-- **[API Reference](https://docs.sardis.sh/api)** — Complete endpoint documentation
-- **[MCP Server Setup](https://docs.sardis.sh/mcp)** — Claude Desktop integration
-- **[Policy Language](https://docs.sardis.sh/policies)** — Write spending rules in plain English
-- **[Chain Support](https://docs.sardis.sh/chains)** — Supported networks and tokens
-- **[Framework Guides](https://docs.sardis.sh/frameworks)** — LangChain, OpenAI, Vercel AI SDK
-- **[Security Model](https://docs.sardis.sh/security)** — MPC architecture and threat model
-- **[Compliance](https://docs.sardis.sh/compliance)** — KYC/AML/SAR framework
-- **[Examples](https://github.com/EfeDurmaz16/sardis/tree/main/examples)** — Code samples for all frameworks
-- **[Package Maturity Matrix](docs/packages.md)** — What is core, supported, experimental, demo, or private-candidate
-- **[Architecture Package Layout](docs/architecture/package-layout.md)** — Why repo package paths and Python import namespaces are separate
-- **[OSS Package Layout Policy](docs/oss/package-layout.md)** — Contributor-facing naming, nesting, and rename rules
-- **[Source Layout Policy](docs/oss/source-layout.md)** — API source-tree guardrails and route placement rules
-- **[x402 and MPP Boundary](docs/architecture/x402-and-mpp.md)** — How paid HTTP protocol surfaces split across packages
-- **[SDK Package Boundary](docs/architecture/sdk-packages.md)** — Official SDKs versus framework-specific agent integrations
-- **[Connect Package Boundary](docs/architecture/connect-packages.md)** — Python FastAPI versus TypeScript Node/Express Connect ownership
-- **[OpenAI Package Boundary](docs/architecture/openai-packages.md)** — OpenAI API tool calling versus OpenAI Agents SDK ownership
-- **[Contribution Map](docs/oss/contribution-map.md)** — Which package to change, what to contribute, and how to validate it
-- **[Development Guide](docs/development.md)** — Local setup and contribution checks
-- **[Public CI/CD Map](docs/oss/ci-cd.md)** — Which public checks protect the OSS surface
-- **[Public Testing Policy](docs/oss/testing.md)** — Maintained test suites and root-test migration policy
-- **[Support](SUPPORT.md)** — Where to ask for OSS help and what belongs outside the public repo
-- **[Security Policy](SECURITY.md)** — Private vulnerability reporting and payment safety invariants
-- **[Code of Conduct](CODE_OF_CONDUCT.md)** — Community expectations for public collaboration
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-**Quick contribution checklist:**
-- Fork the repository
-- Create a feature branch: `git checkout -b feature/your-feature`
-- Make your changes with tests
-- Run the contributor gate: `pnpm run check:contributor`
-- Submit a pull request
-
-**Development setup:**
-
-```bash
-# Clone the repository
 git clone https://github.com/EfeDurmaz16/sardis.git
 cd sardis
+pnpm run doctor && uv sync && pnpm install --frozen-lockfile
 
-# Install dependencies
-pnpm run doctor
-uv sync
-pnpm install --frozen-lockfile
+# Contributor gate
+pnpm run check:contributor
 
-# Run fast OSS checks
-python3 scripts/repo_inventory.py
-python3 scripts/oss_surface_check.py
-python3 scripts/stale_api_path_check.py
-pnpm --filter @sardis/sdk typecheck
-
-# Start local API server
+# Start the reference API
 uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
 ```
 
----
+## Community
 
-## 🔗 Links
+- [Discord](https://discord.gg/XMA9JwDJ) — daily questions, design discussion, office hours
+- [GitHub Discussions](https://github.com/EfeDurmaz16/sardis/discussions) — long-form threads
+- [Manifesto](https://sardis.sh/manifesto) — why this matters
 
-- **Website**: [sardis.sh](https://sardis.sh)
-- **Documentation**: [docs.sardis.sh](https://docs.sardis.sh)
-- **Playground**: [sardis.sh/playground](https://sardis.sh/playground)
-- **GitHub**: [github.com/EfeDurmaz16/sardis](https://github.com/EfeDurmaz16/sardis)
-- **Discord**: [discord.gg/XMA9JwDJ](https://discord.gg/XMA9JwDJ)
-- **PyPI**: [pypi.org/project/sardis](https://pypi.org/project/sardis/)
-- **npm**: [npmjs.com/package/@sardis/mcp-server](https://www.npmjs.com/package/@sardis/mcp-server)
-- **Context7 Docs**: [context7.com/efedurmaz16/sardis](https://context7.com/efedurmaz16/sardis)
+## License
 
----
-
-## 📄 License And Open-Core Boundary
-
-The public repository is licensed under the terms in [LICENSE](LICENSE). See [OPEN_CORE.md](OPEN_CORE.md) for the product boundary between the open-source authority layer and the hosted Sardis Cloud operations layer.
-
-The intended split is:
-
-- **Open source** -- mandate semantics, policy evaluation, provider interfaces, simulator providers, SDKs, protocol adapters, examples, and audit schemas.
-- **Hosted / commercial** -- dashboard, RBAC/SSO, approval inbox, managed provider credentials, webhook operations, compliance workflows, audit retention, alerts, and support.
+[MIT](LICENSE). See [`OPEN_CORE.md`](OPEN_CORE.md) for the product boundary between this open-source repo and the hosted Sardis Cloud.
 
 ---
 
 <div align="center">
-  <p>
-    <strong>Sardis</strong> -- Open-source financial authority for AI agents
-    <br/>
-    Mandates | Provider Adapters | Approvals | Revocation | Audit
-  </p>
-  <p>
-    Built for the AI agent ecosystem
-    <br/>
-    &copy; 2026 Efe Baran Durmaz
-  </p>
+  <sub><strong>Sardis</strong> — Mandates · Policy · Approvals · Revocation · Audit · &copy; 2026 Efe Baran Durmaz</sub>
 </div>
