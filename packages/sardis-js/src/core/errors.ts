@@ -173,7 +173,7 @@ export class SardisError extends Error {
    *
    * @returns Formatted error string
    */
-  toString(): string {
+  override toString(): string {
     const parts = [`[${this.code}] ${this.message}`];
     if (this.requestId) {
       parts.push(`(Request ID: ${this.requestId})`);
@@ -493,7 +493,7 @@ export class AbortError extends SardisError {
  */
 export class NetworkError extends SardisError {
   /** Original error that caused this error */
-  public readonly cause?: Error;
+  public override readonly cause?: Error;
 
   /**
    * Creates a new NetworkError instance.
