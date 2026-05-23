@@ -99,10 +99,10 @@ class TestProductionBlocksSimulatedMPCSigner:
             "SARDIS_CIRCLE_ENTITY_SECRET": "test-secret",
         }):
             with patch(
-                "sardis_chain.executor.CircleWalletSigner",
+                "sardis.chain.executor.CircleWalletSigner",
                 create=True,
             ), patch(
-                "sardis_wallet.circle_client.CircleWalletClient",
+                "sardis.wallet.circle_client.CircleWalletClient",
                 return_value=mock_circle_client,
                 create=True,
             ):
@@ -122,7 +122,7 @@ class TestProductionBlocksSimulatedMPCSigner:
         with patch.dict(os.environ, {
             "SARDIS_CIRCLE_WALLET_API_KEY": "test-key",
         }):
-            with patch.dict("sys.modules", {"sardis_wallet.circle_client": None}):
+            with patch.dict("sys.modules", {"sardis.wallet.circle_client": None}):
                 with pytest.raises(RuntimeError, match="SimulatedMPCSigner is active but SARDIS_ENVIRONMENT=prod"):
                     executor._init_mpc_signer()
 
@@ -139,7 +139,7 @@ class TestProductionBlocksSimulatedMPCSigner:
         with patch.dict(os.environ, {
             "SARDIS_CIRCLE_WALLET_API_KEY": "test-key",
         }):
-            with patch.dict("sys.modules", {"sardis_wallet.circle_client": None}):
+            with patch.dict("sys.modules", {"sardis.wallet.circle_client": None}):
                 executor._init_mpc_signer()
 
         assert isinstance(executor._mpc_signer, SimulatedMPCSigner)

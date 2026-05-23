@@ -115,7 +115,7 @@ def test_erc8126_selectors_use_keccak() -> None:
         / "packages"
         / "sardis-protocol"
         / "src"
-        / "sardis_protocol"
+        / "sardis.protocol"
         / "erc8126.py"
     )
     source = source_path.read_text()

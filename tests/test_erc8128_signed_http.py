@@ -193,7 +193,7 @@ class TestSignAndVerify:
 
     def test_expired_signature_fails(self):
         # Sign with a timestamp far in the past
-        with patch("sardis_protocol.erc8128.time") as mock_time:
+        with patch("sardis.protocol.erc8128.time") as mock_time:
             mock_time.time.return_value = 1600000000  # Way in the past
             headers = sign_request(
                 method="GET",

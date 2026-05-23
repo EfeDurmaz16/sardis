@@ -67,7 +67,7 @@ def _executor_patch() -> tuple[MagicMock, object]:
     receipt.status = True
     executor = MagicMock()
     executor.execute_batch_transfers = AsyncMock(return_value=receipt)
-    return executor, patch("sardis_chain.tempo.executor.TempoExecutor", return_value=executor)
+    return executor, patch("sardis.chain.tempo.executor.TempoExecutor", return_value=executor)
 
 
 def test_batch_payment_idempotency_replays_same_payload_without_reexecution():

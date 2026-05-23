@@ -298,7 +298,7 @@ class TestMLFraudScorer:
 
     @pytest.mark.asyncio
     async def test_load_model_no_onnxruntime(self):
-        with patch("sardis_guardrails.ml_fraud.HAS_ONNXRUNTIME", False):
+        with patch("sardis.guardrails.ml_fraud.HAS_ONNXRUNTIME", False):
             scorer = MLFraudScorer(model_path="test.onnx")
             loaded = await scorer.load_model()
             assert loaded is False

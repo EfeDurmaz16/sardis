@@ -48,7 +48,7 @@ async def test_spend_recording_logs_critical_on_failure(caplog):
         audit_hash="test-hash",
     )
 
-    with caplog.at_level(logging.CRITICAL, logger="sardis_wallet.manager"):
+    with caplog.at_level(logging.CRITICAL, logger="sardis.wallet.manager"):
         with pytest.raises(RuntimeError, match="Database unavailable"):
             await manager.async_record_spend(mandate)
 

@@ -137,7 +137,7 @@ class TestBatchPaymentValidation:
 
 class TestBatchPaymentSuccess:
     def test_valid_batch_returns_201(self, client, mock_tempo_executor, mock_token_registry):
-        with patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+        with patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=3)
             resp = client.post("/payments/batch", json=body)
@@ -155,7 +155,7 @@ class TestBatchPaymentSuccess:
             assert t["token"] == "USDC"
 
     def test_single_transfer_batch_succeeds(self, client, mock_tempo_executor, mock_token_registry):
-        with patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+        with patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=1)
             resp = client.post("/payments/batch", json=body)
@@ -164,7 +164,7 @@ class TestBatchPaymentSuccess:
         assert resp.json()["transfer_count"] == 1
 
     def test_max_size_batch_succeeds(self, client, mock_tempo_executor, mock_token_registry):
-        with patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+        with patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=50)
             resp = client.post("/payments/batch", json=body)
@@ -174,7 +174,7 @@ class TestBatchPaymentSuccess:
 
     def test_failed_receipt_returns_failed_status(self, client, mock_tempo_executor, mock_token_registry):
         mock_tempo_executor.execute_batch_transfers.return_value.status = False
-        with patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+        with patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=2)
             resp = client.post("/payments/batch", json=body)
@@ -183,7 +183,7 @@ class TestBatchPaymentSuccess:
         assert resp.json()["status"] == "failed"
 
     def test_total_amount_is_sum_of_transfers(self, client, mock_tempo_executor, mock_token_registry):
-        with patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+        with patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = {
                 "transfers": [
@@ -240,7 +240,7 @@ class TestBatchPaymentMandateValidation:
         mock_db.fetchrow = AsyncMock(return_value=None)
 
         with patch("sardis.core.database.Database", mock_db, create=True), \
-             patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+             patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body()
             body["mandate_id"] = "mnd_nonexistent"
@@ -255,7 +255,7 @@ class TestBatchPaymentMandateValidation:
         mock_db.fetchrow = AsyncMock(return_value=mock_mandate)
 
         with patch("sardis.core.database.Database", mock_db, create=True), \
-             patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+             patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=2)  # 2 * 10 = 20 > 5
             body["mandate_id"] = "mnd_strict"
@@ -270,7 +270,7 @@ class TestBatchPaymentMandateValidation:
         mock_db.fetchrow = AsyncMock(return_value=mock_mandate)
 
         with patch("sardis.core.database.Database", mock_db, create=True), \
-             patch("sardis_chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
+             patch("sardis.chain.tempo.executor.TempoExecutor", return_value=mock_tempo_executor), \
              patch("sardis.core.tokens.TOKEN_REGISTRY", mock_token_registry):
             body = _valid_batch_body(num_transfers=2)  # 2 * 10 = 20 <= 100
             body["mandate_id"] = "mnd_ok"

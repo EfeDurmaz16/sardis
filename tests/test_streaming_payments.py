@@ -130,7 +130,7 @@ class TestOpenStream:
         mock_channel.open = AsyncMock(return_value=mock_session)
 
         with patch(
-            "sardis_chain.tempo.stream_channel.TempoStreamChannel",
+            "sardis.chain.tempo.stream_channel.TempoStreamChannel",
             return_value=mock_channel,
         ), patch(
             "server.routes.money_movement.streaming_payments._persist_stream_meta",
@@ -161,7 +161,7 @@ class TestOpenStream:
         mock_channel.open = AsyncMock(return_value=mock_session)
 
         with patch(
-            "sardis_chain.tempo.stream_channel.TempoStreamChannel",
+            "sardis.chain.tempo.stream_channel.TempoStreamChannel",
             return_value=mock_channel,
         ), patch(
             "server.routes.money_movement.streaming_payments._persist_stream_meta",

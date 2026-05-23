@@ -318,7 +318,7 @@ async def test_cross_currency_eur_triggers_fx(
 ):
     """currency=EUR should trigger USDC->EURC swap with FX info in response."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -352,7 +352,7 @@ async def test_cross_currency_eurc_triggers_fx(
 ):
     """Explicit EURC should also work as cross-currency from USDC sender."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -380,7 +380,7 @@ async def test_cross_currency_mandate_uses_target_token(
 ):
     """The orchestrator mandate should use target token (EURC), not EUR."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -407,7 +407,7 @@ async def test_cross_currency_route_type_is_fx_swap(
 ):
     """Cross-currency route_type should be 'fx_swap'."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -465,7 +465,7 @@ async def test_slippage_exceeded_returns_error_with_fresh_quote(
     bad_router.find_best_route = AsyncMock(side_effect=bad_then_good_rate)
 
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=bad_router,
     ):
         # Patch _check_slippage to simulate slippage exceeded
@@ -539,7 +539,7 @@ async def test_fx_rate_reflects_actual_quote(
 ):
     """FX rate in response should match the quote from LiquidityRouter."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -570,7 +570,7 @@ async def test_fx_provider_in_response(
 ):
     """Provider should be included in FX response."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
@@ -598,7 +598,7 @@ async def test_cross_currency_usdt(
 ):
     """USDT should trigger USDC->USDT swap."""
     with patch(
-        "sardis_chain.liquidity_router.LiquidityRouter",
+        "sardis.chain.liquidity_router.LiquidityRouter",
         return_value=mock_liquidity_router,
     ):
         response = await client.post(
