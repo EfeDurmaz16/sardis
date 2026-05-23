@@ -20,7 +20,7 @@ from decimal import Decimal
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     CheckoutAnalyticsEvent,
     CheckoutEventType,
     PaymentStatus,

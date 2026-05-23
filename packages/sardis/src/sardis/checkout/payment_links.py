@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     DEFAULT_PAYMENT_LINK_EXPIRATION_HOURS,
     PaymentLink,
 )

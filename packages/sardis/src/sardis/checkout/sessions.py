@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any
 
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     DEFAULT_SESSION_TIMEOUT_MINUTES,
     CustomerSession,
 )

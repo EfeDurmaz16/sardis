@@ -8,8 +8,8 @@ from typing import Any
 
 import httpx
 
-from sardis_checkout.connectors.base import PSPConnector
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
+from sardis.checkout.connectors.base import PSPConnector
+from sardis.checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
 
 
 class StripeConnector(PSPConnector):

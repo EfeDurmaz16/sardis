@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Any, Awaitable, Callable, TypeVar
 
-from sardis_checkout.models import IdempotencyRecord
+from sardis.checkout.models import IdempotencyRecord
 
 logger = logging.getLogger(__name__)
 

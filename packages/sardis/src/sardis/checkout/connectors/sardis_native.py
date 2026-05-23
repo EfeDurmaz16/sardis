@@ -10,8 +10,8 @@ from datetime import UTC
 from decimal import Decimal
 from typing import Any
 
-from sardis_checkout.connectors.base import PSPConnector
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
+from sardis.checkout.connectors.base import PSPConnector
+from sardis.checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
 
 logger = logging.getLogger(__name__)
 

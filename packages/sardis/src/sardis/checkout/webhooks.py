@@ -24,7 +24,7 @@ from typing import Any
 
 import httpx
 
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     WebhookDelivery,
     WebhookDeliveryStatus,
     WebhookEndpoint,

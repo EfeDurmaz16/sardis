@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
+from sardis.checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus, PSPType
 
 
 class PSPConnector(ABC):

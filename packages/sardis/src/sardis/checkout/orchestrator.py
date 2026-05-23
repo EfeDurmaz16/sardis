@@ -20,26 +20,26 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sardis_checkout.analytics import (
+from sardis.checkout.analytics import (
     CheckoutAnalytics,
     InMemoryAnalyticsBackend,
 )
-from sardis_checkout.connectors.base import PSPConnector
-from sardis_checkout.currency import (
+from sardis.checkout.connectors.base import PSPConnector
+from sardis.checkout.currency import (
     CurrencyConverter,
     MultiCurrencyCheckout,
 )
-from sardis_checkout.fraud import (
+from sardis.checkout.fraud import (
     FraudCheckContext,
     FraudDeclined,
     FraudDetector,
 )
-from sardis_checkout.idempotency import (
+from sardis.checkout.idempotency import (
     IdempotencyError,
     IdempotencyManager,
     InMemoryIdempotencyStore,
 )
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     DEFAULT_SESSION_TIMEOUT_MINUTES,
     CheckoutEventType,
     CheckoutRequest,
@@ -47,19 +47,19 @@ from sardis_checkout.models import (
     FraudDecision,
     PaymentStatus,
 )
-from sardis_checkout.partial_payments import (
+from sardis.checkout.partial_payments import (
     InMemoryPartialPaymentStore,
     PartialPaymentManager,
 )
-from sardis_checkout.payment_links import (
+from sardis.checkout.payment_links import (
     InMemoryPaymentLinkStore,
     PaymentLinkManager,
 )
-from sardis_checkout.sessions import (
+from sardis.checkout.sessions import (
     InMemorySessionStore,
     SessionManager,
 )
-from sardis_checkout.webhooks import (
+from sardis.checkout.webhooks import (
     InMemoryWebhookStore,
     WebhookDeliveryManager,
 )

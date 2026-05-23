@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from sardis_checkout.models import (
+from sardis.checkout.models import (
     CurrencyConversion,
     SupportedCurrency,
 )
