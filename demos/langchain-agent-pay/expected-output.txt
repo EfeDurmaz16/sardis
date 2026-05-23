@@ -1,16 +1,22 @@
+[toolkit] tools available: ['sardis_pay', 'sardis_check_balance', 'sardis_check_policy', 'sardis_set_policy', 'sardis_list_transactions']
+
 === scenario 1: payment within policy ===
-[goal] API credits top-up ($20.0 -> Anthropic)
-[agent] step 1: call sardis_check_policy({'merchant': 'Anthropic', 'amount': 20.0, 'purpose': 'API credits top-up'})
-[tool]  -> WOULD BE ALLOWED (PASS): $20 to Anthropic
-[agent] step 2: call sardis_pay({'amount': 20.0, 'merchant': 'Anthropic', 'merchant_address': '0xAntHr0p1c000000000000000000000000000Ant1', 'purpose': 'API credits top-up'})
-[tool]  -> APPROVED: Payment $20 to Anthropic submitted on base-sepolia (tx: 0xmock...)
+[goal] Anthropic API credits — pay 20.00 USDC to 0xAntHr0p1c000...
+[agent] step 1: invoke sardis_check_balance({})
+[tool]  -> {"success": true, "wallet_id": "wallet_agent_research_bot_001", ...}
+[agent] step 2: invoke sardis_check_policy({'to': '0xAntHr0p1c...', 'amount': '20.00'})
+[tool]  -> {"success": true, "allowed": true, "checks": [...], "summary": "...would be allowed"}
+[agent] step 3: invoke sardis_pay({'to': '0xAntHr0p1c...', 'amount': '20.00', 'purpose': 'Anthropic API credits'})
+[tool]  -> {"success": true, "status": "settled", "tx_id": "tx_<hex>", "tx_hash": "0xmock<hex>", ...}
+[agent] completed
 
 === scenario 2: payment over per-tx cap ===
-[goal] EC2 monthly bill ($250.0 -> AWS)
-[agent] step 1: call sardis_check_policy({'merchant': 'AWS', 'amount': 250.0, 'purpose': 'EC2 monthly bill'})
-[tool]  -> WOULD BE BLOCKED (FAIL): amount $250 exceeds per-tx limit $100.00
-[agent] stop — last observation halts the plan
+[goal] AWS EC2 monthly — pay 250.00 USDC to 0xAwS000000000...
+[agent] step 1: invoke sardis_check_balance({})
+[tool]  -> {"success": true, ...}
+[agent] step 2: invoke sardis_check_policy({'to': '0xAwS0...', 'amount': '250.00'})
+[tool]  -> {"success": true, "allowed": false, ..., "summary": "...would be blocked: Amount $250.00 exceeds per-transaction limit of $100.00..."}
+[agent] halted by policy
 
-[ledger] 1 transfer(s) executed
-  - 20 USDC -> 0xAntHr0p1c0... tx=0xmock...
-[demo] OK — LangChain-style agent paid via Sardis tools with policy enforcement
+[ledger] 1 transfer(s) executed, balance=480.00, spent_today=20.00
+[demo] OK — agent paid via SardisToolkit with policy enforcement

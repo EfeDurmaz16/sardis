@@ -56,7 +56,11 @@ class _Wallet:
     limit_per_tx: Decimal
     limit_daily: Decimal
     spent_total: Decimal = Decimal("0")
+    is_active: bool = True
     audit: list[dict[str, Any]] = field(default_factory=list)
+
+    def remaining_limit(self) -> Decimal:
+        return self.limit_daily - self.spent_total
 
     def pay(self, *, to: str, amount: Decimal, token: str = "USDC",
             purpose: str | None = None) -> _PayResult:
@@ -121,7 +125,9 @@ def plan_next_step(goal: dict, history: list[tuple[str, str]]) -> dict | None:
             parsed = json.loads(last)
         except Exception:
             parsed = {}
-        if parsed.get("blocked") or parsed.get("success") is False:
+        if (parsed.get("allowed") is False
+                or parsed.get("blocked") is True
+                or parsed.get("success") is False):
             return None
         return {"tool": "sardis_pay", "args": {
             "to": goal["to"], "amount": goal["amount"],
@@ -136,7 +142,9 @@ def run_agent(goal: dict, tools_by_name: dict) -> None:
     for step in range(1, 6):
         action = plan_next_step(goal, history)
         if action is None:
-            print("[agent] stop — plan aborted by tool observation")
+            called = {name for name, _ in history}
+            outcome = "completed" if "sardis_pay" in called else "halted by policy"
+            print(f"[agent] {outcome}")
             return
         tool = tools_by_name[action["tool"]]
         print(f"[agent] step {step}: invoke {tool.name}({action['args']})")
