@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-core"
-version = "1.1.0"
-description = "Core AP2/TAP-aligned domain primitives for the Sardis stablecoin execution layer"
+version = "0.99.0"
+description = "Deprecation shim — sardis-core is now part of the `sardis` umbrella package (use `from sardis.core import ...`)."
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
@@ -37,41 +37,13 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.6",
-    "pydantic-settings>=2.0",
-    "PyNaCl>=1.5",
-    "cryptography>=41.0",
-    "apscheduler>=3.10",
-    "asyncpg>=0.29",
-    "aiohttp>=3.8",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
-ml = [
-    "scipy>=1.11",
-]
-nl-parser = [
-    "openai>=1.0",
-]
-spending-tracker = [
-    "redis>=5.0",
-]
-temporal = [
-    "temporalio>=1.4",
-]
 dev = [
-    "pytest>=7.4",
-    "pytest-asyncio>=0.21",
-    "pytest-cov>=4.1",
-    "hypothesis>=6.112",
-    "mypy>=1.7",
-    "ruff>=0.1",
-    "scipy>=1.11",
-]
-all = [
-    "openai>=1.0",
-    "redis>=5.0",
-    "scipy>=1.11",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.urls]
