@@ -1,0 +1,37 @@
+[
+  {
+    "name": "sardis (root, ESM, gzipped)",
+    "path": "dist/index.js",
+    "limit": "30 KB"
+  },
+  {
+    "name": "sardis/ai-sdk (ESM, gzipped)",
+    "path": "dist/ai-sdk/index.js",
+    "limit": "8 KB"
+  },
+  {
+    "name": "sardis/langchain (ESM, gzipped)",
+    "path": "dist/langchain/index.js",
+    "limit": "8 KB"
+  },
+  {
+    "name": "sardis/mastra (ESM, gzipped)",
+    "path": "dist/mastra/index.js",
+    "limit": "8 KB"
+  },
+  {
+    "name": "sardis/webhooks (ESM, gzipped)",
+    "path": "dist/webhooks/index.js",
+    "limit": "5 KB"
+  },
+  {
+    "name": "sardis/shims/web (ESM, gzipped)",
+    "path": "dist/shims/web.js",
+    "limit": "2 KB"
+  },
+  {
+    "name": "sardis/protocol (ESM, gzipped)",
+    "path": "dist/protocol/index.js",
+    "limit": "5 KB"
+  }
+]
