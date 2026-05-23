@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "sardis>=2.0.0a0",
+    "sardis[composio]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

@@ -35,7 +35,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis>=2.0.0a0",
+    "sardis[anthropic]>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
