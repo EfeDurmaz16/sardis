@@ -143,7 +143,6 @@ ignore = [
 sardis-a2a = { path = "packages/sardis-a2a", editable = true }
 sardis-adk = { path = "packages/sardis-adk", editable = true }
 sardis-agent-sdk = { path = "packages/sardis-agent-sdk", editable = true }
-sardis-agentkit = { path = "packages/sardis-agentkit", editable = true }
 sardis-reference-api = { path = "apps/api", editable = true }
 sardis-autogpt = { path = "packages/sardis-autogpt", editable = true }
 sardis-browser-use = { path = "packages/sardis-browser-use", editable = true }
