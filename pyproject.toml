@@ -160,7 +160,6 @@ sardis-crewai = { path = "packages/sardis-crewai", editable = true }
 sardis-guardrails = { path = "packages/sardis-guardrails", editable = true }
 sardis-langchain = { path = "packages/sardis-langchain", editable = true }
 sardis-ledger = { path = "packages/sardis-ledger", editable = true }
-sardis-lightspark = { path = "packages/sardis-lightspark", editable = true }
 sardis-openai = { path = "packages/sardis-openai", editable = true }
 sardis-openai-agents = { path = "packages/sardis-openai-agents", editable = true }
 sardis-openclaw = { path = "packages/sardis-openclaw", editable = true }
