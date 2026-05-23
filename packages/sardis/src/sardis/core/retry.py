@@ -330,7 +330,7 @@ def retry_sync(
 
 
 @overload
-def retry(
+def retry[**P, T](
     func: Callable[P, Awaitable[T]],
     /,
 ) -> Callable[P, Awaitable[T]]:
@@ -355,7 +355,7 @@ def retry(
     ...
 
 
-def retry(
+def retry[**P, T](
     func: Callable[P, Awaitable[T]] | None = None,
     /,
     *,
@@ -423,7 +423,7 @@ def retry(
     return decorator
 
 
-def retry_sync_decorator(
+def retry_sync_decorator[**P, T](
     func: Callable[P, T] | None = None,
     /,
     *,

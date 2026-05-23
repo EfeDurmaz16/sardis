@@ -90,7 +90,7 @@ class TestTempoSigning:
         mock_tx = MagicMock()
         mock_tx.sign.return_value = MagicMock()
 
-        result = signer.sign_tempo_transaction(mock_tx)
+        signer.sign_tempo_transaction(mock_tx)
         mock_tx.sign.assert_called_once_with("0xkey")
 
 

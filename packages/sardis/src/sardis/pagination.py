@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     TypeVar,
 )
 
@@ -70,7 +69,7 @@ class PageInfo:
 
 
 @dataclass
-class Page(Generic[T]):
+class Page[T]:
     """A single page of results.
 
     Attributes:
@@ -113,7 +112,7 @@ class Page(Generic[T]):
         return self.page_info.total_count
 
 
-class AsyncPaginator(Generic[T]):
+class AsyncPaginator[T]:
     """Async paginator for iterating through paginated results.
 
     This class provides an async iterator that automatically fetches
@@ -267,7 +266,7 @@ class AsyncPaginator(Generic[T]):
         return total
 
 
-class SyncPaginator(Generic[T]):
+class SyncPaginator[T]:
     """Sync paginator for iterating through paginated results.
 
     This class provides a synchronous iterator that automatically fetches
@@ -418,7 +417,7 @@ class SyncPaginator(Generic[T]):
         return total
 
 
-def create_page_from_response(
+def create_page_from_response[T](
     data: dict[str, Any],
     items_key: str,
     item_parser: Callable[[dict[str, Any]], T],

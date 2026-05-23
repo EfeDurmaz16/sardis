@@ -962,7 +962,7 @@ def validate_signature(
 # Validation Decorator
 # =============================================================================
 
-def validate_inputs(func: Callable[..., T]) -> Callable[..., T]:
+def validate_inputs[T](func: Callable[..., T]) -> Callable[..., T]:
     """Decorator that validates function inputs based on type hints.
 
     This decorator inspects the function's type hints and applies

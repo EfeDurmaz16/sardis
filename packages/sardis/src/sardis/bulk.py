@@ -13,7 +13,6 @@ from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     TypeVar,
 )
 
@@ -38,7 +37,7 @@ class OperationStatus(str, Enum):
 
 
 @dataclass
-class OperationResult(Generic[T, R]):
+class OperationResult[T, R]:
     """Result of a single operation within a bulk operation.
 
     Attributes:
@@ -135,7 +134,7 @@ class BulkOperationSummary:
 
 
 @dataclass
-class BulkOperationResult(Generic[T, R]):
+class BulkOperationResult[T, R]:
     """Complete result of a bulk operation.
 
     Attributes:
@@ -195,7 +194,7 @@ class BulkConfig:
     delay_between_batches: float = 0.1
 
 
-class AsyncBulkExecutor(Generic[T, R]):
+class AsyncBulkExecutor[T, R]:
     """Executor for async bulk operations.
 
     This class manages the execution of multiple async operations with
@@ -350,7 +349,7 @@ class AsyncBulkExecutor(Generic[T, R]):
                 self._on_item_complete(result)
 
 
-class SyncBulkExecutor(Generic[T, R]):
+class SyncBulkExecutor[T, R]:
     """Executor for sync bulk operations.
 
     This class manages the execution of multiple operations sequentially

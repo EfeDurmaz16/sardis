@@ -21,7 +21,7 @@ class TokenLimit(SardisModel):
 class Wallet(SardisModel):
     """
     Non-custodial wallet for an agent.
-    
+
     This wallet never holds funds. It only:
     - Stores MPC provider and addresses
     - Signs transactions via MPC

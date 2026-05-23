@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class RateLimitConfig:
 
 
 @dataclass
-class RetryResult(Generic[T]):
+class RetryResult[T]:
     """Result of a retried operation."""
     success: bool
     value: T | None = None

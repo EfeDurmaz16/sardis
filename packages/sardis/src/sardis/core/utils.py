@@ -8,14 +8,14 @@ import threading
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
 
 
 @dataclass
-class TTLEntry(Generic[V]):
+class TTLEntry[V]:
     """Entry in TTLDict with expiration tracking."""
 
     value: V
@@ -31,7 +31,7 @@ class TTLEntry(Generic[V]):
         self.last_accessed = time.time()
 
 
-class TTLDict(Generic[K, V]):
+class TTLDict[K, V]:
     """
     Thread-safe dictionary with TTL expiration and max size limits.
 
@@ -249,7 +249,7 @@ class TTLDict(Generic[K, V]):
             }
 
 
-class BoundedDict(Generic[K, V]):
+class BoundedDict[K, V]:
     """
     Simple bounded dictionary without TTL.
 

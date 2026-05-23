@@ -16,7 +16,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ItemStatus(str, Enum):
 
 
 @dataclass
-class BatchItem(Generic[T]):
+class BatchItem[T]:
     """A single item in a batch job."""
     item_id: str
     input_data: dict[str, Any]
@@ -77,7 +77,7 @@ class BatchItem(Generic[T]):
 
 
 @dataclass
-class BatchJob(Generic[T]):
+class BatchJob[T]:
     """A batch processing job."""
     job_id: str
     job_type: str
@@ -178,7 +178,7 @@ class BatchConfig:
     batch_size: int = 100  # Process in batches of this size
 
 
-class BatchProcessor(Generic[T]):
+class BatchProcessor[T]:
     """
     Generic batch processor for compliance operations.
 
