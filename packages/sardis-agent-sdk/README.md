@@ -1,11 +1,24 @@
 # sardis-agent-sdk
 
+> **Renaming notice:** This package is being renamed to **`sardis-claude`** for
+> clarity — the name `sardis-agent-sdk` conflicts with the main `sardis` SDK
+> and confuses users about which package to install. The code is unchanged.
+>
+> - **New installs:** prefer `pip install sardis-claude` (thin alias that
+>   re-exports from this package).
+> - **Existing installs:** continue to work; a `DeprecationWarning` is
+>   emitted on import.
+> - **Future:** in Sardis v2.0 the canonical home will be
+>   `sardis.integrations.anthropic`.
+
 Anthropic Claude Agent SDK integration for [Sardis](https://sardis.sh) payments.
 
 ## Installation
 
 ```bash
-pip install sardis-agent-sdk
+pip install sardis-claude       # recommended (alias)
+# or
+pip install sardis-agent-sdk    # legacy name, still works
 ```
 
 ## Quick Start

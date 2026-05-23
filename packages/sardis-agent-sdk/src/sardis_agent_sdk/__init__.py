@@ -21,6 +21,19 @@ Quick start::
             result = toolkit.handle_tool_call(block)
 """
 
+import warnings
+
+warnings.warn(
+    "sardis-agent-sdk is being renamed to sardis-claude for clarity "
+    "(the name conflicts with the main sardis SDK). "
+    "Please migrate: `pip install sardis-claude` (currently a thin alias "
+    "re-exporting from this package). In Sardis v2.0 the canonical home "
+    "will be `sardis.integrations.anthropic`. See "
+    "https://github.com/EfeDurmaz16/sardis/blob/main/packages/sardis-agent-sdk/README.md",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 from .handlers import SardisToolHandler
 from .toolkit import SardisToolkit
 from .tools import (
