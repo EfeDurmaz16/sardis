@@ -61,7 +61,7 @@ def test_production_accepts_json_array_origins(monkeypatch) -> None:
 def test_production_auto_appends_canonical_dashboard_origins(monkeypatch) -> None:
     _set_required_env(monkeypatch)
     settings = _base_settings("https://dashboard.sardis.sh")
-    origins = settings.allowed_origins_list
+    origins = set(settings.allowed_origins_list)
     assert "https://app.sardis.sh" in origins
     assert "https://www.sardis.sh" in origins
 
