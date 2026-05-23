@@ -4,9 +4,10 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.confidence_router import ConfidenceThresholds
-from sardis_v2_core.confidence_tuner import ConfidenceTuner
-from sardis_v2_core.outcome_tracker import PaymentOutcome
+
+from sardis.core.confidence_router import ConfidenceThresholds
+from sardis.core.confidence_tuner import ConfidenceTuner
+from sardis.core.outcome_tracker import PaymentOutcome
 
 
 def _make_outcome(decision: str, outcome_type: str) -> PaymentOutcome:

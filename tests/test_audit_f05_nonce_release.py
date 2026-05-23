@@ -7,7 +7,7 @@ import inspect
 
 def test_broadcast_success_flag_exists():
     """Verify broadcast_success flag is initialized before broadcast."""
-    from sardis_chain.executor import ChainExecutor
+    from sardis.chain.executor import ChainExecutor
     source = inspect.getsource(ChainExecutor)
     assert "broadcast_success = False" in source, (
         "ChainExecutor must initialize broadcast_success = False before broadcast"
@@ -16,7 +16,7 @@ def test_broadcast_success_flag_exists():
 
 def test_broadcast_success_set_after_send():
     """Verify broadcast_success is set to True after successful send."""
-    from sardis_chain.executor import ChainExecutor
+    from sardis.chain.executor import ChainExecutor
     source = inspect.getsource(ChainExecutor)
     assert "broadcast_success = True" in source, (
         "ChainExecutor must set broadcast_success = True after send_raw_transaction"
@@ -31,7 +31,7 @@ def test_broadcast_success_set_after_send():
 
 def test_nonce_release_guarded_by_broadcast_flag():
     """Verify nonce release only happens when broadcast_success is False."""
-    from sardis_chain.executor import ChainExecutor
+    from sardis.chain.executor import ChainExecutor
     source = inspect.getsource(ChainExecutor)
     assert "if not broadcast_success:" in source, (
         "Nonce release must be guarded by 'if not broadcast_success:' check"
@@ -46,7 +46,7 @@ def test_nonce_release_guarded_by_broadcast_flag():
 
 def test_nonce_not_released_unconditionally():
     """Verify there's no unconditional release_nonce in the exception handler."""
-    from sardis_chain.executor import ChainExecutor
+    from sardis.chain.executor import ChainExecutor
     source = inspect.getsource(ChainExecutor)
     # Find the except block that handles nonce release
     except_blocks = source.split("except Exception as e:")

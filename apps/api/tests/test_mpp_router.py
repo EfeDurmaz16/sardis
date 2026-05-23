@@ -1,7 +1,7 @@
 """Tests for MPP (Machine Payments Protocol) API endpoints."""
 from decimal import Decimal
 
-from sardis_v2_core.mpp import MPPPayment, MPPPaymentStatus, MPPSession, MPPSessionStatus
+from sardis.core.mpp import MPPPayment, MPPPaymentStatus, MPPSession, MPPSessionStatus
 
 
 class TestMPPSessionModel:

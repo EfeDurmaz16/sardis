@@ -10,11 +10,11 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
-from sardis_v2_core import AgentRepository
-from sardis_v2_core.database import Database
-from sardis_v2_core.mandates import PaymentMandate
-from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis.core import AgentRepository
+from sardis.core.database import Database
+from sardis.core.mandates import PaymentMandate
+from sardis.core.transactions import validate_wallet_not_frozen
+from sardis.protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -23,12 +23,12 @@ from server.middleware.agent_payment_rate_limit import enforce_agent_payment_rat
 from server.transaction_cap_dep import enforce_transaction_caps
 
 if TYPE_CHECKING:
-    from sardis_chain.executor import ChainExecutor
-    from sardis_compliance.checks import ComplianceEngine
-    from sardis_ledger.records import LedgerStore
-    from sardis_protocol.verifier import MandateVerifier
-    from sardis_v2_core.wallet_repository import WalletRepository
-    from sardis_wallet.manager import WalletManager
+    from sardis.chain.executor import ChainExecutor
+    from sardis.compliance.checks import ComplianceEngine
+    from sardis.core.wallet_repository import WalletRepository
+    from sardis.ledger.records import LedgerStore
+    from sardis.protocol.verifier import MandateVerifier
+    from sardis.wallet.manager import WalletManager
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 
@@ -413,8 +413,8 @@ async def execute_stored_mandate(
     # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
     import time as _time
 
-    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
-    from sardis_v2_core.orchestrator import (
+    from sardis.core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
+    from sardis.core.orchestrator import (
         ChainExecutionError,
         ComplianceViolationError,
         PolicyViolationError,
@@ -476,7 +476,7 @@ async def execute_stored_mandate(
         stored.status = "failed"
         stored.updated_at = datetime.now(UTC)
         await _save_mandate(stored)
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         reason = getattr(e, "rule_id", None) or "policy_violation"
         explanation = explain_denial(reason)
         raise HTTPException(
@@ -487,7 +487,7 @@ async def execute_stored_mandate(
         stored.status = "failed"
         stored.updated_at = datetime.now(UTC)
         await _save_mandate(stored)
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         reason = getattr(e, "rule_id", None) or "compliance_violation"
         explanation = explain_denial(reason)
         raise HTTPException(
@@ -590,8 +590,8 @@ async def execute_payment_mandate(
         # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
         import time as _time
 
-        from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
-        from sardis_v2_core.orchestrator import (
+        from sardis.core.mandates import CartMandate, IntentMandate, MandateChain, VCProof
+        from sardis.core.orchestrator import (
             ChainExecutionError,
             ComplianceViolationError,
             PolicyViolationError,
@@ -649,7 +649,7 @@ async def execute_payment_mandate(
         try:
             orch_result = await deps.payment_orchestrator.execute_chain(_chain)
         except PolicyViolationError as e:
-            from sardis_v2_core.policy_explainer import explain_denial
+            from sardis.core.policy_explainer import explain_denial
             reason = getattr(e, "rule_id", None) or "policy_violation"
             explanation = explain_denial(reason)
             raise HTTPException(
@@ -657,7 +657,7 @@ async def execute_payment_mandate(
                 detail={"message": str(e), "policy_explanation": explanation.to_dict()},
             )
         except ComplianceViolationError as e:
-            from sardis_v2_core.policy_explainer import explain_denial
+            from sardis.core.policy_explainer import explain_denial
             reason = getattr(e, "rule_id", None) or "compliance_violation"
             explanation = explain_denial(reason)
             raise HTTPException(

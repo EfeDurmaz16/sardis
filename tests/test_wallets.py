@@ -4,8 +4,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.tokens import TokenType
-from sardis_v2_core.wallets import TokenLimit, Wallet, WalletSnapshot
+
+from sardis.core.tokens import TokenType
+from sardis.core.wallets import TokenLimit, Wallet, WalletSnapshot
 
 
 class TestTokenLimit:
@@ -111,7 +112,7 @@ class TestWallet:
 
     def test_get_limit_per_tx_token_override(self):
         """Test get_limit_per_tx uses token-specific limit when set."""
-        from sardis_v2_core.wallets import TokenLimit
+        from sardis.core.wallets import TokenLimit
 
         wallet = Wallet(
             wallet_id="wallet_001",
@@ -141,7 +142,7 @@ class TestWallet:
 
     def test_get_limit_total_token_override(self):
         """Test get_limit_total uses token-specific limit when set."""
-        from sardis_v2_core.wallets import TokenLimit
+        from sardis.core.wallets import TokenLimit
 
         wallet = Wallet(
             wallet_id="wallet_001",

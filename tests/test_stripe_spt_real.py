@@ -19,16 +19,17 @@ import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.credential_store import CredentialEncryption
-from sardis_v2_core.delegated_adapters.stripe_spt import StripeSPTAdapter
-from sardis_v2_core.delegated_credential import (
+
+from sardis.core.credential_store import CredentialEncryption
+from sardis.core.delegated_adapters.stripe_spt import StripeSPTAdapter
+from sardis.core.delegated_credential import (
     CredentialClass,
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegated_executor import DelegatedPaymentRequest
+from sardis.core.delegated_executor import DelegatedPaymentRequest
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -124,7 +125,7 @@ class TestStripeSPTAdapterExecute:
         )
 
         adapter = StripeSPTAdapter(
-            api_key="sk_test_fake_000000",
+            api_key="sk_test_fake_000000",  # nosecret
             encryption=enc,
             base_url="https://api.stripe.com",
         )
@@ -158,7 +159,7 @@ class TestStripeSPTAdapterExecute:
             },
         )
 
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = mock_client_cls.return_value.__aenter__.return_value
@@ -178,7 +179,7 @@ class TestStripeSPTAdapterExecute:
         cred, _ = _make_active_credential(encryption=enc_a)
 
         # Adapter uses enc_b, which cannot decrypt the token from enc_a
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc_b)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc_b)  # nosecret
         request = _make_request()
 
         result = await adapter.execute(request, cred)
@@ -192,7 +193,7 @@ class TestStripeSPTAdapterExecute:
         cred, enc = _make_active_credential(encryption=enc)
         request = _make_request()
 
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = mock_client_cls.return_value.__aenter__.return_value
@@ -214,7 +215,7 @@ class TestStripeSPTAdapterExecute:
             json=_stripe_pi_response(pi_id="pi_pending_001", status="requires_capture"),
         )
 
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = mock_client_cls.return_value.__aenter__.return_value
@@ -235,7 +236,7 @@ class TestStripeSPTAdapterProvision:
     @pytest.mark.asyncio
     async def test_provision_credential_success(self):
         enc = _make_encryption()
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         stripe_response = httpx.Response(
             200,
@@ -272,7 +273,7 @@ class TestStripeSPTAdapterProvision:
     @pytest.mark.asyncio
     async def test_provision_credential_api_error_raises(self):
         enc = _make_encryption()
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         stripe_error = httpx.Response(
             400,
@@ -293,7 +294,7 @@ class TestStripeSPTAdapterProvision:
     @pytest.mark.asyncio
     async def test_provision_credential_http_error_raises(self):
         enc = _make_encryption()
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000", encryption=enc)  # nosecret
 
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = mock_client_cls.return_value.__aenter__.return_value
@@ -315,7 +316,7 @@ class TestStripeSPTAdapterCheckHealth:
 
     @pytest.mark.asyncio
     async def test_check_health_returns_true_on_200(self):
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")  # nosecret
 
         healthy_response = httpx.Response(200, json={"object": "list", "data": []})
 
@@ -327,7 +328,7 @@ class TestStripeSPTAdapterCheckHealth:
 
     @pytest.mark.asyncio
     async def test_check_health_returns_false_on_401(self):
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")  # nosecret
 
         auth_error = httpx.Response(
             401,
@@ -348,7 +349,7 @@ class TestStripeSPTAdapterCheckHealth:
 
     @pytest.mark.asyncio
     async def test_check_health_returns_false_on_http_error(self):
-        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")
+        adapter = StripeSPTAdapter(api_key="sk_test_fake_000000")  # nosecret
 
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = mock_client_cls.return_value.__aenter__.return_value
@@ -374,7 +375,7 @@ def _build_spt_test_app(webhook_secret: str) -> TestClient:
 
 class TestStripeSPTWebhookHandler:
 
-    _SECRET = "whsec_test_spt_fake_000000"  # noqa: S105
+    _SECRET = "whsec_test_spt_fake_000000"  # nosecret  # noqa: S105
 
     def setup_method(self):
         os.environ["STRIPE_SPT_WEBHOOK_SECRET"] = self._SECRET

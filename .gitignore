@@ -128,6 +128,8 @@ docs/audits/*
 !/docs/modernization/**
 !/docs/oss/
 !/docs/oss/**
+!/docs/architecture/
+!/docs/architecture/**
 !/docs/quickstart/
 !/docs/docs/
 !/docs/security/

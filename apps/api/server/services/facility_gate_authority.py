@@ -6,8 +6,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
-from sardis_v2_core.facility_gate import Facility, stable_payload_hash, to_jsonable
-from sardis_v2_core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
+from sardis.core.facility_gate import Facility, stable_payload_hash, to_jsonable
+from sardis.core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.kya_trust_scoring import (
+
+from sardis.core.kya_trust_scoring import (
     TRUST_TIER_LIMITS,
     KYALevel,
     TrustScore,
@@ -19,7 +20,7 @@ from sardis_v2_core.kya_trust_scoring import (
 
 
 def _make_intent(agent_id="agent_001", amount="100.00", fides_did=None):
-    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+    from sardis.core.execution_intent import ExecutionIntent, IntentSource
 
     intent = ExecutionIntent(
         source=IntentSource.A2A,
@@ -36,7 +37,7 @@ def _make_intent(agent_id="agent_001", amount="100.00", fides_did=None):
 @pytest.mark.asyncio
 async def test_low_trust_blocks_high_amount():
     """Trust score 0.2 with $500 payment -> denied."""
-    from sardis_v2_core.control_plane import ControlPlane
+    from sardis.core.control_plane import ControlPlane
 
     mock_scorer = AsyncMock()
     mock_scorer.calculate_trust = AsyncMock(return_value=TrustScore(
@@ -66,7 +67,7 @@ async def test_low_trust_blocks_high_amount():
 @pytest.mark.asyncio
 async def test_high_trust_passes():
     """Trust score 0.9 passes the trust gate."""
-    from sardis_v2_core.control_plane import ControlPlane
+    from sardis.core.control_plane import ControlPlane
 
     mock_scorer = AsyncMock()
     mock_scorer.calculate_trust = AsyncMock(return_value=TrustScore(
@@ -100,7 +101,7 @@ async def test_high_trust_passes():
 @pytest.mark.asyncio
 async def test_no_fides_did_skips_trust_gate():
     """Intent without fides_did in metadata skips the trust gate."""
-    from sardis_v2_core.control_plane import ControlPlane
+    from sardis.core.control_plane import ControlPlane
 
     mock_scorer = AsyncMock()
     mock_config = MagicMock()
@@ -128,7 +129,7 @@ async def test_no_fides_did_skips_trust_gate():
 @pytest.mark.asyncio
 async def test_trust_overrides_kya_when_stricter():
     """Trust score LOW overrides policy limits when stricter."""
-    from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
+    from sardis.core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
     # Create MEDIUM trust policy ($500/tx)
     policy = create_default_policy("agent_001", TrustLevel.MEDIUM)
@@ -153,7 +154,7 @@ async def test_trust_overrides_kya_when_stricter():
 @pytest.mark.asyncio
 async def test_high_trust_gets_full_limits():
     """SOVEREIGN trust gets configured limits (no additional restriction)."""
-    from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
+    from sardis.core.spending_policy import SpendingPolicy, TrustLevel, create_default_policy
 
     policy = create_default_policy("agent_001", TrustLevel.HIGH)
 
@@ -176,7 +177,7 @@ async def test_high_trust_gets_full_limits():
 @pytest.mark.asyncio
 async def test_trust_override_none_uses_configured():
     """No trust_score_override uses configured policy limits only."""
-    from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
+    from sardis.core.spending_policy import TrustLevel, create_default_policy
 
     policy = create_default_policy("agent_001", TrustLevel.LOW)
     mock_wallet = MagicMock()
@@ -204,7 +205,7 @@ def test_rfc9421_sign_verify_roundtrip():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signing_key = SigningKey.generate()
     private_key = signing_key.encode()
@@ -252,7 +253,7 @@ def test_invalid_rfc9421_signature_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     attacker = SigningKey.generate()
@@ -286,7 +287,7 @@ def test_rfc9421_tampered_body_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     keyid = "did:fides:signer"
@@ -320,7 +321,7 @@ def test_rfc9421_missing_content_digest_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     method = "POST"
@@ -357,7 +358,7 @@ def test_rfc9421_missing_headers():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import verify_request
+    from sardis.protocol.fides_signing import verify_request
 
     signer = SigningKey.generate()
 

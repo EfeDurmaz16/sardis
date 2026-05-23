@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import pytest
-from sardis_ramp.ramp import KYCRequired, SardisFiatRamp
+
+from sardis.ramp.ramp import KYCRequired, SardisFiatRamp
 
 
 class MockHTTPResponse:
@@ -85,7 +86,7 @@ class TestOnRampFlow:
     async def test_fund_wallet_bank_below_kyc_threshold(self):
         """Test funding wallet via bank ACH below KYC threshold."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
             kyc_threshold_usd=1000.00,
@@ -109,7 +110,7 @@ class TestOnRampFlow:
     async def test_fund_wallet_bank_above_kyc_threshold_verified(self):
         """Test funding wallet above KYC threshold with verified KYC."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
             kyc_threshold_usd=1000.00,
@@ -134,7 +135,7 @@ class TestOnRampFlow:
     async def test_fund_wallet_above_kyc_threshold_not_verified(self):
         """Test funding wallet above KYC threshold without verification."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="production",  # Production mode
             kyc_threshold_usd=1000.00,
@@ -168,7 +169,7 @@ class TestOnRampFlow:
     async def test_fund_wallet_crypto_direct(self):
         """Test funding wallet via direct crypto deposit."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
         )
@@ -193,7 +194,7 @@ class TestOnRampFlow:
     async def test_fund_wallet_card(self):
         """Test funding wallet via credit/debit card."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
         )
@@ -218,7 +219,7 @@ class TestOnRampFlow:
     async def test_kyc_check_no_agent(self):
         """Test KYC check when wallet has no associated agent."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="production",
             kyc_threshold_usd=1000.00,
@@ -250,7 +251,7 @@ class TestOnRampFlow:
     async def test_kyc_check_sandbox_bypass(self):
         """Test KYC check bypasses in sandbox mode on error."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
             kyc_threshold_usd=1000.00,
@@ -279,7 +280,7 @@ class TestOnRampFlow:
     async def test_kyc_check_production_fail_closed(self):
         """Test KYC check fails closed in production on error."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="production",
             kyc_threshold_usd=1000.00,
@@ -307,7 +308,7 @@ class TestOnRampFlow:
     async def test_custom_kyc_threshold(self):
         """Test custom KYC threshold configuration."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
             kyc_threshold_usd=5000.00,  # Custom threshold
@@ -330,7 +331,7 @@ class TestOnRampFlow:
     async def test_get_funding_status(self):
         """Test getting status of funding transfer."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
         )
@@ -359,7 +360,7 @@ class TestOnRampFlow:
     async def test_chain_conversion(self):
         """Test chain name conversion for Bridge API."""
         ramp = SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
         )
@@ -374,7 +375,7 @@ class TestOnRampFlow:
     async def test_context_manager(self):
         """Test using ramp as context manager."""
         async with SardisFiatRamp(
-            sardis_api_key="sk_test_123",
+            sardis_api_key="sk_test_123",  # nosecret: unit-test fixture
             bridge_api_key="bridge_test_123",
             environment="sandbox",
         ) as ramp:

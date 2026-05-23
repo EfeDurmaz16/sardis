@@ -102,13 +102,11 @@ async def run_e2e_tests() -> E2ETestResult:
     print_step(1, "Import & Konfigürasyon")
 
     try:
-        from sardis_cards.models import CardType as CardModelType
-        from sardis_cards.providers.mock import MockCardProvider
-        from sardis_cards.service import CardService
-        from sardis_chain import ChainExecutor
-        from sardis_protocol import MandateVerifier, RateLimitConfig
-        from sardis_protocol.storage import ReplayCache
-        from sardis_v2_core import (
+        from sardis.cards.models import CardType as CardModelType
+        from sardis.cards.providers.mock import MockCardProvider
+        from sardis.cards.service import CardService
+        from sardis.chain import ChainExecutor
+        from sardis.core import (
             CardStatus,
             CardType,
             CartMandate,
@@ -119,8 +117,10 @@ async def run_e2e_tests() -> E2ETestResult:
             VirtualCard,
             load_settings,
         )
-        from sardis_v2_core.identity import AgentIdentity
-        from sardis_v2_core.mandates import VCProof
+        from sardis.core.identity import AgentIdentity
+        from sardis.core.mandates import VCProof
+        from sardis.protocol import MandateVerifier, RateLimitConfig
+        from sardis.protocol.storage import ReplayCache
 
         print_success("Tüm modüller import edildi")
         result.passed("imports")

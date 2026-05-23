@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import Depends, HTTPException, Request, status
-from sardis_guardrails.kill_switch import KillSwitchError, get_kill_switch
+from sardis.guardrails.kill_switch import KillSwitchError, get_kill_switch
 
 from .authz import Principal, require_principal
 

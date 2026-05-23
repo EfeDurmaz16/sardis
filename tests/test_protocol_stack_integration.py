@@ -15,24 +15,25 @@ import time
 import uuid
 
 import pytest
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_protocol.tap import TAP_PROTOCOL_VERSION, validate_tap_headers
-from sardis_protocol.verifier import MandateVerifier
-from sardis_protocol.x402 import (
+
+from sardis.core import load_settings
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.tap import TAP_PROTOCOL_VERSION, validate_tap_headers
+from sardis.protocol.verifier import MandateVerifier
+from sardis.protocol.x402 import (
     X402Challenge,
     X402PaymentPayload,
     generate_challenge,
     verify_payment_payload,
 )
-from sardis_protocol.x402_erc3009 import (
+from sardis.protocol.x402_erc3009 import (
     ERC3009Authorization,
     build_transfer_authorization,
     validate_authorization_timing,
 )
-from sardis_ucp.adapters.ap2 import AP2MandateAdapter
-from sardis_ucp.capabilities.checkout import CheckoutSessionStatus, UCPCheckoutCapability
-from sardis_ucp.models.mandates import UCPCurrency, UCPLineItem
-from sardis_v2_core import load_settings
+from sardis.ucp.adapters.ap2 import AP2MandateAdapter
+from sardis.ucp.capabilities.checkout import CheckoutSessionStatus, UCPCheckoutCapability
+from sardis.ucp.models.mandates import UCPCurrency, UCPLineItem
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.integration]
 
@@ -165,6 +166,7 @@ def test_full_protocol_stack_flow_success(mock_tap_headers, mock_ap2_mandates, s
         path=mock_tap_headers["path"],
         verify_signature_fn=None,  # Mock - accept without crypto verification
         tap_version=TAP_PROTOCOL_VERSION,
+    nonce_cache=set(),
     )
 
     assert tap_result.accepted, f"TAP verification failed: {tap_result.reason}"
@@ -320,6 +322,7 @@ def test_protocol_stack_fail_closed_tap_failure(mock_tap_headers, settings):
         path=corrupt_headers["path"],
         verify_signature_fn=lambda *args: False,  # Force failure
         tap_version=TAP_PROTOCOL_VERSION,
+    nonce_cache=set(),
     )
 
     assert not tap_result.accepted
@@ -338,6 +341,7 @@ def test_protocol_stack_fail_closed_ap2_failure(mock_tap_headers, mock_ap2_manda
         authority=mock_tap_headers["authority"],
         path=mock_tap_headers["path"],
         verify_signature_fn=None,
+        nonce_cache=set(),
         tap_version=TAP_PROTOCOL_VERSION,
     )
     assert tap_result.accepted
@@ -454,6 +458,7 @@ def test_protocol_stack_performance_under_5_seconds(mock_tap_headers, mock_ap2_m
         authority=mock_tap_headers["authority"],
         path=mock_tap_headers["path"],
         verify_signature_fn=None,
+        nonce_cache=set(),
         tap_version=TAP_PROTOCOL_VERSION,
     )
 

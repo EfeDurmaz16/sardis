@@ -10,7 +10,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from sardis_compliance.mica import (
+
+from sardis.compliance.mica import (
     EU_EEA_COUNTRIES,
     SAR_DEADLINES,
     SIGNIFICANT_EMT_RESERVE_EUR,
@@ -620,7 +621,7 @@ class TestFactory:
 
 class TestModuleExports:
     def test_imports_from_compliance(self):
-        from sardis_compliance import (
+        from sardis.compliance import (
             CASPAuthorization,
             CASPService,
             CryptoAssetClass,

@@ -79,7 +79,7 @@ def configure_card_runtime(
 
         card_provider_adapter_cls = CardProviderCompatAdapter
     if mock_provider_cls is _DEFAULT_PROVIDER:
-        from sardis_cards.providers.mock import MockProvider
+        from sardis.cards.providers.mock import MockProvider
 
         mock_provider_cls = MockProvider
 
@@ -116,7 +116,7 @@ def configure_card_runtime(
             try:
                 provider_cls = lithic_provider_cls
                 if provider_cls is _DEFAULT_PROVIDER:
-                    from sardis_cards.providers.lithic import LithicProvider
+                    from sardis.cards.providers.lithic import LithicProvider
 
                     provider_cls = LithicProvider
                 provider = provider_cls(
@@ -137,7 +137,7 @@ def configure_card_runtime(
             try:
                 provider_cls = stripe_issuing_provider_cls
                 if provider_cls is _DEFAULT_PROVIDER:
-                    from sardis_cards.providers.stripe_issuing import (
+                    from sardis.cards.providers.stripe_issuing import (
                         StripeIssuingProvider,
                     )
 
@@ -163,7 +163,7 @@ def configure_card_runtime(
                         return True, "OK"
                     merchant_category = None
                     if mcc_code:
-                        from sardis_v2_core.mcc_service import get_mcc_info
+                        from sardis.core.mcc_service import get_mcc_info
 
                         mcc_info = get_mcc_info(mcc_code)
                         if mcc_info:
@@ -200,7 +200,7 @@ def configure_card_runtime(
             try:
                 provider_cls = rain_cards_provider_cls
                 if provider_cls is _DEFAULT_PROVIDER:
-                    from sardis_cards.providers.partner_issuers import RainCardsProvider
+                    from sardis.cards.providers.partner_issuers import RainCardsProvider
 
                     provider_cls = RainCardsProvider
                 provider = provider_cls(
@@ -230,7 +230,7 @@ def configure_card_runtime(
             try:
                 provider_cls = bridge_cards_provider_cls
                 if provider_cls is _DEFAULT_PROVIDER:
-                    from sardis_cards.providers.partner_issuers import BridgeCardsProvider
+                    from sardis.cards.providers.partner_issuers import BridgeCardsProvider
 
                     provider_cls = BridgeCardsProvider
                 provider = provider_cls(
@@ -279,7 +279,7 @@ def configure_card_runtime(
     elif fallback_provider is not None:
         provider_router_cls = card_provider_router_cls
         if provider_router_cls is _DEFAULT_PROVIDER:
-            from sardis_cards.providers.router import CardProviderRouter
+            from sardis.cards.providers.router import CardProviderRouter
 
             provider_router_cls = CardProviderRouter
         provider_impl = provider_router_cls(primary=primary_provider, fallback=fallback_provider)
@@ -318,7 +318,7 @@ def configure_card_runtime(
             if org_provider_map:
                 org_router_cls = organization_card_provider_router_cls
                 if org_router_cls is _DEFAULT_PROVIDER:
-                    from sardis_cards.providers.org_router import (
+                    from sardis.cards.providers.org_router import (
                         OrganizationCardProviderRouter,
                     )
 
@@ -362,7 +362,7 @@ def configure_card_runtime(
             handler_cls = asa_handler_cls
             webhook_handler_cls = card_webhook_handler_cls
             if handler_cls is _DEFAULT_PROVIDER or webhook_handler_cls is _DEFAULT_PROVIDER:
-                from sardis_cards.webhooks import ASAHandler, CardWebhookHandler
+                from sardis.cards.webhooks import ASAHandler, CardWebhookHandler
 
                 handler_cls = ASAHandler if handler_cls is _DEFAULT_PROVIDER else handler_cls
                 webhook_handler_cls = (

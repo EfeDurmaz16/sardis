@@ -15,7 +15,8 @@ import hashlib
 import time
 
 import pytest
-from sardis_v2_core.approval_context import (
+
+from sardis.core.approval_context import (
     ApprovalContext,
     hash_cart,
     hash_value,

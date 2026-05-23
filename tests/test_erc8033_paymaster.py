@@ -8,7 +8,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sardis_protocol.erc8033 import (
+
+from sardis.protocol.erc8033 import (
     DEFAULT_GAS_LIMIT,
     DEFAULT_MAX_TX_COUNT,
     DEFAULT_SESSION_HOURS,
@@ -675,7 +676,7 @@ class TestEstimateTxCost:
 
 class TestModuleExports:
     def test_imports_from_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             GasEstimate,
             GasPolicy,
             GasSession,

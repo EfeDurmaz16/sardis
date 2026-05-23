@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis.core.mandates import PaymentMandate, VCProof
 
 # ── Fake DB layer ────────────────────────────────────────────────────
 
@@ -221,7 +221,7 @@ def client_no_mandate():
 @pytest.fixture
 def client_policy_deny():
     """Client where orchestrator raises PolicyViolationError."""
-    from sardis_v2_core.orchestrator import PolicyViolationError
+    from sardis.core.orchestrator import PolicyViolationError
     app = _create_test_app(orchestrator_fail=PolicyViolationError("per_transaction_limit", mandate_id="mandate_test001"))
     from server.routes.authority import mandates as mandates_mod
 

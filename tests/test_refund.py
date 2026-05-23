@@ -5,7 +5,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.refund import Refund, RefundService, RefundStatus
+
+from sardis.core.refund import Refund, RefundService, RefundStatus
 
 # ---------------------------------------------------------------------------
 # Helpers

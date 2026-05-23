@@ -91,8 +91,8 @@ def register_authority_routes(
 
     if approvals_router is not None:
         try:
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
 
             approval_repo = ApprovalRepository(dsn=dsn)
             approval_service = ApprovalService(repository=approval_repo)

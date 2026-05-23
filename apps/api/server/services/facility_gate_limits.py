@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from sardis_v2_core.facility_gate import FacilityDecision
+from sardis.core.facility_gate import FacilityDecision
 
 from server.repositories.facility_gate_repository import FacilityGateRepository
 

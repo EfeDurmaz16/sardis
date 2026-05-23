@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_compliance import create_kya_service
+from sardis.compliance import create_kya_service
 
 from server.authz import Principal, require_admin_principal, require_principal
 from server.routes.compliance.screening import ComplianceDependencies, get_deps, router

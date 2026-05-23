@@ -56,7 +56,7 @@ def test_zk_verifier_contract_reverts(filename: str) -> None:
 
 def test_zkpass_verify_proof_raises() -> None:
     """ZKPassVerifier.verify_proof must raise NotImplementedError."""
-    from sardis_protocol.zkpass_transgate import ZKPassVerifier
+    from sardis.protocol.zkpass_transgate import ZKPassVerifier
 
     verifier = ZKPassVerifier()
 
@@ -115,7 +115,7 @@ def test_erc8126_selectors_use_keccak() -> None:
         / "packages"
         / "sardis-protocol"
         / "src"
-        / "sardis_protocol"
+        / "sardis.protocol"
         / "erc8126.py"
     )
     source = source_path.read_text()
@@ -135,7 +135,7 @@ def test_erc8126_selectors_use_keccak() -> None:
 
 def test_erc8126_create_proof_commitment_deprecation() -> None:
     """create_proof_commitment should emit a DeprecationWarning."""
-    from sardis_protocol.erc8126 import VerificationType, create_proof_commitment
+    from sardis.protocol.erc8126 import VerificationType, create_proof_commitment
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
@@ -162,6 +162,7 @@ async def test_saml_handler_returns_501() -> None:
     """SAMLHandler.validate_response must raise HTTPException(501),
     not NotImplementedError (which would surface as 500)."""
     from fastapi import HTTPException
+
     from server.middleware.sso import SAMLHandler, SSOConfig
 
     config = SSOConfig(

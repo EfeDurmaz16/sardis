@@ -68,7 +68,7 @@ async def _lookup_org_plan(org_id: str) -> str:
             return plan
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:

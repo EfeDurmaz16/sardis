@@ -2,7 +2,8 @@
 import time
 
 import pytest
-from sardis_v2_core.mandates import (
+
+from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
     MandateChain,

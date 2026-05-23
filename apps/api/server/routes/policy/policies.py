@@ -30,7 +30,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import AgentRepository
+from sardis.core import AgentRepository
 
 from server.authz import Principal, optional_principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -275,7 +275,7 @@ async def parse_natural_language_policy(
     """
     try:
         # Import here to handle optional dependency
-        from sardis_v2_core.nl_policy_parser import (
+        from sardis.core.nl_policy_parser import (
             HAS_INSTRUCTOR,
             NLPolicyParser,
             RegexPolicyParser,
@@ -498,8 +498,8 @@ async def apply_policy_from_nl(
         idem_key = hashlib.sha256(f"{request.agent_id}:{request.natural_language}".encode()).hexdigest()
 
     async def _apply() -> tuple[int, object]:
-        from sardis_v2_core.nl_policy_parser import create_policy_parser
-        from sardis_v2_core.spending_policy import (
+        from sardis.core.nl_policy_parser import create_policy_parser
+        from sardis.core.spending_policy import (
             MerchantRule,
             SpendingPolicy,
             TimeWindowLimit,
@@ -623,7 +623,7 @@ async def get_policy_templates(
     configuration with limits, merchant rules, and restrictions.
     """
     try:
-        from sardis_v2_core.nl_policy_parser import get_policy_templates as get_templates
+        from sardis.core.nl_policy_parser import get_policy_templates as get_templates
 
         templates_info = get_templates()
 
@@ -863,8 +863,8 @@ async def get_policy_recommendations(
     principal: Principal = Depends(require_principal),
 ):
     """Get policy recommendations based on agent's transaction history."""
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.policy_recommendations import PolicyRecommendationEngine
+    from sardis.core.database import Database
+    from sardis.core.policy_recommendations import PolicyRecommendationEngine
 
     engine = PolicyRecommendationEngine(db=Database)
     recommendations = await engine.get_recommendations(agent_id)

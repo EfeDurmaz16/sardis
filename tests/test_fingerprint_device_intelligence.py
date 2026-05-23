@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from sardis_guardrails.fingerprint import (
+
+from sardis.guardrails.fingerprint import (
     API_REGIONS,
     BotResult,
     DeviceIntelligence,
@@ -437,7 +438,7 @@ class TestDeviceIntelligenceProperties:
 
 class TestSingleton:
     def test_get_fingerprint_provider(self):
-        import sardis_guardrails.fingerprint as fp_mod
+        import sardis.guardrails.fingerprint as fp_mod
         fp_mod._provider = None  # Reset
 
         p1 = get_fingerprint_provider()
@@ -451,7 +452,7 @@ class TestSingleton:
 
 class TestModuleExports:
     def test_from_guardrails(self):
-        from sardis_guardrails import (
+        from sardis.guardrails import (
             BotResult,
             DeviceIntelligence,
             DeviceRisk,

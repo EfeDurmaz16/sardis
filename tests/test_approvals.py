@@ -6,11 +6,12 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from sardis_v2_core.approval_repository import (
+
+from sardis.core.approval_repository import (
     Approval,
     ApprovalRepository,
 )
-from sardis_v2_core.approval_service import ApprovalService
+from sardis.core.approval_service import ApprovalService
 
 
 class TestApprovalModel:
@@ -63,7 +64,7 @@ class TestApprovalRepository:
     @pytest.fixture
     def mock_database(self):
         """Mock database for testing."""
-        with patch("sardis_v2_core.approval_repository.Database") as mock_db:
+        with patch("sardis.core.approval_repository.Database") as mock_db:
             yield mock_db
 
     @pytest.fixture

@@ -5,11 +5,12 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.credential_store import (
+
+from sardis.core.credential_store import (
     CredentialEncryption,
     InMemoryCredentialStore,
 )
-from sardis_v2_core.delegated_credential import (
+from sardis.core.delegated_credential import (
     CREDENTIAL_HANDLING,
     CredentialClass,
     CredentialNetwork,
@@ -17,7 +18,7 @@ from sardis_v2_core.delegated_credential import (
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegation_consent import (
+from sardis.core.delegation_consent import (
     ConsentType,
     DelegationConsent,
     InMemoryConsentStore,

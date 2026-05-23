@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.spending_policy import SpendingPolicy
+from sardis.core.spending_policy import SpendingPolicy
 
 from server.authz import Principal, require_principal
 from server.routes.commerce import secure_checkout

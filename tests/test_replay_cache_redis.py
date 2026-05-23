@@ -6,8 +6,9 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sardis_protocol.rate_limiter import get_rate_limiter
-from sardis_protocol.replay_cache_redis import RedisReplayCache
+
+from sardis.protocol.rate_limiter import get_rate_limiter
+from sardis.protocol.replay_cache_redis import RedisReplayCache
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -24,7 +25,7 @@ def _make_fake_redis() -> MagicMock:
 
 def _reset_global_rate_limiter():
     """Reset the module-level global so each test starts fresh."""
-    import sardis_protocol.rate_limiter as rl_mod
+    import sardis.protocol.rate_limiter as rl_mod
     rl_mod._rate_limiter = None
 
 
@@ -96,7 +97,7 @@ class TestRedisReplayCacheInheritance:
     """RedisReplayCache is a drop-in replacement for ReplayCache."""
 
     def test_is_subclass(self):
-        from sardis_protocol.storage import ReplayCache
+        from sardis.protocol.storage import ReplayCache
         assert issubclass(RedisReplayCache, ReplayCache)
 
 

@@ -6,14 +6,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sardis_v2_core.kya_trust_scoring import (
+from sardis.core.kya_trust_scoring import (
     KYALevel,
 )
-from sardis_v2_core.multi_agent_payments import (
+from sardis.core.multi_agent_payments import (
     PaymentFlowType,
     PaymentOrchestrator,
 )
-from sardis_v2_core.trust_infrastructure import (
+from sardis.core.trust_infrastructure import (
     AttestationType,
     TrustFramework,
 )

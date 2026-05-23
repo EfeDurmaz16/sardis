@@ -269,7 +269,7 @@ class TestRampBridgeFallback:
 
     def test_bridge_returns_503_when_module_unavailable(self, client):
         """Previously returned fake 'queued' response on ImportError."""
-        with patch.dict("sys.modules", {"sardis_chain": None, "sardis_chain.bridge": None}):
+        with patch.dict("sys.modules", {"sardis.chain": None, "sardis.chain.bridge": None}):
             resp = client.post("/ramp/bridge", json={
                 "wallet_id": "w_1",
                 "source_chain": "base",

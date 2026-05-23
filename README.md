@@ -169,9 +169,9 @@ pip install sardis[langchain,crewai,openai-agents]
 ```
 
 ```python
-# Old
-from sardis_v2_core import Wallet
-from sardis_langchain import SardisToolkit
+# Old (legacy v1 — kept here only as a migration reference)
+#   from sardis_v2_core import Wallet
+#   from sardis_langchain import SardisToolkit
 
 # New
 from sardis import Sardis, AsyncSardis
@@ -229,7 +229,7 @@ Sardis does not replace your payment provider. It is the authority layer that si
 
 ## Roadmap
 
-Live roadmap: [github.com/EfeDurmaz16/sardis/issues](https://github.com/EfeDurmaz16/sardis/issues?q=label%3Aroadmap). Recent shipped work and the next milestones live in [`docs/roadmap.md`](docs/roadmap.md).
+Live roadmap: [github.com/EfeDurmaz16/sardis/issues](https://github.com/EfeDurmaz16/sardis/issues?q=label%3Aroadmap).
 
 ---
 
@@ -241,7 +241,7 @@ Live roadmap: [github.com/EfeDurmaz16/sardis/issues](https://github.com/EfeDurma
 | Provider execution | Adapter interfaces, simulator, BYO credentials | Managed credential vault, webhook handling, alerts, routing |
 | Developer surface | SDKs, MCP server, examples, protocol adapters | Hosted dashboard, approval inbox, compliance workflows, audit export |
 
-Boundary detail: [`OPEN_CORE.md`](OPEN_CORE.md) · [`PROVIDER_ABSTRACTION.md`](PROVIDER_ABSTRACTION.md) · [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md) · [`DISCLAIMER.md`](DISCLAIMER.md).
+Boundary detail: [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md).
 
 ---
 
@@ -257,14 +257,15 @@ Boundary detail: [`OPEN_CORE.md`](OPEN_CORE.md) · [`PROVIDER_ABSTRACTION.md`](P
 - [Package maturity matrix](docs/packages.md)
 - [Source-tree policy](docs/oss/source-layout.md)
 - [Contribution map](docs/oss/contribution-map.md)
+- [CI/CD map](docs/oss/ci-cd.md)
 - [Development guide](docs/development.md)
-- [Security policy](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Support](SUPPORT.md)
+- [Security policy](.github/SECURITY.md) · [Code of Conduct](.github/CODE_OF_CONDUCT.md) · [Support](.github/SUPPORT.md)
 
 ---
 
 ## Contributing
 
-Pull requests welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md). Quick path:
+Pull requests welcome. See [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md). Quick path:
 
 ```bash
 git clone https://github.com/EfeDurmaz16/sardis.git
@@ -286,7 +287,7 @@ uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
 
 ## License
 
-[MIT](LICENSE). See [`OPEN_CORE.md`](OPEN_CORE.md) for the product boundary between this open-source repo and the hosted Sardis Cloud.
+[MIT](LICENSE). See [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md) for the product boundary between this open-source repo and the hosted Sardis Cloud.
 
 ---
 

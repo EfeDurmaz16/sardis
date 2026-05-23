@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import FastAPI
-from sardis_v2_core.orchestrator import PaymentOrchestrator
+from sardis.core.orchestrator import PaymentOrchestrator
 
 from server.routes.money_movement import (
     batch_payments,
@@ -52,7 +52,7 @@ def register_hold_routes(
     use_postgres: bool,
 ) -> None:
     """Register hold routes and expose hold dependencies on app state."""
-    from sardis_v2_core.holds import HoldsRepository
+    from sardis.core.holds import HoldsRepository
 
     holds_repo = HoldsRepository(dsn=database_url if use_postgres else "memory://")
     app.state.holds_deps = holds.HoldsDependencies(holds_repo=holds_repo)

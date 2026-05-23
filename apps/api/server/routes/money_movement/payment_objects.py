@@ -113,11 +113,11 @@ async def mint_payment_object(
     """
     import hashlib
 
-    from sardis_v2_core.cell_claim import CellClaimAlgorithm
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.minter import MintError, PaymentObjectMinter
-    from sardis_v2_core.payment_object import PrivacyTier
-    from sardis_v2_core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
+    from sardis.core.cell_claim import CellClaimAlgorithm
+    from sardis.core.database import Database
+    from sardis.core.minter import MintError, PaymentObjectMinter
+    from sardis.core.payment_object import PrivacyTier
+    from sardis.core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
 
     # --- Concrete port implementations (org-scoped) ---
 
@@ -239,7 +239,7 @@ async def present_payment_object(
     principal: Principal = Depends(require_principal),
 ) -> PaymentObjectResponse:
     """Transition a payment object from MINTED → PRESENTED."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
@@ -306,7 +306,7 @@ async def verify_payment_object(
     Typed data fields: objectId, objectHash, sessionHash, merchantId,
     amount, currency, expiresAt.
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
@@ -435,7 +435,7 @@ async def get_payment_object(
     object_id: str,
     principal: Principal = Depends(require_principal),
 ) -> PaymentObjectResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     row = await Database.fetchrow(
         "SELECT * FROM payment_objects WHERE object_id = $1", object_id
@@ -458,7 +458,7 @@ async def list_payment_objects(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> PaymentObjectListResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     conditions = []
     params: list = []

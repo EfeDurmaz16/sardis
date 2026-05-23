@@ -79,7 +79,7 @@ class TestStripeBillingService:
         mock_pool = AsyncMock()
         mock_pool.acquire = MagicMock(return_value=mock_conn)
 
-        with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
+        with patch("sardis.core.database.Database.get_pool", return_value=mock_pool):
             svc = StripeBillingService()
             sub = await svc.get_or_create_subscription("org_test")
             assert sub.plan == "dev"
@@ -107,7 +107,7 @@ class TestStripeBillingService:
         mock_pool = AsyncMock()
         mock_pool.acquire = MagicMock(return_value=mock_conn)
 
-        with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
+        with patch("sardis.core.database.Database.get_pool", return_value=mock_pool):
             svc = StripeBillingService()
             invoices = await svc.get_invoices("org_test")
             assert invoices == []

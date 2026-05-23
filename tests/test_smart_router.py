@@ -1,8 +1,9 @@
 """Tests for the smart provider router."""
 
 import pytest
-from sardis_chain.provider_tracker import ProviderTracker
-from sardis_chain.smart_router import SmartRouter
+
+from sardis.chain.provider_tracker import ProviderTracker
+from sardis.chain.smart_router import SmartRouter
 
 
 @pytest.mark.asyncio

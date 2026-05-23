@@ -31,7 +31,7 @@ class TestUsageMeteringService:
         """track_event should not raise even if DB is unavailable."""
         from server.services.usage_metering import UsageMeteringService
 
-        with patch("sardis_v2_core.database.Database.get_pool", side_effect=Exception("DB down")):
+        with patch("sardis.core.database.Database.get_pool", side_effect=Exception("DB down")):
             svc = UsageMeteringService()
             # Should not raise
             await svc.track_event("org_test", "transaction", 1)
@@ -55,7 +55,7 @@ class TestUsageMeteringService:
         mock_pool = AsyncMock()
         mock_pool.acquire = MagicMock(return_value=mock_conn)
 
-        with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
+        with patch("sardis.core.database.Database.get_pool", return_value=mock_pool):
             svc = UsageMeteringService()
             usage = await svc.get_usage("org_test")
             assert usage.transactions == 150
@@ -68,7 +68,7 @@ class TestUsageMeteringService:
         """get_usage should return empty summary on DB error."""
         from server.services.usage_metering import UsageMeteringService
 
-        with patch("sardis_v2_core.database.Database.get_pool", side_effect=Exception("DB down")):
+        with patch("sardis.core.database.Database.get_pool", side_effect=Exception("DB down")):
             svc = UsageMeteringService()
             usage = await svc.get_usage("org_test")
             assert usage.transactions == 0

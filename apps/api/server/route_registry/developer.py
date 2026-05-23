@@ -5,7 +5,7 @@ import logging
 import os
 
 from fastapi import FastAPI
-from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+from sardis.core.webhooks import WebhookRepository, WebhookService
 
 from server.routes.developer import (
     dev,

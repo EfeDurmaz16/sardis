@@ -4,9 +4,10 @@ import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_wallet.manager import EnhancedWalletManager
+
+from sardis.core import SardisSettings
+from sardis.core.mandates import PaymentMandate, VCProof
+from sardis.wallet.manager import EnhancedWalletManager
 
 
 def _proof():
@@ -47,7 +48,7 @@ async def test_spend_recording_logs_critical_on_failure(caplog):
         audit_hash="test-hash",
     )
 
-    with caplog.at_level(logging.CRITICAL, logger="sardis_wallet.manager"):
+    with caplog.at_level(logging.CRITICAL, logger="sardis.wallet.manager"):
         with pytest.raises(RuntimeError, match="Database unavailable"):
             await manager.async_record_spend(mandate)
 

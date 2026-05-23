@@ -46,9 +46,9 @@ async def test_chain_executor(live_mode: bool = False, chain: str = "base_sepoli
 
     # Import
     try:
-        from sardis_chain import CHAIN_CONFIGS, STABLECOIN_ADDRESSES, ChainExecutor
-        from sardis_v2_core import PaymentMandate, load_settings
-        from sardis_v2_core.mandates import VCProof
+        from sardis.chain import CHAIN_CONFIGS, STABLECOIN_ADDRESSES, ChainExecutor
+        from sardis.core import PaymentMandate, load_settings
+        from sardis.core.mandates import VCProof
     except ImportError as e:
         print(f"\n❌ Import hatası: {e}")
         print("   Paketlerin kurulu olduğundan emin olun:")
@@ -175,7 +175,7 @@ async def test_rpc_connectivity():
     """RPC bağlantı testi."""
     print_header("RPC BAĞLANTI TESTİ")
 
-    from sardis_chain.executor import CHAIN_CONFIGS, ChainRPCClient
+    from sardis.chain.executor import CHAIN_CONFIGS, ChainRPCClient
 
     results = {}
 

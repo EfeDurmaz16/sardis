@@ -4,10 +4,12 @@ import hmac as hmac_mod
 import json
 import time
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import urlparse
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.routes.wallets.ramp import RampDependencies, get_deps
 from server.routes.wallets.ramp import public_router as ramp_public_router
 from server.routes.wallets.ramp import router as ramp_router
@@ -69,7 +71,7 @@ class TestOnrampWidget:
         assert resp.status_code == 200
         data = resp.json()
         assert "widget_url" in data
-        assert "buy.onramper.com" in data["widget_url"]
+        assert urlparse(data["widget_url"]).netloc == "buy.onramper.com"
         assert "test_onramper_key" in data["widget_url"]
         assert data["wallet_address"] == "0x1234567890abcdef1234567890abcdef12345678"
         assert data["chain"] == "base"

@@ -16,7 +16,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_chain.executor import (
+from sardis.chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,
     ChainRPCClient,

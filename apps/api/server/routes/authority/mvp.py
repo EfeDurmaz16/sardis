@@ -9,13 +9,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sardis_ledger.records import ChainReceipt, LedgerStore
-from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core import AgentRepository, SardisSettings
-from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_v2_core.transactions import validate_wallet_not_frozen
-from sardis_v2_core.wallet_repository import WalletRepository
+from sardis.core import AgentRepository, SardisSettings
+from sardis.core.identity import AgentIdentity, IdentityRegistry
+from sardis.core.mandates import PaymentMandate, VCProof
+from sardis.core.transactions import validate_wallet_not_frozen
+from sardis.core.wallet_repository import WalletRepository
+from sardis.ledger.records import ChainReceipt, LedgerStore
+from sardis.protocol.verifier import MandateVerifier
 
 from server.authz import Principal, require_principal
 from server.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
@@ -264,8 +264,8 @@ async def execute_payment(
     mandate = replace(mandate, wallet_id=wallet.wallet_id)
 
     # Execute through PaymentOrchestrator (policy → compliance → chain → spend → ledger)
-    from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain
-    from sardis_v2_core.orchestrator import (
+    from sardis.core.mandates import CartMandate, IntentMandate, MandateChain
+    from sardis.core.orchestrator import (
         ChainExecutionError,
         ComplianceViolationError,
         PolicyViolationError,

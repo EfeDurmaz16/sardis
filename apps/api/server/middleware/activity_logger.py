@@ -48,7 +48,7 @@ async def _insert_activity(
 ) -> None:
     """Fire-and-forget DB insert.  Errors are swallowed with a debug log."""
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:

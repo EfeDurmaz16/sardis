@@ -97,7 +97,7 @@ async def send_verification_email(
 
     # Persist token to DB (email_verification_tokens table, migration 066)
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -139,7 +139,7 @@ async def confirm_verification_email(
 
     # Look up token from DB
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             record = await conn.fetchrow(

@@ -124,8 +124,8 @@ async def create_escrow(
     req: CreateEscrowRequest,
     principal: Principal = Depends(require_principal),
 ) -> EscrowResponse:
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.escrow import EscrowManager
+    from sardis.core.database import Database
+    from sardis.core.escrow import EscrowManager
 
     pool = await Database.get_pool()
     manager = EscrowManager(pool)
@@ -152,8 +152,8 @@ async def confirm_delivery(
     req: ConfirmDeliveryRequest,
     principal: Principal = Depends(require_principal),
 ) -> EscrowResponse:
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.escrow import EscrowManager
+    from sardis.core.database import Database
+    from sardis.core.escrow import EscrowManager
 
     pool = await Database.get_pool()
     manager = EscrowManager(pool)
@@ -179,9 +179,9 @@ async def file_dispute(
     req: FileDisputeRequest,
     principal: Principal = Depends(require_principal),
 ) -> DisputeResponse:
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.dispute import DisputeProtocol, DisputeReason
-    from sardis_v2_core.escrow import EscrowManager
+    from sardis.core.database import Database
+    from sardis.core.dispute import DisputeProtocol, DisputeReason
+    from sardis.core.escrow import EscrowManager
 
     pool = await Database.get_pool()
 
@@ -227,8 +227,8 @@ async def submit_evidence(
     req: SubmitEvidenceRequest,
     principal: Principal = Depends(require_principal),
 ) -> EvidenceResponse:
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.dispute import DisputeProtocol
+    from sardis.core.database import Database
+    from sardis.core.dispute import DisputeProtocol
 
     pool = await Database.get_pool()
     protocol = DisputeProtocol(pool)
@@ -265,8 +265,8 @@ async def resolve_dispute(
     req: ResolveDisputeRequest,
     principal: Principal = Depends(require_principal),
 ) -> ResolutionResponse:
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.dispute import DisputeProtocol, DisputeStatus
+    from sardis.core.database import Database
+    from sardis.core.dispute import DisputeProtocol, DisputeStatus
 
     pool = await Database.get_pool()
     protocol = DisputeProtocol(pool)
@@ -303,7 +303,7 @@ async def get_dispute(
     dispute_id: str,
     principal: Principal = Depends(require_principal),
 ) -> DisputeResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     row = await Database.fetchrow(
         "SELECT * FROM disputes WHERE dispute_id = $1", dispute_id

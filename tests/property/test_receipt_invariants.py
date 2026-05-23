@@ -24,7 +24,7 @@ except ImportError:
     class st:
         text = staticmethod(lambda **kw: None)
 
-from sardis_v2_core.execution_receipt import ExecutionReceipt, build_receipt, hash_artifact
+from sardis.core.execution_receipt import ExecutionReceipt, build_receipt, hash_artifact
 
 
 def test_receipt_signature_deterministic():
@@ -105,7 +105,7 @@ def test_production_guard_in_memory_session():
     old = os.environ.get("SARDIS_ENVIRONMENT")
     os.environ["SARDIS_ENVIRONMENT"] = "production"
     try:
-        from sardis_checkout.sessions import InMemorySessionStore
+        from sardis.checkout.sessions import InMemorySessionStore
         with pytest.raises(RuntimeError, match="CRITICAL"):
             InMemorySessionStore()
     finally:

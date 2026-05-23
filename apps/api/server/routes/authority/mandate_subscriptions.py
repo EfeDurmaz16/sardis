@@ -75,7 +75,7 @@ async def create_mandate_subscription(
     req: CreateMandateSubscriptionRequest,
     principal: Principal = Depends(require_principal),
 ) -> MandateSubscriptionResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     mandate = await Database.fetchrow(
         "SELECT * FROM spending_mandates WHERE id = $1 AND org_id = $2 AND status = 'active'",
@@ -137,7 +137,7 @@ async def list_mandate_subscriptions(
     mandate_id: str | None = Query(default=None),
     sub_status: str | None = Query(default=None, alias="status"),
 ) -> list[MandateSubscriptionResponse]:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     conditions = ["org_id = $1"]
     params: list = [principal.org_id]
@@ -169,7 +169,7 @@ async def cancel_mandate_subscription(
     subscription_id: str,
     principal: Principal = Depends(require_principal),
 ) -> MandateSubscriptionResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
@@ -202,7 +202,7 @@ async def amend_mandate_subscription(
     req: AmendRequest,
     principal: Principal = Depends(require_principal),
 ) -> MandateSubscriptionResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(

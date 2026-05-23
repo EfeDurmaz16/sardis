@@ -25,8 +25,8 @@ from .bootstrap import bootstrap_monorepo_sys_path, should_bootstrap_monorepo_sy
 if should_bootstrap_monorepo_sys_path():
     bootstrap_monorepo_sys_path()
 
-from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.identity import IdentityRegistry
+from sardis.core import SardisSettings, load_settings
+from sardis.core.identity import IdentityRegistry
 
 from .card_runtime import configure_card_runtime
 from .checkout_runtime import (
@@ -754,7 +754,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     treasury_provider = None
     if stripe_funding_runtime.should_configure_funding_runtime:
         if stripe_api_key:
-            from sardis_v2_core.stripe_treasury import StripeTreasuryProvider
+            from sardis.core.stripe_treasury import StripeTreasuryProvider
 
         try:
             if stripe_api_key:

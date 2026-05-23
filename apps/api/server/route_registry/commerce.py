@@ -28,7 +28,7 @@ def register_checkout_routes(
     orchestrator: Any,
 ) -> None:
     """Register agentic checkout routes and their wallet repository dependency."""
-    from sardis_v2_core.wallet_repository import WalletRepository
+    from sardis.core.wallet_repository import WalletRepository
 
     wallet_repo = WalletRepository(dsn=database_url if use_postgres else "memory://")
     app.dependency_overrides[checkout.get_deps] = lambda: checkout.CheckoutDependencies(  # type: ignore[arg-type]
@@ -145,7 +145,7 @@ def register_marketplace_routes(
     use_postgres: bool,
 ) -> None:
     """Register marketplace routes and their repository dependency."""
-    from sardis_v2_core.marketplace import MarketplaceRepository
+    from sardis.core.marketplace import MarketplaceRepository
 
     marketplace_repo = MarketplaceRepository(dsn=database_url if use_postgres else "memory://")
     app.dependency_overrides[marketplace.get_deps] = lambda: marketplace.MarketplaceDependencies(  # type: ignore[arg-type]

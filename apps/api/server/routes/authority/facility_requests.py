@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.facility_gate import (
+from sardis.core.facility_gate import (
     Facility,
     FacilityDecision,
     FacilityEventType,
@@ -1200,7 +1200,7 @@ async def execute_facility_authorization(
             break
     if approved_decision is None:
         raise HTTPException(status_code=409, detail="Facility request has no approved authorization")
-    from sardis_v2_core.facility_gate import (
+    from sardis.core.facility_gate import (
         FacilityAuthorizationDecision,
         FacilityPolicyEvaluation,
         FacilityRiskAssessment,

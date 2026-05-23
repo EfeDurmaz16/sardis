@@ -152,7 +152,7 @@ def _handle_token_lifecycle(event_type: str, event: dict) -> None:
 
 async def _handle_authorization_result(event_type: str, event: dict) -> None:
     """Process MDES authorization result event."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     data = event.get("data") or event
     transaction_id = str(data.get("transactionId") or "")

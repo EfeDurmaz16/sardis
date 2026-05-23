@@ -8,14 +8,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sardis_v2_core.credential_store import CredentialStore
-from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
-from sardis_v2_core.delegated_credential import CredentialStatus
-from sardis_v2_core.delegated_executor import (
+from sardis.core.credential_store import CredentialStore
+from sardis.core.delegated_adapters.registry import DelegatedAdapterRegistry
+from sardis.core.delegated_credential import CredentialStatus
+from sardis.core.delegated_executor import (
     DelegatedExecutorPort,
     DelegatedPaymentRequest,
 )
-from sardis_v2_core.execution_intent import ExecutionIntent
+from sardis.core.execution_intent import ExecutionIntent
 
 logger = logging.getLogger(__name__)
 

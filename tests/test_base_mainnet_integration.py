@@ -9,13 +9,14 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_v2_core.config import SardisSettings
-from sardis_v2_core.spending_policy import (
+
+from sardis.core.config import SardisSettings
+from sardis.core.spending_policy import (
     TrustLevel,
     create_default_policy,
 )
-from sardis_v2_core.tokens import TokenType
-from sardis_v2_core.wallets import Wallet
+from sardis.core.tokens import TokenType
+from sardis.core.wallets import Wallet
 
 # ── Config validation ────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ class TestBaseMainnetConfig:
         assert settings.circle_account_type == "SCA"
 
     def test_mpc_provider_supports_circle(self):
-        from sardis_v2_core.config import MPCProvider
+        from sardis.core.config import MPCProvider
         provider = MPCProvider(name="circle")
         assert provider.name == "circle"
 
@@ -63,7 +64,7 @@ class TestBaseMainnetConfig:
 
 class TestCirclePaymasterWiring:
     def test_paymaster_addresses_include_base(self):
-        from sardis_chain.erc4337.paymaster_client import (
+        from sardis.chain.erc4337.paymaster_client import (
             CIRCLE_PAYMASTER_ADDRESSES,
             USDC_FOR_PAYMASTER,
         )
@@ -71,7 +72,7 @@ class TestCirclePaymasterWiring:
         assert "base" in USDC_FOR_PAYMASTER
 
     def test_chain_aware_bundler_url_mainnet(self):
-        from sardis_chain.erc4337.paymaster_client import CirclePaymasterClient
+        from sardis.chain.erc4337.paymaster_client import CirclePaymasterClient
 
         client = CirclePaymasterClient(
             bundler_url="https://api.pimlico.io/v2/base-sepolia/rpc?apikey=test"
@@ -81,7 +82,7 @@ class TestCirclePaymasterWiring:
         assert "/base/" in url
 
     def test_chain_aware_bundler_url_testnet_unchanged(self):
-        from sardis_chain.erc4337.paymaster_client import CirclePaymasterClient
+        from sardis.chain.erc4337.paymaster_client import CirclePaymasterClient
 
         client = CirclePaymasterClient(
             bundler_url="https://api.pimlico.io/v2/base-sepolia/rpc?apikey=test"
@@ -91,8 +92,8 @@ class TestCirclePaymasterWiring:
 
     @pytest.mark.asyncio
     async def test_circle_paymaster_sponsor_base(self):
-        from sardis_chain.erc4337.paymaster_client import CirclePaymasterClient
-        from sardis_chain.erc4337.user_operation import UserOperation
+        from sardis.chain.erc4337.paymaster_client import CirclePaymasterClient
+        from sardis.chain.erc4337.user_operation import UserOperation
 
         client = CirclePaymasterClient(bundler_url="https://example.com/bundler")
         user_op = UserOperation(
@@ -123,13 +124,13 @@ class TestCirclePaymasterWiring:
 
 class TestContractAddresses:
     def test_sardis_contracts_has_base_key(self):
-        from sardis_chain.executor import SARDIS_CONTRACTS
+        from sardis.chain.executor import SARDIS_CONTRACTS
         assert "base" in SARDIS_CONTRACTS
         assert "policy_module" in SARDIS_CONTRACTS["base"]
         assert "ledger_anchor" in SARDIS_CONTRACTS["base"]
 
     def test_sardis_contracts_has_base_sepolia(self):
-        from sardis_chain.executor import SARDIS_CONTRACTS
+        from sardis.chain.executor import SARDIS_CONTRACTS
         assert "base_sepolia" in SARDIS_CONTRACTS
 
 
@@ -139,7 +140,7 @@ class TestContractAddresses:
 class TestEASPolicyPipeline:
     @pytest.mark.asyncio
     async def test_kya_check_passes_with_valid_attestation(self):
-        from sardis_protocol.eas_kya import KYAAttestation
+        from sardis.protocol.eas_kya import KYAAttestation
 
         wallet = Wallet.new("agent_test", mpc_provider="circle")
         wallet.kya_attestation_uid = "0x" + "ab" * 32
@@ -183,7 +184,7 @@ class TestEASPolicyPipeline:
 
     @pytest.mark.asyncio
     async def test_kya_check_fails_when_revoked(self):
-        from sardis_protocol.eas_kya import KYAAttestation
+        from sardis.protocol.eas_kya import KYAAttestation
 
         wallet = Wallet.new("agent_test", mpc_provider="circle")
         wallet.kya_attestation_uid = "0x" + "ab" * 32
@@ -232,7 +233,7 @@ class TestEASPolicyPipeline:
 
 class TestSimulationIntegration:
     def test_simulation_router_creation_from_settings(self):
-        from sardis_chain.simulation import SimulationRouter
+        from sardis.chain.simulation import SimulationRouter
 
         settings = SardisSettings()
         router = SimulationRouter.from_settings(settings)
@@ -240,7 +241,7 @@ class TestSimulationIntegration:
         assert router.has_tenderly is False
 
     def test_simulation_router_with_tenderly_creds(self):
-        from sardis_chain.simulation import SimulationRouter
+        from sardis.chain.simulation import SimulationRouter
 
         settings = MagicMock()
         settings.tenderly_api_key = "test-key"

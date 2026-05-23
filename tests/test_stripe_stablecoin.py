@@ -5,7 +5,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_cards.providers.stripe_stablecoin import (
+
+from sardis.cards.providers.stripe_stablecoin import (
     USDC_BASE_CONTRACT,
     DepositStatus,
     FundingTransferStatus,

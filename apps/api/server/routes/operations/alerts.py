@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.alert_channels import (
+from sardis.core.alert_channels import (
     AlertDispatcher,
     DiscordChannel,
     EmailChannel,
@@ -17,7 +17,7 @@ from sardis_v2_core.alert_channels import (
     SlackChannel,
     WebSocketChannel,
 )
-from sardis_v2_core.alert_rules import (
+from sardis.core.alert_rules import (
     Alert,
     AlertRule,
     AlertRuleEngine,

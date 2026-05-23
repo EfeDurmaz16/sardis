@@ -97,7 +97,7 @@ async def provision_credential(
     consent_store=Depends(_get_consent_store),
 ):
     """Provision a new delegated credential (requires consent)."""
-    from sardis_v2_core.delegated_credential import (
+    from sardis.core.delegated_credential import (
         CredentialNetwork,
         CredentialScope,
     )
@@ -178,7 +178,7 @@ async def tighten_scope(
     cred_store=Depends(_get_credential_store),
 ):
     """Tighten scope only (never loosen)."""
-    from sardis_v2_core.delegated_credential import CredentialScope
+    from sardis.core.delegated_credential import CredentialScope
 
     cred = await cred_store.get(credential_id)
     if cred is None:
@@ -260,7 +260,7 @@ async def reprovision_credential(
     consent_store=Depends(_get_consent_store),
 ):
     """New authority grant (requires new consent)."""
-    from sardis_v2_core.delegated_credential import CredentialScope
+    from sardis.core.delegated_credential import CredentialScope
 
     valid = await consent_store.is_consent_valid(body.consent_id)
     if not valid:
@@ -283,7 +283,7 @@ async def suspend_credential(
     cred_store=Depends(_get_credential_store),
 ):
     """Suspend a credential."""
-    from sardis_v2_core.delegated_credential import CredentialStatus
+    from sardis.core.delegated_credential import CredentialStatus
 
     cred = await cred_store.get(credential_id)
     if cred is None:

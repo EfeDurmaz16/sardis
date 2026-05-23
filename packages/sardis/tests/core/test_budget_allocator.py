@@ -5,6 +5,7 @@ Tests for budget allocation system.
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.budget_allocator import (
     AllocationStrategy,
     BudgetAllocator,

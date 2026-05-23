@@ -13,6 +13,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from sardis.chain.tempo.dex import (
     TEMPO_TOKENS,
     TOKEN_DECIMALS,
@@ -110,7 +111,7 @@ class TestExecuteSwap:
             to_amount=Decimal("99.95"),
         )
         # Mock create_fx_signer to also fail
-        with patch("sardis_chain.tempo.dex.create_fx_signer", side_effect=RuntimeError("no key")):
+        with patch("sardis.chain.tempo.dex.create_fx_signer", side_effect=RuntimeError("no key")):
             with pytest.raises(ValueError, match="No Tempo signing key"):
                 await adapter.execute_swap(quote)
 

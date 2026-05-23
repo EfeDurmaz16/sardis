@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.protocol.x402_upto import UptoSession, build_permit2_typed_data
 
 

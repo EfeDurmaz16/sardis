@@ -61,7 +61,7 @@ class TestNotificationResponse(BaseModel):
 
 async def _get_pool():
     """Lazy DB pool accessor."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
     return await Database.get_pool()
 
 
@@ -149,8 +149,8 @@ async def test_notification(
     principal: Principal = Depends(require_principal),
 ) -> TestNotificationResponse:
     """Send a sample event to the org's configured webhook."""
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.notification_service import NotificationService
+    from sardis.core.database import Database
+    from sardis.core.notification_service import NotificationService
 
     svc = NotificationService(database=Database)
     result = await svc.send_test(org_id=principal.organization_id)

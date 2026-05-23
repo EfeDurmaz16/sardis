@@ -6,7 +6,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
-from sardis_v2_core.exception_workflows import ExceptionType
+from sardis.core.exception_workflows import ExceptionType
 
 from server.routes.operations import exceptions as exceptions_router
 

@@ -6,8 +6,8 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-from sardis_compliance.checks import ComplianceAuditStore, ComplianceEngine
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis.compliance.checks import ComplianceAuditStore, ComplianceEngine
+from sardis.core.mandates import PaymentMandate, VCProof
 
 # ============ Mock Services ============
 
@@ -58,7 +58,7 @@ def _make_mock_audit_store() -> ComplianceAuditStore:
 
 def _make_mock_provider(allowed: bool = True, reason: str | None = None):
     """Return a synchronous mock compliance provider."""
-    from sardis_compliance.checks import ComplianceResult
+    from sardis.compliance.checks import ComplianceResult
     provider = MagicMock()
     provider.evaluate.return_value = ComplianceResult(
         allowed=allowed,

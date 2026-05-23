@@ -2,7 +2,8 @@
 
 
 import pytest
-from sardis_chain.provider_tracker import ProviderTracker
+
+from sardis.chain.provider_tracker import ProviderTracker
 
 
 @pytest.mark.asyncio

@@ -76,7 +76,7 @@ async def _load_operator_config() -> None:
 
     _operator_config_loaded = True
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         rows = await Database.fetch(
             """
             SELECT key, value
@@ -118,7 +118,7 @@ async def _persist_rule(rule_id: str, record: dict) -> None:
     """Write fallback rule to DB."""
     _fallback_rules[rule_id] = record
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())
@@ -133,7 +133,7 @@ async def _delete_rule_from_db(rule_id: str) -> None:
     """Remove rule from DB."""
     _fallback_rules.pop(rule_id, None)
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             "DELETE FROM operator_config WHERE key = $1", f"fallback_rule:{rule_id}",
         )
@@ -145,7 +145,7 @@ async def _persist_degraded_mode(rail: str, record: dict) -> None:
     """Write degraded mode to DB."""
     _degraded_modes[rail] = record
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())

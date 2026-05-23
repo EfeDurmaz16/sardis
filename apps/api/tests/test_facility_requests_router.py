@@ -8,8 +8,8 @@ from hashlib import sha256
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
-from sardis_v2_core.spending_mandate import SpendingMandate
+from sardis.core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
+from sardis.core.spending_mandate import SpendingMandate
 
 from server.authz import Principal, require_principal
 from server.repositories.facility_gate_repository import FacilityGateRepository
@@ -783,7 +783,7 @@ def test_revocation_blocks_execution_after_approval(monkeypatch) -> None:
 
 
 def test_adapter_missing_required_capability_fails_closed(monkeypatch) -> None:
-    from sardis_v2_core.facility_gate import FacilityAdapterCapabilities
+    from sardis.core.facility_gate import FacilityAdapterCapabilities
 
     class WeakAdapter(SimulatedFacilityAdapter):
         capabilities = FacilityAdapterCapabilities(

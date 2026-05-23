@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+
 from sardis.ucp.capabilities.checkout import (
     CheckoutSession,
     CheckoutSessionNotFoundError,

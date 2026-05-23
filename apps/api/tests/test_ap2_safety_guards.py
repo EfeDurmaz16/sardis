@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
 
 from server.routes.authority.ap2 import _detect_prompt_injection_signal
 

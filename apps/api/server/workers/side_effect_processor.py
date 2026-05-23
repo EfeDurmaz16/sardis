@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any
 
-from sardis_v2_core.execution_queue import (
+from sardis.core.execution_queue import (
     fetch_pending_effects,
     mark_completed,
     mark_failed,
@@ -22,7 +22,7 @@ logger = logging.getLogger("server.worker.side_effects")
 async def _process_ledger_append(payload: dict[str, Any]) -> None:
     """Process a deferred ledger append."""
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         async with pool.acquire() as conn:

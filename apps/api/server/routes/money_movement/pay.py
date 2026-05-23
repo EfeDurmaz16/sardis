@@ -35,13 +35,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.mandates import (
+from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
     MandateChain,
     PaymentMandate,
 )
-from sardis_v2_core.orchestrator import (
+from sardis.core.orchestrator import (
     ChainExecutionError,
     ComplianceViolationError,
     KYAViolationError,
@@ -49,7 +49,7 @@ from sardis_v2_core.orchestrator import (
     PaymentOrchestrator,
     PolicyViolationError,
 )
-from sardis_v2_core.policy_explainer import explain_denial
+from sardis.core.policy_explainer import explain_denial
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -224,7 +224,7 @@ async def _get_fx_quote(
         )
 
     try:
-        from sardis_chain.liquidity_router import LiquidityRouter
+        from sardis.chain.liquidity_router import LiquidityRouter
         router_instance = LiquidityRouter()
     except ImportError:
         raise HTTPException(
@@ -296,7 +296,7 @@ async def _find_best_chain(
       - route_type: str
     """
     try:
-        from sardis_chain.liquidity_router import LiquidityRouter
+        from sardis.chain.liquidity_router import LiquidityRouter
 
         router_instance = LiquidityRouter()
     except ImportError:

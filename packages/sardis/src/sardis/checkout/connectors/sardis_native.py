@@ -60,7 +60,7 @@ class SardisNativeConnector(PSPConnector):
         """Create a merchant checkout session and return redirect URL."""
         from datetime import datetime, timedelta
 
-        from sardis_v2_core.merchant import MerchantCheckoutSession
+        from sardis.core.merchant import MerchantCheckoutSession
 
         merchant = await self._merchant_repo.get_merchant(request.metadata.get("merchant_id", ""))
         if not merchant:
@@ -142,9 +142,9 @@ class SardisNativeConnector(PSPConnector):
         """
         import inspect
 
-        from sardis_v2_core.mandates import PaymentMandate, VCProof
-        from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
-        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+        from sardis.core.mandates import PaymentMandate, VCProof
+        from sardis.core.platform_fee import calculate_fee, get_treasury_address
+        from sardis.core.tokens import TokenType, to_raw_token_amount
 
         # Step 1: Acquire row lock to prevent concurrent payment
         try:
@@ -344,7 +344,7 @@ class SardisNativeConnector(PSPConnector):
             treasury_addr = get_treasury_address()
             if treasury_addr:
                 try:
-                    from sardis_v2_core.mandates import PaymentMandate, VCProof
+                    from sardis.core.mandates import PaymentMandate, VCProof
                     fee_amount_minor = to_raw_token_amount(TokenType(token), fee_calc.fee_amount)
                     fee_mandate = PaymentMandate(
                         mandate_id=f"fee_{digest[:16]}",

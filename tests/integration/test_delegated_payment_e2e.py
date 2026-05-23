@@ -8,23 +8,24 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
-from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
-from sardis_v2_core.delegated_credential import (
+
+from sardis.core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis.core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
+from sardis.core.delegated_credential import (
     CredentialScope,
 )
-from sardis_v2_core.delegation_consent import (
+from sardis.core.delegation_consent import (
     ConsentType,
     DelegationConsent,
     InMemoryConsentStore,
 )
-from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
-from sardis_v2_core.execution_mode import ExecutionMode, ExecutionModeRouter
-from sardis_v2_core.merchant_capability import (
+from sardis.core.execution_intent import ExecutionIntent, IntentSource
+from sardis.core.execution_mode import ExecutionMode, ExecutionModeRouter
+from sardis.core.merchant_capability import (
     InMemoryMerchantCapabilityStore,
     MerchantExecutionCapability,
 )
-from sardis_v2_core.settlement import (
+from sardis.core.settlement import (
     InMemorySettlementStore,
     SettlementMode,
     SettlementRecord,

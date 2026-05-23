@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sardis_v2_core.facility_gate import (
+from sardis.core.facility_gate import (
     Facility,
     FacilityEventType,
     FacilityLimit,
@@ -18,7 +18,7 @@ from sardis_v2_core.facility_gate import (
     stable_payload_hash,
     to_jsonable,
 )
-from sardis_v2_core.spending_mandate import SpendingMandate
+from sardis.core.spending_mandate import SpendingMandate
 
 
 @dataclass(frozen=True)
@@ -43,7 +43,7 @@ class FacilityGateRepository:
 
     async def _get_pool(self):
         if self._pool is None:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             self._pool = await Database.get_pool()
         return self._pool
 

@@ -4,13 +4,14 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.policy_evidence import (
+
+from sardis.core.policy_evidence import (
     PolicyStepResult,
     compute_evidence_hash,
     evaluate_with_evidence,
     export_evidence_bundle,
 )
-from sardis_v2_core.spending_policy import (
+from sardis.core.spending_policy import (
     SpendingPolicy,
     SpendingScope,
     TimeWindowLimit,

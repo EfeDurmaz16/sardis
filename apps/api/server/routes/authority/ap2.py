@@ -12,12 +12,12 @@ from inspect import isawaitable
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sardis_compliance.checks import ComplianceAuditEntry
-from sardis_protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
-from sardis_v2_core import AgentRepository
-from sardis_v2_core.mandates import MandateChain
-from sardis_v2_core.policy_attestation import build_policy_decision_receipt
-from sardis_v2_core.transactions import validate_wallet_not_frozen
+from sardis.compliance.checks import ComplianceAuditEntry
+from sardis.core import AgentRepository
+from sardis.core.mandates import MandateChain
+from sardis.core.policy_attestation import build_policy_decision_receipt
+from sardis.core.transactions import validate_wallet_not_frozen
+from sardis.protocol.schemas import AP2PaymentExecuteRequest, AP2PaymentExecuteResponse
 
 from server.authz import Principal, require_principal
 from server.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy
@@ -28,12 +28,12 @@ from server.operational_alerts import alert_payment_failure
 from server.transaction_cap_dep import enforce_transaction_caps
 
 if TYPE_CHECKING:
-    from sardis_compliance.kyc import KYCService
-    from sardis_compliance.sanctions import SanctionsService
-    from sardis_protocol.verifier import MandateVerifier
-    from sardis_v2_core.approval_service import ApprovalService
-    from sardis_v2_core.orchestrator import PaymentOrchestrator
-    from sardis_v2_core.wallet_repository import WalletRepository
+    from sardis.compliance.kyc import KYCService
+    from sardis.compliance.sanctions import SanctionsService
+    from sardis.core.approval_service import ApprovalService
+    from sardis.core.orchestrator import PaymentOrchestrator
+    from sardis.core.wallet_repository import WalletRepository
+    from sardis.protocol.verifier import MandateVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,7 @@ async def _compliance_checks_impl(
                 return result
         else:
             try:
-                from sardis_compliance.kya import KYACheckRequest
+                from sardis.compliance.kya import KYACheckRequest
 
                 amount_decimal = Decimal(str(amount_minor)) / Decimal("100")
                 kya_result = await deps.kya_service.check_agent(
@@ -434,7 +434,7 @@ async def execute_ap2_payment(
         # will be executed. The hash travels with the payment through the
         # orchestrator and into the ledger, so post-hoc audit can prove
         # the executed object matched the approved object.
-        from sardis_v2_core.approval_context import ApprovalContext, hash_cart
+        from sardis.core.approval_context import ApprovalContext, hash_cart
 
         _cart_items = [dict(li) for li in chain.cart.line_items] if chain.cart.line_items else []
         approval_ctx = ApprovalContext(
@@ -875,7 +875,7 @@ async def execute_ap2_payment(
         # Step 3: Execute through PaymentOrchestrator
         # The orchestrator handles: policy validation → compliance → chain execution
         # → spend recording → ledger append in a single pipeline.
-        from sardis_v2_core.orchestrator import (
+        from sardis.core.orchestrator import (
             ChainExecutionError,
             ComplianceViolationError,
             PolicyViolationError,

@@ -40,7 +40,7 @@ async def log_access_event(
         method = request.method
 
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         async with pool.acquire() as conn:

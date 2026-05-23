@@ -9,7 +9,9 @@ from decimal import Decimal
 
 import pytest
 from eth_abi import decode, encode
-from sardis_chain.zodiac_roles import (
+from web3 import Web3
+
+from sardis.chain.zodiac_roles import (
     APPROVE_SELECTOR,
     EURC_ADDRESSES,
     TRANSFER_SELECTOR,
@@ -46,7 +48,6 @@ from sardis_chain.zodiac_roles import (
     make_allowance_key,
     policy_to_role_config,
 )
-from web3 import Web3
 
 # ============ Stub SpendingPolicy for testing ============
 
@@ -596,11 +597,11 @@ class TestEnums:
 
 class TestModuleExports:
     def test_zodiac_roles_importable(self):
-        from sardis_chain import zodiac_roles
+        from sardis.chain import zodiac_roles
         assert zodiac_roles is not None
 
     def test_key_functions_exported(self):
-        from sardis_chain.zodiac_roles import (
+        from sardis.chain.zodiac_roles import (
             build_agent_wallet_setup,
             build_role_setup_transactions,
             encode_role_key,

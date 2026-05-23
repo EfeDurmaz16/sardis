@@ -8,13 +8,14 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_chain.cdp_swap import (
+
+from sardis.chain.cdp_swap import (
     CDP_CHAIN_IDS,
     CDPSwapClient,
     CDPSwapError,
     SwapQuote,
 )
-from sardis_compliance.coinbase_verifications import (
+from sardis.compliance.coinbase_verifications import (
     COINBASE_VERIFICATIONS_SCHEMA_UID,
     Attestation,
     CoinbaseVerificationsClient,
@@ -207,7 +208,7 @@ class TestVerificationPolicyPipeline:
     @pytest.mark.asyncio
     async def test_verified_agent_gets_higher_limits(self):
         """Verified agent should get MEDIUM trust level via KYA mapping."""
-        from sardis_v2_core.spending_policy import (
+        from sardis.core.spending_policy import (
             TrustLevel,
             create_default_policy,
             trust_level_for_kya,
@@ -223,7 +224,7 @@ class TestVerificationPolicyPipeline:
 
     @pytest.mark.asyncio
     async def test_unverified_agent_stays_low(self):
-        from sardis_v2_core.spending_policy import (
+        from sardis.core.spending_policy import (
             TrustLevel,
             create_default_policy,
             trust_level_for_kya,
@@ -243,8 +244,8 @@ class TestSwapPaymentFlow:
     @pytest.mark.asyncio
     async def test_swap_then_payment_flow(self):
         """Simulates: get quote → execute swap → policy check → pay."""
-        from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.spending_policy import TrustLevel, create_default_policy
+        from sardis.core.wallets import Wallet
 
         # Step 1: Swap quote (mocked)
         swap_client = MagicMock(spec=CDPSwapClient)

@@ -6,6 +6,7 @@ and that the mapping table is complete and consistent.
 from __future__ import annotations
 
 import pytest
+
 from sardis.protocol.reason_codes import (
     REASON_CODE_TABLE,
     ProtocolReasonCode,

@@ -19,14 +19,15 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.mandates import (
+
+from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
     MandateChain,
     PaymentMandate,
     VCProof,
 )
-from sardis_v2_core.orchestrator import (
+from sardis.core.orchestrator import (
     ChainExecutionError,
     ComplianceViolationError,
     KYAViolationError,

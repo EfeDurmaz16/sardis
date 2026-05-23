@@ -9,7 +9,9 @@ import json
 
 import pytest
 from eth_abi import decode
-from sardis_v2_core.erc8004 import (
+from web3 import Web3
+
+from sardis.core.erc8004 import (
     ERC8004_ADDRESSES,
     GIVE_FEEDBACK_SELECTOR,
     REGISTER_SELECTOR,
@@ -45,7 +47,6 @@ from sardis_v2_core.erc8004 import (
     build_unset_agent_wallet_calldata,
     build_wallet_binding_digest,
 )
-from web3 import Web3
 
 TEST_AGENT_ADDR = "0x1234567890AbcdEF1234567890aBcdef12345678"
 TEST_WALLET = "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"
@@ -423,7 +424,7 @@ class TestLegacyTypes:
 
 class TestModuleExports:
     def test_new_types_importable(self):
-        from sardis_v2_core.erc8004 import (
+        from sardis.core.erc8004 import (
             AgentRegistrationFile,
             AgentService,
             ReputationFeedback,
@@ -439,7 +440,7 @@ class TestModuleExports:
         ])
 
     def test_calldata_builders_importable(self):
-        from sardis_v2_core.erc8004 import (
+        from sardis.core.erc8004 import (
             build_give_feedback_calldata,
             build_register_calldata,
             build_set_agent_wallet_calldata,

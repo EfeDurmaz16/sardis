@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sardis_v2_core.facility_gate import FacilityEventType
+from sardis.core.facility_gate import FacilityEventType
 
 from server.repositories.facility_gate_repository import FacilityGateRepository
 from server.services.facility_gate_limits import FacilityGateLimiter, FacilityLimitThresholds

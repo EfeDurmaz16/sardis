@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install atheris
-          pip install -e ".[dev]" || pip install -e .
+          pip install -e packages/sardis
 
       - name: Run fuzz tests
         run: python tests/fuzz/fuzz_spending_policy.py

@@ -37,7 +37,7 @@ async def _load_checkout_config() -> CheckoutControlConfig:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         row = await Database.fetchrow(
             "SELECT value FROM operator_config WHERE key = 'checkout_controls'"
         )
@@ -55,7 +55,7 @@ async def _save_checkout_config(config: CheckoutControlConfig) -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ('checkout_controls', $1, NOW())
@@ -108,7 +108,7 @@ async def _persist_incident(incident: dict) -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO checkout_incidents (incident_id, session_id, data, created_at)
                VALUES ($1, $2, $3, NOW())""",
@@ -124,7 +124,7 @@ async def _load_incidents(limit: int = 50) -> list[dict]:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         rows = await Database.fetch(
             "SELECT data FROM checkout_incidents ORDER BY created_at DESC LIMIT $1",
             limit,

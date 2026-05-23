@@ -13,11 +13,13 @@ import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_cards.offramp import (
+
+from sardis.cards.offramp import (
     OfframpProvider,
     OfframpQuote,
     OfframpStatus,
@@ -235,7 +237,7 @@ class TestFundWalletViaOnramper:
             "token": "USDC",
         })
         assert resp.status_code == 200
-        assert "buy.onramper.com" in resp.json()["widget_url"]
+        assert urlparse(resp.json()["widget_url"]).netloc == "buy.onramper.com"
 
         # Step 2: Simulate webhook callback
         payload = json.dumps({

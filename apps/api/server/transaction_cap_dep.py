@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from fastapi import Depends, HTTPException, Request, status
-from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+from sardis.guardrails.transaction_caps import get_transaction_cap_engine
 
 from .authz import Principal, require_principal
 from .operational_alerts import alert_cap_exceeded

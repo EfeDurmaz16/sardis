@@ -2,6 +2,7 @@
 import time
 
 import pytest
+
 from sardis.protocol.x402 import (
     X402Challenge,
     X402HeaderBuilder,

@@ -11,7 +11,7 @@ import pytest
 
 zen = pytest.importorskip("zen", reason="zen-engine not installed")
 
-from sardis_guardrails.zen_engine import (
+from sardis.guardrails.zen_engine import (
     DEFAULT_FRAUD_RULES,
     FraudAction,
     FraudRuleResult,
@@ -272,20 +272,20 @@ class TestZenFraudProvider:
 
 
 class TestModuleExports:
-    """Verify Zen engine classes are exported from sardis_guardrails."""
+    """Verify Zen engine classes are exported from sardis.guardrails."""
 
     def test_zen_fraud_engine_exported(self):
-        from sardis_guardrails import ZenFraudEngine
+        from sardis.guardrails import ZenFraudEngine
         assert ZenFraudEngine is not None
 
     def test_zen_fraud_provider_exported(self):
-        from sardis_guardrails import ZenFraudProvider
+        from sardis.guardrails import ZenFraudProvider
         assert ZenFraudProvider is not None
 
     def test_fraud_action_exported(self):
-        from sardis_guardrails import FraudAction
+        from sardis.guardrails import FraudAction
         assert FraudAction is not None
 
     def test_fraud_rule_result_exported(self):
-        from sardis_guardrails import FraudRuleResult
+        from sardis.guardrails import FraudRuleResult
         assert FraudRuleResult is not None

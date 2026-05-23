@@ -62,7 +62,7 @@ class VerificationResponse(BaseModel):
 
 def _get_cdp_client():
     """Get or create CDP Swap client."""
-    from sardis_chain.cdp_swap import CDPSwapClient
+    from sardis.chain.cdp_swap import CDPSwapClient
 
     api_key = os.getenv("COINBASE_CDP_API_KEY_NAME", "")
     if not api_key:
@@ -75,7 +75,7 @@ def _get_cdp_client():
 
 def _get_verifications_client():
     """Get or create Coinbase Verifications client."""
-    from sardis_compliance.coinbase_verifications import CoinbaseVerificationsClient
+    from sardis.compliance.coinbase_verifications import CoinbaseVerificationsClient
     return CoinbaseVerificationsClient()
 
 
@@ -174,7 +174,7 @@ class CrossCurrencyTradeResponse(BaseModel):
 
 def _get_cross_currency_client():
     """Get or create Circle Cross-Currency client."""
-    from sardis_chain.circle_cross_currency import CircleCrossCurrencyClient
+    from sardis.chain.circle_cross_currency import CircleCrossCurrencyClient
 
     api_key = os.getenv("CIRCLE_MINT_API_KEY", "")
     if not api_key:

@@ -8,13 +8,14 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
-from sardis_v2_core.attestation_envelope import (
+
+from sardis.core.attestation_envelope import (
     AttestationEnvelope,
     _hash_value,
     build_attestation_envelope,
     verify_attestation_signature,
 )
-from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+from sardis.core.execution_intent import ExecutionIntent, IntentSource
 
 
 class TestExecutionIntentOriginBinding:
@@ -234,8 +235,8 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
-        from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
+        from sardis.protocol.verifier import MandateVerifier
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)
@@ -245,7 +246,7 @@ class TestVerifierActionDescriptionHashCheck:
             desc_hash="wrong_hash_that_does_not_match",
         )
 
-        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        from sardis.protocol.schemas import AP2PaymentExecuteRequest
         req = AP2PaymentExecuteRequest(**bundle)
         result = verifier.verify_chain(req)
 
@@ -257,8 +258,8 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
-        from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
+        from sardis.protocol.verifier import MandateVerifier
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)
@@ -271,7 +272,7 @@ class TestVerifierActionDescriptionHashCheck:
             desc_hash=correct_hash,
         )
 
-        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        from sardis.protocol.schemas import AP2PaymentExecuteRequest
         req = AP2PaymentExecuteRequest(**bundle)
         result = verifier.verify_chain(req)
 
@@ -285,15 +286,15 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
-        from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
+        from sardis.protocol.verifier import MandateVerifier
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)
 
         bundle = self._make_chain_bundle(description="", desc_hash="")
 
-        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        from sardis.protocol.schemas import AP2PaymentExecuteRequest
         req = AP2PaymentExecuteRequest(**bundle)
         result = verifier.verify_chain(req)
 

@@ -299,7 +299,7 @@ def create_health_router(
 
         # Kill switch
         try:
-            from sardis_guardrails.kill_switch import get_kill_switch
+            from sardis.guardrails.kill_switch import get_kill_switch
             ks = get_kill_switch()
             global_active = await ks.is_active_global()
             components["kill_switch"] = {
@@ -390,7 +390,7 @@ def create_health_router(
         # RPC
         checks_total += 1
         try:
-            from sardis_chain.config import get_chain_config
+            from sardis.chain.config import get_chain_config
 
             chain_cfg = get_chain_config(target_chain)
             rpc_url = chain_cfg.get_primary_rpc_url()
@@ -430,7 +430,7 @@ def create_health_router(
         # Smart contracts
         checks_total += 1
         try:
-            from sardis_chain.executor import get_sardis_policy_module
+            from sardis.chain.executor import get_sardis_policy_module
 
             contract_addr = get_sardis_policy_module(target_chain)
             if contract_addr and contract_addr.startswith("0x") and len(contract_addr) == 42:

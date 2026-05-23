@@ -68,8 +68,8 @@ async def get_payment_attestation(
     (e.g. rejected payments before evidence is recorded).
     """
     try:
-        from sardis_v2_core.attestation_envelope import build_attestation_envelope
-        from sardis_v2_core.database import Database
+        from sardis.core.attestation_envelope import build_attestation_envelope
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         org_id = principal.organization_id if principal else None

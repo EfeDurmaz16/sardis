@@ -6,7 +6,7 @@ import pytest
 
 def test_fallback_scheduler_warns_on_cron_job(caplog):
     """Fallback scheduler should log WARNING when cron job won't execute."""
-    from sardis_v2_core.scheduler import SardisScheduler
+    from sardis.core.scheduler import SardisScheduler
 
     # Create scheduler without APScheduler (database_url=None forces fallback if APScheduler missing)
     scheduler = SardisScheduler(database_url=None)
@@ -35,7 +35,7 @@ def test_fallback_scheduler_warns_on_cron_job(caplog):
 
 def test_fallback_scheduler_stores_but_does_not_execute_cron():
     """Cron jobs are stored but never executed in fallback mode."""
-    from sardis_v2_core.scheduler import SardisScheduler
+    from sardis.core.scheduler import SardisScheduler
 
     scheduler = SardisScheduler(database_url=None)
 

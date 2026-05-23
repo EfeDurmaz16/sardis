@@ -38,7 +38,7 @@ def fake_email_verification_db(monkeypatch):
     async def fake_get_pool():
         return FakePool()
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     monkeypatch.setattr(Database, "get_pool", fake_get_pool)
     yield token_rows

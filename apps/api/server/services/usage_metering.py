@@ -44,7 +44,7 @@ class UsageMeteringService:
     ) -> None:
         """Record a usage event. Best-effort — failures are logged, not raised."""
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             pool = await Database.get_pool()
             async with pool.acquire() as conn:
@@ -75,7 +75,7 @@ class UsageMeteringService:
             period_end = now
 
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             pool = await Database.get_pool()
             async with pool.acquire() as conn:

@@ -4,14 +4,15 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.drift_policy_integrator import (
+
+from sardis.core.drift_policy_integrator import (
     DriftAction,
     DriftPolicyConfig,
     DriftPolicyIntegrator,
 )
-from sardis_v2_core.goal_drift_detector import DriftAlert, DriftSeverity, DriftType
-from sardis_v2_core.policy_store_memory import InMemoryPolicyStore
-from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, create_default_policy
+from sardis.core.goal_drift_detector import DriftAlert, DriftSeverity, DriftType
+from sardis.core.policy_store_memory import InMemoryPolicyStore
+from sardis.core.spending_policy import SpendingPolicy, TimeWindowLimit, create_default_policy
 
 
 def _alert(

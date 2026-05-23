@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGACY_IMPORT_PATTERN = re.compile(
-    r"^\s*(from\s+sardis_v2_core\b|import\s+sardis_v2_core\b)"
+    r"^\s*(from\s+sardis_v2_core\b|import\s+sardis_v2_core\b|from\s+sardis_core\b|import\s+sardis_core\b)"
 )
 
 PUBLIC_PREFIXES = (
@@ -70,10 +70,10 @@ def main() -> int:
         print("Public examples or READMEs use the legacy core import namespace:")
         for path, line_no, line in violations:
             print(f"  - {path}:{line_no}: {line}")
-        print("\nUse `sardis_core` for new public examples. Keep `sardis_v2_core` only for compatibility notes.")
+        print("\nUse `sardis.core` for new public examples. Keep `sardis_v2_core` / `sardis_core` only for compatibility notes.")
         return 1
 
-    print("Preferred core import check passed: public examples use sardis_core.")
+    print("Preferred core import check passed: public examples use sardis.core.")
     return 0
 
 

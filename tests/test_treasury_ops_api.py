@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.authz import Principal, require_admin_principal
 from server.canonical_state_machine import normalize_stablecoin_event
 from server.repositories.canonical_ledger_repository import CanonicalLedgerRepository

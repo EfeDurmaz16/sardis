@@ -27,7 +27,7 @@ async def _persist_counterparty(cpty_id: str, record: dict) -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO counterparties (id, name, type, identifier, data, updated_at)
                VALUES ($1, $2, $3, $4, $5, NOW())
@@ -43,7 +43,7 @@ async def _delete_counterparty_from_db(cpty_id: str) -> None:
     """Remove counterparty from DB."""
     _counterparties.pop(cpty_id, None)
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute("DELETE FROM counterparties WHERE id = $1", cpty_id)
     except Exception as exc:
         logger.warning("Failed to delete counterparty %s from DB: %s", cpty_id, exc)
@@ -56,7 +56,7 @@ async def _load_counterparty(cpty_id: str) -> dict | None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         row = await Database.fetchrow("SELECT data FROM counterparties WHERE id = $1", cpty_id)
         if row:
             data = json.loads(row["data"]) if isinstance(row["data"], str) else row["data"]

@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_cards.offramp import OfframpProvider, OfframpQuote, OfframpStatus, OfframpTransaction
+
+from sardis.cards.offramp import OfframpProvider, OfframpQuote, OfframpStatus, OfframpTransaction
 
 
 @pytest.fixture

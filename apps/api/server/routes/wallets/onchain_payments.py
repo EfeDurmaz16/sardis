@@ -15,25 +15,25 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sardis_compliance.checks import ComplianceAuditEntry
-from sardis_v2_core.mandates import (
+from sardis.compliance.checks import ComplianceAuditEntry
+from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
     MandateChain,
     PaymentMandate,
     VCProof,
 )
-from sardis_v2_core.orchestrator import (
+from sardis.core.orchestrator import (
     ChainExecutionError,
     ComplianceViolationError,
     PolicyViolationError,
 )
-from sardis_v2_core.policy_attestation import (
+from sardis.core.policy_attestation import (
     build_policy_decision_receipt,
     build_signed_policy_snapshot,
     verify_signed_policy_snapshot,
 )
-from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+from sardis.core.tokens import TokenType, to_raw_token_amount
 
 from server.authz import Principal, require_principal
 from server.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
@@ -739,7 +739,7 @@ async def pay_onchain(
                 )
         else:
             try:
-                from sardis_compliance.kya import KYACheckRequest
+                from sardis.compliance.kya import KYACheckRequest
 
                 kya_result = await deps.kya_service.check_agent(
                     KYACheckRequest(
@@ -1043,7 +1043,7 @@ async def pay_onchain(
     )
 
     # --- Platform fee calculation ---
-    from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
+    from sardis.core.platform_fee import calculate_fee, get_treasury_address
 
     fee_calc = calculate_fee(request.amount, destination=request.to)
     fee_tx_hash: str | None = None

@@ -8,8 +8,8 @@ def test_merkle_receipt_uses_chain_timestamp():
     """Merkle receipt should use chain receipt timestamp when available."""
     import tempfile
 
-    from sardis_ledger.records import ChainReceipt, LedgerStore
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.core.mandates import PaymentMandate, VCProof
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
@@ -60,8 +60,8 @@ def test_merkle_receipt_deterministic_with_same_inputs():
     """Two receipts with identical inputs should produce identical Merkle roots."""
     import tempfile
 
-    from sardis_ledger.records import ChainReceipt, LedgerStore
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.core.mandates import PaymentMandate, VCProof
+    from sardis.ledger.records import ChainReceipt, LedgerStore
 
     # Create first ledger
     with tempfile.TemporaryDirectory() as tmpdir1:
@@ -146,8 +146,8 @@ def test_merkle_receipt_without_chain_timestamp_fallback():
     """Merkle receipt should fall back gracefully when chain timestamp is not available."""
     import tempfile
 
-    from sardis_ledger.records import ChainReceipt, LedgerStore
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.core.mandates import PaymentMandate, VCProof
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")

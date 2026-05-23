@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import AgentRepository
+from sardis.core import AgentRepository
 
 from server.authz import Principal, require_principal
 from server.canonical_state_machine import normalize_lithic_card_event
@@ -141,7 +141,7 @@ def create_cards_router(
         # Resolve MCC code to category for category-specific rule matching
         merchant_category = None
         if mcc_code:
-            from sardis_v2_core.mcc_service import get_mcc_info
+            from sardis.core.mcc_service import get_mcc_info
             mcc_info = get_mcc_info(mcc_code)
             if mcc_info:
                 merchant_category = mcc_info.category
@@ -304,7 +304,7 @@ def create_cards_router(
 
     @r.get("/providers/readiness", dependencies=auth_deps)
     async def get_provider_readiness():
-        from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
+        from sardis.cards.providers.issuer_readiness import evaluate_issuer_readiness
 
         return {
             "active_provider": _active_provider_name(),
@@ -313,7 +313,7 @@ def create_cards_router(
 
     @r.get("/providers/contracts", dependencies=auth_deps)
     async def get_provider_contracts():
-        from sardis_cards.providers.issuer_adapter import (
+        from sardis.cards.providers.issuer_adapter import (
             REQUIRED_ISSUER_METHODS,
             build_issuer_adapter,
         )
@@ -493,7 +493,7 @@ def create_cards_router(
                     await _reservation("released", reason="linked_wallet_not_found")
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
 
-                from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+                from sardis.core.tokens import TokenType, to_raw_token_amount
                 stablecoin_amount_minor = to_raw_token_amount(TokenType.USDC, payload.amount)
 
                 try:
@@ -1044,7 +1044,7 @@ def create_cards_router(
         to add the card to Apple Wallet.
         """
         _enforce_issuing_live_gate("provision_apple_pay")
-        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+        from sardis.cards.providers.stripe_issuing import StripeIssuingProvider
 
         try:
             provider = StripeIssuingProvider()
@@ -1067,7 +1067,7 @@ def create_cards_router(
         to add the card to Google Wallet.
         """
         _enforce_issuing_live_gate("provision_google_pay")
-        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+        from sardis.cards.providers.stripe_issuing import StripeIssuingProvider
 
         try:
             provider = StripeIssuingProvider()

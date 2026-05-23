@@ -30,7 +30,7 @@ class TestSanctionsProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_raises_in_production_without_api_keys(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.sanctions import create_sanctions_service
+            from sardis.compliance.sanctions import create_sanctions_service
 
             with pytest.raises(RuntimeError, match="sanctions"):
                 create_sanctions_service()
@@ -48,7 +48,7 @@ class TestSanctionsProductionGuard:
             ):
                 os.environ.pop(key, None)
 
-            from sardis_compliance.sanctions import create_sanctions_service
+            from sardis.compliance.sanctions import create_sanctions_service
 
             svc = create_sanctions_service()
             assert svc is not None
@@ -62,7 +62,7 @@ class TestSanctionsProductionGuard:
         ):
             os.environ.pop("CIRCLE_API_KEY", None)
 
-            from sardis_compliance.sanctions import create_sanctions_service
+            from sardis.compliance.sanctions import create_sanctions_service
 
             with pytest.raises(RuntimeError, match="CIRCLE_API_KEY"):
                 create_sanctions_service(provider_name="circle")
@@ -70,7 +70,7 @@ class TestSanctionsProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_elliptic_raises_in_production_without_key(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.sanctions import create_sanctions_service
+            from sardis.compliance.sanctions import create_sanctions_service
 
             with pytest.raises(RuntimeError, match="Elliptic"):
                 create_sanctions_service(provider_name="elliptic")
@@ -86,7 +86,7 @@ class TestKYCProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_raises_in_production_without_api_key(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.kyc import create_kyc_service
+            from sardis.compliance.kyc import create_kyc_service
 
             with pytest.raises(RuntimeError, match="Persona KYC"):
                 create_kyc_service()
@@ -95,7 +95,7 @@ class TestKYCProductionGuard:
     def test_allows_mock_in_dev(self, env: str) -> None:
         env_dict = {"SARDIS_ENVIRONMENT": env} if env else {}
         with patch.dict(os.environ, env_dict, clear=False):
-            from sardis_compliance.kyc import create_kyc_service
+            from sardis.compliance.kyc import create_kyc_service
 
             svc = create_kyc_service()
             assert svc is not None
@@ -111,7 +111,7 @@ class TestKYBProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_raises_in_production_without_api_key(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.kyb import create_kyb_service
+            from sardis.compliance.kyb import create_kyb_service
 
             with pytest.raises(RuntimeError, match="Persona KYB"):
                 create_kyb_service()
@@ -120,7 +120,7 @@ class TestKYBProductionGuard:
     def test_allows_mock_in_dev(self, env: str) -> None:
         env_dict = {"SARDIS_ENVIRONMENT": env} if env else {}
         with patch.dict(os.environ, env_dict, clear=False):
-            from sardis_compliance.kyb import create_kyb_service
+            from sardis.compliance.kyb import create_kyb_service
 
             svc = create_kyb_service()
             assert svc is not None
@@ -136,7 +136,7 @@ class TestPEPProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_raises_in_production_without_api_key(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.pep import create_pep_service
+            from sardis.compliance.pep import create_pep_service
 
             with pytest.raises(RuntimeError, match="PEP"):
                 create_pep_service()
@@ -145,7 +145,7 @@ class TestPEPProductionGuard:
     def test_allows_mock_in_dev(self, env: str) -> None:
         env_dict = {"SARDIS_ENVIRONMENT": env} if env else {}
         with patch.dict(os.environ, env_dict, clear=False):
-            from sardis_compliance.pep import create_pep_service
+            from sardis.compliance.pep import create_pep_service
 
             svc = create_pep_service()
             assert svc is not None
@@ -153,7 +153,7 @@ class TestPEPProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_unknown_provider_raises_in_production(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.pep import create_pep_service
+            from sardis.compliance.pep import create_pep_service
 
             with pytest.raises(RuntimeError, match="Unknown PEP provider"):
                 create_pep_service(api_key="fake-key", provider_name="nonexistent")
@@ -169,7 +169,7 @@ class TestAdverseMediaProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_raises_in_production_without_api_key(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.adverse_media import create_adverse_media_service
+            from sardis.compliance.adverse_media import create_adverse_media_service
 
             with pytest.raises(RuntimeError, match="Adverse media"):
                 create_adverse_media_service()
@@ -178,7 +178,7 @@ class TestAdverseMediaProductionGuard:
     def test_allows_mock_in_dev(self, env: str) -> None:
         env_dict = {"SARDIS_ENVIRONMENT": env} if env else {}
         with patch.dict(os.environ, env_dict, clear=False):
-            from sardis_compliance.adverse_media import create_adverse_media_service
+            from sardis.compliance.adverse_media import create_adverse_media_service
 
             svc = create_adverse_media_service()
             assert svc is not None
@@ -186,7 +186,7 @@ class TestAdverseMediaProductionGuard:
     @pytest.mark.parametrize("env", PROD_ENVS)
     def test_unknown_provider_raises_in_production(self, env: str) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": env}, clear=False):
-            from sardis_compliance.adverse_media import create_adverse_media_service
+            from sardis.compliance.adverse_media import create_adverse_media_service
 
             with pytest.raises(RuntimeError, match="Unknown adverse media provider"):
                 create_adverse_media_service(
@@ -213,35 +213,35 @@ class TestStagingBlocksMock:
             ):
                 os.environ.pop(key, None)
 
-            from sardis_compliance.sanctions import create_sanctions_service
+            from sardis.compliance.sanctions import create_sanctions_service
 
             with pytest.raises(RuntimeError):
                 create_sanctions_service()
 
     def test_kyc_staging(self) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "staging"}, clear=False):
-            from sardis_compliance.kyc import create_kyc_service
+            from sardis.compliance.kyc import create_kyc_service
 
             with pytest.raises(RuntimeError):
                 create_kyc_service()
 
     def test_kyb_staging(self) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "staging"}, clear=False):
-            from sardis_compliance.kyb import create_kyb_service
+            from sardis.compliance.kyb import create_kyb_service
 
             with pytest.raises(RuntimeError):
                 create_kyb_service()
 
     def test_pep_staging(self) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "staging"}, clear=False):
-            from sardis_compliance.pep import create_pep_service
+            from sardis.compliance.pep import create_pep_service
 
             with pytest.raises(RuntimeError):
                 create_pep_service()
 
     def test_adverse_media_staging(self) -> None:
         with patch.dict(os.environ, {"SARDIS_ENVIRONMENT": "staging"}, clear=False):
-            from sardis_compliance.adverse_media import create_adverse_media_service
+            from sardis.compliance.adverse_media import create_adverse_media_service
 
             with pytest.raises(RuntimeError):
                 create_adverse_media_service()

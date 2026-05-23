@@ -4,7 +4,8 @@ from __future__ import annotations
 import json
 
 import pytest
-from sardis_v2_core.policy_version_store import (
+
+from sardis.core.policy_version_store import (
     PolicyVersionStore,
     compute_policy_hash,
 )

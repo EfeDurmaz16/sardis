@@ -5,10 +5,11 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.did_bridge import DIDBridge, DIDRegistrationError
-from sardis_v2_core.fides_did import generate_did
-from sardis_v2_core.fides_trust_adapter import FidesAttestation, FidesTrustGraphAdapter
-from sardis_v2_core.trust_graph import TrustPathNode, TrustPathResult
+
+from sardis.core.did_bridge import DIDBridge, DIDRegistrationError
+from sardis.core.fides_did import generate_did
+from sardis.core.fides_trust_adapter import FidesAttestation, FidesTrustGraphAdapter
+from sardis.core.trust_graph import TrustPathNode, TrustPathResult
 
 # ============ FidesTrustGraphAdapter Tests ============
 
@@ -309,8 +310,8 @@ async def test_trust_scorer_with_fides_adapter():
     adapter._client = mock_client
 
     # Mock Redis cache to avoid dependency
-    with patch("sardis_v2_core.kya_trust_scoring.TrustScorer.__init__", return_value=None) as mock_init:
-        from sardis_v2_core.kya_trust_scoring import (
+    with patch("sardis.core.kya_trust_scoring.TrustScorer.__init__", return_value=None) as mock_init:
+        from sardis.core.kya_trust_scoring import (
             DEFAULT_WEIGHTS,
             TRUST_TIER_LIMITS,
             KYALevel,
@@ -356,8 +357,8 @@ async def test_trust_scorer_fides_unavailable_fallback():
     mock_client.is_closed = False
     adapter._client = mock_client
 
-    with patch("sardis_v2_core.kya_trust_scoring.TrustScorer.__init__", return_value=None):
-        from sardis_v2_core.kya_trust_scoring import (
+    with patch("sardis.core.kya_trust_scoring.TrustScorer.__init__", return_value=None):
+        from sardis.core.kya_trust_scoring import (
             DEFAULT_WEIGHTS,
             KYALevel,
             TrustScorer,

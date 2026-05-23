@@ -5,12 +5,13 @@ import time
 from unittest.mock import patch
 
 import pytest
-from sardis_compliance.checks import (
+
+from sardis.compliance.checks import (
     ComplianceEngine,
     ComplianceResult,
     SimpleRuleProvider,
 )
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis.core.mandates import PaymentMandate, VCProof
 
 
 def create_test_mandate(
@@ -86,7 +87,7 @@ class TestSimpleRuleProvider:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -174,7 +175,7 @@ class TestComplianceEngine:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -270,7 +271,7 @@ class TestCustomComplianceProvider:
     @pytest.mark.asyncio
     async def test_engine_with_custom_provider(self):
         """Test ComplianceEngine with custom provider."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         class AlwaysAllowProvider:
             def evaluate(self, mandate: PaymentMandate) -> ComplianceResult:
@@ -299,7 +300,7 @@ class TestComplianceEdgeCases:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -354,7 +355,7 @@ class TestComplianceProviderProtocol:
         """Test that ComplianceProvider protocol requires evaluate method."""
 
         # SimpleRuleProvider should satisfy the protocol
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(environment="dev")
@@ -377,7 +378,7 @@ class TestNLPolicyProvider:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -385,7 +386,7 @@ class TestNLPolicyProvider:
     @pytest.fixture
     def provider(self, settings):
         """Create an NLPolicyProvider."""
-        from sardis_compliance.checks import NLPolicyProvider
+        from sardis.compliance.checks import NLPolicyProvider
         return NLPolicyProvider(settings)
 
     def test_nl_provider_has_fallback(self, provider):
@@ -406,7 +407,7 @@ class TestNLPolicyProvider:
         """Test setting and getting policies for agents."""
         from decimal import Decimal
 
-        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+        from sardis.core.spending_policy import SpendingPolicy, TrustLevel
 
         policy = SpendingPolicy(
             agent_id="test_agent",
@@ -426,7 +427,7 @@ class TestNLPolicyProvider:
         """Test that NL policy enforces per-transaction limits."""
         from decimal import Decimal
 
-        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+        from sardis.core.spending_policy import SpendingPolicy, TrustLevel
 
         # Create policy with $50 per-tx limit
         policy = SpendingPolicy(
@@ -455,13 +456,13 @@ class TestComplianceAuditStore:
     @pytest.fixture
     def store(self):
         """Create a fresh audit store."""
-        from sardis_compliance.checks import ComplianceAuditStore
+        from sardis.compliance.checks import ComplianceAuditStore
         return ComplianceAuditStore()
 
     @pytest.fixture
     def entry(self):
         """Create a test audit entry."""
-        from sardis_compliance.checks import ComplianceAuditEntry
+        from sardis.compliance.checks import ComplianceAuditEntry
         return ComplianceAuditEntry(
             mandate_id="test_mandate_123",
             subject="test_wallet",
@@ -481,7 +482,7 @@ class TestComplianceAuditStore:
 
     def test_append_multiple_entries(self, store):
         """Test appending multiple entries."""
-        from sardis_compliance.checks import ComplianceAuditEntry
+        from sardis.compliance.checks import ComplianceAuditEntry
 
         for i in range(5):
             entry = ComplianceAuditEntry(
@@ -503,7 +504,7 @@ class TestComplianceAuditStore:
 
     def test_get_recent(self, store):
         """Test getting recent entries."""
-        from sardis_compliance.checks import ComplianceAuditEntry
+        from sardis.compliance.checks import ComplianceAuditEntry
 
         for i in range(10):
             entry = ComplianceAuditEntry(
@@ -544,7 +545,7 @@ class TestComplianceEngineAuditTrail:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -552,7 +553,7 @@ class TestComplianceEngineAuditTrail:
     @pytest.fixture
     def engine(self, settings):
         """Create a ComplianceEngine."""
-        from sardis_compliance.checks import ComplianceAuditStore
+        from sardis.compliance.checks import ComplianceAuditStore
         store = ComplianceAuditStore()
         return ComplianceEngine(settings, audit_store=store)
 

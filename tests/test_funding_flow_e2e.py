@@ -23,7 +23,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_cards.models import (
+
+from sardis.cards.models import (
     Card,
     CardStatus,
     CardTransaction,
@@ -31,15 +32,15 @@ from sardis_cards.models import (
     FundingSource,
     TransactionStatus,
 )
-from sardis_cards.offramp import (
+from sardis.cards.offramp import (
     MockOfframpProvider,
     OfframpProvider,
     OfframpQuote,
     OfframpStatus,
     OfframpTransaction,
 )
-from sardis_cards.providers.mock import MockProvider
-from sardis_cards.providers.router import CardProviderRouter
+from sardis.cards.providers.mock import MockProvider
+from sardis.cards.providers.router import CardProviderRouter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -84,7 +85,7 @@ class TestCoinbaseOnrampSessionCreation:
         os.environ["COINBASE_ONRAMP_API_KEY"] = "test_key_123"
         os.environ["COINBASE_WEBHOOK_SECRET"] = "test_webhook_placeholder"
 
-        from sardis_ramp.providers.coinbase_provider import CoinbaseOnrampProvider
+        from sardis.ramp.providers.coinbase_provider import CoinbaseOnrampProvider
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -140,7 +141,7 @@ class TestCoinbaseWebhookSignature:
         webhook_secret = "test_webhook_placeholder"
         os.environ["COINBASE_WEBHOOK_SECRET"] = webhook_secret
 
-        from sardis_ramp.providers.coinbase_provider import CoinbaseOnrampProvider
+        from sardis.ramp.providers.coinbase_provider import CoinbaseOnrampProvider
 
         provider = CoinbaseOnrampProvider(
             api_key="test_key_123",
@@ -172,7 +173,7 @@ class TestCoinbaseWebhookSignature:
         webhook_secret = "test_webhook_placeholder"
         os.environ["COINBASE_WEBHOOK_SECRET"] = webhook_secret
 
-        from sardis_ramp.providers.coinbase_provider import CoinbaseOnrampProvider
+        from sardis.ramp.providers.coinbase_provider import CoinbaseOnrampProvider
 
         provider = CoinbaseOnrampProvider(
             api_key="test_key_123",

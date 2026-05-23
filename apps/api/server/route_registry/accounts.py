@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
-from sardis_v2_core.agent_groups import AgentGroupRepository
+from sardis.core.agent_groups import AgentGroupRepository
 
 from server.routes.accounts import (
     api_keys,

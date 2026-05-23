@@ -10,7 +10,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
-from sardis_guardrails.ml_fraud import (
+
+from sardis.guardrails.ml_fraud import (
     FEATURE_SCHEMA,
     HIGH_RISK_COUNTRIES,
     MERCHANT_CATEGORY_RISK,
@@ -297,7 +298,7 @@ class TestMLFraudScorer:
 
     @pytest.mark.asyncio
     async def test_load_model_no_onnxruntime(self):
-        with patch("sardis_guardrails.ml_fraud.HAS_ONNXRUNTIME", False):
+        with patch("sardis.guardrails.ml_fraud.HAS_ONNXRUNTIME", False):
             scorer = MLFraudScorer(model_path="test.onnx")
             loaded = await scorer.load_model()
             assert loaded is False
@@ -349,7 +350,7 @@ class TestConstants:
 
 class TestSingleton:
     def test_get_ml_fraud_scorer(self):
-        import sardis_guardrails.ml_fraud as mod
+        import sardis.guardrails.ml_fraud as mod
         mod._scorer = None
         s1 = get_ml_fraud_scorer()
         s2 = get_ml_fraud_scorer()
@@ -361,7 +362,7 @@ class TestSingleton:
 
 class TestModuleExports:
     def test_from_guardrails(self):
-        from sardis_guardrails import (
+        from sardis.guardrails import (
             FEATURE_SCHEMA,
             FraudResult,
             MLFraudAction,

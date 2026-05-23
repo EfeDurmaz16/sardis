@@ -4,6 +4,7 @@ import asyncio
 from decimal import Decimal
 
 import pytest
+
 from sardis.guardrails.rate_limiter import (
     RateLimiter,
     RateLimitError,
@@ -97,7 +98,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_transaction_count_limit(self):
         """Test transaction count rate limiting."""
-        limiter = RateLimiter(agent_id="agent-123")
+        limiter = RateLimiter(agent_id="agent-123", burst_allowance=1.0)
 
         limiter.add_limit(
             name="test_limit",
@@ -113,7 +114,7 @@ class TestRateLimiter:
         with pytest.raises(RateLimitError) as exc_info:
             await limiter.check_and_record("test_limit", Decimal("100"))
 
-        assert "Transaction count limit exceeded" in str(exc_info.value)
+        assert "Transaction rate limit exceeded" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_amount_limit(self):
@@ -182,7 +183,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_sliding_window_cleanup(self):
         """Test old transactions are cleaned from sliding window."""
-        limiter = RateLimiter(agent_id="agent-123")
+        limiter = RateLimiter(agent_id="agent-123", burst_allowance=1.0)
 
         limiter.add_limit(
             name="window_test",
@@ -228,7 +229,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_check_all_limits(self):
         """Test checking all configured limits at once."""
-        limiter = RateLimiter(agent_id="agent-123")
+        limiter = RateLimiter(agent_id="agent-123", burst_allowance=1.0)
 
         limiter.add_limit(
             name="limit_1",
@@ -253,7 +254,7 @@ class TestRateLimiter:
     @pytest.mark.asyncio
     async def test_reset_specific_limit(self):
         """Test resetting a specific limit."""
-        limiter = RateLimiter(agent_id="agent-123")
+        limiter = RateLimiter(agent_id="agent-123", burst_allowance=1.0)
 
         limiter.add_limit(
             name="reset_test",

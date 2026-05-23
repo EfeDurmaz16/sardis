@@ -8,9 +8,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_chain.circle_signer import CircleWalletSigner
-from sardis_chain.executor import MPCSignerPort
-from sardis_wallet.circle_client import (
+
+from sardis.chain.circle_signer import CircleWalletSigner
+from sardis.chain.executor import MPCSignerPort
+from sardis.wallet.circle_client import (
     CIRCLE_BLOCKCHAIN_IDS,
     CircleAPIError,
     CircleTransaction,
@@ -230,7 +231,7 @@ class TestWalletManagerCircle:
         assert req.mpc_provider == "circle"
 
     def test_wallet_model_circle_fields(self):
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.wallets import Wallet
 
         wallet = Wallet.new("agent_1", mpc_provider="circle")
         assert wallet.mpc_provider == "circle"
@@ -240,7 +241,7 @@ class TestWalletManagerCircle:
         assert wallet.circle_wallet_id == "cw_123"
 
     def test_config_supports_circle_mpc(self):
-        from sardis_v2_core.config import MPCProvider
+        from sardis.core.config import MPCProvider
 
         p = MPCProvider(name="circle")
         assert p.name == "circle"
@@ -253,8 +254,8 @@ class TestTurnkeyFallback:
     @pytest.mark.asyncio
     async def test_fallback_to_turnkey_on_circle_failure(self):
         """When Circle fails and Turnkey is available, wallet creation falls back."""
-        from sardis_v2_core.config import SardisSettings
-        from sardis_wallet.manager import EnhancedWalletManager
+        from sardis.core.config import SardisSettings
+        from sardis.wallet.manager import EnhancedWalletManager
 
         settings = MagicMock(spec=SardisSettings)
         settings.circle_wallet_api_key = "test-key"

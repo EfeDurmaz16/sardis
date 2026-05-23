@@ -6,7 +6,7 @@ import logging
 import os
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
-from sardis_v2_core.delegated_adapters.visa_tap import verify_visa_tap_signature
+from sardis.core.delegated_adapters.visa_tap import verify_visa_tap_signature
 
 logger = logging.getLogger("server.api.visa_tap_webhooks")
 
@@ -39,7 +39,7 @@ AUTHORIZATION_EVENTS = {
 
 async def _handle_token_lifecycle(event_type: str, event_data: dict) -> None:
     """Process Visa token lifecycle events (suspended / expired / deactivated)."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     token_id = event_data.get("tokenId") or event_data.get("token_id", "")
     logger.info(
@@ -68,7 +68,7 @@ async def _handle_token_lifecycle(event_type: str, event_data: dict) -> None:
 
 async def _handle_authorization_result(event_type: str, event_data: dict) -> None:
     """Process Visa TAP authorization result events."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     transaction_id = (
         event_data.get("transactionId")

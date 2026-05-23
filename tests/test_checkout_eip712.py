@@ -18,6 +18,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from eth_account import Account
 from eth_account.messages import encode_defunct, encode_typed_data
+
 from server.services.eip712_checkout import (
     EIP712_DOMAIN_NAME,
     EIP712_DOMAIN_VERSION,
@@ -289,6 +290,7 @@ def mock_deps():
 def app(mock_deps):
     """Create a test FastAPI app with the public checkout router."""
     from fastapi import FastAPI
+
     from server.routes.commerce.merchant_checkout import get_deps, public_router
 
     test_app = FastAPI()

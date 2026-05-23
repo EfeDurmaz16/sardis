@@ -96,7 +96,7 @@ async def create_commitment(
     principal: Principal = Depends(require_principal),
 ) -> CommitmentResponse:
     """Create a funding commitment and mint initial funding cells."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     if req.cell_strategy == "fixed" and req.cell_denomination is None:
         raise HTTPException(
@@ -181,7 +181,7 @@ async def list_commitments(
     principal: Principal = Depends(require_principal),
     commitment_status: str | None = Query(default=None, alias="status"),
 ) -> list[CommitmentResponse]:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     if commitment_status:
         rows = await Database.fetch(
@@ -224,7 +224,7 @@ async def list_cells(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> CellListResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     conditions = ["c.org_id = $1"]
     params: list = [principal.org_id]
@@ -277,7 +277,7 @@ async def split_cell(
     req: SplitCellRequest,
     principal: Principal = Depends(require_principal),
 ) -> list[CellResponse]:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
@@ -340,7 +340,7 @@ async def merge_cells(
     req: MergeCellsRequest,
     principal: Principal = Depends(require_principal),
 ) -> CellResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         rows = await conn.fetch(

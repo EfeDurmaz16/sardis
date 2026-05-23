@@ -19,9 +19,10 @@ import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import server.routes.providers.stripe_webhooks as stripe_webhooks
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+import server.routes.providers.stripe_webhooks as stripe_webhooks
 from server.routes.providers.stripe_webhooks import (
     ISSUING_EVENTS,
     TREASURY_EVENTS,

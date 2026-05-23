@@ -7,13 +7,14 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_guardrails.agent_threat_detector import (
+
+from sardis.guardrails.agent_threat_detector import (
     AgentThreatDetector,
     AgentThreatSignals,
     ThreatCategory,
     get_agent_threat_detector,
 )
-from sardis_guardrails.anomaly_engine import RiskAction
+from sardis.guardrails.anomaly_engine import RiskAction
 
 
 class TestPromptInjectionDetection:
@@ -321,20 +322,20 @@ class TestOverallAssessment:
 
 
 class TestModuleExports:
-    """Verify exports from sardis_guardrails."""
+    """Verify exports from sardis.guardrails."""
 
     def test_detector_exported(self):
-        from sardis_guardrails import AgentThreatDetector
+        from sardis.guardrails import AgentThreatDetector
         assert AgentThreatDetector is not None
 
     def test_signals_exported(self):
-        from sardis_guardrails import AgentThreatSignals
+        from sardis.guardrails import AgentThreatSignals
         assert AgentThreatSignals is not None
 
     def test_assessment_exported(self):
-        from sardis_guardrails import AgentThreatAssessment
+        from sardis.guardrails import AgentThreatAssessment
         assert AgentThreatAssessment is not None
 
     def test_threat_category_exported(self):
-        from sardis_guardrails import ThreatCategory
+        from sardis.guardrails import ThreatCategory
         assert ThreatCategory is not None

@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.webhooks import (
+from sardis.core.webhooks import (
     DeliveryAttempt,
     EventType,
     WebhookEvent,

@@ -5,7 +5,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.spending_policy import (
+
+from sardis.core.spending_policy import (
     DEFAULT_LIMITS,
     MerchantRule,
     SpendingPolicy,
@@ -514,8 +515,8 @@ class TestSpendingPolicyAsyncEvaluate:
         """Test evaluate() returns True for valid payment."""
         from unittest.mock import AsyncMock
 
-        from sardis_v2_core.tokens import TokenType
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.tokens import TokenType
+        from sardis.core.wallets import Wallet
 
         wallet = Wallet.new("agent_001")
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
@@ -547,8 +548,8 @@ class TestSpendingPolicyAsyncEvaluate:
         """Test evaluate() fails when on-chain balance is insufficient."""
         from unittest.mock import AsyncMock
 
-        from sardis_v2_core.tokens import TokenType
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.tokens import TokenType
+        from sardis.core.wallets import Wallet
 
         wallet = Wallet.new("agent_001")
         wallet.set_address("base", "0x1234567890123456789012345678901234567890")
@@ -578,8 +579,8 @@ class TestSpendingPolicyAsyncEvaluate:
     @pytest.mark.asyncio
     async def test_evaluate_without_rpc_client(self):
         """Test evaluate() works without RPC client (skips balance check)."""
-        from sardis_v2_core.tokens import TokenType
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.tokens import TokenType
+        from sardis.core.wallets import Wallet
 
         wallet = Wallet.new("agent_001")
 

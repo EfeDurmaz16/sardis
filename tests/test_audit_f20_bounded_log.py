@@ -2,7 +2,8 @@
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from sardis_v2_core.orchestrator import ExecutionPhase, PaymentOrchestrator
+
+from sardis.core.orchestrator import ExecutionPhase, PaymentOrchestrator
 
 
 @pytest.fixture

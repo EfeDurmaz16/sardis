@@ -12,9 +12,9 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sardis_chain.executor import STABLECOIN_ADDRESSES
-from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+from sardis.chain.executor import STABLECOIN_ADDRESSES
+from sardis.core.mandates import PaymentMandate, VCProof
+from sardis.core.tokens import TokenType, to_raw_token_amount
 
 logger = logging.getLogger("server.recurring")
 

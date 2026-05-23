@@ -8,19 +8,20 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.credential_store import CredentialEncryption
-from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+
+from sardis.core.credential_store import CredentialEncryption
+from sardis.core.delegated_adapters.mastercard_agent_pay import (
     MastercardAgentPayAdapter,
     MockMastercardAgentPayAdapter,
 )
-from sardis_v2_core.delegated_credential import (
+from sardis.core.delegated_credential import (
     CredentialClass,
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegated_executor import DelegatedPaymentRequest
+from sardis.core.delegated_executor import DelegatedPaymentRequest
 
 # ---------------------------------------------------------------------------
 # Helpers

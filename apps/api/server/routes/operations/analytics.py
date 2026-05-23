@@ -13,7 +13,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
-from sardis_v2_core.database import get_db_pool
+from sardis.core.database import get_db_pool
 
 from server.authz import Principal, optional_principal, require_principal
 from server.middleware.mpp_gate import mpp_gate

@@ -12,11 +12,11 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import Agent, AgentPolicy, AgentRepository, SpendingLimits, WalletRepository
-from sardis_v2_core.agent_payment_identity import (
+from sardis.core import Agent, AgentPolicy, AgentRepository, SpendingLimits, WalletRepository
+from sardis.core.agent_payment_identity import (
     AgentPaymentIdentity as CanonicalAgentPaymentIdentity,
 )
-from sardis_v2_core.agent_payment_identity import (
+from sardis.core.agent_payment_identity import (
     EvidencePack,
     IdentityAttestation,
     ProvenanceAttestation,
@@ -519,7 +519,7 @@ async def create_agent(
     if auto_register_kya:
         strict_kya_registration = _kya_strict_registration()
         try:
-            from sardis_compliance.kya import AgentManifest
+            from sardis.compliance.kya import AgentManifest
 
             kya_result = await deps.kya_service.register_agent(
                 AgentManifest(
@@ -1226,7 +1226,7 @@ async def get_agent_spending(
     txns: list[SpendingTransaction] = []
 
     try:
-        from sardis_v2_core import get_db_pool
+        from sardis.core import get_db_pool
 
         pool = await get_db_pool()
         async with pool.acquire() as conn:

@@ -9,7 +9,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from sardis_protocol.kleros import (
+
+from sardis.protocol.kleros import (
     ARBITRATION_FEE_ESTIMATES,
     DEFAULT_APPEAL_PERIOD_DAYS,
     DEFAULT_EVIDENCE_PERIOD_DAYS,
@@ -633,7 +634,7 @@ class TestFactory:
 
 class TestModuleExports:
     def test_imports_from_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             ArbitrationCostEstimate,
             CourtCategory,
             DisputeRulingResult,

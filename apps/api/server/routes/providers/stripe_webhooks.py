@@ -202,7 +202,7 @@ async def handle_stripe_webhook(
                     approved = response.get("approved", False)
                     reason = (response.get("metadata") or {}).get("reason", "")
 
-                    from sardis_v2_core.database import Database
+                    from sardis.core.database import Database
                     async with Database.connection() as conn:
                         await conn.execute(
                             """INSERT INTO card_transactions

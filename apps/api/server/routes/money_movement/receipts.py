@@ -143,7 +143,7 @@ def _get_receipt_store():
             "Using InMemoryReceiptStore — data will be lost on restart. "
             "Not suitable for production."
         )
-        from sardis_v2_core.receipt_store import InMemoryReceiptStore
+        from sardis.core.receipt_store import InMemoryReceiptStore
         _store_instance = InMemoryReceiptStore()
     return _store_instance
 

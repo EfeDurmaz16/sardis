@@ -3,14 +3,15 @@
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.policy_dsl import (
+
+from sardis.core.policy_dsl import (
     PolicyDefinition,
     PolicyRule,
     compile_policy,
     decompile_policy,
     validate_definition,
 )
-from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope, TrustLevel
+from sardis.core.spending_policy import SpendingPolicy, SpendingScope, TrustLevel
 
 
 class TestValidateDefinition:
@@ -173,7 +174,7 @@ class TestDecompilePolicy:
             limit_per_tx=Decimal("100"),
             limit_total=Decimal("1000"),
         )
-        from sardis_v2_core.spending_policy import TimeWindowLimit
+        from sardis.core.spending_policy import TimeWindowLimit
         policy.daily_limit = TimeWindowLimit(window_type="daily", limit_amount=Decimal("500"))
 
         defn = decompile_policy(policy)

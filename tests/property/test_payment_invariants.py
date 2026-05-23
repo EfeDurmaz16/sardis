@@ -31,13 +31,13 @@ except ImportError:
         text = staticmethod(lambda **kw: None)
         integers = staticmethod(lambda **kw: None)
 
-from sardis_guardrails.kill_switch import (
+from sardis.guardrails.kill_switch import (
     ActivationReason,
     InMemoryBackend,
     KillSwitch,
     KillSwitchError,
 )
-from sardis_guardrails.transaction_caps import TransactionCapEngine
+from sardis.guardrails.transaction_caps import TransactionCapEngine
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ def kill_switch():
 @settings(max_examples=100)
 def test_per_tx_cap_never_exceeded(amount, per_tx_cap):
     """A payment exceeding the per-tx cap must always be rejected."""
-    import sardis_guardrails.transaction_caps as tc_mod
+    import sardis.guardrails.transaction_caps as tc_mod
 
     async def _check():
         # Monkeypatch the module-level constant (parsed once at import)

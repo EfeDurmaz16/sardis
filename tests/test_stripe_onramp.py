@@ -16,8 +16,10 @@ import os
 import time
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
+
 from server.routes.wallets.onramp import (
     _CHAIN_TO_STRIPE_NETWORK,
     StripeOnrampLinkResponse,
@@ -181,7 +183,7 @@ class TestStripeOnrampModels:
             wallet_address="0x1234",
             destination_network="base",
         )
-        assert "crypto.link.com" in resp.url
+        assert urlparse(resp.url).netloc == "crypto.link.com"
 
     def test_webhook_event_model(self):
         event = StripeOnrampWebhookEvent(
@@ -233,6 +235,7 @@ class TestGetClientIp:
 
 try:
     from fastapi.testclient import TestClient
+
     from server.main import create_app
 
     _APP_AVAILABLE = True
@@ -593,7 +596,7 @@ class TestStripeOnrampLinkUrl:
                 principal=mock_principal,
             )
 
-        assert "crypto.link.com" in resp.url
+        assert urlparse(resp.url).netloc == "crypto.link.com"
         assert "destination_currency=usdc" in resp.url
         assert "destination_network=base" in resp.url
         assert "source_amount=100" in resp.url

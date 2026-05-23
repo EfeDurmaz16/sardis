@@ -13,13 +13,14 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
-from sardis_cards.models import Card, CardStatus, CardType
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.agents import Agent, AgentPolicy, SpendingLimits
-from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.wallets import Wallet
+
+from sardis.cards.models import Card, CardStatus, CardType
+from sardis.core import SardisSettings
+from sardis.core.agents import Agent, AgentPolicy, SpendingLimits
+from sardis.core.identity import AgentIdentity, IdentityRegistry
+from sardis.core.wallets import Wallet
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.verifier import MandateVerifier
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.security]
 
@@ -591,7 +592,7 @@ def test_ucp_checkout_sessions_scoped_to_creating_agent():
     Verifies that checkout sessions maintain proper tenant isolation and
     cannot be accessed or manipulated by other agents.
     """
-    from sardis_checkout.models import CheckoutSession, CustomerSession, PaymentStatus, PSPType
+    from sardis.checkout.models import CheckoutSession, CustomerSession, PaymentStatus, PSPType
 
     # Setup: Two agents creating checkout sessions
     agent_a_id = "agent_a"

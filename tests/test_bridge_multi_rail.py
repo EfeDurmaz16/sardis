@@ -23,7 +23,7 @@ import respx
 
 def _make_bridge_provider(**kwargs):
     """Construct a BridgeProvider with mocked SardisFiatRamp internals."""
-    from sardis_ramp.providers.bridge_provider import BridgeProvider
+    from sardis.ramp.providers.bridge_provider import BridgeProvider
 
     provider = BridgeProvider(
         sardis_api_key="sk_test",
@@ -217,7 +217,7 @@ STATUS_URL = f"{BASE_URL}/transfers/txn_abc123"
 
 
 def _make_adapter(**kwargs) -> BridgeCardFundingAdapter:  # noqa: F821
-    from sardis_v2_core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
+    from sardis.core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
 
     defaults = {
         "api_key": "bridge_api_key_test",
@@ -229,7 +229,7 @@ def _make_adapter(**kwargs) -> BridgeCardFundingAdapter:  # noqa: F821
 
 
 def _funding_request(**overrides) -> FundingRequest:  # noqa: F821
-    from sardis_v2_core.funding import FundingRequest
+    from sardis.core.funding import FundingRequest
 
     defaults = {
         "amount": Decimal("500.00"),
@@ -251,13 +251,13 @@ class TestBridgeCardFundingAdapterProperties:
         assert adapter.rail == "fiat"
 
     def test_missing_api_key_raises(self):
-        from sardis_v2_core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
+        from sardis.core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
 
         with pytest.raises(ValueError, match="api_key is required"):
             BridgeCardFundingAdapter(api_key="", base_url=BASE_URL)
 
     def test_missing_base_url_raises(self):
-        from sardis_v2_core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
+        from sardis.core.delegated_adapters.bridge_cards import BridgeCardFundingAdapter
 
         with pytest.raises(ValueError, match="base_url is required"):
             BridgeCardFundingAdapter(api_key="key", base_url="")

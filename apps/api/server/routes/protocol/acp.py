@@ -96,7 +96,7 @@ async def _persist_session(session_id: str, data: dict[str, Any]) -> None:
     """Write checkout session to DB when available, always cache locally."""
     _sessions[session_id] = data
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO acp_checkout_sessions (session_id, data, updated_at)
                VALUES ($1, $2, NOW())
@@ -112,7 +112,7 @@ async def _load_session(session_id: str) -> dict[str, Any] | None:
     if session_id in _sessions:
         return _sessions[session_id]
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         row = await Database.fetchrow(
             "SELECT data FROM acp_checkout_sessions WHERE session_id = $1", session_id,
         )
@@ -680,7 +680,7 @@ async def complete_checkout_session(
 
         # Try to verify via chain executor
         try:
-            from sardis_chain.executor import ChainExecutor
+            from sardis.chain.executor import ChainExecutor
 
             ChainExecutor()
             # Verification would check tx receipt, amount, recipient
@@ -807,7 +807,7 @@ async def delegate_payment(
 
     # Persist to DB
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO acp_delegate_tokens (token_id, data, created_at)
                VALUES ($1, $2, NOW())""",

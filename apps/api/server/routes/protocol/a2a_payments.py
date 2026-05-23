@@ -54,15 +54,15 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sardis_v2_core.a2a_escrow import Escrow, EscrowManager, EscrowState
-from sardis_v2_core.a2a_settlement import SettlementEngine, SettlementResult
-from sardis_v2_core.exceptions import (
+from sardis.core.a2a_escrow import Escrow, EscrowManager, EscrowState
+from sardis.core.a2a_settlement import SettlementEngine, SettlementResult
+from sardis.core.exceptions import (
     SardisConflictError,
     SardisNotFoundError,
     SardisTransactionFailedError,
     SardisValidationError,
 )
-from sardis_v2_core.tokens import TokenType
+from sardis.core.tokens import TokenType
 
 from server.authz import Principal, require_principal
 from server.kill_switch_dep import require_kill_switch_clear
@@ -74,7 +74,7 @@ logger = logging.getLogger(__name__)
 async def _emit_escrow_webhook(request: Any, event_type: str, data: dict) -> None:
     """Fire-and-forget webhook emission for escrow events."""
     try:
-        from sardis_v2_core.webhooks import EventType, WebhookEvent
+        from sardis.core.webhooks import EventType, WebhookEvent
 
         svc = getattr(request.app.state, "webhook_service", None) if hasattr(request, "app") else None
         if not svc:

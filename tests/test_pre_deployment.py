@@ -17,16 +17,16 @@ import pytest
 class TestCoreModulesExist:
     """Verify all core modules can be imported."""
 
-    def test_sardis_v2_core_imports(self):
-        """Test sardis_v2_core module imports."""
-        from sardis_v2_core.spending_policy import SpendingPolicy
-        from sardis_v2_core.spending_tracker import SpendingTracker
+    def test_sardis_core_imports(self):
+        """Test sardis.core module imports."""
+        from sardis.core.spending_policy import SpendingPolicy
+        from sardis.core.spending_tracker import SpendingTracker
         assert SpendingPolicy is not None
         assert SpendingTracker is not None
 
     def test_sardis_chain_imports(self):
         """Test sardis-chain module imports."""
-        from sardis_chain.executor import (
+        from sardis.chain.executor import (
             CHAIN_CONFIGS,
             SARDIS_CONTRACTS,
             ChainExecutor,
@@ -37,11 +37,11 @@ class TestCoreModulesExist:
 
     def test_sardis_compliance_imports(self):
         """Test sardis-compliance module imports."""
-        from sardis_compliance.kyc import (
+        from sardis.compliance.kyc import (
             KYCService,
             PersonaKYCProvider,
         )
-        from sardis_compliance.sanctions import (
+        from sardis.compliance.sanctions import (
             EllipticProvider,
             SanctionsService,
         )
@@ -52,13 +52,13 @@ class TestCoreModulesExist:
 
     def test_sardis_ramp_imports(self):
         """Test sardis-ramp module imports."""
-        from sardis_ramp.ramp import SardisFiatRamp
+        from sardis.ramp.ramp import SardisFiatRamp
         assert SardisFiatRamp is not None
 
     def test_sardis_cards_imports(self):
         """Test sardis-cards module imports."""
-        from sardis_cards.models import Card, CardTransaction
-        from sardis_cards.providers.lithic import LithicProvider
+        from sardis.cards.models import Card, CardTransaction
+        from sardis.cards.providers.lithic import LithicProvider
         assert LithicProvider is not None
         assert Card is not None
         assert CardTransaction is not None
@@ -69,17 +69,17 @@ class TestNLPolicyEngine:
 
     def test_policy_parser_exists(self):
         """Test NL policy parser can be imported."""
-        from sardis_v2_core.nl_policy_parser import NLPolicyParser
+        from sardis.core.nl_policy_parser import NLPolicyParser
         assert NLPolicyParser is not None
 
     def test_regex_parser_fallback(self):
         """Test regex parser fallback exists."""
-        from sardis_v2_core.nl_policy_parser import RegexPolicyParser
+        from sardis.core.nl_policy_parser import RegexPolicyParser
         assert RegexPolicyParser is not None
 
     def test_policy_models(self):
         """Test policy models exist."""
-        from sardis_v2_core.nl_policy_parser import ExtractedPolicy, ExtractedSpendingLimit
+        from sardis.core.nl_policy_parser import ExtractedPolicy, ExtractedSpendingLimit
         assert ExtractedPolicy is not None
         assert ExtractedSpendingLimit is not None
 
@@ -89,7 +89,7 @@ class TestTransactionModes:
 
     def test_chain_configs_defined(self):
         """Test all chain configs are defined."""
-        from sardis_chain.executor import CHAIN_CONFIGS
+        from sardis.chain.executor import CHAIN_CONFIGS
 
         # Check expected chains
         expected_chains = ['base_sepolia', 'polygon_amoy', 'ethereum_sepolia']
@@ -98,13 +98,13 @@ class TestTransactionModes:
 
     def test_executor_initialization(self):
         """Test executor can be initialized."""
-        from sardis_chain.executor import ChainExecutor
+        from sardis.chain.executor import ChainExecutor
         # Just verify the class exists and can be imported
         assert ChainExecutor is not None
 
     def test_contract_addresses_structure(self):
         """Test contract addresses structure is correct."""
-        from sardis_chain.executor import SARDIS_CONTRACTS
+        from sardis.chain.executor import SARDIS_CONTRACTS
 
         # Check expected testnets are present
         expected_testnets = ['base_sepolia', 'polygon_amoy', 'ethereum_sepolia']
@@ -128,7 +128,7 @@ class TestComplianceProviders:
 
     def test_persona_provider_structure(self):
         """Test Persona KYC provider has required methods."""
-        from sardis_compliance.kyc import PersonaKYCProvider
+        from sardis.compliance.kyc import PersonaKYCProvider
 
         # Check required methods exist
         assert hasattr(PersonaKYCProvider, 'create_inquiry')
@@ -136,7 +136,7 @@ class TestComplianceProviders:
 
     def test_elliptic_provider_structure(self):
         """Test Elliptic AML provider has required methods."""
-        from sardis_compliance.sanctions import EllipticProvider
+        from sardis.compliance.sanctions import EllipticProvider
 
         # Check required methods exist
         assert hasattr(EllipticProvider, 'screen_wallet')
@@ -149,7 +149,7 @@ class TestFiatRailsIntegration:
 
     def test_bridge_api_integration(self):
         """Test Bridge.xyz API integration structure."""
-        from sardis_ramp.ramp import SardisFiatRamp
+        from sardis.ramp.ramp import SardisFiatRamp
 
         # Check API URLs are defined
         assert hasattr(SardisFiatRamp, 'BRIDGE_API_URL')
@@ -167,7 +167,7 @@ class TestVirtualCardsIntegration:
 
     def test_lithic_provider_structure(self):
         """Test Lithic provider has required methods."""
-        from sardis_cards.providers.lithic import LithicProvider
+        from sardis.cards.providers.lithic import LithicProvider
 
         # Check required methods
         assert hasattr(LithicProvider, 'create_card')
@@ -180,7 +180,7 @@ class TestSmartContractConfiguration:
 
     def test_deployed_contract_addresses(self):
         """Test that Base Sepolia contracts are configured (Safe + Zodiac architecture)."""
-        from sardis_chain.executor import SARDIS_CONTRACTS
+        from sardis.chain.executor import SARDIS_CONTRACTS
 
         base_sepolia = SARDIS_CONTRACTS.get('base_sepolia', {})
 
@@ -301,7 +301,7 @@ class TestProtocolIntegrations:
 
     def test_blockchain_chains_configured(self):
         """Test all blockchain chains are configured."""
-        from sardis_chain.executor import CHAIN_CONFIGS
+        from sardis.chain.executor import CHAIN_CONFIGS
 
         expected_evm_chains = [
             'base', 'base_sepolia',
@@ -316,7 +316,7 @@ class TestProtocolIntegrations:
 
     def test_turnkey_signer_exists(self):
         """Test Turnkey MPC signer is implemented."""
-        from sardis_chain.executor import TurnkeyMPCSigner
+        from sardis.chain.executor import TurnkeyMPCSigner
         assert TurnkeyMPCSigner is not None
         assert hasattr(TurnkeyMPCSigner, 'sign_transaction')
 

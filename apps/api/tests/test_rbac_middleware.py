@@ -32,7 +32,7 @@ for _pkg in ("sardis-core", "api"):
     if _p.exists() and str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from sardis_v2_core.organizations import OrgMember
+from sardis.core.organizations import OrgMember
 
 from server.middleware.rbac import (
     RBACMiddleware,
@@ -359,7 +359,7 @@ class TestRequirePermission:
 
     @pytest.mark.asyncio
     async def test_no_member_raises_401(self):
-        from sardis_v2_core.rbac import Permission
+        from sardis.core.rbac import Permission
         check_fn = await require_permission(Permission.CREATE_AGENT)
 
         request = MagicMock()

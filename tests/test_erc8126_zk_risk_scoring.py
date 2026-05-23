@@ -6,7 +6,8 @@ ZK proof commitments, and calldata builders.
 from __future__ import annotations
 
 import pytest
-from sardis_protocol.erc8126 import (
+
+from sardis.protocol.erc8126 import (
     DEFAULT_WEIGHTS,
     AgentVerification,
     RiskBand,
@@ -425,7 +426,7 @@ class TestEnums:
 
 class TestModuleExports:
     def test_imports(self):
-        from sardis_protocol.erc8126 import (
+        from sardis.protocol.erc8126 import (
             AgentVerification,
             RiskBand,
             VerificationType,

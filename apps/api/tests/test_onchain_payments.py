@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.policy_attestation import compute_policy_hash
-from sardis_v2_core.spending_policy import SpendingPolicy
+from sardis.core.policy_attestation import compute_policy_hash
+from sardis.core.spending_policy import SpendingPolicy
 
 import server.routes.wallets.onchain_payments as onchain_payments_router
 from server.authz import Principal, require_principal

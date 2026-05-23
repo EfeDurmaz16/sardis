@@ -89,7 +89,7 @@ async def report_usage(
     is ``"<meter_id>:<usage_delta>"`` and the key is the meter's
     countersignature secret (stored server-side, set at meter creation).
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     # Fetch the meter (and lock for atomic update)
     async with Database.transaction() as conn:
@@ -191,7 +191,7 @@ async def get_meter(
     meter_id: str,
     principal: Principal = Depends(require_principal),
 ) -> MeterResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     row = await Database.fetchrow(
         "SELECT * FROM usage_meters WHERE meter_id = $1",
@@ -214,7 +214,7 @@ async def list_meters(
     offset: int = Query(default=0, ge=0),
     principal: Principal = Depends(require_principal),
 ) -> MeterListResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     rows = await Database.fetch(
         """SELECT * FROM usage_meters

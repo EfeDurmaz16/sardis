@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.agent_groups import (
+from sardis.core.agent_groups import (
     AgentGroup,
     AgentGroupRepository,
     GroupMerchantPolicy,

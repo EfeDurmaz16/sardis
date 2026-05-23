@@ -9,7 +9,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_compliance.sanctions import (
+
+from sardis.compliance.sanctions import (
     EntityType,
     FailoverSanctionsProvider,
     SanctionsList,
@@ -29,7 +30,7 @@ class TestOFACAddressProvider:
     """Tests for the OFAC SDN address list provider."""
 
     def _make_provider(self):
-        from sardis_compliance.providers.ofac import OFACAddressProvider
+        from sardis.compliance.providers.ofac import OFACAddressProvider
         provider = OFACAddressProvider()
         # Pre-load known addresses for testing (bypass HTTP)
         provider._sanctioned_addresses = {
@@ -84,7 +85,7 @@ class TestOFACAddressProvider:
 
     @pytest.mark.asyncio
     async def test_fail_closed_when_lists_not_loaded(self):
-        from sardis_compliance.providers.ofac import OFACAddressProvider
+        from sardis.compliance.providers.ofac import OFACAddressProvider
         provider = OFACAddressProvider()
         provider._loaded = False
 
@@ -125,7 +126,7 @@ class TestOFACAddressProvider:
 
     @pytest.mark.asyncio
     async def test_force_refresh(self):
-        from sardis_compliance.providers.ofac import OFACAddressProvider
+        from sardis.compliance.providers.ofac import OFACAddressProvider
         provider = OFACAddressProvider()
 
         mock_resp = MagicMock()
@@ -158,7 +159,7 @@ class TestChainalysisOracleProvider:
     """Tests for the Chainalysis on-chain sanctions oracle provider."""
 
     def _make_provider(self, rpc_urls=None):
-        from sardis_compliance.providers.chainalysis import ChainalysisOracleProvider
+        from sardis.compliance.providers.chainalysis import ChainalysisOracleProvider
         return ChainalysisOracleProvider(
             rpc_urls=rpc_urls or {"base": "https://rpc.example.com"},
         )
@@ -237,7 +238,7 @@ class TestChainalysisOracleProvider:
 
     @pytest.mark.asyncio
     async def test_no_rpc_url_returns_none(self):
-        from sardis_compliance.providers.chainalysis import ChainalysisOracleProvider
+        from sardis.compliance.providers.chainalysis import ChainalysisOracleProvider
         provider = ChainalysisOracleProvider(rpc_urls={})
         result = await provider._check_oracle("0xAddr", "base")
         assert result is None
@@ -252,7 +253,7 @@ class TestWatchmanProvider:
     """Tests for the Moov Watchman sanctions screening provider."""
 
     def _make_provider(self, base_url="http://localhost:8084"):
-        from sardis_compliance.providers.watchman import WatchmanProvider
+        from sardis.compliance.providers.watchman import WatchmanProvider
         return WatchmanProvider(base_url=base_url, min_match_score=0.85)
 
     @pytest.mark.asyncio
@@ -269,7 +270,7 @@ class TestWatchmanProvider:
 
     @pytest.mark.asyncio
     async def test_high_score_match_blocked(self):
-        from sardis_compliance.providers.watchman import WatchmanEntityMatch
+        from sardis.compliance.providers.watchman import WatchmanEntityMatch
         provider = self._make_provider()
 
         match = WatchmanEntityMatch(
@@ -288,7 +289,7 @@ class TestWatchmanProvider:
 
     @pytest.mark.asyncio
     async def test_medium_score_not_blocked(self):
-        from sardis_compliance.providers.watchman import WatchmanEntityMatch
+        from sardis.compliance.providers.watchman import WatchmanEntityMatch
         provider = self._make_provider()
 
         match = WatchmanEntityMatch(
@@ -307,7 +308,7 @@ class TestWatchmanProvider:
 
     @pytest.mark.asyncio
     async def test_entity_screening(self):
-        from sardis_compliance.providers.watchman import WatchmanEntityMatch
+        from sardis.compliance.providers.watchman import WatchmanEntityMatch
         provider = self._make_provider()
 
         match = WatchmanEntityMatch(
@@ -347,7 +348,7 @@ class TestWatchmanProvider:
 
     @pytest.mark.asyncio
     async def test_transaction_screening(self):
-        from sardis_compliance.providers.watchman import WatchmanEntityMatch
+        from sardis.compliance.providers.watchman import WatchmanEntityMatch
         provider = self._make_provider()
 
         match = WatchmanEntityMatch(
@@ -382,7 +383,7 @@ class TestWatchmanProvider:
 
     @pytest.mark.asyncio
     async def test_risk_level_mapping(self):
-        from sardis_compliance.providers.watchman import WatchmanEntityMatch
+        from sardis.compliance.providers.watchman import WatchmanEntityMatch
         provider = self._make_provider()
 
         cases = [
@@ -458,17 +459,17 @@ class TestCreateSanctionsServiceFactory:
 
     def test_ofac_provider(self):
         service = create_sanctions_service(provider_name="ofac")
-        from sardis_compliance.providers.ofac import OFACAddressProvider
+        from sardis.compliance.providers.ofac import OFACAddressProvider
         assert isinstance(service._provider, OFACAddressProvider)
 
     def test_chainalysis_provider(self):
         service = create_sanctions_service(provider_name="chainalysis")
-        from sardis_compliance.providers.chainalysis import ChainalysisOracleProvider
+        from sardis.compliance.providers.chainalysis import ChainalysisOracleProvider
         assert isinstance(service._provider, ChainalysisOracleProvider)
 
     def test_watchman_provider(self):
         service = create_sanctions_service(provider_name="watchman")
-        from sardis_compliance.providers.watchman import WatchmanProvider
+        from sardis.compliance.providers.watchman import WatchmanProvider
         assert isinstance(service._provider, WatchmanProvider)
 
     def test_layered_provider(self):
@@ -479,7 +480,7 @@ class TestCreateSanctionsServiceFactory:
     def test_env_var_provider(self):
         with patch.dict("os.environ", {"SARDIS_COMPLIANCE_SCREENING_PROVIDER": "ofac"}):
             service = create_sanctions_service()
-            from sardis_compliance.providers.ofac import OFACAddressProvider
+            from sardis.compliance.providers.ofac import OFACAddressProvider
             assert isinstance(service._provider, OFACAddressProvider)
 
 
@@ -492,13 +493,13 @@ class TestModuleExports:
     """Verify new providers are accessible from top-level module."""
 
     def test_ofac_provider_exported(self):
-        from sardis_compliance import OFACAddressProvider
+        from sardis.compliance import OFACAddressProvider
         assert OFACAddressProvider is not None
 
     def test_chainalysis_provider_exported(self):
-        from sardis_compliance import ChainalysisOracleProvider
+        from sardis.compliance import ChainalysisOracleProvider
         assert ChainalysisOracleProvider is not None
 
     def test_watchman_provider_exported(self):
-        from sardis_compliance import WatchmanProvider
+        from sardis.compliance import WatchmanProvider
         assert WatchmanProvider is not None

@@ -797,7 +797,7 @@ async def register_user(request: Request, body: RegisterRequest):
             import hashlib
             from datetime import timedelta
 
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             token_hash = hashlib.sha256(verification_token.encode()).hexdigest()
             expires_at = datetime.now(UTC) + timedelta(hours=24)
@@ -987,7 +987,7 @@ async def _check_kyb_status(request: Request, user: UserInfo) -> bool:
     if not database_url:
         return False
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             # Check kyb_verifications table first

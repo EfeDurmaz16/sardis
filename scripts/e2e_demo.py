@@ -80,7 +80,7 @@ async def step_1_create_agent() -> dict:
     logger.info("=" * 60)
 
     try:
-        from sardis_v2_core.agents import Agent, AgentPolicy, SpendingLimits
+        from sardis.core.agents import Agent, AgentPolicy, SpendingLimits
 
         # Create agent with default spending limits
         agent = Agent.new(
@@ -122,7 +122,7 @@ async def step_2_parse_policy(agent_id: str) -> dict:
     logger.info(f"  Policy: \"{DEMO_CONFIG['policy']}\"")
 
     try:
-        from sardis_v2_core.nl_policy_parser import (
+        from sardis.core.nl_policy_parser import (
             HAS_INSTRUCTOR,
             NLPolicyParser,
             RegexPolicyParser,
@@ -178,7 +178,7 @@ async def step_3_create_wallet(agent_id: str) -> dict:
     try:
         from uuid import uuid4
 
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.wallets import Wallet
 
         wallet_id = f"wallet_{uuid4().hex[:16]}"
         test_address = "0x" + uuid4().hex[:40]
@@ -218,9 +218,9 @@ async def step_4_compliance_check(agent_id: str, policy: dict | None = None) -> 
         from datetime import datetime
         from uuid import uuid4
 
+        from sardis.core import load_settings
+        from sardis.core.mandates import PaymentMandate, VCProof
         from sardis_compliance.checks import ComplianceEngine, NLPolicyProvider
-        from sardis_v2_core import load_settings
-        from sardis_v2_core.mandates import PaymentMandate, VCProof
 
         settings = load_settings()
 
@@ -310,8 +310,8 @@ async def step_5_execute_payment(wallet: dict, mandate_id: str, simulated: bool 
         }
     else:
         try:
+            from sardis.core import load_settings
             from sardis_chain.executor import ChainExecutor
-            from sardis_v2_core import load_settings
 
             settings = load_settings()
             executor = ChainExecutor(settings=settings)

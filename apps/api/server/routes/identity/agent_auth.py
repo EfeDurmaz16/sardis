@@ -674,7 +674,7 @@ async def _dispatch_capability(capability: str, params: dict, principal: Princip
 async def _exec_payment(params: dict, principal: Principal) -> dict:
     """Execute payment via PaymentOrchestrator."""
     try:
-        from sardis_v2_core.payment_orchestrator import PaymentOrchestrator
+        from sardis.core.payment_orchestrator import PaymentOrchestrator
 
         orchestrator = PaymentOrchestrator()
         payment_result = await orchestrator.execute_payment(
@@ -707,7 +707,7 @@ async def _exec_payment(params: dict, principal: Principal) -> dict:
 async def _exec_fx_quote(params: dict, principal: Principal) -> dict:
     """Get FX quote via LiquidityRouter."""
     try:
-        from sardis_v2_core.liquidity_router import LiquidityRouter
+        from sardis.core.liquidity_router import LiquidityRouter
 
         liq_router = LiquidityRouter()
         quote = await liq_router.get_quote(
@@ -735,7 +735,7 @@ async def _exec_fx_quote(params: dict, principal: Principal) -> dict:
 async def _exec_policy_check(params: dict, principal: Principal) -> dict:
     """Check spending policy."""
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
@@ -763,7 +763,7 @@ async def _exec_mandate_create(params: dict, principal: Principal) -> dict:
     """Create a spending mandate."""
     mandate_id = f"mandate_{uuid4().hex[:12]}"
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         now = datetime.now(UTC)
@@ -794,7 +794,7 @@ async def _exec_balance_check(params: dict, principal: Principal) -> dict:
     """Check wallet balance."""
     wallet_id = params.get("wallet_id", "")
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:

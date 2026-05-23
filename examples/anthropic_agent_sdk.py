@@ -23,13 +23,13 @@ Run:
 import os
 
 import anthropic
-from sardis_agent_sdk import SardisToolkit
 
 from sardis import SardisClient
+from sardis_agent_sdk import SardisToolkit
 
 # --- Sardis Setup -----------------------------------------------------------
 
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_test_demo"))
+sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_test_demo"))  # nosecret: example fallback
 
 # Create an agent and wallet
 agent = sardis.agents.create(

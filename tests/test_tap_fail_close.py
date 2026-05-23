@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.middleware.tap import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,

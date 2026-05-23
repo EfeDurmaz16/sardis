@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Depends
-from sardis_cards.providers.issuer_readiness import evaluate_issuer_readiness
-from sardis_v2_core.config import load_settings
+from sardis.cards.providers.issuer_readiness import evaluate_issuer_readiness
+from sardis.core.config import load_settings
 
 from server.authz import Principal, require_admin_principal
 

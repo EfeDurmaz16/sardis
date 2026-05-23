@@ -92,7 +92,7 @@ async def get_transaction_evidence(
     All results scoped to the caller's organization.
     """
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         org_id = principal.organization_id if principal else None
@@ -190,7 +190,7 @@ async def get_webhook_evidence(
     Scoped to the caller's organization via webhook subscription ownership.
     """
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         org_id = principal.organization_id
@@ -245,7 +245,7 @@ async def list_policy_decisions(
     limit = min(limit, 100)
     offset = max(offset, 0)
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         org_id = principal.organization_id
@@ -300,7 +300,7 @@ async def get_policy_decision(
     Verifies agent belongs to the caller's organization.
     """
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         org_id = principal.organization_id

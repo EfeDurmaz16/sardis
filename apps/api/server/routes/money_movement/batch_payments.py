@@ -97,7 +97,7 @@ async def _execute_batch_payment(
 
     # Validate mandate if provided
     if req.mandate_id:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         mandate = await Database.fetchrow(
             "SELECT * FROM spending_mandates WHERE id = $1 AND org_id = $2 AND status = 'active'",
             req.mandate_id, principal.org_id,
@@ -115,7 +115,7 @@ async def _execute_batch_payment(
     # Build batch transfer list for Tempo executor
     transfer_dicts = []
     for t in req.transfers:
-        from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+        from sardis.core.tokens import TOKEN_REGISTRY, TokenType
         token_meta = TOKEN_REGISTRY.get(TokenType(t.token))
         token_addr = token_meta.contract_addresses.get("tempo", "") if token_meta else ""
         if not token_addr:
@@ -136,7 +136,7 @@ async def _execute_batch_payment(
         })
 
     # Execute via TempoExecutor
-    from sardis_chain.tempo.executor import TempoExecutor
+    from sardis.chain.tempo.executor import TempoExecutor
     executor = TempoExecutor()
     receipt = await executor.execute_batch_transfers(transfer_dicts)
 

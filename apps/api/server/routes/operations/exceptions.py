@@ -14,7 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.exception_workflows import (
+from sardis.core.exception_workflows import (
     ExceptionStatus,
     ExceptionWorkflowEngine,
     PaymentException,
@@ -148,7 +148,7 @@ async def _persist_retry_policy(policy_id: str, policy: RetryPolicy) -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ($1, $2, NOW())
@@ -163,7 +163,7 @@ async def _delete_retry_policy_from_db(policy_id: str) -> None:
     """Remove retry policy from DB."""
     _retry_policies.pop(policy_id, None)
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             "DELETE FROM operator_config WHERE key = $1", f"retry_policy:{policy_id}",
         )

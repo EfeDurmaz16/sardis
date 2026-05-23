@@ -60,7 +60,7 @@ class TestAP2RequestValidation:
 
     def test_ap2_request_requires_mandate_chain(self):
         """AP2PaymentExecuteRequest requires intent, cart, payment mandates."""
-        from sardis_protocol.schemas import AP2PaymentExecuteRequest
+        from sardis.protocol.schemas import AP2PaymentExecuteRequest
 
         # Should raise validation error without required fields
         with pytest.raises(Exception):

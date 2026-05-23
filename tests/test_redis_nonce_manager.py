@@ -5,7 +5,8 @@ import asyncio
 from unittest.mock import patch
 
 import pytest
-from sardis_chain.redis_nonce_manager import RedisNonceManager
+
+from sardis.chain.redis_nonce_manager import RedisNonceManager
 
 
 class MockRPCClient:

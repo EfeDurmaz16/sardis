@@ -134,7 +134,7 @@ def _get_provider_tracker():
             "Using in-memory ProviderTracker — data will be lost on restart. "
             "Explicit sandbox mode only; not suitable for live deployments."
         )
-        from sardis_chain.provider_tracker import ProviderTracker
+        from sardis.chain.provider_tracker import ProviderTracker
         _tracker_instance = ProviderTracker()
     return _tracker_instance
 

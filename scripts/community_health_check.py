@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_FILES = (
     "README.md",
-    "CONTRIBUTING.md",
-    "CODE_OF_CONDUCT.md",
-    "SECURITY.md",
-    "SUPPORT.md",
+    ("CONTRIBUTING.md", ".github/CONTRIBUTING.md"),
+    ("CODE_OF_CONDUCT.md", ".github/CODE_OF_CONDUCT.md"),
+    ("SECURITY.md", ".github/SECURITY.md"),
+    ("SUPPORT.md", ".github/SUPPORT.md"),
     "LICENSE",
     ".github/CODEOWNERS",
     ".github/pull_request_template.md",
@@ -34,10 +34,12 @@ README_REQUIRED_LINKS = (
 def main() -> int:
     errors: list[str] = []
 
-    for rel_path in REQUIRED_FILES:
-        path = ROOT / rel_path
-        if not path.exists():
-            errors.append(f"Missing required OSS community health file: {rel_path}")
+    for entry in REQUIRED_FILES:
+        candidates = (entry,) if isinstance(entry, str) else entry
+        if not any((ROOT / p).exists() for p in candidates):
+            errors.append(
+                f"Missing required OSS community health file: {' or '.join(candidates)}"
+            )
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     for target in README_REQUIRED_LINKS:

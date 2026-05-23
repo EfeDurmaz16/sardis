@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+
 import server.routes.identity.agent_auth as agent_auth
 from server.routes.identity.agent_auth import _verify_agent_jwt
 

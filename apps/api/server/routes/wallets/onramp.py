@@ -198,7 +198,7 @@ def _get_turnkey_onramp_service():
         return None
 
     try:
-        from sardis_wallet.turnkey_client import TurnkeyClient
+        from sardis.wallet.turnkey_client import TurnkeyClient
 
         from server.services.turnkey_onramp import TurnkeyOnrampService
 
@@ -238,8 +238,8 @@ async def _resolve_wallet_address(wallet_id: str) -> str:
         return wallet_id
 
     try:
-        from sardis_v2_core import WalletRepository
-        from sardis_v2_core.database import Database
+        from sardis.core import WalletRepository
+        from sardis.core.database import Database
 
         db = await Database.get_pool()
         if db is None:
@@ -276,7 +276,7 @@ async def _resolve_wallet_address(wallet_id: str) -> str:
 
         raise ValueError(f"Wallet {wallet_id} has no EVM address")
     except ImportError:
-        logger.warning("sardis_v2_core not available; treating wallet_id as address")
+        logger.warning("sardis.core not available; treating wallet_id as address")
         return wallet_id
     except Exception:
         raise
@@ -300,7 +300,7 @@ async def _provision_wallet_address(
         return None
 
     try:
-        from sardis_wallet.turnkey_client import TurnkeyClient
+        from sardis.wallet.turnkey_client import TurnkeyClient
 
         client = TurnkeyClient(
             api_key=api_key,
@@ -1208,7 +1208,7 @@ async def _persist_onramp_event(event: StripeOnrampWebhookEvent, event_id: str) 
     if the table or database is unavailable.
     """
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         if pool is None:

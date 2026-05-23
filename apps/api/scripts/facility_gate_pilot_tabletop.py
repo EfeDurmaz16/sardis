@@ -45,8 +45,8 @@ os.environ.setdefault("JWT_SECRET_KEY", "facility-gate-tabletop-test-secret")
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
-from sardis_v2_core.spending_mandate import SpendingMandate
+from sardis.core.facility_gate import Facility, FacilityLimit, SimulatedFacilityAdapter
+from sardis.core.spending_mandate import SpendingMandate
 
 from server.authz import Principal, require_principal
 from server.repositories.facility_gate_repository import FacilityGateRepository

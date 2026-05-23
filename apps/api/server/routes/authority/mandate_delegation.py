@@ -100,9 +100,9 @@ async def delegate_mandate(
     principal: Principal = Depends(require_principal),
 ) -> DelegationResponse:
     """Delegate a spending mandate to a child with narrowed bounds."""
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.mandate_tree import MandateTreeValidator
-    from sardis_v2_core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
+    from sardis.core.database import Database
+    from sardis.core.mandate_tree import MandateTreeValidator
+    from sardis.core.spending_mandate import ApprovalMode, MandateStatus, SpendingMandate
 
     # Fetch parent
     parent_row = await Database.fetchrow(
@@ -225,7 +225,7 @@ async def get_mandate_tree(
     principal: Principal = Depends(require_principal),
 ) -> MandateNodeResponse:
     """Get the full delegation tree rooted at this mandate."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     # Find the root
     root_row = await Database.fetchrow(

@@ -48,9 +48,9 @@ async def initiate_refund(
     principal: Principal = Depends(require_principal),
 ) -> RefundResponse:
     """Initiate a full or partial refund for a completed payment."""
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.notification_service import NotificationService
-    from sardis_v2_core.refund import RefundService
+    from sardis.core.database import Database
+    from sardis.core.notification_service import NotificationService
+    from sardis.core.refund import RefundService
 
     svc = RefundService(
         database=Database,
@@ -97,8 +97,8 @@ async def get_refund_status(
     principal: Principal = Depends(require_principal),
 ) -> RefundResponse:
     """Get the refund status for a payment."""
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.refund import RefundService
+    from sardis.core.database import Database
+    from sardis.core.refund import RefundService
 
     svc = RefundService(database=Database)
     refund = await svc.get_refund(

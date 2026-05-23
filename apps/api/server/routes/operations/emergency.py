@@ -82,7 +82,7 @@ async def freeze_all_wallets(
     now = datetime.now(UTC)
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
@@ -117,7 +117,7 @@ async def freeze_all_wallets(
 
         # Also activate global kill switch if available
         try:
-            from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
+            from sardis.guardrails.kill_switch import ActivationReason, get_kill_switch
 
             ks = get_kill_switch()
             await ks.activate_global(
@@ -181,7 +181,7 @@ async def unfreeze_all_wallets(
     now = datetime.now(UTC)
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
@@ -213,7 +213,7 @@ async def unfreeze_all_wallets(
 
         # Deactivate global kill switch
         try:
-            from sardis_guardrails.kill_switch import get_kill_switch
+            from sardis.guardrails.kill_switch import get_kill_switch
 
             ks = get_kill_switch()
             await ks.deactivate_global()
@@ -269,7 +269,7 @@ async def get_emergency_status(
         )
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:

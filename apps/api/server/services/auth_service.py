@@ -97,7 +97,7 @@ class AuthService:
         self._dsn = dsn
 
     async def _get_pool(self):
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         return await Database.get_pool()
 
     async def register(self, email: str, password: str, display_name: str | None = None) -> AuthResult:

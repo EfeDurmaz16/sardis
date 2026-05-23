@@ -102,7 +102,7 @@ class X402ChallengeGenerateResponse(BaseModel):
 async def verify_x402_payload(request: X402VerifyPayloadRequest):
     """Verify an x402 payment payload (unauthenticated — anyone can verify)."""
     try:
-        from sardis_protocol.x402 import (
+        from sardis.protocol.x402 import (
             X402PaymentPayload,
             parse_challenge_header,
             verify_payment_payload,
@@ -135,7 +135,7 @@ async def verify_x402_payload(request: X402VerifyPayloadRequest):
 
     # Persist to settlement store
     try:
-        from sardis_protocol.x402_settlement import (
+        from sardis.protocol.x402_settlement import (
             DatabaseSettlementStore,
             X402Settlement,
             X402SettlementStatus,
@@ -164,7 +164,7 @@ async def verify_x402_payload(request: X402VerifyPayloadRequest):
 async def settle_x402_payment(request: X402SettlePaymentRequest):
     """Settle a verified x402 payment on-chain (requires API key)."""
     try:
-        from sardis_protocol.x402_settlement import (
+        from sardis.protocol.x402_settlement import (
             DatabaseSettlementStore,
             X402SettlementStatus,
             X402Settler,
@@ -190,7 +190,7 @@ async def settle_x402_payment(request: X402SettlePaymentRequest):
         )
 
     # Use chain executor from app state if available
-    from sardis_chain.executor import ChainExecutor
+    from sardis.chain.executor import ChainExecutor
     settler = X402Settler(store=store, chain_executor=ChainExecutor())
     result = await settler.settle(settlement)
 
@@ -207,7 +207,7 @@ async def settle_x402_payment(request: X402SettlePaymentRequest):
 async def get_x402_settlement(payment_id: str):
     """Get settlement status by payment ID."""
     try:
-        from sardis_protocol.x402_settlement import DatabaseSettlementStore
+        from sardis.protocol.x402_settlement import DatabaseSettlementStore
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -235,7 +235,7 @@ async def get_x402_settlement(payment_id: str):
 async def dry_run_x402_payment(request: X402DryRunRequest):
     """Simulate an x402 payment without executing."""
     try:
-        from sardis_protocol.x402 import (
+        from sardis.protocol.x402 import (
             X402PaymentPayload,
             parse_challenge_header,
             verify_payment_payload,
@@ -282,7 +282,7 @@ async def dry_run_x402_payment(request: X402DryRunRequest):
 async def generate_x402_challenge(request: X402ChallengeGenerateRequest):
     """Generate an x402 payment challenge."""
     try:
-        from sardis_protocol.x402 import generate_challenge, serialize_challenge_header
+        from sardis.protocol.x402 import generate_challenge, serialize_challenge_header
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

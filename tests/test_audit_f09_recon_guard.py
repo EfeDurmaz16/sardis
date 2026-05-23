@@ -4,7 +4,8 @@ import os
 from unittest.mock import patch
 
 import pytest
-from sardis_v2_core.orchestrator import InMemoryReconciliationQueue
+
+from sardis.core.orchestrator import InMemoryReconciliationQueue
 
 
 def test_production_raises_runtime_error():

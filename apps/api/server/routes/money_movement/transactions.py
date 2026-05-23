@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_chain.executor import (
+from sardis.chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,
     ChainExecutor,
@@ -141,7 +141,7 @@ async def estimate_gas(
     deps: TransactionDependencies = Depends(get_deps),
 ):
     """Estimate gas for a stablecoin transfer."""
-    from sardis_v2_core.mandates import PaymentMandate
+    from sardis.core.mandates import PaymentMandate
 
     # Validate chain
     if request.chain not in CHAIN_CONFIGS:
@@ -162,7 +162,7 @@ async def estimate_gas(
     import hashlib
     import time
 
-    from sardis_v2_core.mandates import VCProof
+    from sardis.core.mandates import VCProof
 
     _gas_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     _gas_nonce = hashlib.sha256(f"gas_estimate:{request.chain}:{request.destination}:{request.amount}".encode()).hexdigest()[:16]
@@ -335,7 +335,7 @@ async def _execute_batch_transfer(
     import time
     import uuid
 
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.core.mandates import PaymentMandate, VCProof
 
     # Validate inputs
     if not body.transfers:

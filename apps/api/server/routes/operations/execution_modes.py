@@ -61,7 +61,7 @@ async def simulate_mode(
     mode_router=Depends(_get_mode_router),
 ):
     """Dry-run execution via specific mode."""
-    from sardis_v2_core.execution_intent import ExecutionIntent
+    from sardis.core.execution_intent import ExecutionIntent
 
     intent = ExecutionIntent(
         agent_id=body.agent_id,

@@ -148,7 +148,7 @@ class TestChainExecutorPrivate:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             with patch(
-                "sardis_v2_core.orchestrator.PaymentOrchestrator",
+                "sardis.core.orchestrator.PaymentOrchestrator",
                 return_value=MagicMock(name="orchestrator"),
             ):
                 _ = DependencyContainer.payment_orchestrator.func(container)  # type: ignore[union-attr]

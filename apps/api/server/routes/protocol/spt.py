@@ -65,8 +65,8 @@ async def grant_spt(
 
     The SPT usage_limits are derived from the mandate's bounds.
     """
-    from sardis_v2_core.database import Database
-    from sardis_v2_core.spt import SharedPaymentToken, SPTSellerDetails, SPTUsageLimits
+    from sardis.core.database import Database
+    from sardis.core.spt import SharedPaymentToken, SPTSellerDetails, SPTUsageLimits
 
     # Verify mandate
     mandate = await Database.fetchrow(

@@ -4,7 +4,8 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-from sardis_protocol.eas_kya import (
+
+from sardis.protocol.eas_kya import (
     VALID_TRUST_LEVELS,
     EASKYAClient,
     KYAAttestation,
@@ -178,7 +179,7 @@ class TestEASKYAClient:
 
 class TestTrustLevelMapping:
     def test_kya_to_trust_mapping(self):
-        from sardis_v2_core.spending_policy import TrustLevel, trust_level_for_kya
+        from sardis.core.spending_policy import TrustLevel, trust_level_for_kya
 
         assert trust_level_for_kya("none") == TrustLevel.LOW
         assert trust_level_for_kya("basic") == TrustLevel.LOW
@@ -187,7 +188,7 @@ class TestTrustLevelMapping:
         assert trust_level_for_kya("unknown") == TrustLevel.LOW
 
     def test_trust_to_kya_mapping(self):
-        from sardis_v2_core.spending_policy import TrustLevel, kya_level_for_trust
+        from sardis.core.spending_policy import TrustLevel, kya_level_for_trust
 
         assert kya_level_for_trust(TrustLevel.LOW) == "basic"
         assert kya_level_for_trust(TrustLevel.MEDIUM) == "verified"

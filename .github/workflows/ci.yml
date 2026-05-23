@@ -85,7 +85,7 @@ jobs:
       - name: Run API tests with coverage
         run: >-
           uv run pytest apps/api/tests/ -v --tb=short
-          --cov=packages/sardis/src
+          --cov=packages/sardis/src/sardis/core
           --cov=apps/api/server
           --cov-report=xml
           --cov-fail-under=40

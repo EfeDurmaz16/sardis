@@ -7,16 +7,17 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_v2_core.control_plane import ControlPlane
-from sardis_v2_core.execution_intent import ExecutionResult, IntentStatus
-from sardis_v2_core.x402_events import (
+
+from sardis.core.control_plane import ControlPlane
+from sardis.core.execution_intent import ExecutionResult, IntentStatus
+from sardis.core.x402_events import (
     X402_EVENT_CHALLENGE_CREATED,
     X402_EVENT_PAYMENT_SETTLED,
     normalize_x402_event,
     settlement_status_to_event_type,
 )
-from sardis_v2_core.x402_metrics import X402MetricsCollector
-from sardis_v2_core.x402_policy_guard import X402PolicyGuard
+from sardis.core.x402_metrics import X402MetricsCollector
+from sardis.core.x402_policy_guard import X402PolicyGuard
 
 
 class TestX402Events:
@@ -80,8 +81,8 @@ class TestX402Metrics:
 @pytest.mark.asyncio
 async def test_agent_pays_x402_api_e2e():
     """Full client flow: agent encounters 402 -> policy check -> pay -> success."""
-    from sardis_v2_core.x402_client import X402Client
-    from sardis_v2_core.x402_policy_guard import X402PolicyGuard
+    from sardis.core.x402_client import X402Client
+    from sardis.core.x402_policy_guard import X402PolicyGuard
 
     # Setup: policy allows payment
     policy_eval = AsyncMock(return_value={"allowed": True})
@@ -96,7 +97,7 @@ async def test_agent_pays_x402_api_e2e():
     client = X402Client(policy_guard=guard, max_cost="10")
 
     # Verify policy evaluation works
-    from sardis_protocol.x402 import X402Challenge
+    from sardis.protocol.x402 import X402Challenge
     challenge = X402Challenge(
         payment_id="x402_e2e_test",
         resource_uri="https://api.example.com/data",
@@ -124,6 +125,7 @@ async def test_sardis_serves_x402_content_e2e():
     """Full server flow: middleware generates 402, client pays, gets content."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+
     from server.middleware.x402 import (
         X402MiddlewareConfig,
         X402PaymentMiddleware,

@@ -5,7 +5,8 @@ Covers issue #129.
 from __future__ import annotations
 
 import pytest
-from sardis_protocol.erc8021 import (
+
+from sardis.protocol.erc8021 import (
     ERC8021_MARKER,
     SARDIS_CODE,
     AttributionData,
@@ -158,16 +159,16 @@ class TestSardisAttribution:
 
 
 class TestModuleExports:
-    """Verify exports from sardis_protocol."""
+    """Verify exports from sardis.protocol."""
 
     def test_attribution_data_exported(self):
-        from sardis_protocol import AttributionData
+        from sardis.protocol import AttributionData
         assert AttributionData is not None
 
     def test_encode_exported(self):
-        from sardis_protocol import encode_attribution
+        from sardis.protocol import encode_attribution
         assert encode_attribution is not None
 
     def test_decode_exported(self):
-        from sardis_protocol import decode_attribution
+        from sardis.protocol import decode_attribution
         assert decode_attribution is not None

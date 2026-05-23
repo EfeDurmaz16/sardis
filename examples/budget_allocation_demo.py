@@ -11,7 +11,7 @@ from pathlib import Path
 # Add sardis-core to path for direct execution
 sys.path.insert(0, str(Path(__file__).parent.parent / "packages" / "sardis-core" / "src"))
 
-from sardis_core.budget_allocator import (
+from sardis.core.budget_allocator import (
     AllocationStrategy,
     BudgetAllocator,
     BudgetPeriod,

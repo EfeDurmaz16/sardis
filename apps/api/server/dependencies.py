@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Mapping, TypeVar
 
-from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
+from sardis.core import SardisSettings, load_settings
+from sardis.core.exceptions import SardisDependencyNotConfiguredError
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +316,7 @@ def initialize_turnkey_client(
 
     if client_cls is None:
         try:
-            from sardis_wallet.turnkey_client import TurnkeyClient
+            from sardis.wallet.turnkey_client import TurnkeyClient
         except ImportError:
             return None
         client_cls = TurnkeyClient
@@ -351,7 +351,7 @@ def configure_kyc_service(
         or mock_provider_cls is None
         or create_kyc_service_fn is None
     ):
-        from sardis_compliance import (
+        from sardis.compliance import (
             FailoverKYCProvider,
             KYCService,
             MockKYCProvider,
@@ -459,7 +459,7 @@ def configure_sanctions_service(
         or mock_provider_cls is None
         or create_sanctions_service_fn is None
     ):
-        from sardis_compliance import (
+        from sardis.compliance import (
             EllipticProvider,
             FailoverSanctionsProvider,
             MockSanctionsProvider,
@@ -477,7 +477,7 @@ def configure_sanctions_service(
 
     if scorechain_provider_cls is _DEFAULT_PROVIDER:
         try:
-            from sardis_compliance.providers import ScorechainProvider
+            from sardis.compliance.providers import ScorechainProvider
         except ImportError:
             scorechain_provider_cls = None
         else:
@@ -572,8 +572,8 @@ def configure_compliance_services(
         or create_kya_service_fn is None
         or compliance_engine_cls is None
     ):
-        from sardis_compliance import create_kya_service
-        from sardis_compliance.checks import ComplianceEngine, create_audit_store
+        from sardis.compliance import create_kya_service
+        from sardis.compliance.checks import ComplianceEngine, create_audit_store
 
         create_audit_store_fn = create_audit_store_fn or create_audit_store
         create_kya_service_fn = create_kya_service_fn or create_kya_service
@@ -619,14 +619,14 @@ def configure_core_services(
 ) -> CoreServicesConfig:
     """Create the core service graph shared by payment, authority, and wallet routes."""
     if postgres_policy_store_cls is None or in_memory_policy_store_cls is None:
-        from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore
+        from sardis.core import InMemoryPolicyStore, PostgresPolicyStore
 
         postgres_policy_store_cls = postgres_policy_store_cls or PostgresPolicyStore
         in_memory_policy_store_cls = in_memory_policy_store_cls or InMemoryPolicyStore
 
     if postgres_wallet_repository_cls is None or wallet_repository_cls is None:
-        from sardis_v2_core.wallet_repository import WalletRepository
-        from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
+        from sardis.core.wallet_repository import WalletRepository
+        from sardis.core.wallet_repository_postgres import PostgresWalletRepository
 
         postgres_wallet_repository_cls = (
             postgres_wallet_repository_cls or PostgresWalletRepository
@@ -634,22 +634,22 @@ def configure_core_services(
         wallet_repository_cls = wallet_repository_cls or WalletRepository
 
     if postgres_agent_repository_cls is None or agent_repository_cls is None:
-        from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
-        from sardis_v2_core.agents import AgentRepository
+        from sardis.core.agent_repository_postgres import PostgresAgentRepository
+        from sardis.core.agents import AgentRepository
 
         postgres_agent_repository_cls = postgres_agent_repository_cls or PostgresAgentRepository
         agent_repository_cls = agent_repository_cls or AgentRepository
 
     if wallet_manager_cls is None:
-        from sardis_wallet.manager import WalletManager
+        from sardis.wallet.manager import WalletManager
 
         wallet_manager_cls = WalletManager
     if chain_executor_cls is None:
-        from sardis_chain.executor import ChainExecutor
+        from sardis.chain.executor import ChainExecutor
 
         chain_executor_cls = ChainExecutor
     if ledger_store_cls is None:
-        from sardis_ledger.records import LedgerStore
+        from sardis.ledger.records import LedgerStore
 
         ledger_store_cls = LedgerStore
 
@@ -712,7 +712,7 @@ def configure_payment_runtime(
         or sqlite_replay_cache_cls is None
         or replay_cache_cls is None
     ):
-        from sardis_protocol.storage import (
+        from sardis.protocol.storage import (
             MandateArchive,
             PostgresReplayCache,
             ReplayCache,
@@ -725,11 +725,11 @@ def configure_payment_runtime(
         replay_cache_cls = replay_cache_cls or ReplayCache
 
     if mandate_verifier_cls is None:
-        from sardis_protocol.verifier import MandateVerifier
+        from sardis.protocol.verifier import MandateVerifier
 
         mandate_verifier_cls = MandateVerifier
     if payment_orchestrator_cls is None:
-        from sardis_v2_core.orchestrator import PaymentOrchestrator
+        from sardis.core.orchestrator import PaymentOrchestrator
 
         payment_orchestrator_cls = PaymentOrchestrator
 
@@ -777,7 +777,7 @@ def configure_api_support_services(
 ) -> APISupportServicesConfig:
     """Create cache and API-key manager services shared by middleware/routes."""
     if create_cache_service_fn is None:
-        from sardis_v2_core.cache import create_cache_service
+        from sardis.core.cache import create_cache_service
 
         create_cache_service_fn = create_cache_service
 
@@ -815,7 +815,7 @@ def configure_facility_gate_services(
 
         repository_cls = FacilityGateRepository
     if adapter_cls is None:
-        from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
+        from sardis.core.facility_gate import SimulatedFacilityAdapter
 
         adapter_cls = SimulatedFacilityAdapter
 
@@ -941,11 +941,11 @@ def configure_inbound_payment_runtime(
 ) -> InboundPaymentRuntimeConfig:
     """Create inbound payment event bus wiring and receive service."""
     if get_default_bus_fn is None:
-        from sardis_v2_core.event_bus import get_default_bus
+        from sardis.core.event_bus import get_default_bus
 
         get_default_bus_fn = get_default_bus
     if inbound_payment_service_cls is None:
-        from sardis_v2_core.inbound_payment_service import InboundPaymentService
+        from sardis.core.inbound_payment_service import InboundPaymentService
 
         inbound_payment_service_cls = InboundPaymentService
 
@@ -985,7 +985,7 @@ def configure_ramp_runtime(
         or mock_offramp_provider_cls is _DEFAULT_PROVIDER
         or offramp_service_cls is _DEFAULT_PROVIDER
     ):
-        from sardis_cards.offramp import (
+        from sardis.cards.offramp import (
             BridgeOfframpProvider,
             MockOfframpProvider,
             OfframpService,
@@ -1029,7 +1029,7 @@ def configure_ramp_runtime(
     if bridge_api_key:
         try:
             if fiat_ramp_cls is _DEFAULT_PROVIDER:
-                from sardis_ramp.ramp import SardisFiatRamp
+                from sardis.ramp.ramp import SardisFiatRamp
 
                 fiat_ramp_cls = SardisFiatRamp
             fiat_ramp = fiat_ramp_cls(
@@ -1291,20 +1291,20 @@ class DependencyContainer:
     @cached_property
     def identity_registry(self) -> Any:
         """Get identity registry (DB-backed in production)."""
-        from sardis_v2_core.identity import IdentityRegistry
+        from sardis.core.identity import IdentityRegistry
         dsn = self.database_url if self.use_postgres else None
         return IdentityRegistry(dsn=dsn)
 
     @cached_property
     def wallet_manager(self) -> Any:
         """Get wallet manager."""
-        from sardis_wallet.manager import WalletManager
+        from sardis.wallet.manager import WalletManager
         return WalletManager(settings=self._settings)
 
     @cached_property
     def _chain_executor(self) -> Any:
         """Internal — only used by PaymentOrchestrator."""
-        from sardis_chain.executor import ChainExecutor
+        from sardis.chain.executor import ChainExecutor
         return ChainExecutor(settings=self._settings)
 
     @property
@@ -1321,20 +1321,20 @@ class DependencyContainer:
     @cached_property
     def ledger_store(self) -> Any:
         """Get ledger store."""
-        from sardis_ledger.records import LedgerStore
+        from sardis.ledger.records import LedgerStore
         dsn = self.database_url if self.use_postgres else self._settings.ledger_dsn
         return LedgerStore(dsn=dsn)
 
     @cached_property
     def compliance_engine(self) -> Any:
         """Get compliance engine."""
-        from sardis_compliance.checks import ComplianceEngine
+        from sardis.compliance.checks import ComplianceEngine
         return ComplianceEngine(settings=self._settings)
 
     @cached_property
     def mandate_verifier(self) -> Any:
         """Get mandate verifier."""
-        from sardis_protocol.verifier import MandateVerifier
+        from sardis.protocol.verifier import MandateVerifier
         return MandateVerifier(
             settings=self._settings,
             replay_cache=self.replay_cache,
@@ -1346,8 +1346,8 @@ class DependencyContainer:
     def group_policy(self) -> Any | None:
         """Get group policy evaluator (optional, returns None if deps missing)."""
         try:
-            from sardis_v2_core.agent_groups import AgentGroupRepository
-            from sardis_v2_core.group_policy import GroupPolicyEvaluator
+            from sardis.core.agent_groups import AgentGroupRepository
+            from sardis.core.group_policy import GroupPolicyEvaluator
             dsn = self.database_url if self.use_postgres else "memory://"
             group_repo = AgentGroupRepository(dsn=dsn)
             return GroupPolicyEvaluator(group_repo=group_repo)
@@ -1358,7 +1358,7 @@ class DependencyContainer:
     @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator."""
-        from sardis_v2_core.orchestrator import PaymentOrchestrator
+        from sardis.core.orchestrator import PaymentOrchestrator
         return PaymentOrchestrator(
             wallet_manager=self.wallet_manager,
             compliance=self.compliance_engine,
@@ -1374,7 +1374,7 @@ class DependencyContainer:
     @cached_property
     def replay_cache(self) -> Any:
         """Get replay cache (PostgreSQL or SQLite/memory)."""
-        from sardis_protocol.storage import PostgresReplayCache, ReplayCache, SqliteReplayCache
+        from sardis.protocol.storage import PostgresReplayCache, ReplayCache, SqliteReplayCache
 
         if self.use_postgres:
             return PostgresReplayCache(self.database_url)
@@ -1386,55 +1386,55 @@ class DependencyContainer:
     @cached_property
     def mandate_archive(self) -> Any:
         """Get mandate archive."""
-        from sardis_protocol.storage import MandateArchive
+        from sardis.protocol.storage import MandateArchive
         dsn = self.database_url if self.use_postgres else self._settings.mandate_archive_dsn
         return MandateArchive(dsn)
 
     @cached_property
     def holds_repository(self) -> Any:
         """Get holds repository."""
-        from sardis_v2_core.holds import HoldsRepository
+        from sardis.core.holds import HoldsRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return HoldsRepository(dsn=dsn)
 
     @cached_property
     def webhook_repository(self) -> Any:
         """Get webhook repository."""
-        from sardis_v2_core.webhooks import WebhookRepository
+        from sardis.core.webhooks import WebhookRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WebhookRepository(dsn=dsn)
 
     @cached_property
     def webhook_service(self) -> Any:
         """Get webhook service."""
-        from sardis_v2_core.webhooks import WebhookService
+        from sardis.core.webhooks import WebhookService
         return WebhookService(repository=self.webhook_repository)
 
     @cached_property
     def wallet_repository(self) -> Any:
         """Get wallet repository."""
-        from sardis_v2_core.wallet_repository import WalletRepository
+        from sardis.core.wallet_repository import WalletRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WalletRepository(dsn=dsn)
 
     @cached_property
     def agent_repository(self) -> Any:
         """Get agent repository."""
-        from sardis_v2_core.agents import AgentRepository
+        from sardis.core.agents import AgentRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return AgentRepository(dsn=dsn)
 
     @cached_property
     def marketplace_repository(self) -> Any:
         """Get marketplace repository."""
-        from sardis_v2_core.marketplace import MarketplaceRepository
+        from sardis.core.marketplace import MarketplaceRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return MarketplaceRepository(dsn=dsn)
 
     @cached_property
     def spending_policy_store(self) -> Any:
         """Get spending policy state store (DB-backed atomic enforcement)."""
-        from sardis_v2_core.spending_policy_store import SpendingPolicyStore
+        from sardis.core.spending_policy_store import SpendingPolicyStore
         if self.use_postgres:
             return SpendingPolicyStore(dsn=self.database_url)
         return None  # In-memory fallback handled by SpendingPolicy itself
@@ -1442,7 +1442,7 @@ class DependencyContainer:
     @cached_property
     def cache_service(self) -> Any:
         """Get cache service (Redis or in-memory)."""
-        from sardis_v2_core.cache import create_cache_service
+        from sardis.core.cache import create_cache_service
         return create_cache_service(self._config.redis_url)
 
     @cached_property
@@ -1504,7 +1504,7 @@ class DependencyContainer:
                 "didit",
                 "Didit KYC is not configured. Set DIDIT_API_KEY environment variable.",
             )
-        from sardis_compliance.providers.didit import DiditKYCProvider
+        from sardis.compliance.providers.didit import DiditKYCProvider
 
         return DiditKYCProvider(
             api_key=os.getenv("DIDIT_API_KEY", ""),
@@ -1520,13 +1520,13 @@ class DependencyContainer:
                 "stripe",
                 "Stripe is not configured. Set STRIPE_SECRET_KEY environment variable.",
             )
-        from sardis_checkout.connectors.stripe import StripeConnector
+        from sardis.checkout.connectors.stripe import StripeConnector
         return StripeConnector()
 
     @cached_property
     def checkout_orchestrator(self) -> Any:
         """Get checkout orchestrator."""
-        from sardis_checkout.orchestrator import CheckoutOrchestrator
+        from sardis.checkout.orchestrator import CheckoutOrchestrator
         orchestrator = CheckoutOrchestrator()
 
         # Register available connectors

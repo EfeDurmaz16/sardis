@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from sardis_v2_core.facility_gate import (
+from sardis.core.facility_gate import (
     DisabledProviderFacilityAdapter,
     Facility,
     FacilityDecision,

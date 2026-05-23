@@ -25,8 +25,8 @@ import asyncio
 import json
 from datetime import UTC, datetime
 
-from sardis_core.event_bus import get_default_bus
-from sardis_core.webhooks import EventType, WebhookEvent
+from sardis.core.event_bus import get_default_bus
+from sardis.core.webhooks import EventType, WebhookEvent
 
 # --- Setup ------------------------------------------------------------------
 

@@ -4,6 +4,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+
 from sardis.core.multi_agent_payments import (
     FlowState,
     PaymentLegState,

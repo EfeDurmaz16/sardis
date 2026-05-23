@@ -37,7 +37,7 @@ def wallet_id():
 
 @pytest.fixture
 def settings():
-    from sardis_v2_core import load_settings
+    from sardis.core import load_settings
 
     s = load_settings()
     s.chain_mode = "testnet"
@@ -51,12 +51,12 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
 
     Uses Base Sepolia (chain_id=84532).
     """
-    from sardis_chain.executor import ChainExecutor
-    from sardis_compliance.checks import ComplianceEngine
-    from sardis_ledger.records import LedgerStore
-    from sardis_v2_core import create_default_policy
-    from sardis_v2_core.identity import IdentityRegistry
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.chain.executor import ChainExecutor
+    from sardis.compliance.checks import ComplianceEngine
+    from sardis.core import create_default_policy
+    from sardis.core.identity import IdentityRegistry
+    from sardis.core.mandates import PaymentMandate, VCProof
+    from sardis.ledger.records import LedgerStore
 
     # --- 1. Register agent identity ---
     registry = IdentityRegistry()
@@ -138,8 +138,8 @@ async def test_full_payment_flow_base_sepolia(settings, agent_id, wallet_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_oversized_payment(settings, agent_id):
     """Verify that compliance correctly blocks payments over the limit."""
-    from sardis_compliance.checks import ComplianceEngine
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.compliance.checks import ComplianceEngine
+    from sardis.core.mandates import PaymentMandate, VCProof
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_block_{uuid.uuid4().hex[:8]}",
@@ -171,8 +171,8 @@ async def test_compliance_blocks_oversized_payment(settings, agent_id):
 @pytest.mark.asyncio
 async def test_compliance_blocks_unsupported_token(settings, agent_id):
     """Verify that compliance blocks unsupported tokens."""
-    from sardis_compliance.checks import ComplianceEngine
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.compliance.checks import ComplianceEngine
+    from sardis.core.mandates import PaymentMandate, VCProof
 
     mandate = PaymentMandate(
         mandate_id=f"mandate_token_{uuid.uuid4().hex[:8]}",
