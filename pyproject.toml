@@ -44,6 +44,9 @@ dependencies = [
 # All Sardis sub-functionality now lives in the umbrella `sardis` package.
 # Install with extras: `pip install sardis[langchain,crewai,openai-agents,...]`
 # See packages/sardis/pyproject.toml for the full extras list.
+all = [
+    "sardis[anthropic,langchain,crewai,openai-agents,autogpt,browser-use,composio,adk,a2a,ai-sdk,postgres,redis,immudb,chain]",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -124,6 +127,9 @@ ignore = [
 "tests/**" = ["F401", "F811", "F841", "E722", "B007", "N802"]
 "demos/**" = ["F401", "F841"]
 "examples/**" = ["F401", "F841"]
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
 
 [tool.uv.sources]
 sardis = { path = "packages/sardis", editable = true }

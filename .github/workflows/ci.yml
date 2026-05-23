@@ -85,16 +85,14 @@ jobs:
       - name: Run API tests with coverage
         run: >-
           uv run pytest apps/api/tests/ -v --tb=short
-          --cov=packages/sardis-core/src
+          --cov=packages/sardis/src
           --cov=apps/api/server
           --cov-report=xml
           --cov-fail-under=40
 
       - name: Run package tests
         run: |
-          uv run pytest packages/sardis-core/tests/ -v --tb=short
-          uv run pytest packages/sardis-ledger/tests/ -v --tb=short
-          uv run pytest packages/sardis-chain/tests/ -v --tb=short
+          uv run pytest packages/sardis/tests/ -v --tb=short
 
       - name: Check OpenAPI route contract snapshot
         run: uv run python apps/api/scripts/generate_openapi.py --check

@@ -93,8 +93,8 @@ jobs:
           uv sync
           uv pip install build twine
           rm -rf dist/
-          python -m build
-          twine check dist/*
+          uv run python -m build
+          uv run twine check dist/*
 
       - name: Publish to TestPyPI
         if: steps.meta.outputs.target == 'testpypi'

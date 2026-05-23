@@ -10,8 +10,10 @@ _spec = importlib.util.spec_from_file_location(
     os.path.join(
         os.path.dirname(__file__),
         "..",
+        "..",
         "src",
-        "sardis_chain",
+        "sardis",
+        "chain",
         "safe_account.py",
     ),
 )

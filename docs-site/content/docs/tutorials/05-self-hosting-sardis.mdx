@@ -1,0 +1,156 @@
+---
+title: Self-Hosting Sardis
+description: Run the Sardis policy and settlement stack on your own infrastructure with PostgreSQL, Redis, and your own signing keys. Full control over data residency and key custody.
+---
+
+## What you'll build
+
+A working self-hosted Sardis deployment running locally with PostgreSQL (for ledger and mandate storage), Redis (for nonce locks and rate limits), and a Sardis API container configured with your own signing keys. By the end you'll be issuing real API keys, executing payments against your own instance, and ready to harden the same setup for a production VPC.
+
+## Prerequisites
+
+- Docker + Docker Compose
+- ~2 GB free disk for the database
+- An RPC URL for the chain you intend to settle on (Alchemy, Infura, or your own node)
+- An EOA private key with testnet ETH for gas (mainnet for production)
+
+## Step 1: Why self-host
+
+Most teams stay on managed Sardis — it's faster to start, the SLAs are written down, and the hosted policy engine sees more attack patterns. You self-host when one of three things is true: you have data-residency requirements your hosting region can't satisfy, you need custody of the signing keys for compliance reasons, or you want a fully air-gapped policy engine inside a sensitive environment. If none of those apply, save yourself the operational tax and stay managed.
+
+The self-hosted stack is the same Docker images Sardis runs in production. There's no "lite" version with missing features — it's all the same code, just running in your VPC.
+
+## Step 2: Get the stack
+
+Clone the deployment templates:
+
+```bash
+git clone https://github.com/EfeDurmaz16/sardis-deploy.git
+cd sardis-deploy/docker
+```
+
+You'll see three files: `docker-compose.yml` (Postgres + Redis + Sardis API), `.env.example` (config you need to fill in), and `init.sql` (database bootstrap). Don't edit the compose file on your first run — get a default deployment up first, *then* customize. Trying to customize before you've seen the defaults work is how every self-host attempt becomes a multi-day debugging session.
+
+## Step 3: Configure secrets and keys
+
+Copy and fill the env file:
+
+```bash
+cp .env.example .env
+```
+
+The fields that matter on first deploy:
+
+```bash
+# Database (auto-provisioned by compose)
+POSTGRES_PASSWORD=change-me-now
+POSTGRES_DB=sardis
+POSTGRES_USER=sardis
+
+# Redis (auto-provisioned)
+REDIS_URL=redis://redis:6379/0
+
+# Signing key — the EOA Sardis uses to submit on-chain txs
+SARDIS_SETTLEMENT_PRIVATE_KEY=0x...
+SARDIS_CHAIN_RPC_BASE_SEPOLIA=https://base-sepolia.g.alchemy.com/v2/<your-key>
+SARDIS_CHAIN_ID=84532
+
+# Admin bootstrap key — gives you the first API key
+SARDIS_ADMIN_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)
+```
+
+A few rules:
+
+- **Generate the bootstrap token fresh.** Don't paste an example value from a tutorial (including this one). Generate it on the machine you're deploying from with `openssl rand -hex 32` and copy it into your password manager.
+- **The settlement private key signs every on-chain transaction.** Treat it like a treasury key — hardware-backed (KMS, Vault, HSM) in production; the env-var form here is fine for local dev only.
+- **Use a dedicated RPC endpoint** with a healthy rate limit. The default public RPCs will rate-limit you out of business within ten transactions.
+
+## Step 4: Boot the stack
+
+```bash
+docker compose up -d
+docker compose logs -f sardis-api
+```
+
+Wait for the `migrations complete` and `listening on :8080` log lines. The first boot runs the database migrations from `init.sql` and registers a single admin user keyed to your `SARDIS_ADMIN_BOOTSTRAP_TOKEN`. Subsequent boots are fast.
+
+Smoke test the health endpoint:
+
+```bash
+curl http://localhost:8080/health
+# {"status":"ok","db":"up","redis":"up","chain":"up"}
+```
+
+If `chain` shows `down`, your RPC URL or chain ID is wrong — fix it before issuing keys, because Sardis won't let you create wallets against a chain it can't reach.
+
+## Step 5: Mint your first API key
+
+Use the bootstrap token to mint a real API key:
+
+```bash
+curl -X POST http://localhost:8080/admin/api-keys \
+  -H "Authorization: Bearer $SARDIS_ADMIN_BOOTSTRAP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "dev-key", "scopes": ["payments:write", "wallets:write"]}'
+```
+
+The response includes a one-time-displayed `api_key`. Copy it into your shell:
+
+```bash
+export SARDIS_API_KEY="sk_self_..."
+```
+
+Now point any of the previous tutorials at your local instance:
+
+```python
+from sardis import Sardis
+
+client = Sardis(
+    api_key=os.environ["SARDIS_API_KEY"],
+    base_url="http://localhost:8080",
+)
+```
+
+That's it — every flow from tutorials 1-4 works against this client identically. Self-hosted is a drop-in for managed in terms of API surface.
+
+## Step 6: Plan the production hardening
+
+Before you put a self-hosted Sardis in front of real money, you need to address the parts the local dev compose intentionally skips:
+
+- **TLS termination.** Put Sardis behind a reverse proxy (Caddy, nginx, an ALB). Never expose `:8080` directly.
+- **Secret management.** Move `SARDIS_SETTLEMENT_PRIVATE_KEY` out of env vars into a KMS-backed signer. Sardis supports AWS KMS and HashiCorp Vault out of the box — see the deployment guide for adapter config.
+- **Database backups.** Postgres has the ledger; if you lose it, you lose your audit trail. Daily snapshots + 30-day retention at minimum. Test the restore.
+- **Redis persistence.** The default Redis container is in-memory only. Switch on `appendonly yes` so nonces survive a restart — otherwise a Redis bounce mid-flight can enable replay attacks during the window between snapshots.
+- **Monitoring.** Sardis exposes Prometheus metrics on `/metrics`. Wire to Grafana; alert on settlement latency, policy-block rate, and on-chain failure rate.
+
+None of these are optional in production. The local compose skips them so you can see Sardis run end-to-end in five minutes, not because they're nice-to-haves.
+
+## Final: full working example
+
+```bash
+git clone https://github.com/EfeDurmaz16/sardis-deploy.git
+cd sardis-deploy/docker
+cp .env.example .env
+# edit .env with your RPC URL, private key, and bootstrap token
+docker compose up -d
+sleep 15
+curl http://localhost:8080/health
+
+# mint a key
+curl -X POST http://localhost:8080/admin/api-keys \
+  -H "Authorization: Bearer $SARDIS_ADMIN_BOOTSTRAP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"dev-key","scopes":["payments:write","wallets:write"]}'
+
+# use it
+export SARDIS_API_KEY="sk_self_..."
+python -c "from sardis import Sardis; \
+  c = Sardis(api_key='$SARDIS_API_KEY', base_url='http://localhost:8080'); \
+  print(c.pay.execute(to='merchant.example.com', amount='1.00', currency='USDC'))"
+```
+
+## Next steps
+
+- [Deployment guide](/docs/deployment) — Kubernetes manifests, KMS wiring, HA topology
+- [Production guide](/docs/production-guide) — checklist for going live
+- [Security overview](/docs/security) — threat model and key custody options

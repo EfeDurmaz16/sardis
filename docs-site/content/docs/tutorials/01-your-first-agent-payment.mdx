@@ -1,0 +1,136 @@
+---
+title: Your First Agent Payment
+description: Five minutes from zero to a working agent payment. Install the SDK, instantiate the client, and execute a sandbox payment with policy enforcement.
+---
+
+## What you'll build
+
+A minimal Python script that loads the Sardis SDK, opens a client, and executes a single agent-driven payment against the Sardis sandbox. By the end you'll have a working "Hello Sardis" — the smallest end-to-end flow that proves your environment, credentials, and policy engine are wired together correctly.
+
+## Prerequisites
+
+- Python 3.12+
+- `pip install sardis`
+- A Sardis sandbox API key (grab one from [the dashboard](https://sardis.sh) — sandbox keys are free)
+
+## Step 1: Install the SDK
+
+```bash
+pip install sardis
+```
+
+The `sardis` package is a thin, dependency-light client. It exposes both a synchronous `Sardis` class and an `AsyncSardis` class for `asyncio` apps. We'll use the sync client first because it's the shortest path to a working call, and switch to the async client in later tutorials when concurrency starts to matter.
+
+You can confirm the install:
+
+```bash
+python -c "import sardis; print(sardis.__version__)"
+```
+
+If the version prints, you're ready.
+
+## Step 2: Set your API key
+
+Sardis reads credentials from environment variables by convention. Treat the API key like a payment credential — it is one. Never commit it.
+
+```bash
+export SARDIS_API_KEY="sk_sandbox_..."
+```
+
+Why an environment variable instead of a config file or hardcoded literal? Three reasons: it keeps secrets out of git history, it matches how you'll deploy in production (Kubernetes secrets, Vercel env vars, AWS Parameter Store), and it lets the same code run against sandbox locally and production in CI without a code change.
+
+## Step 3: Instantiate the client
+
+Create `hello_sardis.py`:
+
+```python
+import os
+from sardis import Sardis
+
+client = Sardis(
+    api_key=os.environ["SARDIS_API_KEY"],
+    base_url="https://sandbox.api.sardis.sh",
+)
+```
+
+A few things worth noting:
+
+- `base_url` is what selects sandbox vs. production. Sandbox uses a separate URL and a separate key — the two environments are fully isolated, so a sandbox call can never touch real funds.
+- The constructor returns a long-lived client with a pooled `httpx` connection underneath. Don't create one per request — reuse it.
+- If you forget the API key, the constructor raises `ValueError` immediately rather than failing later on the network. Fail-fast at startup is intentional.
+
+## Step 4: Execute your first payment
+
+Sardis exposes a single high-level `pay.execute()` method that handles policy validation, route selection, and on-chain settlement in one call:
+
+```python
+result = client.pay.execute(
+    to="merchant.example.com",
+    amount="1.00",
+    currency="USDC",
+)
+
+print(result)
+```
+
+What's happening behind the scenes:
+
+1. The SDK posts to `POST /api/v2/pay` with your payload.
+2. Sardis resolves the recipient (a domain or wallet address), looks up your agent's active spending policies, and runs the request through the policy engine.
+3. If the policy allows the payment, Sardis selects the cheapest chain (Base, Optimism, or a Tempo testnet rail in sandbox), executes the transfer, and returns a receipt.
+4. If the policy blocks it, you get back a structured error explaining which rule fired — far more useful than a generic 403.
+
+The return value is a dict with `status`, `tx_hash`, `chain`, `ledger_tx_id`, and a `route` block describing which rail Sardis chose. In sandbox the `tx_hash` is a testnet hash you can inspect on the Base Sepolia explorer.
+
+## Step 5: Handle the response
+
+Real code should branch on the status and surface the receipt to your application's audit trail:
+
+```python
+if result["status"] == "succeeded":
+    print(f"Paid! tx={result['tx_hash']} chain={result['chain']}")
+else:
+    print(f"Payment did not settle: {result}")
+```
+
+`succeeded` means the funds moved. Other statuses you'll see in practice: `policy_blocked` (caught by the policy engine), `insufficient_funds`, and `pending` (in-flight on a slower chain). Each status maps to a different recovery path in your agent — don't collapse them into a single "error" branch.
+
+## Final: full working example
+
+```python
+import os
+from sardis import Sardis
+
+def main() -> None:
+    with Sardis(
+        api_key=os.environ["SARDIS_API_KEY"],
+        base_url="https://sandbox.api.sardis.sh",
+    ) as client:
+        result = client.pay.execute(
+            to="merchant.example.com",
+            amount="1.00",
+            currency="USDC",
+        )
+
+        if result["status"] == "succeeded":
+            print(f"Paid! tx={result['tx_hash']} chain={result['chain']}")
+        else:
+            print(f"Payment blocked or pending: {result}")
+
+if __name__ == "__main__":
+    main()
+```
+
+Run it:
+
+```bash
+python hello_sardis.py
+```
+
+You should see a `Paid!` line with a Base Sepolia transaction hash. Paste the hash into [sepolia.basescan.org](https://sepolia.basescan.org) and you can watch the on-chain transfer of testnet USDC. The whole loop — code, signature, on-chain settlement, receipt — runs in under a second.
+
+## Next steps
+
+- [Tutorial 2: AP2 Mandate Flow](/docs/tutorials/02-ap2-mandate-flow) — add user-signed mandates and a kill switch
+- [Spending mandates reference](/docs/spending-mandates) — full policy DSL
+- [SDK reference](/docs/sdk-reference) — every method on the client

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -13,10 +12,12 @@ const { transform } = require(path.resolve(here, '../scripts/migrate.cjs')) as {
 
 describe('sardis-migrate codemod', () => {
   it('rewrites `@sardis/sdk` named import + `new SardisClient` (quickstart corpus)', () => {
-    const corpus = fs.readFileSync(
-      path.resolve(here, '..', '..', 'sardis-sdk-js', 'examples', 'quickstart.ts'),
-      'utf8'
-    );
+    const corpus = [
+      `import { SardisClient } from '@sardis/sdk';`,
+      ``,
+      `const sardis = new SardisClient({ apiKey: process.env.SARDIS_API_KEY! });`,
+      `await sardis.payments.send({ wallet_id: 'w_1', to: 't_1', amount: '10.00' });`,
+    ].join('\n');
     const { source, changes } = transform(corpus);
 
     expect(source).not.toContain('@sardis/sdk');

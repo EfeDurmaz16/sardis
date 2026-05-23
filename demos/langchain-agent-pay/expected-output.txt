@@ -1,0 +1,16 @@
+=== scenario 1: payment within policy ===
+[goal] API credits top-up ($20.0 -> Anthropic)
+[agent] step 1: call sardis_check_policy({'merchant': 'Anthropic', 'amount': 20.0, 'purpose': 'API credits top-up'})
+[tool]  -> WOULD BE ALLOWED (PASS): $20 to Anthropic
+[agent] step 2: call sardis_pay({'amount': 20.0, 'merchant': 'Anthropic', 'merchant_address': '0xAntHr0p1c000000000000000000000000000Ant1', 'purpose': 'API credits top-up'})
+[tool]  -> APPROVED: Payment $20 to Anthropic submitted on base-sepolia (tx: 0xmock...)
+
+=== scenario 2: payment over per-tx cap ===
+[goal] EC2 monthly bill ($250.0 -> AWS)
+[agent] step 1: call sardis_check_policy({'merchant': 'AWS', 'amount': 250.0, 'purpose': 'EC2 monthly bill'})
+[tool]  -> WOULD BE BLOCKED (FAIL): amount $250 exceeds per-tx limit $100.00
+[agent] stop — last observation halts the plan
+
+[ledger] 1 transfer(s) executed
+  - 20 USDC -> 0xAntHr0p1c0... tx=0xmock...
+[demo] OK — LangChain-style agent paid via Sardis tools with policy enforcement
