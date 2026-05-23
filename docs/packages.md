@@ -23,6 +23,8 @@ Status meanings:
 | `packages/sardis-sdk-python/` | Official Python API SDK package. | Keep smoke tests and quickstarts current; use `docs/architecture/sdk-packages.md` before moving SDK ownership. |
 | `packages/sardis/` | Unified Python SDK umbrella (v2.0.0a0). Consolidates 30+ sardis-* packages into one. Submodules: core, cards, ledger, chain, ucp, protocol, compliance, guardrails, checkout, wallet, ramp, cli. Integration extras: langchain, crewai, openai-agents, autogpt, browser-use, composio, adk, a2a, anthropic. | Maintain MIGRATION_NOTES.md; sunset shim packages 2026-11-23. |
 | `packages/sardis-sdk-js/` | TypeScript SDK package. | Keep build, typecheck, and tests in required CI. |
+| `packages/sardis-js/` | Unified TypeScript SDK umbrella (v2.0.0-rc.0). Replaces fragmented @sardis/sdk + @sardis/ai-sdk + integrations. | Keep subpath exports stable; codemod from v1 maintained. |
+| `packages/create-sardis-app/` | npx scaffold template for Next.js + AI SDK + Sardis. | Keep template synced with sardis@2 API. |
 | `packages/sardis-mcp-server/` | MCP surface for agent tools. | Keep schema tests and examples current. |
 
 ## Supported

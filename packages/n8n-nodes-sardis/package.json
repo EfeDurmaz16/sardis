@@ -1,8 +1,13 @@
 {
   "name": "n8n-nodes-sardis",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "n8n community node for Sardis payments - policy-controlled payments for AI agents",
-  "keywords": ["n8n-community-node-package", "sardis", "payments", "ai-agents"],
+  "keywords": [
+    "n8n-community-node-package",
+    "sardis",
+    "payments",
+    "ai-agents"
+  ],
   "license": "MIT",
   "homepage": "https://sardis.sh",
   "bugs": {
@@ -16,7 +21,10 @@
     "README.md",
     "LICENSE"
   ],
-  "author": { "name": "Sardis", "email": "efe@sardis.sh" },
+  "author": {
+    "name": "Sardis",
+    "email": "efe@sardis.sh"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/EfeDurmaz16/sardis.git",
@@ -29,8 +37,15 @@
   },
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": ["dist/credentials/SardisApi.credentials.js"],
-    "nodes": ["dist/nodes/Sardis/Sardis.node.js"]
+    "credentials": [
+      "dist/credentials/SardisApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Sardis/Sardis.node.js"
+    ]
+  },
+  "dependencies": {
+    "sardis": "workspace:^2.0.0-rc.0"
   },
   "devDependencies": {
     "n8n-workflow": "^2.14.0",
