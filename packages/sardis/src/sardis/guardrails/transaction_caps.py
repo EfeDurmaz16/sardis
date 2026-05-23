@@ -202,7 +202,7 @@ class TransactionCapEngine:
     async def _trigger_kill_switch(self, scope: str, scope_id: str, total: Decimal, cap: Decimal) -> None:
         """Auto-activate kill switch when cap is exceeded."""
         try:
-            from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
+            from sardis.guardrails.kill_switch import ActivationReason, get_kill_switch
             ks = get_kill_switch()
             notes = f"Daily {scope} cap exceeded: ${total} >= ${cap}"
 

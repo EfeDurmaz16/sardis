@@ -37,6 +37,8 @@ dependencies = [
   "aiohttp>=3.8",
   "httpx>=0.27",
   "fastapi>=0.110",
+  # Inherited from sardis-guardrails (sardis.guardrails.ml_fraud)
+  "numpy>=1.26",
 ]
 
 [project.optional-dependencies]

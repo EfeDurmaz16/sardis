@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from sardis_v2_core.outcome_tracker import PaymentOutcome
+    from sardis.core.outcome_tracker import PaymentOutcome
 
     from .anomaly_engine import AnomalyEngine
 
