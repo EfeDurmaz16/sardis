@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-wallet"
-version = "1.1.0"
-description = "Wallet orchestration and spending policy engine for Sardis"
+version = "0.99.0"
+description = "Deprecation shim — sardis-wallet is now part of the `sardis` umbrella package (use `from sardis.wallet import ...`)."
 authors = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 maintainers = [{name = "Sardis Team", email = "dev@sardis.sh"}]
 license = {text = "MIT"}
@@ -26,7 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "sardis-core",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +34,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
 ]
+
 
 [project.urls]
 Homepage = "https://sardis.sh"
