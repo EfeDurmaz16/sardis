@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from server.routes.authority.ap2 import (
     KYC_THRESHOLD_MINOR,
     perform_compliance_checks,

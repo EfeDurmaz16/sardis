@@ -9,6 +9,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis_compliance.circle_compliance import (
     CircleComplianceClient,
     CircleComplianceError,

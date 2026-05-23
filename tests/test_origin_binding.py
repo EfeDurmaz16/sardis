@@ -8,6 +8,7 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
+
 from sardis.core.attestation_envelope import (
     AttestationEnvelope,
     _hash_value,

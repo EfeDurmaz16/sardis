@@ -120,6 +120,36 @@ ignore = [
     "N802",   # function name should be lowercase
 ]
 
+[tool.ruff.lint.isort]
+# Treat all sardis-* packages as first-party so import-sort behavior is
+# deterministic regardless of which sardis-* PyPI packages happen to be
+# installed in the venv (local dev installs more than CI does).
+known-first-party = [
+    "sardis",
+    "sardis_v2_core",
+    "sardis_core",
+    "sardis_protocol",
+    "sardis_chain",
+    "sardis_ledger",
+    "sardis_compliance",
+    "sardis_cards",
+    "sardis_guardrails",
+    "sardis_checkout",
+    "sardis_wallet",
+    "sardis_ramp",
+    "sardis_ucp",
+    "sardis_agent_sdk",
+    "sardis_crewai",
+    "sardis_langchain",
+    "sardis_openai",
+    "sardis_openai_agents",
+    "sardis_ai_sdk",
+    "sardis_mcp_server",
+    "sardis_mpp",
+    "sardis_connect",
+    "server",
+]
+
 [tool.ruff.lint.per-file-ignores]
 "**/__init__.py" = ["F401", "F811", "RUF022"]
 "packages/sardis-sdk-python/src/sardis_sdk/__init__.py" = ["F401", "F811", "RUF022"]

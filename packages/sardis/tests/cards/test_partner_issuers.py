@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock
 
 import pytest
+
 from sardis.cards.models import CardType
 from sardis.cards.providers.partner_issuers import (
     BridgeCardsProvider,

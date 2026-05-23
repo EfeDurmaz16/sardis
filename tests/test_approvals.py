@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+
 from sardis.core.approval_repository import (
     Approval,
     ApprovalRepository,

@@ -3,6 +3,7 @@ import base64
 import time
 
 from nacl.signing import SigningKey
+
 from sardis.core import SardisSettings
 from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_protocol.verifier import MandateVerifier

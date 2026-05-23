@@ -7,6 +7,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from sardis.core.control_plane import ControlPlane
 from sardis.core.execution_intent import ExecutionResult, IntentStatus
 from sardis.core.x402_events import (
@@ -124,6 +125,7 @@ async def test_sardis_serves_x402_content_e2e():
     """Full server flow: middleware generates 402, client pays, gets content."""
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
+
     from server.middleware.x402 import (
         X402MiddlewareConfig,
         X402PaymentMiddleware,

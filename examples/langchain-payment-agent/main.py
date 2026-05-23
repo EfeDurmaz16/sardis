@@ -16,9 +16,9 @@ import os
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
-from sardis_langchain import SardisToolkit
 
 from sardis import SardisClient
+from sardis_langchain import SardisToolkit
 
 
 def main():

@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.core.kya_trust_scoring import (
     TRUST_TIER_LIMITS,
     KYALevel,

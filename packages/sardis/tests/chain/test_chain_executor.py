@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
 from sardis.chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,

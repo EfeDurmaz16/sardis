@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import httpx
 import pytest
+
 from sardis.cards.models import Card, CardStatus, CardType
 from sardis.cards.providers.base import CardProvider
 from sardis.cards.providers.partner_issuers import BridgeCardsProvider, RainCardsProvider

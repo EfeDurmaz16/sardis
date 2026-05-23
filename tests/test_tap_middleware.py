@@ -18,6 +18,7 @@ from collections.abc import Callable
 import pytest
 from fastapi import FastAPI, Request
 from httpx import ASGITransport, AsyncClient
+
 from server.middleware import (
     TapMiddlewareConfig,
     TapVerificationMiddleware,

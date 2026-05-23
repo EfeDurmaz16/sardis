@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.routes.wallets.lifecycle import WalletDependencies, get_deps
 from server.routes.wallets.lifecycle import router as wallets_router
 

@@ -4,6 +4,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+
 from sardis.cards.models import CardType
 from sardis.cards.providers.issuer_adapter import IssuerAdapterShim, build_issuer_adapter
 

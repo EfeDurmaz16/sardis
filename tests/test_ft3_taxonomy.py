@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+
 from sardis_guardrails.ft3_taxonomy import (
     FT3_AGENT_TACTIC_COUNT,
     FT3_STANDARD_TACTIC_COUNT,

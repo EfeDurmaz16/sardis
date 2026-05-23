@@ -5,6 +5,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.core.did_bridge import DIDBridge, DIDRegistrationError
 from sardis.core.fides_did import generate_did
 from sardis.core.fides_trust_adapter import FidesAttestation, FidesTrustGraphAdapter

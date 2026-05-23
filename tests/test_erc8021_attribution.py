@@ -5,6 +5,7 @@ Covers issue #129.
 from __future__ import annotations
 
 import pytest
+
 from sardis_protocol.erc8021 import (
     ERC8021_MARKER,
     SARDIS_CODE,

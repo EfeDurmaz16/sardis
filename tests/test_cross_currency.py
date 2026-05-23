@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis_chain.circle_cross_currency import (
     CircleCrossCurrencyClient,
     CircleCrossCurrencyError,

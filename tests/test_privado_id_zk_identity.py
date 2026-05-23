@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
 from sardis_compliance.providers.privado_id import (
     CREDENTIAL_SCHEMAS,
     PRIVADO_API_URLS,

@@ -9,6 +9,8 @@ from decimal import Decimal
 
 import pytest
 from eth_abi import decode, encode
+from web3 import Web3
+
 from sardis_chain.zodiac_roles import (
     APPROVE_SELECTOR,
     EURC_ADDRESSES,
@@ -46,7 +48,6 @@ from sardis_chain.zodiac_roles import (
     make_allowance_key,
     policy_to_role_config,
 )
-from web3 import Web3
 
 # ============ Stub SpendingPolicy for testing ============
 

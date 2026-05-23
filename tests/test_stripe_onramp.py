@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from server.routes.wallets.onramp import (
     _CHAIN_TO_STRIPE_NETWORK,
     StripeOnrampLinkResponse,
@@ -233,6 +234,7 @@ class TestGetClientIp:
 
 try:
     from fastapi.testclient import TestClient
+
     from server.main import create_app
 
     _APP_AVAILABLE = True

@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+
 from sardis_compliance.mica import (
     EU_EEA_COUNTRIES,
     SAR_DEADLINES,

@@ -9,6 +9,7 @@ import time
 from decimal import Decimal
 
 import pytest
+
 from sardis.ucp.adapters.ap2 import (
     AP2MandateAdapter,
 )

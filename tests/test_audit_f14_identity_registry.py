@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 from nacl.signing import SigningKey
+
 from sardis.core import SardisSettings
 from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_protocol.verifier import MandateVerifier, VerificationError

@@ -2,6 +2,7 @@
 import asyncio
 
 import pytest
+
 from sardis.core import (
     EventBus,
     EventType,

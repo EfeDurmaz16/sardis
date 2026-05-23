@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+
 from sardis_protocol.erc8033 import (
     DEFAULT_GAS_LIMIT,
     DEFAULT_MAX_TX_COUNT,

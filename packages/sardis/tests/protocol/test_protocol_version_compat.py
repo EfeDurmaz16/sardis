@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
+
 from sardis.protocol.schemas import AP2PaymentExecuteRequest
 from sardis.protocol.tap import (
     TAP_PROTOCOL_VERSION,

@@ -5,6 +5,7 @@ import time
 from unittest.mock import patch
 
 import pytest
+
 from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_compliance.checks import (
     ComplianceEngine,

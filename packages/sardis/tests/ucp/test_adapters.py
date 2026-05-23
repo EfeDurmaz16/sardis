@@ -3,6 +3,7 @@
 import time
 
 import pytest
+
 from sardis.ucp.adapters.ap2 import (
     AP2CartMandate,
     AP2IntentMandate,

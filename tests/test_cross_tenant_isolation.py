@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
+
 from sardis.core import SardisSettings
 from sardis.core.agents import Agent, AgentPolicy, SpendingLimits
 from sardis.core.identity import AgentIdentity, IdentityRegistry

@@ -8,6 +8,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis_chain.circle_signer import CircleWalletSigner
 from sardis_chain.executor import MPCSignerPort
 from sardis_wallet.circle_client import (

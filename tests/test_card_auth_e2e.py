@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
+
 from sardis_cards.models import (
     Card,
     CardStatus,

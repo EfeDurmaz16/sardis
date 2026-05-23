@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.outcome_tracker import OutcomeTracker
 
 

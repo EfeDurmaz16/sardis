@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.policy_evidence import (
     PolicyStepResult,
     compute_evidence_hash,

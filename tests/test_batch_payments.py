@@ -19,6 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+
 from server.authz import Principal, require_principal
 from server.routes.money_movement.batch_payments import (
     BatchPaymentRequest,

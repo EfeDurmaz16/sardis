@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.core.x402_client import (
     X402AcceptOption,
     X402Client,

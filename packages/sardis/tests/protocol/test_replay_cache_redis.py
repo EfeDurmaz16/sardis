@@ -11,6 +11,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from sardis.protocol.rate_limiter import get_rate_limiter
 from sardis.protocol.replay_cache_redis import RedisReplayCache
 

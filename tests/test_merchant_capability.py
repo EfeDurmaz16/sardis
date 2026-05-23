@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+
 from sardis.core.merchant_capability import (
     InMemoryMerchantCapabilityStore,
     MerchantExecutionCapability,

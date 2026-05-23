@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.drift_policy_integrator import (
     DriftAction,
     DriftPolicyConfig,

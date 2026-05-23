@@ -19,6 +19,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.core.mandates import (
     CartMandate,
     IntentMandate,

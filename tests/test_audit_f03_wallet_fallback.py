@@ -1,5 +1,6 @@
 """Test F03: Wallet manager should not silently fall back to /100 on unknown tokens."""
 import pytest
+
 from sardis.core.tokens import normalize_token_amount
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 
 import pytest
+
 from sardis.core import load_settings
 from sardis.protocol.payment_methods import PaymentMethod, parse_payment_method_from_mandate
 from sardis.protocol.verifier import MandateVerifier

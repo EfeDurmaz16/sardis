@@ -9,6 +9,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from sardis.core.config import SardisSettings
 from sardis.core.spending_policy import (
     TrustLevel,

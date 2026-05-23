@@ -9,6 +9,8 @@ import json
 
 import pytest
 from eth_abi import decode
+from web3 import Web3
+
 from sardis.core.erc8004 import (
     ERC8004_ADDRESSES,
     GIVE_FEEDBACK_SELECTOR,
@@ -45,7 +47,6 @@ from sardis.core.erc8004 import (
     build_unset_agent_wallet_calldata,
     build_wallet_binding_digest,
 )
-from web3 import Web3
 
 TEST_AGENT_ADDR = "0x1234567890AbcdEF1234567890aBcdef12345678"
 TEST_WALLET = "0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF"

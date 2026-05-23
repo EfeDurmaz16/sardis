@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.compliance.kya import AgentManifest, InMemoryKYAStore, KYAService, create_kya_service
 
 

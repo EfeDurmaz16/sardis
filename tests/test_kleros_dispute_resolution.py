@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+
 from sardis_protocol.kleros import (
     ARBITRATION_FEE_ESTIMATES,
     DEFAULT_APPEAL_PERIOD_DAYS,

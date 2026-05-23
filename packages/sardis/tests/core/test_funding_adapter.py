@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+
 from sardis.core.funding import (
     FundingRequest,
     FundingResult,

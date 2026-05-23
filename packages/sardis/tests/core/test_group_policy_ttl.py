@@ -9,6 +9,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.group_policy import (
     _TTL_DAILY,
     _TTL_MONTHLY,

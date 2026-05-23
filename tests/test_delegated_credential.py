@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.credential_store import (
     CredentialEncryption,
     InMemoryCredentialStore,

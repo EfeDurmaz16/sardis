@@ -8,6 +8,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.core.credential_store import CredentialEncryption
 from sardis.core.delegated_adapters.mastercard_agent_pay import (
     MastercardAgentPayAdapter,

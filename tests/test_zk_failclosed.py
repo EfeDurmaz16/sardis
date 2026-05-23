@@ -162,6 +162,7 @@ async def test_saml_handler_returns_501() -> None:
     """SAMLHandler.validate_response must raise HTTPException(501),
     not NotImplementedError (which would surface as 500)."""
     from fastapi import HTTPException
+
     from server.middleware.sso import SAMLHandler, SSOConfig
 
     config = SSOConfig(

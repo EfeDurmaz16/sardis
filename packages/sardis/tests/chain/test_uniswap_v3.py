@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis.chain.uniswap_v3 import (
     DEFAULT_FEE_TIER,
     EURC_BASE,

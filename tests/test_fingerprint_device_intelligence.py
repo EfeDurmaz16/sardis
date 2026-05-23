@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
 from sardis_guardrails.fingerprint import (
     API_REGIONS,
     BotResult,

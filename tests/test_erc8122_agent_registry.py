@@ -7,6 +7,7 @@ suspension/revocation, and calldata builders.
 from __future__ import annotations
 
 import pytest
+
 from sardis_protocol.erc8122 import (
     METADATA_AGENT_ACCOUNT,
     METADATA_DESCRIPTION,

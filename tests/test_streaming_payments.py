@@ -21,6 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+
 from server.authz import Principal, require_principal
 from server.routes.money_movement.streaming_payments import (
     _active_streams,

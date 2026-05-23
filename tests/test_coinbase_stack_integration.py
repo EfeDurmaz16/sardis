@@ -8,6 +8,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from sardis_chain.cdp_swap import (
     CDP_CHAIN_IDS,
     CDPSwapClient,

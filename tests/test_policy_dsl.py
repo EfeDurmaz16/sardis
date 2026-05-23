@@ -3,6 +3,7 @@
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.policy_dsl import (
     PolicyDefinition,
     PolicyRule,

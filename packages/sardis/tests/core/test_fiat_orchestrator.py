@@ -5,6 +5,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
+
 from sardis.core.fiat_orchestrator import FiatPaymentOrchestrator
 
 

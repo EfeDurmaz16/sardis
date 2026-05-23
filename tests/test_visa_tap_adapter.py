@@ -8,6 +8,7 @@ import os
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.credential_store import CredentialEncryption
 from sardis.core.delegated_adapters.visa_tap import (
     MockVisaTAPAdapter,
@@ -398,6 +399,7 @@ class TestVisaTapWebhookEndpoint:
         """Build an httpx AsyncClient against a minimal FastAPI app."""
         from fastapi import FastAPI
         from httpx import ASGITransport, AsyncClient
+
         from server.routes.providers.visa_tap_webhooks import router
 
         app = FastAPI()

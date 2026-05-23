@@ -5,6 +5,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from sardis_checkout.connectors.stripe import StripeConnector
 from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus
 from sardis_checkout.orchestrator import CheckoutOrchestrator
@@ -176,8 +177,8 @@ class TestStripeConnector:
         # Note: This would require actual Stripe API key in integration tests
         # For unit tests, we mock the HTTP client
         connector = StripeConnector(
-            api_key="sk_test_mock",
-            webhook_secret="whsec_mock",
+            api_key="sk_test_mock",  # nosecret: unit-test fixture
+            webhook_secret="whsec_mock",  # nosecret: unit-test fixture
         )
 
         # Mock the HTTP client

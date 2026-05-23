@@ -12,6 +12,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from sardis.chain.fx_signer import FXSigner, create_fx_signer
 
 # ── Mode detection ───────────────────────────────────────────────────

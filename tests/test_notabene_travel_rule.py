@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
 from sardis_compliance.providers.notabene import (
     ASSET_MAP,
     CHAIN_MAP,

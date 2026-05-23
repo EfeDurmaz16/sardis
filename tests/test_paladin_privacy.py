@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+
 from sardis_protocol.paladin_privacy import (
     DEFAULT_ENDORSEMENT_POLICY,
     MAX_UTXO_INPUTS,

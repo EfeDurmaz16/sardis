@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
+
 from sardis_compliance.providers.opensanctions import (
     DEFAULT_API_URL,
     DEFAULT_MATCH_THRESHOLD,

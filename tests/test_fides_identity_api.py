@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from sardis.core.did_bridge import DIDBridge, DIDMapping
 from sardis.core.trust_graph import TrustPathNode, TrustPathResult
 

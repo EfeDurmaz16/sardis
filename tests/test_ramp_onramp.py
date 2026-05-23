@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from server.routes.wallets.ramp import RampDependencies, get_deps
 from server.routes.wallets.ramp import public_router as ramp_public_router
 from server.routes.wallets.ramp import router as ramp_router

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+
 from sardis_protocol.tap import (
     build_object_signature_base,
     build_signature_base,

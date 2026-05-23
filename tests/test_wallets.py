@@ -4,6 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+
 from sardis.core.tokens import TokenType
 from sardis.core.wallets import TokenLimit, Wallet, WalletSnapshot
 
