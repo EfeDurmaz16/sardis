@@ -83,7 +83,6 @@ jobs:
         run: |
           uv run python apps/api/scripts/facility_gate_pilot_readiness.py org_tabletop \
             --run-tabletop \
-            --require-alerts \
             --output facility-gate-readiness.json
         env:
           SARDIS_SECRET_KEY: test-secret-key

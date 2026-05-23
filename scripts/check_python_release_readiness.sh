@@ -120,21 +120,7 @@ if [ "${STRICT_MODE:-0}" = "1" ] && [ "$SKIPPED" -gt 0 ]; then
   exit 1
 fi
 
-echo "[3b/5] Running protocol package suites (A2A/UCP)"
-(
-  cd "$ROOT_DIR/packages/sardis-a2a"
-  PYTHONPATH=src "${PYTHON_CMD[@]}" -m pytest -q tests
-)
-(
-  cd "$ROOT_DIR/packages/sardis-ucp"
-  PYTHONPATH=src "${PYTHON_CMD[@]}" -m pytest -q tests
-)
-
-echo "[4/5] Running compliance package smoke test"
-(
-  cd "$ROOT_DIR/packages/sardis-compliance"
-  "${PYTHON_CMD[@]}" -m pytest -q tests/test_audit_store_async.py
-)
+echo "[3b/5] (skipped — a2a/ucp/compliance subpackages consolidated into sardis.*)"
 
 echo "[5/5] Attempting offline package build validation"
 if "${PYTHON_CMD[@]}" - <<'PY'
