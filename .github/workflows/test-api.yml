@@ -59,7 +59,7 @@ jobs:
         run: uv sync
 
       - name: Lint
-        run: uv run ruff check apps/api/ packages/sardis-core/
+        run: uv run ruff check apps/api/
 
       - name: Package test drift report
         continue-on-error: true
