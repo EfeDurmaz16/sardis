@@ -1,6 +1,0 @@
-{
-  "name": "sardis-api-proxy",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Vercel rewrite-only proxy — routes all requests to the Cloud Run API backend. No application code; see vercel.json for the rewrite rule."
-}
