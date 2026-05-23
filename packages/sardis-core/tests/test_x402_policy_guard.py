@@ -6,6 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytest.importorskip(
+    "sardis_guardrails",
+    reason="sardis-guardrails is an optional extra (pip install sardis[guardrails])",
+)
+
 from sardis_v2_core.control_plane import ControlPlane
 from sardis_v2_core.execution_intent import (
     ExecutionIntent,
@@ -104,10 +109,6 @@ async def test_daily_limit_applies():
 @pytest.mark.asyncio
 async def test_kill_switch_blocks_x402():
     """Kill switch blocks x402 payments."""
-    pytest.importorskip(
-        "sardis_guardrails",
-        reason="sardis-guardrails is an optional extra (pip install sardis[guardrails])",
-    )
     from sardis_guardrails.kill_switch import KillSwitchError
 
     kill_switch = AsyncMock()
@@ -127,10 +128,6 @@ async def test_kill_switch_blocks_x402():
 @pytest.mark.asyncio
 async def test_anomaly_engine_flags_x402():
     """Anomaly scoring works for x402 payments."""
-    pytest.importorskip(
-        "sardis_guardrails",
-        reason="sardis-guardrails is an optional extra (pip install sardis[guardrails])",
-    )
     from datetime import UTC, datetime
 
     from sardis_guardrails.anomaly_engine import RiskAction, RiskAssessment, RiskSignal
