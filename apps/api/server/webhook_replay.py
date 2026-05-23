@@ -34,21 +34,55 @@ async def run_with_replay_protection(
     ttl_seconds: int = 24 * 60 * 60,
     lock_ttl_seconds: int = 30,
     response_on_duplicate: Any = None,
+    require_replay_protection: bool = True,
     fn: Callable[[], Awaitable[T]],
 ) -> Any:
     """
     Execute `fn()` at most once per (provider, event_id).
 
-    If cache isn't configured, this becomes a no-op wrapper.
-    For duplicates we return 200 so providers stop retrying the same event.
+    Fail-closed: if no ``cache_service`` is configured on ``app.state``, the
+    handler is REJECTED with HTTP 503 ``webhook_replay_cache_unavailable`` --
+    we refuse to process state-changing webhooks without replay protection,
+    because that previously meant a captured webhook could be replayed
+    indefinitely. Callers that intentionally accept this risk (e.g., a purely
+    read-only debug route) MUST opt out by passing
+    ``require_replay_protection=False`` explicitly.
+
+    A missing or blank ``event_id`` is treated the same way: without a stable
+    dedupe key we cannot enforce single-delivery, so we reject.
+
+    For genuine duplicates (same provider/event_id) we return HTTP 200 so the
+    provider stops retrying the same event.
+
+    See ~/project-directions/sardis-sdk-security-model.md §4 (Webhook event_id).
     """
     cache = getattr(request.app.state, "cache_service", None)
     if cache is None:
+        if require_replay_protection:
+            logger.error(
+                "Webhook handler invoked without cache_service; rejecting to "
+                "preserve replay protection. provider=%s event_id=%s",
+                provider, event_id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="webhook_replay_cache_unavailable",
+            )
         return await fn()
 
     provider = (provider or "unknown").strip().lower()
     event_id = (event_id or "").strip()
     if not event_id:
+        if require_replay_protection:
+            logger.warning(
+                "Webhook handler invoked without event_id; rejecting because "
+                "replay protection requires a stable dedupe key. provider=%s",
+                provider,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="webhook_event_id_required",
+            )
         return await fn()
 
     record_key = f"sardis:webhook:{provider}:{event_id}:processed"
