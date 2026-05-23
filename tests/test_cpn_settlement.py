@@ -318,7 +318,7 @@ class TestSettlementServiceCPN:
     @pytest.mark.asyncio
     async def test_cpn_settlement_calls_fund_and_sets_processing(self) -> None:
         """settle_session() calls cpn_adapter.fund() and marks session as processing."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         merchant = _FakeMerchant(
             merchant_id="m1",
@@ -350,7 +350,7 @@ class TestSettlementServiceCPN:
     @pytest.mark.asyncio
     async def test_cpn_settlement_delivers_webhook(self) -> None:
         """settle_session() delivers 'settlement.initiated' webhook on CPN path."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         merchant = _FakeMerchant(
             merchant_id="m2",
@@ -382,7 +382,7 @@ class TestSettlementServiceCPN:
     @pytest.mark.asyncio
     async def test_cpn_settlement_no_adapter_marks_failed(self) -> None:
         """settle_session() marks settlement as failed when no CPN adapter is configured."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         merchant = _FakeMerchant(merchant_id="m3", settlement_preference="cpn")
         session = _FakeSession(
@@ -402,7 +402,7 @@ class TestSettlementServiceCPN:
     @pytest.mark.asyncio
     async def test_usdc_settlement_not_affected(self) -> None:
         """USDC settlement still completes independently of CPN adapter presence."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         merchant = _FakeMerchant(merchant_id="m4", settlement_preference="usdc")
         session = _FakeSession(
@@ -425,7 +425,7 @@ class TestSettlementServiceCPN:
     @pytest.mark.asyncio
     async def test_cpn_fund_exception_marks_failed(self) -> None:
         """If cpn_adapter.fund() raises, settlement_status is set to failed."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         class _BrokenCPNAdapter:
             async def fund(self, request: FundingRequest) -> FundingResult:

@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
+from sardis.chain.erc4337.proof_artifact import write_erc4337_proof_artifact
+from sardis.chain.erc4337.sponsor_caps import SponsorCapExceeded, SponsorCapGuard
+from sardis.chain.erc4337.user_operation import UserOperation, zero_hex
+from sardis.chain.executor import ChainExecutor
 from sardis.core import SardisSettings
-from sardis_chain.erc4337.proof_artifact import write_erc4337_proof_artifact
-from sardis_chain.erc4337.sponsor_caps import SponsorCapExceeded, SponsorCapGuard
-from sardis_chain.erc4337.user_operation import UserOperation, zero_hex
-from sardis_chain.executor import ChainExecutor
 
 
 def _sample_user_op() -> UserOperation:

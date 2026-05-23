@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 # Import the connector
-from sardis_checkout.connectors.stripe import StripeConnector
+from sardis.checkout.connectors.stripe import StripeConnector
 
 
 def _make_stripe_signature(payload: bytes, secret: str, timestamp: int | None = None) -> str:

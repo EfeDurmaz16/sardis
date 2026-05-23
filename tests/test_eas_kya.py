@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from sardis_protocol.eas_kya import (
+from sardis.protocol.eas_kya import (
     VALID_TRUST_LEVELS,
     EASKYAClient,
     KYAAttestation,

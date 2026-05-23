@@ -23,7 +23,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_guardrails.kill_switch import ActivationReason, get_kill_switch
+from sardis.guardrails.kill_switch import ActivationReason, get_kill_switch
 
 from server.audit_log import log_admin_action
 from server.authz import Principal, require_admin_principal

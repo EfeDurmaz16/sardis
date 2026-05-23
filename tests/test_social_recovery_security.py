@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_wallet.social_recovery import SocialRecoveryManager
+from sardis.wallet.social_recovery import SocialRecoveryManager
 
 
 def test_social_recovery_share_generation_disabled_in_production(monkeypatch) -> None:

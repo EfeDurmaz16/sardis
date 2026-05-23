@@ -136,7 +136,7 @@ async def _execute_batch_payment(
         })
 
     # Execute via TempoExecutor
-    from sardis_chain.tempo.executor import TempoExecutor
+    from sardis.chain.tempo.executor import TempoExecutor
     executor = TempoExecutor()
     receipt = await executor.execute_batch_transfers(transfer_dicts)
 

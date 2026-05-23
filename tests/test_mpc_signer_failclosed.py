@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sardis_chain.executor import ChainExecutor, SimulatedMPCSigner
+from sardis.chain.executor import ChainExecutor, SimulatedMPCSigner
 
 
 def _make_settings(

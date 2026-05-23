@@ -11,7 +11,7 @@ import pytest
 from eth_abi import decode, encode
 from web3 import Web3
 
-from sardis_chain.zodiac_roles import (
+from sardis.chain.zodiac_roles import (
     APPROVE_SELECTOR,
     EURC_ADDRESSES,
     TRANSFER_SELECTOR,
@@ -597,11 +597,11 @@ class TestEnums:
 
 class TestModuleExports:
     def test_zodiac_roles_importable(self):
-        from sardis_chain import zodiac_roles
+        from sardis.chain import zodiac_roles
         assert zodiac_roles is not None
 
     def test_key_functions_exported(self):
-        from sardis_chain.zodiac_roles import (
+        from sardis.chain.zodiac_roles import (
             build_agent_wallet_setup,
             build_role_setup_transactions,
             encode_role_key,

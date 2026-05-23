@@ -11,7 +11,7 @@ import pytest
 
 eth_account = pytest.importorskip("eth_account", reason="eth-account not installed")
 
-from sardis_protocol.erc8128 import (
+from sardis.protocol.erc8128 import (
     ERC8128SignatureInput,
     ERC8128VerificationResult,
     build_keyid,
@@ -285,13 +285,13 @@ class TestERC8128SignatureInput:
 
 class TestModuleExports:
     def test_sign_request_exported(self):
-        from sardis_protocol import erc8128_sign_request
+        from sardis.protocol import erc8128_sign_request
         assert erc8128_sign_request is not None
 
     def test_verify_request_exported(self):
-        from sardis_protocol import erc8128_verify_request
+        from sardis.protocol import erc8128_verify_request
         assert erc8128_verify_request is not None
 
     def test_build_keyid_exported(self):
-        from sardis_protocol import build_keyid
+        from sardis.protocol import build_keyid
         assert build_keyid is not None

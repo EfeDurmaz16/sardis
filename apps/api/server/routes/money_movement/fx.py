@@ -96,7 +96,7 @@ async def create_fx_quote(
 
     # Route through LiquidityRouter for real adapter-driven quotes
     try:
-        from sardis_chain.liquidity_router import LiquidityRouter
+        from sardis.chain.liquidity_router import LiquidityRouter
         router_instance = LiquidityRouter()
         route = await router_instance.find_best_route(
             from_token=req.from_currency,
@@ -181,7 +181,7 @@ async def execute_fx_quote(
     swap_status = "failed"
     try:
         # Get unified signer (Turnkey MPC or local EOA)
-        from sardis_chain.fx_signer import create_fx_signer
+        from sardis.chain.fx_signer import create_fx_signer
         signer = await create_fx_signer()
 
         provider = row["provider"]
@@ -203,7 +203,7 @@ async def execute_fx_quote(
         if provider == "tempo_dex":
             import os
 
-            from sardis_chain.tempo.dex import DEXQuote, TempoDEXAdapter
+            from sardis.chain.tempo.dex import DEXQuote, TempoDEXAdapter
             dex = TempoDEXAdapter(
                 rpc_url=os.getenv("SARDIS_TEMPO_RPC_URL", "https://rpc.tempo.xyz"),
                 private_key=signer.get_private_key(),  # From Turnkey or EOA
@@ -224,7 +224,7 @@ async def execute_fx_quote(
         elif provider in ("uniswap_v3", "uniswap_v4"):
             import os
 
-            from sardis_chain.uniswap_v3 import UniswapV3Adapter
+            from sardis.chain.uniswap_v3 import UniswapV3Adapter
             chain = row.get("chain", "base")
             rpc = os.getenv("SARDIS_BASE_RPC_URL", "")
             if not rpc:
@@ -249,7 +249,7 @@ async def execute_fx_quote(
             try:
                 import os
 
-                from sardis_chain.cdp_swap import CDPSwapClient
+                from sardis.chain.cdp_swap import CDPSwapClient
                 cdp_key = os.getenv("CDP_API_KEY")
                 if cdp_key:
                     cdp = CDPSwapClient(api_key=cdp_key)
@@ -303,7 +303,7 @@ async def get_fx_rates(
     chain: str = Query(default="tempo"),
 ) -> FXRatesResponse:
     """Get live FX rates from on-chain adapters (cached 30s)."""
-    from sardis_chain.liquidity_router import LiquidityRouter
+    from sardis.chain.liquidity_router import LiquidityRouter
 
     router_instance = LiquidityRouter()
     pairs = [
@@ -367,7 +367,7 @@ async def create_bridge_transfer(
     for provider_name in ["relay", "across"]:
         try:
             if provider_name == "relay":
-                from sardis_chain.bridges.relay import RelayBridgeAdapter
+                from sardis.chain.bridges.relay import RelayBridgeAdapter
                 adapter = RelayBridgeAdapter()
                 quote = await adapter.quote(req.from_chain, req.to_chain, req.token, req.amount)
                 fee = quote.total_fee if hasattr(quote, "total_fee") else _estimate_bridge_fee(provider_name, req.amount)
@@ -375,7 +375,7 @@ async def create_bridge_transfer(
                 actual_provider = "relay"
                 break
             elif provider_name == "across":
-                from sardis_chain.bridges.across import AcrossBridgeAdapter
+                from sardis.chain.bridges.across import AcrossBridgeAdapter
                 adapter = AcrossBridgeAdapter()
                 quote = await adapter.quote(req.from_chain, req.to_chain, req.token, req.amount)
                 fee = quote.total_fee

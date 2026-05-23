@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_ramp.ramp import KYCRequired, SardisFiatRamp
+from sardis.ramp.ramp import KYCRequired, SardisFiatRamp
 
 
 class MockHTTPResponse:

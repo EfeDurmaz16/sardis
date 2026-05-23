@@ -205,7 +205,7 @@ def test_rfc9421_sign_verify_roundtrip():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signing_key = SigningKey.generate()
     private_key = signing_key.encode()
@@ -253,7 +253,7 @@ def test_invalid_rfc9421_signature_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     attacker = SigningKey.generate()
@@ -287,7 +287,7 @@ def test_rfc9421_tampered_body_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     keyid = "did:fides:signer"
@@ -321,7 +321,7 @@ def test_rfc9421_missing_content_digest_rejected():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import sign_request, verify_request
+    from sardis.protocol.fides_signing import sign_request, verify_request
 
     signer = SigningKey.generate()
     method = "POST"
@@ -358,7 +358,7 @@ def test_rfc9421_missing_headers():
     except ImportError:
         pytest.skip("PyNaCl not installed")
 
-    from sardis_protocol.fides_signing import verify_request
+    from sardis.protocol.fides_signing import verify_request
 
     signer = SigningKey.generate()
 

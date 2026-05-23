@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 from sardis.core.outcome_tracker import PaymentOutcome
-from sardis_guardrails.anomaly_tuner import AnomalyTuner
+from sardis.guardrails.anomaly_tuner import AnomalyTuner
 
 
 def _make_outcome(decision: str, outcome_type: str, signals: list[dict] | None = None) -> PaymentOutcome:

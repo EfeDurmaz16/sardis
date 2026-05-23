@@ -147,7 +147,7 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
     def _generate_402(self, request: Request, rule: X402PricingRule) -> JSONResponse:
         """Generate a 402 Payment Required response with challenge."""
         try:
-            from sardis_protocol.x402 import generate_challenge, serialize_challenge_header
+            from sardis.protocol.x402 import generate_challenge, serialize_challenge_header
         except ImportError:
             logger.error("x402 protocol module not available")
             return JSONResponse(status_code=503, content={"error": "x402_not_available"})
@@ -199,12 +199,12 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
     ) -> dict:
         """Verify payment signature and settle through control plane."""
         try:
-            from sardis_protocol.x402 import (
+            from sardis.protocol.x402 import (
                 X402HeaderBuilder,
                 X402PaymentPayload,
                 verify_payment_payload,
             )
-            from sardis_protocol.x402_settlement import (
+            from sardis.protocol.x402_settlement import (
                 DatabaseSettlementStore,
                 X402Settler,
             )
@@ -220,7 +220,7 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
         # We need the challenge to verify against. In a real implementation,
         # the challenge would be cached/stored. For middleware, we regenerate
         # and verify the payload fields match.
-        from sardis_protocol.x402 import X402Challenge
+        from sardis.protocol.x402 import X402Challenge
 
         challenge = X402Challenge(
             payment_id=payload.payment_id,

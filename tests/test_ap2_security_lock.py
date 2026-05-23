@@ -15,8 +15,8 @@ from unittest.mock import patch
 import pytest
 
 from sardis.core import SardisSettings
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_protocol.verifier import MandateVerifier, VerificationError
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.verifier import MandateVerifier, VerificationError
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 

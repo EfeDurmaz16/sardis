@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from sardis_compliance.providers.notabene import (
+from sardis.compliance.providers.notabene import (
     ASSET_MAP,
     CHAIN_MAP,
     NOTABENE_API_URLS,
@@ -26,7 +26,7 @@ from sardis_compliance.providers.notabene import (
     _build_originator_ivms,
     _status_to_travel_rule,
 )
-from sardis_compliance.travel_rule import (
+from sardis.compliance.travel_rule import (
     BeneficiaryInfo,
     OriginatorInfo,
     TravelRuleStatus,
@@ -630,7 +630,7 @@ class TestVASPProtocol:
 class TestFactory:
     def test_manual_default(self):
         service = create_travel_rule_service()
-        from sardis_compliance.travel_rule import ManualTravelRuleProvider
+        from sardis.compliance.travel_rule import ManualTravelRuleProvider
         assert isinstance(service._provider, ManualTravelRuleProvider)
 
     def test_notabene_factory(self):
@@ -647,9 +647,9 @@ class TestFactory:
 
 class TestModuleExports:
     def test_from_providers(self):
-        from sardis_compliance.providers import NotabeneTravelRuleProvider
+        from sardis.compliance.providers import NotabeneTravelRuleProvider
         assert NotabeneTravelRuleProvider is not None
 
     def test_from_compliance(self):
-        from sardis_compliance import NotabeneTravelRuleProvider
+        from sardis.compliance import NotabeneTravelRuleProvider
         assert NotabeneTravelRuleProvider is not None

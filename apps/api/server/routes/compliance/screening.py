@@ -735,7 +735,7 @@ async def register_kya_agent(
     """Register an agent manifest for KYA enforcement."""
     kya_service = _require_kya_service(deps)
     try:
-        from sardis_compliance.kya import AgentManifest
+        from sardis.compliance.kya import AgentManifest
 
         manifest = AgentManifest(
             agent_id=request.agent_id,
@@ -803,7 +803,7 @@ async def check_kya_for_payment(
     """Evaluate KYA policy for a potential payment."""
     kya_service = _require_kya_service(deps)
     try:
-        from sardis_compliance.kya import KYACheckRequest
+        from sardis.compliance.kya import KYACheckRequest
 
         result = await kya_service.check_agent(
             KYACheckRequest(
@@ -828,7 +828,7 @@ async def upgrade_kya_level(
     """Upgrade KYA level for an agent (verified/attested workflows)."""
     kya_service = _require_kya_service(deps)
     try:
-        from sardis_compliance.kya import CodeAttestation, KYALevel
+        from sardis.compliance.kya import CodeAttestation, KYALevel
 
         target_level = KYALevel(request.target_level.strip().lower())
         code_attestation = None

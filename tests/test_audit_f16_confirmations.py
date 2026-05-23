@@ -2,7 +2,7 @@
 
 Tests CHAIN_CONFIRMATIONS class-level dict on ChainExecutor without instantiation.
 """
-from sardis_chain.executor import ChainExecutor
+from sardis.chain.executor import ChainExecutor
 
 
 def test_confirmation_counts_configured():

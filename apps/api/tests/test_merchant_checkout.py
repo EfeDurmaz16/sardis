@@ -227,7 +227,7 @@ class TestSardisNativeConnector:
 
     @pytest.fixture
     def connector(self, mock_repo):
-        from sardis_checkout.connectors.sardis_native import SardisNativeConnector
+        from sardis.checkout.connectors.sardis_native import SardisNativeConnector
 
         return SardisNativeConnector(
             chain_executor=AsyncMock(),
@@ -241,7 +241,7 @@ class TestSardisNativeConnector:
 
     @pytest.mark.asyncio
     async def test_create_checkout_session(self, connector, mock_repo):
-        from sardis_checkout.models import CheckoutRequest
+        from sardis.checkout.models import CheckoutRequest
 
         request = CheckoutRequest(
             agent_id="merchant_merch_test123",
@@ -267,7 +267,7 @@ class TestSardisNativeConnector:
 
     @pytest.mark.asyncio
     async def test_create_session_invalid_merchant(self, connector):
-        from sardis_checkout.models import CheckoutRequest
+        from sardis.checkout.models import CheckoutRequest
 
         request = CheckoutRequest(
             agent_id="merchant_nonexistent",
@@ -282,7 +282,7 @@ class TestSardisNativeConnector:
 
     @pytest.mark.asyncio
     async def test_create_session_inactive_merchant(self, connector, mock_repo):
-        from sardis_checkout.models import CheckoutRequest
+        from sardis.checkout.models import CheckoutRequest
 
         mock_repo.merchants["merch_test123"].is_active = False
 
@@ -299,7 +299,7 @@ class TestSardisNativeConnector:
 
     @pytest.mark.asyncio
     async def test_psp_type(self, connector):
-        from sardis_checkout.models import PSPType
+        from sardis.checkout.models import PSPType
         assert connector.psp_type == PSPType.SARDIS
 
     @pytest.mark.asyncio
@@ -720,7 +720,7 @@ class TestSettlementService:
     @pytest.mark.asyncio
     async def test_usdc_settlement_marks_complete(self):
         """USDC merchants get immediate settlement (no offramp needed)."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         repo = MockMerchantRepo()
         merchant = _make_merchant(settlement_preference="usdc")
@@ -744,7 +744,7 @@ class TestSettlementService:
     @pytest.mark.asyncio
     async def test_settlement_skips_non_paid_sessions(self):
         """Settlement should skip sessions that aren't in 'paid' status."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         repo = MockMerchantRepo()
         merchant = _make_merchant()
@@ -770,7 +770,7 @@ class TestSettlementService:
 
 class TestWebhookSignature:
     def test_hmac_signature_generation(self):
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         payload = b'{"event": "payment.completed"}'
         secret = "test_webhook_secret_placeholder_123"
@@ -780,7 +780,7 @@ class TestWebhookSignature:
         assert len(sig) > 10
 
     def test_signature_is_deterministic(self):
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         payload = b'{"test": true}'
         secret = "test_wh_abc"
@@ -790,7 +790,7 @@ class TestWebhookSignature:
         assert sig1 == sig2
 
     def test_different_secrets_produce_different_signatures(self):
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         payload = b'{"test": true}'
 
@@ -799,7 +799,7 @@ class TestWebhookSignature:
         assert sig1 != sig2
 
     def test_verify_signature_roundtrip(self):
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         payload = b'{"event": "settlement.completed", "amount": "49.99"}'
         secret = "test_wh_roundtrip"
@@ -817,7 +817,7 @@ class TestWebhookDelivery:
     async def test_webhook_includes_event_id(self):
         """Webhook payload should contain event_id for deduplication."""
 
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         repo = MockMerchantRepo()
         service = MerchantWebhookService(merchant_repo=repo)

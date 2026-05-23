@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from sardis_protocol.erc8122 import (
+from sardis.protocol.erc8122 import (
     METADATA_AGENT_ACCOUNT,
     METADATA_DESCRIPTION,
     METADATA_NAME,
@@ -346,7 +346,7 @@ class TestFactory:
 
 class TestModuleExports:
     def test_imports_from_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             AgentRegistration,
             AgentRegistryManager,
             MetadataEntry,

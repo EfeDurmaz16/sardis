@@ -393,7 +393,7 @@ async def bridge_cross_chain(
         raise HTTPException(status_code=400, detail=f"Unsupported chain: {req.source_chain} or {req.destination_chain}")
 
     try:
-        from sardis_chain.bridge import CrossChainBridge
+        from sardis.chain.bridge import CrossChainBridge
 
         bridge = CrossChainBridge()
         quote = await bridge.get_best_quote(
@@ -904,7 +904,7 @@ async def withdraw_to_bank(
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    from sardis_ramp.ramp_types import BankAccount
+    from sardis.ramp.ramp_types import BankAccount
 
     bank_account = BankAccount(
         account_holder_name=request.bank_account.account_holder_name,
@@ -956,7 +956,7 @@ async def pay_merchant_fiat(
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    from sardis_ramp.ramp_types import BankAccount, MerchantAccount
+    from sardis.ramp.ramp_types import BankAccount, MerchantAccount
 
     bank_account = BankAccount(
         account_holder_name=request.merchant.bank_account.account_holder_name,

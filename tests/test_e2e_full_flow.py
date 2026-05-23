@@ -18,7 +18,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from sardis_cards.offramp import (
+from sardis.cards.offramp import (
     OfframpProvider,
     OfframpQuote,
     OfframpStatus,

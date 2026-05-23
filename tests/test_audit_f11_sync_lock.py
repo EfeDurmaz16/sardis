@@ -12,7 +12,7 @@ def test_sync_append_acquires_lock():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
@@ -60,7 +60,7 @@ def test_concurrent_appends_are_safe():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test_concurrent.db"
         store = LedgerStore(f"sqlite:///{db_path}")

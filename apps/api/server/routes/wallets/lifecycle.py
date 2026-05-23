@@ -12,12 +12,12 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis.chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
 from sardis.core import AgentRepository, Wallet, WalletRepository
 from sardis.core.database import Database
 from sardis.core.tokens import TokenType
 from sardis.core.transactions import validate_wallet_not_frozen
-from sardis_chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
-from sardis_ledger.records import LedgerStore
+from sardis.ledger.records import LedgerStore
 
 from server.authz import Principal, require_principal
 from server.canonical_state_machine import normalize_stablecoin_event
@@ -352,7 +352,7 @@ async def create_wallet(
         and os.getenv("SARDIS_PAYMASTER_PROVIDER", "").strip().lower() == "circle"
     ):
         try:
-            from sardis_chain.erc4337.paymaster_client import CirclePaymasterClient
+            from sardis.chain.erc4337.paymaster_client import CirclePaymasterClient
             default_chain = os.getenv("SARDIS_DEFAULT_CHAIN", "base")
             usdc_addr, approve_calldata = CirclePaymasterClient.encode_usdc_approve(default_chain)
             logger.info(
@@ -1269,7 +1269,7 @@ async def _get_x402_challenge(payment_id: str, wallet_id: str) -> object | None:
         challenge_payload = json.loads(challenge_payload)
 
     try:
-        from sardis_protocol.x402 import X402Challenge
+        from sardis.protocol.x402 import X402Challenge
     except ImportError:
         return None
     return X402Challenge(**challenge_payload)
@@ -1644,7 +1644,7 @@ async def create_x402_challenge(
         )
 
     try:
-        from sardis_protocol.x402 import generate_challenge
+        from sardis.protocol.x402 import generate_challenge
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1696,7 +1696,7 @@ async def verify_x402_payment(
         return X402VerifyResponse(accepted=False, reason="challenge_not_found_or_expired")
 
     try:
-        from sardis_protocol.x402 import X402PaymentPayload, verify_payment_payload
+        from sardis.protocol.x402 import X402PaymentPayload, verify_payment_payload
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1741,7 +1741,7 @@ async def verify_x402_payment(
     result = verify_payment_payload(payload=payload, challenge=challenge)
 
     try:
-        from sardis_protocol.x402_settlement import (
+        from sardis.protocol.x402_settlement import (
             DatabaseSettlementStore,
             X402SettlementStatus,
             X402Settler,
@@ -1821,7 +1821,7 @@ async def settle_x402_payment(
         )
 
     try:
-        from sardis_protocol.x402_settlement import (
+        from sardis.protocol.x402_settlement import (
             DatabaseSettlementStore,
             X402SettlementStatus,
             X402Settler,
@@ -1932,7 +1932,7 @@ async def initiate_bridge(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No recipient address available")
 
     try:
-        from sardis_chain.cctp import CCTPBridgeService
+        from sardis.chain.cctp import CCTPBridgeService
     except ImportError:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="CCTP bridge module not available")
 
@@ -1994,8 +1994,8 @@ async def get_bridge_status(
     current_status = row["status"]
     if current_status == "awaiting_attestation" and row.get("message_hash"):
         try:
-            from sardis_chain.cctp import CCTPBridgeService
-            from sardis_chain.cctp_constants import get_cctp_domain
+            from sardis.chain.cctp import CCTPBridgeService
+            from sardis.chain.cctp_constants import get_cctp_domain
             bridge_service = CCTPBridgeService()
             # V2 API uses source_domain + tx_hash for attestation lookup
             source_domain = None

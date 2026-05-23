@@ -15,6 +15,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sardis.compliance.checks import ComplianceAuditEntry
 from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
@@ -33,7 +34,6 @@ from sardis.core.policy_attestation import (
     verify_signed_policy_snapshot,
 )
 from sardis.core.tokens import TokenType, to_raw_token_amount
-from sardis_compliance.checks import ComplianceAuditEntry
 
 from server.authz import Principal, require_principal
 from server.middleware.agent_payment_rate_limit import enforce_agent_payment_rate_limit
@@ -739,7 +739,7 @@ async def pay_onchain(
                 )
         else:
             try:
-                from sardis_compliance.kya import KYACheckRequest
+                from sardis.compliance.kya import KYACheckRequest
 
                 kya_result = await deps.kya_service.check_agent(
                     KYACheckRequest(

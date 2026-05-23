@@ -9,13 +9,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.cdp_swap import (
+from sardis.chain.cdp_swap import (
     CDP_CHAIN_IDS,
     CDPSwapClient,
     CDPSwapError,
     SwapQuote,
 )
-from sardis_compliance.coinbase_verifications import (
+from sardis.compliance.coinbase_verifications import (
     COINBASE_VERIFICATIONS_SCHEMA_UID,
     Attestation,
     CoinbaseVerificationsClient,

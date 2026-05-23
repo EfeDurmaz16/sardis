@@ -19,7 +19,7 @@ def _create_test_app() -> FastAPI:
 
 def _make_challenge_header(**overrides):
     """Generate a valid base64-encoded challenge header."""
-    from sardis_protocol.x402 import generate_challenge, serialize_challenge_header
+    from sardis.protocol.x402 import generate_challenge, serialize_challenge_header
     challenge_resp = generate_challenge(
         resource_uri=overrides.get("resource_uri", "https://api.example.com/data"),
         amount=overrides.get("amount", "1000000"),

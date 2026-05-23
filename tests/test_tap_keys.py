@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from nacl.signing import SigningKey
 
-from sardis_protocol.tap_keys import select_jwk_by_kid, verify_signature_with_jwk
+from sardis.protocol.tap_keys import select_jwk_by_kid, verify_signature_with_jwk
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.tap]
 

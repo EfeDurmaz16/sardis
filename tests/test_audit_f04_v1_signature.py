@@ -6,7 +6,7 @@ from nacl.signing import SigningKey
 
 from sardis.core import SardisSettings
 from sardis.core.mandates import PaymentMandate, VCProof
-from sardis_protocol.verifier import MandateVerifier
+from sardis.protocol.verifier import MandateVerifier
 
 
 def test_v1_signature_rejected():

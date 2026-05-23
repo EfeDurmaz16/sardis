@@ -43,7 +43,7 @@ async def run_learning_loop(
     # Step 2: Anomaly tuner
     if anomaly_engine is not None and resolved_outcomes:
         try:
-            from sardis_guardrails.anomaly_tuner import AnomalyTuner
+            from sardis.guardrails.anomaly_tuner import AnomalyTuner
 
             tuner = AnomalyTuner()
             new_weights = await tuner.compute_weight_adjustments(

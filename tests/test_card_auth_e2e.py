@@ -18,7 +18,7 @@ from decimal import Decimal
 
 import pytest
 
-from sardis_cards.models import (
+from sardis.cards.models import (
     Card,
     CardStatus,
     CardTransaction,
@@ -26,8 +26,8 @@ from sardis_cards.models import (
     FundingSource,
     TransactionStatus,
 )
-from sardis_cards.providers.mock import MockProvider
-from sardis_cards.webhooks import (
+from sardis.cards.providers.mock import MockProvider
+from sardis.cards.webhooks import (
     ASADecision,
     ASAHandler,
     ASAResponse,

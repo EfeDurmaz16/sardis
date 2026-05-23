@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from sardis_protocol.erc8001 import (
+from sardis.protocol.erc8001 import (
     AGENT_INTENT_TYPEHASH,
     CHAIN_IDS,
     DEFAULT_INTENT_EXPIRY_HOURS,
@@ -466,7 +466,7 @@ class TestFactory:
 
 class TestModuleExports:
     def test_imports_from_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             AgentCoordinationManager,
             AgentIntent,
             CoordinationStatus,

@@ -447,7 +447,7 @@ async def lifespan(app: FastAPI):
     )
     if enable_deposit_monitor:
         try:
-            from sardis_chain.deposit_monitor import DepositMonitor, MonitorConfig
+            from sardis.chain.deposit_monitor import DepositMonitor, MonitorConfig
 
             monitor_config = MonitorConfig(
                 chains=[c.strip() for c in os.getenv("SARDIS_DEPOSIT_MONITOR_CHAINS", "base_sepolia").split(",") if c.strip()],
@@ -493,7 +493,7 @@ async def lifespan(app: FastAPI):
         ops_dispatcher = init_ops_dispatcher()
         if ops_dispatcher.channels:
             # Wire kill switch activation alerts
-            from sardis_guardrails.kill_switch import get_kill_switch
+            from sardis.guardrails.kill_switch import get_kill_switch
             ks = get_kill_switch()
             ks.on_activate = alert_kill_switch_activated
             logger.info("Operational alerts initialized with %d channels", len(ops_dispatcher.channels))

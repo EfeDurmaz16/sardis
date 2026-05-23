@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from sardis_checkout.connectors.stripe import StripeConnector
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus
-from sardis_checkout.orchestrator import CheckoutOrchestrator
+from sardis.checkout.connectors.stripe import StripeConnector
+from sardis.checkout.models import CheckoutRequest, CheckoutResponse, PaymentStatus
+from sardis.checkout.orchestrator import CheckoutOrchestrator
 
 
 class TestCheckoutOrchestrator:
@@ -18,8 +18,8 @@ class TestCheckoutOrchestrator:
     async def test_create_checkout_with_stripe(self):
         """Test creating checkout session with Stripe connector."""
         # Mock Stripe connector
-        from sardis_checkout.connectors.base import PSPConnector
-        from sardis_checkout.models import PSPType
+        from sardis.checkout.connectors.base import PSPConnector
+        from sardis.checkout.models import PSPType
 
         class MockStripeConnector(PSPConnector):
             @property
@@ -73,8 +73,8 @@ class TestCheckoutOrchestrator:
     @pytest.mark.asyncio
     async def test_get_payment_status(self):
         """Test getting payment status from PSP."""
-        from sardis_checkout.connectors.base import PSPConnector
-        from sardis_checkout.models import PSPType
+        from sardis.checkout.connectors.base import PSPConnector
+        from sardis.checkout.models import PSPType
 
         class MockStripeConnector(PSPConnector):
             @property
@@ -114,8 +114,8 @@ class TestCheckoutOrchestrator:
     @pytest.mark.asyncio
     async def test_handle_webhook(self):
         """Test handling PSP webhook."""
-        from sardis_checkout.connectors.base import PSPConnector
-        from sardis_checkout.models import PSPType
+        from sardis.checkout.connectors.base import PSPConnector
+        from sardis.checkout.models import PSPType
 
         class MockStripeConnector(PSPConnector):
             @property

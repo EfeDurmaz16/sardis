@@ -1107,7 +1107,7 @@ async def _emit_audit_event(
         record_callable = sink.write_event
     elif hasattr(sink, "append"):
         try:
-            from sardis_compliance.checks import ComplianceAuditEntry
+            from sardis.compliance.checks import ComplianceAuditEntry
         except Exception:
             ComplianceAuditEntry = None  # type: ignore[assignment]
 
@@ -1410,7 +1410,7 @@ async def _try_rotate_incident_card(
     except Exception:
         # Compatibility: some provider adapters still expect CardType enum.
         try:
-            from sardis_cards.models import CardType
+            from sardis.cards.models import CardType
 
             fallback_card_type = CardType(card_type_raw) if card_type_raw in {item.value for item in CardType} else CardType.MULTI_USE
             replacement = await deps.card_provider.create_card(

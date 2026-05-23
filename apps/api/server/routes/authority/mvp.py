@@ -14,8 +14,8 @@ from sardis.core.identity import AgentIdentity, IdentityRegistry
 from sardis.core.mandates import PaymentMandate, VCProof
 from sardis.core.transactions import validate_wallet_not_frozen
 from sardis.core.wallet_repository import WalletRepository
-from sardis_ledger.records import ChainReceipt, LedgerStore
-from sardis_protocol.verifier import MandateVerifier
+from sardis.ledger.records import ChainReceipt, LedgerStore
+from sardis.protocol.verifier import MandateVerifier
 
 from server.authz import Principal, require_principal
 from server.execution_mode import enforce_staging_live_guard, get_pilot_execution_policy

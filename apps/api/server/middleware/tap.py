@@ -21,14 +21,14 @@ from dataclasses import dataclass, field
 from threading import Lock
 
 from fastapi import Request, Response
-from sardis_protocol.tap import (
+from sardis.protocol.tap import (
     TAP_ALLOWED_MESSAGE_ALGS,
     TAP_MAX_TIME_WINDOW_SECONDS,
     TAP_PROTOCOL_VERSION,
     TapVerificationResult,
     validate_tap_headers,
 )
-from sardis_protocol.tap_keys import select_jwk_by_kid, verify_signature_with_jwk
+from sardis.protocol.tap_keys import select_jwk_by_kid, verify_signature_with_jwk
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .exceptions import create_error_response, get_request_id

@@ -10,14 +10,14 @@ import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sardis.core import WalletRepository
-from sardis_chain.bridge import (
+from sardis.chain.bridge import (
     CHAIN_NAMES,
     USDC_ADDRESSES,
     BridgeProvider,
     CrossChainBridge,
 )
-from sardis_chain.executor import CHAIN_CONFIGS, ChainExecutor, TransactionRequest
+from sardis.chain.executor import CHAIN_CONFIGS, ChainExecutor, TransactionRequest
+from sardis.core import WalletRepository
 
 from server.authz import Principal, require_principal
 

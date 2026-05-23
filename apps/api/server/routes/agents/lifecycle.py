@@ -519,7 +519,7 @@ async def create_agent(
     if auto_register_kya:
         strict_kya_registration = _kya_strict_registration()
         try:
-            from sardis_compliance.kya import AgentManifest
+            from sardis.compliance.kya import AgentManifest
 
             kya_result = await deps.kya_service.register_agent(
                 AgentManifest(

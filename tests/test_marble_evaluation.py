@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from sardis_compliance.marble import (
+from sardis.compliance.marble import (
     DEFAULT_BLOCK_THRESHOLD,
     DEFAULT_REVIEW_THRESHOLD,
     GAMBLING_MCCS,
@@ -708,7 +708,7 @@ class TestModuleExports:
     """Tests for sardis_compliance package exports."""
 
     def test_import_from_sardis_compliance(self):
-        from sardis_compliance import (
+        from sardis.compliance import (
             MarbleDecision,
             MarbleDecisionEngine,
             MarbleDecisionResult,

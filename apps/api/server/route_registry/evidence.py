@@ -20,7 +20,7 @@ def register_audit_anchor_routes(
 ) -> None:
     """Register blockchain audit-anchor routes."""
     try:
-        from sardis_ledger.anchor import AnchorChainProvider, AnchorConfig, LedgerAnchor
+        from sardis.ledger.anchor import AnchorChainProvider, AnchorConfig, LedgerAnchor
 
         anchor_chain = os.getenv("SARDIS_ANCHOR_CHAIN", "base")
         anchor_config = AnchorConfig(chain=anchor_chain)

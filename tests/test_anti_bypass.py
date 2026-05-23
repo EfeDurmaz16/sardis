@@ -28,8 +28,8 @@ from sardis.core.spending_policy import (
     TimeWindowLimit,
     TrustLevel,
 )
-from sardis_protocol.verifier import MandateVerifier
-from sardis_protocol.x402 import (
+from sardis.protocol.verifier import MandateVerifier
+from sardis.protocol.x402 import (
     X402Challenge,
     X402PaymentPayload,
     verify_payment_payload,

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sardis_ledger.records import LedgerStore
+from sardis.ledger.records import LedgerStore
 
 from server.authz import require_principal
 

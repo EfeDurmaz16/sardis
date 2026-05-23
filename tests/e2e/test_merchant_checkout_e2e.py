@@ -34,14 +34,14 @@ os.environ.setdefault("SARDIS_ENVIRONMENT", "dev")
 os.environ.setdefault("DATABASE_URL", "memory://")
 os.environ.setdefault("SECRET_KEY", "test_e2e_key_for_testing_purposes_only_32ch")
 
+from sardis.checkout.connectors.sardis_native import SardisNativeConnector
+from sardis.checkout.merchant_webhooks import MerchantWebhookService
+from sardis.checkout.models import CheckoutRequest, PaymentStatus
+from sardis.checkout.settlement import SettlementService
 from sardis.core.merchant import (
     Merchant,
     MerchantCheckoutSession,
 )
-from sardis_checkout.connectors.sardis_native import SardisNativeConnector
-from sardis_checkout.merchant_webhooks import MerchantWebhookService
-from sardis_checkout.models import CheckoutRequest, PaymentStatus
-from sardis_checkout.settlement import SettlementService
 
 # ── Mock Infrastructure ───────────────────────────────────────────
 

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from sardis_compliance.providers.opensanctions import (
+from sardis.compliance.providers.opensanctions import (
     DEFAULT_API_URL,
     DEFAULT_MATCH_THRESHOLD,
     HIGH_CONFIDENCE_THRESHOLD,
@@ -18,7 +18,7 @@ from sardis_compliance.providers.opensanctions import (
     _risk_severity,
     _score_to_risk,
 )
-from sardis_compliance.sanctions import (
+from sardis.compliance.sanctions import (
     EntityType,
     SanctionsRisk,
     TransactionScreeningRequest,
@@ -507,9 +507,9 @@ class TestFactory:
 
 class TestModuleExports:
     def test_provider_importable_from_providers(self):
-        from sardis_compliance.providers import OpenSanctionsProvider
+        from sardis.compliance.providers import OpenSanctionsProvider
         assert OpenSanctionsProvider is not None
 
     def test_provider_importable_from_compliance(self):
-        from sardis_compliance import OpenSanctionsProvider
+        from sardis.compliance import OpenSanctionsProvider
         assert OpenSanctionsProvider is not None

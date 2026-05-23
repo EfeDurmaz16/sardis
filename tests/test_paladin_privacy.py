@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from sardis_protocol.paladin_privacy import (
+from sardis.protocol.paladin_privacy import (
     DEFAULT_ENDORSEMENT_POLICY,
     MAX_UTXO_INPUTS,
     PALADIN_VERSION,
@@ -649,7 +649,7 @@ class TestPrivacyConfig:
 
 class TestModuleExports:
     def test_imports_from_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             UTXO,
             NotaryDecision,
             NotaryValidation,

@@ -23,7 +23,7 @@ import respx
 
 def _make_bridge_provider(**kwargs):
     """Construct a BridgeProvider with mocked SardisFiatRamp internals."""
-    from sardis_ramp.providers.bridge_provider import BridgeProvider
+    from sardis.ramp.providers.bridge_provider import BridgeProvider
 
     provider = BridgeProvider(
         sardis_api_key="sk_test",

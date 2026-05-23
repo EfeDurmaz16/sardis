@@ -198,7 +198,7 @@ def _get_turnkey_onramp_service():
         return None
 
     try:
-        from sardis_wallet.turnkey_client import TurnkeyClient
+        from sardis.wallet.turnkey_client import TurnkeyClient
 
         from server.services.turnkey_onramp import TurnkeyOnrampService
 
@@ -300,7 +300,7 @@ async def _provision_wallet_address(
         return None
 
     try:
-        from sardis_wallet.turnkey_client import TurnkeyClient
+        from sardis.wallet.turnkey_client import TurnkeyClient
 
         client = TurnkeyClient(
             api_key=api_key,

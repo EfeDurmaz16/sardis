@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from sardis_compliance.providers.privado_id import (
+from sardis.compliance.providers.privado_id import (
     CREDENTIAL_SCHEMAS,
     PRIVADO_API_URLS,
     AuthRequest,
@@ -484,7 +484,7 @@ class TestQueryOperator:
 
 class TestModuleExports:
     def test_from_providers(self):
-        from sardis_compliance.providers.privado_id import (
+        from sardis.compliance.providers.privado_id import (
             PrivadoIDProvider,
             build_age_query,
             build_country_query,

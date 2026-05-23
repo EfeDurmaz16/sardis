@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.circle_cross_currency import (
+from sardis.chain.circle_cross_currency import (
     CircleCrossCurrencyClient,
     CircleCrossCurrencyError,
     CrossCurrencyQuote,

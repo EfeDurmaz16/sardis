@@ -54,7 +54,7 @@ def _get_didit_provider():
             detail="KYC provider not configured. Set DIDIT_API_KEY.",
         )
 
-    from sardis_compliance.providers.didit import DiditKYCProvider
+    from sardis.compliance.providers.didit import DiditKYCProvider
 
     _didit_provider = DiditKYCProvider(
         api_key=api_key,
@@ -118,7 +118,7 @@ async def initiate_kyc(
     """
     provider = _get_didit_provider()
 
-    from sardis_compliance.kyc import VerificationRequest
+    from sardis.compliance.kyc import VerificationRequest
 
     request_body = body or KYCInitiateRequest()
 

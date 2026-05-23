@@ -680,7 +680,7 @@ async def complete_checkout_session(
 
         # Try to verify via chain executor
         try:
-            from sardis_chain.executor import ChainExecutor
+            from sardis.chain.executor import ChainExecutor
 
             ChainExecutor()
             # Verification would check tx receipt, amount, recipient

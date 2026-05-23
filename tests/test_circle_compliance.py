@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_compliance.circle_compliance import (
+from sardis.compliance.circle_compliance import (
     CircleComplianceClient,
     CircleComplianceError,
     CircleComplianceProvider,
@@ -22,7 +22,7 @@ from sardis_compliance.circle_compliance import (
     _map_chain,
     create_circle_compliance_provider,
 )
-from sardis_compliance.sanctions import (
+from sardis.compliance.sanctions import (
     EntityType,
     FailoverSanctionsProvider,
     MockSanctionsProvider,
@@ -251,7 +251,7 @@ class TestCircleComplianceProvider:
 
     @pytest.mark.asyncio
     async def test_screen_wallet_sanctioned(self, provider):
-        from sardis_compliance.circle_compliance import CircleScreeningMatch
+        from sardis.compliance.circle_compliance import CircleScreeningMatch
 
         mock_resp = CircleScreeningResponse(
             screening_id="scr_bad",

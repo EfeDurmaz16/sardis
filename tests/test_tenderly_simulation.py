@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.simulation import (
+from sardis.chain.simulation import (
     SimulationOutput,
     SimulationResult,
     SimulationRouter,

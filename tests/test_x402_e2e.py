@@ -97,7 +97,7 @@ async def test_agent_pays_x402_api_e2e():
     client = X402Client(policy_guard=guard, max_cost="10")
 
     # Verify policy evaluation works
-    from sardis_protocol.x402 import X402Challenge
+    from sardis.protocol.x402 import X402Challenge
     challenge = X402Challenge(
         payment_id="x402_e2e_test",
         resource_uri="https://api.example.com/data",

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sardis_cards.models import CardType
+from sardis.cards.models import CardType
 
 
 class CardProviderCompatAdapter:

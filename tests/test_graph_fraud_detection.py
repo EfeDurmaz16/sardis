@@ -11,7 +11,7 @@ from decimal import Decimal
 
 import pytest
 
-from sardis_guardrails.graph_fraud import (
+from sardis.guardrails.graph_fraud import (
     CLUSTER_MIN_SIZE,
     HUB_DEGREE_THRESHOLD,
     MAX_CYCLE_LENGTH,
@@ -539,7 +539,7 @@ class TestFactory:
 
 class TestModuleExports:
     def test_imports_from_guardrails(self):
-        from sardis_guardrails import (
+        from sardis.guardrails import (
             GraphAnalysisResult,
             GraphFraudAnalyzer,
             GraphPattern,

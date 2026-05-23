@@ -105,7 +105,7 @@ def test_production_guard_in_memory_session():
     old = os.environ.get("SARDIS_ENVIRONMENT")
     os.environ["SARDIS_ENVIRONMENT"] = "production"
     try:
-        from sardis_checkout.sessions import InMemorySessionStore
+        from sardis.checkout.sessions import InMemorySessionStore
         with pytest.raises(RuntimeError, match="CRITICAL"):
             InMemorySessionStore()
     finally:

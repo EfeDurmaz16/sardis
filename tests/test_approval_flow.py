@@ -178,7 +178,7 @@ class TestSpendingPolicyDriftScore:
 
 # ── Verifier: Goal Drift Detection ─────────────────────────────────────
 
-from sardis_protocol.verifier import MandateVerifier
+from sardis.protocol.verifier import MandateVerifier
 
 
 class TestGoalDriftComputation:

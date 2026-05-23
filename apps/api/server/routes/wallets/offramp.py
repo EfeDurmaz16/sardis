@@ -69,7 +69,7 @@ async def create_liquidation(
     Send EURC/USDC to the returned address → Bridge.xyz auto-converts
     to fiat and settles to your linked bank account.
     """
-    from sardis_chain.bridge_xyz import BridgeXYZAdapter
+    from sardis.chain.bridge_xyz import BridgeXYZAdapter
 
     bridge = BridgeXYZAdapter()
     if not bridge.is_configured:
@@ -111,7 +111,7 @@ async def withdraw_to_fiat(
     Converts EURC/USDC from your Tempo wallet to fiat and
     settles to your bank account via wire/ACH/SEPA.
     """
-    from sardis_chain.bridge_xyz import BridgeXYZAdapter
+    from sardis.chain.bridge_xyz import BridgeXYZAdapter
 
     bridge = BridgeXYZAdapter()
     if not bridge.is_configured:

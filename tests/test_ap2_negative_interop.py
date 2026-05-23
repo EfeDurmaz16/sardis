@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from sardis.core import SardisSettings
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_protocol.verifier import MandateChainVerification, MandateVerifier
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.verifier import MandateChainVerification, MandateVerifier
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "ap2_negative_interop.json"
 

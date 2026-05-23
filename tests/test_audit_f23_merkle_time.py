@@ -9,7 +9,7 @@ def test_merkle_receipt_uses_chain_timestamp():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")
@@ -61,7 +61,7 @@ def test_merkle_receipt_deterministic_with_same_inputs():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis.ledger.records import ChainReceipt, LedgerStore
 
     # Create first ledger
     with tempfile.TemporaryDirectory() as tmpdir1:
@@ -147,7 +147,7 @@ def test_merkle_receipt_without_chain_timestamp_fallback():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-    from sardis_ledger.records import ChainReceipt, LedgerStore
+    from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"
         store = LedgerStore(f"sqlite:///{db_path}")

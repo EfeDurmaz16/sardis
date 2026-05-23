@@ -2,7 +2,7 @@
 import logging
 from collections import deque
 
-from sardis_compliance.checks import ComplianceAuditEntry, ComplianceAuditStore
+from sardis.compliance.checks import ComplianceAuditEntry, ComplianceAuditStore
 
 
 def _make_store(max_entries):

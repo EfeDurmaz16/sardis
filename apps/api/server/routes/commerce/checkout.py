@@ -10,10 +10,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sardis.checkout.models import CheckoutRequest, CheckoutResponse
+from sardis.checkout.orchestrator import CheckoutOrchestrator
 from sardis.core.database import Database
 from sardis.core.wallet_repository import WalletRepository
-from sardis_checkout.models import CheckoutRequest, CheckoutResponse
-from sardis_checkout.orchestrator import CheckoutOrchestrator
 
 from server.authz import Principal, require_principal
 from server.webhook_replay import run_with_replay_protection

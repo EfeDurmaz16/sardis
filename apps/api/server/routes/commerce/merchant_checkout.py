@@ -16,7 +16,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+from sardis.guardrails.transaction_caps import get_transaction_cap_engine
 
 from server.authz import require_principal
 from server.kill_switch_dep import require_kill_switch_clear_checkout
@@ -345,7 +345,7 @@ async def create_session(
     deps: MerchantCheckoutDependencies = Depends(get_deps),
 ):
     """Create a checkout session for a merchant."""
-    from sardis_checkout.models import CheckoutRequest
+    from sardis.checkout.models import CheckoutRequest
 
     merchant = await deps.merchant_repo.get_merchant(body.merchant_id)
     if not merchant:
@@ -942,7 +942,7 @@ async def confirm_external_payment(
 
     # Fire webhook
     try:
-        from sardis_checkout.merchant_webhooks import fire_webhook
+        from sardis.checkout.merchant_webhooks import fire_webhook
         merchant = None if _is_demo_session(session) else await deps.merchant_repo.get_merchant(session.merchant_id)
         if merchant and merchant.webhook_url:
             await fire_webhook(
@@ -1108,7 +1108,7 @@ async def resolve_checkout_link(
     if not link:
         raise HTTPException(status_code=404, detail="Checkout link not found")
 
-    from sardis_checkout.models import CheckoutRequest
+    from sardis.checkout.models import CheckoutRequest
 
     request = CheckoutRequest(
         agent_id=f"merchant_{link.merchant_id}",

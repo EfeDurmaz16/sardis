@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from sardis_protocol.zkpass_transgate import (
+from sardis.protocol.zkpass_transgate import (
     DEFAULT_PROOF_TTL_HOURS,
     IDENFY_COST_PER_VERIFICATION,
     KYC_LEVEL_MAPPING,
@@ -717,7 +717,7 @@ class TestHashPublicInputs:
 
 class TestModuleExports:
     def test_import_from_sardis_protocol(self):
-        from sardis_protocol import (
+        from sardis.protocol import (
             PortableKYCResult,
             ProofStatus,
             TransgateConfig,

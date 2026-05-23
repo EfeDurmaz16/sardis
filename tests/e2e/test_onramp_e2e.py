@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 import pytest
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
-TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")
+TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")  # nosecret: e2e fixture
 
 
 class TestOnrampFunding:
@@ -26,8 +26,8 @@ class TestOnrampFunding:
     async def test_fund_wallet_from_bank(self, api_key, api_url):
         """Should create ACH funding instructions for wallet."""
         try:
-            from sardis_ramp import SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             # Initialize ramp in sandbox mode
             ramp = SardisFiatRamp(
@@ -76,8 +76,8 @@ class TestOnrampFunding:
     async def test_fund_wallet_from_card(self, api_key, api_url):
         """Should create card payment link for wallet funding."""
         try:
-            from sardis_ramp import SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             ramp = SardisFiatRamp(
                 sardis_api_key=api_key,
@@ -113,8 +113,8 @@ class TestOnrampFunding:
     async def test_fund_wallet_crypto_direct(self, api_key, api_url):
         """Should return deposit address for direct crypto funding."""
         try:
-            from sardis_ramp import SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             ramp = SardisFiatRamp(
                 sardis_api_key=api_key,
@@ -156,8 +156,8 @@ class TestOnrampKYC:
     async def test_kyc_required_for_large_onramp(self, api_key, api_url):
         """Should require KYC for on-ramp above threshold."""
         try:
-            from sardis_ramp import KYCRequired, SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import KYCRequired, SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             # Set a low KYC threshold for testing
             ramp = SardisFiatRamp(
@@ -199,8 +199,8 @@ class TestOnrampKYC:
     async def test_kyc_bypass_below_threshold(self, api_key, api_url):
         """Should allow on-ramp below KYC threshold without verification."""
         try:
-            from sardis_ramp import SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             ramp = SardisFiatRamp(
                 sardis_api_key=api_key,
@@ -381,8 +381,8 @@ class TestOnrampIntegration:
     async def test_end_to_end_onramp_flow(self, api_key, api_url):
         """Should complete full on-ramp flow from fiat to wallet credit."""
         try:
-            from sardis_ramp import SardisFiatRamp
-            from sardis_ramp.ramp_types import FundingMethod
+            from sardis.ramp import SardisFiatRamp
+            from sardis.ramp.ramp_types import FundingMethod
 
             ramp = SardisFiatRamp(
                 sardis_api_key=api_key,

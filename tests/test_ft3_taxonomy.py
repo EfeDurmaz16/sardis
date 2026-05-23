@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from sardis_guardrails.ft3_taxonomy import (
+from sardis.guardrails.ft3_taxonomy import (
     FT3_AGENT_TACTIC_COUNT,
     FT3_STANDARD_TACTIC_COUNT,
     FT3_VERSION,
@@ -536,7 +536,7 @@ class TestClassifyEvent:
 
 class TestModuleExports:
     def test_import_from_sardis_guardrails(self):
-        from sardis_guardrails import (
+        from sardis.guardrails import (
             FT3Event,
             FT3Mitigation,
             FT3MitigationStatus,

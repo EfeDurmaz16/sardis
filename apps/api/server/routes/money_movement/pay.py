@@ -224,7 +224,7 @@ async def _get_fx_quote(
         )
 
     try:
-        from sardis_chain.liquidity_router import LiquidityRouter
+        from sardis.chain.liquidity_router import LiquidityRouter
         router_instance = LiquidityRouter()
     except ImportError:
         raise HTTPException(
@@ -296,7 +296,7 @@ async def _find_best_chain(
       - route_type: str
     """
     try:
-        from sardis_chain.liquidity_router import LiquidityRouter
+        from sardis.chain.liquidity_router import LiquidityRouter
 
         router_instance = LiquidityRouter()
     except ImportError:

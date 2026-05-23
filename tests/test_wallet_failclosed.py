@@ -29,7 +29,7 @@ class TestCircleEntitySecretEncryption:
         """Without SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY, must raise."""
         monkeypatch.delenv("SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY", raising=False)
 
-        from sardis_wallet.circle_client import CircleWalletClient
+        from sardis.wallet.circle_client import CircleWalletClient
 
         client = CircleWalletClient(
             api_key="test-api-key",
@@ -43,7 +43,7 @@ class TestCircleEntitySecretEncryption:
         """Empty env var should still raise."""
         monkeypatch.setenv("SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY", "")
 
-        from sardis_wallet.circle_client import CircleWalletClient
+        from sardis.wallet.circle_client import CircleWalletClient
 
         client = CircleWalletClient(
             api_key="test-api-key",
@@ -73,7 +73,7 @@ class TestCircleEntitySecretEncryption:
 
         monkeypatch.setenv("SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY", public_key_pem)
 
-        from sardis_wallet.circle_client import CircleWalletClient
+        from sardis.wallet.circle_client import CircleWalletClient
 
         client = CircleWalletClient(
             api_key="test-api-key",
@@ -90,7 +90,7 @@ class TestCircleEntitySecretEncryption:
         """Wallet set creation must fail when cipher is not configured."""
         monkeypatch.delenv("SARDIS_CIRCLE_ENTITY_SECRET_CIPHER_KEY", raising=False)
 
-        from sardis_wallet.circle_client import CircleWalletClient
+        from sardis.wallet.circle_client import CircleWalletClient
 
         client = CircleWalletClient(
             api_key="test-api-key",
@@ -109,7 +109,7 @@ class TestSocialRecoveryDisabled:
     """All social recovery operations must raise RuntimeError."""
 
     def _get_manager(self):
-        from sardis_wallet.social_recovery import SocialRecoveryManager
+        from sardis.wallet.social_recovery import SocialRecoveryManager
         return SocialRecoveryManager()
 
     def test_generate_sss_shares_raises(self):
@@ -172,7 +172,7 @@ class TestKeyRotationDisabled:
     """Key rotation must raise NotImplementedError (not implemented with Turnkey)."""
 
     def _get_manager(self):
-        from sardis_wallet.manager import EnhancedWalletManager
+        from sardis.wallet.manager import EnhancedWalletManager
 
         settings = MagicMock()
         settings.circle_wallet_api_key = None
@@ -219,7 +219,7 @@ class TestHealthCheckHonestStatus:
     @pytest.mark.asyncio
     async def test_mpc_check_returns_unknown_without_checker(self):
         """Without MPCProviderChecker, status must be UNKNOWN, not HEALTHY."""
-        from sardis_wallet.health_check import (
+        from sardis.wallet.health_check import (
             HealthChecker,
             HealthStatus,
         )
@@ -237,7 +237,7 @@ class TestHealthCheckHonestStatus:
     @pytest.mark.asyncio
     async def test_mpc_check_returns_healthy_with_checker(self):
         """With a real MPCProviderChecker that returns success, status is HEALTHY."""
-        from sardis_wallet.health_check import (
+        from sardis.wallet.health_check import (
             HealthChecker,
             HealthStatus,
         )
@@ -256,7 +256,7 @@ class TestHealthCheckHonestStatus:
     @pytest.mark.asyncio
     async def test_full_health_report_reflects_unknown_mpc(self):
         """Full wallet health check should reflect unknown MPC status."""
-        from sardis_wallet.health_check import (
+        from sardis.wallet.health_check import (
             HealthCheckConfig,
             HealthChecker,
             HealthStatus,

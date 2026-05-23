@@ -328,7 +328,7 @@ class TestStripeConnectSettlement:
 
     @pytest.fixture
     def settlement_service(self, repo, mock_provider):
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         return SettlementService(
             merchant_repo=repo,
             stripe_connect_provider=mock_provider,
@@ -356,7 +356,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_stripe_connect_no_provider(self, repo):
         """Settlement should fail gracefully when no Stripe provider configured."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         service = SettlementService(merchant_repo=repo)
 
         await service.settle_session("mcs_stripe_test")
@@ -367,7 +367,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_stripe_connect_no_account(self, repo, mock_provider):
         """Settlement should fail when merchant has no Stripe account."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         repo.merchants["merch_stripe_001"].stripe_account_id = None
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
@@ -380,7 +380,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_stripe_connect_payouts_disabled(self, repo, mock_provider):
         """Settlement should fail when merchant payouts are not enabled."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         repo.merchants["merch_stripe_001"].stripe_payouts_enabled = False
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
@@ -393,7 +393,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_stripe_connect_transfer_failure(self, repo, mock_provider):
         """Settlement should handle Stripe transfer exceptions."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         mock_provider.create_transfer.side_effect = Exception("Stripe API error")
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
@@ -406,7 +406,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_non_paid_session_skipped(self, repo, mock_provider):
         """Non-paid sessions should be skipped."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         repo.sessions["mcs_stripe_test"].status = "pending"
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
@@ -417,7 +417,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_uses_net_amount(self, repo, mock_provider):
         """Transfer amount should use net_amount (after platform fee), not gross."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         repo.sessions["mcs_stripe_test"].amount = Decimal("100.00")
         repo.sessions["mcs_stripe_test"].net_amount = Decimal("97.50")
 
@@ -431,7 +431,7 @@ class TestStripeConnectSettlement:
     @pytest.mark.asyncio
     async def test_settle_falls_back_to_gross_if_no_net(self, repo, mock_provider):
         """If net_amount is None, use gross amount."""
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
         repo.sessions["mcs_stripe_test"].amount = Decimal("50.00")
         repo.sessions["mcs_stripe_test"].net_amount = None
 

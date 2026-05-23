@@ -14,7 +14,7 @@ from sardis.core import AgentRepository
 from sardis.core.database import Database
 from sardis.core.mandates import PaymentMandate
 from sardis.core.transactions import validate_wallet_not_frozen
-from sardis_protocol.schemas import IngestMandateRequest, MandateExecutionResponse
+from sardis.protocol.schemas import IngestMandateRequest, MandateExecutionResponse
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -23,12 +23,12 @@ from server.middleware.agent_payment_rate_limit import enforce_agent_payment_rat
 from server.transaction_cap_dep import enforce_transaction_caps
 
 if TYPE_CHECKING:
+    from sardis.chain.executor import ChainExecutor
+    from sardis.compliance.checks import ComplianceEngine
     from sardis.core.wallet_repository import WalletRepository
-    from sardis_chain.executor import ChainExecutor
-    from sardis_compliance.checks import ComplianceEngine
-    from sardis_ledger.records import LedgerStore
-    from sardis_protocol.verifier import MandateVerifier
-    from sardis_wallet.manager import WalletManager
+    from sardis.ledger.records import LedgerStore
+    from sardis.protocol.verifier import MandateVerifier
+    from sardis.wallet.manager import WalletManager
 
 router = APIRouter(dependencies=[Depends(require_principal)])
 

@@ -94,7 +94,7 @@ class DepositHistoryItem(BaseModel):
 
 def _get_stablecoin_client():
     """Get or create Stripe Stablecoin client."""
-    from sardis_cards.providers.stripe_stablecoin import StripeStablecoinClient
+    from sardis.cards.providers.stripe_stablecoin import StripeStablecoinClient
 
     api_key = os.getenv("STRIPE_API_KEY", "")
     if not api_key:
@@ -115,7 +115,7 @@ def _get_stablecoin_client():
 
 def _get_stablecoin_service():
     """Get or create Stripe Stablecoin Card Service."""
-    from sardis_cards.providers.stripe_stablecoin import StablecoinCardService
+    from sardis.cards.providers.stripe_stablecoin import StablecoinCardService
 
     client = _get_stablecoin_client()
     return StablecoinCardService(client)

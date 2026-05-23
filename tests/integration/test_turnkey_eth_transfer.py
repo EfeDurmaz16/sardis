@@ -27,13 +27,13 @@ os.chdir(project_root)
 
 async def test_simple_eth_transfer():
     """Test a simple ETH transfer via Turnkey."""
-    from sardis.core.config import load_settings
-    from sardis_chain.executor import (
+    from sardis.chain.executor import (
         CHAIN_CONFIGS,
         ChainRPCClient,
         TransactionRequest,
         TurnkeyMPCSigner,
     )
+    from sardis.core.config import load_settings
 
     print("\n🧪 Simple ETH Transfer Test\n")
     print("=" * 50)

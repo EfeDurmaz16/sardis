@@ -330,7 +330,7 @@ def configure_stripe_webhook_issuing_provider(
 ) -> Any:
     """Create the Stripe Issuing webhook provider with payment policy evaluation."""
     if issuing_provider_cls is _DEFAULT_PROVIDER:
-        from sardis_cards.providers.stripe_issuing import StripeIssuingProvider
+        from sardis.cards.providers.stripe_issuing import StripeIssuingProvider
 
         issuing_provider_cls = StripeIssuingProvider
     if mcc_info_resolver is _DEFAULT_PROVIDER:

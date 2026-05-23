@@ -21,13 +21,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis.chain.executor import ChainExecutor
+from sardis.compliance.checks import ComplianceAuditEntry
 from sardis.core import AgentRepository, WalletRepository
 from sardis.core.identity import AgentIdentity, IdentityRegistry
 from sardis.core.mandates import PaymentMandate, VCProof
 from sardis.core.tokens import TokenType, to_raw_token_amount
-from sardis_chain.executor import ChainExecutor
-from sardis_compliance.checks import ComplianceAuditEntry
-from sardis_ledger.records import LedgerStore
+from sardis.ledger.records import LedgerStore
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -815,9 +815,9 @@ async def a2a_pay(
                 detail="wallet_manager_not_configured",
             )
 
-        from sardis_guardrails.anomaly_engine import get_anomaly_engine
-        from sardis_guardrails.kill_switch import get_kill_switch
-        from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+        from sardis.guardrails.anomaly_engine import get_anomaly_engine
+        from sardis.guardrails.kill_switch import get_kill_switch
+        from sardis.guardrails.transaction_caps import get_transaction_cap_engine
 
         cp = ControlPlane(
             policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
@@ -1609,9 +1609,9 @@ async def _handle_payment_request(
 
     from sardis.core.control_plane import ControlPlane
     from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
-    from sardis_guardrails.anomaly_engine import get_anomaly_engine
-    from sardis_guardrails.kill_switch import get_kill_switch
-    from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+    from sardis.guardrails.anomaly_engine import get_anomaly_engine
+    from sardis.guardrails.kill_switch import get_kill_switch
+    from sardis.guardrails.transaction_caps import get_transaction_cap_engine
 
     from server.domains.compliance import ComplianceAdapter
     from server.domains.execution_engine import ExecutionEngineAdapter

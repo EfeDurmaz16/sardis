@@ -6,7 +6,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_cards.offramp import (
+from sardis.cards.offramp import (
     MockOfframpProvider,
     OfframpProvider,
     OfframpQuote,

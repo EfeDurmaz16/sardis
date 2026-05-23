@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sardis_chain.executor import LocalAccountSigner
+from sardis.chain.executor import LocalAccountSigner
 
 
 @pytest.fixture

@@ -6,8 +6,8 @@ from nacl.signing import SigningKey
 
 from sardis.core import SardisSettings
 from sardis.core.mandates import CartMandate, IntentMandate, VCProof
-from sardis_protocol.schemas import AP2PaymentExecuteRequest
-from sardis_protocol.verifier import MandateVerifier
+from sardis.protocol.schemas import AP2PaymentExecuteRequest
+from sardis.protocol.verifier import MandateVerifier
 
 
 def _keypair():

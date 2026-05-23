@@ -53,13 +53,13 @@ async def get_usdc_balance(rpc_client, address: str) -> float:
 
 async def test_usdc_transfer():
     """Test USDC ERC20 transfer via Turnkey MPC."""
-    from sardis.core.config import load_settings
-    from sardis_chain.executor import (
+    from sardis.chain.executor import (
         CHAIN_CONFIGS,
         ChainRPCClient,
         TransactionRequest,
         TurnkeyMPCSigner,
     )
+    from sardis.core.config import load_settings
 
     print("\n🪙 USDC Transfer Test (Ethereum Sepolia)\n")
     print("=" * 50)

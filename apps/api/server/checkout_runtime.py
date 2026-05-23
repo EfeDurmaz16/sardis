@@ -40,11 +40,11 @@ def configure_checkout_orchestrator(
     """Create the checkout orchestrator and register configured PSP connectors."""
     env = environ if environ is not None else os.environ
     if checkout_orchestrator_cls is _DEFAULT_PROVIDER:
-        from sardis_checkout.orchestrator import CheckoutOrchestrator
+        from sardis.checkout.orchestrator import CheckoutOrchestrator
 
         checkout_orchestrator_cls = CheckoutOrchestrator
     if stripe_connector_cls is _DEFAULT_PROVIDER:
-        from sardis_checkout.connectors.stripe import StripeConnector
+        from sardis.checkout.connectors.stripe import StripeConnector
 
         stripe_connector_cls = StripeConnector
 
@@ -88,15 +88,15 @@ def configure_merchant_checkout_runtime(
 
         merchant_repository_cls = MerchantRepository
     if merchant_webhook_service_cls is _DEFAULT_PROVIDER:
-        from sardis_checkout.merchant_webhooks import MerchantWebhookService
+        from sardis.checkout.merchant_webhooks import MerchantWebhookService
 
         merchant_webhook_service_cls = MerchantWebhookService
     if settlement_service_cls is _DEFAULT_PROVIDER:
-        from sardis_checkout.settlement import SettlementService
+        from sardis.checkout.settlement import SettlementService
 
         settlement_service_cls = SettlementService
     if sardis_native_connector_cls is _DEFAULT_PROVIDER:
-        from sardis_checkout.connectors.sardis_native import SardisNativeConnector
+        from sardis.checkout.connectors.sardis_native import SardisNativeConnector
 
         sardis_native_connector_cls = SardisNativeConnector
 

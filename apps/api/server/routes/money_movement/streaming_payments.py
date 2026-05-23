@@ -105,7 +105,7 @@ async def open_stream(
     """Open an SSE streaming payment channel backed by TempoStreamChannel."""
     from uuid import uuid4
 
-    from sardis_chain.tempo.stream_channel import TempoStreamChannel
+    from sardis.chain.tempo.stream_channel import TempoStreamChannel
 
     channel_mgr = TempoStreamChannel()
     session = await channel_mgr.open(
