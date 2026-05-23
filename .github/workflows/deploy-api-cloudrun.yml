@@ -51,7 +51,7 @@ jobs:
         run: |
           gcloud builds submit \
             --project="$GCP_PROJECT_ID" \
-            --config=cloudbuild.yaml \
+            --config=deploy/cloudbuild.yaml \
             --substitutions=_SERVICE_NAME=${{ env.SERVICE_NAME }},_REGION=${{ env.REGION }}
 
       - name: Deploy to Cloud Run
