@@ -1,8 +1,8 @@
 {
   "name": "@sardis/sdk",
   "version": "1.2.0",
-  "description": "DEPRECATED — re-export shim for `sardis`. Install `sardis` instead.",
-  "deprecated": "Use `sardis` — run `npx sardis-migrate` to upgrade.",
+  "description": "DEPRECATED \u2014 re-export shim for `sardis`. Install `sardis` instead.",
+  "deprecated": "Use `sardis` \u2014 run `npx sardis-migrate` to upgrade.",
   "type": "module",
   "main": "dist/cjs/index.cjs",
   "module": "dist/index.js",
@@ -75,7 +75,7 @@
     "url": "https://github.com/EfeDurmaz16/sardis/issues"
   },
   "dependencies": {
-    "sardis": "^2.0.0-rc.0"
+    "sardis": "workspace:^2.0.0-rc.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^29.0.0",

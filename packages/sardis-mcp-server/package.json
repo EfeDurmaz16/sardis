@@ -68,7 +68,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
-    "sardis": "^2.0.0-rc.0",
+    "sardis": "workspace:^2.0.0-rc.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
