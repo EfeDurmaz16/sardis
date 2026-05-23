@@ -135,6 +135,7 @@ class TestValidateTapHeaders:
             authority="api.sardis.sh",
             path="/v2/pay",
             now=now,
+            nonce_cache=set(),
         )
         assert result.accepted is True
 
@@ -228,6 +229,43 @@ class TestValidateTapHeaders:
         assert result.accepted is False
         assert "alg_invalid" in result.reason
 
+    def test_missing_nonce_cache_is_rejected_by_default(self):
+        """Fail-closed: validate_tap_headers MUST reject when no nonce_cache is provided.
+
+        Reason: without a nonce cache the replay check cannot run. The previous
+        behavior silently skipped the check (security bug — see
+        ~/project-directions/sardis-sdk-security-model.md §4 "TAP message nonce").
+        """
+        now = int(time.time())
+        si_header = _make_signature_input(created=now - 10, expires=now + 300)
+        sig_header = _make_signature_header()
+
+        result = validate_tap_headers(
+            signature_input_header=si_header,
+            signature_header=sig_header,
+            authority="api.sardis.sh",
+            path="/v2/pay",
+            now=now,
+        )
+        assert result.accepted is False
+        assert result.reason == "tap_nonce_cache_required"
+
+    def test_missing_nonce_cache_allowed_with_explicit_opt_out(self):
+        """Callers that enforce replay protection elsewhere can opt out explicitly."""
+        now = int(time.time())
+        si_header = _make_signature_input(created=now - 10, expires=now + 300)
+        sig_header = _make_signature_header()
+
+        result = validate_tap_headers(
+            signature_input_header=si_header,
+            signature_header=sig_header,
+            authority="api.sardis.sh",
+            path="/v2/pay",
+            now=now,
+            require_replay_check=False,
+        )
+        assert result.accepted is True
+
     def test_nonce_replay_detection(self):
         now = int(time.time())
         nonce_set: set[str] = set()
@@ -270,6 +308,7 @@ class TestValidateTapHeaders:
             path="/v2/pay",
             now=now,
             verify_signature_fn=verify_fn,
+            nonce_cache=set(),
         )
         assert result.accepted is True
 
@@ -288,6 +327,7 @@ class TestValidateTapHeaders:
             path="/v2/pay",
             now=now,
             verify_signature_fn=verify_fn,
+            nonce_cache=set(),
         )
         assert result.accepted is False
         assert "verification_failed" in result.reason
