@@ -39,7 +39,7 @@ from .tools import (
     TOOL_NAMES,
 )
 
-__version__ = "1.1.0"
+__version__ = "2.0.0a0"
 
 __all__ = [
     # Main entry points
