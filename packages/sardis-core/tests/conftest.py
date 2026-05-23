@@ -13,9 +13,10 @@ import pytest
 package_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(package_src))
 
-# Also add root packages directory for cross-package imports
+# Also add root packages directory for cross-package imports used by integration-style
+# core tests.
 packages_dir = Path(__file__).parent.parent.parent
-for pkg in ["sardis-core"]:
+for pkg in ["sardis-core", "sardis-protocol"]:
     pkg_path = packages_dir / pkg / "src"
     if pkg_path.exists() and str(pkg_path) not in sys.path:
         sys.path.insert(0, str(pkg_path))

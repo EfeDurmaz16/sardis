@@ -17,8 +17,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sardis_cards.offramp import (
+    OfframpProvider,
+    OfframpQuote,
+    OfframpStatus,
+    OfframpTransaction,
+)
 from server.authz import Principal, require_principal
 from server.routes.wallets.cards import create_cards_router
+from server.routes.wallets.lifecycle import WalletDependencies
+from server.routes.wallets.lifecycle import get_deps as wallets_get_deps
+from server.routes.wallets.lifecycle import router as wallets_router
 from server.routes.wallets.ramp import (
     RampDependencies,
 )
@@ -30,15 +39,6 @@ from server.routes.wallets.ramp import (
 )
 from server.routes.wallets.ramp import (
     router as ramp_router,
-)
-from server.routes.wallets.lifecycle import WalletDependencies
-from server.routes.wallets.lifecycle import get_deps as wallets_get_deps
-from server.routes.wallets.lifecycle import router as wallets_router
-from sardis_cards.offramp import (
-    OfframpProvider,
-    OfframpQuote,
-    OfframpStatus,
-    OfframpTransaction,
 )
 
 pytestmark = pytest.mark.e2e

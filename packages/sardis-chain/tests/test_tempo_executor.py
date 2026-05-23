@@ -5,6 +5,8 @@ contract address wiring, and Tempo routing in dispatch_payment.
 """
 from decimal import Decimal
 
+from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+
 from sardis_chain.executor import (
     CHAIN_CONFIGS,
     SARDIS_CONTRACTS,
@@ -14,7 +16,6 @@ from sardis_chain.executor import (
     GasPriceProtectionConfig,
     get_sardis_contract_address,
 )
-from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
 
 
 class TestTempoContractAddresses:
