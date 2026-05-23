@@ -24,6 +24,9 @@ classifiers = [
 ]
 dependencies = [
     "sardis>=1.0.0",
+    "sardis-cards>=1.0.0",
+    "sardis-compliance>=1.0.0",
+    "sardis-ramp>=1.0.0",
     "httpx>=0.25.0",
 ]
 

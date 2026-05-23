@@ -6,13 +6,13 @@ import pytest
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 
+from sardis_compliance.kyc import KYCResult, KYCStatus
+from sardis_compliance.sanctions import EntityType, SanctionsRisk, ScreeningResult
 from server.routes.authority.ap2 import (
     HIGH_VALUE_THRESHOLD_MINOR,
     KYC_THRESHOLD_MINOR,
     perform_compliance_checks,
 )
-from sardis_compliance.kyc import KYCResult, KYCStatus
-from sardis_compliance.sanctions import EntityType, SanctionsRisk, ScreeningResult
 
 
 class _FakeKYCService:

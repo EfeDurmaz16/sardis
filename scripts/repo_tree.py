@@ -12,7 +12,6 @@ import argparse
 import subprocess
 from pathlib import Path
 
-
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
     ".mypy_cache",

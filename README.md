@@ -48,7 +48,6 @@ Read the boundaries:
 - [Public/private boundary](docs/oss/public-private-boundary.md)
 - [Package maturity matrix](docs/packages.md)
 - [Legal and compliance disclaimer](DISCLAIMER.md)
-- [Agent authority demo](examples/agent-authority-demo/)
 
 ---
 

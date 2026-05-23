@@ -6,6 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+pytest.importorskip(
+    "sardis_guardrails",
+    reason="sardis-guardrails is an optional extra (pip install sardis[guardrails])",
+)
+
 from sardis_v2_core.control_plane import ControlPlane
 from sardis_v2_core.execution_intent import (
     ExecutionIntent,

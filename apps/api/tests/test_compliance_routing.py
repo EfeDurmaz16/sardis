@@ -5,7 +5,7 @@ from server.route_registry.compliance import (
     register_compliance_routes,
     register_kyc_onboarding_routes,
 )
-from server.routes.compliance import compliance
+from server.routes.compliance import screening
 
 
 def test_register_compliance_routes_mounts_core_and_public_paths_with_dependencies() -> None:
@@ -33,7 +33,7 @@ def test_register_compliance_routes_mounts_core_and_public_paths_with_dependenci
     assert "/api/v2/compliance/audit/recent" in paths
     assert "/api/v2/compliance/webhooks/persona" in paths
 
-    deps = app.dependency_overrides[compliance.get_deps]()
+    deps = app.dependency_overrides[screening.get_deps]()
     assert deps.kyc_service is kyc_service
     assert deps.sanctions_service is sanctions_service
     assert deps.audit_store is audit_store

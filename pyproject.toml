@@ -196,4 +196,9 @@ dev = [
     "PyNaCl>=1.5",
     "numpy>=2.0",
     "scipy>=1.11",
+    # Sibling packages whose tests run under CI's `Python Lint & Test` lane.
+    # Their runtime imports (e.g. sardis_chain.executor -> sardis_ledger.records)
+    # require these to be present in the root venv after a plain `uv sync`.
+    "sardis-ledger>=1.0.0",
+    "sardis-chain>=1.0.0",
 ]

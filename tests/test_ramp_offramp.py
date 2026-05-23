@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sardis_cards.offramp import OfframpProvider, OfframpQuote, OfframpStatus, OfframpTransaction
 from server.routes.wallets.ramp import RampDependencies, get_deps
 from server.routes.wallets.ramp import router as ramp_router
-from sardis_cards.offramp import OfframpProvider, OfframpQuote, OfframpStatus, OfframpTransaction
 
 
 @pytest.fixture

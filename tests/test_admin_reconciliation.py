@@ -117,9 +117,9 @@ def _build_app(
 
         from server.authz import Principal
         from server.middleware.mfa import require_mfa_if_enabled
+        from server.routes.accounts.auth import UserInfo
         from server.routes.admin.control import require_admin_rate_limit
         from server.routes.admin.reconciliation import router as recon_router
-        from server.routes.accounts.auth import UserInfo
 
         app = FastAPI()
 
