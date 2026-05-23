@@ -37,6 +37,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "sardis",
     "sardis-sdk>=1.0.0",
     "sardis-core>=1.0.0",
     "sardis-cli>=1.0.0",

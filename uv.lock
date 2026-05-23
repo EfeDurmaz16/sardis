@@ -7656,6 +7656,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
+    { name = "sardis" },
     { name = "sardis-cli" },
     { name = "sardis-core" },
     { name = "sardis-sdk" },
@@ -7761,6 +7762,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.2" },
+    { name = "sardis", editable = "packages/sardis" },
     { name = "sardis", extras = ["chain", "compliance", "ledger", "wallet", "cards", "ramp", "api", "protocols", "checkout", "guardrails"], marker = "extra == 'all'", editable = "packages/sardis" },
     { name = "sardis-a2a", marker = "extra == 'protocols'", editable = "packages/sardis-a2a" },
     { name = "sardis-adk", marker = "extra == 'adk'", editable = "packages/sardis-adk" },
