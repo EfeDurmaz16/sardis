@@ -5,7 +5,7 @@ Maintained tests live under package-owned `tests/` directories such as `apps/api
 
 ## Current Snapshot
 
-- Root Python test files: `185`
+- Root Python test files: `184`
 - Root Python support files: `8`
 - Files with stale API import/path references: `0`
 - Default pytest path: `apps/api/tests` from root `pyproject.toml`
@@ -16,7 +16,7 @@ Maintained tests live under package-owned `tests/` directories such as `apps/api
 | Target owner | Root test files |
 | --- | ---: |
 | `apps/api/tests` | 55 |
-| `needs owner review` | 85 |
+| `needs owner review` | 84 |
 | `package docs/tests or package-owned examples` | 3 |
 | `package-owned integration test or archive-candidate` | 15 |
 | `packages/sardis-chain/tests` | 12 |
