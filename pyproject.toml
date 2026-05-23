@@ -171,7 +171,6 @@ sardis-sdk = { path = "packages/sardis-sdk-python", editable = true }
 sardis-striga = { path = "packages/sardis-striga", editable = true }
 sardis-ucp = { path = "packages/sardis-ucp", editable = true }
 sardis-wallet = { path = "packages/sardis-wallet", editable = true }
-sardis-zk-policy = { path = "packages/sardis-zk-policy", editable = true }
 
 [dependency-groups]
 dev = [
