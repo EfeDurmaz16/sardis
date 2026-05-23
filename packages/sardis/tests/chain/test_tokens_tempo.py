@@ -1,5 +1,5 @@
 """Tests for Tempo token registry entries."""
-from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType, get_tokens_for_chain
+from sardis.core.tokens import TOKEN_REGISTRY, TokenType, get_tokens_for_chain
 
 
 class TestTempoTokenRegistry:

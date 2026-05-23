@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from .executor import MPCSignerPort
 
 if TYPE_CHECKING:
-    from sardis_wallet.circle_client import CircleWalletClient
+    from sardis.wallet.circle_client import CircleWalletClient
 
     from .executor import TransactionRequest
 

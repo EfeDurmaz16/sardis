@@ -41,7 +41,7 @@ class PostgresSubscriptionService:
 
     async def _get_pool(self):
         if self._pool is None:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             self._pool = await Database.get_pool()
         return self._pool
 

@@ -13,8 +13,8 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sardis_protocol.x402 import X402Challenge
-    from sardis_protocol.x402_settlement import X402Settlement
+    from sardis.protocol.x402 import X402Challenge
+    from sardis.protocol.x402_settlement import X402Settlement
 
 from .control_plane import ControlPlane
 from .execution_intent import (

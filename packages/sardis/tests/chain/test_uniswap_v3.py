@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.uniswap_v3 import (
+from sardis.chain.uniswap_v3 import (
     DEFAULT_FEE_TIER,
     EURC_BASE,
     QUOTER_V2,

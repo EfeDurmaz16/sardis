@@ -1,5 +1,5 @@
 """Tests for Solana payment dispatch chain detection."""
-from sardis_chain.executor import CHAIN_CONFIGS
+from sardis.chain.executor import CHAIN_CONFIGS
 
 
 class TestSolanaChainDetection:

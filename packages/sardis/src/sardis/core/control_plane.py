@@ -10,9 +10,9 @@ import warnings
 from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
-    from sardis_guardrails.anomaly_engine import AnomalyEngine
-    from sardis_guardrails.kill_switch import KillSwitch
-    from sardis_guardrails.transaction_caps import TransactionCapEngine
+    from sardis.guardrails.anomaly_engine import AnomalyEngine
+    from sardis.guardrails.kill_switch import KillSwitch
+    from sardis.guardrails.transaction_caps import TransactionCapEngine
 
 from .config import SardisSettings, load_settings
 from .execution_intent import (
@@ -109,7 +109,7 @@ class ControlPlane:
         try:
             # Step 0a: Kill switch check (defense-in-depth)
             if self._kill_switch is not None:
-                from sardis_guardrails.kill_switch import KillSwitchError
+                from sardis.guardrails.kill_switch import KillSwitchError
 
                 try:
                     # Check global, org, and agent scopes
@@ -248,7 +248,7 @@ class ControlPlane:
             # Step 1.5: Anomaly risk assessment (optional)
             anomaly_flag: dict[str, Any] | None = None
             if self._anomaly_engine is not None:
-                from sardis_guardrails.anomaly_engine import RiskAction
+                from sardis.guardrails.anomaly_engine import RiskAction
 
                 assessment = self._anomaly_engine.assess_risk(
                     agent_id=intent.agent_id,
@@ -453,7 +453,7 @@ class ControlPlane:
         # Check caps
         cap_check = None
         try:
-            from sardis_guardrails.transaction_caps import get_transaction_cap_engine
+            from sardis.guardrails.transaction_caps import get_transaction_cap_engine
             engine = get_transaction_cap_engine()
             # Use check-only (don't record)
             daily_spend = await engine._get_daily_spend("org", intent.org_id)
@@ -467,7 +467,7 @@ class ControlPlane:
         # Check kill switches
         ks_status = None
         try:
-            from sardis_guardrails.kill_switch import get_kill_switch
+            from sardis.guardrails.kill_switch import get_kill_switch
             ks = get_kill_switch()
             active = await ks.get_active_switches()
             if active.get("global"):

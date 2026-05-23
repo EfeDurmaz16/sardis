@@ -6,9 +6,9 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis.core.mandates import PaymentMandate, VCProof
 
-from sardis_chain.executor import (
+from sardis.chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,
     ChainExecutor,
@@ -360,7 +360,7 @@ class TestChainExecutorSimulated:
     @pytest.fixture
     def simulated_settings(self):
         """Create settings for simulated mode."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(
@@ -402,7 +402,7 @@ class TestChainExecutorSimulated:
     @pytest.mark.asyncio
     async def test_dispatch_payment_simulated_blocked_in_production(self):
         """Production must never execute simulated chain dispatch."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict("os.environ", {"SARDIS_ENVIRONMENT": "prod", "DATABASE_URL": ""}):
             settings = SardisSettings(chain_mode="simulated", environment="prod")
@@ -485,7 +485,7 @@ class TestChainExecutorHelpers:
     @pytest.fixture
     def simulated_settings(self):
         """Create settings for simulated mode."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(

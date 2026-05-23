@@ -44,7 +44,7 @@ from .tokens import TokenType
 from .virtual_card import VirtualCard
 
 if TYPE_CHECKING:
-    from sardis_chain.executor import MPCSignerPort, TransactionRequest
+    from sardis.chain.executor import MPCSignerPort, TransactionRequest
 
 
 class TokenLimit(BaseModel):
@@ -161,7 +161,7 @@ class Wallet(BaseModel):
         self,
         chain: str,
         token: TokenType,
-        rpc_client: Any | None = None,  # ChainRPCClient from sardis_chain
+        rpc_client: Any | None = None,  # ChainRPCClient from sardis.chain
     ) -> Decimal:
         """
         Get wallet balance from chain (read-only, non-custodial).
@@ -256,7 +256,7 @@ class Wallet(BaseModel):
             raise ValueError("MPC signer required for transaction signing")
 
         # Import here to avoid circular dependency
-        from sardis_chain.executor import TransactionRequest, encode_erc20_transfer
+        from sardis.chain.executor import TransactionRequest, encode_erc20_transfer
 
         # Build transaction request if not provided
         if not tx_request:

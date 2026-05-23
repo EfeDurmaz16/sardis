@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.tempo.dex import (
+from sardis.chain.tempo.dex import (
     DEX_ADDRESS,
     TEMPO_TOKENS,
     TOKEN_DECIMALS,

@@ -1,89 +1,23 @@
-"""Virtual card integration for Sardis payment platform."""
+"""Deprecation shim — `sardis_cards` is being consolidated into `sardis.cards`.
 
-from .auto_conversion import (
-    AutoConversionService,
-    CardPaymentAutoConverter,
-    ConversionDirection,
-    ConversionRecord,
-    ConversionStatus,
-    UnifiedBalance,
-    UnifiedBalanceService,
-)
-from .db_balance import PostgresUnifiedBalanceService
-from .db_conversion import PostgresAutoConversionService
-from .db_offramp import PostgresOfframpService
-from .db_subscriptions import PostgresSubscriptionService
-from .models import (
-    Card,
-    CardStatus,
-    CardTransaction,
-    CardType,
-    FundingSource,
-    TransactionStatus,
-)
-from .service import CardService, InsufficientBalanceError, WalletBalanceChecker
-from .subscriptions import (
-    BillingCycle,
-    BillingEvent,
-    BillingEventStatus,
-    BillingProcessor,
-    NotificationType,
-    OwnerNotification,
-    Subscription,
-    SubscriptionService,
-    SubscriptionStatus,
-)
-from .webhooks import (
-    ASADecision,
-    ASAHandler,
-    ASARequest,
-    ASAResponse,
-    CardWebhookHandler,
-    WebhookEvent,
-    WebhookEventType,
+Install the umbrella package and update imports:
+
+    pip install sardis
+    from sardis.cards import ...
+
+This shim will be removed 2026-11-23 (6-month sunset window).
+"""
+import warnings
+
+warnings.warn(
+    "sardis_cards is deprecated. Install `sardis` and use "
+    "`from sardis.cards import ...`. This shim will be removed 2026-11-23.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-__all__ = [
-    # Models
-    "Card",
-    "CardStatus",
-    "CardTransaction",
-    "CardType",
-    "FundingSource",
-    "TransactionStatus",
-    # Service
-    "CardService",
-    "InsufficientBalanceError",
-    "WalletBalanceChecker",
-    # Webhooks & ASA
-    "ASADecision",
-    "ASAHandler",
-    "ASARequest",
-    "ASAResponse",
-    "CardWebhookHandler",
-    "WebhookEventType",
-    "WebhookEvent",
-    # Auto-conversion (Unified USDC/USD Balance)
-    "AutoConversionService",
-    "CardPaymentAutoConverter",
-    "ConversionDirection",
-    "ConversionRecord",
-    "ConversionStatus",
-    "UnifiedBalance",
-    "UnifiedBalanceService",
-    # Subscriptions (Recurring Payments)
-    "BillingCycle",
-    "BillingEvent",
-    "BillingEventStatus",
-    "BillingProcessor",
-    "NotificationType",
-    "OwnerNotification",
-    "Subscription",
-    "SubscriptionService",
-    "SubscriptionStatus",
-    # DB-backed services (PostgreSQL persistence)
-    "PostgresUnifiedBalanceService",
-    "PostgresAutoConversionService",
-    "PostgresOfframpService",
-    "PostgresSubscriptionService",
-]
+import sardis.cards as _module  # noqa: E402
+from sardis.cards import *  # noqa: F401, F403, E402
+
+__path__ = _module.__path__
+__version__ = getattr(_module, "__version__", "0.99.0")

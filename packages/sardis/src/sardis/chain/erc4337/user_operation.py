@@ -65,7 +65,7 @@ class UserOperation:
 
         Delegates to safe_account module for the actual encoding.
         """
-        from sardis_chain.safe_account import build_safe_init_code
+        from sardis.chain.safe_account import build_safe_init_code
         return build_safe_init_code(owner, policy_module, salt_nonce)
 
     def to_rpc(self) -> dict[str, Any]:

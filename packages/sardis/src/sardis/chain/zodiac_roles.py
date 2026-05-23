@@ -471,7 +471,7 @@ def _window_to_seconds(window_type: str) -> int:
 
 
 def policy_to_role_config(
-    policy: Any,  # SpendingPolicy from sardis_v2_core
+    policy: Any,  # SpendingPolicy from sardis.core
     agent_address: str,
     chain_id: int = 8453,
     role_name: str = "agent_spending",

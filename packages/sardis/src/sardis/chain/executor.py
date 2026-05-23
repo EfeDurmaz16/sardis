@@ -27,9 +27,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from sardis_ledger.records import ChainReceipt
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import PaymentMandate
+from sardis.ledger.records import ChainReceipt
+from sardis.core import SardisSettings
+from sardis.core.mandates import PaymentMandate
 
 # Import new production modules
 from .config import (
@@ -1789,7 +1789,7 @@ class ChainExecutor:
         signature. No ERC-4337 or paymaster contracts needed.
         """
         try:
-            from sardis_chain.tempo.fee_payer import TempoFeePayer
+            from sardis.chain.tempo.fee_payer import TempoFeePayer
             tempo_fee_key = os.getenv("SARDIS_TEMPO_FEE_PAYER_KEY")
             if tempo_fee_key:
                 self._tempo_fee_payer = TempoFeePayer(private_key=tempo_fee_key)
@@ -1812,7 +1812,7 @@ class ChainExecutor:
     def _init_compliance(self):
         """Initialize compliance services for pre-execution checks."""
         try:
-            from sardis_compliance import ComplianceEngine, create_sanctions_service
+            from sardis.compliance import ComplianceEngine, create_sanctions_service
 
             self._compliance_engine = ComplianceEngine(self._settings)
 
@@ -1859,7 +1859,7 @@ class ChainExecutor:
                 primary_signer = TurnkeyMPCSigner(self._turnkey_client)
             else:
                 # Fallback: create a standalone client (e.g. in tests)
-                from sardis_wallet.turnkey_client import TurnkeyClient
+                from sardis.wallet.turnkey_client import TurnkeyClient
                 standalone = TurnkeyClient(
                     api_key=os.getenv("TURNKEY_API_PUBLIC_KEY", ""),
                     api_private_key=os.getenv("TURNKEY_API_PRIVATE_KEY", ""),
@@ -1890,7 +1890,7 @@ class ChainExecutor:
                 self._mpc_signer = primary_signer
         elif mpc_config.name == "circle":
             try:
-                from sardis_wallet.circle_client import CircleWalletClient
+                from sardis.wallet.circle_client import CircleWalletClient
 
                 from .circle_signer import CircleWalletSigner
 
@@ -1996,7 +1996,7 @@ class ChainExecutor:
 
             # Solana chains use a separate client path
             if config.get("is_solana"):
-                from sardis_chain.solana.client import SolanaClient, SolanaConfig
+                from sardis.chain.solana.client import SolanaClient, SolanaConfig
                 solana_config = SolanaConfig(rpc_url=config["rpc_url"])
                 self._solana_client = SolanaClient(solana_config)
                 logger.info("Initialized Solana client for chain: %s", chain)
@@ -2224,7 +2224,7 @@ class ChainExecutor:
     def _check_domain_risk(self, mandate: PaymentMandate, chain: str):
         """Pre-flight domain risk check. Returns the domain for post-tx recording."""
         try:
-            from sardis_chain.domain import get_domain_registry
+            from sardis.chain.domain import get_domain_registry
             registry = get_domain_registry()
             domain = registry.get_or_register(chain)
 
@@ -3182,7 +3182,7 @@ class ChainExecutor:
 
     async def get_token_balance(self, address: str, chain: str, token: str) -> Decimal:
         """Query ERC20 balance for address on chain. Returns normalized Decimal."""
-        from sardis_v2_core.tokens import TokenType, normalize_token_amount
+        from sardis.core.tokens import TokenType, normalize_token_amount
 
         chain_tokens = STABLECOIN_ADDRESSES.get(chain, {})
         contract = chain_tokens.get(token)

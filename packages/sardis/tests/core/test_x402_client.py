@@ -94,7 +94,7 @@ class TestX402Client:
         guard = _mock_policy_guard(allowed=False, reason="daily_limit_exceeded")
         client = X402Client(policy_guard=guard)
 
-        from sardis_protocol.x402 import X402Challenge, serialize_challenge_header
+        from sardis.protocol.x402 import X402Challenge, serialize_challenge_header
 
         challenge = X402Challenge(
             payment_id="x402_test",
@@ -133,7 +133,7 @@ class TestX402Client:
         guard = _mock_policy_guard()
         client = X402Client(policy_guard=guard, max_cost="0.50")  # Max $0.50
 
-        from sardis_protocol.x402 import X402Challenge, serialize_challenge_header
+        from sardis.protocol.x402 import X402Challenge, serialize_challenge_header
 
         challenge = X402Challenge(
             payment_id="x402_test",
@@ -172,7 +172,7 @@ class TestX402Client:
         guard = _mock_policy_guard()
         client = X402Client(policy_guard=guard)
 
-        from sardis_protocol.x402 import X402Challenge, serialize_challenge_header
+        from sardis.protocol.x402 import X402Challenge, serialize_challenge_header
 
         challenge = X402Challenge(
             payment_id="x402_test",

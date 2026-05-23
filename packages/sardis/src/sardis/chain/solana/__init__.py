@@ -1,8 +1,8 @@
 """Solana integration for Sardis chain executor."""
-from sardis_chain.solana.client import SolanaClient, derive_ata
-from sardis_chain.solana.executor import SolanaExecutor, SolanaPaymentResult
-from sardis_chain.solana.gasless import KoraGaslessClient, build_gasless_transfer
-from sardis_chain.solana.program import (
+from sardis.chain.solana.client import SolanaClient, derive_ata
+from sardis.chain.solana.executor import SolanaExecutor, SolanaPaymentResult
+from sardis.chain.solana.gasless import KoraGaslessClient, build_gasless_transfer
+from sardis.chain.solana.program import (
     SARDIS_WALLET_PROGRAM_ID,
     InitializeWalletArgs,
     UpdatePolicyArgs,
@@ -17,7 +17,7 @@ from sardis_chain.solana.program import (
     derive_wallet_pdas,
     parse_program_error,
 )
-from sardis_chain.solana.transfer import (
+from sardis.chain.solana.transfer import (
     PreparedSolanaTransaction,
     SolanaTransferParams,
     SolanaTransferResult,
@@ -25,7 +25,7 @@ from sardis_chain.solana.transfer import (
     execute_spl_transfer,
     get_or_create_ata,
 )
-from sardis_chain.solana.x402_facilitator import SolanaX402Facilitator
+from sardis.chain.solana.x402_facilitator import SolanaX402Facilitator
 
 __all__ = [
     "SolanaClient",

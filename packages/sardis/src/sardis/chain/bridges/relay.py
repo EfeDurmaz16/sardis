@@ -270,7 +270,7 @@ class RelayBridgeAdapter:
         # Get signer if not provided
         if signer is None:
             try:
-                from sardis_chain.fx_signer import create_fx_signer
+                from sardis.chain.fx_signer import create_fx_signer
                 signer = await create_fx_signer()
             except ImportError:
                 logger.warning("fx_signer not available")

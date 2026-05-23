@@ -1,5 +1,5 @@
 """Tests for Tempo chain RPC integration."""
-from sardis_chain.executor import CHAIN_CONFIGS
+from sardis.chain.executor import CHAIN_CONFIGS
 
 
 class TestTempoRPCRouting:

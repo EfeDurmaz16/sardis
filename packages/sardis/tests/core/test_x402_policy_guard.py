@@ -18,7 +18,7 @@ from sardis.core.x402_policy_guard import X402PolicyDenied, X402PolicyGuard
 
 
 def _make_challenge(**overrides):
-    from sardis_protocol.x402 import X402Challenge
+    from sardis.protocol.x402 import X402Challenge
     defaults = {
         "payment_id": "x402_test123",
         "resource_uri": "https://api.example.com/data",
@@ -104,7 +104,7 @@ async def test_daily_limit_applies():
 @pytest.mark.asyncio
 async def test_kill_switch_blocks_x402():
     """Kill switch blocks x402 payments."""
-    from sardis_guardrails.kill_switch import KillSwitchError
+    from sardis.guardrails.kill_switch import KillSwitchError
 
     kill_switch = AsyncMock()
     kill_switch.check = AsyncMock(side_effect=KillSwitchError("global kill switch active"))
@@ -125,7 +125,7 @@ async def test_anomaly_engine_flags_x402():
     """Anomaly scoring works for x402 payments."""
     from datetime import UTC, datetime
 
-    from sardis_guardrails.anomaly_engine import RiskAction, RiskAssessment, RiskSignal
+    from sardis.guardrails.anomaly_engine import RiskAction, RiskAssessment, RiskSignal
 
     anomaly = MagicMock()
     anomaly.assess_risk = MagicMock(return_value=RiskAssessment(

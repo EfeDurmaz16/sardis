@@ -29,8 +29,8 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis_chain.config import NonceManagerConfig
-from sardis_chain.nonce_manager import (
+from sardis.chain.config import NonceManagerConfig
+from sardis.chain.nonce_manager import (
     NonceConflictError,
     NonceManager,
     PendingTransaction,
@@ -595,7 +595,7 @@ class TestGetNonceManager:
     def test_returns_singleton(self):
         """Should return same instance."""
         # Reset global
-        import sardis_chain.nonce_manager as nm_module
+        import sardis.chain.nonce_manager as nm_module
         nm_module._nonce_manager = None
 
         manager1 = get_nonce_manager()

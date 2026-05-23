@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from sardis_v2_core import SardisSettings
+from sardis.core import SardisSettings
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +284,7 @@ def get_wallet_manager(settings: SardisSettings | None = None) -> WalletManager:
 
     if _wallet_manager is None:
         if settings is None:
-            from sardis_v2_core import load_settings
+            from sardis.core import load_settings
             settings = load_settings()
         _wallet_manager = WalletManager(settings)
 

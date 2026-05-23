@@ -320,7 +320,7 @@ async def create_fx_signer() -> FXSigner:
     turnkey_client = None
     if turnkey_key and turnkey_private and turnkey_org and turnkey_wallet:
         try:
-            from sardis_wallet.turnkey_client import TurnkeyClient
+            from sardis.wallet.turnkey_client import TurnkeyClient
             turnkey_client = TurnkeyClient(
                 api_key=turnkey_key,
                 api_private_key=turnkey_private,

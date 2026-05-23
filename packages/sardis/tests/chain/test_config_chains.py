@@ -10,7 +10,7 @@ for pkg in ["sardis-core", "sardis-ledger"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
-from sardis_chain.config import (
+from sardis.chain.config import (
     CHAIN_ID_MAP,
     ChainNetwork,
     build_default_config,

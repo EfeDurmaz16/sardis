@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 def test_preferred_namespace_reexports_public_core_symbols() -> None:
-    import sardis_core
+    import sardis.core
     import sardis.core
 
     assert sardis_core.Wallet is sardis.core.Wallet
@@ -11,8 +11,8 @@ def test_preferred_namespace_reexports_public_core_symbols() -> None:
 
 
 def test_preferred_namespace_resolves_existing_submodules() -> None:
-    from sardis_core.budget_allocator import BudgetAllocator
-    from sardis_core.circuit_breaker import CircuitBreakerConfig
+    from sardis.core.budget_allocator import BudgetAllocator
+    from sardis.core.circuit_breaker import CircuitBreakerConfig
 
     from sardis.core.budget_allocator import BudgetAllocator as LegacyBudgetAllocator
     from sardis.core.circuit_breaker import CircuitBreakerConfig as LegacyConfig

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sardis_ledger.records import ChainReceipt
+from sardis.ledger.records import ChainReceipt
 
 from .client import (
     TOKEN_DECIMALS,

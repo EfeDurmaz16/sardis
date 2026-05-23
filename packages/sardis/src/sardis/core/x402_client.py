@@ -160,7 +160,7 @@ class X402Client:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Handle a 402 response by negotiating and paying."""
-        from sardis_protocol.x402 import (
+        from sardis.protocol.x402 import (
             X402Challenge,
             X402HeaderBuilder,
             X402PaymentPayload,
@@ -213,7 +213,7 @@ class X402Client:
         # Sign ERC-3009 authorization via MPC
         signature = ""
         if self._mpc_signer is not None:
-            from sardis_protocol.x402_erc3009 import build_transfer_authorization
+            from sardis.protocol.x402_erc3009 import build_transfer_authorization
             typed_data = build_transfer_authorization(
                 from_addr="0x" + "0" * 40,  # Filled by MPC signer
                 to_addr=challenge.payee_address,
@@ -285,7 +285,7 @@ class X402Client:
                     failure_reasons=["endpoint_does_not_require_payment"],
                 )
 
-            from sardis_protocol.x402 import parse_challenge_header
+            from sardis.protocol.x402 import parse_challenge_header
 
             challenge_header = response.headers.get("PaymentRequired", "")
             if not challenge_header:

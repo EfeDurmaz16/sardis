@@ -25,7 +25,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
-from sardis_chain.fx_signer import create_fx_signer
+from sardis.chain.fx_signer import create_fx_signer
 
 logger = logging.getLogger("sardis.chain.tempo.dex")
 

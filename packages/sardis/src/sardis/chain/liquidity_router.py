@@ -69,7 +69,7 @@ class LiquidityRouter:
             rpc = os.getenv("SARDIS_BASE_RPC_URL", "")
             if rpc:
                 try:
-                    from sardis_chain.uniswap_v3 import UniswapV3Adapter
+                    from sardis.chain.uniswap_v3 import UniswapV3Adapter
                     self._uniswap = UniswapV3Adapter(rpc_url=rpc, chain=chain)
                 except ImportError:
                     pass
@@ -81,7 +81,7 @@ class LiquidityRouter:
             cdp_key = os.getenv("CDP_API_KEY", "")
             if cdp_key:
                 try:
-                    from sardis_chain.cdp_swap import CDPSwapClient
+                    from sardis.chain.cdp_swap import CDPSwapClient
                     self._cdp_swap = CDPSwapClient(api_key=cdp_key)
                 except ImportError:
                     pass
@@ -213,7 +213,7 @@ class LiquidityRouter:
         for provider_name in bridge_providers:
             try:
                 if provider_name == "relay":
-                    from sardis_chain.bridges.relay import RelayBridgeAdapter
+                    from sardis.chain.bridges.relay import RelayBridgeAdapter
                     adapter = RelayBridgeAdapter()
                     quote = await adapter.quote(src_chain, dst_chain, from_token, amount)
                     fee = getattr(quote, "total_fee", Decimal("0"))
@@ -229,7 +229,7 @@ class LiquidityRouter:
                                 "token": from_token, "amount": str(amount)}],
                     )
                 elif provider_name == "across":
-                    from sardis_chain.bridges.across import AcrossBridgeAdapter
+                    from sardis.chain.bridges.across import AcrossBridgeAdapter
                     adapter = AcrossBridgeAdapter()
                     quote = await adapter.quote(src_chain, dst_chain, from_token, amount)
                     return RouteResult(
@@ -264,7 +264,7 @@ class LiquidityRouter:
     def _resolve_token_address(symbol: str, chain: str) -> str | None:
         """Resolve a token symbol to its contract address on a chain."""
         try:
-            from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+            from sardis.core.tokens import TOKEN_REGISTRY, TokenType
             for token_type in TokenType:
                 if token_type.value == symbol:
                     meta = TOKEN_REGISTRY.get(token_type)

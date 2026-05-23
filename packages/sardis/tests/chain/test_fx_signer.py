@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from sardis_chain.fx_signer import FXSigner, create_fx_signer
+from sardis.chain.fx_signer import FXSigner, create_fx_signer
 
 # ── Mode detection ───────────────────────────────────────────────────
 

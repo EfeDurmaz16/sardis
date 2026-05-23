@@ -15,7 +15,7 @@ import pytest
 
 pytest.importorskip("solders", reason="solders not installed")
 
-from sardis_chain.solana.program import (
+from sardis.chain.solana.program import (
     DISC_EXECUTE_TRANSFER,
     DISC_FREEZE_WALLET,
     DISC_INITIALIZE_WALLET,
@@ -59,7 +59,7 @@ class TestDiscriminators:
 
     def test_discriminator_uniqueness(self):
         """All instruction discriminators must be unique."""
-        from sardis_chain.solana.program import (
+        from sardis.chain.solana.program import (
             DISC_ADD_MERCHANT_RULE,
             DISC_ADD_TOKEN,
             DISC_CLOSE_WALLET,
