@@ -1,0 +1,1248 @@
+"""Know Your Agent (KYA) — Agent identity verification and trust management.
+
+KYA extends traditional KYC/KYB concepts to AI agents. Instead of verifying
+a human's identity, KYA verifies:
+  1. WHO owns the agent (Legal Anchor — linked to KYC'd owner)
+  2. WHAT the agent is authorized to do (Agent Manifest — capabilities + limits)
+  3. HOW trustworthy the agent is (Trust Score — based on behavior history)
+
+KYA levels determine spending limits via TrustLevel mapping:
+  NONE     → TrustLevel.LOW    ($50/tx,  $100/day)
+  BASIC    → TrustLevel.LOW    ($50/tx,  $100/day)   — email verification only
+  VERIFIED → TrustLevel.MEDIUM ($500/tx, $1k/day)    — KYC + org verification
+  ATTESTED → TrustLevel.HIGH   ($5k/tx,  $10k/day)   — VC + code hash + TEE
+
+Usage:
+    from sardis.compliance.kya import KYAService, KYALevel, AgentManifest
+
+    kya = KYAService()
+
+    # Register an agent with a manifest
+    manifest = AgentManifest(
+        agent_id="agent_abc123",
+        owner_id="org_xyz",
+        capabilities=["saas_subscription", "api_credits"],
+        max_budget_per_tx=Decimal("50.00"),
+        allowed_domains=["openai.com", "anthropic.com"],
+    )
+    result = await kya.register_agent(manifest)
+
+    # Check KYA level before payment
+    check = await kya.check_agent("agent_abc123", amount=Decimal("25.00"))
+    if not check.allowed:
+        raise KYADeniedError(check.reason)
+"""
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import hashlib
+import json
+import logging
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Protocol
+
+logger = logging.getLogger("sardis.compliance.kya")
+
+
+# ============ Enums ============
+
+
+class KYALevel(str, Enum):
+    """Agent verification level — determines spending capabilities."""
+    NONE = "none"            # Unverified agent
+    BASIC = "basic"          # Email/API key verification only
+    VERIFIED = "verified"    # Owner KYC + organizational verification
+    ATTESTED = "attested"    # Verifiable credential + code hash + optional TEE
+
+
+class KYAStatus(str, Enum):
+    """Current status of KYA verification process."""
+    PENDING = "pending"              # Not yet started
+    IN_PROGRESS = "in_progress"      # Verification underway
+    ACTIVE = "active"                # Verified and active
+    SUSPENDED = "suspended"          # Temporarily suspended (liveness/violation)
+    REVOKED = "revoked"              # Permanently revoked
+    EXPIRED = "expired"              # Verification expired, needs renewal
+
+
+# ============ Amount Thresholds ============
+
+# KYA level required based on single-transaction amount
+KYA_AMOUNT_THRESHOLDS: dict[KYALevel, Decimal] = {
+    KYALevel.NONE: Decimal("0"),         # Cannot transact
+    KYALevel.BASIC: Decimal("10.00"),    # Up to $10/tx
+    KYALevel.VERIFIED: Decimal("1000.00"),  # Up to $1,000/tx
+    KYALevel.ATTESTED: Decimal("999999999"),  # Unlimited
+}
+
+# Daily spending limits per KYA level
+KYA_DAILY_THRESHOLDS: dict[KYALevel, Decimal] = {
+    KYALevel.NONE: Decimal("0"),
+    KYALevel.BASIC: Decimal("50.00"),
+    KYALevel.VERIFIED: Decimal("5000.00"),
+    KYALevel.ATTESTED: Decimal("999999999"),
+}
+
+
+def required_kya_level(amount: Decimal) -> KYALevel:
+    """Determine the minimum KYA level required for a transaction amount."""
+    if amount <= KYA_AMOUNT_THRESHOLDS[KYALevel.BASIC]:
+        return KYALevel.BASIC
+    if amount <= KYA_AMOUNT_THRESHOLDS[KYALevel.VERIFIED]:
+        return KYALevel.VERIFIED
+    return KYALevel.ATTESTED
+
+
+KYA_LEVEL_ORDER = {
+    KYALevel.NONE: 0,
+    KYALevel.BASIC: 1,
+    KYALevel.VERIFIED: 2,
+    KYALevel.ATTESTED: 3,
+}
+
+
+def kya_level_sufficient(agent_level: KYALevel, required: KYALevel) -> bool:
+    """Check if agent's KYA level meets the requirement."""
+    return KYA_LEVEL_ORDER[agent_level] >= KYA_LEVEL_ORDER[required]
+
+
+# ============ Data Models ============
+
+
+@dataclass
+class AgentManifest:
+    """
+    Declarative manifest for an AI agent — the heart of KYA.
+
+    This is what differentiates Sardis from competitors: not just "who is this
+    agent?" but "what is this agent authorized to do and within what bounds?"
+
+    Equivalent to sardis-manifest.json in the agent's deployment.
+    """
+    agent_id: str
+    owner_id: str
+    capabilities: list[str] = field(default_factory=list)
+    max_budget_per_tx: Decimal = field(default_factory=lambda: Decimal("50.00"))
+    daily_budget: Decimal = field(default_factory=lambda: Decimal("500.00"))
+    allowed_domains: list[str] = field(default_factory=list)
+    blocked_domains: list[str] = field(default_factory=list)
+    framework: str | None = None  # "langchain", "crewai", "autogpt", etc.
+    framework_version: str | None = None
+    description: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "owner_id": self.owner_id,
+            "capabilities": self.capabilities,
+            "max_budget_per_tx": str(self.max_budget_per_tx),
+            "daily_budget": str(self.daily_budget),
+            "allowed_domains": self.allowed_domains,
+            "blocked_domains": self.blocked_domains,
+            "framework": self.framework,
+            "framework_version": self.framework_version,
+            "description": self.description,
+            "metadata": self.metadata,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AgentManifest:
+        created_at = data.get("created_at")
+        if isinstance(created_at, str):
+            try:
+                created_at_dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            except ValueError:
+                created_at_dt = datetime.now(UTC)
+        elif isinstance(created_at, datetime):
+            created_at_dt = created_at
+        else:
+            created_at_dt = datetime.now(UTC)
+        return cls(
+            agent_id=data["agent_id"],
+            owner_id=data["owner_id"],
+            capabilities=data.get("capabilities", []),
+            max_budget_per_tx=Decimal(str(data.get("max_budget_per_tx", "50.00"))),
+            daily_budget=Decimal(str(data.get("daily_budget", "500.00"))),
+            allowed_domains=data.get("allowed_domains", []),
+            blocked_domains=data.get("blocked_domains", []),
+            framework=data.get("framework"),
+            framework_version=data.get("framework_version"),
+            description=data.get("description"),
+            metadata=data.get("metadata", {}),
+            created_at=created_at_dt,
+        )
+
+    @property
+    def manifest_hash(self) -> str:
+        """SHA-256 hash of the manifest for integrity verification."""
+        import json
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"), default=str)
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@dataclass
+class CodeAttestation:
+    """Attestation of an agent's code integrity."""
+    code_hash: str                    # SHA-256 of agent logic
+    framework: str | None = None   # e.g. "langchain", "crewai"
+    version: str | None = None
+    attested_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    attester: str = "self"            # "self", "tee", "sardis"
+    tee_attestation: str | None = None  # Remote attestation from TEE
+
+    def verify(self, expected_hash: str) -> bool:
+        """Check if code hash matches expected value."""
+        return self.code_hash == expected_hash
+
+
+@dataclass
+class AgentTrustScore:
+    """Behavioral trust score for an agent (0.0 to 1.0)."""
+    agent_id: str
+    score: float = 0.0
+    successful_payments: int = 0
+    failed_payments: int = 0
+    policy_violations: int = 0
+    total_volume: Decimal = field(default_factory=lambda: Decimal("0"))
+    uptime_ratio: float = 1.0         # Liveness check success rate
+    age_days: int = 0
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    def recalculate(self) -> float:
+        """Recalculate trust score based on agent behavior."""
+        total_txns = self.successful_payments + self.failed_payments
+        if total_txns == 0:
+            self.score = 0.0
+            return self.score
+
+        # Success rate (40% weight)
+        success_rate = self.successful_payments / total_txns
+        success_component = success_rate * 0.4
+
+        # Policy compliance (30% weight) — penalize violations heavily
+        violation_penalty = min(1.0, self.policy_violations * 0.1)
+        compliance_component = (1.0 - violation_penalty) * 0.3
+
+        # Uptime (15% weight)
+        uptime_component = self.uptime_ratio * 0.15
+
+        # Maturity (15% weight) — agents gain trust over time
+        maturity = min(1.0, self.age_days / 90)  # Full credit at 90 days
+        maturity_component = maturity * 0.15
+
+        self.score = round(
+            success_component + compliance_component + uptime_component + maturity_component,
+            4,
+        )
+        self.last_updated = datetime.now(UTC)
+        return self.score
+
+    @property
+    def suggested_kya_level(self) -> KYALevel:
+        """Suggest a KYA level based on trust score."""
+        if self.score >= 0.9 and self.age_days >= 30:
+            return KYALevel.ATTESTED
+        if self.score >= 0.7 and self.age_days >= 7:
+            return KYALevel.VERIFIED
+        if self.score >= 0.3:
+            return KYALevel.BASIC
+        return KYALevel.NONE
+
+
+@dataclass
+class KYAResult:
+    """Result of a KYA check or verification."""
+    agent_id: str
+    level: KYALevel
+    status: KYAStatus
+    allowed: bool
+    reason: str | None = None
+    owner_id: str | None = None
+    anchor_verification_id: str | None = None  # Persona/Stripe Identity ID
+    manifest_hash: str | None = None
+    code_hash: str | None = None
+    trust_score: float | None = None
+    attestations: list[str] = field(default_factory=list)
+    checked_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "agent_id": self.agent_id,
+            "level": self.level.value,
+            "status": self.status.value,
+            "allowed": self.allowed,
+            "reason": self.reason,
+            "owner_id": self.owner_id,
+            "manifest_hash": self.manifest_hash,
+            "trust_score": self.trust_score,
+            "checked_at": self.checked_at.isoformat(),
+        }
+
+
+@dataclass
+class KYACheckRequest:
+    """Request to check an agent's KYA status for a payment."""
+    agent_id: str
+    amount: Decimal = field(default_factory=lambda: Decimal("0"))
+    merchant_id: str | None = None
+    merchant_domain: str | None = None
+
+
+# ============ Liveness ============
+
+
+class AgentLivenessTracker:
+    """Track agent liveness via periodic pings.
+
+    Agents must send heartbeats to maintain their KYA status.
+    Stale agents (no ping within timeout) get flagged for suspension.
+    """
+
+    DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
+
+    def __init__(self, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS):
+        self._timeout = timeout_seconds
+        self._last_seen: dict[str, float] = {}  # agent_id -> unix timestamp
+        self._ping_count: dict[str, int] = {}
+
+    def ping(self, agent_id: str) -> None:
+        """Record a heartbeat from an agent."""
+        self._last_seen[agent_id] = time.time()
+        self._ping_count[agent_id] = self._ping_count.get(agent_id, 0) + 1
+
+    def is_alive(self, agent_id: str) -> bool:
+        """Check if agent has sent a recent heartbeat."""
+        last = self._last_seen.get(agent_id)
+        if last is None:
+            return False
+        return (time.time() - last) < self._timeout
+
+    def get_last_seen(self, agent_id: str) -> datetime | None:
+        """Get the last heartbeat timestamp for an agent."""
+        ts = self._last_seen.get(agent_id)
+        if ts is None:
+            return None
+        return datetime.fromtimestamp(ts, tz=UTC)
+
+    def get_stale_agents(self) -> list[str]:
+        """Get list of agents that have missed their heartbeat."""
+        now = time.time()
+        return [
+            agent_id
+            for agent_id, last in self._last_seen.items()
+            if (now - last) >= self._timeout
+        ]
+
+    def uptime_ratio(self, agent_id: str, expected_pings: int) -> float:
+        """Calculate uptime ratio based on actual vs expected pings."""
+        actual = self._ping_count.get(agent_id, 0)
+        if expected_pings <= 0:
+            return 1.0
+        return min(1.0, actual / expected_pings)
+
+    def remove(self, agent_id: str) -> None:
+        """Remove tracking for an agent."""
+        self._last_seen.pop(agent_id, None)
+        self._ping_count.pop(agent_id, None)
+
+
+# ============ KYA Provider Protocol ============
+
+
+class KYAProvider(Protocol):
+    """Interface for KYA verification providers."""
+
+    async def verify_agent(self, manifest: AgentManifest) -> KYAResult: ...
+    async def check_agent(self, request: KYACheckRequest) -> KYAResult: ...
+    async def revoke_agent(self, agent_id: str, reason: str) -> KYAResult: ...
+
+
+# ============ In-Memory KYA Store ============
+
+
+class InMemoryKYAStore:
+    """In-memory store for KYA records. Replace with PostgreSQL in production."""
+
+    def __init__(self):
+        self._manifests: dict[str, AgentManifest] = {}
+        self._levels: dict[str, KYALevel] = {}
+        self._statuses: dict[str, KYAStatus] = {}
+        self._trust_scores: dict[str, AgentTrustScore] = {}
+        self._code_attestations: dict[str, CodeAttestation] = {}
+
+    def store_manifest(self, manifest: AgentManifest) -> None:
+        self._manifests[manifest.agent_id] = manifest
+        if manifest.agent_id not in self._levels:
+            self._levels[manifest.agent_id] = KYALevel.NONE
+        if manifest.agent_id not in self._statuses:
+            self._statuses[manifest.agent_id] = KYAStatus.PENDING
+
+    def get_manifest(self, agent_id: str) -> AgentManifest | None:
+        return self._manifests.get(agent_id)
+
+    def set_level(self, agent_id: str, level: KYALevel) -> None:
+        self._levels[agent_id] = level
+
+    def get_level(self, agent_id: str) -> KYALevel:
+        return self._levels.get(agent_id, KYALevel.NONE)
+
+    def set_status(self, agent_id: str, status: KYAStatus) -> None:
+        self._statuses[agent_id] = status
+
+    def get_status(self, agent_id: str) -> KYAStatus:
+        return self._statuses.get(agent_id, KYAStatus.PENDING)
+
+    def get_trust_score(self, agent_id: str) -> AgentTrustScore | None:
+        return self._trust_scores.get(agent_id)
+
+    def set_trust_score(self, agent_id: str, score: AgentTrustScore) -> None:
+        self._trust_scores[agent_id] = score
+
+    def get_code_attestation(self, agent_id: str) -> CodeAttestation | None:
+        return self._code_attestations.get(agent_id)
+
+    def set_code_attestation(self, agent_id: str, attestation: CodeAttestation) -> None:
+        self._code_attestations[agent_id] = attestation
+
+    def remove(self, agent_id: str) -> None:
+        self._manifests.pop(agent_id, None)
+        self._levels.pop(agent_id, None)
+        self._statuses.pop(agent_id, None)
+        self._trust_scores.pop(agent_id, None)
+        self._code_attestations.pop(agent_id, None)
+
+
+class PostgresKYAStore(InMemoryKYAStore):
+    """PostgreSQL-backed KYA store with in-memory hot cache for fast checks."""
+
+    def __init__(self, dsn: str):
+        super().__init__()
+        self._dsn = dsn
+        self._pool = None
+        self._initialized = False
+        self._loaded = False
+        self._init_lock = asyncio.Lock()
+        self._load_lock = asyncio.Lock()
+        self._liveness_state: dict[str, dict[str, Any]] = {}
+
+    async def _get_pool(self):
+        if self._pool is None:
+            from sardis.core.database import Database
+            self._pool = await Database.get_pool()
+        return self._pool
+
+    async def _ensure_initialized(self) -> None:
+        if self._initialized:
+            return
+        async with self._init_lock:
+            if self._initialized:
+                return
+
+            pool = await self._get_pool()
+            env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+            async with pool.acquire() as conn:
+                if env in ("prod", "production"):
+                    exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'kya_agents')"
+                    )
+                    if not exists:
+                        raise RuntimeError(
+                            "kya_agents table not found. "
+                            "Run: ./scripts/run_migrations.sh"
+                        )
+                else:
+                    await conn.execute(
+                        """
+                        CREATE TABLE IF NOT EXISTS kya_agents (
+                            id SERIAL PRIMARY KEY,
+                            agent_id VARCHAR(255) UNIQUE NOT NULL,
+                            owner_id VARCHAR(255),
+                            manifest JSONB NOT NULL DEFAULT '{}'::jsonb,
+                            kya_level VARCHAR(32) NOT NULL DEFAULT 'none',
+                            kya_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                            trust_score JSONB,
+                            code_attestation JSONB,
+                            liveness JSONB,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_kya_agents_level ON kya_agents(kya_level);
+                        CREATE INDEX IF NOT EXISTS idx_kya_agents_status ON kya_agents(kya_status);
+                        """
+                    )
+
+            self._initialized = True
+
+    @staticmethod
+    def _parse_datetime(value: Any) -> datetime:
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=UTC)
+        if isinstance(value, str):
+            try:
+                parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+            except ValueError:
+                pass
+        return datetime.now(UTC)
+
+    @classmethod
+    def _trust_score_from_dict(cls, agent_id: str, data: Any) -> AgentTrustScore | None:
+        if not isinstance(data, dict):
+            return None
+        return AgentTrustScore(
+            agent_id=agent_id,
+            score=float(data.get("score", 0.0) or 0.0),
+            successful_payments=int(data.get("successful_payments", 0) or 0),
+            failed_payments=int(data.get("failed_payments", 0) or 0),
+            policy_violations=int(data.get("policy_violations", 0) or 0),
+            total_volume=Decimal(str(data.get("total_volume", "0"))),
+            uptime_ratio=float(data.get("uptime_ratio", 1.0) or 1.0),
+            age_days=int(data.get("age_days", 0) or 0),
+            last_updated=cls._parse_datetime(data.get("last_updated")),
+        )
+
+    @classmethod
+    def _code_attestation_from_dict(cls, data: Any) -> CodeAttestation | None:
+        if not isinstance(data, dict):
+            return None
+        code_hash = str(data.get("code_hash", "")).strip()
+        if not code_hash:
+            return None
+        return CodeAttestation(
+            code_hash=code_hash,
+            framework=data.get("framework"),
+            version=data.get("version"),
+            attested_at=cls._parse_datetime(data.get("attested_at")),
+            attester=str(data.get("attester", "self")),
+            tee_attestation=data.get("tee_attestation"),
+        )
+
+    @staticmethod
+    def _trust_score_to_dict(score: AgentTrustScore) -> dict[str, Any]:
+        return {
+            "score": score.score,
+            "successful_payments": score.successful_payments,
+            "failed_payments": score.failed_payments,
+            "policy_violations": score.policy_violations,
+            "total_volume": str(score.total_volume),
+            "uptime_ratio": score.uptime_ratio,
+            "age_days": score.age_days,
+            "last_updated": score.last_updated.isoformat(),
+        }
+
+    @staticmethod
+    def _code_attestation_to_dict(attestation: CodeAttestation) -> dict[str, Any]:
+        return {
+            "code_hash": attestation.code_hash,
+            "framework": attestation.framework,
+            "version": attestation.version,
+            "attested_at": attestation.attested_at.isoformat(),
+            "attester": attestation.attester,
+            "tee_attestation": attestation.tee_attestation,
+        }
+
+    async def ensure_loaded(self) -> None:
+        if self._loaded:
+            return
+
+        await self._ensure_initialized()
+        async with self._load_lock:
+            if self._loaded:
+                return
+            pool = await self._get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT agent_id, owner_id, manifest, kya_level, kya_status,
+                           trust_score, code_attestation, liveness
+                    FROM kya_agents
+                    ORDER BY id ASC
+                    """
+                )
+
+            self._manifests.clear()
+            self._levels.clear()
+            self._statuses.clear()
+            self._trust_scores.clear()
+            self._code_attestations.clear()
+            self._liveness_state.clear()
+
+            for row in rows:
+                agent_id = str(row["agent_id"])
+                owner_id = str(row["owner_id"] or "")
+                manifest_data = row["manifest"] if isinstance(row["manifest"], dict) else {}
+                if not isinstance(manifest_data, dict):
+                    manifest_data = {}
+                if not manifest_data.get("agent_id"):
+                    manifest_data["agent_id"] = agent_id
+                if not manifest_data.get("owner_id"):
+                    manifest_data["owner_id"] = owner_id or "unknown"
+                manifest = AgentManifest.from_dict(manifest_data)
+                self.store_manifest(manifest)
+
+                level_raw = str(row["kya_level"] or KYALevel.NONE.value)
+                try:
+                    self.set_level(agent_id, KYALevel(level_raw))
+                except ValueError:
+                    self.set_level(agent_id, KYALevel.NONE)
+
+                status_raw = str(row["kya_status"] or KYAStatus.PENDING.value)
+                try:
+                    self.set_status(agent_id, KYAStatus(status_raw))
+                except ValueError:
+                    self.set_status(agent_id, KYAStatus.PENDING)
+
+                trust = self._trust_score_from_dict(agent_id, row["trust_score"])
+                if trust is not None:
+                    self.set_trust_score(agent_id, trust)
+
+                attestation = self._code_attestation_from_dict(row["code_attestation"])
+                if attestation is not None:
+                    self.set_code_attestation(agent_id, attestation)
+
+                liveness = row["liveness"] if isinstance(row["liveness"], dict) else {}
+                if isinstance(liveness, dict):
+                    self._liveness_state[agent_id] = dict(liveness)
+
+            self._loaded = True
+            logger.info("KYA store loaded from PostgreSQL with %d agent records", len(self._manifests))
+
+    def get_liveness(self, agent_id: str) -> dict[str, Any] | None:
+        value = self._liveness_state.get(agent_id)
+        return dict(value) if value else None
+
+    async def persist_agent(self, agent_id: str, liveness: dict[str, Any] | None = None) -> None:
+        await self.ensure_loaded()
+        manifest = self.get_manifest(agent_id)
+        if manifest is None:
+            return
+
+        if liveness is not None:
+            self._liveness_state[agent_id] = dict(liveness)
+        liveness_payload = self._liveness_state.get(agent_id)
+
+        trust = self.get_trust_score(agent_id)
+        trust_payload = self._trust_score_to_dict(trust) if trust is not None else None
+        attestation = self.get_code_attestation(agent_id)
+        attestation_payload = self._code_attestation_to_dict(attestation) if attestation is not None else None
+
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO kya_agents (
+                    agent_id, owner_id, manifest, kya_level, kya_status,
+                    trust_score, code_attestation, liveness, updated_at
+                )
+                VALUES ($1, $2, $3::jsonb, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, NOW())
+                ON CONFLICT (agent_id) DO UPDATE
+                SET owner_id = EXCLUDED.owner_id,
+                    manifest = EXCLUDED.manifest,
+                    kya_level = EXCLUDED.kya_level,
+                    kya_status = EXCLUDED.kya_status,
+                    trust_score = EXCLUDED.trust_score,
+                    code_attestation = EXCLUDED.code_attestation,
+                    liveness = EXCLUDED.liveness,
+                    updated_at = NOW()
+                """,
+                agent_id,
+                manifest.owner_id,
+                json.dumps(manifest.to_dict()),
+                self.get_level(agent_id).value,
+                self.get_status(agent_id).value,
+                json.dumps(trust_payload) if trust_payload is not None else None,
+                json.dumps(attestation_payload) if attestation_payload is not None else None,
+                json.dumps(liveness_payload) if liveness_payload is not None else None,
+            )
+
+    async def delete_agent(self, agent_id: str) -> None:
+        await self._ensure_initialized()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM kya_agents WHERE agent_id = $1", agent_id)
+        self.remove(agent_id)
+
+    def remove(self, agent_id: str) -> None:
+        super().remove(agent_id)
+        self._liveness_state.pop(agent_id, None)
+
+    async def close(self) -> None:
+        # Pool lifecycle managed by Database.close() at app shutdown
+        self._initialized = False
+        self._loaded = False
+
+
+# ============ KYA Service ============
+
+
+class KYAService:
+    """
+    Core KYA (Know Your Agent) verification service.
+
+    Manages agent registration, verification, trust scoring,
+    liveness monitoring, and code attestation.
+    """
+
+    def __init__(
+        self,
+        store: InMemoryKYAStore | None = None,
+        liveness: AgentLivenessTracker | None = None,
+        liveness_timeout: int = 300,
+    ):
+        self._store = store or InMemoryKYAStore()
+        self._liveness = liveness or AgentLivenessTracker(timeout_seconds=liveness_timeout)
+        self._liveness_hydrated = False
+
+    async def _ensure_store_ready(self) -> None:
+        ensure_loaded = getattr(self._store, "ensure_loaded", None)
+        if callable(ensure_loaded):
+            await ensure_loaded()
+            if isinstance(self._store, PostgresKYAStore) and not self._liveness_hydrated:
+                for agent_id in list(self._store._manifests.keys()):
+                    liveness = self._store.get_liveness(agent_id) or {}
+                    last_seen_raw = liveness.get("last_seen")
+                    if isinstance(last_seen_raw, str):
+                        try:
+                            ts = datetime.fromisoformat(last_seen_raw.replace("Z", "+00:00")).timestamp()
+                            self._liveness._last_seen[agent_id] = ts
+                        except ValueError:
+                            pass
+                    ping_count = liveness.get("ping_count")
+                    if ping_count is not None:
+                        with contextlib.suppress(TypeError, ValueError):
+                            self._liveness._ping_count[agent_id] = int(ping_count)
+                self._liveness_hydrated = True
+
+    async def _persist_agent_state(self, agent_id: str) -> None:
+        persist = getattr(self._store, "persist_agent", None)
+        if callable(persist):
+            last_seen = self._liveness.get_last_seen(agent_id)
+            ping_count = self._liveness._ping_count.get(agent_id, 0)
+            await persist(
+                agent_id,
+                liveness={
+                    "last_seen": last_seen.isoformat() if last_seen else None,
+                    "ping_count": ping_count,
+                },
+            )
+
+    # ── Registration ──────────────────────────────────────────────
+
+    async def register_agent(self, manifest: AgentManifest) -> KYAResult:
+        """
+        Register an agent with its manifest.
+
+        New agents start at BASIC level (email/API key verified).
+        Higher levels require additional verification steps.
+        """
+        await self._ensure_store_ready()
+        self._store.store_manifest(manifest)
+        self._store.set_level(manifest.agent_id, KYALevel.BASIC)
+        self._store.set_status(manifest.agent_id, KYAStatus.ACTIVE)
+
+        # Initialize trust score
+        trust = AgentTrustScore(agent_id=manifest.agent_id)
+        self._store.set_trust_score(manifest.agent_id, trust)
+
+        # Start liveness tracking
+        self._liveness.ping(manifest.agent_id)
+        await self._persist_agent_state(manifest.agent_id)
+
+        logger.info(
+            "Agent registered with KYA: agent_id=%s, owner=%s, level=BASIC",
+            manifest.agent_id, manifest.owner_id,
+        )
+
+        return KYAResult(
+            agent_id=manifest.agent_id,
+            level=KYALevel.BASIC,
+            status=KYAStatus.ACTIVE,
+            allowed=True,
+            reason="registered",
+            owner_id=manifest.owner_id,
+            manifest_hash=manifest.manifest_hash,
+            trust_score=0.0,
+        )
+
+    # ── Verification ──────────────────────────────────────────────
+
+    async def check_agent(self, request: KYACheckRequest) -> KYAResult:
+        """
+        Check if an agent is authorized for a payment.
+
+        Verifies:
+        1. Agent is registered and active
+        2. KYA level is sufficient for the amount
+        3. Agent is alive (liveness check)
+        4. Merchant domain is allowed (if specified)
+        """
+        await self._ensure_store_ready()
+        agent_id = request.agent_id
+        level = self._store.get_level(agent_id)
+        kya_status = self._store.get_status(agent_id)
+        manifest = self._store.get_manifest(agent_id)
+
+        # Check 1: Agent must be registered
+        if manifest is None:
+            return KYAResult(
+                agent_id=agent_id,
+                level=KYALevel.NONE,
+                status=KYAStatus.PENDING,
+                allowed=False,
+                reason="agent_not_registered",
+            )
+
+        # Check 2: Agent must be active
+        if kya_status not in (KYAStatus.ACTIVE,):
+            return KYAResult(
+                agent_id=agent_id,
+                level=level,
+                status=kya_status,
+                allowed=False,
+                reason=f"agent_status_{kya_status.value}",
+                owner_id=manifest.owner_id,
+            )
+
+        # Check 3: KYA level sufficient for amount
+        if request.amount > Decimal("0"):
+            required = required_kya_level(request.amount)
+            if not kya_level_sufficient(level, required):
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=level,
+                    status=kya_status,
+                    allowed=False,
+                    reason=f"kya_level_insufficient: need {required.value}, have {level.value}",
+                    owner_id=manifest.owner_id,
+                )
+
+        # Check 4: Manifest budget check
+        if request.amount > manifest.max_budget_per_tx:
+            return KYAResult(
+                agent_id=agent_id,
+                level=level,
+                status=kya_status,
+                allowed=False,
+                reason=f"manifest_budget_exceeded: max {manifest.max_budget_per_tx}",
+                owner_id=manifest.owner_id,
+            )
+
+        # Check 5: Domain allowlist (if merchant domain provided)
+        if request.merchant_domain and manifest.allowed_domains:
+            domain_match = any(
+                request.merchant_domain.endswith(d)
+                for d in manifest.allowed_domains
+            )
+            if not domain_match:
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=level,
+                    status=kya_status,
+                    allowed=False,
+                    reason=f"domain_not_allowed: {request.merchant_domain}",
+                    owner_id=manifest.owner_id,
+                )
+
+        # Check 6: Domain blocklist
+        if request.merchant_domain and manifest.blocked_domains:
+            domain_blocked = any(
+                request.merchant_domain.endswith(d)
+                for d in manifest.blocked_domains
+            )
+            if domain_blocked:
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=level,
+                    status=kya_status,
+                    allowed=False,
+                    reason=f"domain_blocked: {request.merchant_domain}",
+                    owner_id=manifest.owner_id,
+                )
+
+        # All checks passed
+        trust = self._store.get_trust_score(agent_id)
+        return KYAResult(
+            agent_id=agent_id,
+            level=level,
+            status=kya_status,
+            allowed=True,
+            reason="kya_passed",
+            owner_id=manifest.owner_id,
+            manifest_hash=manifest.manifest_hash,
+            trust_score=trust.score if trust else None,
+        )
+
+    # ── Level Management ──────────────────────────────────────────
+
+    async def upgrade_level(
+        self,
+        agent_id: str,
+        target_level: KYALevel,
+        *,
+        anchor_verification_id: str | None = None,
+        code_attestation: CodeAttestation | None = None,
+    ) -> KYAResult:
+        """
+        Upgrade an agent's KYA level.
+
+        Requirements per level:
+        - BASIC: Agent registration (automatic)
+        - VERIFIED: Owner KYC verification (anchor_verification_id required)
+        - ATTESTED: Code attestation + trust score >= 0.7
+        """
+        await self._ensure_store_ready()
+        current_level = self._store.get_level(agent_id)
+        manifest = self._store.get_manifest(agent_id)
+
+        if manifest is None:
+            return KYAResult(
+                agent_id=agent_id,
+                level=KYALevel.NONE,
+                status=KYAStatus.PENDING,
+                allowed=False,
+                reason="agent_not_registered",
+            )
+
+        # Validate upgrade requirements
+        if target_level == KYALevel.VERIFIED:
+            if not anchor_verification_id:
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=current_level,
+                    status=self._store.get_status(agent_id),
+                    allowed=False,
+                    reason="anchor_verification_required: owner KYC must be completed",
+                )
+
+        elif target_level == KYALevel.ATTESTED:
+            if not code_attestation:
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=current_level,
+                    status=self._store.get_status(agent_id),
+                    allowed=False,
+                    reason="code_attestation_required",
+                )
+            trust = self._store.get_trust_score(agent_id)
+            if trust and trust.score < 0.7:
+                return KYAResult(
+                    agent_id=agent_id,
+                    level=current_level,
+                    status=self._store.get_status(agent_id),
+                    allowed=False,
+                    reason=f"trust_score_insufficient: {trust.score:.2f} < 0.70",
+                    trust_score=trust.score,
+                )
+            self._store.set_code_attestation(agent_id, code_attestation)
+
+        # Perform upgrade
+        self._store.set_level(agent_id, target_level)
+        await self._persist_agent_state(agent_id)
+
+        logger.info(
+            "KYA level upgraded: agent_id=%s, %s → %s",
+            agent_id, current_level.value, target_level.value,
+        )
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=target_level,
+            status=self._store.get_status(agent_id),
+            allowed=True,
+            reason=f"upgraded_to_{target_level.value}",
+            owner_id=manifest.owner_id,
+            anchor_verification_id=anchor_verification_id,
+            manifest_hash=manifest.manifest_hash,
+            code_hash=code_attestation.code_hash if code_attestation else None,
+        )
+
+    async def downgrade_level(self, agent_id: str, reason: str) -> KYAResult:
+        """Downgrade agent KYA level (e.g., due to violations or stale liveness)."""
+        await self._ensure_store_ready()
+        current = self._store.get_level(agent_id)
+        manifest = self._store.get_manifest(agent_id)
+
+        # Step down one level
+        downgrade_map = {
+            KYALevel.ATTESTED: KYALevel.VERIFIED,
+            KYALevel.VERIFIED: KYALevel.BASIC,
+            KYALevel.BASIC: KYALevel.NONE,
+            KYALevel.NONE: KYALevel.NONE,
+        }
+        new_level = downgrade_map[current]
+        self._store.set_level(agent_id, new_level)
+        await self._persist_agent_state(agent_id)
+
+        logger.warning(
+            "KYA level downgraded: agent_id=%s, %s → %s, reason=%s",
+            agent_id, current.value, new_level.value, reason,
+        )
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=new_level,
+            status=self._store.get_status(agent_id),
+            allowed=new_level != KYALevel.NONE,
+            reason=f"downgraded: {reason}",
+            owner_id=manifest.owner_id if manifest else None,
+        )
+
+    # ── Suspension / Revocation ───────────────────────────────────
+
+    async def suspend_agent(self, agent_id: str, reason: str) -> KYAResult:
+        """Temporarily suspend an agent's KYA status."""
+        await self._ensure_store_ready()
+        self._store.set_status(agent_id, KYAStatus.SUSPENDED)
+        manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
+
+        logger.warning("Agent KYA suspended: agent_id=%s, reason=%s", agent_id, reason)
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=self._store.get_level(agent_id),
+            status=KYAStatus.SUSPENDED,
+            allowed=False,
+            reason=f"suspended: {reason}",
+            owner_id=manifest.owner_id if manifest else None,
+        )
+
+    async def revoke_agent(self, agent_id: str, reason: str) -> KYAResult:
+        """Permanently revoke an agent's KYA status."""
+        await self._ensure_store_ready()
+        self._store.set_status(agent_id, KYAStatus.REVOKED)
+        self._store.set_level(agent_id, KYALevel.NONE)
+        self._liveness.remove(agent_id)
+        manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
+
+        logger.warning("Agent KYA revoked: agent_id=%s, reason=%s", agent_id, reason)
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=KYALevel.NONE,
+            status=KYAStatus.REVOKED,
+            allowed=False,
+            reason=f"revoked: {reason}",
+            owner_id=manifest.owner_id if manifest else None,
+        )
+
+    async def reactivate_agent(self, agent_id: str) -> KYAResult:
+        """Reactivate a suspended agent."""
+        await self._ensure_store_ready()
+        current_status = self._store.get_status(agent_id)
+        if current_status != KYAStatus.SUSPENDED:
+            return KYAResult(
+                agent_id=agent_id,
+                level=self._store.get_level(agent_id),
+                status=current_status,
+                allowed=False,
+                reason=f"cannot_reactivate: status is {current_status.value}, not suspended",
+            )
+
+        self._store.set_status(agent_id, KYAStatus.ACTIVE)
+        self._liveness.ping(agent_id)
+        manifest = self._store.get_manifest(agent_id)
+        await self._persist_agent_state(agent_id)
+
+        logger.info("Agent KYA reactivated: agent_id=%s", agent_id)
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=self._store.get_level(agent_id),
+            status=KYAStatus.ACTIVE,
+            allowed=True,
+            reason="reactivated",
+            owner_id=manifest.owner_id if manifest else None,
+        )
+
+    # ── Trust Score ───────────────────────────────────────────────
+
+    async def record_payment_outcome(
+        self,
+        agent_id: str,
+        *,
+        success: bool,
+        amount: Decimal = Decimal("0"),
+        policy_violation: bool = False,
+    ) -> AgentTrustScore | None:
+        """Record a payment outcome for trust score calculation."""
+        await self._ensure_store_ready()
+        trust = self._store.get_trust_score(agent_id)
+        if trust is None:
+            trust = AgentTrustScore(agent_id=agent_id)
+
+        if success:
+            trust.successful_payments += 1
+            trust.total_volume += amount
+        else:
+            trust.failed_payments += 1
+
+        if policy_violation:
+            trust.policy_violations += 1
+
+        # Update uptime from liveness tracker
+        manifest = self._store.get_manifest(agent_id)
+        if manifest:
+            age_seconds = (datetime.now(UTC) - manifest.created_at).total_seconds()
+            trust.age_days = max(0, int(age_seconds / 86400))
+
+        trust.recalculate()
+        self._store.set_trust_score(agent_id, trust)
+        await self._persist_agent_state(agent_id)
+        return trust
+
+    async def get_trust_score(self, agent_id: str) -> AgentTrustScore | None:
+        """Get the current trust score for an agent."""
+        await self._ensure_store_ready()
+        return self._store.get_trust_score(agent_id)
+
+    # ── Code Attestation ──────────────────────────────────────────
+
+    async def attest_code(self, agent_id: str, attestation: CodeAttestation) -> KYAResult:
+        """Submit a code attestation for an agent."""
+        await self._ensure_store_ready()
+        manifest = self._store.get_manifest(agent_id)
+        if manifest is None:
+            return KYAResult(
+                agent_id=agent_id,
+                level=KYALevel.NONE,
+                status=KYAStatus.PENDING,
+                allowed=False,
+                reason="agent_not_registered",
+            )
+
+        self._store.set_code_attestation(agent_id, attestation)
+        await self._persist_agent_state(agent_id)
+
+        logger.info(
+            "Code attestation recorded: agent_id=%s, hash=%s, framework=%s",
+            agent_id, attestation.code_hash[:16], attestation.framework,
+        )
+
+        return KYAResult(
+            agent_id=agent_id,
+            level=self._store.get_level(agent_id),
+            status=self._store.get_status(agent_id),
+            allowed=True,
+            reason="code_attested",
+            code_hash=attestation.code_hash,
+        )
+
+    async def verify_code_hash(self, agent_id: str, expected_hash: str) -> bool:
+        """Verify that an agent's code hash matches the registered attestation."""
+        await self._ensure_store_ready()
+        attestation = self._store.get_code_attestation(agent_id)
+        if attestation is None:
+            return False
+        return attestation.verify(expected_hash)
+
+    # ── Liveness ──────────────────────────────────────────────────
+
+    def ping(self, agent_id: str) -> None:
+        """Record a liveness heartbeat (in-memory fast path)."""
+        self._liveness.ping(agent_id)
+
+    def is_alive(self, agent_id: str) -> bool:
+        """Check if agent is alive (in-memory fast path)."""
+        return self._liveness.is_alive(agent_id)
+
+    async def ping_async(self, agent_id: str) -> None:
+        """Record a liveness heartbeat and persist state if backed by PostgreSQL."""
+        await self._ensure_store_ready()
+        self._liveness.ping(agent_id)
+        await self._persist_agent_state(agent_id)
+
+    async def is_alive_async(self, agent_id: str) -> bool:
+        """Check liveness after ensuring persisted state is loaded."""
+        await self._ensure_store_ready()
+        return self._liveness.is_alive(agent_id)
+
+    async def check_stale_agents(self) -> list[str]:
+        """Check for stale agents and suspend them."""
+        await self._ensure_store_ready()
+        stale = self._liveness.get_stale_agents()
+        suspended = []
+        for agent_id in stale:
+            status = self._store.get_status(agent_id)
+            if status == KYAStatus.ACTIVE:
+                await self.suspend_agent(agent_id, "liveness_timeout")
+                suspended.append(agent_id)
+        return suspended
+
+    # ── Getters ───────────────────────────────────────────────────
+
+    def get_manifest(self, agent_id: str) -> AgentManifest | None:
+        """Get agent manifest (in-memory fast path)."""
+        return self._store.get_manifest(agent_id)
+
+    def get_level(self, agent_id: str) -> KYALevel:
+        """Get agent KYA level (in-memory fast path)."""
+        return self._store.get_level(agent_id)
+
+    def get_status(self, agent_id: str) -> KYAStatus:
+        """Get agent KYA status (in-memory fast path)."""
+        return self._store.get_status(agent_id)
+
+    async def get_manifest_async(self, agent_id: str) -> AgentManifest | None:
+        """Get agent manifest with persisted-state hydration."""
+        await self._ensure_store_ready()
+        return self._store.get_manifest(agent_id)
+
+    async def get_level_async(self, agent_id: str) -> KYALevel:
+        """Get agent KYA level with persisted-state hydration."""
+        await self._ensure_store_ready()
+        return self._store.get_level(agent_id)
+
+    async def get_status_async(self, agent_id: str) -> KYAStatus:
+        """Get agent KYA status with persisted-state hydration."""
+        await self._ensure_store_ready()
+        return self._store.get_status(agent_id)
+
+
+# ============ Factory ============
+
+
+def create_kya_service(
+    liveness_timeout: int = 300,
+    dsn: str | None = None,
+) -> KYAService:
+    """
+    Create a KYA service.
+
+    Uses PostgreSQL persistence when DATABASE_URL is configured for postgres.
+    Falls back to in-memory store in dev/test if asyncpg is unavailable.
+    """
+    dsn = dsn or os.getenv("DATABASE_URL", "")
+    env = os.getenv("SARDIS_ENVIRONMENT", "dev")
+    is_production = env in ("prod", "production")
+    if dsn and dsn.startswith("postgres"):
+        try:
+            import asyncpg  # noqa: F401
+
+            return KYAService(
+                store=PostgresKYAStore(dsn),
+                liveness_timeout=liveness_timeout,
+            )
+        except ImportError:
+            if is_production:
+                raise RuntimeError(
+                    "Production requires asyncpg for persistent KYA state. "
+                    "Install asyncpg: pip install asyncpg"
+                )
+            logger.warning("asyncpg unavailable; using in-memory KYA store")
+    elif is_production and os.getenv("SARDIS_KYA_ENFORCEMENT_ENABLED", "false").lower() in {"1", "true", "yes", "on"}:
+        raise RuntimeError(
+            "Production KYA enforcement requires PostgreSQL DATABASE_URL."
+        )
+    return KYAService(liveness_timeout=liveness_timeout)
