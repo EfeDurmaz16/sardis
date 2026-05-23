@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-cli"
-version = "1.0.0"
-description = "Sardis command-line interface for agent payments"
+version = "0.99.0"
+description = "Deprecation shim — sardis-cli has been consolidated into the `sardis` umbrella package (install `sardis` for the `sardis` command)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -27,16 +27,8 @@ classifiers = [
     "Environment :: Console",
 ]
 dependencies = [
-    "click>=8.1.0",
-    "httpx>=0.24.0",
-    "rich>=13.0.0",
-    "pydantic>=2.0.0",
-    "keyring>=24.0.0",
-    "python-dotenv>=1.0.0",
+    "sardis>=2.0.0a0",
 ]
-
-[project.scripts]
-sardis = "sardis_cli.main:cli"
 
 [project.optional-dependencies]
 dev = [

@@ -39,6 +39,11 @@ dependencies = [
   "fastapi>=0.110",
   # Inherited from sardis-guardrails (sardis.guardrails.ml_fraud)
   "numpy>=1.26",
+  # Inherited from sardis-cli (sardis.cli)
+  "click>=8.1",
+  "rich>=13.0",
+  "keyring>=24.0",
+  "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

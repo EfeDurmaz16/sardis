@@ -1,2 +1,2 @@
-# Migration target: see project-directions/sardis-python-sdk-redesign.md
-# Submodule: sardis.cli
+"""Sardis CLI package."""
+__version__ = "1.0.0"

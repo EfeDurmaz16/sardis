@@ -21,7 +21,7 @@ def mandates():
 @click.pass_context
 def list_mandates(ctx, status, agent_id):
     """List spending mandates."""
-    from sardis_cli.api import api_get
+    from sardis.cli.api import api_get
 
     params = {}
     if status:
@@ -76,7 +76,7 @@ def list_mandates(ctx, status, agent_id):
 @click.pass_context
 def create_mandate(ctx, purpose, per_tx, daily, monthly, total, merchants, approval_threshold, approval_mode):
     """Create a new spending mandate."""
-    from sardis_cli.api import api_post
+    from sardis.cli.api import api_post
 
     body = {
         "purpose_scope": purpose,
@@ -110,7 +110,7 @@ def create_mandate(ctx, purpose, per_tx, daily, monthly, total, merchants, appro
 @click.pass_context
 def revoke_mandate(ctx, mandate_id, reason):
     """Permanently revoke a spending mandate."""
-    from sardis_cli.api import api_post
+    from sardis.cli.api import api_post
 
     if not click.confirm(f"Permanently revoke mandate {mandate_id}? This cannot be undone."):
         console.print("[dim]Cancelled.[/dim]")
@@ -130,7 +130,7 @@ def revoke_mandate(ctx, mandate_id, reason):
 @click.pass_context
 def suspend_mandate(ctx, mandate_id, reason):
     """Temporarily suspend a spending mandate."""
-    from sardis_cli.api import api_post
+    from sardis.cli.api import api_post
 
     result = api_post(ctx, f"/api/v2/spending-mandates/{mandate_id}/suspend", {"reason": reason})
     if result:
@@ -144,7 +144,7 @@ def suspend_mandate(ctx, mandate_id, reason):
 @click.pass_context
 def resume_mandate(ctx, mandate_id):
     """Resume a suspended spending mandate."""
-    from sardis_cli.api import api_post
+    from sardis.cli.api import api_post
 
     result = api_post(ctx, f"/api/v2/spending-mandates/{mandate_id}/resume", {})
     if result:

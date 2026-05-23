@@ -138,7 +138,7 @@ cli.add_command(approvals.approvals)
 cli.add_command(ledger.ledger)
 
 # Spending mandates
-from sardis_cli.commands import mandates
+from sardis.cli.commands import mandates
 
 cli.add_command(mandates.mandates)
 
