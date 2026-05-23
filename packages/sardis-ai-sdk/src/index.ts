@@ -1,90 +1,88 @@
 /**
- * @sardis/ai-sdk - Sardis payment tools for Vercel AI SDK
+ * @sardis/ai-sdk — DEPRECATED.
  *
- * Enable AI agents to make payments with policy guardrails.
+ * This package is now a thin re-export shim over `sardis/ai-sdk`. New
+ * code should `npm install sardis` and `import { createSardis } from
+ * "sardis/ai-sdk"`.
  *
- * @example Basic usage with generateText
- * ```typescript
- * import { generateText } from 'ai'
- * import { openai } from '@ai-sdk/openai'
- * import { createSardisTools } from '@sardis/ai-sdk'
+ * Migration:
  *
- * const tools = createSardisTools({
- *   apiKey: process.env.SARDIS_API_KEY!,
- *   walletId: 'wallet_abc123',
- * })
- *
- * const { text, toolResults } = await generateText({
- *   model: openai('gpt-4o'),
- *   tools,
- *   prompt: 'Pay $50 to merchant_xyz for API credits',
- * })
+ * ```diff
+ * - import { createSardisTools } from "@sardis/ai-sdk";
+ * + import { createSardis } from "sardis/ai-sdk";
+ * - const tools = createSardisTools({ apiKey, walletId });
+ * + const sardis = createSardis({ apiKey, walletId });
+ * + // then pass sardis.tools to generateText
  * ```
  *
- * @example Using SardisProvider for more control
- * ```typescript
- * import { generateText } from 'ai'
- * import { openai } from '@ai-sdk/openai'
- * import { SardisProvider } from '@sardis/ai-sdk'
+ * Run `npx sardis-migrate` to apply this codemod automatically.
  *
- * const sardis = new SardisProvider({
- *   apiKey: process.env.SARDIS_API_KEY!,
- *   walletId: 'wallet_abc123',
- *   enableLogging: true,
- *   onTransaction: async (event) => {
- *     await logToDatabase(event)
- *   },
- * })
- *
- * const { text } = await generateText({
- *   model: openai('gpt-4o'),
- *   tools: sardis.tools,
- *   system: sardis.systemPrompt,
- *   prompt: 'Check my balance and pay $25 for API credits',
- * })
- *
- * // Or use directly without AI
- * const balance = await sardis.getBalance()
- * const result = await sardis.pay({ to: 'merchant', amount: 25 })
- * ```
- *
- * @packageDocumentation
+ * This shim will be removed after one minor cycle (target: sardis@2.1).
  */
 
-// Main tool creation functions
-export {
-  createSardisTools,
-  createMinimalSardisTools,
-  createReadOnlySardisTools,
-} from './tools'
+let warned = false;
+function emitDeprecationWarning(): void {
+  if (warned) return;
+  warned = true;
+  const msg =
+    '[@sardis/ai-sdk] DEPRECATED — use `sardis/ai-sdk` instead. Run `npx sardis-migrate` to upgrade. See https://sardis.sh/docs/ts-migration';
+  if (typeof process !== 'undefined' && process.emitWarning) {
+    process.emitWarning(msg, 'DeprecationWarning');
+  } else if (typeof console !== 'undefined') {
+    console.warn(msg);
+  }
+}
 
-// Provider class and factory
-export {
-  SardisProvider,
-  createSardisProvider,
-  type SardisProviderConfig,
-  type TransactionEvent,
-} from './provider'
+emitDeprecationWarning();
 
-// Types
+// Re-export the new factory + provider shape.
+export {
+  createSardis,
+  sardisProvider,
+  PayInputSchema,
+  HoldCreateSchema,
+  HoldCaptureSchema,
+  HoldVoidSchema,
+  BalanceSchema,
+  PolicyCheckSchema,
+} from 'sardis/ai-sdk';
 export type {
-  SardisToolsConfig,
-  PaymentParams,
-  HoldParams,
-  CaptureParams,
-  PolicyCheckParams,
-  BalanceParams,
-  PaymentResult,
-  HoldResult,
-  PolicyCheckResult,
-  BalanceResult,
-} from './types'
+  CreateSardisOptions,
+  TransactionEvent,
+  SardisProvider as SardisProviderType,
+  AISDKTool,
+  PayInputT,
+  HoldCreateT,
+  HoldCaptureT,
+  HoldVoidT,
+  BalanceT,
+  PolicyCheckT,
+} from 'sardis/ai-sdk';
 
-// Zod schemas for validation
-export {
-  PaymentParamsSchema,
-  HoldParamsSchema,
-  CaptureParamsSchema,
-  PolicyCheckParamsSchema,
-  BalanceParamsSchema,
-} from './types'
+// Backwards-compat: the v1 `createSardisTools(opts)` returned a tool map
+// directly. v2 returns a provider with `.tools`. Map the old API onto the
+// new factory.
+import { createSardis as _createSardis } from 'sardis/ai-sdk';
+
+/** @deprecated Use `createSardis(opts).tools` from `sardis/ai-sdk`. */
+export function createSardisTools(opts: Parameters<typeof _createSardis>[0]) {
+  return _createSardis(opts).tools;
+}
+
+/** @deprecated Use `createSardis(...)` from `sardis/ai-sdk`. */
+export class SardisProvider {
+  private readonly _provider: ReturnType<typeof _createSardis>;
+  public readonly tools: ReturnType<typeof _createSardis>['tools'];
+  public readonly systemPrompt: string;
+  constructor(opts: Parameters<typeof _createSardis>[0]) {
+    this._provider = _createSardis(opts);
+    this.tools = this._provider.tools;
+    this.systemPrompt = this._provider.systemPrompt;
+  }
+  pay(input: Parameters<ReturnType<typeof _createSardis>['pay']>[0]) {
+    return this._provider.pay(input);
+  }
+  balance(input?: Parameters<ReturnType<typeof _createSardis>['balance']>[0]) {
+    return this._provider.balance(input);
+  }
+}

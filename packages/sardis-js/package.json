@@ -100,7 +100,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "sardis-migrate": "./scripts/migrate.js"
+    "sardis-migrate": "./scripts/migrate.cjs"
   },
   "files": [
     "dist",
