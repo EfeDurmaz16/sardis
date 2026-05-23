@@ -35,6 +35,8 @@ dependencies = [
   "apscheduler>=3.10",
   "asyncpg>=0.29",
   "aiohttp>=3.8",
+  "httpx>=0.27",
+  "fastapi>=0.110",
 ]
 
 [project.optional-dependencies]
@@ -51,7 +53,7 @@ ai-sdk        = []
 postgres      = ["psycopg[binary,pool]>=3.2", "sqlalchemy>=2.0"]
 redis         = ["redis>=5.2"]
 immudb        = ["immudb-py>=1.5"]
-chain         = ["web3>=6.20", "eth-account>=0.13"]
+chain         = ["web3>=6.20", "eth-account>=0.13", "eth-abi>=5.0"]
 all = [
   "sardis[anthropic,langchain,crewai,openai-agents,autogpt,browser-use,composio,adk,a2a,ai-sdk,postgres,redis,immudb,chain]",
 ]
