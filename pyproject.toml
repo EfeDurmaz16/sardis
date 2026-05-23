@@ -154,7 +154,6 @@ sardis-cli = { path = "packages/sardis-cli", editable = true }
 sardis-coinbase = { path = "packages/sardis-coinbase", editable = true }
 sardis-compliance = { path = "packages/sardis-compliance", editable = true }
 sardis-composio = { path = "packages/sardis-composio", editable = true }
-sardis-connect = { path = "packages/sardis-connect", editable = true }
 sardis-core = { path = "packages/sardis-core", editable = true }
 sardis-crewai = { path = "packages/sardis-crewai", editable = true }
 sardis-guardrails = { path = "packages/sardis-guardrails", editable = true }
