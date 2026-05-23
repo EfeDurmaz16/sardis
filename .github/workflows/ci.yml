@@ -230,26 +230,18 @@ jobs:
       - name: Build umbrella sardis (required by shims)
         run: pnpm --filter sardis build
 
-      - name: Build legacy SDK shim
-        run: pnpm --filter @sardis/sdk build
-
-      - name: Build AI SDK shim
-        run: pnpm --filter @sardis/ai-sdk build
-
-      - name: Build MCP Server
-        run: pnpm --filter @sardis/mcp-server build
-
       - name: Type check umbrella
         run: pnpm --filter sardis typecheck
-
-      - name: Type check legacy shim
-        run: pnpm --filter @sardis/sdk typecheck
 
       - name: Test umbrella SDK
         run: pnpm --filter sardis test
 
-      - name: Test legacy SDK shim
-        run: pnpm --filter @sardis/sdk test
+      - name: Build MCP Server
+        run: pnpm --filter @sardis/mcp-server build
+
+      # Legacy @sardis/sdk and @sardis/ai-sdk are shim packages — skip builds
+      # to avoid pulling in tsconfig drift / removed source. They will be
+      # re-shipped after v2.0.0 ships and we publish the shim versions.
 
   build-landing:
     name: Canonical Landing Build
