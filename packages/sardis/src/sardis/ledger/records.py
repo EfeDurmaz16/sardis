@@ -26,8 +26,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
-from sardis_v2_core.tokens import normalize_token_amount
-from sardis_v2_core.transactions import OnChainRecord, Transaction
+from sardis.core.tokens import normalize_token_amount
+from sardis.core.transactions import OnChainRecord, Transaction
 
 from .models import (
     AuditAction,
@@ -417,7 +417,7 @@ class LedgerStore:
     async def _get_pg_pool(self):
         """Lazy initialization of PostgreSQL pool."""
         if self._pg_pool is None:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             self._pg_pool = await Database.get_pool()
         return self._pg_pool
 
@@ -1466,7 +1466,7 @@ class LedgerStore:
                 # Reconstruct minimal mandate and receipt for append
                 import time
 
-                from sardis_v2_core.mandates import PaymentMandate, VCProof
+                from sardis.core.mandates import PaymentMandate, VCProof
 
                 now = int(time.time())
                 proof = VCProof(
