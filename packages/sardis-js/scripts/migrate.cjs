@@ -157,33 +157,27 @@ const PASSES = [
     regex: /(require\(\s*['"])@sardis\/ai-sdk(['"]\s*\))/g,
     replacement: '$1sardis/ai-sdk$2',
   },
-  // createSardisTools → createSardis (named import binding) + collapse calls
+  // createSardisTools → createSardis(...).tools
+  //
+  // We use a two-step sentinel so we (a) preserve the `.tools` shape callers
+  // expect and (b) leave already-migrated `createSardis(...)` calls alone
+  // (idempotency requirement — the no-op test).
   {
     description: 'Rewrite import { createSardisTools } → import { createSardis }',
     regex: /(\bimport\b[^;]*?\{[^}]*?)\bcreateSardisTools\b([^}]*?\}[^;]*?from\s+['"]sardis\/ai-sdk['"])/g,
     replacement: '$1createSardis$2',
   },
   {
-    description: 'Rewrite createSardisTools(opts) → createSardis(opts).tools',
-    // We capture the (balanced-on-line) argument tuple. This works for
-    // single-line and well-formed multi-line calls. The jscodeshift pass
-    // handles arbitrarily nested cases; this regex covers the 90%.
+    description: 'Sentinel: mark createSardisTools(... ) call sites',
     regex: /\bcreateSardisTools\s*\(/g,
-    replacement: 'createSardis(',
+    replacement: '__MIGRATE_TOOLS_CALL__(',
   },
-  // The above rename loses the `.tools` suffix; add it back via a second
-  // pass that targets the *result* shape. Because the original
-  // createSardisTools returned tools directly, every existing call site
-  // expects a record-of-tools — convert via `.tools` appended below the
-  // closing paren of the call. To avoid mangling chained calls, we only
-  // append .tools when the call is the entire expression statement.
   {
-    description: 'Append `.tools` to bare `createSardis(...)` calls that replaced createSardisTools',
-    // Match `createSardis(...)` that is NOT immediately followed by `.` or `(`
-    // (i.e. not already member-accessed / curried). We restrict to balanced
-    // single-line args for safety; multi-line callers must self-correct.
-    regex: /(=\s*createSardis\(([^()]*|\([^()]*\))*\))(?![.\(])/g,
-    replacement: '$1.tools',
+    description: 'Rewrite sentinel call to createSardis(...).tools',
+    // Match the sentinel name + balanced single-line args + closing paren.
+    // Multi-line callers will fail loud (sentinel leftover) — desired.
+    regex: /__MIGRATE_TOOLS_CALL__\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g,
+    replacement: 'createSardis($1).tools',
   },
 
   // SardisProvider → use createSardis directly (provider class is gone)
