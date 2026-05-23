@@ -166,6 +166,7 @@ def test_full_protocol_stack_flow_success(mock_tap_headers, mock_ap2_mandates, s
         path=mock_tap_headers["path"],
         verify_signature_fn=None,  # Mock - accept without crypto verification
         tap_version=TAP_PROTOCOL_VERSION,
+    nonce_cache=set(),
     )
 
     assert tap_result.accepted, f"TAP verification failed: {tap_result.reason}"
@@ -321,6 +322,7 @@ def test_protocol_stack_fail_closed_tap_failure(mock_tap_headers, settings):
         path=corrupt_headers["path"],
         verify_signature_fn=lambda *args: False,  # Force failure
         tap_version=TAP_PROTOCOL_VERSION,
+    nonce_cache=set(),
     )
 
     assert not tap_result.accepted
@@ -339,6 +341,7 @@ def test_protocol_stack_fail_closed_ap2_failure(mock_tap_headers, mock_ap2_manda
         authority=mock_tap_headers["authority"],
         path=mock_tap_headers["path"],
         verify_signature_fn=None,
+        nonce_cache=set(),
         tap_version=TAP_PROTOCOL_VERSION,
     )
     assert tap_result.accepted
@@ -455,6 +458,7 @@ def test_protocol_stack_performance_under_5_seconds(mock_tap_headers, mock_ap2_m
         authority=mock_tap_headers["authority"],
         path=mock_tap_headers["path"],
         verify_signature_fn=None,
+        nonce_cache=set(),
         tap_version=TAP_PROTOCOL_VERSION,
     )
 
