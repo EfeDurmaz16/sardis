@@ -23,7 +23,21 @@ _LAZY_SUBMODULES = frozenset({
 })
 
 
+# Backward-compat aliases (legacy SardisClient -> Sardis; will be removed in v2.0.0)
+_LEGACY_ALIASES = {
+    "SardisClient": "Sardis",
+    "AsyncSardisClient": "AsyncSardis",
+}
+
+
 def __getattr__(name: str) -> Any:
+    # Legacy alias passthrough
+    if name in _LEGACY_ALIASES:
+        target = _LEGACY_ALIASES[name]
+        module = importlib.import_module("sardis._client")
+        value = getattr(module, target)
+        globals()[name] = value
+        return value
     if name in {"Sardis", "AsyncSardis"}:
         module = importlib.import_module("sardis._client")
         value = getattr(module, name)
@@ -37,4 +51,4 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> list[str]:
-    return sorted({*globals(), *_LAZY_SUBMODULES, "Sardis", "AsyncSardis"})
+    return sorted({*globals(), *_LAZY_SUBMODULES, "Sardis", "AsyncSardis", *_LEGACY_ALIASES})
