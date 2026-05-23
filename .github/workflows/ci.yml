@@ -227,16 +227,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build SDK
+      - name: Build umbrella sardis (required by shims)
+        run: pnpm --filter sardis build
+
+      - name: Build legacy SDK shim
         run: pnpm --filter @sardis/sdk build
+
+      - name: Build AI SDK shim
+        run: pnpm --filter @sardis/ai-sdk build
 
       - name: Build MCP Server
         run: pnpm --filter @sardis/mcp-server build
 
-      - name: Type check SDK
+      - name: Type check umbrella
+        run: pnpm --filter sardis typecheck
+
+      - name: Type check legacy shim
         run: pnpm --filter @sardis/sdk typecheck
 
-      - name: Test SDK
+      - name: Test umbrella SDK
+        run: pnpm --filter sardis test
+
+      - name: Test legacy SDK shim
         run: pnpm --filter @sardis/sdk test
 
   build-landing:
