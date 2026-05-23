@@ -3,7 +3,7 @@
 Install the umbrella package and update imports:
 
     pip install sardis
-    from sardis.core import Wallet, retry, ...
+    from sardis.core import ...
 
 This shim will be removed 2026-11-23 (6-month sunset window).
 """
@@ -16,10 +16,16 @@ warnings.warn(
     stacklevel=2,
 )
 
-import sardis.core as _core  # noqa: E402
-from sardis.core import *  # noqa: F401, F403, E402
+import sardis.core as _new  # noqa: E402
 
-# Rebind __path__ so `from sardis_v2_core.<submodule> import X`
-# resolves to `sardis.core.<submodule>`.
-__path__ = _core.__path__
-__version__ = getattr(_core, "__version__", "0.99.0")
+# Re-bind __path__ so submodule imports work (e.g., from sardis_v2_core.foo import X)
+__path__ = _new.__path__
+
+
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.core."""
+    return getattr(_new, name)
+
+
+def __dir__():
+    return dir(_new)

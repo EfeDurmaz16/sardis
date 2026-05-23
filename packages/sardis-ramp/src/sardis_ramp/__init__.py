@@ -16,8 +16,16 @@ warnings.warn(
     stacklevel=2,
 )
 
-import sardis.ramp as _module  # noqa: E402
-from sardis.ramp import *  # noqa: F401, F403, E402
+import sardis.ramp as _new  # noqa: E402
 
-__path__ = _module.__path__
-__version__ = getattr(_module, "__version__", "0.99.0")
+# Re-bind __path__ so submodule imports work (e.g., from sardis_ramp.foo import X)
+__path__ = _new.__path__
+
+
+def __getattr__(name):
+    """Transparent passthrough — any name access falls through to sardis.ramp."""
+    return getattr(_new, name)
+
+
+def __dir__():
+    return dir(_new)

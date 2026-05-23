@@ -51,7 +51,7 @@ anthropic     = ["anthropic>=0.40"]
 langchain     = ["langchain>=0.3", "langchain-core>=0.3"]
 crewai        = ["crewai>=0.95"]
 openai-agents = ["openai-agents>=0.2"]
-autogpt       = ["autogpt-platform-backend>=0.4"]
+autogpt       = []  # autogpt-platform-backend not on PyPI; deferred
 browser-use   = ["browser-use>=0.1.40"]
 composio      = ["composio-core>=0.5"]
 adk           = ["google-adk>=1.0"]
