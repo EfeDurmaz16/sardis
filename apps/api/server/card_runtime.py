@@ -163,7 +163,7 @@ def configure_card_runtime(
                         return True, "OK"
                     merchant_category = None
                     if mcc_code:
-                        from sardis_v2_core.mcc_service import get_mcc_info
+                        from sardis.core.mcc_service import get_mcc_info
 
                         mcc_info = get_mcc_info(mcc_code)
                         if mcc_info:

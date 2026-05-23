@@ -61,7 +61,7 @@ def test_policy_simulation_uses_draft_definition() -> None:
 
 
 def test_policy_simulation_supports_natural_language_rule(monkeypatch: pytest.MonkeyPatch) -> None:
-    from sardis_v2_core.spending_policy import SpendingPolicy
+    from sardis.core.spending_policy import SpendingPolicy
 
     class FakeParser:
         async def parse_and_convert(self, natural_language: str, agent_id: str) -> SpendingPolicy:
@@ -72,7 +72,7 @@ def test_policy_simulation_supports_natural_language_rule(monkeypatch: pytest.Mo
             return policy
 
     monkeypatch.setattr(
-        "sardis_v2_core.nl_policy_parser.create_policy_parser",
+        "sardis.core.nl_policy_parser.create_policy_parser",
         lambda use_llm=True: FakeParser(),
     )
 

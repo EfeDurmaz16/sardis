@@ -78,7 +78,7 @@ async def register_agent(
     Combines with KYA (Know Your Agent) attestation for trust scoring.
     """
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     agent_id = f"agent_{__import__('secrets').token_hex(12)}"
 
@@ -127,7 +127,7 @@ async def get_agent_profile(agent_id: str):
     Merchants verify agent identity before accepting payments.
     No authentication required — profiles are public.
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     row = await Database.fetchrow(
         """
@@ -172,7 +172,7 @@ async def search_agents(
 
     Merchants use this to discover agents that want to pay for their services.
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     conditions = ["1=1"]
     params: list[Any] = []

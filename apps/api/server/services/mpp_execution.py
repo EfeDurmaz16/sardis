@@ -56,7 +56,7 @@ async def execute_chain_payment(
     organization_id: str,
 ) -> str | None:
     """Build and dispatch the on-chain MPP payment mandate."""
-    from sardis_v2_core.mandates import PaymentMandate, VCProof
+    from sardis.core.mandates import PaymentMandate, VCProof
 
     chain_key = chain_executor_key(session["chain"])
     wallet_id = session.get("wallet_id")

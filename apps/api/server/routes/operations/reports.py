@@ -36,7 +36,7 @@ def _get_generator():
             "Using in-memory ComplianceReportGenerator — data will be lost on restart. "
             "Explicit sandbox mode only; not suitable for live deployments."
         )
-        from sardis_v2_core.compliance_reports import ComplianceReportGenerator
+        from sardis.core.compliance_reports import ComplianceReportGenerator
         _generator = ComplianceReportGenerator()
     return _generator
 
@@ -63,7 +63,7 @@ class ScheduleRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_report(req: GenerateReportRequest):
-    from sardis_v2_core.compliance_reports import ReportConfig, ReportFormat, ReportType
+    from sardis.core.compliance_reports import ReportConfig, ReportFormat, ReportType
     try:
         rt = ReportType(req.report_type)
         fmt = ReportFormat(req.format)
@@ -106,7 +106,7 @@ async def download_report(report_id: str, format: str = Query("html")):
 
 @router.post("/schedule")
 async def create_schedule(req: ScheduleRequest):
-    from sardis_v2_core.compliance_reports import (
+    from sardis.core.compliance_reports import (
         ReportConfig,
         ReportFormat,
         ReportSchedule,

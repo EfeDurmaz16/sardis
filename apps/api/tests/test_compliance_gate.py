@@ -6,8 +6,8 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
+from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_compliance.checks import ComplianceAuditStore, ComplianceEngine
-from sardis_v2_core.mandates import PaymentMandate, VCProof
 
 # ============ Mock Services ============
 

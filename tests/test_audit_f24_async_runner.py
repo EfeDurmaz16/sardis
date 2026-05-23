@@ -8,7 +8,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_async_runner_logs_and_raises_exception(caplog):
     """Interval job runner should log ERROR and re-raise exceptions, not swallow them."""
-    from sardis_v2_core.scheduler import SardisScheduler
+    from sardis.core.scheduler import SardisScheduler
 
     scheduler = SardisScheduler(database_url=None)
 
@@ -48,7 +48,7 @@ async def test_async_runner_logs_and_raises_exception(caplog):
 @pytest.mark.asyncio
 async def test_async_runner_stops_on_exception():
     """When exception is raised, the runner task should terminate."""
-    from sardis_v2_core.scheduler import SardisScheduler
+    from sardis.core.scheduler import SardisScheduler
 
     scheduler = SardisScheduler(database_url=None)
 

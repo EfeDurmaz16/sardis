@@ -9,13 +9,13 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_v2_core.config import SardisSettings
-from sardis_v2_core.spending_policy import (
+from sardis.core.config import SardisSettings
+from sardis.core.spending_policy import (
     TrustLevel,
     create_default_policy,
 )
-from sardis_v2_core.tokens import TokenType
-from sardis_v2_core.wallets import Wallet
+from sardis.core.tokens import TokenType
+from sardis.core.wallets import Wallet
 
 # ── Config validation ────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ class TestBaseMainnetConfig:
         assert settings.circle_account_type == "SCA"
 
     def test_mpc_provider_supports_circle(self):
-        from sardis_v2_core.config import MPCProvider
+        from sardis.core.config import MPCProvider
         provider = MPCProvider(name="circle")
         assert provider.name == "circle"
 

@@ -129,15 +129,15 @@ def configure_funding_adapters(
     env = environ if environ is not None else os.environ
 
     if stripe_issuing_funding_adapter_cls is _DEFAULT_PROVIDER:
-        from sardis_v2_core.funding import StripeIssuingFundingAdapter
+        from sardis.core.funding import StripeIssuingFundingAdapter
 
         stripe_issuing_funding_adapter_cls = StripeIssuingFundingAdapter
     if http_topup_funding_adapter_cls is _DEFAULT_PROVIDER:
-        from sardis_v2_core.funding import HttpTopupFundingAdapter
+        from sardis.core.funding import HttpTopupFundingAdapter
 
         http_topup_funding_adapter_cls = HttpTopupFundingAdapter
     if circle_cpn_funding_adapter_cls is _DEFAULT_PROVIDER:
-        from sardis_v2_core.cpn_funding_adapter import CircleCPNFundingAdapter
+        from sardis.core.cpn_funding_adapter import CircleCPNFundingAdapter
 
         circle_cpn_funding_adapter_cls = CircleCPNFundingAdapter
 
@@ -248,19 +248,19 @@ def configure_recurring_autofund_handler(
     """Wire recurring billing auto-fund execution for configured adapters."""
     if ordered_funding_adapters:
         if funding_request_cls is _DEFAULT_PROVIDER:
-            from sardis_v2_core.funding import FundingRequest
+            from sardis.core.funding import FundingRequest
 
             funding_request_cls = FundingRequest
         if execute_funding_with_failover_func is _DEFAULT_PROVIDER:
-            from sardis_v2_core.funding import execute_funding_with_failover
+            from sardis.core.funding import execute_funding_with_failover
 
             execute_funding_with_failover_func = execute_funding_with_failover
         if token_type_cls is _DEFAULT_PROVIDER:
-            from sardis_v2_core.tokens import TokenType
+            from sardis.core.tokens import TokenType
 
             token_type_cls = TokenType
         if normalize_token_amount_func is _DEFAULT_PROVIDER:
-            from sardis_v2_core.tokens import normalize_token_amount
+            from sardis.core.tokens import normalize_token_amount
 
             normalize_token_amount_func = normalize_token_amount
 
@@ -334,7 +334,7 @@ def configure_stripe_webhook_issuing_provider(
 
         issuing_provider_cls = StripeIssuingProvider
     if mcc_info_resolver is _DEFAULT_PROVIDER:
-        from sardis_v2_core.mcc_service import get_mcc_info
+        from sardis.core.mcc_service import get_mcc_info
 
         mcc_info_resolver = get_mcc_info
 

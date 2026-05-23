@@ -9,18 +9,27 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_DOCS = [
+def _glob_md(*parts: str) -> list[Path]:
+    directory = ROOT.joinpath(*parts)
+    return sorted(directory.glob("*.md")) if directory.exists() else []
+
+
+_CANDIDATE_DOCS = [
     ROOT / "README.md",
     ROOT / "CONTRIBUTING.md",
+    ROOT / ".github" / "CONTRIBUTING.md",
     ROOT / "SECURITY.md",
+    ROOT / ".github" / "SECURITY.md",
     ROOT / "SUPPORT.md",
+    ROOT / ".github" / "SUPPORT.md",
     ROOT / "docs" / "development.md",
     ROOT / "docs" / "packages.md",
     ROOT / "docs" / "docs" / "index.md",
     ROOT / "docs" / "quickstart" / "README.md",
-    *sorted((ROOT / "docs" / "oss").glob("*.md")),
-    *sorted((ROOT / "docs" / "architecture").glob("*.md")),
+    *_glob_md("docs", "oss"),
+    *_glob_md("docs", "architecture"),
 ]
+PUBLIC_DOCS = [p for p in _CANDIDATE_DOCS if p.exists()]
 
 MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
 

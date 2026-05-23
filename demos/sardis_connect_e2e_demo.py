@@ -40,7 +40,7 @@ async def demo_step_1_merchant_setup():
     """Step 1: Merchant registers and gets credentials."""
     separator("Step 1: Merchant Registration")
 
-    from sardis_v2_core.merchant import Merchant, MerchantRepository
+    from sardis.core.merchant import Merchant, MerchantRepository
 
     merchant = Merchant(
         name="Acme AI API",
@@ -62,7 +62,7 @@ async def demo_step_2_stripe_connect(merchant):
     """Step 2: Merchant connects their Stripe account."""
     separator("Step 2: Stripe Connect Onboarding")
 
-    from sardis_v2_core.stripe_connect import ConnectAccount
+    from sardis.core.stripe_connect import ConnectAccount
 
     # Simulate what happens after Express onboarding
     account = ConnectAccount(
@@ -146,7 +146,7 @@ async def demo_step_4_mandate_check():
     """Step 4: Agent's spending mandate validates the payment."""
     separator("Step 4: Spending Mandate Validation")
 
-    from sardis_v2_core.spending_mandate import ApprovalMode, SpendingMandate
+    from sardis.core.spending_mandate import ApprovalMode, SpendingMandate
 
     mandate = SpendingMandate(
         principal_id="usr_alice",
@@ -189,7 +189,7 @@ async def demo_step_5_nl_policy():
     """Step 5: Natural language policy parsing."""
     separator("Step 5: Natural Language Policy")
 
-    from sardis_v2_core.nl_policy_parser import RegexPolicyParser
+    from sardis.core.nl_policy_parser import RegexPolicyParser
 
     parser = RegexPolicyParser()
 

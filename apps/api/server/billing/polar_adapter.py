@@ -149,7 +149,7 @@ class PolarBillingAdapter:
         """Get subscription from DB (compatible with StripeBillingService interface)."""
         from server.services.stripe_billing import SubscriptionInfo
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             pool = await Database.get_pool()
             async with pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -176,7 +176,7 @@ class PolarBillingAdapter:
         """Create/update subscription in DB."""
         from server.services.stripe_billing import SubscriptionInfo
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             pool = await Database.get_pool()
             async with pool.acquire() as conn:
                 await conn.execute(
@@ -241,7 +241,7 @@ class PolarBillingAdapter:
 
             if org_id and plan:
                 try:
-                    from sardis_v2_core.database import Database
+                    from sardis.core.database import Database
                     pool = await Database.get_pool()
                     async with pool.acquire() as conn:
                         await conn.execute(
@@ -267,7 +267,7 @@ class PolarBillingAdapter:
             org_id = metadata.get("org_id")
             if org_id:
                 try:
-                    from sardis_v2_core.database import Database
+                    from sardis.core.database import Database
                     pool = await Database.get_pool()
                     async with pool.acquire() as conn:
                         await conn.execute(

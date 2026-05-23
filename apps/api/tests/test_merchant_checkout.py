@@ -30,7 +30,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.merchant import (
+from sardis.core.merchant import (
     Merchant,
     MerchantCheckoutLink,
     MerchantCheckoutSession,
@@ -412,7 +412,7 @@ class TestMerchantCheckoutMandateSafety:
     @pytest.mark.asyncio
     async def test_mandate_validation_errors_fail_closed(self, monkeypatch):
         from fastapi import HTTPException
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         from server.routes.commerce import merchant_checkout
 

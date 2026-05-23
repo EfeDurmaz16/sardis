@@ -55,7 +55,7 @@ async def get_agent_activity(
     since: datetime | None = Query(default=None, description="Only entries after this timestamp"),
 ) -> dict:
     """Paginated activity log for a specific agent."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     pool = await Database.get_pool()
 
@@ -120,7 +120,7 @@ async def get_agent_activity_summary(
     principal: Principal = Depends(require_principal),
 ) -> ActivitySummary:
     """Aggregate activity summary for an agent."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     pool = await Database.get_pool()
     async with pool.acquire() as conn:

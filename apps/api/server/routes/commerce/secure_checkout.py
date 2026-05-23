@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.policy_attestation import (
+from sardis.core.policy_attestation import (
     build_signed_policy_snapshot,
     verify_signed_policy_snapshot,
 )
@@ -1340,7 +1340,7 @@ async def _dispatch_security_alert(
     if not _dispatch_security_alert_enabled():
         return
     try:
-        from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+        from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
 
         from server.routes.operations.alerts import dispatch_alert
 

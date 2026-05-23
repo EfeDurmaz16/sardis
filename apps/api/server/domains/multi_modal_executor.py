@@ -8,8 +8,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sardis_v2_core.execution_intent import ExecutionIntent
-from sardis_v2_core.execution_mode import ExecutionMode, ExecutionModeRouter
+from sardis.core.execution_intent import ExecutionIntent
+from sardis.core.execution_mode import ExecutionMode, ExecutionModeRouter
 
 logger = logging.getLogger(__name__)
 

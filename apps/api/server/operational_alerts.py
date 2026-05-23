@@ -8,12 +8,12 @@ from __future__ import annotations
 import logging
 import os
 
-from sardis_v2_core.alert_channels import (
+from sardis.core.alert_channels import (
     AlertDispatcher,
     PagerDutyChannel,
     SlackChannel,
 )
-from sardis_v2_core.alert_rules import Alert, AlertSeverity, AlertType
+from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
 
 logger = logging.getLogger("server.api.ops_alerts")
 

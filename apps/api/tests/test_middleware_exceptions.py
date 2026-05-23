@@ -327,7 +327,7 @@ class TestRegisterExceptionHandlers:
 
         @app.get("/api/v2/not-found")
         def not_found_endpoint():
-            from sardis_v2_core.exceptions import SardisNotFoundError
+            from sardis.core.exceptions import SardisNotFoundError
             raise SardisNotFoundError("wallet_123", "Wallet")
 
         @app.get("/api/v2/http-error")

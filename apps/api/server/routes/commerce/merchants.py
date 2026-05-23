@@ -155,7 +155,7 @@ async def create_merchant(
     deps: MerchantDependencies = Depends(get_deps),
 ):
     """Create a merchant with auto-provisioned settlement wallet."""
-    from sardis_v2_core.merchant import Merchant
+    from sardis.core.merchant import Merchant
 
     merchant = Merchant(
         name=body.name,
@@ -283,7 +283,7 @@ async def lookup_merchant(
     if not domain and not name:
         raise HTTPException(status_code=400, detail="Provide 'domain' or 'name' query parameter")
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     if domain:
         # Strip protocol and path
@@ -330,7 +330,7 @@ async def lookup_merchant(
     if not row:
         raise HTTPException(status_code=404, detail="Merchant not found")
 
-    from sardis_v2_core.merchant import MerchantRepository
+    from sardis.core.merchant import MerchantRepository
     merchant = MerchantRepository._row_to_merchant(row)
     return _merchant_response(merchant)
 
@@ -344,7 +344,7 @@ async def create_checkout_link(
     deps: MerchantDependencies = Depends(get_deps),
 ):
     """Create a reusable checkout link for a merchant."""
-    from sardis_v2_core.merchant import MerchantCheckoutLink
+    from sardis.core.merchant import MerchantCheckoutLink
 
     merchant = await deps.merchant_repo.get_merchant(merchant_id)
     if not merchant:
@@ -531,7 +531,7 @@ async def register_merchant(
     deps: MerchantDependencies = Depends(get_deps),
 ) -> MerchantRegisterResponse:
     """Self-register a merchant — no manual approval required."""
-    from sardis_v2_core.merchant import Merchant
+    from sardis.core.merchant import Merchant
 
     merchant = Merchant(
         name=body.business_name,

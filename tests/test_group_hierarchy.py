@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.agent_groups import (
+from sardis.core.agent_groups import (
     AgentGroup,
     AgentGroupHierarchy,
     AgentGroupRepository,

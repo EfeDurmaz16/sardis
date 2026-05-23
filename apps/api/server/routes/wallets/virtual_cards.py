@@ -206,7 +206,7 @@ def _get_laso_service():
 
 async def _check_mandate(mandate_id: str, org_id: str, amount: Decimal | None = None):
     """Validate spending mandate exists and amount is within limits."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
     mandate = await Database.fetchrow(
         "SELECT * FROM spending_mandates WHERE id = $1 AND org_id = $2 AND status = 'active'",
         mandate_id, org_id,

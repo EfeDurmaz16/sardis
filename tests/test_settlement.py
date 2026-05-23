@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.settlement import (
+from sardis.core.settlement import (
     InMemorySettlementStore,
     SettlementMode,
     SettlementReconciler,

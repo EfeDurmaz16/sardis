@@ -46,9 +46,9 @@ async def test_chain_executor(live_mode: bool = False, chain: str = "base_sepoli
 
     # Import
     try:
+        from sardis.core import PaymentMandate, load_settings
+        from sardis.core.mandates import VCProof
         from sardis_chain import CHAIN_CONFIGS, STABLECOIN_ADDRESSES, ChainExecutor
-        from sardis_v2_core import PaymentMandate, load_settings
-        from sardis_v2_core.mandates import VCProof
     except ImportError as e:
         print(f"\n❌ Import hatası: {e}")
         print("   Paketlerin kurulu olduğundan emin olun:")

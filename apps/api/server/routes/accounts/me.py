@@ -99,7 +99,7 @@ def _row_to_state(row: dict[str, Any]) -> OnboardingState:
 
 async def _ensure_row(org_id: str) -> dict[str, Any]:
     """Idempotently insert a default onboarding row and return it."""
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     await Database.execute(
         """
@@ -137,7 +137,7 @@ async def patch_onboarding(
     body: OnboardingPatchRequest,
     principal: Principal = Depends(require_principal),
 ) -> OnboardingState:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     if body.current_step is not None and body.current_step not in VALID_STEPS:
         raise HTTPException(status_code=422, detail=f"Unknown step: {body.current_step}")

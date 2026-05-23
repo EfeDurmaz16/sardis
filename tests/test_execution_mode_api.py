@@ -4,14 +4,14 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
-from sardis_v2_core.delegated_credential import (
+from sardis.core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis.core.delegated_credential import (
     CredentialNetwork,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.execution_mode import ExecutionModeRouter
-from sardis_v2_core.merchant_capability import (
+from sardis.core.execution_mode import ExecutionModeRouter
+from sardis.core.merchant_capability import (
     InMemoryMerchantCapabilityStore,
     MerchantExecutionCapability,
 )
@@ -82,7 +82,7 @@ class TestExecutionModeAPI:
         )
         await merchant_store.upsert(cap)
 
-        from sardis_v2_core.execution_intent import ExecutionIntent
+        from sardis.core.execution_intent import ExecutionIntent
         intent = ExecutionIntent(
             agent_id="agent_1",
             amount=Decimal("100"),

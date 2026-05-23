@@ -17,10 +17,10 @@ import pytest
 class TestCoreModulesExist:
     """Verify all core modules can be imported."""
 
-    def test_sardis_v2_core_imports(self):
-        """Test sardis_v2_core module imports."""
-        from sardis_v2_core.spending_policy import SpendingPolicy
-        from sardis_v2_core.spending_tracker import SpendingTracker
+    def test_sardis.core_imports(self):
+        """Test sardis.core module imports."""
+        from sardis.core.spending_policy import SpendingPolicy
+        from sardis.core.spending_tracker import SpendingTracker
         assert SpendingPolicy is not None
         assert SpendingTracker is not None
 
@@ -69,17 +69,17 @@ class TestNLPolicyEngine:
 
     def test_policy_parser_exists(self):
         """Test NL policy parser can be imported."""
-        from sardis_v2_core.nl_policy_parser import NLPolicyParser
+        from sardis.core.nl_policy_parser import NLPolicyParser
         assert NLPolicyParser is not None
 
     def test_regex_parser_fallback(self):
         """Test regex parser fallback exists."""
-        from sardis_v2_core.nl_policy_parser import RegexPolicyParser
+        from sardis.core.nl_policy_parser import RegexPolicyParser
         assert RegexPolicyParser is not None
 
     def test_policy_models(self):
         """Test policy models exist."""
-        from sardis_v2_core.nl_policy_parser import ExtractedPolicy, ExtractedSpendingLimit
+        from sardis.core.nl_policy_parser import ExtractedPolicy, ExtractedSpendingLimit
         assert ExtractedPolicy is not None
         assert ExtractedSpendingLimit is not None
 

@@ -21,13 +21,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis.core import AgentRepository, WalletRepository
+from sardis.core.identity import AgentIdentity, IdentityRegistry
+from sardis.core.mandates import PaymentMandate, VCProof
+from sardis.core.tokens import TokenType, to_raw_token_amount
 from sardis_chain.executor import ChainExecutor
 from sardis_compliance.checks import ComplianceAuditEntry
 from sardis_ledger.records import LedgerStore
-from sardis_v2_core import AgentRepository, WalletRepository
-from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.mandates import PaymentMandate, VCProof
-from sardis_v2_core.tokens import TokenType, to_raw_token_amount
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -49,7 +49,7 @@ public_router = APIRouter()
 async def _emit_a2a_webhook(request: Request, event_type: str, data: dict) -> None:
     """Fire-and-forget webhook emission for A2A events."""
     try:
-        from sardis_v2_core.webhooks import EventType, WebhookEvent
+        from sardis.core.webhooks import EventType, WebhookEvent
 
         svc = getattr(request.app.state, "webhook_service", None)
         if not svc:
@@ -801,8 +801,8 @@ async def a2a_pay(
         )
 
         # Submit to ControlPlane (policy → compliance → chain → ledger → receipt)
-        from sardis_v2_core.control_plane import ControlPlane
-        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
+        from sardis.core.control_plane import ControlPlane
+        from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
 
         from server.domains.compliance import ComplianceAdapter
         from server.domains.execution_engine import ExecutionEngineAdapter
@@ -1607,11 +1607,11 @@ async def _handle_payment_request(
             error_code="configuration_error",
         )
 
+    from sardis.core.control_plane import ControlPlane
+    from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
     from sardis_guardrails.anomaly_engine import get_anomaly_engine
     from sardis_guardrails.kill_switch import get_kill_switch
     from sardis_guardrails.transaction_caps import get_transaction_cap_engine
-    from sardis_v2_core.control_plane import ControlPlane
-    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
 
     from server.domains.compliance import ComplianceAdapter
     from server.domains.execution_engine import ExecutionEngineAdapter
@@ -1690,7 +1690,7 @@ async def _handle_payment_request(
 
 def _handle_credential_request(msg: A2AMessageRequest) -> A2AMessageResponse:
     """Handle an inbound credential verification request."""
-    from sardis_v2_core.agent_card import verify_agent_card
+    from sardis.core.agent_card import verify_agent_card
 
     payload = msg.payload or {}
     agent_card = payload.get("agent_card")

@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import AgentRepository
+from sardis.core import AgentRepository
 
 from server.authz import Principal, require_principal
 from server.canonical_state_machine import normalize_lithic_card_event
@@ -141,7 +141,7 @@ def create_cards_router(
         # Resolve MCC code to category for category-specific rule matching
         merchant_category = None
         if mcc_code:
-            from sardis_v2_core.mcc_service import get_mcc_info
+            from sardis.core.mcc_service import get_mcc_info
             mcc_info = get_mcc_info(mcc_code)
             if mcc_info:
                 merchant_category = mcc_info.category
@@ -493,7 +493,7 @@ def create_cards_router(
                     await _reservation("released", reason="linked_wallet_not_found")
                     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Linked wallet not found")
 
-                from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+                from sardis.core.tokens import TokenType, to_raw_token_amount
                 stablecoin_amount_minor = to_raw_token_amount(TokenType.USDC, payload.amount)
 
                 try:

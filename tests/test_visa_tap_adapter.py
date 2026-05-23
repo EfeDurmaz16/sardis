@@ -8,20 +8,20 @@ import os
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.credential_store import CredentialEncryption
-from sardis_v2_core.delegated_adapters.visa_tap import (
+from sardis.core.credential_store import CredentialEncryption
+from sardis.core.delegated_adapters.visa_tap import (
     MockVisaTAPAdapter,
     VisaTAPAdapter,
     verify_visa_tap_signature,
 )
-from sardis_v2_core.delegated_credential import (
+from sardis.core.delegated_credential import (
     CredentialClass,
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegated_executor import DelegatedPaymentRequest
+from sardis.core.delegated_executor import DelegatedPaymentRequest
 
 # ---------------------------------------------------------------------------
 # Helpers

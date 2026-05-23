@@ -36,6 +36,48 @@ os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_purposes_only_32chars"  # Min 32 chars required
 os.environ["SARDIS_TEST_API_KEY"] = "sk_test_demo123"  # nosecret: test-only dummy key
 
+# Compatibility shim: the standalone `sardis_protocol` / `sardis_chain` / ...
+# packages were consolidated into the umbrella `sardis` package in PR #387.
+# Reference API modules still import from the legacy names; alias them onto the
+# umbrella submodules so the test suite can load `server.main`.
+import importlib as _importlib
+import importlib.abc as _importlib_abc
+import importlib.machinery as _importlib_machinery
+
+_LEGACY_TO_UMBRELLA = {
+    "sardis.core": "sardis.core",
+    "sardis_protocol": "sardis.protocol",
+    "sardis_cards": "sardis.cards",
+    "sardis_wallet": "sardis.wallet",
+    "sardis_ramp": "sardis.ramp",
+    "sardis_ucp": "sardis.ucp",
+    "sardis_checkout": "sardis.checkout",
+    "sardis_chain": "sardis.chain",
+    "sardis_ledger": "sardis.ledger",
+    "sardis_compliance": "sardis.compliance",
+    "sardis_guardrails": "sardis.guardrails",
+}
+
+
+class _LegacySardisFinder(_importlib_abc.MetaPathFinder):
+    def find_spec(self, fullname, path, target=None):  # type: ignore[override]
+        for legacy, umbrella in _LEGACY_TO_UMBRELLA.items():
+            if fullname == legacy or fullname.startswith(legacy + "."):
+                rebased = umbrella + fullname[len(legacy):]
+                try:
+                    module = _importlib.import_module(rebased)
+                except ModuleNotFoundError:
+                    return None
+                sys.modules[fullname] = module
+                return _importlib_machinery.ModuleSpec(fullname, loader=None)
+        return None
+
+
+if not any(isinstance(f, _LegacySardisFinder) for f in sys.meta_path):
+    # Insert at the front so the umbrella `sardis.*` modules take precedence
+    # over any out-of-date PyPI-installed legacy package missing newer submods.
+    sys.meta_path.insert(0, _LegacySardisFinder())
+
 from server.main import create_app
 
 

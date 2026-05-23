@@ -4,8 +4,8 @@ import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import PaymentMandate, VCProof
+from sardis.core import SardisSettings
+from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_wallet.manager import EnhancedWalletManager
 
 

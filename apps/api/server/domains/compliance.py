@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sardis_v2_core.execution_intent import ExecutionIntent
+from sardis.core.execution_intent import ExecutionIntent
 
 logger = logging.getLogger(__name__)
 

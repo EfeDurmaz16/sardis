@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sardis_v2_core.cache import create_cache_service
+from sardis.core.cache import create_cache_service
 
 from server.repositories.secure_checkout_job_repository import SecureCheckoutJobRepository
 from server.routes.commerce.secure_checkout import RepositoryBackedSecureCheckoutStore

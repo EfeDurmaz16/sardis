@@ -47,7 +47,7 @@ async def _persist_export(export_id: str, record: dict[str, Any]) -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO data_exports (export_id, user_id, status, data, expires_at, created_at)
                VALUES ($1, $2, $3, $4, $5, NOW())
@@ -67,7 +67,7 @@ async def _load_export(export_id: str) -> dict[str, Any] | None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         row = await Database.fetchrow(
             "SELECT data FROM data_exports WHERE export_id = $1", export_id,
         )
@@ -174,7 +174,7 @@ async def _build_export_payload(user_id: str, org_id: str | None) -> dict[str, A
     }
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             # User profile
@@ -386,7 +386,7 @@ async def list_exports(
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         rows = await Database.fetch(
             "SELECT data FROM data_exports WHERE user_id = $1 ORDER BY created_at DESC",
             user_id,

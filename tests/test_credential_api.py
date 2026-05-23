@@ -4,14 +4,14 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
-from sardis_v2_core.delegated_credential import (
+from sardis.core.credential_store import CredentialEncryption, InMemoryCredentialStore
+from sardis.core.delegated_credential import (
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegation_consent import (
+from sardis.core.delegation_consent import (
     ConsentType,
     DelegationConsent,
     InMemoryConsentStore,

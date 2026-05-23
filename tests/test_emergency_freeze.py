@@ -99,7 +99,7 @@ class TestEmergencyFreezeLogic:
         mock_pool.acquire = MagicMock(return_value=mock_conn)
 
         with patch("server.routes.operations.emergency.log_admin_action", new_callable=AsyncMock):
-            with patch("sardis_v2_core.database.Database.get_pool", return_value=mock_pool):
+            with patch("sardis.core.database.Database.get_pool", return_value=mock_pool):
                 from server.routes.operations.emergency import FreezeAllRequest, freeze_all_wallets
                 # Create a mock request
                 mock_request = MagicMock()

@@ -109,7 +109,7 @@ class SettlementService:
             try:
                 from decimal import Decimal
 
-                from sardis_v2_core.funding import FundingRequest
+                from sardis.core.funding import FundingRequest
 
                 request = FundingRequest(
                     amount=Decimal(str(session.amount)),
@@ -167,7 +167,7 @@ class SettlementService:
 
         try:
             # Get quote from Bridge
-            from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+            from sardis.core.tokens import TokenType, to_raw_token_amount
             amount_minor = to_raw_token_amount(TokenType.USDC, session.amount)
 
             quote = await self._offramp.get_quote(
@@ -181,7 +181,7 @@ class SettlementService:
             source_address = ""
             if merchant.settlement_wallet_id:
                 # Use the settlement wallet address on base
-                from sardis_v2_core.database import Database
+                from sardis.core.database import Database
                 row = await Database.fetchrow(
                     """
                     SELECT w.chain_address FROM wallets w
@@ -353,7 +353,7 @@ class SettlementService:
             )
 
             # Track the payout
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             await Database.execute(
                 """
                 INSERT INTO stripe_connect_payouts

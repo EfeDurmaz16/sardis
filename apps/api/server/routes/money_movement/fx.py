@@ -92,7 +92,7 @@ async def create_fx_quote(
     req: FXQuoteRequest,
     principal: Principal | None = Depends(optional_principal),
 ) -> FXQuoteResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     # Route through LiquidityRouter for real adapter-driven quotes
     try:
@@ -152,7 +152,7 @@ async def execute_fx_quote(
     req: FXExecuteRequest,
     principal: Principal = Depends(require_principal),
 ) -> FXQuoteResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
@@ -231,7 +231,7 @@ async def execute_fx_quote(
                 raise HTTPException(status_code=503, detail="SARDIS_BASE_RPC_URL not set for Uniswap V3")
             uni = UniswapV3Adapter(rpc_url=rpc, chain=chain)
             amount_raw = int(row["from_amount"] * Decimal("1000000"))
-            from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+            from sardis.core.tokens import TOKEN_REGISTRY, TokenType
             in_addr = TOKEN_REGISTRY[TokenType(row["from_currency"])].contract_addresses.get(chain, "")
             out_addr = TOKEN_REGISTRY[TokenType(row["to_currency"])].contract_addresses.get(chain, "")
             quote = await uni.get_quote(in_addr, out_addr, amount_raw)
@@ -353,7 +353,7 @@ async def create_bridge_transfer(
     req: BridgeTransferRequest,
     principal: Principal = Depends(require_principal),
 ) -> BridgeTransferResponse:
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     if req.from_chain == req.to_chain:
         raise HTTPException(status_code=422, detail="Source and destination chains must differ")

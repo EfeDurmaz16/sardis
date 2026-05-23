@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.marketplace import (
+from sardis.core.marketplace import (
     MarketplaceRepository,
     Milestone,
     OfferStatus,

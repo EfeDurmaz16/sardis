@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.did_bridge import DIDBridge, DIDMapping
-from sardis_v2_core.trust_graph import TrustPathNode, TrustPathResult
+from sardis.core.did_bridge import DIDBridge, DIDMapping
+from sardis.core.trust_graph import TrustPathNode, TrustPathResult
 
 
 @pytest.fixture
@@ -81,7 +81,7 @@ def test_register_fides_did(client):
 
 def test_register_fides_did_invalid(client):
     """Invalid DID registration returns 400."""
-    from sardis_v2_core.did_bridge import DIDRegistrationError
+    from sardis.core.did_bridge import DIDRegistrationError
 
     mock_bridge = MagicMock(spec=DIDBridge)
     mock_bridge.register_fides_did.side_effect = DIDRegistrationError("Invalid format")
@@ -137,7 +137,7 @@ def test_get_trust_score_with_fides(client):
     """Returns trust score computed via FIDES adapter."""
     from decimal import Decimal
 
-    from sardis_v2_core.kya_trust_scoring import TrustScore, TrustSignal, TrustTier
+    from sardis.core.kya_trust_scoring import TrustScore, TrustSignal, TrustTier
 
     mock_scorer = AsyncMock()
     mock_scorer.calculate_trust = AsyncMock(return_value=TrustScore(
@@ -206,7 +206,7 @@ def test_trust_path_no_fides_did(client):
 
 def test_policy_history_endpoint(client):
     """Returns AGIT commit log."""
-    from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
+    from sardis.core.agit_policy_engine import AgitPolicyEngine
 
     mock_engine = MagicMock(spec=AgitPolicyEngine)
     mock_engine.get_chain_history.return_value = [
@@ -225,7 +225,7 @@ def test_policy_history_endpoint(client):
 
 def test_policy_chain_verify_endpoint(client):
     """Returns chain integrity status."""
-    from sardis_v2_core.agit_policy_engine import AgitPolicyEngine, PolicyChainVerification
+    from sardis.core.agit_policy_engine import AgitPolicyEngine, PolicyChainVerification
 
     mock_engine = MagicMock(spec=AgitPolicyEngine)
     mock_engine.verify_policy_chain.return_value = PolicyChainVerification(

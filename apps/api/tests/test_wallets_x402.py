@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.database import Database
-from sardis_v2_core.wallets import Wallet
+from sardis.core.database import Database
+from sardis.core.wallets import Wallet
 
 import server.routes.wallets.lifecycle as wallets
 from server.authz import Principal, require_principal

@@ -31,7 +31,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sardis_v2_core.exceptions import (
+from sardis.core.exceptions import (
     SardisDependencyNotConfiguredError,
     SardisException,
     SardisRateLimitError,

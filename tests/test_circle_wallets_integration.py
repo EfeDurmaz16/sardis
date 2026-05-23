@@ -230,7 +230,7 @@ class TestWalletManagerCircle:
         assert req.mpc_provider == "circle"
 
     def test_wallet_model_circle_fields(self):
-        from sardis_v2_core.wallets import Wallet
+        from sardis.core.wallets import Wallet
 
         wallet = Wallet.new("agent_1", mpc_provider="circle")
         assert wallet.mpc_provider == "circle"
@@ -240,7 +240,7 @@ class TestWalletManagerCircle:
         assert wallet.circle_wallet_id == "cw_123"
 
     def test_config_supports_circle_mpc(self):
-        from sardis_v2_core.config import MPCProvider
+        from sardis.core.config import MPCProvider
 
         p = MPCProvider(name="circle")
         assert p.name == "circle"
@@ -253,7 +253,7 @@ class TestTurnkeyFallback:
     @pytest.mark.asyncio
     async def test_fallback_to_turnkey_on_circle_failure(self):
         """When Circle fails and Turnkey is available, wallet creation falls back."""
-        from sardis_v2_core.config import SardisSettings
+        from sardis.core.config import SardisSettings
         from sardis_wallet.manager import EnhancedWalletManager
 
         settings = MagicMock(spec=SardisSettings)

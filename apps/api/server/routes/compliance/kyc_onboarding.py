@@ -543,7 +543,7 @@ async def _resolve_user_email(user_id: str) -> str | None:
     if "@" in user_id:
         return user_id
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         # Try ba_user table
         row = await Database.fetchrow(
@@ -583,7 +583,7 @@ async def _upsert_kyc_verification(
     carries a unique constraint.
     """
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         meta_json = json.dumps(metadata or {}, default=str)
 
@@ -633,7 +633,7 @@ async def _update_kyc_status(
 ) -> None:
     """Update an existing verification row with new status from provider."""
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         await Database.execute(
             """
@@ -665,7 +665,7 @@ async def _get_latest_verification(user_id: str) -> dict | None:
     webhook updated the user table but no verification row was persisted).
     """
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         row = await Database.fetchrow(
             """
@@ -781,7 +781,7 @@ async def _check_idempotency(session_id: str, status: str) -> bool:
     """
     key = f"{session_id}:{status}"
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         row = await Database.fetchrow(
             """
@@ -803,7 +803,7 @@ async def _record_idempotency(session_id: str, status: str) -> None:
     key = f"{session_id}:{status}"
     _idempotency_cache.add(key)
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         await Database.execute(
             """
@@ -826,7 +826,7 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
     2. Generate a production (``sk_live_``) API key for the org
     """
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         # 1a. Update ba_user kyc_status (better-auth users)
         await Database.execute(
@@ -843,7 +843,7 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
         logger.warning("Failed to update ba_user.kyc_status for %s: %s", user_id, exc)
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         # 1b. Update users kyc_status (dashboard users with usr_xxx IDs)
         await Database.execute(
@@ -863,7 +863,7 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
     if not organization_id:
         # Try to resolve org from the kyc_verifications metadata
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             row = await Database.fetchrow(
                 """
@@ -886,7 +886,7 @@ async def _on_kyc_approved(user_id: str, organization_id: str | None) -> None:
     if not organization_id:
         # Fallback: resolve org from user_org_memberships (dashboard users)
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             org_row = await Database.fetchrow(
                 """

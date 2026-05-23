@@ -21,6 +21,11 @@ for pkg in ["sardis-core", "api", "sardis-wallet", "sardis-protocol",
 # Also add the root sardis package
 sys.path.insert(0, str(root_dir))
 
+# Add apps/api so `from server...` imports resolve to the reference API.
+_api_dir = root_dir / "apps" / "api"
+if _api_dir.exists():
+    sys.path.insert(0, str(_api_dir))
+
 # Clear any cached settings and set clean test environment
 # Remove problematic env vars that might be read from .env
 for key in list(os.environ.keys()):
@@ -33,7 +38,7 @@ os.environ["SARDIS_SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["SARDIS_CHAIN_MODE"] = "simulated"
 
 # Clear the settings cache so tests get fresh settings
-from sardis_v2_core.config import load_settings
+from sardis.core.config import load_settings
 
 load_settings.cache_clear()
 
@@ -127,7 +132,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 @pytest.fixture
 def test_settings():
     """Get test settings."""
-    from sardis_v2_core import load_settings
+    from sardis.core import load_settings
     return load_settings()
 
 
@@ -157,7 +162,7 @@ def sample_mandate():
     """Create a sample payment mandate for testing."""
     import time
 
-    from sardis_v2_core.mandates import PaymentMandate
+    from sardis.core.mandates import PaymentMandate
 
     return PaymentMandate(
         mandate_id="test_mandate_001",

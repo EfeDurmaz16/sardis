@@ -63,7 +63,7 @@ class StripeBillingService:
     async def get_or_create_subscription(self, org_id: str) -> SubscriptionInfo:
         """Get existing subscription or return default free tier."""
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             pool = await Database.get_pool()
             async with pool.acquire() as conn:
@@ -109,7 +109,7 @@ class StripeBillingService:
         now = datetime.now(UTC)
 
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
 
             pool = await Database.get_pool()
             async with pool.acquire() as conn:
@@ -256,7 +256,7 @@ class StripeBillingService:
 
             if stripe_customer_id:
                 try:
-                    from sardis_v2_core.database import get_pool
+                    from sardis.core.database import get_pool
 
                     pool = await get_pool()
                     async with pool.acquire() as conn:
@@ -290,7 +290,7 @@ class StripeBillingService:
 
             if stripe_customer_id:
                 try:
-                    from sardis_v2_core.database import get_pool
+                    from sardis.core.database import get_pool
 
                     pool = await get_pool()
                     async with pool.acquire() as conn:

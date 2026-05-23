@@ -178,7 +178,7 @@ class TestWalletTransfer:
         assert resp.status_code == 503
 
     def test_transfer_chain_error(self, app_with_wallets, mock_payment_orchestrator):
-        from sardis_v2_core.orchestrator import ChainExecutionError
+        from sardis.core.orchestrator import ChainExecutionError
         mock_payment_orchestrator.execute_chain.side_effect = ChainExecutionError("nonce too low")
         client = TestClient(app_with_wallets)
         resp = client.post("/api/v2/wallets/wallet_1/transfer", json={

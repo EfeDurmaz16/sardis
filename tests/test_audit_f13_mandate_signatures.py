@@ -3,10 +3,10 @@ import base64
 import time
 
 from nacl.signing import SigningKey
+from sardis.core import SardisSettings
+from sardis.core.mandates import CartMandate, IntentMandate, VCProof
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import CartMandate, IntentMandate, VCProof
 
 
 def _keypair():

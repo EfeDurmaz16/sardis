@@ -131,7 +131,7 @@ def _serialize_demo_session(session: Any) -> str:
 
 
 def _deserialize_demo_session(payload: str):
-    from sardis_v2_core.merchant import MerchantCheckoutSession
+    from sardis.core.merchant import MerchantCheckoutSession
 
     data = json.loads(payload)
     return MerchantCheckoutSession(
@@ -552,8 +552,8 @@ async def pay_session(
     # Validate spending mandate if provided
     if body.mandate_id:
         try:
-            from sardis_v2_core.database import Database
-            from sardis_v2_core.spending_mandate import SpendingMandate
+            from sardis.core.database import Database
+            from sardis.core.spending_mandate import SpendingMandate
 
             mandate_row = await Database.fetchrow(
                 "SELECT * FROM spending_mandates WHERE external_id = $1",
@@ -633,7 +633,7 @@ async def pay_session(
     # Update mandate spent_total after successful payment
     if body.mandate_id and result.get("status") in ("paid", "settled"):
         try:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             await Database.execute(
                 """
                 UPDATE spending_mandates
@@ -678,7 +678,7 @@ async def get_session_balance(
         try:
             wallet = await deps.wallet_manager.get_wallet(session.payer_wallet_id)
             if wallet:
-                from sardis_v2_core.tokens import TokenType
+                from sardis.core.tokens import TokenType
                 balance = await wallet.get_balance(_CHECKOUT_CHAIN, TokenType.USDC, rpc_client=None)
         except Exception:
             logger.warning("Failed to get balance for wallet %s", session.payer_wallet_id)
@@ -1019,7 +1019,7 @@ async def create_test_session(
         "SARDIS_TEST_SETTLEMENT_ADDRESS",
         "0x0000000000000000000000000000000000000000",
     )
-    from sardis_v2_core.merchant import MerchantCheckoutSession
+    from sardis.core.merchant import MerchantCheckoutSession
 
     session = MerchantCheckoutSession(
         merchant_id=test_merchant_id,
@@ -1065,7 +1065,7 @@ async def stream_session_updates(
                 try:
                     wallet = await deps.wallet_manager.get_wallet(current_session.payer_wallet_id)
                     if wallet:
-                        from sardis_v2_core.tokens import TokenType
+                        from sardis.core.tokens import TokenType
                         balance = str(await wallet.get_balance(_CHECKOUT_CHAIN, TokenType.USDC, rpc_client=None))
                 except Exception:
                     pass

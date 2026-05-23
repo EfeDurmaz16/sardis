@@ -73,7 +73,7 @@ async def retry_settlement(
     store=Depends(_get_settlement_store),
 ):
     """Admin retry a failed settlement."""
-    from sardis_v2_core.settlement import SettlementStatus
+    from sardis.core.settlement import SettlementStatus
 
     record = await store.get(settlement_id)
     if record is None:

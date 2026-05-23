@@ -133,6 +133,7 @@ bypass-selection = true
 
 [tool.uv.sources]
 sardis = { path = "packages/sardis", editable = true }
+sardis-reference-api = { path = "apps/api", editable = true }
 
 [dependency-groups]
 dev = [
@@ -151,4 +152,7 @@ dev = [
     "PyNaCl>=1.5",
     "numpy>=2.0",
     "scipy>=1.11",
+    # Reference API installs its runtime deps (FastAPI extras, prometheus-client,
+    # SQLAlchemy, web3, etc.) so root-level integration tests can import server.
+    "sardis-reference-api",
 ]

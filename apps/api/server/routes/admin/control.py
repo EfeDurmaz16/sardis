@@ -450,7 +450,7 @@ async def list_admin_users(
     """
     logger.info(f"Admin user list requested from {request.client.host if request.client else 'unknown'}")
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     rows = await Database.fetch(
         """SELECT id, email, role, created_at,
@@ -485,7 +485,7 @@ async def update_admin_config(
         f"from {request.client.host if request.client else 'unknown'}"
     )
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     await Database.execute(
         r"""INSERT INTO system_config (key, value, description, updated_at)

@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import AgentRepository
+from sardis.core import AgentRepository
 
 from server.authz import Principal, require_principal
 from server.idempotency import get_idempotency_key, run_idempotent
@@ -473,7 +473,7 @@ async def withdraw_crypto(
         if not chain_executor:
             raise HTTPException(status_code=503, detail="Chain executor not available")
 
-        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+        from sardis.core.tokens import TokenType, to_raw_token_amount
         amount_minor = to_raw_token_amount(TokenType(req.token.upper()), req.amount)
 
         try:

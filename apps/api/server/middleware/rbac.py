@@ -19,8 +19,8 @@ import os
 from collections.abc import Callable
 
 from fastapi import HTTPException, Request, status
-from sardis_v2_core.organizations import OrganizationManager, OrgMember
-from sardis_v2_core.rbac import Permission, RBACEngine
+from sardis.core.organizations import OrganizationManager, OrgMember
+from sardis.core.rbac import Permission, RBACEngine
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 

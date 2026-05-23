@@ -18,7 +18,7 @@ logger = logging.getLogger("server.api.mfa")
 async def _get_user_mfa_status(user_id: str) -> dict:
     """Check if a user has MFA enabled and retrieve their secret."""
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         async with pool.acquire() as conn:

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
-from sardis_v2_core.organizations import (
+from sardis.core.organizations import (
     MemberRole,
     Organization,
     OrganizationManager,
@@ -16,7 +16,7 @@ from sardis_v2_core.organizations import (
     OrgMember,
     Team,
 )
-from sardis_v2_core.rbac import Permission, RBACEngine
+from sardis.core.rbac import Permission, RBACEngine
 
 from server.authz import Principal, require_principal
 

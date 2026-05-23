@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import httpx
-from sardis_v2_core.tokens import TOKEN_REGISTRY, TokenType
+from sardis.core.tokens import TOKEN_REGISTRY, TokenType
 
 logger = logging.getLogger(__name__)
 

@@ -174,7 +174,7 @@ def _get_outcome_tracker():
             "Using in-memory OutcomeTracker — data will be lost on restart. "
             "Explicit sandbox mode only; not suitable for live deployments."
         )
-        from sardis_v2_core.outcome_tracker import OutcomeTracker
+        from sardis.core.outcome_tracker import OutcomeTracker
         _tracker_instance = OutcomeTracker()
     return _tracker_instance
 

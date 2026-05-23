@@ -330,13 +330,13 @@ class TestEventBusIntegration:
     """Verify the EventBus system works with webhook event types."""
 
     def test_event_bus_import(self):
-        from sardis_v2_core.event_bus import EventBus, get_default_bus
+        from sardis.core.event_bus import EventBus, get_default_bus
         assert EventBus is not None
         assert callable(get_default_bus)
 
     def test_event_types_comprehensive(self):
         """Verify all expected event categories exist."""
-        from sardis_v2_core.webhooks import EventType
+        from sardis.core.webhooks import EventType
 
         # Policy events
         assert hasattr(EventType, "POLICY_CHECK_PASSED")
@@ -351,8 +351,8 @@ class TestEventBusIntegration:
 
     @pytest.mark.asyncio
     async def test_event_bus_subscribe_and_emit(self):
-        from sardis_v2_core.event_bus import EventBus
-        from sardis_v2_core.webhooks import EventType
+        from sardis.core.event_bus import EventBus
+        from sardis.core.webhooks import EventType
 
         bus = EventBus()
         received = []
@@ -372,8 +372,8 @@ class TestEventBusIntegration:
 
     @pytest.mark.asyncio
     async def test_event_bus_wildcard_all(self):
-        from sardis_v2_core.event_bus import EventBus
-        from sardis_v2_core.webhooks import EventType
+        from sardis.core.event_bus import EventBus
+        from sardis.core.webhooks import EventType
 
         bus = EventBus()
         received = []

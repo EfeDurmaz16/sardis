@@ -5,10 +5,10 @@ from decimal import Decimal
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core import InMemoryPolicyStore
-from sardis_v2_core.agents import Agent
-from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
-from sardis_v2_core.spending_policy import SpendingPolicy, TimeWindowLimit, TrustLevel
+from sardis.core import InMemoryPolicyStore
+from sardis.core.agents import Agent
+from sardis.core.agit_policy_engine import AgitPolicyEngine
+from sardis.core.spending_policy import SpendingPolicy, TimeWindowLimit, TrustLevel
 
 from server.authz import Principal, require_principal
 from server.routes.policy import policies
@@ -51,7 +51,7 @@ def _build_client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     history_engine = AgitPolicyEngine()
     monkeypatch.setattr("server.routes.policy.policies._get_policy_history_engine", lambda: history_engine)
     monkeypatch.setattr(
-        "sardis_v2_core.nl_policy_parser.create_policy_parser",
+        "sardis.core.nl_policy_parser.create_policy_parser",
         lambda use_llm=True: _FakeParser(),
     )
 

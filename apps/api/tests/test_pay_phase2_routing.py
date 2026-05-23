@@ -190,7 +190,7 @@ async def test_auto_route_selects_cheapest(client, mock_orchestrator):
 @pytest.mark.asyncio
 async def test_auto_route_fallback_on_chain_failure(client, mock_orchestrator):
     """When the first chain fails, auto-routing should try the next."""
-    from sardis_v2_core.orchestrator import ChainExecutionError
+    from sardis.core.orchestrator import ChainExecutionError
 
     call_count = 0
 
@@ -228,7 +228,7 @@ async def test_auto_route_fallback_on_chain_failure(client, mock_orchestrator):
 @pytest.mark.asyncio
 async def test_explicit_chain_no_fallback_on_failure(client, mock_orchestrator):
     """With explicit chain, failure should NOT try fallback chains."""
-    from sardis_v2_core.orchestrator import ChainExecutionError
+    from sardis.core.orchestrator import ChainExecutionError
 
     mock_orchestrator.execute_chain = AsyncMock(
         side_effect=ChainExecutionError("Gas estimation failed")
@@ -375,7 +375,7 @@ async def test_mandate_id_in_response(client, mock_orchestrator):
 @pytest.mark.asyncio
 async def test_policy_violation_returns_blocked(client, mock_orchestrator):
     """Policy violations should return blocked status, not retry on other chains."""
-    from sardis_v2_core.orchestrator import PolicyViolationError
+    from sardis.core.orchestrator import PolicyViolationError
 
     mock_orchestrator.execute_chain = AsyncMock(
         side_effect=PolicyViolationError("Daily limit exceeded")

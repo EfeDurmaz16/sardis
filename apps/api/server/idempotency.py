@@ -53,7 +53,7 @@ def _cache_key(*parts: str) -> str:
 async def _db_get_idempotency(key: str) -> dict | None:
     """Fallback: read idempotency record from DB."""
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -79,7 +79,7 @@ async def _db_get_idempotency(key: str) -> dict | None:
 async def _db_set_idempotency(key: str, request_hash: str, status_code: int, body: Any) -> None:
     """Write-through: persist idempotency record to DB."""
     try:
-        from sardis_v2_core.database import get_pool
+        from sardis.core.database import get_pool
 
         pool = await get_pool()
         async with pool.acquire() as conn:

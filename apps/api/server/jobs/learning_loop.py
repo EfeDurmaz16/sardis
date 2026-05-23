@@ -59,7 +59,7 @@ async def run_learning_loop(
     # Step 3: Confidence tuner
     if confidence_router is not None and resolved_outcomes:
         try:
-            from sardis_v2_core.confidence_tuner import ConfidenceTuner
+            from sardis.core.confidence_tuner import ConfidenceTuner
 
             tuner = ConfidenceTuner()
             recommendation = await tuner.evaluate_thresholds(

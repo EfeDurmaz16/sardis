@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
-from sardis_v2_core.database import Database
+from sardis.core.database import Database
 
 from server.middleware.auth import APIKey, require_api_key
 

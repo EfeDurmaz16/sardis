@@ -74,7 +74,7 @@ async def search_directory(
         GET /api/v2/directory?category=ai&max_price=0.01
         GET /api/v2/directory?q=text+generation&protocol=mpp
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     conditions = ["s.is_active = TRUE"]
     params: list[Any] = []
@@ -168,7 +168,7 @@ async def register_service(body: RegisterServiceRequest):
     import json
     import uuid
 
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     service_id = str(uuid.uuid4())
 

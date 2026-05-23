@@ -2,9 +2,9 @@
 import time
 from decimal import Decimal
 
+from sardis.core import SardisSettings
+from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_compliance.checks import NLPolicyProvider
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.mandates import PaymentMandate, VCProof
 
 
 def _proof():

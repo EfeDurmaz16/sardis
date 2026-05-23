@@ -23,7 +23,7 @@ def fuzz_validate_payment(data: bytes) -> None:
     """Fuzz SpendingPolicy.validate_payment with random amounts and scopes."""
     from decimal import Decimal, InvalidOperation
 
-    from sardis_v2_core.spending_policy import SpendingPolicy, SpendingScope, TrustLevel
+    from sardis.core.spending_policy import SpendingPolicy, SpendingScope, TrustLevel
 
     fdp = atheris.FuzzedDataProvider(data)
 

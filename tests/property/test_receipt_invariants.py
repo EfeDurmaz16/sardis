@@ -24,7 +24,7 @@ except ImportError:
     class st:
         text = staticmethod(lambda **kw: None)
 
-from sardis_v2_core.execution_receipt import ExecutionReceipt, build_receipt, hash_artifact
+from sardis.core.execution_receipt import ExecutionReceipt, build_receipt, hash_artifact
 
 
 def test_receipt_signature_deterministic():

@@ -19,16 +19,16 @@ import pytest
 from cryptography.fernet import Fernet
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.credential_store import CredentialEncryption
-from sardis_v2_core.delegated_adapters.stripe_spt import StripeSPTAdapter
-from sardis_v2_core.delegated_credential import (
+from sardis.core.credential_store import CredentialEncryption
+from sardis.core.delegated_adapters.stripe_spt import StripeSPTAdapter
+from sardis.core.delegated_credential import (
     CredentialClass,
     CredentialNetwork,
     CredentialScope,
     CredentialStatus,
     DelegatedCredential,
 )
-from sardis_v2_core.delegated_executor import DelegatedPaymentRequest
+from sardis.core.delegated_executor import DelegatedPaymentRequest
 
 # ---------------------------------------------------------------------------
 # Test helpers

@@ -54,7 +54,7 @@ async def export_compliance_evidence(
 
     Enterprise compliance teams use this for SOC2/PCI audits.
     """
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
 
     # Policy decisions
     policy_rows = await Database.fetch(

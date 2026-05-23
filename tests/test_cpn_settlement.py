@@ -14,8 +14,8 @@ import pytest
 import respx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.cpn_funding_adapter import CircleCPNFundingAdapter
-from sardis_v2_core.funding import FundingRequest, FundingResult
+from sardis.core.cpn_funding_adapter import CircleCPNFundingAdapter
+from sardis.core.funding import FundingRequest, FundingResult
 
 # ---------------------------------------------------------------------------
 # Helpers

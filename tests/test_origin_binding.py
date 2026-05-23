@@ -8,13 +8,13 @@ import hashlib
 from datetime import UTC, datetime
 
 import pytest
-from sardis_v2_core.attestation_envelope import (
+from sardis.core.attestation_envelope import (
     AttestationEnvelope,
     _hash_value,
     build_attestation_envelope,
     verify_attestation_signature,
 )
-from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+from sardis.core.execution_intent import ExecutionIntent, IntentSource
 
 
 class TestExecutionIntentOriginBinding:
@@ -234,8 +234,8 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
+        from sardis.core import SardisSettings
         from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)
@@ -257,8 +257,8 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
+        from sardis.core import SardisSettings
         from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)
@@ -285,8 +285,8 @@ class TestVerifierActionDescriptionHashCheck:
         import os
         os.environ.setdefault("SARDIS_ENVIRONMENT", "test")
 
+        from sardis.core import SardisSettings
         from sardis_protocol.verifier import MandateVerifier
-        from sardis_v2_core import SardisSettings
 
         settings = SardisSettings(allowed_domains=["sardis.sh"])
         verifier = MandateVerifier(settings=settings)

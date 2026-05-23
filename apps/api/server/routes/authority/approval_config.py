@@ -93,7 +93,7 @@ async def _persist_approval_config() -> None:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.execute(
             """INSERT INTO operator_config (key, value, updated_at)
                VALUES ('approval_config', $1, NOW())
@@ -109,7 +109,7 @@ async def _load_approval_config() -> dict:
     try:
         import json
 
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         row = await Database.fetchrow(
             "SELECT value FROM operator_config WHERE key = 'approval_config'"
         )

@@ -24,7 +24,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core import (
+from sardis.core import (
     TrustLevel,
     create_default_policy,
 )

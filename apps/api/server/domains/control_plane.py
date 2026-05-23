@@ -1,14 +1,14 @@
 """Control Plane domain — intent submission and routing.
 
-Thin wrapper around sardis_v2_core.control_plane.ControlPlane,
+Thin wrapper around sardis.core.control_plane.ControlPlane,
 configured with the app's actual service instances.
 """
 from __future__ import annotations
 
 import logging
 
-from sardis_v2_core.control_plane import ControlPlane
-from sardis_v2_core.execution_intent import ExecutionIntent, ExecutionResult, SimulationResult
+from sardis.core.control_plane import ControlPlane
+from sardis.core.execution_intent import ExecutionIntent, ExecutionResult, SimulationResult
 
 logger = logging.getLogger(__name__)
 

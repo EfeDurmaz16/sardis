@@ -317,7 +317,7 @@ def _build_suggestions(
 
 
 async def _load_recent_decisions(org_id: str) -> list[dict[str, Any]]:
-    from sardis_v2_core.database import get_pool
+    from sardis.core.database import get_pool
 
     pool = await get_pool()
     try:
@@ -353,7 +353,7 @@ async def _load_recent_decisions(org_id: str) -> list[dict[str, Any]]:
 
 
 async def _load_recent_versions(org_id: str) -> list[dict[str, Any]]:
-    from sardis_v2_core.database import get_pool
+    from sardis.core.database import get_pool
 
     pool = await get_pool()
     try:

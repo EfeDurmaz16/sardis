@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.attestation_envelope import (
+from sardis.core.attestation_envelope import (
     AttestationEnvelope,
     build_attestation_envelope,
     verify_attestation_signature,
@@ -71,7 +71,7 @@ def _mock_pool(*rows):
     return _FakePool(conn)
 
 
-_POOL_PATCH = "sardis_v2_core.database.Database.get_pool"
+_POOL_PATCH = "sardis.core.database.Database.get_pool"
 
 
 # ── E1: Attestation Envelope Model ────────────────────────────────────

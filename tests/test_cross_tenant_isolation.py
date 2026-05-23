@@ -13,13 +13,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
+from sardis.core import SardisSettings
+from sardis.core.agents import Agent, AgentPolicy, SpendingLimits
+from sardis.core.identity import AgentIdentity, IdentityRegistry
+from sardis.core.wallets import Wallet
 from sardis_cards.models import Card, CardStatus, CardType
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.verifier import MandateVerifier
-from sardis_v2_core import SardisSettings
-from sardis_v2_core.agents import Agent, AgentPolicy, SpendingLimits
-from sardis_v2_core.identity import AgentIdentity, IdentityRegistry
-from sardis_v2_core.wallets import Wallet
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.security]
 

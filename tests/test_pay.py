@@ -97,7 +97,7 @@ class TestPolicyExplainer:
     """Test the PolicyExplainer module."""
 
     def test_denial_explanation(self):
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         result = explain_denial("per_transaction_limit")
         assert result.allowed is False
         assert "per-transaction" in result.summary.lower() or "per_tx" in result.reason_code
@@ -106,13 +106,13 @@ class TestPolicyExplainer:
         assert len(result.checks_passed) > 0  # earlier checks passed
 
     def test_approval_explanation(self):
-        from sardis_v2_core.policy_explainer import explain_approval
+        from sardis.core.policy_explainer import explain_approval
         result = explain_approval()
         assert result.allowed is True
         assert len(result.checks_passed) == 12
 
     def test_requires_approval_explanation(self):
-        from sardis_v2_core.policy_explainer import explain_approval
+        from sardis.core.policy_explainer import explain_approval
         result = explain_approval("requires_approval")
         assert result.allowed is True
         assert result.suggested_action is not None
@@ -120,21 +120,21 @@ class TestPolicyExplainer:
     def test_json_serialization(self):
         import json
 
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         result = explain_denial("merchant_denied")
         parsed = json.loads(result.to_json())
         assert parsed["allowed"] is False
         assert "merchant_rules" in parsed["checks_failed"]
 
     def test_text_serialization(self):
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         result = explain_denial("insufficient_balance")
         text = result.to_text()
         assert "DENIED" in text
         assert "Suggested action" in text
 
     def test_to_dict_roundtrip(self):
-        from sardis_v2_core.policy_explainer import explain_denial
+        from sardis.core.policy_explainer import explain_denial
         result = explain_denial("goal_drift_exceeded")
         d = result.to_dict()
         assert d["reason_code"] == "goal_drift_exceeded"

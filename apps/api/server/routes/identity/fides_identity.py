@@ -6,12 +6,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sardis_v2_core import Agent, AgentRepository
-from sardis_v2_core.agit_policy_engine import AgitPolicyEngine
-from sardis_v2_core.config import load_settings
-from sardis_v2_core.did_bridge import DIDBridge, DIDRegistrationError
-from sardis_v2_core.fides_trust_adapter import FidesTrustGraphAdapter
-from sardis_v2_core.kya_trust_scoring import KYALevel, TrustScorer
+from sardis.core import Agent, AgentRepository
+from sardis.core.agit_policy_engine import AgitPolicyEngine
+from sardis.core.config import load_settings
+from sardis.core.did_bridge import DIDBridge, DIDRegistrationError
+from sardis.core.fides_trust_adapter import FidesTrustGraphAdapter
+from sardis.core.kya_trust_scoring import KYALevel, TrustScorer
 
 from server.authz import Principal, optional_principal, require_principal
 from server.middleware.mpp_gate import mpp_gate

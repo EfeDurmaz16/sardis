@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.outcome_tracker import OutcomeTracker
+from sardis.core.outcome_tracker import OutcomeTracker
 
 
 @pytest.mark.asyncio

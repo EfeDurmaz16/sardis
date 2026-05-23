@@ -9,7 +9,7 @@ import json
 
 import pytest
 from eth_abi import decode
-from sardis_v2_core.erc8004 import (
+from sardis.core.erc8004 import (
     ERC8004_ADDRESSES,
     GIVE_FEEDBACK_SELECTOR,
     REGISTER_SELECTOR,
@@ -423,7 +423,7 @@ class TestLegacyTypes:
 
 class TestModuleExports:
     def test_new_types_importable(self):
-        from sardis_v2_core.erc8004 import (
+        from sardis.core.erc8004 import (
             AgentRegistrationFile,
             AgentService,
             ReputationFeedback,
@@ -439,7 +439,7 @@ class TestModuleExports:
         ])
 
     def test_calldata_builders_importable(self):
-        from sardis_v2_core.erc8004 import (
+        from sardis.core.erc8004 import (
             build_give_feedback_calldata,
             build_register_calldata,
             build_set_agent_wallet_calldata,

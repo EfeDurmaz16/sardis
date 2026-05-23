@@ -51,8 +51,8 @@ async def simulate_payment(
 
     Returns all reachable failure reasons (policy, compliance, caps, kill switches).
     """
-    from sardis_v2_core.control_plane import ControlPlane
-    from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+    from sardis.core.control_plane import ControlPlane
+    from sardis.core.execution_intent import ExecutionIntent, IntentSource
 
     try:
         source = IntentSource(body.source)

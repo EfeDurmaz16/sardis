@@ -4,12 +4,12 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sardis_v2_core.agent_groups import (
+from sardis.core.agent_groups import (
     AgentGroupRepository,
     GroupMerchantPolicy,
     GroupSpendingLimits,
 )
-from sardis_v2_core.group_policy import (
+from sardis.core.group_policy import (
     GroupPolicyEvaluator,
     InMemoryGroupSpendingTracker,
 )

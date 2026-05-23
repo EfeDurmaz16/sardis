@@ -12,12 +12,12 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sardis.core import AgentRepository, Wallet, WalletRepository
+from sardis.core.database import Database
+from sardis.core.tokens import TokenType
+from sardis.core.transactions import validate_wallet_not_frozen
 from sardis_chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
 from sardis_ledger.records import LedgerStore
-from sardis_v2_core import AgentRepository, Wallet, WalletRepository
-from sardis_v2_core.database import Database
-from sardis_v2_core.tokens import TokenType
-from sardis_v2_core.transactions import validate_wallet_not_frozen
 
 from server.authz import Principal, require_principal
 from server.canonical_state_machine import normalize_stablecoin_event
@@ -728,8 +728,8 @@ async def transfer_crypto(
         import hashlib
         import time
 
-        from sardis_v2_core.mandates import PaymentMandate, VCProof
-        from sardis_v2_core.tokens import TokenType, to_raw_token_amount
+        from sardis.core.mandates import PaymentMandate, VCProof
+        from sardis.core.tokens import TokenType, to_raw_token_amount
 
         try:
             amount_minor = to_raw_token_amount(TokenType(transfer_request.token.upper()), transfer_request.amount)
@@ -769,7 +769,7 @@ async def transfer_crypto(
         )
 
         # --- Platform fee calculation ---
-        from sardis_v2_core.platform_fee import calculate_fee, get_treasury_address
+        from sardis.core.platform_fee import calculate_fee, get_treasury_address
 
         fee_calc = calculate_fee(
             transfer_request.amount,
@@ -785,8 +785,8 @@ async def transfer_crypto(
             mandate.amount_minor = net_amount_minor
 
         # Execute through PaymentOrchestrator (policy → compliance → chain → ledger)
-        from sardis_v2_core.mandates import CartMandate, IntentMandate, MandateChain
-        from sardis_v2_core.orchestrator import (
+        from sardis.core.mandates import CartMandate, IntentMandate, MandateChain
+        from sardis.core.orchestrator import (
             ChainExecutionError,
             ComplianceViolationError,
             PolicyViolationError,
@@ -1707,7 +1707,7 @@ async def verify_x402_payment(
     try:
         from decimal import Decimal
 
-        from sardis_v2_core.execution_intent import ExecutionIntent, IntentSource
+        from sardis.core.execution_intent import ExecutionIntent, IntentSource
 
         cp = getattr(deps, "control_plane", None)
         if cp is not None:
@@ -2526,14 +2526,14 @@ async def execute_offramp_send(
     import hashlib
     import time
 
-    from sardis_v2_core.mandates import (
+    from sardis.core.mandates import (
         CartMandate,
         IntentMandate,
         MandateChain,
         PaymentMandate,
         VCProof,
     )
-    from sardis_v2_core.orchestrator import (
+    from sardis.core.orchestrator import (
         ChainExecutionError,
         ComplianceViolationError,
         PolicyViolationError,

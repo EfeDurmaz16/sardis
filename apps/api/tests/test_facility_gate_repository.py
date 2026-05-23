@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from sardis_v2_core.facility_gate import Facility, FacilityEventType, FacilityLimit
-from sardis_v2_core.spending_mandate import SpendingMandate
+from sardis.core.facility_gate import Facility, FacilityEventType, FacilityLimit
+from sardis.core.spending_mandate import SpendingMandate
 
 from server.repositories.facility_gate_repository import FacilityGateRepository
 from server.services.facility_gate_replay import FacilityGateReplayService

@@ -54,7 +54,7 @@ def _mock_orchestrator(*, success: bool = True, status: str = "submitted"):
     if success:
         result = MockPaymentResult(status=status)
     else:
-        from sardis_v2_core.orchestrator import ExecutionPhase, PolicyViolationError
+        from sardis.core.orchestrator import ExecutionPhase, PolicyViolationError
 
         orch.execute_chain = AsyncMock(
             side_effect=PolicyViolationError("policy_denied", mandate_id="test")

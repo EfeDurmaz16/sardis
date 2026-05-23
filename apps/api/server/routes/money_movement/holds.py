@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.holds import Hold, HoldsRepository
+from sardis.core.holds import Hold, HoldsRepository
 
 from server.authz import Principal, require_admin_principal, require_principal
 

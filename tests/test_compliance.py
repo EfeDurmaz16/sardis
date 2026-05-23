@@ -5,12 +5,12 @@ import time
 from unittest.mock import patch
 
 import pytest
+from sardis.core.mandates import PaymentMandate, VCProof
 from sardis_compliance.checks import (
     ComplianceEngine,
     ComplianceResult,
     SimpleRuleProvider,
 )
-from sardis_v2_core.mandates import PaymentMandate, VCProof
 
 
 def create_test_mandate(
@@ -86,7 +86,7 @@ class TestSimpleRuleProvider:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -174,7 +174,7 @@ class TestComplianceEngine:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -270,7 +270,7 @@ class TestCustomComplianceProvider:
     @pytest.mark.asyncio
     async def test_engine_with_custom_provider(self):
         """Test ComplianceEngine with custom provider."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         class AlwaysAllowProvider:
             def evaluate(self, mandate: PaymentMandate) -> ComplianceResult:
@@ -299,7 +299,7 @@ class TestComplianceEdgeCases:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -354,7 +354,7 @@ class TestComplianceProviderProtocol:
         """Test that ComplianceProvider protocol requires evaluate method."""
 
         # SimpleRuleProvider should satisfy the protocol
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             settings = SardisSettings(environment="dev")
@@ -377,7 +377,7 @@ class TestNLPolicyProvider:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")
@@ -406,7 +406,7 @@ class TestNLPolicyProvider:
         """Test setting and getting policies for agents."""
         from decimal import Decimal
 
-        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+        from sardis.core.spending_policy import SpendingPolicy, TrustLevel
 
         policy = SpendingPolicy(
             agent_id="test_agent",
@@ -426,7 +426,7 @@ class TestNLPolicyProvider:
         """Test that NL policy enforces per-transaction limits."""
         from decimal import Decimal
 
-        from sardis_v2_core.spending_policy import SpendingPolicy, TrustLevel
+        from sardis.core.spending_policy import SpendingPolicy, TrustLevel
 
         # Create policy with $50 per-tx limit
         policy = SpendingPolicy(
@@ -544,7 +544,7 @@ class TestComplianceEngineAuditTrail:
     @pytest.fixture
     def settings(self):
         """Create test settings."""
-        from sardis_v2_core import SardisSettings
+        from sardis.core import SardisSettings
 
         with patch.dict('os.environ', {'SARDIS_ENVIRONMENT': 'dev', 'DATABASE_URL': ''}):
             return SardisSettings(environment="dev")

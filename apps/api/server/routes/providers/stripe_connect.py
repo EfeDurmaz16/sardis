@@ -280,7 +280,7 @@ async def _handle_account_updated(account_data: Any, deps: StripeConnectDeps) ->
         return
 
     # Find merchant by stripe_account_id
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
     row = await Database.fetchrow(
         "SELECT external_id FROM merchants WHERE stripe_account_id = $1",
         account_id,
@@ -322,7 +322,7 @@ async def _handle_payout_event(event_type: str, payout_data: Any, deps: StripeCo
         failure_message = payout_data.get("failure_message") if isinstance(payout_data, dict) else getattr(payout_data, "failure_message", None)
 
     # Update payout tracking record if exists
-    from sardis_v2_core.database import Database
+    from sardis.core.database import Database
     await Database.execute(
         """
         UPDATE stripe_connect_payouts

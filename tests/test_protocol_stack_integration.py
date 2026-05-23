@@ -15,6 +15,7 @@ import time
 import uuid
 
 import pytest
+from sardis.core import load_settings
 from sardis_protocol.schemas import AP2PaymentExecuteRequest
 from sardis_protocol.tap import TAP_PROTOCOL_VERSION, validate_tap_headers
 from sardis_protocol.verifier import MandateVerifier
@@ -32,7 +33,6 @@ from sardis_protocol.x402_erc3009 import (
 from sardis_ucp.adapters.ap2 import AP2MandateAdapter
 from sardis_ucp.capabilities.checkout import CheckoutSessionStatus, UCPCheckoutCapability
 from sardis_ucp.models.mandates import UCPCurrency, UCPLineItem
-from sardis_v2_core import load_settings
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.integration]
 

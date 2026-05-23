@@ -94,7 +94,7 @@ class SimulatePolicyResponse(BaseModel):
 
 
 def _build_regex_fallback_policy(parsed: dict[str, Any], agent_id: str):
-    from sardis_v2_core.spending_policy import (
+    from sardis.core.spending_policy import (
         MerchantRule,
         SpendingPolicy,
         TimeWindowLimit,
@@ -159,9 +159,9 @@ async def _compile_or_parse_policy(
     *,
     agent_id: str,
 ):
-    from sardis_v2_core.nl_policy_parser import create_policy_parser
-    from sardis_v2_core.policy_dsl import PolicyDefinition, PolicyRule
-    from sardis_v2_core.policy_dsl import compile_policy as dsl_compile
+    from sardis.core.nl_policy_parser import create_policy_parser
+    from sardis.core.policy_dsl import PolicyDefinition, PolicyRule
+    from sardis.core.policy_dsl import compile_policy as dsl_compile
 
     natural_language_rules = [rule for rule in definition.rules if rule.type == "natural_language"]
     if natural_language_rules:
@@ -234,7 +234,7 @@ async def validate_policy(
     principal: Principal = Depends(require_principal),
 ):
     """Validate a policy definition without compiling."""
-    from sardis_v2_core.policy_dsl import PolicyDefinition, PolicyRule, validate_definition
+    from sardis.core.policy_dsl import PolicyDefinition, PolicyRule, validate_definition
 
     definition = PolicyDefinition(
         version=body.definition.version,
@@ -252,8 +252,8 @@ async def compile_policy(
     principal: Principal = Depends(require_principal),
 ):
     """Compile a DSL definition into a SpendingPolicy."""
-    from sardis_v2_core.policy_dsl import PolicyDefinition, PolicyRule
-    from sardis_v2_core.policy_dsl import compile_policy as dsl_compile
+    from sardis.core.policy_dsl import PolicyDefinition, PolicyRule
+    from sardis.core.policy_dsl import compile_policy as dsl_compile
 
     definition = PolicyDefinition(
         version=body.definition.version,
@@ -289,9 +289,9 @@ async def simulate_policy(
     principal: Principal = Depends(require_principal),
 ):
     """Test a draft policy definition without using the live control plane."""
-    from sardis_v2_core.policy_evidence import evaluate_with_evidence, export_evidence_bundle
-    from sardis_v2_core.spending_policy import SpendingScope
-    from sardis_v2_core.wallets import Wallet
+    from sardis.core.policy_evidence import evaluate_with_evidence, export_evidence_bundle
+    from sardis.core.spending_policy import SpendingScope
+    from sardis.core.wallets import Wallet
 
     if body.definition is None:
         raise HTTPException(

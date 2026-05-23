@@ -94,7 +94,7 @@ class TestTransactionPendingApproval:
 
 # ── Core SpendingPolicy: approval_threshold + drift ────────────────────
 
-from sardis_v2_core.spending_policy import SpendingPolicy
+from sardis.core.spending_policy import SpendingPolicy
 
 
 class TestSpendingPolicyApprovalThreshold:

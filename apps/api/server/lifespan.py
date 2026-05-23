@@ -12,10 +12,10 @@ from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 
 from fastapi import FastAPI
-from sardis_v2_core.jobs.approval_expiry import expire_approvals
-from sardis_v2_core.jobs.hold_expiry import expire_holds
-from sardis_v2_core.jobs.payment_expiry import expire_payments
-from sardis_v2_core.jobs.spending_reset import reset_spending_limits
+from sardis.core.jobs.approval_expiry import expire_approvals
+from sardis.core.jobs.hold_expiry import expire_holds
+from sardis.core.jobs.payment_expiry import expire_payments
+from sardis.core.jobs.spending_reset import reset_spending_limits
 
 from .middleware import API_VERSION
 
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
         database_url.startswith("postgresql://") or database_url.startswith("postgres://")
     ):
         try:
-            from sardis_v2_core.database import init_database
+            from sardis.core.database import init_database
             db_init_timeout = float(os.getenv("SARDIS_DB_INIT_TIMEOUT_SECONDS", "10"))
             await asyncio.wait_for(init_database(), timeout=db_init_timeout)
             logger.info("Database schema initialized")
@@ -129,7 +129,7 @@ async def lifespan(app: FastAPI):
     )
     if enable_scheduler:
         try:
-            from sardis_v2_core.scheduler import init_scheduler
+            from sardis.core.scheduler import init_scheduler
         except (ImportError, OSError, RuntimeError, ValueError) as e:
             logger.warning("Background scheduler disabled (init failed): %s", e)
         else:
@@ -544,22 +544,22 @@ async def lifespan(app: FastAPI):
 
     # Initialize delegated adapter registry for multi-provider dispatch
     try:
-        from sardis_v2_core.config import load_settings
-        from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
-        from sardis_v2_core.delegated_credential import CredentialNetwork
+        from sardis.core.config import load_settings
+        from sardis.core.delegated_adapters.registry import DelegatedAdapterRegistry
+        from sardis.core.delegated_credential import CredentialNetwork
 
         settings = load_settings()
         delegated_registry = DelegatedAdapterRegistry()
 
         if settings.delegated.stripe_spt_enabled:
             try:
-                from sardis_v2_core.delegated_adapters.stripe_spt import (
+                from sardis.core.delegated_adapters.stripe_spt import (
                     MockStripeSPTAdapter,
                     StripeSPTAdapter,
                 )
 
                 if settings.delegated.stripe_spt_api_key:
-                    from sardis_v2_core.credential_store import CredentialEncryption
+                    from sardis.core.credential_store import CredentialEncryption
                     adapter = StripeSPTAdapter(
                         api_key=settings.delegated.stripe_spt_api_key,
                         partner_id=settings.delegated.stripe_spt_partner_id,
@@ -574,12 +574,12 @@ async def lifespan(app: FastAPI):
 
         if settings.delegated.visa_tap_enabled:
             try:
-                from sardis_v2_core.delegated_adapters.visa_tap import (
+                from sardis.core.delegated_adapters.visa_tap import (
                     VisaTAPAdapter,
                 )
 
                 if settings.visa_tap.api_key and settings.visa_tap.certificate_path:
-                    from sardis_v2_core.credential_store import CredentialEncryption
+                    from sardis.core.credential_store import CredentialEncryption
                     adapter = VisaTAPAdapter(
                         api_key=settings.visa_tap.api_key,
                         certificate_path=settings.visa_tap.certificate_path,
@@ -592,7 +592,7 @@ async def lifespan(app: FastAPI):
                 else:
                     _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
                     if _env in ("dev", "test", "development"):
-                        from sardis_v2_core.delegated_adapters.visa_tap import MockVisaTAPAdapter
+                        from sardis.core.delegated_adapters.visa_tap import MockVisaTAPAdapter
                         adapter = MockVisaTAPAdapter()
                         delegated_registry.register(CredentialNetwork.VISA_TAP, adapter)
                         logger.info("Visa TAP: using mock adapter (dev/test only)")
@@ -606,12 +606,12 @@ async def lifespan(app: FastAPI):
 
         if settings.delegated.mastercard_agent_pay_enabled:
             try:
-                from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+                from sardis.core.delegated_adapters.mastercard_agent_pay import (
                     MastercardAgentPayAdapter,
                 )
 
                 if settings.mastercard.consumer_key and settings.mastercard.p12_certificate_path:
-                    from sardis_v2_core.credential_store import CredentialEncryption
+                    from sardis.core.credential_store import CredentialEncryption
                     adapter = MastercardAgentPayAdapter(
                         consumer_key=settings.mastercard.consumer_key,
                         p12_certificate_path=settings.mastercard.p12_certificate_path,
@@ -625,7 +625,7 @@ async def lifespan(app: FastAPI):
                 else:
                     _env = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower()
                     if _env in ("dev", "test", "development"):
-                        from sardis_v2_core.delegated_adapters.mastercard_agent_pay import (
+                        from sardis.core.delegated_adapters.mastercard_agent_pay import (
                             MockMastercardAgentPayAdapter,
                         )
                         adapter = MockMastercardAgentPayAdapter()
@@ -699,7 +699,7 @@ async def lifespan(app: FastAPI):
 
     # Close database connection pool
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         await Database.close()
         logger.info("Database pool closed")
     except (RuntimeError, OSError, ValueError, AttributeError) as e:

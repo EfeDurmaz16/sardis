@@ -25,8 +25,8 @@ class TestApprovalFlow:
     async def test_create_approval_request(self, api_key, api_url):
         """Should create an approval request for high-value payment."""
         try:
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
 
             # Create approval repository
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
@@ -58,14 +58,14 @@ class TestApprovalFlow:
             assert approval.expires_at is not None
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
     @pytest.mark.e2e
     async def test_approve_request(self, api_key, api_url):
         """Should approve a pending approval request."""
         try:
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -93,14 +93,14 @@ class TestApprovalFlow:
             assert approved.reviewed_at is not None
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
     @pytest.mark.e2e
     async def test_deny_request(self, api_key, api_url):
         """Should deny a pending approval request."""
         try:
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -129,7 +129,7 @@ class TestApprovalFlow:
             assert denied.metadata.get("denial_reason") == "Vendor not on approved list"
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
 
 class TestApprovalWebhooks:
@@ -139,10 +139,10 @@ class TestApprovalWebhooks:
     async def test_webhook_on_approval_created(self, api_key, api_url):
         """Should send webhook when approval is created."""
         try:
-            from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+            from sardis.core.approval_notifier import ApprovalNotifier
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
+            from sardis.core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -198,16 +198,16 @@ class TestApprovalWebhooks:
             assert latest.event_type == "risk.alert"
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
     @pytest.mark.e2e
     async def test_webhook_on_approval_approved(self, api_key, api_url):
         """Should send webhook when approval is approved."""
         try:
-            from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+            from sardis.core.approval_notifier import ApprovalNotifier
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
+            from sardis.core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -250,16 +250,16 @@ class TestApprovalWebhooks:
             await asyncio.sleep(0.5)
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
     @pytest.mark.e2e
     async def test_webhook_on_approval_denied(self, api_key, api_url):
         """Should send webhook when approval is denied."""
         try:
-            from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+            from sardis.core.approval_notifier import ApprovalNotifier
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
+            from sardis.core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -303,7 +303,7 @@ class TestApprovalWebhooks:
             await asyncio.sleep(0.5)
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
 
 class TestApprovalExpiration:
@@ -315,8 +315,8 @@ class TestApprovalExpiration:
         try:
             from datetime import timedelta
 
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
             repo = ApprovalRepository(dsn)
@@ -342,16 +342,16 @@ class TestApprovalExpiration:
             assert approval_after.status == "pending"
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
     @pytest.mark.e2e
     async def test_webhook_on_expiration(self, api_key, api_url):
         """Should send webhook when approval expires."""
         try:
-            from sardis_v2_core.approval_notifier import ApprovalNotifier
-            from sardis_v2_core.approval_repository import ApprovalRepository
-            from sardis_v2_core.approval_service import ApprovalService
-            from sardis_v2_core.webhooks import WebhookRepository, WebhookService
+            from sardis.core.approval_notifier import ApprovalNotifier
+            from sardis.core.approval_repository import ApprovalRepository
+            from sardis.core.approval_service import ApprovalService
+            from sardis.core.webhooks import WebhookRepository, WebhookService
 
             dsn = os.getenv("DATABASE_URL", "postgresql://localhost/sardis_test")
 
@@ -395,7 +395,7 @@ class TestApprovalExpiration:
             await asyncio.sleep(0.5)
 
         except ImportError:
-            pytest.skip("sardis_v2_core not available")
+            pytest.skip("sardis.core not available")
 
 
 if __name__ == "__main__":

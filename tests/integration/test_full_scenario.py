@@ -36,13 +36,13 @@ except ImportError:
     PYTEST_AVAILABLE = False
     pytest = None  # type: ignore
 
-# Add project root and sardis_v2_core to path
+# Add project root and sardis.core to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "packages" / "sardis-core" / "src"))
 
 # Import Sardis core components
-from sardis_v2_core import (
+from sardis.core import (
     AgentPolicy,
     AgentRepository,
     RegexPolicyParser,

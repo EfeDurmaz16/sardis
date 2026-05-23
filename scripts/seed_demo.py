@@ -226,7 +226,7 @@ async def init_schema():
 
     # Import schema from database module
     try:
-        from sardis_v2_core.database import SCHEMA_SQL
+        from sardis.core.database import SCHEMA_SQL
         async with pool.acquire() as conn:
             await conn.execute(SCHEMA_SQL)
         print("✅ Schema initialized")

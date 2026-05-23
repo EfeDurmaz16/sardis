@@ -84,7 +84,7 @@ def configure_merchant_checkout_runtime(
     """Create Pay with Sardis merchant checkout dependencies."""
     env = environ if environ is not None else os.environ
     if merchant_repository_cls is _DEFAULT_PROVIDER:
-        from sardis_v2_core.merchant import MerchantRepository
+        from sardis.core.merchant import MerchantRepository
 
         merchant_repository_cls = MerchantRepository
     if merchant_webhook_service_cls is _DEFAULT_PROVIDER:
@@ -139,7 +139,7 @@ def configure_merchant_checkout_runtime(
 def _build_stripe_connect_provider(stripe_connect_provider_cls: Any) -> Any | None:
     if stripe_connect_provider_cls is _DEFAULT_PROVIDER:
         try:
-            from sardis_v2_core.stripe_connect import StripeConnectProvider
+            from sardis.core.stripe_connect import StripeConnectProvider
 
             stripe_connect_provider_cls = StripeConnectProvider
         except ImportError:

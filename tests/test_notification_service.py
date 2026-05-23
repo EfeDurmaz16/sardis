@@ -9,7 +9,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sardis_v2_core.notification_service import (
+from sardis.core.notification_service import (
     DeliveryResult,
     NotificationPayload,
     NotificationService,

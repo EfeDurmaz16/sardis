@@ -82,7 +82,7 @@ async def freeze_all_wallets(
     now = datetime.now(UTC)
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
@@ -181,7 +181,7 @@ async def unfreeze_all_wallets(
     now = datetime.now(UTC)
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
@@ -269,7 +269,7 @@ async def get_emergency_status(
         )
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
 
         pool = await Database.get_pool()
         async with pool.acquire() as conn:

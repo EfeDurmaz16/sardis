@@ -133,7 +133,7 @@ class APIKeyManager:
     async def _get_pool(self):
         """Lazy initialization of PostgreSQL pool."""
         if self._pg_pool is None:
-            from sardis_v2_core.database import Database
+            from sardis.core.database import Database
             self._pg_pool = await Database.get_pool()
         return self._pg_pool
 

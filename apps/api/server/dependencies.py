@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, Mapping, TypeVar
 
-from sardis_v2_core import SardisSettings, load_settings
-from sardis_v2_core.exceptions import SardisDependencyNotConfiguredError
+from sardis.core import SardisSettings, load_settings
+from sardis.core.exceptions import SardisDependencyNotConfiguredError
 
 logger = logging.getLogger(__name__)
 
@@ -619,14 +619,14 @@ def configure_core_services(
 ) -> CoreServicesConfig:
     """Create the core service graph shared by payment, authority, and wallet routes."""
     if postgres_policy_store_cls is None or in_memory_policy_store_cls is None:
-        from sardis_v2_core import InMemoryPolicyStore, PostgresPolicyStore
+        from sardis.core import InMemoryPolicyStore, PostgresPolicyStore
 
         postgres_policy_store_cls = postgres_policy_store_cls or PostgresPolicyStore
         in_memory_policy_store_cls = in_memory_policy_store_cls or InMemoryPolicyStore
 
     if postgres_wallet_repository_cls is None or wallet_repository_cls is None:
-        from sardis_v2_core.wallet_repository import WalletRepository
-        from sardis_v2_core.wallet_repository_postgres import PostgresWalletRepository
+        from sardis.core.wallet_repository import WalletRepository
+        from sardis.core.wallet_repository_postgres import PostgresWalletRepository
 
         postgres_wallet_repository_cls = (
             postgres_wallet_repository_cls or PostgresWalletRepository
@@ -634,8 +634,8 @@ def configure_core_services(
         wallet_repository_cls = wallet_repository_cls or WalletRepository
 
     if postgres_agent_repository_cls is None or agent_repository_cls is None:
-        from sardis_v2_core.agent_repository_postgres import PostgresAgentRepository
-        from sardis_v2_core.agents import AgentRepository
+        from sardis.core.agent_repository_postgres import PostgresAgentRepository
+        from sardis.core.agents import AgentRepository
 
         postgres_agent_repository_cls = postgres_agent_repository_cls or PostgresAgentRepository
         agent_repository_cls = agent_repository_cls or AgentRepository
@@ -729,7 +729,7 @@ def configure_payment_runtime(
 
         mandate_verifier_cls = MandateVerifier
     if payment_orchestrator_cls is None:
-        from sardis_v2_core.orchestrator import PaymentOrchestrator
+        from sardis.core.orchestrator import PaymentOrchestrator
 
         payment_orchestrator_cls = PaymentOrchestrator
 
@@ -777,7 +777,7 @@ def configure_api_support_services(
 ) -> APISupportServicesConfig:
     """Create cache and API-key manager services shared by middleware/routes."""
     if create_cache_service_fn is None:
-        from sardis_v2_core.cache import create_cache_service
+        from sardis.core.cache import create_cache_service
 
         create_cache_service_fn = create_cache_service
 
@@ -815,7 +815,7 @@ def configure_facility_gate_services(
 
         repository_cls = FacilityGateRepository
     if adapter_cls is None:
-        from sardis_v2_core.facility_gate import SimulatedFacilityAdapter
+        from sardis.core.facility_gate import SimulatedFacilityAdapter
 
         adapter_cls = SimulatedFacilityAdapter
 
@@ -941,11 +941,11 @@ def configure_inbound_payment_runtime(
 ) -> InboundPaymentRuntimeConfig:
     """Create inbound payment event bus wiring and receive service."""
     if get_default_bus_fn is None:
-        from sardis_v2_core.event_bus import get_default_bus
+        from sardis.core.event_bus import get_default_bus
 
         get_default_bus_fn = get_default_bus
     if inbound_payment_service_cls is None:
-        from sardis_v2_core.inbound_payment_service import InboundPaymentService
+        from sardis.core.inbound_payment_service import InboundPaymentService
 
         inbound_payment_service_cls = InboundPaymentService
 
@@ -1291,7 +1291,7 @@ class DependencyContainer:
     @cached_property
     def identity_registry(self) -> Any:
         """Get identity registry (DB-backed in production)."""
-        from sardis_v2_core.identity import IdentityRegistry
+        from sardis.core.identity import IdentityRegistry
         dsn = self.database_url if self.use_postgres else None
         return IdentityRegistry(dsn=dsn)
 
@@ -1346,8 +1346,8 @@ class DependencyContainer:
     def group_policy(self) -> Any | None:
         """Get group policy evaluator (optional, returns None if deps missing)."""
         try:
-            from sardis_v2_core.agent_groups import AgentGroupRepository
-            from sardis_v2_core.group_policy import GroupPolicyEvaluator
+            from sardis.core.agent_groups import AgentGroupRepository
+            from sardis.core.group_policy import GroupPolicyEvaluator
             dsn = self.database_url if self.use_postgres else "memory://"
             group_repo = AgentGroupRepository(dsn=dsn)
             return GroupPolicyEvaluator(group_repo=group_repo)
@@ -1358,7 +1358,7 @@ class DependencyContainer:
     @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator."""
-        from sardis_v2_core.orchestrator import PaymentOrchestrator
+        from sardis.core.orchestrator import PaymentOrchestrator
         return PaymentOrchestrator(
             wallet_manager=self.wallet_manager,
             compliance=self.compliance_engine,
@@ -1393,48 +1393,48 @@ class DependencyContainer:
     @cached_property
     def holds_repository(self) -> Any:
         """Get holds repository."""
-        from sardis_v2_core.holds import HoldsRepository
+        from sardis.core.holds import HoldsRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return HoldsRepository(dsn=dsn)
 
     @cached_property
     def webhook_repository(self) -> Any:
         """Get webhook repository."""
-        from sardis_v2_core.webhooks import WebhookRepository
+        from sardis.core.webhooks import WebhookRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WebhookRepository(dsn=dsn)
 
     @cached_property
     def webhook_service(self) -> Any:
         """Get webhook service."""
-        from sardis_v2_core.webhooks import WebhookService
+        from sardis.core.webhooks import WebhookService
         return WebhookService(repository=self.webhook_repository)
 
     @cached_property
     def wallet_repository(self) -> Any:
         """Get wallet repository."""
-        from sardis_v2_core.wallet_repository import WalletRepository
+        from sardis.core.wallet_repository import WalletRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return WalletRepository(dsn=dsn)
 
     @cached_property
     def agent_repository(self) -> Any:
         """Get agent repository."""
-        from sardis_v2_core.agents import AgentRepository
+        from sardis.core.agents import AgentRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return AgentRepository(dsn=dsn)
 
     @cached_property
     def marketplace_repository(self) -> Any:
         """Get marketplace repository."""
-        from sardis_v2_core.marketplace import MarketplaceRepository
+        from sardis.core.marketplace import MarketplaceRepository
         dsn = self.database_url if self.use_postgres else "memory://"
         return MarketplaceRepository(dsn=dsn)
 
     @cached_property
     def spending_policy_store(self) -> Any:
         """Get spending policy state store (DB-backed atomic enforcement)."""
-        from sardis_v2_core.spending_policy_store import SpendingPolicyStore
+        from sardis.core.spending_policy_store import SpendingPolicyStore
         if self.use_postgres:
             return SpendingPolicyStore(dsn=self.database_url)
         return None  # In-memory fallback handled by SpendingPolicy itself
@@ -1442,7 +1442,7 @@ class DependencyContainer:
     @cached_property
     def cache_service(self) -> Any:
         """Get cache service (Redis or in-memory)."""
-        from sardis_v2_core.cache import create_cache_service
+        from sardis.core.cache import create_cache_service
         return create_cache_service(self._config.redis_url)
 
     @cached_property

@@ -140,7 +140,7 @@ async def create_mandate(body: CreateMandateRequest, principal: Principal = Depe
     })
 
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             await conn.execute(
@@ -202,7 +202,7 @@ async def list_mandates(
     org-level policies that apply across all agents.
     """
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             q = "SELECT * FROM spending_mandates WHERE org_id = $1"
@@ -233,7 +233,7 @@ async def list_mandates(
 async def get_mandate(mandate_id: str, principal: Principal = Depends(require_principal)):
     """Get a specific spending mandate."""
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             r = await conn.fetchrow(
@@ -276,7 +276,7 @@ async def activate_mandate(mandate_id: str, body: TransitionRequest, principal: 
 async def list_transitions(mandate_id: str, principal: Principal = Depends(require_principal)):
     """View state transition history."""
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             m = await conn.fetchrow("SELECT org_id FROM spending_mandates WHERE id=$1 AND org_id=$2", mandate_id, principal.organization_id)
@@ -293,7 +293,7 @@ async def list_transitions(mandate_id: str, principal: Principal = Depends(requi
 
 async def _do_transition(mandate_id: str, to_status: str, principal: Principal, reason: str | None) -> TransitionResponse:
     try:
-        from sardis_v2_core.database import Database
+        from sardis.core.database import Database
         pool = await Database.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT id, status FROM spending_mandates WHERE id=$1 AND org_id=$2", mandate_id, principal.organization_id)

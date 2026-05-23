@@ -13,25 +13,25 @@ import time
 from decimal import Decimal
 
 import pytest
-from sardis_protocol.verifier import MandateVerifier
-from sardis_protocol.x402 import (
-    X402Challenge,
-    X402PaymentPayload,
-    verify_payment_payload,
-)
-from sardis_v2_core import load_settings
-from sardis_v2_core.mandates import (
+from sardis.core import load_settings
+from sardis.core.mandates import (
     CartMandate,
     IntentMandate,
     MandateChain,
     PaymentMandate,
     VCProof,
 )
-from sardis_v2_core.spending_policy import (
+from sardis.core.spending_policy import (
     SpendingPolicy,
     SpendingScope,
     TimeWindowLimit,
     TrustLevel,
+)
+from sardis_protocol.verifier import MandateVerifier
+from sardis_protocol.x402 import (
+    X402Challenge,
+    X402PaymentPayload,
+    verify_payment_payload,
 )
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.security]

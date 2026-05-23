@@ -21,7 +21,7 @@ os.environ.setdefault("DATABASE_URL", "memory://")
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_purposes_only_32chars")
 
 import pytest
-from sardis_v2_core.merchant import Merchant, MerchantCheckoutSession
+from sardis.core.merchant import Merchant, MerchantCheckoutSession
 
 # ── Fixtures ──────────────────────────────────────────────────────
 
@@ -118,7 +118,7 @@ class TestStripeConnectProvider:
 
         with patch.dict(os.environ, {"STRIPE_API_KEY": "sk_test_FAKE_KEY_FOR_UNIT_TESTS_ONLY"}):  # nosecret: test-only dummy key
             with patch.dict(sys.modules, {"stripe": mock_stripe}):
-                from sardis_v2_core.stripe_connect import StripeConnectProvider
+                from sardis.core.stripe_connect import StripeConnectProvider
                 provider = StripeConnectProvider(api_key="sk_test_FAKE_KEY_FOR_UNIT_TESTS_ONLY")  # nosecret: test-only dummy key
 
         provider._stripe = mock_stripe
@@ -297,7 +297,7 @@ class TestStripeConnectProvider:
         with patch.dict(sys.modules, {"stripe": mock_stripe}):
             with patch.dict(os.environ, {}, clear=False):
                 os.environ.pop("STRIPE_API_KEY", None)
-                from sardis_v2_core.stripe_connect import StripeConnectProvider
+                from sardis.core.stripe_connect import StripeConnectProvider
                 with pytest.raises(ValueError, match="API key"):
                     StripeConnectProvider(api_key=None)
 
@@ -338,7 +338,7 @@ class TestStripeConnectSettlement:
     async def test_settle_stripe_connect_success(self, settlement_service, repo, mock_provider):
         """Paid session with stripe_connect merchant should create a Stripe transfer."""
         # Patch Database.execute to avoid real DB call for payout tracking
-        with patch("sardis_v2_core.database.Database.execute", new_callable=AsyncMock):
+        with patch("sardis.core.database.Database.execute", new_callable=AsyncMock):
             await settlement_service.settle_session("mcs_stripe_test")
 
         session = repo.sessions["mcs_stripe_test"]
@@ -397,7 +397,7 @@ class TestStripeConnectSettlement:
         mock_provider.create_transfer.side_effect = Exception("Stripe API error")
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
-        with patch("sardis_v2_core.database.Database.execute", new_callable=AsyncMock):
+        with patch("sardis.core.database.Database.execute", new_callable=AsyncMock):
             await service.settle_session("mcs_stripe_test")
 
         session = repo.sessions["mcs_stripe_test"]
@@ -422,7 +422,7 @@ class TestStripeConnectSettlement:
         repo.sessions["mcs_stripe_test"].net_amount = Decimal("97.50")
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
-        with patch("sardis_v2_core.database.Database.execute", new_callable=AsyncMock):
+        with patch("sardis.core.database.Database.execute", new_callable=AsyncMock):
             await service.settle_session("mcs_stripe_test")
 
         call_kwargs = mock_provider.create_transfer.call_args[1]
@@ -436,7 +436,7 @@ class TestStripeConnectSettlement:
         repo.sessions["mcs_stripe_test"].net_amount = None
 
         service = SettlementService(merchant_repo=repo, stripe_connect_provider=mock_provider)
-        with patch("sardis_v2_core.database.Database.execute", new_callable=AsyncMock):
+        with patch("sardis.core.database.Database.execute", new_callable=AsyncMock):
             await service.settle_session("mcs_stripe_test")
 
         call_kwargs = mock_provider.create_transfer.call_args[1]
@@ -506,7 +506,7 @@ class TestMerchantStripeFields:
         assert m.stripe_charges_enabled is True
 
     def test_merchant_updatable_includes_stripe_fields(self):
-        from sardis_v2_core.merchant import MerchantRepository
+        from sardis.core.merchant import MerchantRepository
         updatable = MerchantRepository._MERCHANT_UPDATABLE
         assert "stripe_account_id" in updatable
         assert "stripe_onboarding_state" in updatable

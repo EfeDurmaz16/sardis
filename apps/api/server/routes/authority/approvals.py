@@ -14,9 +14,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sardis_v2_core.approval_repository import Approval, ApprovalRepository
-from sardis_v2_core.approval_service import ApprovalService, ApprovalStatus, ApprovalUrgency
-from sardis_v2_core.confidence_router import (
+from sardis.core.approval_repository import Approval, ApprovalRepository
+from sardis.core.approval_service import ApprovalService, ApprovalStatus, ApprovalUrgency
+from sardis.core.confidence_router import (
     ApprovalWorkflow,
     ConfidenceRouter,
 )
@@ -543,7 +543,7 @@ async def calculate_transaction_confidence(
     """
     try:
         # Import policy store to get agent's policy
-        from sardis_v2_core.spending_policy import TrustLevel, create_default_policy
+        from sardis.core.spending_policy import TrustLevel, create_default_policy
 
         # For now, create a default policy - in production, fetch from policy store
         policy = create_default_policy(request.agent_id, TrustLevel.MEDIUM)

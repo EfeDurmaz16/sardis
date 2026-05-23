@@ -22,7 +22,7 @@ from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
-from sardis_v2_core import (
+from sardis.core import (
     PaymentMandate,
     SardisSettings,
     SpendingPolicy,
@@ -30,7 +30,7 @@ from sardis_v2_core import (
     Wallet,
     create_default_policy,
 )
-from sardis_v2_core.tokens import TokenType, normalize_token_amount
+from sardis.core.tokens import TokenType, normalize_token_amount
 
 from .activity_monitor import (
     ActivityMonitor,

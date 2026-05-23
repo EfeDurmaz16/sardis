@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sardis_v2_core.config import SardisSettings, validate_production_config
+from sardis.core.config import SardisSettings, validate_production_config
 
 
 def _set_required_env(monkeypatch) -> None:

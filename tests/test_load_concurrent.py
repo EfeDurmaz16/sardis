@@ -17,8 +17,8 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
-from sardis_v2_core.holds import Hold, HoldResult
-from sardis_v2_core.spending_policy import (
+from sardis.core.holds import Hold, HoldResult
+from sardis.core.spending_policy import (
     SpendingPolicy,
     TimeWindowLimit,
     TrustLevel,

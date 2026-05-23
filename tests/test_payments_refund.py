@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from sardis_v2_core.refund import Refund, RefundService, RefundStatus
+from sardis.core.refund import Refund, RefundService, RefundStatus
 from server.authz import Principal, require_principal
 from server.routes.money_movement.payments_refund import router
 
@@ -103,7 +103,7 @@ class TestInitiateRefund:
     def _patch_refund_service(self, mock_svc):
         """Return a context manager that patches the RefundService constructor."""
         return patch(
-            "sardis_v2_core.refund.RefundService",
+            "sardis.core.refund.RefundService",
             return_value=mock_svc,
         )
 
@@ -229,7 +229,7 @@ class TestGetRefundStatus:
         refund = _make_refund()
         mock_refund_service.get_refund = AsyncMock(return_value=refund)
 
-        with patch("sardis_v2_core.refund.RefundService", return_value=mock_refund_service):
+        with patch("sardis.core.refund.RefundService", return_value=mock_refund_service):
             resp = client.get("/pay_001/refund")
 
         assert resp.status_code == 200
@@ -240,7 +240,7 @@ class TestGetRefundStatus:
     def test_refund_not_found_returns_404(self, client, mock_refund_service):
         mock_refund_service.get_refund = AsyncMock(return_value=None)
 
-        with patch("sardis_v2_core.refund.RefundService", return_value=mock_refund_service):
+        with patch("sardis.core.refund.RefundService", return_value=mock_refund_service):
             resp = client.get("/pay_999/refund")
 
         assert resp.status_code == 404

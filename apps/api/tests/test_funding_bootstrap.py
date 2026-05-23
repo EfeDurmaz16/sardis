@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sardis_v2_core.config import SardisSettings
+from sardis.core.config import SardisSettings
 
 from server.authz import Principal, require_principal
 from server.main import create_app
