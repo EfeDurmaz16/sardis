@@ -20,8 +20,8 @@
     "typecheck:landing": "pnpm --filter @sardis/app-landing typecheck",
     "build:mcp": "pnpm --filter @sardis/mcp-server build",
     "test:mcp": "pnpm --filter @sardis/mcp-server test",
-    "build:ts-sdks": "pnpm --filter @sardis/sdk build && pnpm --filter @sardis/ai-sdk build",
-    "test:ts-sdks": "pnpm --filter @sardis/sdk test && pnpm --filter @sardis/ai-sdk test",
+    "build:ts-sdks": "pnpm --filter sardis build",
+    "test:ts-sdks": "pnpm --filter sardis test",
     "build:python-sdk": "cd packages/sardis-sdk-python && python3 -m build",
     "test:python-sdk": "cd packages/sardis-sdk-python && pytest -q",
     "lint": "uv run ruff check .",
@@ -56,7 +56,9 @@
     "repo:core-imports": "python3 scripts/preferred_core_import_check.py",
     "repo:package-validation": "python3 scripts/package_validation_inventory.py",
     "repo:stale-paths:local": "python3 scripts/stale_api_path_check.py --include-local",
-    "repo:api-tree": "python3 scripts/repo_tree.py --root apps/api/server --max-depth 3 --files"
+    "repo:api-tree": "python3 scripts/repo_tree.py --root apps/api/server --max-depth 3 --files",
+    "test:umbrella": "pnpm --filter sardis test",
+    "build:umbrella": "pnpm --filter sardis build"
   },
   "pnpm": {
     "overrides": {

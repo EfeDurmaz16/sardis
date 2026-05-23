@@ -17,7 +17,7 @@ Quick start::
     # Pass tools to any LangChain agent
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0a0"
 
 from .callbacks import SardisCallbackHandler
 from .toolkit import SardisToolkit

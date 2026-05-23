@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PY_SDK_DIR="$ROOT_DIR/packages/sardis-sdk-python"
+PY_SDK_DIR="$ROOT_DIR/packages/sardis"
 PYTHON_CMD=(python3)
 
 if command -v uv >/dev/null 2>&1; then

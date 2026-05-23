@@ -17,7 +17,7 @@ Quick start::
     agent = create_sardis_agent(api_key="sk_test_...", wallet_id="wallet_abc")
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0a0"
 
 from .agent import create_sardis_agent
 from .toolkit import SardisToolkit
