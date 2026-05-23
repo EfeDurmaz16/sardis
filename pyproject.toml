@@ -140,6 +140,7 @@ ignore = [
 "examples/**" = ["F401", "F841"]
 
 [tool.uv.sources]
+sardis = { path = "packages/sardis", editable = true }
 sardis-a2a = { path = "packages/sardis-a2a", editable = true }
 sardis-adk = { path = "packages/sardis-adk", editable = true }
 sardis-agent-sdk = { path = "packages/sardis-agent-sdk", editable = true }

@@ -24,8 +24,18 @@ classifiers = [
 ]
 keywords = ["sardis", "payments", "agents", "stablecoin", "x402", "ap2", "ucp", "agent-economy"]
 
-# Minimal during scaffold phase; full deps land per-submodule during migration.
-dependencies = []
+# Runtime deps from consolidated submodules. Heavy/optional deps live under
+# [project.optional-dependencies] (chain, postgres, redis, immudb).
+dependencies = [
+  # Inherited from sardis-core (sardis.core submodule)
+  "pydantic>=2.6",
+  "pydantic-settings>=2.0",
+  "PyNaCl>=1.5",
+  "cryptography>=41",
+  "apscheduler>=3.10",
+  "asyncpg>=0.29",
+  "aiohttp>=3.8",
+]
 
 [project.optional-dependencies]
 anthropic     = ["anthropic>=0.40"]
