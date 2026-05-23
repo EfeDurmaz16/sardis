@@ -8,12 +8,14 @@ on:
       - "packages/sardis-crewai/**"
       - "packages/sardis-adk/**"
       - "packages/sardis-agent-sdk/**"
+      - "packages/sardis/**"
   pull_request:
     paths:
       - "packages/sardis-langchain/**"
       - "packages/sardis-crewai/**"
       - "packages/sardis-adk/**"
       - "packages/sardis-agent-sdk/**"
+      - "packages/sardis/**"
 
 permissions:
   contents: read
@@ -33,6 +35,8 @@ jobs:
         working-directory: packages/sardis-langchain
         run: |
           python3 -m pip install --upgrade pip
+          # Install local sardis umbrella first (shim's sardis>=2.0.0a0 dep)
+          python3 -m pip install -e ../sardis
           python3 -m pip install -e ".[dev]"
       - name: Run tests
         working-directory: packages/sardis-langchain
@@ -49,6 +53,7 @@ jobs:
         working-directory: packages/sardis-crewai
         run: |
           python3 -m pip install --upgrade pip
+          python3 -m pip install -e ../sardis
           python3 -m pip install -e ".[dev]"
       - name: Run tests
         working-directory: packages/sardis-crewai
@@ -65,6 +70,7 @@ jobs:
         working-directory: packages/sardis-adk
         run: |
           python3 -m pip install --upgrade pip
+          python3 -m pip install -e ../sardis
           python3 -m pip install -e ".[dev]"
       - name: Run tests
         working-directory: packages/sardis-adk
@@ -81,6 +87,7 @@ jobs:
         working-directory: packages/sardis-agent-sdk
         run: |
           python3 -m pip install --upgrade pip
+          python3 -m pip install -e ../sardis
           python3 -m pip install -e ".[dev]"
       - name: Run tests
         working-directory: packages/sardis-agent-sdk
