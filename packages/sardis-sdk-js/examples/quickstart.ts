@@ -9,10 +9,10 @@
 //   import { Sardis } from "sardis"
 //   const sardis = new Sardis({ apiKey })
 
-import { SardisClient } from "@sardis/sdk"
-import { createSardisTools } from "@sardis/ai-sdk"
+import { SardisClient } from '@sardis/sdk';
+import { createSardisTools } from '@sardis/ai-sdk';
 
-const client = new SardisClient({ apiKey: process.env.SARDIS_API_KEY! })
-const tools = createSardisTools({ client })
+const client = new SardisClient({ apiKey: process.env.SARDIS_API_KEY! });
+const tools = createSardisTools({ client });
 
-export { client, tools }
+export { client, tools };
