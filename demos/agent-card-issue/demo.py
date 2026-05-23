@@ -16,7 +16,6 @@ from decimal import Decimal
 from sardis.cards import CardService, CardType
 from sardis.cards.providers.mock import MockProvider
 
-
 AGENT_WALLET_ID = "wallet_agent_research_bot_001"
 
 

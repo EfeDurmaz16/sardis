@@ -14,16 +14,15 @@ import hashlib
 import hmac
 
 from sardis.protocol.x402 import (
+    X402_PAYMENT_REQUIRED_HEADER,
+    X402_PAYMENT_RESPONSE_HEADER,
+    X402_PAYMENT_SIGNATURE_HEADER,
     X402HeaderBuilder,
     X402PaymentPayload,
-    X402_PAYMENT_REQUIRED_HEADER,
-    X402_PAYMENT_SIGNATURE_HEADER,
-    X402_PAYMENT_RESPONSE_HEADER,
     generate_challenge,
     parse_challenge_header,
     verify_payment_payload,
 )
-
 
 # --- demo "wallet" (deterministic HMAC signer, stands in for an EOA) ---
 PAYER_ADDRESS = "0xA11ce0000000000000000000000000000000A11C"
@@ -115,7 +114,7 @@ def agent_pay_and_fetch(server: MockResourceServer) -> None:
         signature=signature,
     )
     pay_headers = X402HeaderBuilder.build_payment_signature_header(payload)
-    print(f"[agent] signed payment payload, retrying with PAYMENT-SIGNATURE header")
+    print("[agent] signed payment payload, retrying with PAYMENT-SIGNATURE header")
 
     status, response_headers, body = server.get_resource(pay_headers)
     print(f"[server] -> HTTP {status} {body}")
