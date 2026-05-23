@@ -167,12 +167,22 @@ def validate_tap_headers(
     nonce_cache: MutableSet[str] | None = None,
     verify_signature_fn: Any | None = None,
     tap_version: str | None = None,
+    require_replay_check: bool = True,
 ) -> TapVerificationResult:
     """
     Validate TAP message-signature headers.
 
     This performs structural and semantic checks. Cryptographic verification can
     be optionally injected via verify_signature_fn(signature_base, signature_b64, keyid, alg).
+
+    Replay protection: by default (``require_replay_check=True``), this function
+    REQUIRES a ``nonce_cache`` -- a missing cache means replay protection cannot
+    be enforced, and the request is rejected with ``tap_nonce_cache_required``
+    (fail-closed). Callers that must opt out (e.g., when running the structural
+    checks only, with replay protection enforced at a different layer) MUST pass
+    ``require_replay_check=False`` explicitly. There is no silent fallback.
+
+    See ~/project-directions/sardis-sdk-security-model.md §4 ("TAP message nonce").
     """
     if tap_version is not None:
         version_valid, version_reason = validate_tap_version(tap_version)
@@ -209,7 +219,11 @@ def validate_tap_headers(
     if signature_input.expires - signature_input.created > max_time_window_seconds:
         return TapVerificationResult(False, "tap_window_too_large")
 
-    if nonce_cache is not None:
+    if nonce_cache is None:
+        if require_replay_check:
+            return TapVerificationResult(False, "tap_nonce_cache_required")
+        # Explicit opt-out: caller acknowledged replay protection happens elsewhere.
+    else:
         if signature_input.nonce in nonce_cache:
             return TapVerificationResult(False, "tap_nonce_replayed")
         nonce_cache.add(signature_input.nonce)
