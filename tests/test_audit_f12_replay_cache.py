@@ -2,7 +2,7 @@
 import threading
 import time
 
-from sardis_protocol.storage import ReplayCache
+from sardis.protocol.storage import ReplayCache
 
 
 def test_replay_cache_concurrent_access():

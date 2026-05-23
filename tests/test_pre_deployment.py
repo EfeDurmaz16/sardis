@@ -17,7 +17,7 @@ import pytest
 class TestCoreModulesExist:
     """Verify all core modules can be imported."""
 
-    def test_sardis.core_imports(self):
+    def test_sardis_core_imports(self):
         """Test sardis.core module imports."""
         from sardis.core.spending_policy import SpendingPolicy
         from sardis.core.spending_tracker import SpendingTracker

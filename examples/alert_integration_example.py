@@ -19,8 +19,8 @@ async def payment_with_alerts_example():
 
     This would typically be integrated into the payment orchestrator or API routes.
     """
-    from sardis_core.alert_channels import AlertDispatcher, SlackChannel
-    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis.core.alert_channels import AlertDispatcher, SlackChannel
+    from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
 
     # Initialize dispatcher
     dispatcher = AlertDispatcher()
@@ -59,7 +59,7 @@ async def budget_threshold_alert_example():
     """
     Example showing budget threshold alerts.
     """
-    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
     from server.routes.operations.alerts import dispatch_alert
 
     # Simulate budget tracking
@@ -91,7 +91,7 @@ async def policy_violation_alert_example():
     """
     Example showing policy violation alerts.
     """
-    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
 
     alert = Alert(
         alert_type=AlertType.POLICY_VIOLATION,
@@ -229,7 +229,7 @@ async def rule_engine_example():
     """
     from decimal import Decimal
 
-    from sardis_core.alert_rules import AlertRule, AlertRuleEngine, ConditionType
+    from sardis.core.alert_rules import AlertRule, AlertRuleEngine, ConditionType
 
     # Initialize engine
     engine = AlertRuleEngine()
@@ -268,7 +268,7 @@ async def integrate_alerts_in_orchestrator():
 
     This would be added to sardis_core/orchestrator.py
     """
-    from sardis_core.alert_rules import Alert, AlertSeverity, AlertType
+    from sardis.core.alert_rules import Alert, AlertSeverity, AlertType
     from server.routes.operations.alerts import dispatch_alert
 
     # After successful payment execution:

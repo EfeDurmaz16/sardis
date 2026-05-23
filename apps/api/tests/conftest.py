@@ -45,7 +45,8 @@ import importlib.abc as _importlib_abc
 import importlib.machinery as _importlib_machinery
 
 _LEGACY_TO_UMBRELLA = {
-    "sardis.core": "sardis.core",
+    "sardis_v2_core": "sardis.core",
+    "sardis_core": "sardis.core",
     "sardis_protocol": "sardis.protocol",
     "sardis_cards": "sardis.cards",
     "sardis_wallet": "sardis.wallet",

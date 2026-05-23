@@ -15,7 +15,7 @@ from decimal import Decimal
 import pytest
 
 API_URL = os.getenv("SARDIS_API_URL", "http://localhost:8000")
-TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e"  # nosecret)
+TEST_API_KEY = os.getenv("SARDIS_TEST_API_KEY", "sk_test_sardis_e2e")  # nosecret
 
 
 class TestApprovalFlow:
