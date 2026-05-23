@@ -12,7 +12,7 @@ from .base import SardisModel
 
 class WebhookEventType(str, Enum):
     """Webhook event types."""
-    
+
     PAYMENT_COMPLETED = "payment.completed"
     PAYMENT_FAILED = "payment.failed"
     HOLD_CREATED = "hold.created"
@@ -28,7 +28,7 @@ class WebhookEventType(str, Enum):
 
 class Webhook(SardisModel):
     """A webhook subscription."""
-    
+
     webhook_id: str = Field(alias="id")
     organization_id: str
     url: str
@@ -44,7 +44,7 @@ class Webhook(SardisModel):
 
 class WebhookEvent(SardisModel):
     """A webhook event."""
-    
+
     event_id: str = Field(alias="id")
     event_type: str
     payload: dict[str, Any]
@@ -53,7 +53,7 @@ class WebhookEvent(SardisModel):
 
 class WebhookDelivery(SardisModel):
     """A webhook delivery attempt."""
-    
+
     delivery_id: str = Field(alias="id")
     subscription_id: str
     event_id: str
@@ -69,7 +69,7 @@ class WebhookDelivery(SardisModel):
 
 class CreateWebhookRequest(SardisModel):
     """Request to create a webhook subscription."""
-    
+
     url: str
     events: list[str]
     organization_id: str | None = None
@@ -77,7 +77,7 @@ class CreateWebhookRequest(SardisModel):
 
 class UpdateWebhookRequest(SardisModel):
     """Request to update a webhook subscription."""
-    
+
     url: str | None = None
     events: list[str] | None = None
     is_active: bool | None = None

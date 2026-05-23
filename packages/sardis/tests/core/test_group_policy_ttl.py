@@ -7,10 +7,8 @@ reset every 24 hours (30x overspend).
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from sardis.core.group_policy import (
     _TTL_DAILY,
     _TTL_MONTHLY,

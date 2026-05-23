@@ -5,12 +5,10 @@ Override: SARDIS_AGIT_FAIL_OPEN=true allows the payment to proceed.
 """
 from __future__ import annotations
 
-import asyncio
 from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
-
 from sardis.core.config import SardisSettings
 from sardis.core.control_plane import ControlPlane
 from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus

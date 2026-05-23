@@ -9,7 +9,6 @@ def test_reconciliation_preserves_original_subject():
     import tempfile
 
     from sardis.core.mandates import PaymentMandate, VCProof
-
     from sardis.ledger.records import ChainReceipt, LedgerStore
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "test.db"

@@ -12,11 +12,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis.core.spending_mandate import (
-    VALID_TRANSITIONS,
     ApprovalMode,
-    MandateCheckResult,
     MandateStatus,
     SpendingMandate,
 )

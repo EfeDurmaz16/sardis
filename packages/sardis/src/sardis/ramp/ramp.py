@@ -8,7 +8,7 @@ import hmac
 import logging
 import os
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 import httpx
 
@@ -81,10 +81,10 @@ class SardisFiatRamp:
 
     def __init__(
         self,
-        sardis_key: Optional[str] = None,
-        bridge_api_key: Optional[str] = None,
+        sardis_key: str | None = None,
+        bridge_api_key: str | None = None,
         environment: Literal["sandbox", "production"] = "sandbox",
-        config: Optional[RampConfig] = None,
+        config: RampConfig | None = None,
         kyc_threshold_usd: float = 1000.00,
     ):
         """

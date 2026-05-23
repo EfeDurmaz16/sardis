@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from sardis.guardrails.kill_switch import (
     ActivationReason,
     KillSwitch,

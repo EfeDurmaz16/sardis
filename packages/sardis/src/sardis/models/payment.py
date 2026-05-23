@@ -13,7 +13,7 @@ from .base import SardisModel
 
 class PaymentStatus(str, Enum):
     """Payment status."""
-    
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -23,7 +23,7 @@ class PaymentStatus(str, Enum):
 
 class Payment(SardisModel):
     """A payment transaction."""
-    
+
     payment_id: str = Field(alias="id")
     from_wallet: str
     to_wallet: str
@@ -42,7 +42,7 @@ class Payment(SardisModel):
 
 class ExecutePaymentRequest(SardisModel):
     """Request to execute a payment."""
-    
+
     from_wallet: str
     to_address: str
     amount: Decimal
@@ -54,7 +54,7 @@ class ExecutePaymentRequest(SardisModel):
 
 class ExecutePaymentResponse(SardisModel):
     """Response from payment execution."""
-    
+
     payment_id: str
     status: PaymentStatus
     tx_hash: str | None = None
@@ -65,13 +65,13 @@ class ExecutePaymentResponse(SardisModel):
 
 class ExecuteMandateRequest(SardisModel):
     """Request to execute a mandate."""
-    
+
     mandate: dict[str, Any]
 
 
 class ExecuteAP2Request(SardisModel):
     """Request to execute an AP2 payment bundle."""
-    
+
     intent: dict[str, Any]
     cart: dict[str, Any]
     payment: dict[str, Any]
@@ -79,7 +79,7 @@ class ExecuteAP2Request(SardisModel):
 
 class ExecuteAP2Response(SardisModel):
     """Response from AP2 payment execution."""
-    
+
     mandate_id: str
     ledger_tx_id: str
     chain_tx_hash: str

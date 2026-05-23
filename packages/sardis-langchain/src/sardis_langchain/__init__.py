@@ -17,8 +17,8 @@ warnings.warn(
     stacklevel=2,
 )
 
-import sardis.integrations.langchain as _module  # noqa: E402
-from sardis.integrations.langchain import *  # noqa: F401, F403, E402
+import sardis.integrations.langchain as _module
+from sardis.integrations.langchain import *  # noqa: F403
 
 __path__ = _module.__path__
 __version__ = getattr(_module, "__version__", "0.99.0")

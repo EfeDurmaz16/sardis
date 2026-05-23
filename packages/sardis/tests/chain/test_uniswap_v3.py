@@ -9,11 +9,9 @@ Tests:
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis.chain.uniswap_v3 import (
     DEFAULT_FEE_TIER,
     EURC_BASE,

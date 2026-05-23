@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 
 class RampStatus(str, Enum):
@@ -32,8 +32,8 @@ class RampQuote:
     fee_percent: Decimal
     exchange_rate: Decimal
     expires_at: datetime
-    estimated_completion: Optional[datetime] = None
-    quote_id: Optional[str] = None
+    estimated_completion: datetime | None = None
+    quote_id: str | None = None
 
 
 @dataclass
@@ -51,17 +51,17 @@ class RampSession:
     destination_address: str
 
     # Payment details
-    payment_url: Optional[str] = None
-    payment_method: Optional[str] = None
+    payment_url: str | None = None
+    payment_method: str | None = None
 
     # Tracking
-    tx_hash: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    tx_hash: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Metadata
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
 
 class RampProvider(ABC):
@@ -128,8 +128,8 @@ class RampProvider(ABC):
         crypto_currency: str,
         chain: str,
         destination_address: str,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
     ) -> RampSession:
         """
         Create an on-ramp session (fiat → crypto).
@@ -159,8 +159,8 @@ class RampProvider(ABC):
         chain: str,
         fiat_currency: str,
         bank_account: dict,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
     ) -> RampSession:
         """
         Create an off-ramp session (crypto → fiat).

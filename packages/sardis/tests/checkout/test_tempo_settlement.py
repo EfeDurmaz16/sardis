@@ -1,5 +1,5 @@
 """Tests for Tempo settlement routing."""
-from sardis.checkout.config import CHECKOUT_CHAIN_CONFIG, get_checkout_chain_config
+from sardis.checkout.config import CHECKOUT_CHAIN_CONFIG
 from sardis.checkout.settlement import _TEMPO_CHAINS
 
 

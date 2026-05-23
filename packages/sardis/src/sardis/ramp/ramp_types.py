@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal
 
 
 class FundingMethod(str, Enum):
@@ -21,12 +21,12 @@ class BankAccount:
     account_number: str
     routing_number: str
     account_type: Literal["checking", "savings"] = "checking"
-    bank_name: Optional[str] = None
+    bank_name: str | None = None
 
     # For international wires
-    swift_code: Optional[str] = None
-    iban: Optional[str] = None
-    bank_address: Optional[str] = None
+    swift_code: str | None = None
+    iban: str | None = None
+    bank_address: str | None = None
 
 
 @dataclass
@@ -34,8 +34,8 @@ class MerchantAccount:
     """Merchant receiving payment."""
     name: str
     bank_account: BankAccount
-    merchant_id: Optional[str] = None
-    category: Optional[str] = None
+    merchant_id: str | None = None
+    category: str | None = None
 
 
 @dataclass
@@ -66,19 +66,19 @@ class FundingResult:
     type: Literal["crypto", "fiat"]
 
     # For crypto deposits
-    deposit_address: Optional[str] = None
-    chain: Optional[str] = None
-    token: Optional[str] = None
+    deposit_address: str | None = None
+    chain: str | None = None
+    token: str | None = None
 
     # For fiat deposits
-    payment_link: Optional[str] = None
-    ach_instructions: Optional[ACHDetails] = None
-    wire_instructions: Optional[WireDetails] = None
-    estimated_arrival: Optional[datetime] = None
-    fee_percent: Optional[Decimal] = None
+    payment_link: str | None = None
+    ach_instructions: ACHDetails | None = None
+    wire_instructions: WireDetails | None = None
+    estimated_arrival: datetime | None = None
+    fee_percent: Decimal | None = None
 
     # Transfer ID for tracking
-    transfer_id: Optional[str] = None
+    transfer_id: str | None = None
 
 
 @dataclass
@@ -97,16 +97,16 @@ class PaymentResult:
     status: Literal["completed", "pending_approval", "failed"]
 
     # For completed payments
-    payment_id: Optional[str] = None
-    merchant_received: Optional[Decimal] = None
-    fee: Optional[Decimal] = None
-    tx_hash: Optional[str] = None
+    payment_id: str | None = None
+    merchant_received: Decimal | None = None
+    fee: Decimal | None = None
+    tx_hash: str | None = None
 
     # For pending approval
-    approval_request: Optional[dict] = None
+    approval_request: dict | None = None
 
     # For failed payments
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass

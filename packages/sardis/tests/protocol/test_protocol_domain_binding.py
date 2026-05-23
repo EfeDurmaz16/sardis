@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 
 import pytest
+from sardis.core import SardisSettings
 from sardis.protocol.schemas import AP2PaymentExecuteRequest
 from sardis.protocol.verifier import MandateVerifier, VerificationResult
-from sardis.core import SardisSettings
 
 pytestmark = [pytest.mark.protocol_conformance, pytest.mark.ap2]
 

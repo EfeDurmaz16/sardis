@@ -2,7 +2,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis.core.alert_channels import (
     AlertDispatcher,
     DiscordChannel,

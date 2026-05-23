@@ -6,9 +6,10 @@ captured webhook could otherwise be replayed indefinitely.
 """
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi import HTTPException
-from types import SimpleNamespace
 
 from server.webhook_replay import run_with_replay_protection
 

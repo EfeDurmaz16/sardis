@@ -11,7 +11,7 @@ from .base import SardisModel
 
 class TokenLimit(SardisModel):
     """Token-specific spending limits (for policy tracking only, not balance storage)."""
-    
+
     token: str
     limit_per_tx: Decimal | None = None
     limit_total: Decimal | None = None
@@ -27,7 +27,7 @@ class Wallet(SardisModel):
     - Signs transactions via MPC
     - Reads balances from chain (on-demand)
     """
-    
+
     wallet_id: str
     agent_id: str
     mpc_provider: str = "turnkey"  # "turnkey" | "fireblocks" | "local"

@@ -9,11 +9,9 @@ mandates sent to different instances can result in double payments.
 from __future__ import annotations
 
 import json
-from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-
 from sardis.core.dedup_store import InMemoryDedupStore, RedisDedupStore
 
 # ── Fixtures ────────────────────────────────────────────────────────

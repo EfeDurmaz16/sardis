@@ -6,8 +6,6 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sardis.core.mandates import PaymentMandate, VCProof
-
 from sardis.chain.executor import (
     CHAIN_CONFIGS,
     STABLECOIN_ADDRESSES,
@@ -20,6 +18,7 @@ from sardis.chain.executor import (
     TransactionStatus,
     encode_erc20_transfer,
 )
+from sardis.core.mandates import PaymentMandate, VCProof
 
 
 def create_test_mandate(

@@ -4,7 +4,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from sardis.core.goal_drift_detector import (
     DriftSeverity,
     DriftType,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 from .base import RampProvider, RampQuote, RampSession
 
@@ -46,9 +46,9 @@ class RampRouter:
         crypto_currency: str,
         chain: str,
         destination_address: str,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        preferred_provider: Optional[str] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
+        preferred_provider: str | None = None,
     ) -> RampSession:
         """
         Create on-ramp with the best provider.
@@ -124,9 +124,9 @@ class RampRouter:
         chain: str,
         fiat_currency: str,
         bank_account: dict,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
-        preferred_provider: Optional[str] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
+        preferred_provider: str | None = None,
     ) -> RampSession:
         """
         Create off-ramp with the best provider.
@@ -249,7 +249,7 @@ class RampRouter:
     def _get_onramp_priority(
         self,
         crypto_currency: str,
-        preferred_provider: Optional[str],
+        preferred_provider: str | None,
         available_providers: list[RampProvider],
     ) -> list[RampProvider]:
         """

@@ -12,7 +12,7 @@ from .base import SardisModel
 
 class HoldStatus(str, Enum):
     """Hold status."""
-    
+
     ACTIVE = "active"
     CAPTURED = "captured"
     VOIDED = "voided"
@@ -21,7 +21,7 @@ class HoldStatus(str, Enum):
 
 class Hold(SardisModel):
     """A pre-authorization hold on funds."""
-    
+
     hold_id: str = Field(alias="id")
     wallet_id: str
     merchant_id: str | None = None
@@ -38,7 +38,7 @@ class Hold(SardisModel):
 
 class CreateHoldRequest(SardisModel):
     """Request to create a hold."""
-    
+
     wallet_id: str
     amount: Decimal
     token: str = "USDC"
@@ -49,13 +49,13 @@ class CreateHoldRequest(SardisModel):
 
 class CaptureHoldRequest(SardisModel):
     """Request to capture a hold."""
-    
+
     amount: Decimal | None = None  # If None, capture full amount
 
 
 class CreateHoldResponse(SardisModel):
     """Response from creating a hold."""
-    
+
     hold_id: str
     status: HoldStatus
     expires_at: datetime

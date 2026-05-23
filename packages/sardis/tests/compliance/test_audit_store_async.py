@@ -15,10 +15,9 @@ for pkg in ["sardis-core"]:
     if pkg_path.exists():
         sys.path.insert(0, str(pkg_path))
 
+from sardis.compliance.checks import ComplianceAuditEntry, ComplianceEngine, ComplianceResult
 from sardis.core import SardisSettings
 from sardis.core.mandates import PaymentMandate, VCProof
-
-from sardis.compliance.checks import ComplianceAuditEntry, ComplianceEngine, ComplianceResult
 
 
 def _sample_payment_mandate(subject: str = "agent_123") -> PaymentMandate:

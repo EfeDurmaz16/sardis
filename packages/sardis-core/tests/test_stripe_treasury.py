@@ -3,7 +3,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.stripe_treasury import StripeTreasuryProvider, TransferStatus
 
 
@@ -27,7 +26,7 @@ class _FakeStripe:
 @pytest.mark.asyncio
 async def test_fund_issuing_balance_creates_topup():
     provider = StripeTreasuryProvider(
-        stripe_secret_key="sk_test_123",
+        stripe_secret_key="sk_test_123",  # nosecret
         financial_account_id="fa_123",
     )
     provider._stripe = _FakeStripe  # type: ignore[attr-defined]
@@ -44,7 +43,7 @@ async def test_fund_issuing_balance_creates_topup():
 @pytest.mark.asyncio
 async def test_fund_issuing_balance_rejects_non_positive_amount():
     provider = StripeTreasuryProvider(
-        stripe_secret_key="sk_test_123",
+        stripe_secret_key="sk_test_123",  # nosecret
         financial_account_id="fa_123",
     )
     provider._stripe = _FakeStripe  # type: ignore[attr-defined]
@@ -56,7 +55,7 @@ async def test_fund_issuing_balance_rejects_non_positive_amount():
 @pytest.mark.asyncio
 async def test_fund_issuing_balance_requires_stripe_sdk():
     provider = StripeTreasuryProvider(
-        stripe_secret_key="sk_test_123",
+        stripe_secret_key="sk_test_123",  # nosecret
         financial_account_id="fa_123",
     )
     provider._stripe = None  # type: ignore[attr-defined]
@@ -68,7 +67,7 @@ async def test_fund_issuing_balance_requires_stripe_sdk():
 @pytest.mark.asyncio
 async def test_fund_issuing_balance_accepts_connected_account():
     provider = StripeTreasuryProvider(
-        stripe_secret_key="sk_test_123",
+        stripe_secret_key="sk_test_123",  # nosecret
         financial_account_id="fa_123",
     )
     provider._stripe = _FakeStripe  # type: ignore[attr-defined]

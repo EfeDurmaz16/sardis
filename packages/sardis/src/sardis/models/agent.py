@@ -10,7 +10,7 @@ from .base import SardisModel
 
 class Agent(SardisModel):
     """An AI agent registered with Sardis."""
-    
+
     agent_id: str = Field(alias="id")
     name: str
     description: str | None = None
@@ -26,7 +26,7 @@ class Agent(SardisModel):
 
 class CreateAgentRequest(SardisModel):
     """Request to create a new agent."""
-    
+
     name: str
     description: str | None = None
     organization_id: str | None = None
@@ -36,7 +36,7 @@ class CreateAgentRequest(SardisModel):
 
 class UpdateAgentRequest(SardisModel):
     """Request to update an agent."""
-    
+
     name: str | None = None
     description: str | None = None
     is_active: bool | None = None

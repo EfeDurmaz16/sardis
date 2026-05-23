@@ -4,7 +4,6 @@ import asyncio
 from decimal import Decimal
 
 import pytest
-
 from sardis_guardrails.rate_limiter import (
     RateLimiter,
     RateLimitError,

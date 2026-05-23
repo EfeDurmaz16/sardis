@@ -14,7 +14,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis_v2_core.spending_policy import (
     MerchantRule,
     SpendingPolicy,

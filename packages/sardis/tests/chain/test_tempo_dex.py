@@ -10,12 +10,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from sardis.chain.tempo.dex import (
-    DEX_ADDRESS,
     TEMPO_TOKENS,
     TOKEN_DECIMALS,
     DEXQuote,

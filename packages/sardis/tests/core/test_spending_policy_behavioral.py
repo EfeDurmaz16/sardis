@@ -13,10 +13,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from sardis.core.spending_policy import (
-    MerchantRule,
     SpendingPolicy,
     SpendingScope,
     TimeWindowLimit,

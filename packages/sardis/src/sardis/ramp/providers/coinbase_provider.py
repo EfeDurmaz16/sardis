@@ -9,7 +9,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 import httpx
 
@@ -36,7 +36,7 @@ class CoinbaseOnrampProvider(RampProvider):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         environment: Literal["sandbox", "production"] = "sandbox",
     ):
         """
@@ -111,8 +111,8 @@ class CoinbaseOnrampProvider(RampProvider):
         crypto_currency: str,
         chain: str,
         destination_address: str,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
     ) -> RampSession:
         """
         Create Coinbase on-ramp session.
@@ -171,8 +171,8 @@ class CoinbaseOnrampProvider(RampProvider):
         chain: str,
         fiat_currency: str,
         bank_account: dict,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
     ) -> RampSession:
         """
         Coinbase Onramp does not support off-ramp.

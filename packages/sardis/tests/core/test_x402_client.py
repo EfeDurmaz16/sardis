@@ -1,17 +1,13 @@
 """Tests for x402 client — agent pays x402 APIs."""
 from __future__ import annotations
 
-import base64
-import json
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from sardis.core.x402_client import (
     X402AcceptOption,
     X402Client,
-    X402CostPreview,
     X402Negotiator,
 )
 from sardis.core.x402_policy_guard import X402PolicyDenied, X402PolicyGuard
@@ -65,7 +61,6 @@ class TestX402Client:
         guard = _mock_policy_guard()
         client = X402Client(policy_guard=guard)
 
-        import httpx
 
         mock_response = MagicMock()
         mock_response.status_code = 200

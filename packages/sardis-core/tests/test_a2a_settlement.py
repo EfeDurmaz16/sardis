@@ -6,7 +6,6 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
-
 from sardis_v2_core.a2a_escrow import Escrow, EscrowState
 from sardis_v2_core.a2a_settlement import SettlementEngine
 from sardis_v2_core.database import Database

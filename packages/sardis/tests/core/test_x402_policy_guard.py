@@ -2,19 +2,15 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from sardis.core.control_plane import ControlPlane
 from sardis.core.execution_intent import (
     ExecutionIntent,
-    ExecutionResult,
     IntentSource,
-    IntentStatus,
-    SimulationResult,
 )
-from sardis.core.x402_policy_guard import X402PolicyDenied, X402PolicyGuard
+from sardis.core.x402_policy_guard import X402PolicyGuard
 
 
 def _make_challenge(**overrides):

@@ -4,7 +4,6 @@ from decimal import Decimal
 
 import httpx
 import pytest
-
 from sardis.core.cpn_funding_adapter import CircleCPNFundingAdapter
 from sardis.core.funding import FundingRequest
 

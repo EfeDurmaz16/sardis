@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal
 
 from ..base import RampProvider, RampQuote, RampSession, RampStatus
 from ..ramp import SardisFiatRamp
@@ -30,8 +30,8 @@ class BridgeProvider(RampProvider):
 
     def __init__(
         self,
-        sardis_key: Optional[str] = None,
-        bridge_api_key: Optional[str] = None,
+        sardis_key: str | None = None,
+        bridge_api_key: str | None = None,
         environment: Literal["sandbox", "production"] = "sandbox",
         ach_enabled: bool = True,
         sepa_enabled: bool = False,
@@ -146,8 +146,8 @@ class BridgeProvider(RampProvider):
         crypto_currency: str,
         chain: str,
         destination_address: str,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
     ) -> RampSession:
         """Create on-ramp session via Bridge."""
         if not wallet_id:
@@ -184,8 +184,8 @@ class BridgeProvider(RampProvider):
         chain: str,
         fiat_currency: str,
         bank_account: dict,
-        wallet_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        wallet_id: str | None = None,
+        metadata: dict | None = None,
         rail: str = "ach",
     ) -> RampSession:
         """Create off-ramp session via Bridge.

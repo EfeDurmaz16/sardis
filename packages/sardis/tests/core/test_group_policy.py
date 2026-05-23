@@ -4,7 +4,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
 from sardis.core.agent_groups import (
     AgentGroupRepository,
     GroupMerchantPolicy,
