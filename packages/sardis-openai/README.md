@@ -1,8 +1,56 @@
 # sardis-openai
 
+> **DEPRECATED — use [`sardis-openai-agents`](https://pypi.org/project/sardis-openai-agents/) instead.**
+>
+> This package targets the OpenAI **Chat Completions / Assistants** function-calling
+> shape. It has been superseded by `sardis-openai-agents`, which targets the
+> modern **OpenAI Agents SDK** and has ~10x more installs. OpenAI itself is
+> deprecating the Assistants API in favor of the Responses / Agents API.
+>
+> `sardis-openai` will be **yanked from PyPI after a 30-day deprecation window**.
+> A `DeprecationWarning` is emitted on import. Existing installs keep working
+> for now — migrate at your earliest convenience.
+
+## Migration
+
+**Before** (`sardis-openai`, Chat Completions function calling):
+
+```python
+from openai import OpenAI
+from sardis_openai import get_sardis_tools, SardisToolHandler
+
+client = OpenAI()
+handler = SardisToolHandler(api_key="...")
+tools = get_sardis_tools()
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Pay $25 to OpenAI"}],
+    tools=tools,
+)
+for tool_call in response.choices[0].message.tool_calls:
+    result = await handler.handle(tool_call)
+```
+
+**After** (`sardis-openai-agents`, OpenAI Agents SDK):
+
+```python
+from agents import Agent, Runner
+from sardis import SardisClient
+from sardis_openai_agents import SardisAgentToolkit
+
+sardis = SardisClient(api_key="...")
+wallet = sardis.wallets.create(agent_id="my-agent", chain="base", currency="USDC")
+toolkit = SardisAgentToolkit(client=sardis, wallet_id=wallet.wallet_id)
+
+agent = Agent(name="Payer", instructions="You can pay.", tools=toolkit.tools())
+result = await Runner.run(agent, "Pay $25 to OpenAI")
+```
+
+See [`sardis-openai-agents`](../sardis-openai-agents/README.md) for full docs.
+
 OpenAI function calling tools for Sardis - Payment OS for AI Agents.
 
-## Installation
+## Installation (legacy)
 
 ```bash
 pip install sardis-openai
