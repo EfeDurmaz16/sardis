@@ -28,7 +28,7 @@ class AsyncFundingResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create a funding commitment
             commitment = await client.funding.create_commitment(
                 vault_ref="vault_abc",
@@ -209,7 +209,7 @@ class FundingResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create a funding commitment
             commitment = client.funding.create_commitment(
                 vault_ref="vault_abc",

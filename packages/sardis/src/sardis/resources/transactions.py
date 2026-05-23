@@ -52,7 +52,7 @@ class AsyncTransactionsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # List supported chains
             chains = await client.transactions.list_chains()
 
@@ -158,7 +158,7 @@ class TransactionsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # List supported chains
             chains = client.transactions.list_chains()
 

@@ -25,7 +25,7 @@ class AsyncStreamingResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Open a payment stream
             stream = await client.streaming.open(
                 from_wallet="wal_abc123",
@@ -163,7 +163,7 @@ class StreamingResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Open a payment stream
             stream = client.streaming.open(
                 from_wallet="wal_abc123",

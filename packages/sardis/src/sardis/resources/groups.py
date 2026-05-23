@@ -22,7 +22,7 @@ class AsyncGroupsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             group = await client.groups.create(name="engineering-team")
             await client.groups.add_agent(group.group_id, "agent_abc")
         ```
@@ -145,7 +145,7 @@ class GroupsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             group = client.groups.create(name="engineering-team")
             client.groups.add_agent(group.group_id, "agent_abc")
         ```

@@ -25,7 +25,7 @@ class AsyncBatchResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             result = await client.batch.execute(
                 transfers=[
                     {"to": "0xabc...", "amount": "100.00", "token": "USDC"},
@@ -80,7 +80,7 @@ class BatchResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             result = client.batch.execute(
                 transfers=[
                     {"to": "0xabc...", "amount": "100.00", "token": "USDC"},

@@ -25,7 +25,7 @@ class AsyncMandateDelegationResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Delegate a mandate to a sub-agent
             delegation = await client.mandate_delegation.delegate(
                 mandate_id="mnd_abc123",
@@ -124,7 +124,7 @@ class MandateDelegationResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Delegate a mandate to a sub-agent
             delegation = client.mandate_delegation.delegate(
                 mandate_id="mnd_abc123",

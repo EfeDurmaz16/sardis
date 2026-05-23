@@ -30,7 +30,7 @@ class AsyncPaymentObjectsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Mint a payment object from a mandate
             obj = await client.payment_objects.mint(
                 mandate_id="mnd_abc",
@@ -196,7 +196,7 @@ class PaymentObjectsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Mint a payment object from a mandate
             obj = client.payment_objects.mint(
                 mandate_id="mnd_abc",

@@ -17,7 +17,7 @@ from ..pagination import AsyncPaginator, Page, SyncPaginator
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..client import AsyncSardisClient, RequestContext, SardisClient, TimeoutConfig
+    from ..client import AsyncSardis, RequestContext, Sardis, TimeoutConfig
 
 # Type variable for model types
 T = TypeVar("T")
@@ -28,13 +28,13 @@ class AsyncBaseResource:
 
     Provides common methods for making HTTP requests to the API.
     All resource-specific classes should inherit from this class
-    when working with the AsyncSardisClient.
+    when working with the AsyncSardis.
 
     Attributes:
         _client: The async client instance
     """
 
-    def __init__(self, client: AsyncSardisClient) -> None:
+    def __init__(self, client: AsyncSardis) -> None:
         """Initialize the resource.
 
         Args:
@@ -200,13 +200,13 @@ class SyncBaseResource:
 
     Provides common methods for making HTTP requests to the API.
     All resource-specific classes should inherit from this class
-    when working with the synchronous SardisClient.
+    when working with the synchronous Sardis.
 
     Attributes:
         _client: The sync client instance
     """
 
-    def __init__(self, client: SardisClient) -> None:
+    def __init__(self, client: Sardis) -> None:
         """Initialize the resource.
 
         Args:

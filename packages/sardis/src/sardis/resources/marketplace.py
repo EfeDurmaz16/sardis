@@ -30,7 +30,7 @@ class AsyncMarketplaceResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create a service
             service = await client.marketplace.create_service(
                 name="AI Analysis",
@@ -325,7 +325,7 @@ class MarketplaceResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create a service
             service = client.marketplace.create_service(
                 name="AI Analysis",

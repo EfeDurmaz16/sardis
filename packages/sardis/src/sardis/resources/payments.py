@@ -22,7 +22,7 @@ class AsyncPaymentsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Execute a mandate
             result = await client.payments.execute_mandate(mandate)
 
@@ -104,7 +104,7 @@ class PaymentsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Execute a mandate
             result = client.payments.execute_mandate(mandate)
 

@@ -26,7 +26,7 @@ class AsyncWebhooksResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create a webhook
             webhook = await client.webhooks.create(
                 url="https://example.com/webhooks",
@@ -224,7 +224,7 @@ class WebhooksResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create a webhook
             webhook = client.webhooks.create(
                 url="https://example.com/webhooks",

@@ -29,7 +29,7 @@ class AsyncAgentsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create an agent
             agent = await client.agents.create(
                 name="my-agent",
@@ -214,7 +214,7 @@ class AgentsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create an agent
             agent = client.agents.create(
                 name="my-agent",

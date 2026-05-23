@@ -27,7 +27,7 @@ class AsyncFXResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Get a quote for USDC -> EURC conversion
             quote = await client.fx.quote(
                 from_currency="USDC",
@@ -156,7 +156,7 @@ class FXResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Get a quote for USDC -> EURC conversion
             quote = client.fx.quote(
                 from_currency="USDC",

@@ -28,7 +28,7 @@ class AsyncEscrowResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create an escrow hold
             hold = await client.escrow.create_hold(
                 payment_object_id="po_abc",
@@ -239,7 +239,7 @@ class EscrowResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create an escrow hold
             hold = client.escrow.create_hold(
                 payment_object_id="po_abc",

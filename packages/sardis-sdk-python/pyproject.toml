@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sardis-sdk"
-version = "1.1.0"
-description = "Production-grade Python SDK for the Sardis stablecoin execution layer"
+version = "0.99.0"
+description = "Deprecation shim — sardis-sdk has been consolidated into the `sardis` umbrella package (use `from sardis import Sardis, AsyncSardis`)."
 readme = "README.md"
 authors = [{name = "Sardis", email = "hello@sardis.sh"}]
 license = {text = "MIT"}
@@ -34,8 +34,7 @@ keywords = [
     "agents",
 ]
 dependencies = [
-    "httpx[http2]>=0.27",
-    "pydantic>=2.6",
+    "sardis>=2.0.0a0",
 ]
 
 [project.optional-dependencies]

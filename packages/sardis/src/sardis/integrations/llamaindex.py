@@ -8,10 +8,10 @@ Example:
     ```python
     from llama_index.core.agent import ReActAgent
     from llama_index.llms.openai import OpenAI
-    from sardis_sdk import SardisClient
-    from sardis_sdk.integrations.llamaindex import create_sardis_tools
+    from sardis import Sardis
+    from sardis.integrations.llamaindex import create_sardis_tools
 
-    async with SardisClient(api_key="sk_...") as client:
+    async with Sardis(api_key="sk_...") as client:
         tools = create_sardis_tools(client, wallet_id="wallet_123")
         llm = OpenAI(model="gpt-4")
         agent = ReActAgent.from_tools(tools, llm=llm, verbose=True)
@@ -37,7 +37,7 @@ except ImportError:
     LLAMA_INDEX_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from ..client import SardisClient
+    from ..client import Sardis
 
 
 def _generate_mandate_id() -> str:
@@ -62,7 +62,7 @@ class SardisPaymentTool:
 
     def __init__(
         self,
-        client: SardisClient,
+        client: Sardis,
         wallet_id: str,
         agent_id: str | None = None,
         chain: str = "base_sepolia",
@@ -281,7 +281,7 @@ class SardisPaymentTool:
 
 
 def create_sardis_tools(
-    client: SardisClient,
+    client: Sardis,
     wallet_id: str,
     agent_id: str | None = None,
     chain: str = "base_sepolia",
@@ -290,7 +290,7 @@ def create_sardis_tools(
     Create LlamaIndex tools for Sardis payments.
 
     Args:
-        client: Initialized SardisClient
+        client: Initialized Sardis
         wallet_id: Wallet ID to use for operations
         agent_id: Optional agent ID for attribution
         chain: Default blockchain
@@ -304,10 +304,10 @@ def create_sardis_tools(
     Example:
         ```python
         from llama_index.core.agent import ReActAgent
-        from sardis_sdk import SardisClient
-        from sardis_sdk.integrations.llamaindex import create_sardis_tools
+        from sardis import Sardis
+        from sardis.integrations.llamaindex import create_sardis_tools
 
-        async with SardisClient(api_key="sk_...") as client:
+        async with Sardis(api_key="sk_...") as client:
             tools = create_sardis_tools(client, wallet_id="wallet_123")
             agent = ReActAgent.from_tools(tools, llm=llm)
         ```
@@ -359,7 +359,7 @@ def create_sardis_tools(
 
 
 def get_llamaindex_tool(
-    client: SardisClient | None = None,
+    client: Sardis | None = None,
     wallet_id: str | None = None,
     agent_id: str | None = None,
     chain: str = "base_sepolia",
@@ -371,7 +371,7 @@ def get_llamaindex_tool(
     the payment tool is needed.
 
     Args:
-        client: SardisClient instance (required for real operations)
+        client: Sardis instance (required for real operations)
         wallet_id: Wallet ID to use
         agent_id: Agent ID for attribution
         chain: Default blockchain
@@ -393,7 +393,7 @@ def get_llamaindex_tool(
         def _demo_pay(amount: float, merchant: str, purpose: str = "Service payment") -> str:
             return (
                 f"DEMO MODE: Payment of ${amount} to {merchant} for '{purpose}' "
-                f"would be executed. Provide a SardisClient for real operations."
+                f"would be executed. Provide a Sardis for real operations."
             )
 
         return FunctionTool.from_defaults(

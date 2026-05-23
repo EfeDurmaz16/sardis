@@ -37,7 +37,7 @@ class AsyncLedgerResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # List ledger entries
             entries = await client.ledger.list_entries(wallet_id="wallet_123")
 
@@ -109,7 +109,7 @@ class LedgerResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # List ledger entries
             entries = client.ledger.list_entries(wallet_id="wallet_123")
 

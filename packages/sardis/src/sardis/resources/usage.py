@@ -25,7 +25,7 @@ class AsyncUsageResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Report usage
             event = await client.usage.report(
                 meter_id="mtr_abc123",
@@ -148,7 +148,7 @@ class UsageResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Report usage
             event = client.usage.report(
                 meter_id="mtr_abc123",

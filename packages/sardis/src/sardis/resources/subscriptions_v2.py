@@ -28,7 +28,7 @@ class AsyncSubscriptionsV2Resource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create a monthly subscription
             sub = await client.subscriptions_v2.create(
                 mandate_id="mnd_abc",
@@ -237,7 +237,7 @@ class SubscriptionsV2Resource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create a monthly subscription
             sub = client.subscriptions_v2.create(
                 mandate_id="mnd_abc",

@@ -24,7 +24,7 @@ class AsyncHoldsResource(AsyncBaseResource):
 
     Example:
         ```python
-        async with AsyncSardisClient(api_key="...") as client:
+        async with AsyncSardis(api_key="...") as client:
             # Create a hold
             hold = await client.holds.create(
                 wallet_id="wallet_123",
@@ -168,7 +168,7 @@ class HoldsResource(SyncBaseResource):
 
     Example:
         ```python
-        with SardisClient(api_key="...") as client:
+        with Sardis(api_key="...") as client:
             # Create a hold
             hold = client.holds.create(
                 wallet_id="wallet_123",
