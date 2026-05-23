@@ -22,6 +22,8 @@ Status meanings:
 | `packages/sardis-ledger/` | Append-only audit/evidence ledger primitives. | Add tamper-evidence and replay fixtures. |
 | `packages/sardis-sdk-python/` | Official Python API SDK package. | Keep smoke tests and quickstarts current; use `docs/architecture/sdk-packages.md` before moving SDK ownership. |
 | `packages/sardis-sdk-js/` | TypeScript SDK package. | Keep build, typecheck, and tests in required CI. |
+| `packages/sardis-js/` | Unified TypeScript SDK umbrella (v2.0.0-rc.0). Replaces fragmented @sardis/sdk + @sardis/ai-sdk + integrations. | Keep subpath exports stable; codemod from v1 maintained. |
+| `packages/create-sardis-app/` | npx scaffold template for Next.js + AI SDK + Sardis. | Keep template synced with sardis@2 API. |
 | `packages/sardis-mcp-server/` | MCP surface for agent tools. | Keep schema tests and examples current. |
 
 ## Supported
