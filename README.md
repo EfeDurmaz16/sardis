@@ -24,6 +24,36 @@
 
 ---
 
+## 🚀 Migrating from v1.x?
+
+Sardis v2 consolidates 30+ separate `sardis-*` packages into a **single `sardis` umbrella** with submodules + optional extras (Stripe/OpenAI/Anthropic SDK pattern).
+
+```bash
+# Old (v1.x — still works for pinned versions)
+pip install sardis-core sardis-cli sardis-chain sardis-langchain ...
+
+# New (v2.0.0a0+)
+pip install sardis
+pip install sardis[langchain,crewai,openai-agents]   # framework extras
+```
+
+```python
+# Old
+from sardis_v2_core import Wallet
+from sardis_langchain import SardisToolkit
+
+# New
+from sardis import Sardis, AsyncSardis
+from sardis.core import Wallet
+from sardis.integrations.langchain import SardisToolkit
+```
+
+**TypeScript** users: `npm install sardis` (subpath exports for ai-sdk, langchain, mastra). Run `npx sardis-migrate` to codemod legacy imports.
+
+The legacy `sardis-*` packages on PyPI/npm are not removed — pinned production deploys keep working. See [`packages/sardis/MIGRATION_NOTES.md`](packages/sardis/MIGRATION_NOTES.md) for the full migration guide.
+
+---
+
 ## What Sardis Is
 
 Sardis is the open-source financial authority layer for AI agents. It sits between autonomous agents and money-moving systems so every consequential financial action is checked against a mandate, policy decision, approval path, revocation path, and audit packet before execution.

@@ -38,39 +38,14 @@ classifiers = [
 ]
 dependencies = [
     "sardis",
-    "sardis-sdk>=1.0.0",
-    "sardis-core>=1.0.0",
-    "sardis-cli>=1.0.0",
     "pydantic>=2.6,<3.0",
     "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
-chain = ["sardis-chain>=1.0.0"]
-compliance = ["sardis-compliance>=1.0.0"]
-ledger = ["sardis-ledger>=1.0.0"]
-wallet = ["sardis-wallet>=1.0.0"]
-cards = ["sardis-cards>=1.0.0"]
-ramp = ["sardis-ramp>=1.0.0"]
-api = ["sardis-reference-api>=1.0.0"]
-protocols = [
-    "sardis-protocol>=1.0.0",
-    "sardis-a2a>=1.0.0",
-    "sardis-ucp>=1.0.0",
-]
-checkout = ["sardis-checkout>=1.0.0"]
-# Framework integrations
-crewai = ["sardis-crewai>=1.0.0"]
-langchain = ["sardis-langchain>=1.0.0"]
-autogpt = ["sardis-autogpt>=1.0.0"]
-openai-agents = ["sardis-openai-agents>=1.0.0"]
-adk = ["sardis-adk>=1.0.0"]
-browser-use = ["sardis-browser-use>=1.0.0"]
-composio = ["sardis-composio>=1.0.0"]
-guardrails = ["sardis-guardrails>=1.0.0"]
-all = [
-    "sardis[chain,compliance,ledger,wallet,cards,ramp,api,protocols,checkout,guardrails]",
-]
+# All Sardis sub-functionality now lives in the umbrella `sardis` package.
+# Install with extras: `pip install sardis[langchain,crewai,openai-agents,...]`
+# See packages/sardis/pyproject.toml for the full extras list.
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -142,32 +117,6 @@ ignore = [
 
 [tool.uv.sources]
 sardis = { path = "packages/sardis", editable = true }
-sardis-a2a = { path = "packages/sardis-a2a", editable = true }
-sardis-adk = { path = "packages/sardis-adk", editable = true }
-sardis-agent-sdk = { path = "packages/sardis-agent-sdk", editable = true }
-sardis-reference-api = { path = "apps/api", editable = true }
-sardis-autogpt = { path = "packages/sardis-autogpt", editable = true }
-sardis-browser-use = { path = "packages/sardis-browser-use", editable = true }
-sardis-cards = { path = "packages/sardis-cards", editable = true }
-sardis-chain = { path = "packages/sardis-chain", editable = true }
-sardis-checkout = { path = "packages/sardis-checkout", editable = true }
-sardis-cli = { path = "packages/sardis-cli", editable = true }
-sardis-coinbase = { path = "packages/sardis-coinbase", editable = true }
-sardis-compliance = { path = "packages/sardis-compliance", editable = true }
-sardis-composio = { path = "packages/sardis-composio", editable = true }
-sardis-core = { path = "packages/sardis-core", editable = true }
-sardis-crewai = { path = "packages/sardis-crewai", editable = true }
-sardis-guardrails = { path = "packages/sardis-guardrails", editable = true }
-sardis-langchain = { path = "packages/sardis-langchain", editable = true }
-sardis-ledger = { path = "packages/sardis-ledger", editable = true }
-sardis-openai = { path = "packages/sardis-openai", editable = true }
-sardis-openai-agents = { path = "packages/sardis-openai-agents", editable = true }
-sardis-openclaw = { path = "packages/sardis-openclaw", editable = true }
-sardis-protocol = { path = "packages/sardis-protocol", editable = true }
-sardis-ramp = { path = "packages/sardis-ramp", editable = true }
-sardis-sdk = { path = "packages/sardis-sdk-python", editable = true }
-sardis-ucp = { path = "packages/sardis-ucp", editable = true }
-sardis-wallet = { path = "packages/sardis-wallet", editable = true }
 
 [dependency-groups]
 dev = [
@@ -177,16 +126,13 @@ dev = [
     "hypothesis>=6.112",
     "mypy>=1.8",
     "ruff>=0.2",
-    # Required by root-level tests that import from the reference API, sardis-chain, etc.
+    # Root-level integration tests import from the reference API + umbrella
     "fastapi>=0.115,<1.0",
     "starlette>=0.41",
     "python-multipart>=0.0.9",
-    "web3>=6.0",
-    "prometheus-client>=0.20",
-    "SQLAlchemy>=2.0,<3.0",
-    "alembic>=1.13",
-    "greenlet>=3.0,<4.0",
-    "psycopg[binary]>=3.1,<4.0",
+    "respx>=0.22.0",
+    "PyJWT>=2.12.0",
+]>=3.1,<4.0",
     "PyJWT>=2.12.0",
     "respx>=0.22.0",
     "PyNaCl>=1.5",
@@ -195,6 +141,4 @@ dev = [
     # Sibling packages whose tests run under CI's `Python Lint & Test` lane.
     # Their runtime imports (e.g. sardis_chain.executor -> sardis_ledger.records)
     # require these to be present in the root venv after a plain `uv sync`.
-    "sardis-ledger>=1.0.0",
-    "sardis-chain>=1.0.0",
 ]
