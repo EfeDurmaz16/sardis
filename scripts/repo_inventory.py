@@ -8,10 +8,9 @@ tests.
 
 from __future__ import annotations
 
+import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
-import subprocess
-
 
 ROOT = Path(__file__).resolve().parents[1]
 PRUNED_DIRS = {

@@ -4,10 +4,6 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-
-# Import API-layer adapters
-from server.domains.delegated_executor import DelegatedExecutionAdapter
-from server.domains.multi_modal_executor import MultiModalExecutionAdapter
 from sardis_v2_core.credential_store import CredentialEncryption, InMemoryCredentialStore
 from sardis_v2_core.delegated_adapters.registry import DelegatedAdapterRegistry
 from sardis_v2_core.delegated_adapters.stripe_spt import MockStripeSPTAdapter
@@ -21,6 +17,10 @@ from sardis_v2_core.delegated_executor import (
     DelegatedPaymentRequest,
 )
 from sardis_v2_core.execution_intent import ExecutionIntent
+
+# Import API-layer adapters
+from server.domains.delegated_executor import DelegatedExecutionAdapter
+from server.domains.multi_modal_executor import MultiModalExecutionAdapter
 
 # ---------------------------------------------------------------------------
 # Helpers
