@@ -180,3 +180,83 @@ What needs live keys vs. runs key-free:
   the Node sidecar** (above) — the TS-only `poll()` send cannot run from Python.
 - **Production:** `SARDIS_APPROVAL_HMAC_KEY` is **required** (fail-closed) so
   decision evidence is signed with a real, auditable key.
+
+## PROGRAMMABLE RECOURSE (escrow / dispute window) — LIGHT
+
+A payment can carry a **policy-defined, time-boxed recourse window**. When it
+does, after a successful settlement the orchestrator opens a durable, signed
+`RecourseHold` (`packages/sardis/src/sardis/core/recourse_hold.py`) instead of
+treating the payment as immediately final. Funds (or a claim on them) sit in the
+hold for the window, then resolve down **exactly one fail-closed path**:
+
+```
+held ──expire(window passed)──▶ released   (settle to recipient)
+  ├──refund(within window)─────▶ refunded   (return to payer, <= held)
+  └──dispute───────────────────▶ disputed ──┬─resolve_refund─▶ resolved (refund)
+                                             └─resolve_release▶ resolved (release)
+```
+
+**The moat is the decision, not the escrow.** Sardis owns the hold state
+machine, the policy/mandate snapshot, and the **signed `DecisionEvidence`** on
+every transition (same HMAC pattern as `ApprovalRequest`/`ExecutionReceipt`).
+Money movement is *swappable execution* behind `RecourseExecutorPort`
+(`recourse_executor.py`): the `NoopRecourseExecutor` (default) records intent
+and moves no real money, and `RefundProtocolExecutor` wraps the **vendored
+Circle RefundProtocol** (`contracts/src/RefundProtocol.sol`, Apache-2.0) +
+reverse-transfer for the refund leg. We did **not** build custom escrow
+infrastructure or an arbitration system — we wrap what already exists.
+
+Fail-closed invariants (enforced in the domain *and* at the DB layer):
+- a hold cannot be released twice;
+- a refund can never exceed the held amount (`refunded <= held`);
+- a dispute resolves through exactly one path;
+- a settling transition only persists after the executor reports success.
+
+### API surface (`routes/commerce/escrow_disputes.py`, `/api/v2`)
+
+Previously DB-only ("recorded rows but moved zero money" — a dossier finding).
+Now every money decision flows through the single `RecourseEngine` path; the
+`disputes`/`evidence` rows remain for *evidence collection only*. All endpoints
+require `require_principal` and are **org-scoped** (a hold is stamped with the
+creating org; cross-org access returns `404`, not `403`).
+
+   - `POST /api/v2/escrow` — open a windowed hold (auto-opens via policy when a
+     mandate carries `recourse_window_seconds`; this route opens one explicitly)
+   - `GET  /api/v2/escrow` — list the org's open (`held`/`disputed`) holds
+   - `GET  /api/v2/escrow/{hold_id}` — one hold + state
+   - `POST /api/v2/escrow/{hold_id}/refund` — **refund within the window**
+     (full or partial, `<= held`; reverse-transfer via the executor)
+   - `POST /api/v2/escrow/{hold_id}/confirm-delivery` — RELEASE to the recipient
+   - `POST /api/v2/escrow/{hold_id}/dispute` — open a dispute (pauses auto-release)
+   - `POST /api/v2/disputes/{dispute_id}/resolve` — settle a disputed hold down
+     one path (`refund | release`); `resolved_split` is treated as a refund of
+     the payer's share, keeping the light primitive's single-resolution contract
+   - `POST /api/v2/disputes/{dispute_id}/evidence`, `GET /api/v2/disputes/{id}`
+     — evidence collection / read (DB record, not a money decision)
+
+Expiry is settled by `RecourseEngine.sweep_expired()` (releases `held` holds
+whose window has passed; disputed holds are intentionally excluded).
+
+What needs live keys vs. runs key-free:
+- **No keys:** the whole surface runs end-to-end. `SARDIS_RECOURSE_MODE` defaults
+  to `noop` (state machine is truth, no chain, no money moves); evidence signing
+  uses the `dev-` HMAC fallback (dev/test only). This is what the test suite
+  (`apps/api/tests/test_recourse_escrow_api.py`,
+  `packages/sardis/tests/test_recourse_*`) exercises.
+- **Live escrow:** set `SARDIS_RECOURSE_MODE=live`, inject a chain client, and
+  point `SARDIS_REFUND_PROTOCOL_ADDRESS` (or per-chain
+  `SARDIS_<CHAIN>_REFUND_PROTOCOL_ADDRESS`) at the deployed RefundProtocol.
+- **Production:** `SARDIS_RECOURSE_HMAC_KEY` is **required** (fail-closed).
+
+### Deferred (intentionally out of scope for the LIGHT primitive)
+
+- **Third-party / decentralized arbitration.** Disputes today resolve by an
+  authorized party (the merchant/operator principal) down a single path. A
+  neutral arbiter network, `refundByArbiter` flows, and on-chain arbitration are
+  *not* built — the engine's evidence model is arbiter-ready, but wiring an
+  external arbitration system is deferred.
+- **Multi-leg / split settlement.** `resolved_split` collapses to a payer
+  refund; a true split (partial-refund + partial-release in one atomic
+  settlement) is deferred — the primitive treats refund as terminal.
+- **Live RefundProtocol chain client** (the injected `client`) — the wrapper
+  exists; the production chain client is provided by the chain layer, not here.

@@ -56,6 +56,27 @@ def _to_minor(amount: Decimal, *, decimals: int = 6) -> int:
     return int((amount * (Decimal(10) ** decimals)).to_integral_value())
 
 
+# Metadata key under which the owning organization is stamped on a hold opened
+# via this API surface, so reads/transitions can be org-scoped.
+_ORG_KEY = "organization_id"
+
+
+async def _require_hold_in_org(engine, hold_id: str, principal: Principal):
+    """Fetch a hold and enforce org ownership — fail-closed.
+
+    A hold opened through this API records the creator's ``organization_id`` in
+    metadata; a caller from another org gets a 404 (not 403) so the surface does
+    not even confirm the hold exists. Holds opened by the orchestrator (no org
+    stamp) are not visible here, which is the intended boundary."""
+    hold = await engine.get(hold_id)
+    if hold is None:
+        raise HTTPException(status_code=404, detail=f"escrow hold {hold_id} not found")
+    owner = (hold.metadata or {}).get(_ORG_KEY)
+    if owner != principal.organization_id:
+        raise HTTPException(status_code=404, detail=f"escrow hold {hold_id} not found")
+    return hold
+
+
 # ---------------------------------------------------------------------------
 # Request / Response Models
 # ---------------------------------------------------------------------------
@@ -87,6 +108,13 @@ class EscrowResponse(BaseModel):
 
 class ConfirmDeliveryRequest(BaseModel):
     evidence: dict | None = None
+
+
+class RefundEscrowRequest(BaseModel):
+    # Optional partial-refund amount (<= held). Omit for a full refund of the
+    # remaining balance. The engine enforces refund <= held (fail-closed).
+    amount: Decimal | None = Field(default=None, gt=0)
+    reason: str | None = None
 
 
 class FileDisputeRequest(BaseModel):
@@ -170,18 +198,94 @@ async def create_escrow(
         hold = await engine.open_hold(
             payment_ref=req.payment_object_id,
             mandate_id=req.payment_object_id,
-            agent_id=principal.principal_id,
+            agent_id=principal.user_id,
             amount=req.amount,
             amount_minor=amount_minor,
             currency=req.currency,
-            payer=principal.principal_id,
+            payer=principal.user_id,
             recipient=req.merchant_id,
             window_seconds=req.timelock_hours * 3600,
-            metadata={"chain": req.chain, **(req.metadata or {})},
+            metadata={
+                "chain": req.chain,
+                _ORG_KEY: principal.organization_id,
+                **(req.metadata or {}),
+            },
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return _recourse_to_response(hold)
+
+
+@router.get(
+    "/escrow",
+    response_model=list[EscrowResponse],
+    summary="List open escrow/recourse holds for the org",
+)
+async def list_escrow(
+    request: Request,
+    principal: Principal = Depends(require_principal),
+    limit: int = 100,
+) -> list[EscrowResponse]:
+    """List non-terminal (``held``/``disputed``) holds owned by the caller's org.
+
+    Org-scoped: only holds opened through this API with the caller's org stamp
+    are returned. Terminal holds are excluded (use GET by id for those)."""
+    engine = _resolve_recourse_engine(request)
+    holds = await engine.list_open(limit=max(1, min(int(limit), 500)))
+    mine = [
+        h
+        for h in holds
+        if (h.metadata or {}).get(_ORG_KEY) == principal.organization_id
+    ]
+    return [_recourse_to_response(h) for h in mine]
+
+
+@router.get(
+    "/escrow/{hold_id}",
+    response_model=EscrowResponse,
+    summary="Get an escrow/recourse hold by id",
+)
+async def get_escrow(
+    hold_id: str,
+    request: Request,
+    principal: Principal = Depends(require_principal),
+) -> EscrowResponse:
+    engine = _resolve_recourse_engine(request)
+    hold = await _require_hold_in_org(engine, hold_id, principal)
+    return _recourse_to_response(hold)
+
+
+@router.post(
+    "/escrow/{hold_id}/refund",
+    response_model=EscrowResponse,
+    summary="Refund an escrow hold within its recourse window",
+)
+async def refund_escrow(
+    hold_id: str,
+    req: RefundEscrowRequest,
+    request: Request,
+    principal: Principal = Depends(require_principal),
+) -> EscrowResponse:
+    """Return funds to the payer WITHIN the window (full or partial).
+
+    This is the direct refund leg of the recourse window — distinct from
+    resolving a dispute. The engine reverse-transfers via the swappable executor
+    and the domain enforces ``refund <= held`` (fail-closed). A released /
+    refunded / disputed hold cannot be refunded here (409)."""
+    from sardis.core.recourse_hold import RecourseAmountError, RecourseStateError
+
+    engine = _resolve_recourse_engine(request)
+    hold = await _require_hold_in_org(engine, hold_id, principal)
+    if req.reason:
+        hold.metadata["refund_reason"] = req.reason
+    amount_minor = _to_minor(req.amount) if req.amount is not None else None
+    try:
+        refunded = await engine.refund(
+            hold_id, amount_minor=amount_minor, actor=principal.user_id
+        )
+    except (RecourseStateError, RecourseAmountError) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return _recourse_to_response(refunded)
 
 
 @router.post(
@@ -198,16 +302,14 @@ async def confirm_delivery(
     from sardis.core.recourse_hold import RecourseStateError
 
     engine = _resolve_recourse_engine(request)
-    hold = await engine.get(hold_id)
-    if hold is None:
-        raise HTTPException(status_code=404, detail=f"escrow hold {hold_id} not found")
+    hold = await _require_hold_in_org(engine, hold_id, principal)
     if req.evidence:
         hold.metadata["delivery_evidence"] = req.evidence
-        hold.metadata["delivery_confirmed_by"] = principal.principal_id
+        hold.metadata["delivery_confirmed_by"] = principal.user_id
     try:
         # Confirming delivery RELEASES the held funds to the recipient. The
         # engine enforces no-double-release; a refunded/resolved hold raises.
-        released = await engine.release(hold_id, actor=principal.principal_id)
+        released = await engine.release(hold_id, actor=principal.user_id)
     except RecourseStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return _recourse_to_response(released)
@@ -230,16 +332,14 @@ async def file_dispute(
     from sardis.core.recourse_hold import RecourseStateError
 
     engine = _resolve_recourse_engine(request)
-    hold = await engine.get(hold_id)
-    if hold is None:
-        raise HTTPException(status_code=404, detail=f"escrow hold {hold_id} not found")
+    hold = await _require_hold_in_org(engine, hold_id, principal)
 
     # Open a recourse DISPUTE on the real hold (auto-release paused; no money
     # moves until the dispute resolves down a single path).
     try:
         hold = await engine.dispute(
             hold_id,
-            actor=principal.principal_id,
+            actor=principal.user_id,
             reason=req.description or req.reason,
         )
     except RecourseStateError as e:
@@ -254,7 +354,7 @@ async def file_dispute(
         payment_object_id=hold.payment_ref,
         payer_id=hold.payer,
         merchant_id=hold.recipient,
-        filed_by=principal.principal_id,
+        filed_by=principal.user_id,
         reason=DisputeReason(req.reason),
         description=req.description,
         amount=hold.amount,
@@ -286,7 +386,7 @@ async def submit_evidence(
     try:
         evidence = await protocol.submit_evidence(
             dispute_id=dispute_id,
-            submitted_by=principal.principal_id,
+            submitted_by=principal.user_id,
             party=req.party,
             evidence_type=req.evidence_type,
             content=req.content,
@@ -335,6 +435,9 @@ async def resolve_dispute(
     hold_id = drow["escrow_hold_id"]
 
     engine = _resolve_recourse_engine(request)
+    # Org-scope: the dispute's hold must belong to the caller's org (404 hides
+    # cross-org holds, matching the rest of the surface).
+    await _require_hold_in_org(engine, hold_id, principal)
     resolution = (
         Resolution.RELEASE if req.outcome == "resolved_release" else Resolution.REFUND
     )
@@ -345,7 +448,7 @@ async def resolve_dispute(
         await engine.resolve(
             hold_id,
             resolution=resolution,
-            actor=principal.principal_id,
+            actor=principal.user_id,
             amount_minor=refund_minor,
         )
     except (RecourseStateError, RecourseAmountError) as e:
@@ -357,7 +460,7 @@ async def resolve_dispute(
         resolution_rec = await protocol.resolve(
             dispute_id=dispute_id,
             outcome=DisputeStatus(req.outcome),
-            resolved_by=principal.principal_id,
+            resolved_by=principal.user_id,
             payer_amount=req.payer_amount,
             merchant_amount=req.merchant_amount,
             reasoning=req.reasoning,

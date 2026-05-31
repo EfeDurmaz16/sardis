@@ -238,6 +238,13 @@ class RecourseEngine:
     async def get_by_payment_ref(self, payment_ref: str) -> RecourseHold | None:
         return await self._store.get_by_payment_ref(payment_ref)
 
+    async def list_open(self, *, limit: int = 100) -> list[RecourseHold]:
+        """All non-terminal holds (``held``/``disputed``), oldest first.
+
+        The store applies the SQL filter; org-scoping is the caller's
+        responsibility (the engine has no org concept — see the API surface)."""
+        return await self._store.list_open(limit=limit)
+
     async def _require(self, hold_id: str) -> RecourseHold:
         hold = await self._store.get(hold_id)
         if hold is None:
