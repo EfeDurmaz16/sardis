@@ -662,89 +662,118 @@ class PaymentOrchestrator:
                     kya_level=kya_level,
                 )
 
-        # ── Phase 0.5: Spending Mandate Validation (optional, fail-fast) ─
-        # If a spending mandate lookup service is configured, check that the
-        # payment is authorized by an active spending mandate.  Mandates
-        # enforce merchant scope, amount limits, rail permissions, and
-        # approval thresholds.  If no mandate exists, pass through for
-        # backward compatibility.
+        # ── Phase 0.5: Spending Mandate Validation (FAIL-CLOSED) ─────────
+        # If a spending mandate lookup service is configured, the payment MUST
+        # be authorized by an *active* spending mandate.  The lookup only
+        # returns mandates with ``status = 'active'`` — so revoked, suspended,
+        # expired and exhausted mandates yield ``None`` and MUST be denied
+        # here (this is the whole point of revocation: authority is removed).
+        #
+        # FAIL-CLOSED CONTRACT: when a lookup is configured and no active
+        # mandate is found, we DENY before compliance / chain / ledger run.
+        # We never let a payment through on a missing mandate or a lookup
+        # error — the lookup re-raises on DB error and we convert that to a
+        # denial rather than swallowing it into an allow.
+        #
+        # NOTE: the mandate is bound to a distinct local (``spending_mandate``)
+        # rather than ``sm`` — ``sm`` is the PaymentStateMachine created above
+        # and must not be clobbered, or the later state-machine transitions
+        # would break.
         spending_mandate_id = ""
         if self._spending_mandate_lookup is not None:
             try:
                 agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
                 wallet_id = getattr(payment, 'wallet_id', None) or getattr(payment, 'subject', None)
-                sm = await self._spending_mandate_lookup.get_active_mandate(
+                spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
                     agent_id=agent_id,
                     wallet_id=wallet_id,
                 )
-                if sm is not None:
-                    from decimal import Decimal as _DecM
-                    pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
-                    merchant_id = getattr(payment, 'merchant_id', None) or getattr(payment, 'destination', None)
-                    rail = getattr(payment, 'rail', None)
-                    chain_name = getattr(payment, 'chain', None)
-                    token = getattr(payment, 'token', None)
-
-                    check = sm.check_payment(
-                        amount=_DecM(str(pay_amount)),
-                        merchant=merchant_id,
-                        rail=rail,
-                        chain=chain_name,
-                        token=token,
-                    )
-
-                    if not check.approved:
-                        self._audit(
-                            mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                            {"spending_mandate_id": sm.id,
-                             "error_code": check.error_code,
-                             "agent_id": agent_id},
-                            check.reason,
-                        )
-                        raise MandateViolationError(
-                            check.reason,
-                            mandate_id=mandate_id,
-                            error_code=check.error_code,
-                        )
-
-                    if check.requires_approval:
-                        self._audit(
-                            mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                            {"spending_mandate_id": sm.id,
-                             "requires_approval": True,
-                             "agent_id": agent_id},
-                            "Mandate requires human approval for this amount",
-                        )
-                        raise MandateViolationError(
-                            f"Payment of {pay_amount} requires human approval "
-                            f"(threshold: {sm.approval_threshold})",
-                            mandate_id=mandate_id,
-                            error_code="MANDATE_APPROVAL_REQUIRED",
-                            requires_approval=True,
-                        )
-
-                    spending_mandate_id = sm.id
-                    self._audit(
-                        mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
-                        {"spending_mandate_id": sm.id,
-                         "mandate_version": check.mandate_version,
-                         "agent_id": agent_id},
-                    )
-                else:
-                    # No mandate found — pass through (backward compatible)
-                    self._audit(
-                        mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
-                        {"spending_mandate_id": None,
-                         "reason": "no_active_mandate_found"},
-                    )
             except MandateViolationError:
                 raise
             except Exception as e:
-                # Fail-closed: mandate validation errors = deny
+                # Fail-closed: a lookup error (e.g. DB down) is a DENY, never
+                # an allow.  Audit and reject before anything else runs.
                 self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                           error=f"mandate_validation_error: {e}")
+                           {"agent_id": agent_id, "wallet_id": wallet_id},
+                           error=f"mandate_lookup_error: {e}")
+                raise PolicyViolationError(
+                    f"Spending mandate lookup error (fail-closed): {e}",
+                    mandate_id=mandate_id,
+                    rule_id="spending_mandate_lookup_error",
+                )
+
+            if spending_mandate is None:
+                # FAIL-CLOSED: no active mandate (revoked / suspended / expired
+                # / exhausted / never issued).  Authority is absent — DENY.
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": None,
+                     "agent_id": agent_id,
+                     "wallet_id": wallet_id,
+                     "reason": "no_active_spending_mandate"},
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                )
+                raise PolicyViolationError(
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                    mandate_id=mandate_id,
+                    rule_id="no_active_spending_mandate",
+                )
+
+            # An active mandate exists — enforce its scope/limits/approvals.
+            from decimal import Decimal as _DecM
+            pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
+            merchant_id = getattr(payment, 'merchant_id', None) or getattr(payment, 'destination', None)
+            rail = getattr(payment, 'rail', None)
+            chain_name = getattr(payment, 'chain', None)
+            token = getattr(payment, 'token', None)
+
+            check = spending_mandate.check_payment(
+                amount=_DecM(str(pay_amount)),
+                merchant=merchant_id,
+                rail=rail,
+                chain=chain_name,
+                token=token,
+            )
+
+            if not check.approved:
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": spending_mandate.id,
+                     "error_code": check.error_code,
+                     "agent_id": agent_id},
+                    check.reason,
+                )
                 raise MandateViolationError(
-                    f"Mandate validation error: {e}", mandate_id=mandate_id)
+                    check.reason,
+                    mandate_id=mandate_id,
+                    error_code=check.error_code,
+                )
+
+            if check.requires_approval:
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": spending_mandate.id,
+                     "requires_approval": True,
+                     "agent_id": agent_id},
+                    "Mandate requires human approval for this amount",
+                )
+                raise MandateViolationError(
+                    f"Payment of {pay_amount} requires human approval "
+                    f"(threshold: {spending_mandate.approval_threshold})",
+                    mandate_id=mandate_id,
+                    error_code="MANDATE_APPROVAL_REQUIRED",
+                    requires_approval=True,
+                )
+
+            spending_mandate_id = spending_mandate.id
+            self._audit(
+                mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
+                {"spending_mandate_id": spending_mandate.id,
+                 "mandate_version": getattr(check, "mandate_version", None),
+                 "agent_id": agent_id},
+            )
 
         # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
         # This is where spending policies are enforced.  The wallet manager
