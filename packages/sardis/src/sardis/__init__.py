@@ -16,10 +16,21 @@ if TYPE_CHECKING:
 
 __all__ = ["Sardis", "AsyncSardis", "__version__"]
 
+# Public, advertised submodules shipped in the published wheel. The thin-client
+# surface only — the CLI and the framework integrations.
 _LAZY_SUBMODULES = frozenset({
+    "cli", "integrations",
+})
+
+# Backend submodules. These are NOT shipped in the published PyPI wheel (see the
+# exclude list in pyproject.toml). They exist only in the source tree / editable
+# workspace install used by apps/api. We do NOT advertise them in __dir__ or in
+# the public lazy set, and a pip consumer cannot import them — in particular
+# ``sardis.chain.ChainExecutor`` (a policy-BYPASSING executor) is unreachable
+# from the published package. They remain importable in-repo for the backend.
+_BACKEND_SUBMODULES = frozenset({
     "core", "cards", "ledger", "chain", "ucp", "protocol",
     "compliance", "guardrails", "checkout", "wallet", "ramp",
-    "cli", "integrations",
 })
 
 
@@ -47,8 +58,16 @@ def __getattr__(name: str) -> Any:
         module = importlib.import_module(f"sardis.{name}")
         globals()[name] = module
         return module
+    # Backend submodules are not advertised, but if the source tree / editable
+    # backend is present (apps/api), allow in-repo access. In the published
+    # wheel these modules are absent, so the import raises ModuleNotFoundError.
+    if name in _BACKEND_SUBMODULES:
+        module = importlib.import_module(f"sardis.{name}")
+        globals()[name] = module
+        return module
     raise AttributeError(f"module 'sardis' has no attribute {name!r}")
 
 
 def __dir__() -> list[str]:
+    # Only advertise the published thin-client surface.
     return sorted({*globals(), *_LAZY_SUBMODULES, "Sardis", "AsyncSardis", *_LEGACY_ALIASES})
