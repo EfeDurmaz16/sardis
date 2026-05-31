@@ -12,8 +12,6 @@ These tests pin the corrected behavior: when a spending_mandate_lookup is
 configured and returns ``None``, execution must FAIL CLOSED (raise
 PolicyViolationError) before compliance / chain / ledger run, and no money may
 move.  The happy path (an active mandate) must still proceed.
-
-Reuses the orchestrator fixture pattern from test_orchestrator_group_spend.py.
 """
 from __future__ import annotations
 
@@ -26,7 +24,7 @@ import pytest
 
 from sardis.core.orchestrator import PaymentOrchestrator, PolicyViolationError
 
-# ── Helpers (mirrors test_orchestrator_group_spend.py) ────────────────
+# ── Helpers ───────────────────────────────────────────────────────────
 
 
 @dataclass
