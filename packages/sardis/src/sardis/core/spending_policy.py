@@ -541,6 +541,13 @@ class SpendingPolicy:
         and the result is byte-for-byte identical to the previous hand-rolled
         copy of the check pipeline.
 
+        Fragility: this relies on ``evaluate()`` only awaiting behind
+        None-gated injectables. If a future unconditional ``await`` is added to
+        ``evaluate()``, this method raises ``RuntimeError`` at runtime. A
+        structural ``_evaluate_core()`` extraction (pure sync decision logic
+        called by both ``evaluate`` and ``validate_payment``) should be done
+        before ``evaluate()`` grows further — tracked as a follow-up.
+
         Returns:
             ``(True, "OK")`` | ``(True, "requires_approval")`` | ``(False, "<reason>")``
         """
@@ -548,7 +555,7 @@ class SpendingPolicy:
             None,  # wallet — unused without rpc_client / kya_client
             amount,
             fee,
-            chain="",
+            chain="",  # unused here — evaluate() only reads chain for the rpc_client-gated balance lookup; chain allowlisting lives in validate_execution_context
             token=None,  # token — unused without rpc_client (balance check)
             merchant_id=merchant_id,
             merchant_category=merchant_category,
@@ -564,6 +571,7 @@ class SpendingPolicy:
         except StopIteration as stop:
             return stop.value
         finally:
+            # no-op after StopIteration on the happy path; cleans up the coroutine on the RuntimeError (suspended) path
             coro.close()
         # Unreachable: a non-suspending coroutine raises StopIteration on the
         # first send(). If we get here, evaluate() awaited unexpectedly.
