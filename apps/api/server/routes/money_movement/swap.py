@@ -12,7 +12,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from server.authz import Principal, require_principal
+from server.authz import require_principal
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_principal)])
