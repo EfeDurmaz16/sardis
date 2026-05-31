@@ -20,7 +20,6 @@ from server.routes.protocol.a2a import (
     _handle_payment_request,
 )
 
-
 # ---------------------------------------------------------------------------
 # Source-level guard: ControlPlane.submit path is gone
 # ---------------------------------------------------------------------------
