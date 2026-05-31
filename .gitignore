@@ -139,7 +139,6 @@ docs/security/*
 !/docs/security/reconciliation-load-chaos-slos.md
 !/docs/security/payment-hardening/
 !/docs/security/payment-hardening/**
-/demos/sardis-demo-video/
 docs/marketing/
 docs/investor/
 docs/design-partner/
