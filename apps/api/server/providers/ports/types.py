@@ -66,6 +66,7 @@ class ProviderCapability(str, Enum):
     CARD = "card"
     KYC = "kyc"
     KYT = "kyt"
+    NOTIFICATION = "notification"
 
 
 @dataclass(frozen=True)
@@ -114,6 +115,51 @@ class NormalizedTxn:
     source: str | None = None
     destination: str | None = None
     chain: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DeliveryResult:
+    """Outcome of relaying an approval request to a human via some channel.
+
+    A delivery handle is *only* proof the message was dispatched — it never
+    encodes a decision.  The orchestrator treats delivery as best-effort
+    notification; the human's decision comes back separately via the inbound
+    hook and is re-validated by the engine before any money moves.
+    """
+
+    provider: str
+    sandbox: bool
+    ok: bool = True
+    #: Provider-side handle (Twilio message SID, relay job id, etc.).
+    handle: str | None = None
+    #: Channels the request was actually dispatched to (subset of requested).
+    channels: tuple[str, ...] = ()
+    #: True when a step-up (OTP) challenge was issued alongside delivery.
+    step_up_issued: bool = False
+    raw: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class RelayedDecision:
+    """A human decision relayed back from a delivery channel.
+
+    This is the *untrusted* inbound payload.  It states what the human chose
+    and carries a channel-specific ``proof`` (e.g. an authenticated principal
+    id, a verified Twilio OTP token, an HMAC from the relay sidecar).  The
+    engine re-checks policy/mandate at re-execution time regardless — the relay
+    never decides the outcome.
+    """
+
+    approval_id: str
+    #: "approved" | "denied" — normalized by the adapter, not the raw vendor verb.
+    decision: str
+    approver: str
+    channel: str
+    #: Channel-specific authenticity proof (opaque to the port; the engine /
+    #: adapter validates it).  E.g. OTP code/token, signed relay payload.
+    proof: dict[str, Any] = field(default_factory=dict)
     raw: dict[str, Any] = field(default_factory=dict)
 
 

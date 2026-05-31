@@ -23,10 +23,12 @@ from typing import Any, Protocol, runtime_checkable
 
 from .types import (
     CustodyModel,
+    DeliveryResult,
     MinorUnits,
     NormalizedTxn,
     ProviderCapability,
     ProviderResult,
+    RelayedDecision,
 )
 
 
@@ -247,3 +249,61 @@ class KytPort(CapabilityPort, Protocol):
     async def screen_counterparty(
         self, *, name: str, metadata: dict[str, Any] | None = None
     ) -> ProviderResult: ...
+
+
+@runtime_checkable
+class NotificationPort(CapabilityPort, Protocol):
+    """Human-in-the-loop delivery for approval requests (Twilio, Photon/Spectrum).
+
+    This is **delivery only**.  It relays an approval request to a human across
+    a channel and relays the human's decision back — it NEVER decides the
+    outcome.  The orchestrator (moat) creates the durable, signed
+    :class:`ApprovalRequest`, calls :meth:`send_approval_request` to notify the
+    human, and on an inbound decision calls :meth:`record_decision` to obtain a
+    *validated* :class:`RelayedDecision`.  The engine then re-checks
+    policy/mandate/revocation and re-executes through the single fail-closed
+    path.  A delivery failure must never silently approve or deny.
+
+    ``custody_model`` is :data:`CustodyModel.SIMULATED` for the mock and is not
+    a money custodian for real adapters — no funds ever flow through this port.
+    """
+
+    async def send_approval_request(
+        self,
+        *,
+        approval_id: str,
+        agent_id: str | None,
+        amount: str,
+        currency: str,
+        counterparty: str | None,
+        reason: str,
+        channels: tuple[str, ...] = ("dashboard",),
+        require_step_up: bool = False,
+        metadata: dict[str, Any] | None = None,
+    ) -> DeliveryResult:
+        """Relay the approval request to a human.  Returns a delivery handle.
+
+        ``require_step_up`` asks the channel to additionally issue an OTP / 2FA
+        challenge so the inbound decision can be step-up verified for
+        high-value approvals.  Issuing a challenge is best-effort and reflected
+        in :attr:`DeliveryResult.step_up_issued`.
+        """
+        ...
+
+    async def record_decision(
+        self,
+        *,
+        approval_id: str,
+        decision: str,
+        approver: str,
+        proof: dict[str, Any] | None = None,
+        channel: str = "dashboard",
+    ) -> RelayedDecision:
+        """Validate and normalize an inbound human decision.
+
+        Performs only *channel-level* authenticity validation (e.g. verify a
+        Twilio OTP, check a relay HMAC).  It does NOT touch policy or money.
+        Raises :class:`ProviderError` if the channel proof is invalid so the
+        engine fails closed rather than acting on a forged decision.
+        """
+        ...

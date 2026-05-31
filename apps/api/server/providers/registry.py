@@ -29,8 +29,10 @@ from .adapters import (
     CircleCpnOfframpAdapter,
     ConduitOnrampAdapter,
     LithicFiatAccountAdapter,
+    PhotonRelayNotificationAdapter,
     TurnkeyCustodyAdapter,
     TurnkeyOnrampAdapter,
+    TwilioNotificationAdapter,
 )
 from .ports.capabilities import (
     BridgePort,
@@ -40,6 +42,7 @@ from .ports.capabilities import (
     FiatAccountPort,
     KycPort,
     KytPort,
+    NotificationPort,
     OfframpPort,
     OnrampPort,
     SwapPort,
@@ -52,6 +55,7 @@ from .sandbox import (
     SandboxFiatAccountPort,
     SandboxKycPort,
     SandboxKytPort,
+    SandboxNotificationPort,
     SandboxOfframpPort,
     SandboxOnrampPort,
     SandboxSwapPort,
@@ -80,6 +84,7 @@ _SANDBOX_FACTORIES = {
     ProviderCapability.CARD: lambda: SandboxCardPort(provider="sandbox"),
     ProviderCapability.KYC: lambda: SandboxKycPort(provider="sandbox"),
     ProviderCapability.KYT: lambda: SandboxKytPort(provider="sandbox"),
+    ProviderCapability.NOTIFICATION: lambda: SandboxNotificationPort(provider="sandbox"),
 }
 
 
@@ -204,7 +209,64 @@ class ProviderRegistry:
         # is set the registry fails closed in prod (handled by .get()).
         cls._build_compliance(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Notification (Twilio primary / Photon relay) -------------
+        # Human-in-the-loop approval delivery.  Delivery only — never decides an
+        # outcome.  Env-gated; when no real provider is set the registry falls
+        # back to the SIMULATED sandbox notification port (logs + auto-resolvable
+        # in tests) so dev + tests run with NO keys.  Not required-in-production
+        # (a missing notifier degrades to dashboard-only approval, not a money
+        # path), so .get() returns the sandbox impl rather than failing closed.
+        cls._build_notification(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_notification(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # First configured wins. Twilio is primary (Verify OTP step-up + SMS/
+        # WhatsApp messaging); Photon relays through a Node sidecar that owns the
+        # TypeScript spectrum-ts SDK.
+        if ProviderCapability.NOTIFICATION in ports:
+            return
+
+        twilio_sid = env.get("TWILIO_ACCOUNT_SID")
+        twilio_token = env.get("TWILIO_AUTH_TOKEN")
+        if twilio_sid and twilio_token:
+            try:
+                adapter = TwilioNotificationAdapter(
+                    account_sid=twilio_sid,
+                    auth_token=twilio_token,
+                    from_number=env.get("TWILIO_FROM_NUMBER"),
+                    verify_service_sid=env.get("TWILIO_VERIFY_SERVICE_SID"),
+                    messaging_service_sid=env.get("TWILIO_MESSAGING_SERVICE_SID"),
+                    sandbox=not is_production,
+                )
+                ports[ProviderCapability.NOTIFICATION] = adapter
+                owned.append(adapter)
+                logger.info("ProviderRegistry: NOTIFICATION -> twilio")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: twilio notification init failed: %s", exc)
+
+        relay_url = env.get("PHOTON_RELAY_URL") or env.get("SPECTRUM_RELAY_URL")
+        relay_secret = env.get("PHOTON_RELAY_SECRET") or env.get("SPECTRUM_RELAY_SECRET")
+        if relay_url and relay_secret:
+            try:
+                adapter = PhotonRelayNotificationAdapter(
+                    relay_url=relay_url,
+                    relay_secret=relay_secret,
+                    sandbox=not is_production,
+                )
+                ports[ProviderCapability.NOTIFICATION] = adapter
+                owned.append(adapter)
+                logger.info("ProviderRegistry: NOTIFICATION -> photon_relay")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: photon relay init failed: %s", exc)
 
     @staticmethod
     def _build_custody(
@@ -922,6 +984,9 @@ class ProviderRegistry:
 
     def kyt(self) -> KytPort:
         return self.get(ProviderCapability.KYT)  # type: ignore[return-value]
+
+    def notification(self) -> NotificationPort:
+        return self.get(ProviderCapability.NOTIFICATION)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle

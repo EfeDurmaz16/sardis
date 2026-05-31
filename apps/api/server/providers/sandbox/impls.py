@@ -11,6 +11,7 @@ These impls are deterministic (uuid-suffixed references) and perform no I/O.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
@@ -21,17 +22,22 @@ from ..ports.capabilities import (
     FiatAccountPort,
     KycPort,
     KytPort,
+    NotificationPort,
     OfframpPort,
     OnrampPort,
     SwapPort,
 )
 from ..ports.types import (
     CustodyModel,
+    DeliveryResult,
     MinorUnits,
     NormalizedTxn,
     ProviderCapability,
     ProviderResult,
+    RelayedDecision,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _ref(prefix: str) -> str:
@@ -282,3 +288,90 @@ class SandboxKytPort(_SandboxBase, KytPort):
         self, *, name: str, metadata: dict[str, Any] | None = None
     ) -> ProviderResult:
         return self._result(reference=_ref("kyt"), status="clear", risk="low", hits=[])
+
+
+class SandboxNotificationPort(_SandboxBase, NotificationPort):
+    """In-memory approval delivery for dev + tests — logs, no I/O, no keys.
+
+    Records every dispatched approval in :attr:`sent` so tests can assert a
+    notification was emitted, and accepts any inbound decision (channel proof is
+    trusted in sandbox only).  The engine still re-checks policy/mandate, so a
+    sandbox "approve" can never bypass the moat.
+    """
+
+    capability = ProviderCapability.NOTIFICATION
+
+    def __init__(self, *, provider: str) -> None:
+        super().__init__(provider=provider)
+        # Public test surface: list of dispatched approval payloads.
+        self.sent: list[dict[str, Any]] = []
+        self.decisions: list[RelayedDecision] = []
+
+    async def send_approval_request(
+        self,
+        *,
+        approval_id: str,
+        agent_id: str | None,
+        amount: str,
+        currency: str,
+        counterparty: str | None,
+        reason: str,
+        channels: tuple[str, ...] = ("dashboard",),
+        require_step_up: bool = False,
+        metadata: dict[str, Any] | None = None,
+    ) -> DeliveryResult:
+        payload = {
+            "approval_id": approval_id,
+            "agent_id": agent_id,
+            "amount": amount,
+            "currency": currency,
+            "counterparty": counterparty,
+            "reason": reason,
+            "channels": tuple(channels),
+            "require_step_up": require_step_up,
+            "metadata": metadata or {},
+        }
+        self.sent.append(payload)
+        logger.info(
+            "[sandbox-notify] approval %s dispatched: %s %s -> %s (channels=%s, step_up=%s)",
+            approval_id, amount, currency, counterparty, channels, require_step_up,
+        )
+        return DeliveryResult(
+            provider=self._provider,
+            sandbox=True,
+            ok=True,
+            handle=_ref("dlv"),
+            channels=tuple(channels),
+            step_up_issued=require_step_up,
+            raw={"simulated": True},
+        )
+
+    async def record_decision(
+        self,
+        *,
+        approval_id: str,
+        decision: str,
+        approver: str,
+        proof: dict[str, Any] | None = None,
+        channel: str = "dashboard",
+    ) -> RelayedDecision:
+        norm = decision.strip().lower()
+        if norm not in ("approved", "approve", "denied", "deny"):
+            from ..ports.types import ProviderError
+
+            raise ProviderError(
+                f"unknown decision verb: {decision!r}",
+                provider=self._provider,
+                capability=self.capability,
+            )
+        norm = "approved" if norm.startswith("approv") else "denied"
+        rd = RelayedDecision(
+            approval_id=approval_id,
+            decision=norm,
+            approver=approver,
+            channel=channel,
+            proof=dict(proof or {}),
+            raw={"simulated": True},
+        )
+        self.decisions.append(rd)
+        return rd
