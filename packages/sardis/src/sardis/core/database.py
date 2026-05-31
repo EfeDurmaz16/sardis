@@ -5,6 +5,7 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import asyncpg
 from asyncpg import Pool
@@ -174,6 +175,61 @@ class Database:
             "replica_configured": bool(replica_url),
             "replica": _pool_kwargs(replica_url) if replica_url else None,
         }
+
+
+class _LazyAcquire:
+    """Awaitable + async-context-manager wrapper around ``pool.acquire()``.
+
+    Mirrors asyncpg's ``PoolAcquireContext`` so a :class:`LazyPool` can be used
+    interchangeably with a real pool in both ``conn = await pool.acquire()`` and
+    ``async with pool.acquire() as conn:`` call styles.
+    """
+
+    def __init__(self, lazy_pool: LazyPool) -> None:
+        self._lazy_pool = lazy_pool
+        self._ctx: Any | None = None
+
+    def __await__(self):
+        async def _acquire() -> Any:
+            pool = await self._lazy_pool._resolve()
+            return await pool.acquire()
+
+        return _acquire().__await__()
+
+    async def __aenter__(self) -> Any:
+        pool = await self._lazy_pool._resolve()
+        self._ctx = pool.acquire()
+        return await self._ctx.__aenter__()
+
+    async def __aexit__(self, *exc: Any) -> Any:
+        assert self._ctx is not None
+        return await self._ctx.__aexit__(*exc)
+
+
+class LazyPool:
+    """Lazily-resolved asyncpg pool proxy.
+
+    The DI container builds payment-runtime services from synchronous
+    ``cached_property`` accessors, but the shared pool is created inside an
+    async classmethod (:meth:`Database.get_pool`).  This proxy lets services
+    such as ``SettlementLock`` and ``PostgresReconciliationQueue`` be wired
+    synchronously while still resolving the real pool on first async use.
+    """
+
+    def __init__(self) -> None:
+        self._pool: Pool | None = None
+
+    async def _resolve(self) -> Pool:
+        if self._pool is None:
+            self._pool = await Database.get_pool()
+        return self._pool
+
+    def acquire(self) -> _LazyAcquire:
+        return _LazyAcquire(self)
+
+    async def release(self, conn: Any) -> None:
+        pool = await self._resolve()
+        await pool.release(conn)
 
 
 async def init_database() -> None:

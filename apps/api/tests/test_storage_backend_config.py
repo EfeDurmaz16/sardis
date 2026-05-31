@@ -871,11 +871,25 @@ class FakePaymentOrchestrator:
         compliance: object,
         chain_executor: object,
         ledger: object,
+        group_policy: object = None,
+        kya_service: object = None,
+        sanctions_service: object = None,
+        dedup_store: object = None,
+        spending_mandate_lookup: object = None,
+        settlement_lock: object = None,
+        reconciliation_queue: object = None,
     ) -> None:
         self.wallet_manager = wallet_manager
         self.compliance = compliance
         self.chain_executor = chain_executor
         self.ledger = ledger
+        self.group_policy = group_policy
+        self.kya_service = kya_service
+        self.sanctions_service = sanctions_service
+        self.dedup_store = dedup_store
+        self.spending_mandate_lookup = spending_mandate_lookup
+        self.settlement_lock = settlement_lock
+        self.reconciliation_queue = reconciliation_queue
 
 
 def _configure_payment_runtime(settings=None, use_postgres=True):

@@ -488,6 +488,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         compliance_engine=compliance,
         chain_executor=chain_exec,
         ledger_store=ledger_store,
+        # Wire execution-authority ("moat") ports: KYA + sanctions enforcement,
+        # spending-mandate revocation, durable dedup, and the settlement lock.
+        kya_service=kya_service,
+        sanctions_service=sanctions_service,
     )
     verifier = payment_runtime.verifier
     orchestrator = payment_runtime.orchestrator

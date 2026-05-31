@@ -135,15 +135,25 @@ class TestChainExecutorPrivate:
 
     def test_payment_orchestrator_no_deprecation_warning(self):
         """Creating payment_orchestrator must not trigger the deprecation warning."""
+        from types import SimpleNamespace
+
         from server.dependencies import DependencyContainer
 
         container = DependencyContainer.__new__(DependencyContainer)
         container._cache = {}
+        container._settings = SimpleNamespace(is_production=False)
+        container._config = SimpleNamespace(
+            database_url="memory://", use_postgres=False, redis_url=None
+        )
         container.__dict__["_chain_executor"] = MagicMock(name="mock_chain_executor")
         container.__dict__["wallet_manager"] = MagicMock(name="mock_wallet")
         container.__dict__["compliance_engine"] = MagicMock(name="mock_compliance")
         container.__dict__["ledger_store"] = MagicMock(name="mock_ledger")
         container.__dict__["group_policy"] = None
+        # Inject the moat-port cached_properties the orchestrator now depends on.
+        container.__dict__["sanctions_service"] = MagicMock(name="mock_sanctions")
+        container.__dict__["kya_service"] = MagicMock(name="mock_kya")
+        container.__dict__["spending_mandate_lookup"] = MagicMock(name="mock_mandate_lookup")
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
