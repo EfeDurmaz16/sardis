@@ -55,6 +55,9 @@ def _to_minor_units(amount: Decimal | str | int, decimals: int) -> int:
         raise TypeError(
             "amount must be Decimal | str | int, not float — float money is forbidden"
         )
+    # bool subclasses int — reject it so True/False can't masquerade as money.
+    if isinstance(amount, bool):
+        raise TypeError("amount must be Decimal | str | int, not bool")
     value = amount if isinstance(amount, Decimal) else Decimal(str(amount))
     scaled = value * (Decimal(10) ** decimals)
     minor = scaled.to_integral_value()
@@ -89,7 +92,9 @@ def build_mandate_chain(
         chain's consistency check requires a single shared subject).
     amount:
         Money as ``Decimal`` / ``str`` / ``int`` (never ``float``).  Converted
-        to integer minor units with ``decimals`` precision.
+        to integer minor units with ``decimals`` precision.  Must be positive;
+        zero/negative is rejected at the policy layer (``_policy_check``), not
+        here.
     currency:
         Token symbol (e.g. ``"USDC"``).  Stored as ``token`` on the payment and
         ``currency`` on the cart.
@@ -115,6 +120,8 @@ def build_mandate_chain(
     amount_minor = _to_minor_units(amount, decimals)
 
     pay_id = mandate_id or f"md_{uuid.uuid4().hex}"
+    # Generated ids are 32-hex (collision-safe); a caller-supplied mandate_id is
+    # the caller's responsibility to keep unique. intent/cart ids derive from it.
     short = pay_id[:16]
     iss = issuer or agent_id
     merchant = merchant_domain or counterparty

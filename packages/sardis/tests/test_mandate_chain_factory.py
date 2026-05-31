@@ -8,6 +8,8 @@ is the ``token`` field.  The factory's public contract takes ``Decimal`` money
 """
 from decimal import Decimal
 
+import pytest
+
 from sardis.core.mandate_chain_factory import build_mandate_chain
 from sardis.core.mandates import CartMandate, IntentMandate, MandateChain, PaymentMandate
 
@@ -56,6 +58,19 @@ def test_amount_is_computed_with_decimal_not_float():
     )
     # 0.10 USDC @ 6 decimals == 100_000 minor units exactly.
     assert chain.payment.amount_minor == 100_000
+
+
+def test_bool_amount_rejected():
+    # bool subclasses int — a money path must not silently accept True/False.
+    with pytest.raises(TypeError):
+        build_mandate_chain(
+            agent_id="agt_b",
+            amount=True,
+            currency="USDC",
+            counterparty="0xbool",
+            wallet_id="wal_b",
+            mandate_id="md_b",
+        )
 
 
 def test_mandate_id_generated_when_omitted():
