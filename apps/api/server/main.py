@@ -674,6 +674,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         identity_registry=identity_registry,
         audit_store=audit_store,
         approval_service=approval_service,
+        orchestrator=orchestrator,
     )
 
     ramp_runtime = configure_ramp_runtime(settings)

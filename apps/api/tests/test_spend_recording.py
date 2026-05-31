@@ -38,10 +38,14 @@ def test_mandates_router_has_two_orchestrated_execution_paths():
     assert source.count("execute_chain") >= 2
 
 
-def test_a2a_routes_record_spend_after_control_plane_success():
+def test_a2a_routes_record_spend_after_orchestrator_success():
+    # a2a now routes both payment sites through PaymentOrchestrator.execute_chain
+    # (the single fail-closed path), not the deprecated ControlPlane.submit.
     source = _source("server.routes.protocol.a2a")
-    assert source.count("ControlPlane(") >= 2
-    assert source.count(".submit(") >= 2
+    assert "ControlPlane(" not in source
+    assert "cp.submit(" not in source
+    assert source.count("execute_chain(") >= 2
+    assert source.count("build_mandate_chain(") >= 2
     assert source.count("async_record_spend") >= 2
 
 

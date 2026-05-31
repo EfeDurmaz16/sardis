@@ -422,8 +422,12 @@ class TestComplianceInRouters:
 
         from server.routes.protocol import a2a
         source = inspect.getsource(a2a)
-        assert source.count("ComplianceAdapter") >= 2
-        assert source.count("ControlPlane(") >= 2
+        # Compliance is now enforced inside PaymentOrchestrator.execute_chain
+        # (the single fail-closed path) for both a2a payment sites, replacing
+        # the deprecated ControlPlane.submit + ComplianceAdapter wiring.
+        assert "ControlPlane(" not in source
+        assert source.count("execute_chain(") >= 2
+        assert source.count("build_mandate_chain(") >= 2
 
     def test_wallets_has_compliance(self):
         import inspect

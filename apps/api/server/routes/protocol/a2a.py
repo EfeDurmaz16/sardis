@@ -488,6 +488,7 @@ class A2ADependencies:
         trust_repo: Any | None = None,
         audit_store: Any | None = None,
         approval_service: Any | None = None,
+        orchestrator: Any | None = None,
     ):
         self.wallet_repo = wallet_repo
         self.agent_repo = agent_repo
@@ -499,10 +500,117 @@ class A2ADependencies:
         self.trust_repo = trust_repo
         self.audit_store = audit_store
         self.approval_service = approval_service
+        # PaymentOrchestrator — the single authorized execution path
+        # (KYA → spending-mandate → policy → compliance → chain → ledger → receipt).
+        self.orchestrator = orchestrator
 
 
 def get_deps() -> A2ADependencies:
     raise NotImplementedError("Dependency override required")
+
+
+async def _run_a2a_guardrails(
+    *,
+    agent_id: str,
+    org_id: str,
+    chain: str,
+    amount: Decimal,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Run the defense-in-depth guardrails that the orchestrator does NOT.
+
+    ``PaymentOrchestrator.execute_chain`` runs KYA → spending-mandate → policy →
+    compliance → chain → ledger → receipt, but does not run the kill switch,
+    transaction caps, or anomaly engine.  The deprecated ``ControlPlane.submit``
+    path used to run those (steps 0a/0b/1.5).  To avoid silently dropping a check
+    on a money path, we run them explicitly here before ``execute_chain``.
+
+    Raises:
+        KillSwitchError-derived ``HTTPException`` (503) when a kill switch is active.
+        ``HTTPException`` (403) when a transaction cap is exceeded or the anomaly
+        engine blocks the transaction.
+
+    Returns:
+        An optional ``anomaly_flag`` dict when the anomaly engine FLAGs (but does
+        not block) the transaction; ``None`` otherwise.
+    """
+    metadata = metadata or {}
+
+    # Step 0a: Kill switch (global / org / agent / chain scopes).
+    from sardis.guardrails.kill_switch import KillSwitchError, get_kill_switch
+
+    kill_switch = get_kill_switch()
+    try:
+        await kill_switch.check(agent_id=agent_id, org_id=org_id)
+        if chain:
+            await kill_switch.check_chain(chain)
+    except KillSwitchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"kill_switch_active: {e}",
+        ) from e
+
+    # Step 0b: Transaction caps.
+    if amount > 0:
+        from sardis.guardrails.transaction_caps import get_transaction_cap_engine
+
+        cap_engine = get_transaction_cap_engine()
+        cap_result = await cap_engine.check_and_record(
+            amount=amount,
+            org_id=org_id,
+            agent_id=agent_id or None,
+        )
+        if not cap_result.allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"transaction_cap_exceeded: {cap_result.message}",
+            )
+
+    # Step 1.5: Anomaly risk assessment.
+    from sardis.guardrails.anomaly_engine import RiskAction, get_anomaly_engine
+
+    anomaly_engine = get_anomaly_engine()
+    assessment = anomaly_engine.assess_risk(
+        agent_id=agent_id,
+        amount=amount,
+        merchant_id=metadata.get("merchant_id"),
+        merchant_category=metadata.get("merchant_category"),
+        behavioral_alerts=metadata.get("behavioral_alerts"),
+        baseline_mean=metadata.get("baseline_mean"),
+        baseline_std=metadata.get("baseline_std"),
+        recent_tx_count_1h=metadata.get("recent_tx_count_1h", 0),
+        is_new_merchant=metadata.get("is_new_merchant", False),
+        hour_of_day=metadata.get("hour_of_day"),
+        typical_hours=metadata.get("typical_hours"),
+    )
+    logger.info(
+        "a2a: anomaly assessment agent=%s score=%.3f action=%s",
+        agent_id, assessment.overall_score, assessment.action.value,
+    )
+    blocking_actions = {
+        RiskAction.KILL_SWITCH: "kill_switch_activated_by_anomaly",
+        RiskAction.FREEZE_AGENT: "agent_frozen_by_anomaly",
+        RiskAction.REQUIRE_APPROVAL: "anomaly_requires_approval",
+    }
+    if assessment.action in blocking_actions:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=blocking_actions[assessment.action],
+        )
+
+    if assessment.action == RiskAction.FLAG:
+        logger.warning(
+            "a2a: agent=%s flagged by anomaly engine (score=%.3f)",
+            agent_id, assessment.overall_score,
+        )
+        return {
+            "anomaly_flagged": True,
+            "anomaly_score": assessment.overall_score,
+            "anomaly_action": assessment.action.value,
+        }
+
+    # RiskAction.ALLOW → no flag.
+    return None
 
 
 # ============================================================================
@@ -800,67 +908,71 @@ async def a2a_pay(
             merchant_domain="sardis.sh",
         )
 
-        # Submit to ControlPlane (policy → compliance → chain → ledger → receipt)
-        from sardis.core.control_plane import ControlPlane
-        from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
-
-        from server.domains.compliance import ComplianceAdapter
-        from server.domains.execution_engine import ExecutionEngineAdapter
-        from server.domains.ledger_core import LedgerCoreAdapter
-        from server.domains.policy_engine import PolicyEngineAdapter
-
-        if not deps.wallet_manager:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="wallet_manager_not_configured",
-            )
-
-        from sardis.guardrails.anomaly_engine import get_anomaly_engine
-        from sardis.guardrails.kill_switch import get_kill_switch
-        from sardis.guardrails.transaction_caps import get_transaction_cap_engine
-
-        cp = ControlPlane(
-            policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
-            compliance_checker=ComplianceAdapter(deps.compliance),
-            chain_executor=ExecutionEngineAdapter(deps.chain_executor),
-            ledger_recorder=LedgerCoreAdapter(deps.ledger),
-            anomaly_engine=get_anomaly_engine(),
-            kill_switch=get_kill_switch(),
-            cap_engine=get_transaction_cap_engine(),
+        # Execute through the single authorized path: PaymentOrchestrator.execute_chain
+        # (KYA → spending-mandate → policy → compliance → chain → ledger → receipt).
+        # The mandate chain is built first-party here; upstream agent/trust/wallet
+        # verification (above) has already authorized the transfer, so the typed
+        # factory's internal system proof is the correct contract (same as ap2/mvp).
+        from sardis.core.mandate_chain_factory import build_mandate_chain
+        from sardis.core.orchestrator import (
+            ChainExecutionError,
+            ComplianceViolationError,
+            PolicyViolationError,
         )
 
-        intent = ExecutionIntent(
-            source=IntentSource.A2A,
+        if deps.orchestrator is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="orchestrator_not_configured",
+            )
+
+        # Preserve the defense-in-depth guardrails the orchestrator does not run
+        # (kill switch / transaction caps / anomaly) that ControlPlane.submit used to.
+        await _run_a2a_guardrails(
+            agent_id=req.sender_agent_id,
             org_id=str(principal.organization_id),
+            chain=req.chain,
+            amount=Decimal(str(req.amount)),
+        )
+
+        chain = build_mandate_chain(
             agent_id=req.sender_agent_id,
             amount=Decimal(str(req.amount)),
             currency=req.token,
+            counterparty=recipient_address,
+            wallet_id=sender_wallet.wallet_id,
+            mandate_id=mandate.mandate_id,
             chain=req.chain,
-            sender_wallet_id=sender_wallet.wallet_id,
-            sender_address=sender_address,
-            recipient_wallet_id=recipient_wallet.wallet_id,
-            recipient_address=recipient_address,
-            memo=req.memo or "",
-            reference=req.reference or "",
-            idempotency_key=str(idem_key),
-            metadata={"payment_mandate": mandate},
+            purpose=req.memo or "a2a_transfer",
+            merchant_domain="sardis.sh",
+            issuer=f"agent:{req.sender_agent_id}",
         )
 
-        result = await cp.submit(intent)
-
-        if not result.success:
-            error_status = (
-                status.HTTP_403_FORBIDDEN
-                if result.status == IntentStatus.REJECTED
-                else status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        try:
+            result = await deps.orchestrator.execute_chain(chain)
+        except (PolicyViolationError, ComplianceViolationError) as e:
             log_payment_event("a2a.payment.failed",
                 org_id=str(principal.organization_id),
                 agent_id=req.sender_agent_id,
                 amount=str(req.amount), currency=req.token, chain=req.chain,
-                status="failed", error=result.error)
+                status="failed", error=str(e))
+            await _emit_a2a_webhook(request, "a2a.payment.failed", {
+                "sender_agent_id": req.sender_agent_id,
+                "recipient_agent_id": req.recipient_agent_id,
+                "amount": str(req.amount),
+                "token": req.token,
+                "chain": req.chain,
+                "error": str(e),
+            })
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+        except ChainExecutionError as e:
+            log_payment_event("a2a.payment.failed",
+                org_id=str(principal.organization_id),
+                agent_id=req.sender_agent_id,
+                amount=str(req.amount), currency=req.token, chain=req.chain,
+                status="failed", error=str(e))
             asyncio.create_task(alert_payment_failure(
-                error=result.error or "unknown",
+                error=str(e),
                 org_id=str(principal.organization_id),
                 agent_id=req.sender_agent_id,
                 tx_id=str(idem_key),
@@ -871,9 +983,11 @@ async def a2a_pay(
                 "amount": str(req.amount),
                 "token": req.token,
                 "chain": req.chain,
-                "error": result.error,
+                "error": str(e),
             })
-            raise HTTPException(status_code=error_status, detail=result.error)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            ) from e
 
         # Post-execution: record spend (best-effort)
         if deps.wallet_manager:
@@ -887,7 +1001,7 @@ async def a2a_pay(
             agent_id=req.sender_agent_id,
             amount=str(req.amount), currency=req.token, chain=req.chain,
             status="completed",
-            tx_hash=result.tx_hash)
+            tx_hash=result.chain_tx_hash)
 
         await _emit_a2a_webhook(request, "a2a.payment.completed", {
             "sender_agent_id": req.sender_agent_id,
@@ -895,13 +1009,13 @@ async def a2a_pay(
             "amount": str(req.amount),
             "token": req.token,
             "chain": req.chain,
-            "tx_hash": result.tx_hash,
+            "tx_hash": result.chain_tx_hash,
             "reference": req.reference,
         })
 
         return 200, A2APayResponse(
             success=True,
-            tx_hash=result.tx_hash,
+            tx_hash=result.chain_tx_hash,
             status="submitted",
             sender_agent_id=req.sender_agent_id,
             recipient_agent_id=req.recipient_agent_id,
@@ -914,9 +1028,9 @@ async def a2a_pay(
             chain=req.chain,
             memo=req.memo,
             reference=req.reference,
-            ledger_tx_id=result.ledger_entry_id or None,
-            audit_anchor=result.data.get("audit_anchor"),
-            receipt_id=result.receipt_id or None,
+            ledger_tx_id=result.ledger_tx_id or None,
+            audit_anchor=result.audit_anchor or None,
+            receipt_id=result.mandate_id or None,
         )
 
     return await run_idempotent(
@@ -1592,9 +1706,12 @@ async def _handle_payment_request(
         merchant_domain="sardis.sh",
     )
 
-    # Submit through ControlPlane (policy → anomaly → compliance → chain → ledger → receipt)
-    # Unified execution path matching A2A /pay pattern (lines 803-841)
-    if not deps.wallet_manager:
+    # Execute through the single authorized path: PaymentOrchestrator.execute_chain
+    # (KYA → spending-mandate → policy → compliance → chain → ledger → receipt).
+    # Inbound A2A payment requests pay FROM the recipient's wallet to `destination`;
+    # the message signature was verified upstream in handle_a2a_message, so the
+    # chain is built first-party with the factory's internal system proof.
+    if deps.orchestrator is None:
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",
@@ -1603,53 +1720,34 @@ async def _handle_payment_request(
             status="failed",
             in_reply_to=msg.message_id,
             correlation_id=msg.correlation_id,
-            error="wallet_manager_not_configured",
+            error="orchestrator_not_configured",
             error_code="configuration_error",
         )
 
-    from sardis.core.control_plane import ControlPlane
-    from sardis.core.execution_intent import ExecutionIntent, IntentSource, IntentStatus
-    from sardis.guardrails.anomaly_engine import get_anomaly_engine
-    from sardis.guardrails.kill_switch import get_kill_switch
-    from sardis.guardrails.transaction_caps import get_transaction_cap_engine
-
-    from server.domains.compliance import ComplianceAdapter
-    from server.domains.execution_engine import ExecutionEngineAdapter
-    from server.domains.ledger_core import LedgerCoreAdapter
-    from server.domains.policy_engine import PolicyEngineAdapter
-
-    cp = ControlPlane(
-        policy_evaluator=PolicyEngineAdapter(deps.wallet_manager),
-        compliance_checker=ComplianceAdapter(deps.compliance) if deps.compliance else None,
-        chain_executor=ExecutionEngineAdapter(deps.chain_executor) if deps.chain_executor else None,
-        ledger_recorder=LedgerCoreAdapter(deps.ledger) if deps.ledger else None,
-        anomaly_engine=get_anomaly_engine(),
-        kill_switch=get_kill_switch(),
-        cap_engine=get_transaction_cap_engine(),
+    from sardis.core.mandate_chain_factory import build_mandate_chain
+    from sardis.core.orchestrator import (
+        ChainExecutionError,
+        ComplianceViolationError,
+        PolicyViolationError,
     )
 
-    intent = ExecutionIntent(
-        source=IntentSource.A2A,
-        org_id=str(principal.organization_id),
-        agent_id=sender_agent_id,
-        amount=Decimal(str(amount_minor)) / Decimal("100"),
-        currency=token,
-        chain=chain,
-        sender_wallet_id="",
-        sender_address="",
-        recipient_wallet_id=recipient_wallet.wallet_id,
-        recipient_address=destination,
-        memo=f"a2a_msg:{msg.message_id}",
-        idempotency_key=hashlib.sha256(
-            f"a2a_msg:{msg.message_id}:{amount_minor}:{destination}".encode()
-        ).hexdigest()[:32],
-        metadata={"payment_mandate": mandate},
-    )
+    # The recipient's wallet is the payer for inbound payment requests; policy /
+    # KYA / caps must therefore evaluate the recipient agent's wallet.
+    payer_agent_id = recipient_wallet.agent_id
 
-    cp_result = await cp.submit(intent)
-
-    if not cp_result.success:
-        error_code = "policy_denied" if cp_result.status == IntentStatus.REJECTED else "execution_failed"
+    # Preserve the defense-in-depth guardrails the orchestrator does not run
+    # (kill switch / transaction caps / anomaly). This route has no route-level
+    # kill_switch/cap dependency, so running them here is load-bearing.
+    try:
+        await _run_a2a_guardrails(
+            agent_id=payer_agent_id,
+            org_id=str(principal.organization_id),
+            chain=chain,
+            # amount_minor is in minor units; convert to major units for the
+            # guardrail engines (caps/anomaly reason in token units).
+            amount=Decimal(amount_minor) / (Decimal(10) ** 6),
+        )
+    except HTTPException as e:
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",
@@ -1658,8 +1756,50 @@ async def _handle_payment_request(
             status="failed",
             in_reply_to=msg.message_id,
             correlation_id=msg.correlation_id,
-            error=cp_result.error or "payment_failed",
-            error_code=error_code,
+            error=str(e.detail),
+            error_code="policy_denied",
+        )
+
+    # amount_minor is already minor units → decimals=0 stores it exactly.
+    payment_chain = build_mandate_chain(
+        agent_id=payer_agent_id,
+        amount=amount_minor,
+        currency=token,
+        counterparty=destination,
+        wallet_id=recipient_wallet.wallet_id,
+        mandate_id=mandate.mandate_id,
+        chain=chain,
+        decimals=0,
+        purpose=f"a2a_msg:{msg.message_id}",
+        merchant_domain="sardis.sh",
+        issuer=f"agent:{sender_agent_id}",
+    )
+
+    try:
+        result = await deps.orchestrator.execute_chain(payment_chain)
+    except (PolicyViolationError, ComplianceViolationError) as e:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=str(e),
+            error_code="policy_denied",
+        )
+    except ChainExecutionError as e:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=str(e),
+            error_code="execution_failed",
         )
 
     # Record spend state for policy enforcement
@@ -1679,11 +1819,11 @@ async def _handle_payment_request(
         correlation_id=msg.correlation_id,
         payload={
             "success": True,
-            "tx_hash": cp_result.tx_hash,
+            "tx_hash": result.chain_tx_hash,
             "chain": chain,
             "amount_minor": amount_minor,
             "token": token,
-            "receipt_id": cp_result.receipt_id,
+            "receipt_id": result.mandate_id,
         },
     )
 

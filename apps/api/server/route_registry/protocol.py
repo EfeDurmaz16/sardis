@@ -45,6 +45,7 @@ def register_a2a_routes(
     identity_registry: Any,
     audit_store: Any,
     approval_service: Any,
+    orchestrator: Any,
 ) -> None:
     """Register A2A protocol routes and trust-repository dependencies."""
     from server.repositories.a2a_trust_repository import A2ATrustRepository
@@ -63,6 +64,7 @@ def register_a2a_routes(
         trust_repo=a2a_trust_repo,
         audit_store=audit_store,
         approval_service=approval_service,
+        orchestrator=orchestrator,
     )
     app.include_router(a2a.router, prefix="/api/v2/a2a", tags=["a2a"])
     app.include_router(a2a.public_router, prefix="/api/v2/a2a", tags=["a2a"])
