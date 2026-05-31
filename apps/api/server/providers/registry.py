@@ -34,6 +34,7 @@ from .adapters import (
 from .ports.capabilities import (
     BridgePort,
     CapabilityPort,
+    CardPort,
     FiatAccountPort,
     OfframpPort,
     OnrampPort,
@@ -176,7 +177,92 @@ class ProviderRegistry:
         # stays the SIMULATED sandbox impl.
         cls._build_bridge(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Cards (Crossmint primary / Lithic / Stripe Issuing) ------
+        # Virtual-card issuing.  Env-gated; tried in order, first configured
+        # wins.  Crossmint Agentic Cards is the primary (non-custodial dual-key,
+        # agent-bound single-use VCs); Lithic (own BIN) and Stripe Issuing are
+        # fallbacks.  Card is NOT required-in-production, so when none is set the
+        # registry falls back to the SIMULATED sandbox card (no money moves).
+        cls._build_cards(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_cards(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Card-issuing providers. Tried in order; first configured wins.
+        if ProviderCapability.CARD in ports:
+            return
+
+        default_env = "production" if is_production else "sandbox"
+
+        # Crossmint Agentic Cards (PRIMARY) — Rain-backed. Requires the
+        # Crossmint platform key; the Rain key backs the concrete card surface.
+        crossmint_key = env.get("CROSSMINT_API_KEY")
+        if crossmint_key:
+            try:
+                from .cards import CrossmintCardAdapter, CrossmintCardClient, CrossmintConfig
+
+                client = CrossmintCardClient(
+                    CrossmintConfig(
+                        api_key=crossmint_key,
+                        rain_api_key=env.get("CROSSMINT_RAIN_API_KEY") or env.get("RAIN_API_KEY"),
+                        environment=env.get("CROSSMINT_ENVIRONMENT", default_env),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.CARD] = CrossmintCardAdapter(client)
+                logger.info("ProviderRegistry: CARD -> crossmint")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: crossmint card init failed: %s", exc)
+
+        # Lithic (FALLBACK) — Sardis's own BIN.
+        lithic_key = env.get("LITHIC_API_KEY")
+        if lithic_key:
+            try:
+                from .cards import LithicCardAdapter, LithicCardClient, LithicCardConfig
+
+                client = LithicCardClient(
+                    LithicCardConfig(
+                        api_key=lithic_key,
+                        environment=env.get("LITHIC_ENVIRONMENT", default_env),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.CARD] = LithicCardAdapter(client)
+                logger.info("ProviderRegistry: CARD -> lithic")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: lithic card init failed: %s", exc)
+
+        # Stripe Issuing (FALLBACK).
+        stripe_key = env.get("STRIPE_ISSUING_API_KEY") or env.get("STRIPE_SECRET_KEY")
+        if stripe_key:
+            try:
+                from .cards import (
+                    StripeIssuingCardAdapter,
+                    StripeIssuingClient,
+                    StripeIssuingConfig,
+                )
+
+                client = StripeIssuingClient(
+                    StripeIssuingConfig(
+                        api_key=stripe_key,
+                        environment=env.get("STRIPE_ISSUING_ENVIRONMENT", default_env),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.CARD] = StripeIssuingCardAdapter(client)
+                logger.info("ProviderRegistry: CARD -> stripe_issuing")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: stripe issuing card init failed: %s", exc)
 
     @staticmethod
     def _build_bridge(
@@ -689,6 +775,9 @@ class ProviderRegistry:
 
     def bridge(self) -> BridgePort:
         return self.get(ProviderCapability.BRIDGE)  # type: ignore[return-value]
+
+    def card(self) -> CardPort:
+        return self.get(ProviderCapability.CARD)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle
