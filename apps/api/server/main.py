@@ -546,6 +546,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         audit_store=audit_store,
         identity_registry=identity_registry,
         dsn=database_url if use_postgres else "memory://",
+        approval_gate=getattr(payment_runtime, "approval_gate", None),
     )
 
     register_pay_endpoint(

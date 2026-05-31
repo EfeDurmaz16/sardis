@@ -135,6 +135,10 @@ class PaymentRuntimeConfig:
     replay_cache: Any
     verifier: Any
     orchestrator: Any
+    #: Human-in-the-loop gate wired into the orchestrator (durable signed store
+    #: + delivery notifier). Exposed so the ApprovalRequest API can record
+    #: decisions against the SAME gate the orchestrator re-executes from.
+    approval_gate: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -834,6 +838,7 @@ def configure_payment_runtime(
     sanctions_service: Any | None = None,
     group_policy: Any | None = None,
     redis_url: str | None = None,
+    notification_port: Any | None = None,
 ) -> PaymentRuntimeConfig:
     """Create mandate verification and payment orchestration primitives."""
     if (
@@ -903,6 +908,38 @@ def configure_payment_runtime(
         redis_url=redis_url,
     )
 
+    # ── Human-in-the-loop gate (durable signed store + delivery notifier) ──
+    # The gate persists signed ApprovalRequests and relays them to a human via
+    # the swappable NotificationPort (real Twilio/Photon when keys are set; a
+    # sandbox notifier otherwise — so dev and tests run with NO keys). Delivery
+    # NEVER decides the outcome; the orchestrator re-checks policy/mandate at
+    # re-execution time. The SAME gate instance is returned on the runtime config
+    # so the ApprovalRequest API records decisions the orchestrator reads back.
+    approval_gate = None
+    try:
+        from sardis.core.approval_gate import ApprovalGate
+        from sardis.core.approval_request_repository import (
+            InMemoryApprovalRequestStore,
+            PostgresApprovalRequestStore,
+        )
+
+        approval_store: Any = (
+            PostgresApprovalRequestStore()
+            if use_postgres
+            else InMemoryApprovalRequestStore()
+        )
+        notifier = notification_port
+        if notifier is None:
+            try:
+                from server.providers.registry import ProviderRegistry
+
+                notifier = ProviderRegistry.from_settings(settings).notification()
+            except Exception as exc:  # noqa: BLE001 - delivery is optional
+                logger.warning("approval_gate: no notification port resolved: %s", exc)
+        approval_gate = ApprovalGate(store=approval_store, notifier=notifier)
+    except Exception as exc:  # noqa: BLE001 - gate is optional in dev
+        logger.warning("approval_gate unavailable, approvals fail-closed: %s", exc)
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
@@ -915,6 +952,7 @@ def configure_payment_runtime(
         spending_mandate_lookup=moat.spending_mandate_lookup,
         settlement_lock=moat.settlement_lock,
         reconciliation_queue=moat.reconciliation_queue,
+        approval_gate=approval_gate,
     )
 
     return PaymentRuntimeConfig(
@@ -922,6 +960,7 @@ def configure_payment_runtime(
         replay_cache=replay_cache,
         verifier=verifier,
         orchestrator=orchestrator,
+        approval_gate=approval_gate,
     )
 
 
@@ -1553,6 +1592,39 @@ class DependencyContainer:
         return ProviderRegistry.from_settings(self._settings)
 
     @cached_property
+    def approval_gate(self) -> Any:
+        """Human-in-the-loop ApprovalGate (durable signed store + delivery notifier).
+
+        The gate owns the durable, signed :class:`ApprovalRequest` store and the
+        swappable delivery notifier (the provider-layer NotificationPort: real
+        Twilio/Photon when keys are set, sandbox otherwise — so dev and tests run
+        with NO keys). Delivery NEVER decides the outcome; the orchestrator
+        re-checks policy/mandate at re-execution time.
+        """
+        from sardis.core.approval_gate import ApprovalGate
+        from sardis.core.approval_request_repository import (
+            InMemoryApprovalRequestStore,
+            PostgresApprovalRequestStore,
+        )
+
+        store: Any = (
+            PostgresApprovalRequestStore()
+            if self.use_postgres
+            else InMemoryApprovalRequestStore()
+        )
+
+        # Resolve the delivery notifier from the unified provider layer. The
+        # registry returns a real adapter only when keys are set; otherwise a
+        # sandbox notifier — so the loop runs end-to-end with no live keys.
+        notifier: Any = None
+        try:
+            notifier = self.provider_registry.notification()
+        except Exception as exc:  # noqa: BLE001 - delivery is optional/best-effort
+            logger.warning("approval_gate: no notification port resolved: %s", exc)
+
+        return ApprovalGate(store=store, notifier=notifier)
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
@@ -1578,6 +1650,7 @@ class DependencyContainer:
             spending_mandate_lookup=moat.spending_mandate_lookup,
             settlement_lock=moat.settlement_lock,
             reconciliation_queue=moat.reconciliation_queue,
+            approval_gate=self.approval_gate,
         )
 
     # =========================================================================

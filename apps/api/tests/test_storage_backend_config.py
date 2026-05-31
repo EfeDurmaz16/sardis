@@ -878,6 +878,7 @@ class FakePaymentOrchestrator:
         spending_mandate_lookup: object = None,
         settlement_lock: object = None,
         reconciliation_queue: object = None,
+        approval_gate: object = None,
     ) -> None:
         self.wallet_manager = wallet_manager
         self.compliance = compliance
@@ -890,6 +891,7 @@ class FakePaymentOrchestrator:
         self.spending_mandate_lookup = spending_mandate_lookup
         self.settlement_lock = settlement_lock
         self.reconciliation_queue = reconciliation_queue
+        self.approval_gate = approval_gate
 
 
 def _configure_payment_runtime(settings=None, use_postgres=True):

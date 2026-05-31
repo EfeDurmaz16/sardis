@@ -23,6 +23,11 @@ try:
 except ImportError:
     approvals_router = None  # type: ignore[assignment]
 
+try:
+    from server.routes.authority import approval_requests as approval_requests_router
+except ImportError:
+    approval_requests_router = None  # type: ignore[assignment]
+
 logger = logging.getLogger("server.api.route_registry.authority")
 
 
@@ -45,6 +50,7 @@ def register_authority_routes(
     audit_store: Any,
     identity_registry: Any,
     dsn: str,
+    approval_gate: Any | None = None,
 ) -> Any | None:
     """Register mandate/AP2/MVP authority routes and return approval service."""
     approval_service = None
@@ -111,6 +117,32 @@ def register_authority_routes(
             logger.warning("Approvals dependencies not available: %s", exc)
     else:
         logger.info("Approvals router not yet available (dependencies not complete)")
+
+    # ── Engine-side ApprovalRequest API (the closed-loop human-in-the-loop) ──
+    # Distinct from the legacy `appr_` UI approvals above: this is the `apreq_`
+    # surface the sardis-cloud Approvals page uses to list pending requests and
+    # POST a decision that RE-EXECUTES the payment through the orchestrator's
+    # single fail-closed path. Only wired when an approval_gate is configured.
+    if approval_requests_router is not None and approval_gate is not None:
+        try:
+            approval_requests_router.set_deps(
+                approval_requests_router.ApprovalRequestDependencies(
+                    gate=approval_gate,
+                    orchestrator=orchestrator,
+                )
+            )
+            app.include_router(
+                approval_requests_router.router,
+                prefix="/api/v2/approval-requests",
+                tags=["approval-requests"],
+            )
+            logger.info("ApprovalRequest (closed-loop) router registered")
+        except Exception as exc:  # noqa: BLE001 - optional surface
+            logger.warning("ApprovalRequest router not registered: %s", exc)
+    else:
+        logger.info(
+            "ApprovalRequest router not registered (no approval_gate configured)"
+        )
 
     return approval_service
 

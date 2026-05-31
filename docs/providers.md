@@ -142,3 +142,41 @@ Minimal sidecar contract (follow-up to scaffold):
   `verify_relay_signature`, maps the option with `decision_from_poll_option`, and
   calls `record_decision(proof={"relay_verified": True, …})`. An unsigned/forged
   decision fails closed.
+
+#### The closed human-in-the-loop loop (engine + API)
+The notification port is only the *delivery* half. The *decision/policy/evidence*
+half is the Sardis engine (the moat):
+
+1. The orchestrator hits `requires_approval` (spending-mandate threshold or
+   policy escalation) → `ApprovalGate.open_request` creates a durable, signed
+   `ApprovalRequest` (`apreq_…`, status `pending`), binds the policy+mandate
+   snapshot hashes, snapshots the verified mandate chain, and relays it via the
+   NotificationPort. **No money moves**; the caller gets
+   `PaymentResult(status="pending_approval", approval_id=…)`.
+2. A human decides — in the dashboard, or via Twilio SMS/OTP / Photon poll. The
+   decision reaches the engine through the **ApprovalRequest API**:
+   - `GET  /api/v2/approval-requests` — list pending (the sardis-cloud queue feed)
+   - `GET  /api/v2/approval-requests/{id}` — one request + signed evidence
+   - `POST /api/v2/approval-requests/{id}/decision` — record approve/deny
+   - `POST /api/v2/approval-requests/expire` — sweep past-deadline (fail-closed)
+   The approver is the **authenticated principal** (not a body field); the
+   decision is recorded as HMAC-signed `DecisionEvidence`. High-value requests
+   (`requires_step_up`) refuse approval without verified OTP step-up (→ `409`).
+3. On **approve**, the route calls `PaymentOrchestrator.execute_on_approval`,
+   which re-runs the snapshotted chain through the **single fail-closed path** —
+   mandate / policy / compliance / revocation are ALL re-checked. A mandate
+   revoked *after* approval is still blocked at re-execution (never trust a stale
+   approval). Re-execution is idempotent: the `reexecuted` flag flips before
+   dispatch, so a duplicate approve cannot settle twice. On **deny/expire** the
+   request is terminal and money stays blocked.
+
+What needs live keys vs. runs key-free:
+- **No keys:** the whole loop runs end-to-end. Delivery falls back to the
+  `SIMULATED` sandbox notifier; decision signing uses the `dev-` HMAC fallback
+  (dev/test only). This is what the test suite exercises.
+- **Twilio:** set `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN` (+ a from-number/
+  messaging-service and, for step-up, `TWILIO_VERIFY_SERVICE_SID`).
+- **Photon/Spectrum:** set `PHOTON_RELAY_URL`+`PHOTON_RELAY_SECRET` **and stand up
+  the Node sidecar** (above) — the TS-only `poll()` send cannot run from Python.
+- **Production:** `SARDIS_APPROVAL_HMAC_KEY` is **required** (fail-closed) so
+  decision evidence is signed with a real, auditable key.
