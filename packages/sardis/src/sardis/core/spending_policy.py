@@ -525,50 +525,49 @@ class SpendingPolicy:
         For production payment execution, use ``evaluate()`` instead — it reads
         cumulative spend from the database and checks on-chain balance.
 
+        Single-core invariant
+        ──────────────────────
+        This method is a **thin synchronous delegator** to ``evaluate()`` — the
+        single source of truth for policy decisions (Phase 0 engine
+        consolidation). It runs ``evaluate()`` with none of the async-only
+        injectables supplied (no ``rpc_client``, ``policy_store``,
+        ``kya_client``, ``merchant_trust_service``, or ``trust_score_override``).
+
+        With those omitted, every ``await`` branch inside ``evaluate()`` is
+        unreachable (the on-chain balance, DB-backed spend, KYA attestation, and
+        merchant-trust checks are all guarded by those parameters), so the
+        coroutine completes without ever suspending. We therefore drive it to
+        completion synchronously via ``send(None)`` — no event loop required —
+        and the result is byte-for-byte identical to the previous hand-rolled
+        copy of the check pipeline.
+
         Returns:
             ``(True, "OK")`` | ``(True, "requires_approval")`` | ``(False, "<reason>")``
         """
-        if amount <= 0:
-            return False, "amount_must_be_positive"
-        if fee < 0:
-            return False, "fee_must_be_non_negative"
-
-        total_cost = amount + fee
-        if SpendingScope.ALL not in self.allowed_scopes and scope not in self.allowed_scopes:
-            return False, "scope_not_allowed"
-
-        # Check MCC code policy
-        if mcc_code:
-            mcc_ok, mcc_reason = self._check_mcc_policy(mcc_code)
-            if not mcc_ok:
-                return False, mcc_reason
-
-        # Per-tx limit includes fee (audit-F08)
-        # Category-specific overrides take precedence over global limit
-        effective_per_tx = self._get_effective_per_tx_limit(mcc_code, merchant_category)
-        if total_cost > effective_per_tx:
-            return False, "per_transaction_limit"
-        if self.spent_total + total_cost > self.limit_total:
-            return False, "total_limit_exceeded"
-        for window_limit in filter(None, [self.daily_limit, self.weekly_limit, self.monthly_limit]):
-            ok, reason = window_limit.can_spend(total_cost)
-            if not ok:
-                return ok, reason
-        if merchant_id:
-            merchant_ok, merchant_reason = self._check_merchant_rules(merchant_id, merchant_category, amount)
-            if not merchant_ok:
-                return False, merchant_reason
-
-        # Check drift score
-        if drift_score is not None and self.max_drift_score is not None:
-            if drift_score > self.max_drift_score:
-                return False, "goal_drift_exceeded"
-
-        # Check approval threshold
-        if self.approval_threshold is not None and amount > self.approval_threshold:
-            return True, "requires_approval"
-
-        return True, "OK"
+        coro = self.evaluate(
+            None,  # wallet — unused without rpc_client / kya_client
+            amount,
+            fee,
+            chain="",
+            token=None,  # token — unused without rpc_client (balance check)
+            merchant_id=merchant_id,
+            merchant_category=merchant_category,
+            mcc_code=mcc_code,
+            scope=scope,
+            drift_score=drift_score,
+        )
+        try:
+            # evaluate() never awaits on this path (all I/O branches are gated
+            # behind injectables we did not pass), so the first send() drives it
+            # to its return value.
+            coro.send(None)
+        except StopIteration as stop:
+            return stop.value
+        finally:
+            coro.close()
+        # Unreachable: a non-suspending coroutine raises StopIteration on the
+        # first send(). If we get here, evaluate() awaited unexpectedly.
+        raise RuntimeError("validate_payment: evaluate() suspended unexpectedly")
 
     @staticmethod
     def _categories_match(rule_cat: str, resolved_cat: str) -> bool:
