@@ -157,9 +157,9 @@ with contextlib.suppress(ImportError):
         VerificationStatus as ERC8126VerificationStatus,
     )
 
-# Kleros dispute resolution
+# Kleros dispute resolution (quarantined — see protocol/experimental/)
 with contextlib.suppress(ImportError):
-    from .kleros import (
+    from .experimental.kleros import (
         ArbitrationCostEstimate,
         CourtCategory,
         DisputeParty,
@@ -175,16 +175,16 @@ with contextlib.suppress(ImportError):
         build_submit_evidence_calldata,
         create_dispute_resolver,
     )
-    from .kleros import (
+    from .experimental.kleros import (
         Dispute as KlerosDispute,
     )
-    from .kleros import (
+    from .experimental.kleros import (
         Evidence as KlerosEvidence,
     )
 
-# ERC-8001: Agent Coordination
+# ERC-8001: Agent Coordination (quarantined — see protocol/experimental/)
 with contextlib.suppress(ImportError):
-    from .erc8001 import (
+    from .experimental.erc8001 import (
         AcceptanceAttestation,
         AgentCoordinationManager,
         AgentIntent,
@@ -194,7 +194,7 @@ with contextlib.suppress(ImportError):
         CoordinationType,
         create_coordination_manager,
     )
-    from .erc8001 import (
+    from .experimental.erc8001 import (
         ExecutionResult as CoordinationExecutionResult,
     )
 
@@ -209,9 +209,9 @@ with contextlib.suppress(ImportError):
         map_legacy_reason_to_code,
     )
 
-# Paladin Privacy: privacy-preserving transactions
+# Paladin Privacy (quarantined — see protocol/experimental/)
 with contextlib.suppress(ImportError):
-    from .paladin_privacy import (
+    from .experimental.paladin_privacy import (
         UTXO,
         NotaryDecision,
         NotaryValidation,
@@ -225,9 +225,9 @@ with contextlib.suppress(ImportError):
         create_privacy_manager,
     )
 
-# zkPass Transgate: portable ZK-based KYC verification
+# zkPass Transgate (quarantined — see protocol/experimental/)
 with contextlib.suppress(ImportError):
-    from .zkpass_transgate import (
+    from .experimental.zkpass_transgate import (
         PortableKYCResult,
         ProofStatus,
         TransgateConfig,
@@ -240,7 +240,7 @@ with contextlib.suppress(ImportError):
         create_zkpass_verifier,
         hash_public_inputs,
     )
-    from .zkpass_transgate import (
+    from .experimental.zkpass_transgate import (
         VerificationResult as ZKPassVerificationResult,
     )
 
