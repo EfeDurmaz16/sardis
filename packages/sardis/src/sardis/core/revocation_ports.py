@@ -377,8 +377,308 @@ class InMemoryInFlightBlocker:
         return outcomes
 
 
+# ── Real (Postgres / provider-backed) adapters ─────────────────────────
+#
+# These are the production legs.  Each wraps the SAME surface the rest of the
+# product already uses (the spending_mandates table + mandate_state_transitions,
+# the payment_objects table, the ApprovalGate cascade, the CardPort) so the
+# revocation kill goes through the canonical write path — never a back door.
+# All of them report failures honestly (blocked_pending / failed) so the engine
+# can fail closed; none of them decide *whether* to revoke.
+
+
+# Terminal mandate states (already-dead — killing them is a no-op).
+_MANDATE_TERMINAL = {"revoked", "expired", "consumed"}
+
+
+class PostgresMandateRevoker:
+    """Real mandate revoker over the ``spending_mandates`` table (migration 071).
+
+    Mirrors the route-level revoke (``UPDATE … status='revoked'`` +
+    ``mandate_state_transitions`` audit row) but for the *whole target set*: a
+    revoke aimed at an agent / principal kills every mandate reachable from it in
+    one statement, returning one :class:`KillOutcome` per mandate.
+
+    Fail-closed: this is the authority root.  If the UPDATE itself raises, the
+    engine records a synthetic ``failed`` target (via ``_safe_call``) and the
+    overall outcome is ``blocked_pending_downstream`` — but because the row was
+    never confirmed flipped, no authority is *claimed* dead that is still alive.
+    The orchestrator's lookup (``status = 'active'``) is the execution backstop.
+    """
+
+    kind = PropagationKind.MANDATE
+
+    def __init__(self, db: Any) -> None:
+        # ``db`` is the Database facade (execute/fetch/fetchrow). Injected so the
+        # adapter is unit-testable with a fake and never imports a live pool.
+        self._db = db
+
+    def _where(self, target_kind: str, target_ref: str) -> tuple[str, list[Any]]:
+        if target_kind == "mandate":
+            return "id = $1", [target_ref]
+        if target_kind == "agent":
+            return "agent_id = $1", [target_ref]
+        if target_kind == "principal":
+            return "principal_id = $1", [target_ref]
+        raise ValueError(f"unknown revocation target_kind: {target_kind!r}")
+
+    async def revoke_for_target(
+        self, *, target_kind: str, target_ref: str, requested_by: str, reason: str
+    ) -> list[KillOutcome]:
+        where, params = self._where(target_kind, target_ref)
+        rows = await self._db.fetch(
+            f"SELECT id, status FROM spending_mandates WHERE {where}", *params
+        )
+        outcomes: list[KillOutcome] = []
+        for row in rows:
+            mid = row["id"]
+            status = (row["status"] or "").lower()
+            if status in _MANDATE_TERMINAL:
+                outcomes.append(
+                    KillOutcome.already_dead(mid, f"mandate already {status}")
+                )
+                continue
+            # Conditional UPDATE: only flip rows still alive, so two concurrent
+            # revokes cannot both claim the kill.  rowcount == 0 ⇒ lost the race
+            # (someone else revoked) ⇒ already_dead, still confirmed dead.
+            tag = await self._db.execute(
+                """
+                UPDATE spending_mandates
+                SET status = 'revoked', revoked_at = NOW(), revoked_by = $2,
+                    revocation_reason = $3, updated_at = NOW()
+                WHERE id = $1 AND status IN ('active', 'suspended', 'draft')
+                """,
+                mid, requested_by, reason or None,
+            )
+            if _rowcount(tag) == 0:
+                outcomes.append(
+                    KillOutcome.already_dead(mid, "mandate concurrently revoked")
+                )
+                continue
+            # Best-effort audit row (failure here must NOT un-confirm the kill —
+            # the mandate IS revoked; the orchestrator already denies on it).
+            try:
+                await self._db.execute(
+                    """
+                    INSERT INTO mandate_state_transitions
+                        (id, mandate_id, from_status, to_status, changed_by,
+                         reason, created_at)
+                    VALUES ($1, $2, $3, 'revoked', $4, $5, NOW())
+                    """,
+                    f"mst_{mid[-12:]}_{_short_rand()}", mid, status or "active",
+                    requested_by, reason or None,
+                )
+            except Exception as exc:  # noqa: BLE001 - audit is best-effort
+                logger.warning(
+                    "revocation: mandate %s revoked but transition audit failed: %s",
+                    mid, exc,
+                )
+            outcomes.append(KillOutcome.killed(mid, "mandate marked revoked"))
+        return outcomes
+
+
+class PostgresSpendObjectRevoker:
+    """Real spend-object revoker over the ``payment_objects`` table (mig. 078).
+
+    Revokes every non-terminal one-time spend object (po_…) minted from the
+    killed mandates.  Terminal objects (settled / fulfilled / revoked / …) are
+    reported ``already_dead`` — money already moved or already cancelled cannot
+    be un-moved by a freeze; honesty over optimism.
+    """
+
+    kind = PropagationKind.SPEND_OBJECT
+    _TERMINAL = ("settled", "fulfilled", "revoked", "expired", "failed", "refunded")
+
+    def __init__(self, db: Any) -> None:
+        self._db = db
+
+    async def revoke_for_mandates(
+        self, *, mandate_ids: list[str], requested_by: str
+    ) -> list[KillOutcome]:
+        if not mandate_ids:
+            return []
+        rows = await self._db.fetch(
+            """
+            SELECT object_id, status FROM payment_objects
+            WHERE mandate_id = ANY($1::text[])
+            """,
+            list(mandate_ids),
+        )
+        outcomes: list[KillOutcome] = []
+        for row in rows:
+            oid = row["object_id"]
+            status = (row["status"] or "").lower()
+            if status in self._TERMINAL:
+                outcomes.append(
+                    KillOutcome.already_dead(oid, f"spend object already {status}")
+                )
+                continue
+            tag = await self._db.execute(
+                """
+                UPDATE payment_objects
+                SET status = 'revoked'
+                WHERE object_id = $1 AND status NOT IN (
+                    'settled','fulfilled','revoked','expired','failed','refunded'
+                )
+                """,
+                oid,
+            )
+            if _rowcount(tag) == 0:
+                outcomes.append(
+                    KillOutcome.already_dead(oid, "spend object concurrently terminal")
+                )
+            else:
+                outcomes.append(KillOutcome.killed(oid, "spend object revoked"))
+        return outcomes
+
+
+class ApprovalGateRevoker:
+    """Real pending-approval killer over the :class:`ApprovalGate` cascade.
+
+    This is the cascade the dashboard ``RevokeDialog`` promised: revoking an
+    agent must also kill its *pending* approvals so a human cannot later click
+    "approve" on a request whose authority is already gone.  It enumerates
+    pending requests via the store, filters to the target agent / governing
+    SpendingMandate, and denies each through the gate's signed
+    ``record_decision`` path (so the kill is itself signed evidence).
+
+    Already-decided requests (approved / denied / expired) are ``already_dead``.
+    A request that cannot be denied (e.g. it expired between read and write) is
+    reported ``blocked_pending`` — never silently skipped.
+    """
+
+    kind = PropagationKind.APPROVAL
+
+    def __init__(self, gate: Any) -> None:
+        # ``gate`` is an ApprovalGate (has a ._store with list_pending +
+        # record_decision).  Injected to avoid a hard import cycle.
+        self._gate = gate
+
+    async def deny_pending_for_target(
+        self, *, agent_id: str | None, mandate_ids: list[str], requested_by: str
+    ) -> list[KillOutcome]:
+        wanted_mandates = set(mandate_ids)
+        pending = await self._gate._store.list_pending(limit=1000)
+        outcomes: list[KillOutcome] = []
+        for req in pending:
+            match = (agent_id is not None and req.agent_id == agent_id) or (
+                req.spending_mandate_id in wanted_mandates
+                or req.mandate_id in wanted_mandates
+            )
+            if not match:
+                continue
+            try:
+                decided = await self._gate.record_decision(
+                    approval_id=req.id,
+                    decision="deny",
+                    approver=requested_by,
+                    reason="authority revoked",
+                )
+            except Exception as exc:  # noqa: BLE001 - surfaced, not swallowed
+                outcomes.append(
+                    KillOutcome.blocked_pending(
+                        req.id, f"approval deny raised: {exc}; blocked at execution"
+                    )
+                )
+                continue
+            status = getattr(decided.status, "value", str(decided.status))
+            if status == "denied":
+                outcomes.append(KillOutcome.killed(req.id, "pending approval denied"))
+            elif status == "expired":
+                outcomes.append(
+                    KillOutcome.already_dead(req.id, "approval expired before deny")
+                )
+            else:
+                # Should not happen for a deny verb, but never claim a kill we
+                # did not get.
+                outcomes.append(
+                    KillOutcome.blocked_pending(
+                        req.id, f"approval not denied (now {status}); blocked at execution"
+                    )
+                )
+        return outcomes
+
+
+class CallbackInFlightBlocker:
+    """Real in-flight blocker over an injected enumerator + status updater.
+
+    The in-flight payment ledger lives in different tables per rail (the legacy
+    ``transactions`` table, the MPP session store, the execution queue), and its
+    schema is not uniform — so rather than couple this leg to one table, it takes
+    two injected coroutines (mirroring :class:`ProviderCardFreezer`):
+
+    * ``enumerate`` ``(agent_id, mandate_ids) -> list[(ref, status)]`` — the
+      in-flight payments for the target;
+    * ``block`` ``(ref) -> bool`` — attempt to block one; ``True`` ⇒ confirmed
+      blocked, ``False`` ⇒ could not confirm.
+
+    Fail-closed: a payment already broadcast (``block`` returns ``False`` or
+    raises) is ``blocked_pending`` — the authority is denied at execution, but
+    the in-flight tx's fate is not yet confirmed, and the proof says so.
+    """
+
+    kind = PropagationKind.IN_FLIGHT
+    _IN_FLIGHT = {"pending", "authorized", "queued", "submitting", "in_flight"}
+
+    def __init__(self, enumerate_in_flight: Any, block_one: Any) -> None:
+        self._enumerate = enumerate_in_flight
+        self._block = block_one
+
+    async def block_for_target(
+        self, *, agent_id: str | None, mandate_ids: list[str], requested_by: str
+    ) -> list[KillOutcome]:
+        rows: list[tuple[str, str]] = await self._enumerate(
+            agent_id=agent_id, mandate_ids=list(mandate_ids)
+        )
+        outcomes: list[KillOutcome] = []
+        for ref, status in rows:
+            if (status or "").lower() not in self._IN_FLIGHT:
+                outcomes.append(
+                    KillOutcome.already_dead(ref, f"payment already {status}")
+                )
+                continue
+            try:
+                ok = await self._block(ref)
+            except Exception as exc:  # noqa: BLE001 - surfaced, not swallowed
+                outcomes.append(
+                    KillOutcome.blocked_pending(
+                        ref, f"in-flight block raised: {exc}; blocked at execution"
+                    )
+                )
+                continue
+            if ok:
+                outcomes.append(KillOutcome.killed(ref, "in-flight payment blocked"))
+            else:
+                outcomes.append(
+                    KillOutcome.blocked_pending(
+                        ref,
+                        "in-flight payment broadcast unconfirmed; blocked at execution",
+                    )
+                )
+        return outcomes
+
+
+# ── small helpers ──────────────────────────────────────────────────────
+
+
+def _rowcount(tag: Any) -> int:
+    """Parse an asyncpg command tag (``"UPDATE 3"``) into an affected-row count."""
+    try:
+        return int(str(tag).rsplit(" ", 1)[-1])
+    except (ValueError, AttributeError):
+        return 0
+
+
+def _short_rand() -> str:
+    import secrets as _secrets
+
+    return _secrets.token_hex(4)
+
+
 __all__ = [
+    "ApprovalGateRevoker",
     "ApprovalRevokerPort",
+    "CallbackInFlightBlocker",
     "CardFreezerPort",
     "InFlightBlockerPort",
     "InMemoryApprovalRevoker",
@@ -388,6 +688,8 @@ __all__ = [
     "InMemorySpendObjectRevoker",
     "KillOutcome",
     "MandateRevokerPort",
+    "PostgresMandateRevoker",
+    "PostgresSpendObjectRevoker",
     "ProviderCardFreezer",
     "SpendObjectRevokerPort",
 ]

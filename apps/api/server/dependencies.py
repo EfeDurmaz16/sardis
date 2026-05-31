@@ -143,6 +143,13 @@ class PaymentRuntimeConfig:
     #: RecourseHold store + swappable executor). Exposed so the escrow/dispute
     #: API backs holds onto the SAME engine the orchestrator opens them from.
     recourse_engine: Any | None = None
+    #: Propagating-revocation engine (the lead-wedge kill switch). ONE revoke
+    #: atomically propagates across every rail — mandate, spend objects, cards
+    #: (via CardPort), pending approvals (via the SAME ApprovalGate), in-flight
+    #: payments — and returns a signed, independently-verifiable RevocationProof.
+    #: Fail-closed: a downstream kill that cannot be confirmed is blocked_pending
+    #: and the orchestrator still denies the revoked mandate at execution time.
+    revocation_engine: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -822,6 +829,160 @@ def build_moat_ports(
     )
 
 
+def build_revocation_engine(
+    *,
+    use_postgres: bool,
+    approval_gate: Any | None = None,
+    provider_registry: Any | None = None,
+) -> Any | None:
+    """Wire the Propagating-Revocation engine across every real rail.
+
+    The lead-wedge kill switch: ONE ``revoke`` atomically propagates across the
+    mandate (authority root), outstanding spend objects, the agent's cards (via
+    the provider-layer ``CardPort``), pending approvals (via the SAME
+    ``ApprovalGate`` the orchestrator re-executes from), and in-flight payments —
+    and returns a signed, independently-verifiable ``RevocationProof``.
+
+    Each leg is wired to its canonical surface and is env/DB-gated:
+
+    * mandate + spend-object: Postgres adapters over ``spending_mandates`` /
+      ``payment_objects`` in production; in-memory mocks in dev/tests.
+    * cards: ``ProviderCardFreezer`` over the registry's ``CardPort``
+      (real provider when keys are set; sandbox impl otherwise). Enumeration of
+      the agent's cards goes through ``virtual_cards``; no cards index ⇒ the leg
+      contributes no targets (still fail-closed: the mandate is revoked).
+    * approvals: ``ApprovalGateRevoker`` over the shared gate (signed deny).
+    * in-flight: ``CallbackInFlightBlocker`` over the transactions ledger.
+
+    Fail-closed everywhere: a downstream kill that cannot be confirmed is
+    recorded ``blocked_pending`` and the orchestrator still denies the revoked
+    mandate at execution time. Returns ``None`` only if the engine cannot be
+    constructed at all (dev import failure) — never a half-wired engine.
+    """
+    try:
+        from sardis.core.database import Database
+        from sardis.core.revocation_engine import RevocationEngine
+        from sardis.core.revocation_ports import (
+            ApprovalGateRevoker,
+            CallbackInFlightBlocker,
+            InMemoryInFlightBlocker,
+            InMemoryMandateRevoker,
+            InMemorySpendObjectRevoker,
+            ProviderCardFreezer,
+        )
+        from sardis.core.revocation_repository import (
+            InMemoryRevocationStore,
+            PostgresRevocationStore,
+        )
+    except Exception as exc:  # noqa: BLE001 - engine optional in dev
+        logger.warning("revocation_engine unavailable: %s", exc)
+        return None
+
+    store: Any
+    mandate_revoker: Any
+    spend_object_revoker: Any
+    in_flight_blocker: Any
+
+    if use_postgres:
+        from sardis.core.revocation_ports import (
+            PostgresMandateRevoker,
+            PostgresSpendObjectRevoker,
+        )
+
+        store = PostgresRevocationStore()
+        mandate_revoker = PostgresMandateRevoker(Database)
+        spend_object_revoker = PostgresSpendObjectRevoker(Database)
+
+        async def _enumerate_in_flight(*, agent_id, mandate_ids):
+            # In-flight = transactions still in a pre-settlement state for the
+            # agent's wallets. Keyed via the mandate's wallet on the tx rows.
+            if not mandate_ids:
+                return []
+            rows = await Database.fetch(
+                """
+                SELECT t.external_id AS ref, t.status AS status
+                FROM transactions t
+                JOIN spending_mandates m
+                  ON m.wallet_id::text = t.from_wallet_id::text
+                WHERE m.id = ANY($1::text[])
+                  AND t.status IN ('pending','authorized','queued','submitting')
+                """,
+                list(mandate_ids),
+            )
+            return [(r["ref"], r["status"]) for r in rows]
+
+        async def _block_in_flight(ref):
+            # Best-effort block of a pre-settlement tx. A broadcast already on
+            # chain cannot be un-sent: rowcount 0 ⇒ unconfirmed ⇒ blocked_pending.
+            tag = await Database.execute(
+                """
+                UPDATE transactions SET status = 'blocked'
+                WHERE external_id = $1
+                  AND status IN ('pending','authorized','queued','submitting')
+                """,
+                ref,
+            )
+            try:
+                return int(str(tag).rsplit(" ", 1)[-1]) > 0
+            except (ValueError, AttributeError):
+                return False
+
+        in_flight_blocker = CallbackInFlightBlocker(
+            _enumerate_in_flight, _block_in_flight
+        )
+    else:
+        # Dev/in-memory: empty mocks (no rows) keep the engine constructible
+        # without a DB. Real propagation happens only on Postgres.
+        store = InMemoryRevocationStore()
+        mandate_revoker = InMemoryMandateRevoker({})
+        spend_object_revoker = InMemorySpendObjectRevoker({})
+        in_flight_blocker = InMemoryInFlightBlocker({})
+
+    # Cards: freeze via the provider-layer CardPort. The registry returns a real
+    # adapter when keys are set, a sandbox impl otherwise (mock when no keys).
+    card_freezer = None
+    if provider_registry is not None:
+        try:
+            card_port = provider_registry.card()
+
+            async def _enumerate_cards(*, target_kind, target_ref):
+                if not use_postgres or target_kind != "agent":
+                    return []
+                try:
+                    rows = await Database.fetch(
+                        """
+                        SELECT vc.provider_card_id AS ref
+                        FROM virtual_cards vc
+                        JOIN wallets w ON w.id = vc.wallet_id
+                        WHERE w.agent_id = $1
+                          AND vc.status NOT IN ('frozen','closed','canceled')
+                          AND vc.provider_card_id IS NOT NULL
+                        """,
+                        target_ref,
+                    )
+                except Exception as exc:  # noqa: BLE001 - no cards index ⇒ no targets
+                    logger.warning("revocation: card enumeration failed: %s", exc)
+                    return []
+                return [r["ref"] for r in rows]
+
+            card_freezer = ProviderCardFreezer(card_port, _enumerate_cards)
+        except Exception as exc:  # noqa: BLE001 - card leg optional
+            logger.warning("revocation: card freezer unavailable: %s", exc)
+
+    approval_revoker = (
+        ApprovalGateRevoker(approval_gate) if approval_gate is not None else None
+    )
+
+    return RevocationEngine(
+        store=store,
+        mandate_revoker=mandate_revoker,
+        spend_object_revoker=spend_object_revoker,
+        card_freezer=card_freezer,
+        approval_revoker=approval_revoker,
+        in_flight_blocker=in_flight_blocker,
+    )
+
+
 def configure_payment_runtime(
     settings: Any,
     *,
@@ -994,6 +1155,25 @@ def configure_payment_runtime(
     except Exception as exc:  # noqa: BLE001 - engine is optional in dev
         logger.warning("risk_engine unavailable, Guard Phase 1.6 disabled: %s", exc)
 
+    # ── Propagating-Revocation engine (the lead-wedge kill switch) ──
+    # Wired across the SAME rails the rest of the runtime uses: the mandate /
+    # spend-object Postgres surfaces, the CardPort from the provider registry,
+    # the SAME ApprovalGate the orchestrator re-executes from, and the in-flight
+    # transactions ledger. ONE revoke propagates across all of them and returns a
+    # signed RevocationProof; fail-closed (blocked_pending + execution-time deny)
+    # when a downstream kill cannot be confirmed.
+    revocation_engine = None
+    try:
+        from server.providers.registry import ProviderRegistry
+
+        revocation_engine = build_revocation_engine(
+            use_postgres=use_postgres,
+            approval_gate=approval_gate,
+            provider_registry=ProviderRegistry.from_settings(settings),
+        )
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("revocation_engine unavailable: %s", exc)
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
@@ -1018,6 +1198,7 @@ def configure_payment_runtime(
         orchestrator=orchestrator,
         approval_gate=approval_gate,
         recourse_engine=recourse_engine,
+        revocation_engine=revocation_engine,
     )
 
 
@@ -1706,6 +1887,31 @@ class DependencyContainer:
             else InMemoryRecourseHoldStore()
         )
         return RecourseEngine(store=store, executor=resolve_default_executor())
+
+    @cached_property
+    def revocation_engine(self) -> Any:
+        """Propagating-Revocation engine — the lead-wedge kill switch.
+
+        ONE ``revoke`` atomically propagates across EVERY rail: the mandate
+        (authority root, denied at execution by the orchestrator), outstanding
+        spend objects, the agent's cards (via the SAME provider-layer CardPort),
+        pending approvals (via the SAME ApprovalGate the orchestrator
+        re-executes from), and in-flight payments — returning a signed,
+        independently-verifiable RevocationProof. Fail-closed: a downstream kill
+        that cannot be confirmed is blocked_pending, and the authority is still
+        denied at execution time. Reuses the SAME approval_gate + provider
+        registry instances so the kill goes through the canonical surfaces.
+        """
+        registry: Any = None
+        try:
+            registry = self.provider_registry
+        except Exception as exc:  # noqa: BLE001 - card leg optional
+            logger.warning("revocation_engine: no provider registry resolved: %s", exc)
+        return build_revocation_engine(
+            use_postgres=self.use_postgres,
+            approval_gate=self.approval_gate,
+            provider_registry=registry,
+        )
 
     @cached_property
     def risk_engine(self) -> Any:

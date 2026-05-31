@@ -166,6 +166,13 @@ class RevocationEngine:
                                    mandate_ids=revoked_mandate_ids,
                                    requested_by=requested_by)
 
+        # Stash the context the reconciliation sweep needs to re-run the rails
+        # that came back blocked_pending (the agent hint + the killed mandate ids
+        # that key the derived rails). Persisted in metadata so a sweep in a
+        # later process / after a restart can reconstruct it from the store.
+        rev.metadata["effective_agent"] = effective_agent
+        rev.metadata["revoked_mandate_ids"] = list(revoked_mandate_ids)
+
         # 5) Honest outcome — partial propagation is reported as partial.
         rev.status = rev.compute_outcome()
         rev.revoked_at = datetime.now(UTC)
@@ -345,6 +352,178 @@ class RevocationEngine:
                 )
             )
         return outcomes
+
+    # ── reconciliation / sweep ──────────────────────────────────────────
+
+    async def reconcile(self, revocation_id: str) -> Revocation | None:
+        """Retry the downstream kills that came back ``blocked_pending``/``failed``.
+
+        The original ``revoke`` is fail-closed: a card freeze (or in-flight
+        block, or approval deny) that could not be confirmed is recorded
+        ``blocked_pending`` and the authority is denied at execution time anyway
+        (the mandate is revoked).  But the *downstream* object may still be alive
+        on its rail (a card not actually frozen).  This sweep re-runs ONLY the
+        rails that have an unconfirmed target, and for any target the rail now
+        reports confirmed-dead (``killed`` / ``already_dead``) it upgrades the
+        recorded ``kill_status`` in place, recomputes the honest overall outcome,
+        and re-signs the proof.
+
+        Idempotent and monotonic: a target is only ever upgraded *towards*
+        confirmed-dead, never downgraded; a still-unconfirmed target keeps its
+        ``blocked_pending`` status (its ``detail`` is refreshed with the retry).
+        Returns the updated revocation, or ``None`` if it does not exist.  A
+        fully-reconciled revocation flips ``blocked_pending_downstream`` →
+        ``propagated``.
+        """
+        rev = await self._store.get(revocation_id)
+        if rev is None:
+            return None
+        if not rev.has_unconfirmed():
+            return rev  # nothing to do — already fully propagated
+
+        effective_agent = rev.metadata.get("effective_agent")
+        mandate_ids = list(rev.metadata.get("revoked_mandate_ids") or [])
+
+        changed = False
+        for kind, retry in (
+            (PropagationKind.CARD,
+             lambda: self._retry_cards(rev, effective_agent)),
+            (PropagationKind.IN_FLIGHT,
+             lambda: self._retry_in_flight(rev, effective_agent, mandate_ids)),
+            (PropagationKind.APPROVAL,
+             lambda: self._retry_approvals(rev, effective_agent, mandate_ids)),
+            (PropagationKind.SPEND_OBJECT,
+             lambda: self._retry_spend_objects(rev, mandate_ids)),
+        ):
+            if not any(
+                t.kind == kind and not t.is_confirmed_dead() for t in rev.targets
+            ):
+                continue
+            fresh = await retry()
+            if fresh is None:
+                continue  # rail not configured — leave targets as-is
+            if self._upgrade_targets(rev, kind, fresh):
+                changed = True
+
+        if not changed:
+            logger.info(
+                "revocation %s reconcile: no downstream kill could be confirmed yet",
+                rev.id,
+            )
+
+        # Recompute the honest outcome + re-sign even if unchanged details were
+        # refreshed, so the proof always reflects the latest known state.
+        rev.status = rev.compute_outcome()
+        rev.build_proof(self._secret)
+        await self._store.save(rev)
+        logger.info(
+            "revocation %s reconciled: outcome=%s confirmed_dead=%d/%d",
+            rev.id, rev.status.value,
+            sum(1 for t in rev.targets if t.is_confirmed_dead()), len(rev.targets),
+        )
+        return rev
+
+    async def reconcile_blocked(self, *, limit: int = 100) -> list[Revocation]:
+        """Sweep every revocation still ``blocked_pending_downstream`` and retry.
+
+        Drives the reconciliation loop (cron / background job).  Returns the
+        revocations it touched.
+        """
+        from .revocation import RevocationStatus
+
+        recent = await self._store.list_recent(limit=limit)
+        touched: list[Revocation] = []
+        for rev in recent:
+            if rev.status != RevocationStatus.BLOCKED_PENDING_DOWNSTREAM:
+                continue
+            updated = await self.reconcile(rev.id)
+            if updated is not None:
+                touched.append(updated)
+        return touched
+
+    # Re-run a single rail and return ref -> KillOutcome (None ⇒ not configured).
+    async def _retry_cards(
+        self, rev: Revocation, effective_agent: str | None
+    ) -> dict[str, KillOutcome] | None:
+        if self._card_freezer is None:
+            return None
+        if rev.target_kind == RevocationTargetKind.MANDATE:
+            if effective_agent is None:
+                return {}
+            sweep_kind, sweep_ref = "agent", effective_agent
+        else:
+            sweep_kind, sweep_ref = rev.target_kind.value, rev.target_ref
+        outcomes = await self._card_freezer.freeze_for_target(
+            target_kind=sweep_kind, target_ref=sweep_ref, requested_by=rev.requested_by
+        )
+        return {o.ref: o for o in outcomes}
+
+    async def _retry_in_flight(
+        self, rev: Revocation, effective_agent: str | None, mandate_ids: list[str]
+    ) -> dict[str, KillOutcome] | None:
+        if self._in_flight_blocker is None:
+            return None
+        outcomes = await self._in_flight_blocker.block_for_target(
+            agent_id=effective_agent, mandate_ids=mandate_ids,
+            requested_by=rev.requested_by,
+        )
+        return {o.ref: o for o in outcomes}
+
+    async def _retry_approvals(
+        self, rev: Revocation, effective_agent: str | None, mandate_ids: list[str]
+    ) -> dict[str, KillOutcome] | None:
+        if self._approval_revoker is None:
+            return None
+        outcomes = await self._approval_revoker.deny_pending_for_target(
+            agent_id=effective_agent, mandate_ids=mandate_ids,
+            requested_by=rev.requested_by,
+        )
+        return {o.ref: o for o in outcomes}
+
+    async def _retry_spend_objects(
+        self, rev: Revocation, mandate_ids: list[str]
+    ) -> dict[str, KillOutcome] | None:
+        if self._spend_object_revoker is None or not mandate_ids:
+            return None
+        outcomes = await self._spend_object_revoker.revoke_for_mandates(
+            mandate_ids=mandate_ids, requested_by=rev.requested_by
+        )
+        return {o.ref: o for o in outcomes}
+
+    @staticmethod
+    def _upgrade_targets(
+        rev: Revocation,
+        kind: PropagationKind,
+        fresh: dict[str, KillOutcome],
+    ) -> bool:
+        """Upgrade unconfirmed targets of ``kind`` from the fresh rail outcomes.
+
+        Monotonic: only an unconfirmed target whose ref now reports
+        confirmed-dead is flipped to ``killed`` / ``already_dead``.  A target the
+        rail still reports unconfirmed has its ``detail`` refreshed but keeps its
+        blocked status.  Returns ``True`` if any target was upgraded.
+        """
+        now = datetime.now(UTC)
+        upgraded = False
+        for t in rev.targets:
+            if t.kind != kind or t.is_confirmed_dead():
+                continue
+            outcome = fresh.get(t.ref)
+            if outcome is None:
+                # The rail no longer enumerates this ref. On a re-run the killer
+                # returns the object only while it is still findable; a card that
+                # is now frozen comes back already_dead, not absent. Absence is
+                # ambiguous, so we DO NOT confirm — keep it blocked_pending.
+                t.detail = f"{t.detail}; reconcile: object not re-enumerated"
+                continue
+            if outcome.kill_status in (KillStatus.KILLED, KillStatus.ALREADY_DEAD):
+                t.kill_status = KillStatus.KILLED  # confirmed on retry
+                t.detail = f"reconciled: {outcome.detail}"
+                t.killed_at = now
+                upgraded = True
+            else:
+                t.detail = f"reconcile retry still unconfirmed: {outcome.detail}"
+        return upgraded
 
     # ── reads ───────────────────────────────────────────────────────────
 
