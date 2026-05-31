@@ -16,12 +16,16 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in ("SardisTool", "SardisPolicyCheckTool", "SardisToolkit"):
+    if name in ("SardisPayTool", "SardisCheckPolicyTool", "SardisToolkit"):
         try:
-            from .langchain import SardisPolicyCheckTool, SardisTool, SardisToolkit
+            from .langchain import SardisCheckPolicyTool, SardisPayTool, SardisToolkit
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError(
                 "Install sardis-langchain for LangChain integration: pip install sardis-langchain"
             ) from e
-        return {"SardisTool": SardisTool, "SardisPolicyCheckTool": SardisPolicyCheckTool, "SardisToolkit": SardisToolkit}[name]
+        return {
+            "SardisPayTool": SardisPayTool,
+            "SardisCheckPolicyTool": SardisCheckPolicyTool,
+            "SardisToolkit": SardisToolkit,
+        }[name]
     raise AttributeError(name)
