@@ -148,6 +148,7 @@ class ExecutionPhase(str, Enum):
     KYA_VERIFICATION = "kya_verification"      # Phase 0: Know Your Agent
     MANDATE_VALIDATION = "mandate_validation"   # Phase 0.5: Spending Mandate
     POLICY_VALIDATION = "policy_validation"     # Phase 1
+    RISK_ASSESSMENT = "risk_assessment"         # Phase 1.6: Guard / RiskEngine
     COMPLIANCE_CHECK = "compliance_check"       # Phase 2
     CHAIN_EXECUTION = "chain_execution"         # Phase 3
     POLICY_STATE_UPDATE = "policy_state_update" # Phase 3.5
@@ -282,6 +283,32 @@ class ComplianceViolationError(PaymentExecutionError):
         )
         self.provider = provider
         self.rule_id = rule_id
+
+
+class RiskViolationError(PaymentExecutionError):
+    """Raised when the Guard / RiskEngine BLOCKs a payment (fail-closed).
+
+    A blocking risk decision is a hard deny: no money moves.  The full risk
+    decision evidence (combined / internal / external scores, feeds, reasons)
+    is attached for audit.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        mandate_id: str | None = None,
+        *,
+        score: float | None = None,
+        evidence: dict | None = None,
+    ):
+        super().__init__(
+            message,
+            phase=ExecutionPhase.RISK_ASSESSMENT,
+            mandate_id=mandate_id,
+            details={"score": score, "evidence": evidence},
+        )
+        self.score = score
+        self.evidence = evidence or {}
 
 
 class KYAViolationError(PaymentExecutionError):
@@ -547,6 +574,7 @@ class PaymentOrchestrator:
         approval_gate: Any | None = None,
         recourse_engine: Any | None = None,
         recourse_window_resolver: Any | None = None,
+        risk_engine: Any | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -577,6 +605,16 @@ class PaymentOrchestrator:
         # already moved) but the failure is audited and the hold is not claimed.
         self._recourse_engine = recourse_engine
         self._recourse_window_resolver = recourse_window_resolver
+        # RiskEngine collaborator (sardis.guardrails.risk_engine.RiskEngine).
+        # OPTIONAL + additive: when configured, the orchestrator runs the Guard
+        # fraud/risk assessment as Phase 1.6 (after policy, before compliance)
+        # and acts on the binding GuardAction: BLOCK -> deny (fail-closed,
+        # audited); REQUIRE_APPROVAL -> open an ApprovalRequest via the
+        # ApprovalGate (high-risk becomes a step-up approval; no money moves);
+        # FLAG -> allow + record the signal; ALLOW -> proceed.  When absent, the
+        # path is unchanged (back-compat) — the a2a route still runs the legacy
+        # anomaly guardrail.  This NEVER fails open on a money path.
+        self._risk_engine = risk_engine
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
 
         # Warn when using in-memory audit log in production
@@ -1015,6 +1053,121 @@ class PaymentOrchestrator:
                 # Fail-closed: group policy errors = deny
                 self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False, error=f"group_policy_error: {e}")
                 raise PolicyViolationError(f"Group policy error: {e}", mandate_id=mandate_id)
+
+        # ── Phase 1.6: Guard / Risk Assessment (fail-closed) ────────────
+        # Agent-fraud risk scoring: the in-house RiskEngine combines the
+        # behavioral AnomalyEngine score with external fraud-signal feeds
+        # (Stripe Radar / SEON) and returns a binding GuardAction.  This runs
+        # AFTER policy/mandate (so a policy deny short-circuits first) and
+        # BEFORE compliance + chain (so a risky payment never reaches the
+        # money path).  Action mapping:
+        #   BLOCK            -> deny, fail-closed (RiskViolationError), no money.
+        #   REQUIRE_APPROVAL -> route to the ApprovalGate (high-risk step-up);
+        #                        return a pending result, no money moves.
+        #   FLAG             -> allow + record the risk signal as evidence.
+        #   ALLOW            -> proceed.
+        # Additive: skipped entirely when no risk_engine is configured.  A
+        # risk_engine error is itself fail-closed (deny), never a silent allow.
+        if self._risk_engine is not None and _approved_request is None:
+            agent_id = (
+                getattr(payment, "agent_id", None)
+                or getattr(payment, "from_agent", None)
+                or ""
+            )
+            risk_amount = _resolve_token_amount(payment)
+            risk_counterparty = (
+                getattr(payment, "merchant_id", None)
+                or getattr(payment, "destination", None)
+            )
+            try:
+                from .approval_gate import hash_snapshot  # local import (no cycle)
+                from sardis.guardrails.risk_engine import GuardAction
+
+                meta = getattr(payment, "metadata", None) or {}
+                decision = await self._risk_engine.assess(
+                    agent_id=str(agent_id),
+                    amount=risk_amount,
+                    counterparty=risk_counterparty,
+                    merchant_category=getattr(payment, "merchant_category", None)
+                    or meta.get("merchant_category"),
+                    baseline_mean=meta.get("baseline_mean"),
+                    baseline_std=meta.get("baseline_std"),
+                    recent_tx_count_1h=meta.get("recent_tx_count_1h", 0),
+                    is_new_merchant=meta.get("is_new_merchant", False),
+                    hour_of_day=meta.get("hour_of_day"),
+                    typical_hours=meta.get("typical_hours"),
+                    signal_context=meta.get("signal_context"),
+                )
+            except RiskViolationError:
+                raise
+            except Exception as e:
+                # Fail-closed: a RiskEngine error on a money path = deny.
+                self._audit(
+                    mandate_id, ExecutionPhase.RISK_ASSESSMENT, False,
+                    {"agent_id": agent_id}, error=f"risk_engine_error: {e}",
+                )
+                raise RiskViolationError(
+                    f"Risk assessment error: {e}",
+                    mandate_id=mandate_id,
+                )
+
+            evidence = decision.to_dict()
+            if decision.action == GuardAction.BLOCK:
+                self._audit(
+                    mandate_id, ExecutionPhase.RISK_ASSESSMENT, False,
+                    {"agent_id": agent_id, "action": "block",
+                     "score": decision.combined_score, "evidence": evidence},
+                    f"guard_blocked: score={decision.combined_score:.1f}",
+                )
+                raise RiskViolationError(
+                    f"Payment blocked by Guard risk engine "
+                    f"(score={decision.combined_score:.1f}/100)",
+                    mandate_id=mandate_id,
+                    score=decision.combined_score,
+                    evidence=evidence,
+                )
+
+            if decision.action == GuardAction.REQUIRE_APPROVAL:
+                self._audit(
+                    mandate_id, ExecutionPhase.RISK_ASSESSMENT, False,
+                    {"agent_id": agent_id, "action": "require_approval",
+                     "score": decision.combined_score, "evidence": evidence},
+                    "Guard risk engine requires human approval",
+                )
+                if self._approval_gate is not None:
+                    return await self._open_approval(
+                        chain=chain,
+                        payment=payment,
+                        mandate_id=mandate_id,
+                        agent_id=str(agent_id) or None,
+                        amount=risk_amount,
+                        counterparty=risk_counterparty,
+                        spending_mandate=None,
+                        reason=(
+                            f"High agent-fraud risk "
+                            f"(score={decision.combined_score:.1f}/100) requires "
+                            f"human approval"
+                        ),
+                        start_time=start_time,
+                    )
+                # No ApprovalGate wired: a high-risk payment cannot be silently
+                # allowed — fail closed as a block.
+                raise RiskViolationError(
+                    f"High-risk payment requires approval but no approval gate "
+                    f"is configured (score={decision.combined_score:.1f}/100)",
+                    mandate_id=mandate_id,
+                    score=decision.combined_score,
+                    evidence=evidence,
+                )
+
+            # FLAG -> allow + record; ALLOW -> proceed (both audited).
+            self._audit(
+                mandate_id, ExecutionPhase.RISK_ASSESSMENT, True,
+                {"agent_id": agent_id, "action": decision.action.value,
+                 "score": decision.combined_score,
+                 "flagged": decision.action == GuardAction.FLAG,
+                 "evidence": evidence},
+            )
 
         # Phase 2: Compliance Check (fail-fast)
         # If fastpath eligible, skip full compliance and run sanctions only.
