@@ -118,6 +118,151 @@ def test_photon_relay_hmac_roundtrips():
     assert adapter.verify_relay_signature(body=body, signature="bad") is False
 
 
+# --- Photon/Spectrum agent-native interactive delivery (mock sidecar) ---------
+
+
+def test_photon_builds_agent_native_interactive_payload():
+    """The approval renders as a Spectrum-native poll (Approve/Deny) plus an
+    agent-native human-readable line — pure, no I/O."""
+    from server.providers.adapters import PhotonRelayNotificationAdapter
+
+    payload = PhotonRelayNotificationAdapter.build_interactive_payload(
+        approval_id="apreq_42",
+        agent_id="research-bot",
+        amount="250.00",
+        currency="USDC",
+        counterparty="acme-cloud",
+        reason="GPU rental",
+    )
+    # Agent-native text mentions agent, amount, counterparty, reason.
+    assert "research-bot" in payload["text"]
+    assert "250.00 USDC" in payload["text"]
+    assert "acme-cloud" in payload["text"]
+    assert "GPU rental" in payload["text"]
+    # Interactive component is a poll with exactly Approve / Deny, correlated by
+    # the approval id so the inbound poll_option can be matched back.
+    interactive = payload["interactive"]
+    assert interactive["kind"] == "poll"
+    assert interactive["options"] == ["Approve", "Deny"]
+    assert interactive["callback_id"] == "apreq_42"
+
+
+class _FakePhotonHttp:
+    """Records the POST body the adapter sends to the Node sidecar."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    async def post(self, url, *, content=None, headers=None, **kwargs):
+        self.calls.append({"url": url, "content": content, "headers": dict(headers or {})})
+        return _FakeResponse({"job_id": "spectrum_job_1", "step_up_issued": False}, 200)
+
+    async def aclose(self) -> None:  # pragma: no cover - cleanup
+        pass
+
+
+@pytest.mark.asyncio
+async def test_photon_send_posts_interactive_payload_to_sidecar():
+    """send_approval_request posts the signed interactive payload to the sidecar
+    and returns the Spectrum job handle; the interactive poll is in the body."""
+    import json
+
+    from server.providers.adapters import PhotonRelayNotificationAdapter
+
+    http = _FakePhotonHttp()
+    adapter = PhotonRelayNotificationAdapter(
+        relay_url="https://relay.sardis.sh",
+        relay_secret="shh",
+        project_id="proj_123",
+        project_secret="sek",
+        sandbox=True,
+        http_client=http,
+    )
+    dr = await adapter.send_approval_request(
+        approval_id="apreq_42",
+        agent_id="research-bot",
+        amount="250.00",
+        currency="USDC",
+        counterparty="acme-cloud",
+        reason="GPU rental",
+        channels=("imessage", "whatsapp"),
+    )
+    assert dr.provider == "photon" and dr.ok
+    assert dr.handle == "spectrum_job_1"
+    assert set(dr.channels) == {"imessage", "whatsapp"}
+
+    assert len(http.calls) == 1
+    call = http.calls[0]
+    assert call["url"].endswith("/approvals/send")
+    # Signed + control-plane auth forwarded for the sidecar.
+    assert "x-sardis-signature" in call["headers"]
+    assert call["headers"]["x-spectrum-authorization"].startswith("Basic ")
+    body = json.loads(call["content"])
+    assert body["message"]["interactive"]["options"] == ["Approve", "Deny"]
+    assert body["message"]["interactive"]["callback_id"] == "apreq_42"
+    assert body["project_id"] == "proj_123"
+
+
+@pytest.mark.asyncio
+async def test_photon_inbound_approve_poll_option_resolves_approval():
+    """An inbound Spectrum poll_option ('Approve'), verified by HMAC, yields a
+    normalized 'approved' RelayedDecision — the engine still re-checks policy."""
+    import json
+
+    from server.providers.adapters import PhotonRelayNotificationAdapter
+
+    adapter = PhotonRelayNotificationAdapter(
+        relay_url="https://relay.sardis.sh", relay_secret="shh", sandbox=True,
+    )
+
+    # Simulate the inbound Spectrum poll_option webhook body + its HMAC-SHA256.
+    webhook_body = json.dumps(
+        {
+            "type": "poll_option",
+            "callback_id": "apreq_42",
+            "option": "Approve",
+            "from": "+15555550123",
+        },
+        separators=(",", ":"),
+    ).encode()
+    signature = adapter._sign(webhook_body)
+
+    # Inbound route verifies the signature before trusting the payload.
+    assert adapter.verify_relay_signature(body=webhook_body, signature=signature) is True
+
+    event = json.loads(webhook_body)
+    decision = adapter.decision_from_poll_option(event["option"])
+    rd = await adapter.record_decision(
+        approval_id=event["callback_id"],
+        decision=decision,
+        approver=event["from"],
+        proof={"relay_verified": True, "option": event["option"]},
+        channel="imessage",
+    )
+    assert isinstance(rd, RelayedDecision)
+    assert rd.decision == "approved"
+    assert rd.approval_id == "apreq_42"
+
+
+def test_photon_deny_poll_option_maps_to_denied():
+    from server.providers.adapters import PhotonRelayNotificationAdapter
+
+    assert PhotonRelayNotificationAdapter.decision_from_poll_option("Deny") == "denied"
+    assert PhotonRelayNotificationAdapter.decision_from_poll_option("Approve") == "approved"
+
+
+def test_registry_wires_photon_with_project_credentials():
+    env = {
+        "PHOTON_RELAY_URL": "https://relay.sardis.sh",
+        "PHOTON_RELAY_SECRET": "shh",
+        "PHOTON_PROJECT_ID": "proj_123",
+        "PHOTON_PROJECT_SECRET": "sek",
+    }
+    reg = ProviderRegistry.from_settings(_dev_settings(), environ=env)
+    assert reg.has_real(ProviderCapability.NOTIFICATION) is True
+    assert reg.notification().provider == "photon"
+
+
 # --- Twilio adapter, with a mocked httpx client (no real keys, no network) ----
 
 

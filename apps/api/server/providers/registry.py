@@ -260,6 +260,10 @@ class ProviderRegistry:
                 adapter = PhotonRelayNotificationAdapter(
                     relay_url=relay_url,
                     relay_secret=relay_secret,
+                    project_id=env.get("PHOTON_PROJECT_ID") or env.get("SPECTRUM_PROJECT_ID"),
+                    project_secret=(
+                        env.get("PHOTON_PROJECT_SECRET") or env.get("SPECTRUM_PROJECT_SECRET")
+                    ),
                     sandbox=not is_production,
                 )
                 ports[ProviderCapability.NOTIFICATION] = adapter
