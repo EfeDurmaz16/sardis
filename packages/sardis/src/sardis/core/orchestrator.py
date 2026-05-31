@@ -193,6 +193,11 @@ class PaymentResult:
     execution_time_ms: float = 0.0
     fastpath: FastPathResult | None = None
     spending_mandate_id: str = ""
+    #: Set when execution is paused awaiting human approval.  When non-empty,
+    #: ``status == "pending_approval"`` and NO money has moved — the caller must
+    #: wait for the approval decision and then re-execute via
+    #: ``execute_on_approval(approval_id)``.
+    approval_id: str = ""
 
 
 @dataclass
@@ -534,6 +539,7 @@ class PaymentOrchestrator:
         dedup_store: DedupStorePort | None = None,
         spending_mandate_lookup: SpendingMandateLookupPort | None = None,
         settlement_lock: SettlementLock | None = None,
+        approval_gate: Any | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -546,6 +552,12 @@ class PaymentOrchestrator:
         self._dedup_store: DedupStorePort = dedup_store or InMemoryDedupStore()
         self._spending_mandate_lookup = spending_mandate_lookup
         self._settlement_lock = settlement_lock
+        # ApprovalGate collaborator (sardis.core.approval_gate.ApprovalGate).
+        # When configured, ``requires_approval`` no longer fails closed with a
+        # raise — it creates a durable, signed ApprovalRequest, relays it to a
+        # human, and returns a pending PaymentResult (no money moves).  When
+        # absent, the legacy fail-closed raise is preserved (back-compat).
+        self._approval_gate = approval_gate
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
 
         # Warn when using in-memory audit log in production
@@ -594,7 +606,12 @@ class PaymentOrchestrator:
         if inspect.isawaitable(result):
             await result
 
-    async def execute_chain(self, chain: MandateChain) -> PaymentResult:
+    async def execute_chain(
+        self,
+        chain: MandateChain,
+        *,
+        _approved_request: Any | None = None,
+    ) -> PaymentResult:
         """
         Execute a verified mandate chain.
 
@@ -602,9 +619,15 @@ class PaymentOrchestrator:
 
         Args:
             chain: Verified mandate chain containing intent, cart, and payment mandates
+            _approved_request: internal — set by ``execute_on_approval`` when
+                re-running an already-approved ApprovalRequest.  Satisfies ONLY
+                the approval-escalation gate; policy / mandate / compliance /
+                revocation are still fully re-evaluated (never trust a stale
+                approval).
 
         Returns:
-            PaymentResult on success
+            PaymentResult on success (or a ``pending_approval`` result when the
+            approval gate is engaged and a human decision is still required)
 
         Raises:
             PolicyViolationError: If payment violates wallet policy
@@ -812,7 +835,15 @@ class PaymentOrchestrator:
                     error_code=check.error_code,
                 )
 
-            if check.requires_approval:
+            if check.requires_approval and _approved_request is None:
+                # ── Human-in-the-loop gate ──────────────────────────────
+                # If an ApprovalGate is configured, do NOT fail closed: create a
+                # durable, signed ApprovalRequest, relay it to a human, and
+                # return a PENDING result (no money moves).  Re-execution
+                # happens later via execute_on_approval, which re-enters here
+                # with _approved_request set so this branch is satisfied — while
+                # every other check (mandate/policy/compliance/revocation) is
+                # re-run.  With no gate configured, preserve the legacy raise.
                 self._audit(
                     mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
                     {"spending_mandate_id": spending_mandate.id,
@@ -820,6 +851,22 @@ class PaymentOrchestrator:
                      "agent_id": agent_id},
                     "Mandate requires human approval for this amount",
                 )
+                if self._approval_gate is not None:
+                    pending = await self._open_approval(
+                        chain=chain,
+                        payment=payment,
+                        mandate_id=mandate_id,
+                        agent_id=agent_id,
+                        amount=pay_amount,
+                        counterparty=merchant_id,
+                        spending_mandate=spending_mandate,
+                        reason=(
+                            f"Payment of {pay_amount} requires human approval "
+                            f"(threshold: {spending_mandate.approval_threshold})"
+                        ),
+                        start_time=start_time,
+                    )
+                    return pending
                 raise MandateViolationError(
                     f"Payment of {pay_amount} requires human approval "
                     f"(threshold: {spending_mandate.approval_threshold})",
@@ -857,6 +904,46 @@ class PaymentOrchestrator:
                     policy.reason or "policy_denied",
                     mandate_id=mandate_id,
                     rule_id=getattr(policy, 'rule_id', None),
+                )
+            # ── Policy-level approval escalation ────────────────────────
+            # SpendingPolicy returns allowed=True with reason "requires_approval"
+            # (and/or required_approvals > 0) when a payment is within limits but
+            # over the human-approval threshold.  This is NOT a free pass — it is
+            # an escalation.  Route it through the same human-in-the-loop gate so
+            # money never moves on an un-approved over-threshold payment.
+            _policy_reason = (getattr(policy, "reason", None) or "")
+            _needs_approval = (
+                "requires_approval" in _policy_reason
+                or getattr(policy, "required_approvals", 0) > 0
+            )
+            if _needs_approval and _approved_request is None:
+                self._audit(
+                    mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                    {"requires_approval": True, "reason": _policy_reason},
+                    "Policy requires human approval for this payment",
+                )
+                if self._approval_gate is not None:
+                    pay_amount = _resolve_token_amount(payment)
+                    counterparty = (
+                        getattr(payment, "merchant_id", None)
+                        or getattr(payment, "destination", None)
+                    )
+                    return await self._open_approval(
+                        chain=chain,
+                        payment=payment,
+                        mandate_id=mandate_id,
+                        agent_id=getattr(payment, "agent_id", None)
+                        or getattr(payment, "from_agent", None),
+                        amount=pay_amount,
+                        counterparty=counterparty,
+                        spending_mandate=None,
+                        reason=_policy_reason or "policy_requires_approval",
+                        start_time=start_time,
+                    )
+                raise PolicyViolationError(
+                    "Policy requires human approval for this payment",
+                    mandate_id=mandate_id,
+                    rule_id="policy_requires_approval",
                 )
             self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, True,
                        {"rule_id": getattr(policy, 'rule_id', None)})
@@ -1246,6 +1333,145 @@ class PaymentOrchestrator:
         )
         await self._dedup_store.check_and_set(mandate_id, result)
         return result
+
+    async def _open_approval(
+        self,
+        *,
+        chain: MandateChain,
+        payment: PaymentMandate,
+        mandate_id: str,
+        agent_id: str | None,
+        amount: Decimal,
+        counterparty: str | None,
+        spending_mandate: Any | None,
+        reason: str,
+        start_time: float,
+    ) -> PaymentResult:
+        """Create a durable, signed ApprovalRequest, relay it to a human, and
+        return a PENDING PaymentResult.  NO money moves here.
+
+        The bound policy/mandate hashes snapshot the state in effect now so the
+        later re-execution can detect drift; the chain snapshot is the verified
+        chain needed to re-run ``execute_chain`` after approval.
+        """
+        import time as _time
+
+        from .approval_gate import hash_snapshot
+
+        token = getattr(payment, "token", None)
+        currency = str(token) if token is not None else "USDC"
+        spending_mandate_id = getattr(spending_mandate, "id", "") if spending_mandate else ""
+        mandate_hash = hash_snapshot(spending_mandate) if spending_mandate else ""
+        # Policy snapshot: the immutable identity of what is being authorized.
+        policy_hash = hash_snapshot(
+            {
+                "mandate_id": mandate_id,
+                "agent_id": agent_id,
+                "amount": str(amount),
+                "currency": currency,
+                "counterparty": counterparty,
+            }
+        )
+
+        request = await self._approval_gate.open_request(
+            agent_id=agent_id,
+            mandate_id=mandate_id,
+            amount=amount,
+            currency=currency,
+            counterparty=counterparty,
+            reason=reason,
+            spending_mandate_id=spending_mandate_id or None,
+            policy_hash=policy_hash,
+            mandate_hash=mandate_hash,
+            chain_snapshot=chain,
+        )
+
+        logger.info(
+            "Payment %s paused for human approval: approval_id=%s amount=%s %s",
+            mandate_id, request.id, amount, currency,
+        )
+
+        execution_time = (_time.time() - start_time) * 1000
+        return PaymentResult(
+            mandate_id=mandate_id,
+            ledger_tx_id="",
+            chain_tx_hash="",
+            chain=getattr(payment, "chain", "") or "",
+            audit_anchor="",
+            status="pending_approval",
+            execution_time_ms=execution_time,
+            spending_mandate_id=spending_mandate_id,
+            approval_id=request.id,
+        )
+
+    async def execute_on_approval(self, approval_id: str) -> PaymentResult:
+        """Re-execute a payment that a human has APPROVED — idempotently.
+
+        Fail-closed contract:
+          * the request must exist, be ``approved``, and not yet re-executed;
+          * ``denied`` / ``expired`` / ``pending`` -> blocked (no money moves);
+          * the original chain is re-run through the FULL ``execute_chain`` path,
+            so mandate / policy / compliance / revocation are ALL re-evaluated at
+            execution time — a mandate revoked AFTER approval still fails closed;
+          * the ``reexecuted`` flag is flipped *before* dispatch so a duplicate
+            approve callback cannot trigger a second settlement.
+        """
+        if self._approval_gate is None:
+            raise PolicyViolationError(
+                "execute_on_approval called but no approval_gate is configured",
+                mandate_id=None,
+                rule_id="no_approval_gate",
+            )
+
+        request = await self._approval_gate.get(approval_id)
+        if request is None:
+            raise PolicyViolationError(
+                f"approval request {approval_id} not found",
+                mandate_id=None,
+                rule_id="approval_not_found",
+            )
+
+        # Fail-closed on any non-approved or already-spent state.
+        from .approval_gate import ApprovalGate
+
+        if not ApprovalGate.is_approved_and_unspent(request):
+            self._audit(
+                request.mandate_id or approval_id,
+                ExecutionPhase.MANDATE_VALIDATION,
+                False,
+                {"approval_id": approval_id, "approval_status": request.status.value,
+                 "reexecuted": request.reexecuted},
+                f"approval not executable (status={request.status.value}, "
+                f"reexecuted={request.reexecuted})",
+            )
+            raise PolicyViolationError(
+                f"approval {approval_id} is not executable "
+                f"(status={request.status.value}, reexecuted={request.reexecuted})",
+                mandate_id=request.mandate_id,
+                rule_id="approval_not_executable",
+            )
+
+        chain = request.chain_snapshot
+        if chain is None:
+            raise PolicyViolationError(
+                f"approval {approval_id} has no chain snapshot to re-execute",
+                mandate_id=request.mandate_id,
+                rule_id="approval_missing_chain",
+            )
+
+        # Idempotency: flip BEFORE dispatch so a concurrent/duplicate callback
+        # cannot settle twice.  A subsequent execute_chain failure leaves the
+        # request approved-but-reexecuted; a retry would be blocked here, which
+        # is the safe (fail-closed) default — re-approval is the recovery path.
+        await self._approval_gate.mark_reexecuted(request)
+
+        logger.info(
+            "Re-executing approved payment: approval_id=%s mandate=%s",
+            approval_id, request.mandate_id,
+        )
+        # _approved_request satisfies ONLY the approval-escalation gate; every
+        # other check is re-run (never trust a stale approval).
+        return await self.execute_chain(chain, _approved_request=request)
 
     async def _execute_chain_settlement(
         self,
