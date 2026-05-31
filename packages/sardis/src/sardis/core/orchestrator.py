@@ -198,6 +198,11 @@ class PaymentResult:
     #: wait for the approval decision and then re-execute via
     #: ``execute_on_approval(approval_id)``.
     approval_id: str = ""
+    #: Set when the payment carried a policy-defined recourse window and a
+    #: durable, signed RecourseHold was opened after settlement.  When non-empty,
+    #: the money is settled but a time-boxed recourse/dispute window is open;
+    #: ``status`` is still the normal success status (money DID move).
+    recourse_hold_id: str = ""
 
 
 @dataclass
@@ -540,6 +545,8 @@ class PaymentOrchestrator:
         spending_mandate_lookup: SpendingMandateLookupPort | None = None,
         settlement_lock: SettlementLock | None = None,
         approval_gate: Any | None = None,
+        recourse_engine: Any | None = None,
+        recourse_window_resolver: Any | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -558,6 +565,18 @@ class PaymentOrchestrator:
         # human, and returns a pending PaymentResult (no money moves).  When
         # absent, the legacy fail-closed raise is preserved (back-compat).
         self._approval_gate = approval_gate
+        # RecourseEngine collaborator (sardis.core.recourse_engine.RecourseEngine).
+        # OPTIONAL + additive: when a payment carries a policy-defined recourse
+        # window, after a successful settlement the orchestrator opens a durable,
+        # signed RecourseHold (programmable recourse) instead of immediate
+        # finality.  No window configured -> unchanged behavior (immediate
+        # finality).  ``recourse_window_resolver`` is a callable
+        # ``(payment, spending_mandate) -> int | None`` returning the window in
+        # seconds (or None for immediate finality); fail-closed: if resolving or
+        # opening the hold raises, the payment result is unaffected (money has
+        # already moved) but the failure is audited and the hold is not claimed.
+        self._recourse_engine = recourse_engine
+        self._recourse_window_resolver = recourse_window_resolver
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
 
         # Warn when using in-memory audit log in production
@@ -759,6 +778,10 @@ class PaymentOrchestrator:
         # and must not be clobbered, or the later state-machine transitions
         # would break.
         spending_mandate_id = ""
+        # Bound to the governing SpendingMandate when a lookup is configured and
+        # an active mandate exists; stays None otherwise (no mandate governs this
+        # pay).  Read later by the optional recourse hook.
+        spending_mandate: Any | None = None
         # Captured for Phase 3.5: after settlement we must persist the mandate
         # spend (lifetime cap accuracy).  None when no mandate governs this pay.
         spending_mandate_spend: Decimal | None = None
@@ -1319,6 +1342,22 @@ class PaymentOrchestrator:
         self._audit(mandate_id, ExecutionPhase.COMPLETED, True)
         execution_time = (time.time() - start_time) * 1000
 
+        # ── Phase 5: Programmable Recourse (OPTIONAL, additive) ──────────
+        # If a recourse engine is configured AND this payment carries a
+        # policy-defined recourse window, open a durable, signed RecourseHold
+        # so the payment is settled-but-recourse-able for the window instead of
+        # immediately final.  No window -> immediate finality (unchanged).
+        # Fail-closed/safe: money already moved, so a failure here never crashes
+        # the payment — it is audited and the result is returned without a hold.
+        recourse_hold_id = ""
+        if self._recourse_engine is not None:
+            recourse_hold_id = await self._maybe_open_recourse(
+                payment=payment,
+                mandate_id=mandate_id,
+                payment_object_id=payment_object_id,
+                spending_mandate=spending_mandate,
+            )
+
         result = PaymentResult(
             mandate_id=mandate_id,
             ledger_tx_id=ledger_tx.tx_id,
@@ -1330,9 +1369,97 @@ class PaymentOrchestrator:
             execution_time_ms=execution_time,
             fastpath=fastpath if fastpath.eligible else None,
             spending_mandate_id=spending_mandate_id,
+            recourse_hold_id=recourse_hold_id,
         )
         await self._dedup_store.check_and_set(mandate_id, result)
         return result
+
+    async def _maybe_open_recourse(
+        self,
+        *,
+        payment: Any,
+        mandate_id: str,
+        payment_object_id: str,
+        spending_mandate: Any | None,
+    ) -> str:
+        """Open a RecourseHold iff a recourse window is configured for this
+        payment.  Returns the hold id, or "" for immediate finality.
+
+        Window resolution order (first non-None wins):
+          1. ``recourse_window_resolver(payment, spending_mandate)`` if injected;
+          2. ``spending_mandate.recourse_window_seconds`` if present;
+          3. None -> immediate finality (no hold).
+
+        Fail-closed-but-safe: the money already settled, so any error here is
+        audited and swallowed (the caller gets a normal success without a hold)
+        — we never crash a settled payment, and we never silently claim a hold
+        that did not open.
+        """
+        try:
+            window = None
+            if self._recourse_window_resolver is not None:
+                window = self._recourse_window_resolver(payment, spending_mandate)
+            if window is None and spending_mandate is not None:
+                window = getattr(spending_mandate, "recourse_window_seconds", None)
+            if not window or int(window) <= 0:
+                return ""
+
+            from .approval_gate import hash_snapshot
+
+            amount_minor = int(getattr(payment, "amount_minor", 0) or 0)
+            token = getattr(payment, "token", None)
+            currency = str(token) if token is not None else "USDC"
+            amount = Decimal(amount_minor) / Decimal(10**6)
+            payer = (
+                getattr(payment, "from_address", None)
+                or getattr(payment, "smart_account_address", None)
+                or getattr(payment, "wallet_id", None)
+                or getattr(payment, "agent_id", None)
+                or "unknown_payer"
+            )
+            recipient = getattr(payment, "destination", None) or "unknown_recipient"
+            agent_id = getattr(payment, "agent_id", None) or getattr(payment, "subject", None)
+            spending_mandate_id = getattr(spending_mandate, "id", None) if spending_mandate else None
+
+            policy_hash = hash_snapshot(
+                {
+                    "mandate_id": mandate_id,
+                    "agent_id": agent_id,
+                    "amount_minor": amount_minor,
+                    "currency": currency,
+                    "recipient": recipient,
+                    "window_seconds": int(window),
+                }
+            )
+            mandate_hash = hash_snapshot(spending_mandate) if spending_mandate else ""
+
+            hold = await self._recourse_engine.open_hold(
+                payment_ref=payment_object_id,
+                mandate_id=mandate_id,
+                agent_id=agent_id,
+                amount=amount,
+                amount_minor=amount_minor,
+                currency=currency,
+                payer=str(payer),
+                recipient=str(recipient),
+                window_seconds=int(window),
+                policy_hash=policy_hash,
+                mandate_hash=mandate_hash,
+                metadata={"spending_mandate_id": spending_mandate_id},
+            )
+            self._audit(
+                mandate_id, ExecutionPhase.COMPLETED, True,
+                {"recourse_hold_id": hold.id, "window_seconds": int(window),
+                 "amount_minor": amount_minor},
+            )
+            return hold.id
+        except Exception as e:  # noqa: BLE001 - never crash a settled payment
+            self._audit(
+                mandate_id, ExecutionPhase.COMPLETED, False,
+                error=f"recourse_open_failed: {e}",
+            )
+            logger.error("Recourse hold open failed for mandate=%s: %s", mandate_id, e)
+            return ""
 
     async def _open_approval(
         self,
