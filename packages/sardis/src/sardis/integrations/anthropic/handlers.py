@@ -464,7 +464,8 @@ class SardisToolHandler:
 
 
 # ---------------------------------------------------------------------------
-# Natural language policy parser (mirrors sardis.client._parse_policy)
+# Natural language policy parser (self-contained; see also
+# sardis.integrations.langchain.tools._parse_policy)
 # ---------------------------------------------------------------------------
 
 def _parse_natural_language_policy(text: str) -> dict[str, Any]:
