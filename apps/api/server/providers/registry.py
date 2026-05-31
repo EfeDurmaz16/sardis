@@ -271,6 +271,74 @@ class ProviderRegistry:
                 )
             except Exception as exc:  # noqa: BLE001 - optional path
                 logger.warning("ProviderRegistry: turnkey onramp init failed: %s", exc)
+
+        # Aggregator / widget onramps (env-gated). Each activates only when its
+        # keys are set; tried in order, first configured wins. Conduit/Turnkey
+        # above keep precedence — these fill the slot only when still empty.
+        onramper_key = env.get("ONRAMPER_API_KEY")
+        if onramper_key:
+            try:
+                from .onramp import OnramperClient, OnramperConfig, OnramperOnrampAdapter
+
+                client = OnramperClient(
+                    OnramperConfig(
+                        api_key=onramper_key,
+                        environment=env.get(
+                            "ONRAMPER_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                        signing_secret=env.get("ONRAMPER_SIGNING_SECRET"),
+                    )
+                )
+                owned.append(client)
+                logger.info("ProviderRegistry: ONRAMP -> onramper")
+                return OnramperOnrampAdapter(client)
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: onramper init failed: %s", exc)
+
+        transak_key = env.get("TRANSAK_API_KEY")
+        transak_secret = env.get("TRANSAK_API_SECRET")
+        if transak_key and transak_secret:
+            try:
+                from .onramp import TransakClient, TransakConfig, TransakOnrampAdapter
+
+                client = TransakClient(
+                    TransakConfig(
+                        api_key=transak_key,
+                        api_secret=transak_secret,
+                        environment=env.get(
+                            "TRANSAK_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                        referrer_domain=env.get("TRANSAK_REFERRER_DOMAIN", "app.sardis.sh"),
+                    )
+                )
+                owned.append(client)
+                logger.info("ProviderRegistry: ONRAMP -> transak")
+                return TransakOnrampAdapter(client)
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: transak init failed: %s", exc)
+
+        daimo_key = env.get("DAIMO_PAY_API_KEY") or env.get("DAIMO_API_KEY")
+        if daimo_key:
+            try:
+                from .onramp import DaimoClient, DaimoConfig, DaimoOnrampAdapter
+
+                client = DaimoClient(
+                    DaimoConfig(
+                        api_key=daimo_key,
+                        environment=env.get(
+                            "DAIMO_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                    )
+                )
+                owned.append(client)
+                logger.info("ProviderRegistry: ONRAMP -> daimo")
+                return DaimoOnrampAdapter(client)
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: daimo init failed: %s", exc)
+
         return None
 
     # ------------------------------------------------------------------
