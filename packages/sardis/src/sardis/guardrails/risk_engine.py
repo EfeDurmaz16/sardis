@@ -31,6 +31,7 @@ Hard rules:
 from __future__ import annotations
 
 import logging
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -171,6 +172,10 @@ class RiskEngine:
     #: feed error must fail closed (escalate), never silently allow.
     HIGH_VALUE_THRESHOLD = Decimal("1000")
 
+    #: How many recent decisions to retain per agent for the read-only Guard
+    #: surface (most-recent-first ring buffer; in-memory, best-effort).
+    RECENT_PER_AGENT = 50
+
     def __init__(
         self,
         *,
@@ -186,6 +191,25 @@ class RiskEngine:
             if high_value_threshold is not None
             else self.HIGH_VALUE_THRESHOLD
         )
+        # Recent decisions per agent, newest-first, for the read-only Guard view.
+        self._recent: dict[str, deque[RiskDecision]] = {}
+
+    @property
+    def feed_providers(self) -> list[str]:
+        """Names of the external feeds combined into each decision (Guard view)."""
+        return [getattr(f, "provider", "external") for f in self._feeds]
+
+    def recent_signals(self, agent_id: str, *, limit: int = 20) -> list[RiskDecision]:
+        """Return an agent's most recent risk decisions (newest first).
+
+        Read-only surface for the dashboard / Guard view.  Best-effort and
+        in-memory (the durable record is the append-only audit ledger written by
+        the orchestrator); empty when the engine has not scored this agent.
+        """
+        buf = self._recent.get(agent_id)
+        if not buf:
+            return []
+        return list(buf)[: max(0, limit)]
 
     async def assess(
         self,
@@ -194,7 +218,7 @@ class RiskEngine:
         amount: Decimal,
         counterparty: str | None = None,
         merchant_category: str | None = None,
-        behavioral_alerts: "list[BehavioralAlert] | None" = None,
+        behavioral_alerts: list[BehavioralAlert] | None = None,
         baseline_mean: float | None = None,
         baseline_std: float | None = None,
         recent_tx_count_1h: int = 0,
@@ -324,7 +348,16 @@ class RiskEngine:
             "risk_engine: agent=%s combined=%.1f internal=%.1f external=%.1f action=%s",
             agent_id, combined_score, internal_score, external_score, action.value,
         )
+        self._record(decision)
         return decision
+
+    def _record(self, decision: RiskDecision) -> None:
+        """Append a decision to the per-agent ring buffer (newest first)."""
+        buf = self._recent.get(decision.agent_id)
+        if buf is None:
+            buf = deque(maxlen=self.RECENT_PER_AGENT)
+            self._recent[decision.agent_id] = buf
+        buf.appendleft(decision)
 
     # ── helpers ─────────────────────────────────────────────────────────
 

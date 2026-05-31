@@ -10,6 +10,7 @@ from server.routes.agents import (
     agent_events,
     agent_heartbeat,
     agent_registry,
+    agent_risk,
     lifecycle,
 )
 from server.routes.identity import fides_identity
@@ -34,6 +35,9 @@ def register_agent_lifecycle_routes(
     )
     app.include_router(lifecycle.router, prefix="/api/v2/agents", tags=["agents"])
     app.include_router(agent_activity.router, prefix="/api/v2/agents", tags=["agent-activity"])
+    # Read-only Guard surface: recent risk decisions for an agent.  No deps to
+    # override — it reads app.state.risk_engine (the orchestrator's engine).
+    app.include_router(agent_risk.router, prefix="/api/v2/agents", tags=["guard"])
 
     app.dependency_overrides[agent_heartbeat.get_deps] = lambda: agent_heartbeat.HeartbeatDependencies(
         database_url=database_url,

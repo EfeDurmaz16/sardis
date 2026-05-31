@@ -8,14 +8,13 @@ on a high-value transaction fails CLOSED (escalates), never silently allows.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
 
 import pytest
 
 from sardis.guardrails.anomaly_engine import AnomalyEngine
 from sardis.guardrails.risk_engine import GuardAction, RiskEngine
-
 
 # ── test doubles for the FraudSignalPort ────────────────────────────────
 
@@ -50,8 +49,9 @@ class _StubAnomaly:
 
     def assess_risk(self, **kwargs):
         # Mirror the real engine's return shape closely enough for RiskEngine.
-        from sardis.guardrails.anomaly_engine import RiskAction, RiskAssessment
         from datetime import UTC, datetime
+
+        from sardis.guardrails.anomaly_engine import RiskAction, RiskAssessment
 
         action = (
             RiskAction.ALLOW if self.score_01 < 0.30

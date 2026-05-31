@@ -1080,7 +1080,6 @@ class PaymentOrchestrator:
                 or getattr(payment, "destination", None)
             )
             try:
-                from .approval_gate import hash_snapshot  # local import (no cycle)
                 from sardis.guardrails.risk_engine import GuardAction
 
                 meta = getattr(payment, "metadata", None) or {}

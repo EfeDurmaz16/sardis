@@ -11,7 +11,6 @@ Pins the wiring required by the task:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -25,7 +24,6 @@ from sardis.core.orchestrator import (
     RiskViolationError,
 )
 from sardis.guardrails.risk_engine import RiskEngine
-
 
 # ── fakes (mirroring test_orchestrator_approval_loop scaffold) ──────────
 

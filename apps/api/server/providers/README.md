@@ -22,6 +22,8 @@ exposes `provider`, `capability`, `custody_model`, and `sandbox`.
 | `card`        | `CardPort`        | Virtual card issue + state/limit controls            |
 | `kyc`         | `KycPort`         | KYC/KYB identity verification session                |
 | `kyt`         | `KytPort`         | AML / address screening — **reports** a verdict only |
+| `notification`| `NotificationPort`| Human-in-the-loop approval delivery — delivery only  |
+| `fraud_signal`| `FraudSignalPort` | External fraud signal — **contributes a score** only |
 
 Money crosses every port boundary as integer **minor units** (`MinorUnits`) or
 `Decimal` — never `float`. Use `to_minor_units` / `from_minor_units` in
@@ -44,6 +46,8 @@ Every adapter declares an explicit `CustodyModel` so the audit trail can answer
 | card          | Crossmint / Lithic / Stripe Issuing     | `PARTNER_CUSTODIED`  |
 | kyc           | Didit                                    | `PARTNER_CUSTODIED`  |
 | kyt           | OpenSanctions / Didit                    | `PARTNER_CUSTODIED`  |
+| notification  | Twilio / Photon-Spectrum                 | `SIMULATED`          |
+| fraud_signal  | SEON / Stripe Radar                      | `SIMULATED`          |
 | *sandbox*     | every capability                         | `SIMULATED`          |
 
 ## Env-gated + sandbox-fallback model
@@ -87,3 +91,32 @@ closes them (wired into the app lifespan shutdown).
   (`get_custody_port`, `get_onramp_port`, … `get_kyt_port`), all backed by the
   one `ProviderRegistry` instance on the container.
 - Introspect at runtime: `GET /api/v2/providers/matrix`.
+
+## Guard — risk decision vs. signal feeds
+
+The `fraud_signal` capability is special: unlike a money-moving port, a
+`FraudSignalPort` only **contributes a score** — it never decides. The in-house
+`RiskEngine` (`sardis.guardrails.risk_engine`) owns the decision (the moat):
+
+- **Signals.** The engine reuses the behavioral `AnomalyEngine` (amount-vs-budget
+  deviation, velocity spikes, new-counterparty, off-pattern time/geo,
+  compromised/rogue-agent alerts) for the internal 0-100 score, and folds in
+  **every** configured external feed via `registry.fraud_signal_feeds()` — SEON
+  (device/email/IP/phone intelligence) and Stripe Radar (network risk on
+  Stripe-processed card legs). Both are combined when both are keyed; the
+  external contribution is the **max** across feeds (a confident decline is not
+  diluted by an abstaining feed).
+- **Assessment.** Internal + external blend into one `combined_score` (internal
+  leads at weight 0.6; floored at the internal score and at the block threshold
+  when an external feed is near-certain).
+- **Action.** The orchestrator consults the engine pre-dispatch on every
+  money-moving execution and acts on the binding `GuardAction`:
+  `< 30` ALLOW · `30-59` FLAG (allow + record) · `60-84` REQUIRE_APPROVAL (route
+  to the `ApprovalGate` / step-up) · `>= 85` BLOCK (deny, fail-closed — no
+  dispatch). A feed that errors on a high-value tx (`>= 1000`) escalates to
+  REQUIRE_APPROVAL rather than failing open.
+- **Read surface.** `GET /api/v2/agents/{agent_id}/risk-signals` returns the
+  recent decisions (newest first) for the dashboard / Guard view.
+- **Needs live keys.** `SEON_API_KEY` and/or `STRIPE_RADAR_API_KEY`
+  (or `STRIPE_SECRET_KEY`) — see `.env.example`. With no keys the engine runs
+  internal-only (dev/tests never fail open).

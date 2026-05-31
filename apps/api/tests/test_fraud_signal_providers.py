@@ -264,6 +264,39 @@ class TestRegistryWiring:
         )
         assert ports[ProviderCapability.FRAUD_SIGNAL].provider == "stripe_radar"
 
+    def test_both_keys_wire_both_feeds(self):
+        # The RiskEngine combines EVERY configured feed — both SEON and Radar are
+        # wired when both keys are present (complementary signals, not a winner).
+        ports, owned, feeds = {}, [], []
+        ProviderRegistry._build_fraud_signal(
+            env={"SEON_API_KEY": "k", "STRIPE_RADAR_API_KEY": _LIVE_KEY},
+            is_production=True, ports=ports, owned=owned, feeds=feeds,
+        )
+        providers = {f.provider for f in feeds}
+        assert providers == {"seon", "stripe_radar"}
+        # The single capability port records the first real feed (SEON).
+        assert ports[ProviderCapability.FRAUD_SIGNAL].provider == "seon"
+
+    def test_fraud_signal_feeds_excludes_sandbox(self):
+        # With no keys, fraud_signal_feeds() is empty (the sandbox fallback is
+        # filtered) so the RiskEngine runs internal-only in dev/tests.
+        reg = ProviderRegistry(is_production=False, ports={}, owned_clients=[])
+        assert reg.fraud_signal_feeds() == []
+
+    def test_fraud_signal_feeds_returns_real_feeds(self):
+        ports, owned, feeds = {}, [], []
+        ProviderRegistry._build_fraud_signal(
+            env={"SEON_API_KEY": "k", "STRIPE_RADAR_API_KEY": _LIVE_KEY},
+            is_production=True, ports=ports, owned=owned, feeds=feeds,
+        )
+        reg = ProviderRegistry(
+            is_production=True, ports=ports, owned_clients=owned, fraud_feeds=feeds
+        )
+        # In production (SEON_ENVIRONMENT defaults to production; sk_live_ Stripe
+        # key) both feeds are real (non-sandbox) and combined by the RiskEngine.
+        real = {f.provider for f in reg.fraud_signal_feeds()}
+        assert real == {"seon", "stripe_radar"}
+
     @pytest.mark.asyncio
     async def test_sandbox_feed_returns_clean_signal(self):
         impl = SandboxFraudSignalPort(provider="sandbox")

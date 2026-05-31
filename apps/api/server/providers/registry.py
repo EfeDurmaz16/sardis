@@ -105,11 +105,16 @@ class ProviderRegistry:
         is_production: bool,
         ports: Mapping[ProviderCapability, CapabilityPort] | None = None,
         owned_clients: list[Any] | None = None,
+        fraud_feeds: list[CapabilityPort] | None = None,
     ) -> None:
         self._is_production = is_production
         self._real: dict[ProviderCapability, CapabilityPort] = dict(ports or {})
         self._resolved: dict[ProviderCapability, CapabilityPort] = {}
         self._owned_clients: list[Any] = list(owned_clients or [])
+        # Every configured external fraud-signal feed (SEON, Stripe Radar, …).
+        # The in-house RiskEngine combines ALL of them with its behavioral score;
+        # this is distinct from the single ``.fraud_signal()`` capability port.
+        self._fraud_feeds: list[CapabilityPort] = list(fraud_feeds or [])
 
     # ------------------------------------------------------------------
     # Construction
@@ -228,9 +233,18 @@ class ProviderRegistry:
         # key is set the registry falls back to the SIMULATED sandbox feed so
         # dev + tests run with NO keys.  Not required-in-production: a missing
         # feed degrades to internal-only scoring, it does not block a money path.
-        cls._build_fraud_signal(env=env, is_production=is_production, ports=ports, owned=owned)
+        fraud_feeds: list[CapabilityPort] = []
+        cls._build_fraud_signal(
+            env=env, is_production=is_production, ports=ports, owned=owned,
+            feeds=fraud_feeds,
+        )
 
-        return cls(is_production=is_production, ports=ports, owned_clients=owned)
+        return cls(
+            is_production=is_production,
+            ports=ports,
+            owned_clients=owned,
+            fraud_feeds=fraud_feeds,
+        )
 
     @staticmethod
     def _build_fraud_signal(
@@ -239,13 +253,20 @@ class ProviderRegistry:
         is_production: bool,
         ports: dict[ProviderCapability, CapabilityPort],
         owned: list[Any],
+        feeds: list[CapabilityPort] | None = None,
     ) -> None:
-        # First configured wins. SEON is the primary agent-fraud feed (device /
-        # email / IP / phone intelligence scored on whatever subset Sardis can
-        # supply); Stripe Radar contributes network risk on Stripe-processed
-        # card legs.
-        if ProviderCapability.FRAUD_SIGNAL in ports:
-            return
+        # The in-house RiskEngine combines *every* configured external feed (not
+        # just one): SEON is the primary agent-fraud feed (device / email / IP /
+        # phone intelligence scored on whatever subset Sardis can supply); Stripe
+        # Radar contributes network risk on Stripe-processed card legs.  Both are
+        # wired when both keys are present — they are complementary signals, not
+        # substitutes.  ``feeds`` collects the full ordered list (consumed by the
+        # RiskEngine via :meth:`fraud_signal_feeds`); ``ports[FRAUD_SIGNAL]``
+        # records the first real feed so the single-port ``.get()`` contract and
+        # the capability dashboard still resolve a representative provider.
+        if feeds is None:
+            feeds = []
+        already_have_port = ProviderCapability.FRAUD_SIGNAL in ports
 
         seon_key = env.get("SEON_API_KEY")
         if seon_key:
@@ -263,9 +284,12 @@ class ProviderRegistry:
                     )
                 )
                 owned.append(client)
-                ports[ProviderCapability.FRAUD_SIGNAL] = SeonFraudSignalAdapter(client)
-                logger.info("ProviderRegistry: FRAUD_SIGNAL -> seon")
-                return
+                adapter = SeonFraudSignalAdapter(client)
+                feeds.append(adapter)
+                if not already_have_port:
+                    ports[ProviderCapability.FRAUD_SIGNAL] = adapter
+                    already_have_port = True
+                logger.info("ProviderRegistry: FRAUD_SIGNAL feed -> seon")
             except Exception as exc:  # noqa: BLE001 - optional path
                 logger.warning("ProviderRegistry: seon init failed: %s", exc)
 
@@ -288,11 +312,12 @@ class ProviderRegistry:
                     )
                 )
                 owned.append(client)
-                ports[ProviderCapability.FRAUD_SIGNAL] = StripeRadarFraudSignalAdapter(
-                    client
-                )
-                logger.info("ProviderRegistry: FRAUD_SIGNAL -> stripe_radar")
-                return
+                adapter = StripeRadarFraudSignalAdapter(client)
+                feeds.append(adapter)
+                if not already_have_port:
+                    ports[ProviderCapability.FRAUD_SIGNAL] = adapter
+                    already_have_port = True
+                logger.info("ProviderRegistry: FRAUD_SIGNAL feed -> stripe_radar")
             except Exception as exc:  # noqa: BLE001 - optional path
                 logger.warning("ProviderRegistry: stripe radar init failed: %s", exc)
 
@@ -1070,6 +1095,22 @@ class ProviderRegistry:
 
     def fraud_signal(self) -> FraudSignalPort:
         return self.get(ProviderCapability.FRAUD_SIGNAL)  # type: ignore[return-value]
+
+    def fraud_signal_feeds(self) -> list[FraudSignalPort]:
+        """Every configured *real* external fraud-signal feed (SEON, Radar, …).
+
+        Unlike :meth:`fraud_signal` (one representative capability port, with a
+        SIMULATED sandbox fallback for dev/tests), this returns the full ordered
+        list of real cross-customer feeds the in-house ``RiskEngine`` combines.
+        Empty when no feed key is set — the RiskEngine then runs internal-only
+        (the behavioral AnomalyEngine already covers that case), so dev + tests
+        with NO keys see no external feed and never fail open.
+        """
+        return [
+            feed
+            for feed in self._fraud_feeds
+            if not getattr(feed, "sandbox", True)
+        ]
 
     # ------------------------------------------------------------------
     # Lifecycle

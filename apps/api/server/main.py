@@ -938,6 +938,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # movement instead of a DB-only record.
     app.state.recourse_engine = getattr(payment_runtime, "recourse_engine", None)
 
+    # Expose the SAME Guard RiskEngine the orchestrator consults pre-execution so
+    # the read-only Guard surface (recent agent risk signals) reflects the exact
+    # decisions that gated the money path.  May be None in dev (Phase 1.6 off).
+    app.state.risk_engine = getattr(orchestrator, "_risk_engine", None)
+
     checkout_base_url = merchant_checkout_runtime.checkout_base_url
     register_merchant_routes(
         app,

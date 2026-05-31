@@ -982,13 +982,14 @@ def configure_payment_runtime(
     # skips Phase 1.6; a configured engine never fails open on the money path).
     risk_engine = None
     try:
-        from server.providers.registry import ProviderRegistry
         from sardis.guardrails.risk_engine import RiskEngine
 
-        fraud_feed = ProviderRegistry.from_settings(settings).fraud_signal()
-        # Only wire a real cross-customer feed; the sandbox feed adds nothing
-        # (the internal AnomalyEngine already covers the no-external-feed case).
-        feeds = [fraud_feed] if not getattr(fraud_feed, "sandbox", True) else []
+        from server.providers.registry import ProviderRegistry
+
+        # Combine ALL configured real cross-customer feeds (SEON + Radar); the
+        # sandbox fallback adds nothing (the internal AnomalyEngine already
+        # covers the no-external-feed case), so it is excluded by the accessor.
+        feeds = list(ProviderRegistry.from_settings(settings).fraud_signal_feeds())
         risk_engine = RiskEngine(fraud_feeds=feeds)
     except Exception as exc:  # noqa: BLE001 - engine is optional in dev
         logger.warning("risk_engine unavailable, Guard Phase 1.6 disabled: %s", exc)
@@ -1719,8 +1720,9 @@ class DependencyContainer:
         from sardis.guardrails.risk_engine import RiskEngine
 
         try:
-            feed = self.provider_registry.fraud_signal()
-            feeds = [feed] if not getattr(feed, "sandbox", True) else []
+            # ALL configured real feeds (SEON + Radar), not just one — the engine
+            # combines every cross-customer signal with its behavioral score.
+            feeds = list(self.provider_registry.fraud_signal_feeds())
         except Exception as exc:  # noqa: BLE001 - feed is optional
             logger.warning("risk_engine: no external fraud feed resolved: %s", exc)
             feeds = []
