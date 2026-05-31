@@ -313,3 +313,24 @@ async def test_dedup_reserve_blocks_duplicate_execution():
 
     # The duplicate must NOT have dispatched a second on-chain transaction.
     chain_exec.dispatch_payment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_failure_releases_reservation_for_retry():
+    """P1-5: a failed dispatch releases the dedup reservation so a retry of the
+    same mandate is not blocked for the full dedup TTL (no money moved)."""
+    from sardis.core.dedup_store import InMemoryDedupStore
+    from sardis.core.orchestrator import ChainExecutionError
+
+    dedup = InMemoryDedupStore()
+    orch, chain_exec = _build_orchestrator()
+    orch._dedup_store = dedup
+    # First dispatch raises (no money moved).
+    chain_exec.dispatch_payment = AsyncMock(side_effect=RuntimeError("rpc down"))
+    chain = _FakeMandateChain()
+
+    with pytest.raises(ChainExecutionError):
+        await orch.execute_chain(chain)
+
+    # The reservation must have been released — a retry can reserve again.
+    assert await dedup.reserve(chain.payment.mandate_id) is True

@@ -97,6 +97,14 @@ class DedupStorePort(Protocol):
         """
         ...
 
+    async def release(self, mandate_id: str) -> None:
+        """Release a reservation that did NOT settle (so a retry isn't blocked).
+
+        Only removes a bare reservation placeholder — a key already finalized
+        with a real result is left intact (that IS a completed payment).
+        """
+        ...
+
 
 class RedisDedupStore:
     """
@@ -166,6 +174,24 @@ class RedisDedupStore:
             logger.exception("Redis dedup reserve failed for mandate=%s", mandate_id)
             raise
 
+    async def release(self, mandate_id: str) -> None:
+        """Delete a bare reservation so a failed dispatch can be retried.
+
+        Leaves a finalized result intact (only the reservation placeholder is
+        removed).  Best-effort: a release failure is logged, not raised, since
+        the TTL is the safety net.
+        """
+        key = f"{KEY_PREFIX}{mandate_id}"
+        try:
+            existing = await self._redis.get(key)
+            if existing == _RESERVED_PLACEHOLDER:
+                await self._redis.delete(key)
+        except Exception:
+            logger.warning(
+                "Redis dedup release failed for mandate=%s (TTL will expire it)",
+                mandate_id,
+            )
+
 
 class InMemoryDedupStore:
     """
@@ -218,3 +244,7 @@ class InMemoryDedupStore:
             return False
         self._reserved.add(mandate_id)
         return True
+
+    async def release(self, mandate_id: str) -> None:
+        """Release a reservation that did not settle (so a retry isn't blocked)."""
+        self._reserved.discard(mandate_id)

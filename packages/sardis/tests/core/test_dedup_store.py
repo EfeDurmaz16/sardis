@@ -275,3 +275,43 @@ async def test_redis_reserve_uses_set_nx():
     assert await store.reserve("mdt_nx") is False
     # NX flag must have been passed.
     assert redis.set.await_args_list[0].kwargs.get("nx") is True
+
+
+@pytest.mark.asyncio
+async def test_in_memory_release_allows_re_reservation():
+    """A released reservation can be reserved again (failed dispatch retry)."""
+    store = InMemoryDedupStore()
+    assert await store.reserve("mdt_rel") is True
+    assert await store.reserve("mdt_rel") is False
+    await store.release("mdt_rel")
+    # After release, the mandate can be reserved again.
+    assert await store.reserve("mdt_rel") is True
+
+
+@pytest.mark.asyncio
+async def test_redis_release_only_deletes_reservation_placeholder():
+    """release() deletes a bare reservation but leaves a finalized result."""
+    from sardis.core.dedup_store import _RESERVED_PLACEHOLDER
+
+    store_data: dict[str, str] = {}
+    redis = AsyncMock()
+
+    async def _get(key):
+        return store_data.get(key)
+
+    async def _delete(key):
+        store_data.pop(key, None)
+
+    redis.get = AsyncMock(side_effect=_get)
+    redis.delete = AsyncMock(side_effect=_delete)
+    store = RedisDedupStore(redis, ttl_seconds=3600)
+
+    # A bare reservation is deleted.
+    store_data["sardis:dedup:mdt_r"] = _RESERVED_PLACEHOLDER
+    await store.release("mdt_r")
+    assert "sardis:dedup:mdt_r" not in store_data
+
+    # A finalized result is NOT deleted.
+    store_data["sardis:dedup:mdt_done"] = json.dumps(SAMPLE_RESULT)
+    await store.release("mdt_done")
+    assert "sardis:dedup:mdt_done" in store_data

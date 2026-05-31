@@ -1001,8 +1001,10 @@ class PaymentOrchestrator:
         # from the SettlementLock, which serializes per payment_object_id (a
         # unique per-execution id) and so cannot dedup across executions of the
         # same mandate. Stores expose ``reserve``; tolerate ones that don't.
+        did_reserve = False
         if hasattr(self._dedup_store, "reserve"):
             reserved = await self._dedup_store.reserve(mandate_id)
+            did_reserve = reserved
             if not reserved:
                 logger.warning(
                     "Duplicate execution blocked at reserve: mandate_id=%s", mandate_id
@@ -1035,7 +1037,9 @@ class PaymentOrchestrator:
                     sm, payment, payment_object_id,
                 )
         except SettlementLockError:
-            # Another worker is already settling this payment — reject
+            # Another worker is already settling this payment — reject.
+            # Do NOT release the dedup reservation: a sibling worker is
+            # legitimately mid-flight on this mandate.
             self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False,
                        error="settlement_lock_contention")
             raise ChainExecutionError(
@@ -1043,6 +1047,19 @@ class PaymentOrchestrator:
                 mandate_id=mandate_id,
                 chain=payment.chain,
             )
+        except Exception:
+            # Dispatch failed and NO money moved (settlement raises before/at
+            # dispatch). Release the reservation so a legitimate retry of this
+            # mandate is not blocked for the full dedup TTL.
+            if did_reserve and hasattr(self._dedup_store, "release"):
+                try:
+                    await self._dedup_store.release(mandate_id)
+                except Exception:  # pragma: no cover - best-effort cleanup
+                    logger.warning(
+                        "Failed to release dedup reservation after dispatch failure: %s",
+                        mandate_id,
+                    )
+            raise
 
         # ── Phase 3.5: Update Policy Spend State (mandatory) ────────────
         # After a successful on-chain payment, we MUST record the spend so
