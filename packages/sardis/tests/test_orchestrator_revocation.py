@@ -98,7 +98,9 @@ class _FakeActiveMandate:
         return _FakeMandateCheck(approved=True)
 
 
-def _build_orchestrator(*, spending_mandate_lookup=None):
+def _build_orchestrator(
+    *, spending_mandate_lookup=None, reconciliation_queue=None, ledger=None
+):
     """Create an orchestrator with all collaborators mocked.
 
     Returns (orchestrator, chain_executor) so tests can assert on dispatch.
@@ -113,14 +115,16 @@ def _build_orchestrator(*, spending_mandate_lookup=None):
     chain_exec = MagicMock()
     chain_exec.dispatch_payment = AsyncMock(return_value=_FakeChainReceipt())
 
-    ledger = MagicMock()
-    ledger.append = MagicMock(return_value=_FakeLedgerTx())
+    if ledger is None:
+        ledger = MagicMock()
+        ledger.append = MagicMock(return_value=_FakeLedgerTx())
 
     orch = PaymentOrchestrator(
         wallet_manager=wallet_mgr,
         compliance=compliance,
         chain_executor=chain_exec,
         ledger=ledger,
+        reconciliation_queue=reconciliation_queue,
         spending_mandate_lookup=spending_mandate_lookup,
     )
     return orch, chain_exec
@@ -239,3 +243,73 @@ async def test_mandate_spend_persisted_after_success():
     args = lookup.record_spend.await_args.args
     recorded_amount = kwargs.get("amount") if "amount" in kwargs else (args[1] if len(args) > 1 else args[0])
     assert Decimal(str(recorded_amount)) == Decimal("50")
+
+
+@pytest.mark.asyncio
+async def test_async_reconciliation_enqueue_is_awaited():
+    """P1-6: an async reconciliation queue's enqueue (coroutine) must be awaited.
+
+    The Postgres reconciliation queue's ``enqueue`` is async; calling it without
+    awaiting silently dropped the row. On a simulated ledger-append failure, the
+    orchestrator must actually await the coroutine so the recon row is written.
+    """
+    enqueued: list[Any] = []
+
+    class _AsyncReconQueue:
+        async def enqueue(self, entry: Any) -> str:
+            enqueued.append(entry)
+            return entry.mandate_id
+
+        def get_pending(self, limit: int = 100) -> list[Any]:
+            return list(enqueued)
+
+        def mark_resolved(self, mandate_id: str) -> bool:
+            return True
+
+        def increment_retry(self, mandate_id: str) -> bool:
+            return True
+
+    # Ledger append fails -> orchestrator must enqueue reconciliation (awaited).
+    ledger = MagicMock()
+    ledger.append = MagicMock(side_effect=RuntimeError("ledger down"))
+
+    orch, chain_exec = _build_orchestrator(
+        reconciliation_queue=_AsyncReconQueue(), ledger=ledger
+    )
+    chain = _FakeMandateChain()
+
+    result = await orch.execute_chain(chain)
+
+    # Payment still succeeded on-chain; ledger queued for reconciliation.
+    assert result.status == "reconciliation_pending"
+    chain_exec.dispatch_payment.assert_awaited_once()
+    # The async enqueue was actually awaited (row recorded, no un-awaited coro).
+    assert len(enqueued) == 1
+    assert enqueued[0].mandate_id == chain.payment.mandate_id
+
+
+@pytest.mark.asyncio
+async def test_dedup_reserve_blocks_duplicate_execution():
+    """P1-5: a dedup store reservation already held blocks a second dispatch."""
+
+    class _AlreadyReservedDedup:
+        async def check(self, mandate_id: str):
+            return None
+
+        async def check_and_set(self, mandate_id: str, result: Any):
+            return None
+
+        async def reserve(self, mandate_id: str) -> bool:
+            return False  # someone else holds the reservation
+
+    from sardis.core.orchestrator import ChainExecutionError
+
+    orch, chain_exec = _build_orchestrator()
+    orch._dedup_store = _AlreadyReservedDedup()
+    chain = _FakeMandateChain()
+
+    with pytest.raises(ChainExecutionError):
+        await orch.execute_chain(chain)
+
+    # The duplicate must NOT have dispatched a second on-chain transaction.
+    chain_exec.dispatch_payment.assert_not_awaited()

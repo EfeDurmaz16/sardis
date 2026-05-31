@@ -992,6 +992,32 @@ class PaymentOrchestrator:
         )
         await _handler_registry.fire_on_enter(PaymentState.LOCKED, sm, record)
 
+        # ── Atomic dedup reservation (BEFORE dispatch) ──────────────────
+        # The pre-dispatch ``check()`` above and the post-settlement
+        # ``check_and_set()`` are not atomic together: two workers could both
+        # pass ``check()`` and both dispatch the same mandate. ``reserve()`` is
+        # an atomic check-and-set (Redis ``SET NX``) that lets exactly one
+        # worker proceed. This guards duplicate *executions* and is distinct
+        # from the SettlementLock, which serializes per payment_object_id (a
+        # unique per-execution id) and so cannot dedup across executions of the
+        # same mandate. Stores expose ``reserve``; tolerate ones that don't.
+        if hasattr(self._dedup_store, "reserve"):
+            reserved = await self._dedup_store.reserve(mandate_id)
+            if not reserved:
+                logger.warning(
+                    "Duplicate execution blocked at reserve: mandate_id=%s", mandate_id
+                )
+                # Another worker already reserved/settled. Return its result if
+                # available; otherwise reject the concurrent duplicate.
+                existing_after = await self._dedup_store.check(mandate_id)
+                if existing_after is not None:
+                    return existing_after
+                raise ChainExecutionError(
+                    "Another worker is already settling this payment (duplicate reservation)",
+                    mandate_id=mandate_id,
+                    chain=payment.chain,
+                )
+
         # Phase 3: Chain Execution (protected by SettlementLock)
         # Acquire a PostgreSQL advisory lock keyed on the payment_object_id
         # (not mandate_id — multiple payments can share one mandate).
