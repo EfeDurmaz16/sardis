@@ -198,18 +198,6 @@ with contextlib.suppress(ImportError):
         ExecutionResult as CoordinationExecutionResult,
     )
 
-# ERC-8122: Minimal Agent Registry
-with contextlib.suppress(ImportError):
-    from .erc8122 import (
-        AgentRegistration,
-        AgentRegistryManager,
-        MetadataEntry,
-        RegistryInfo,
-        RegistryStatus,
-        ServiceType,
-        create_agent_registry,
-    )
-
 # Protocol reason codes
 with contextlib.suppress(ImportError):
     from .reason_codes import (
@@ -235,24 +223,6 @@ with contextlib.suppress(ImportError):
         PrivateTransfer,
         UTXOState,
         create_privacy_manager,
-    )
-
-# ERC-8033: Paymaster Protocol
-with contextlib.suppress(ImportError):
-    from .erc8033 import (
-        GasEstimate,
-        GasPolicy,
-        GasSession,
-        PaymasterConfig,
-        PaymasterManager,
-        PaymasterStats,
-        PaymasterTransaction,
-        PaymasterType,
-        SessionStatus,
-        SponsorshipRecord,
-        SponsorshipTier,
-        create_paymaster_manager,
-        estimate_tx_cost,
     )
 
 # zkPass Transgate: portable ZK-based KYC verification
@@ -418,14 +388,6 @@ __all__ = [
     "CoordinationExecutionResult",
     "BoundedPolicy",
     "create_coordination_manager",
-    # ERC-8122: Minimal Agent Registry
-    "AgentRegistryManager",
-    "AgentRegistration",
-    "MetadataEntry",
-    "RegistryInfo",
-    "RegistryStatus",
-    "ServiceType",
-    "create_agent_registry",
     # Protocol reason codes
     "ProtocolReasonCode",
     "ReasonCodeMapping",
@@ -445,20 +407,6 @@ __all__ = [
     "NotaryValidation",
     "PrivacyConfig",
     "create_privacy_manager",
-    # ERC-8033: Paymaster Protocol
-    "PaymasterManager",
-    "PaymasterConfig",
-    "GasSession",
-    "SessionStatus",
-    "PaymasterType",
-    "GasPolicy",
-    "SponsorshipTier",
-    "SponsorshipRecord",
-    "GasEstimate",
-    "PaymasterTransaction",
-    "PaymasterStats",
-    "create_paymaster_manager",
-    "estimate_tx_cost",
     # zkPass Transgate
     "ZKPassVerifier",
     "TransgateProofType",
