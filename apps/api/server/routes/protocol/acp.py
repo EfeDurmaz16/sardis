@@ -1,8 +1,15 @@
 """Agentic Commerce Protocol (ACP) seller endpoints.
 
-Implements Stripe's ACP specification (version 2026-01-30) so Sardis-powered
-merchants become ACP-compatible sellers that AI agents (ChatGPT, Claude, etc.)
-can check out from programmatically.
+EXPERIMENTAL / PARTIAL — non-conformant adapter, NOT production. Targets a
+stale spec version (2026-01-30; current is 2026-04-17), diverges on response
+objects / status enum / complete + delegate shapes, persists to tables that do
+not exist (in-memory only), and bypasses the Sardis mandate / policy /
+orchestrator / ledger entirely. Do not present as ACP conformance.
+See docs/productization/research/PROTOCOL_STRATEGY.md (ACP, quarantine-experimental).
+
+Sketches Sardis-powered seller endpoints toward Stripe's ACP so AI agents
+(ChatGPT, Claude, etc.) could check out programmatically once rebuilt as a
+thin, conformant adapter.
 
 Endpoints:
   POST   /checkout_sessions              -- Create checkout session

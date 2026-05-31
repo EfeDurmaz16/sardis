@@ -1949,9 +1949,13 @@ async def get_agent_card():
             "supported_chains": ["base", "polygon", "ethereum", "arbitrum", "optimism", "tempo"],
             "min_amount_minor": 100,
             "max_amount_minor": 10_000_000,
-            "ap2_compliant": True,
-            "x402_compliant": True,
-            "ucp_compliant": True,
+            # Honest protocol support: these are partial, Sardis-native adapters,
+            # not certified conformance. See docs/productization/research/PROTOCOL_STRATEGY.md.
+            # AP2: verifies a Sardis-native mandate format (not W3C VC SD-JWT+KB).
+            # x402: experimental adapter; wire format diverges from the X-PAYMENT spec.
+            "ap2_support": "experimental",
+            "x402_support": "experimental",
+            "ucp_support": "experimental",
         },
         "endpoints": {
             "api": {
@@ -1969,7 +1973,10 @@ async def get_agent_card():
             "mcp": "npx @sardis/mcp-server start",
         },
         "a2a_protocol": {
-            "version": "1.0",
+            # Sardis-native A2A surface, NOT certified conformance to the live
+            # A2A spec (JSON-RPC 2.0 / agent-card.json / Message envelope).
+            # Labelled experimental rather than advertising a "1.0" conformance claim.
+            "version": "sardis-native-experimental",
             "supported_messages": [
                 "payment_request",
                 "payment_response",

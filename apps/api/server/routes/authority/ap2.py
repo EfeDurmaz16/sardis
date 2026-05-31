@@ -1,4 +1,12 @@
-"""AP2 payment execution endpoints with compliance enforcement."""
+"""AP2 payment execution endpoints with compliance enforcement.
+
+PARTIAL — AP2-inspired, Sardis-native. This verifies the Sardis mandate format
+(DataIntegrityProof + base64), NOT AP2's W3C Verifiable Credentials
+(SD-JWT + key binding). It does not yet verify a merchant signature over the
+cart or bind a cart_mandate_hash, and the advertised version string is
+Sardis-native, not an AP2 conformance claim. Treat as "AP2-inspired", not
+"AP2-compliant". See docs/productization/research/PROTOCOL_STRATEGY.md (AP2).
+"""
 from __future__ import annotations
 
 import asyncio

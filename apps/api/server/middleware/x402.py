@@ -4,7 +4,13 @@ Follows the TAP middleware pattern (BaseHTTPMiddleware + dataclass config).
 Automatically generates 402 challenges for protected paths and verifies
 payment signatures on retry requests.
 
-All payments flow through the ControlPlane — no bypass path.
+EXPERIMENTAL / PARTIAL ADAPTER — not certified x402 conformance.
+The wire format diverges from the canonical x402 spec
+(X-PAYMENT / X-PAYMENT-RESPONSE / accepts:[PaymentRequirements] / EIP-3009),
+the EIP-3009 signature is not verified, and this path does not perform
+on-chain settlement or a fail-closed control-plane policy check. Use the
+x402 wallet path (routes/wallets/lifecycle.py) for mandate-bound settlement.
+See docs/productization/research/PROTOCOL_STRATEGY.md (x402, fix-then-keep).
 """
 from __future__ import annotations
 
