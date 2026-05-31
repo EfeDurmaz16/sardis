@@ -917,6 +917,9 @@ async def a2a_pay(
         from sardis.core.orchestrator import (
             ChainExecutionError,
             ComplianceViolationError,
+            KYAViolationError,
+            MandateViolationError,
+            PaymentExecutionError,
             PolicyViolationError,
         )
 
@@ -948,43 +951,48 @@ async def a2a_pay(
             issuer=f"agent:{req.sender_agent_id}",
         )
 
+        async def _a2a_payment_failed(err: str, *, alert: bool) -> None:
+            log_payment_event("a2a.payment.failed",
+                org_id=str(principal.organization_id),
+                agent_id=req.sender_agent_id,
+                amount=str(req.amount), currency=req.token, chain=req.chain,
+                status="failed", error=err)
+            if alert:
+                asyncio.create_task(alert_payment_failure(
+                    error=err,
+                    org_id=str(principal.organization_id),
+                    agent_id=req.sender_agent_id,
+                    tx_id=str(idem_key),
+                ))
+            await _emit_a2a_webhook(request, "a2a.payment.failed", {
+                "sender_agent_id": req.sender_agent_id,
+                "recipient_agent_id": req.recipient_agent_id,
+                "amount": str(req.amount),
+                "token": req.token,
+                "chain": req.chain,
+                "error": err,
+            })
+
         try:
             result = await deps.orchestrator.execute_chain(chain)
-        except (PolicyViolationError, ComplianceViolationError) as e:
-            log_payment_event("a2a.payment.failed",
-                org_id=str(principal.organization_id),
-                agent_id=req.sender_agent_id,
-                amount=str(req.amount), currency=req.token, chain=req.chain,
-                status="failed", error=str(e))
-            await _emit_a2a_webhook(request, "a2a.payment.failed", {
-                "sender_agent_id": req.sender_agent_id,
-                "recipient_agent_id": req.recipient_agent_id,
-                "amount": str(req.amount),
-                "token": req.token,
-                "chain": req.chain,
-                "error": str(e),
-            })
+        except (
+            PolicyViolationError,
+            MandateViolationError,
+            KYAViolationError,
+            ComplianceViolationError,
+        ) as e:
+            # All deny outcomes (policy / spending-mandate / KYA / compliance) → 403.
+            await _a2a_payment_failed(str(e), alert=False)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
         except ChainExecutionError as e:
-            log_payment_event("a2a.payment.failed",
-                org_id=str(principal.organization_id),
-                agent_id=req.sender_agent_id,
-                amount=str(req.amount), currency=req.token, chain=req.chain,
-                status="failed", error=str(e))
-            asyncio.create_task(alert_payment_failure(
-                error=str(e),
-                org_id=str(principal.organization_id),
-                agent_id=req.sender_agent_id,
-                tx_id=str(idem_key),
-            ))
-            await _emit_a2a_webhook(request, "a2a.payment.failed", {
-                "sender_agent_id": req.sender_agent_id,
-                "recipient_agent_id": req.recipient_agent_id,
-                "amount": str(req.amount),
-                "token": req.token,
-                "chain": req.chain,
-                "error": str(e),
-            })
+            await _a2a_payment_failed(str(e), alert=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+            ) from e
+        except PaymentExecutionError as e:
+            # Catch-all for LedgerAppendError and any future PaymentExecutionError
+            # subclass so an execution failure never leaks as a raw 500/stacktrace.
+            await _a2a_payment_failed(str(e), alert=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
             ) from e
@@ -1728,12 +1736,25 @@ async def _handle_payment_request(
     from sardis.core.orchestrator import (
         ChainExecutionError,
         ComplianceViolationError,
+        KYAViolationError,
+        MandateViolationError,
+        PaymentExecutionError,
         PolicyViolationError,
     )
+    from sardis.core.tokens import normalize_token_amount
 
     # The recipient's wallet is the payer for inbound payment requests; policy /
     # KYA / caps must therefore evaluate the recipient agent's wallet.
     payer_agent_id = recipient_wallet.agent_id
+
+    # amount_minor is in minor units; convert to major (token) units using the
+    # token's real decimals so a non-6-decimal token can't mis-scale the
+    # cap/anomaly reading. Fall back to the factory default precision if the
+    # token symbol isn't recognised.
+    try:
+        guardrail_amount = normalize_token_amount(TokenType(token.upper()), int(amount_minor))
+    except (KeyError, ValueError):
+        guardrail_amount = Decimal(amount_minor) / (Decimal(10) ** 6)
 
     # Preserve the defense-in-depth guardrails the orchestrator does not run
     # (kill switch / transaction caps / anomaly). This route has no route-level
@@ -1743,9 +1764,7 @@ async def _handle_payment_request(
             agent_id=payer_agent_id,
             org_id=str(principal.organization_id),
             chain=chain,
-            # amount_minor is in minor units; convert to major units for the
-            # guardrail engines (caps/anomaly reason in token units).
-            amount=Decimal(amount_minor) / (Decimal(10) ** 6),
+            amount=guardrail_amount,
         )
     except HTTPException as e:
         return A2AMessageResponse(
@@ -1777,7 +1796,13 @@ async def _handle_payment_request(
 
     try:
         result = await deps.orchestrator.execute_chain(payment_chain)
-    except (PolicyViolationError, ComplianceViolationError) as e:
+    except (
+        PolicyViolationError,
+        MandateViolationError,
+        KYAViolationError,
+        ComplianceViolationError,
+    ) as e:
+        # All deny outcomes (policy / spending-mandate / KYA / compliance).
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",
@@ -1790,6 +1815,21 @@ async def _handle_payment_request(
             error_code="policy_denied",
         )
     except ChainExecutionError as e:
+        return A2AMessageResponse(
+            message_id=str(uuid.uuid4()),
+            message_type="payment_response",
+            sender_id=msg.recipient_id,
+            recipient_id=msg.sender_id,
+            status="failed",
+            in_reply_to=msg.message_id,
+            correlation_id=msg.correlation_id,
+            error=str(e),
+            error_code="execution_failed",
+        )
+    except PaymentExecutionError as e:
+        # Catch-all for LedgerAppendError and any future PaymentExecutionError
+        # subclass so an execution failure returns a structured response, not a
+        # raw unhandled handler error.
         return A2AMessageResponse(
             message_id=str(uuid.uuid4()),
             message_type="payment_response",

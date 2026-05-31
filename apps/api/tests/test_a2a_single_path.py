@@ -202,3 +202,158 @@ async def test_a2a_unverified_request_rejected_before_execution():
     assert resp.status == "failed"
     assert resp.error_code == "sender_not_found"
     assert spy.calls == [], "execute_chain must NOT run when verification fails"
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator exception mapping: every deny / exec exception must produce a
+# structured response, never a raw 500 / unhandled handler error.
+# ---------------------------------------------------------------------------
+
+
+class _RaisingOrchestrator:
+    """execute_chain raises a preconfigured exception."""
+
+    def __init__(self, exc):
+        self._exc = exc
+
+    async def execute_chain(self, chain):
+        raise self._exc
+
+
+def _orchestrator_exc(name, **kwargs):
+    from sardis.core import orchestrator as orch
+
+    return getattr(orch, name)("denied for test", **kwargs)
+
+
+@pytest.fixture
+def _bypass_a2a_guardrails(monkeypatch):
+    """Skip the kill-switch/cap/anomaly guardrails so the test isolates the
+    orchestrator exception mapping."""
+
+    async def _noop(**_kwargs):
+        return None
+
+    monkeypatch.setattr(a2a, "_run_a2a_guardrails", _noop)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc_name", ["KYAViolationError", "MandateViolationError"])
+async def test_a2a_messages_deny_exceptions_map_to_failed_not_500(
+    exc_name, _bypass_a2a_guardrails
+):
+    orch = _RaisingOrchestrator(_orchestrator_exc(exc_name))
+    agents = {
+        "agent_sender": _Agent("agent_sender", "org_1"),
+        "agent_recipient": _Agent("agent_recipient", "org_1"),
+    }
+    wallets = {"agent_recipient": _Wallet("agent_recipient", "wal_recipient")}
+    deps = _make_deps(orch, agents=agents, wallets=wallets)
+
+    # Must NOT raise; must return a structured failed response.
+    resp = await _handle_payment_request(
+        _msg(), request=object(), deps=deps, principal=_Principal()
+    )
+    assert resp.status == "failed"
+    assert resp.error_code == "policy_denied"
+
+
+@pytest.mark.asyncio
+async def test_a2a_messages_ledger_append_error_maps_to_execution_failed(
+    _bypass_a2a_guardrails,
+):
+    orch = _RaisingOrchestrator(_orchestrator_exc("LedgerAppendError"))
+    agents = {
+        "agent_sender": _Agent("agent_sender", "org_1"),
+        "agent_recipient": _Agent("agent_recipient", "org_1"),
+    }
+    wallets = {"agent_recipient": _Wallet("agent_recipient", "wal_recipient")}
+    deps = _make_deps(orch, agents=agents, wallets=wallets)
+
+    resp = await _handle_payment_request(
+        _msg(), request=object(), deps=deps, principal=_Principal()
+    )
+    assert resp.status == "failed"
+    assert resp.error_code == "execution_failed"
+
+
+# ---- Site 1 (/pay): deny exceptions -> 403 + failure log/webhook ----------
+
+
+@pytest.fixture
+def _site1_neutralized(monkeypatch):
+    """Run a2a_pay's inner _execute directly and capture the failure
+    log/webhook emissions for the deny-exception assertions."""
+    emitted = {"webhooks": [], "log_failed": 0}
+
+    async def _run_idempotent(*_args, fn, **_kwargs):
+        return await fn()
+
+    def _idem_key(_request):
+        return "idem_test"
+
+    async def _rate_limit(**_kwargs):
+        return None
+
+    async def _guardrails(**_kwargs):
+        return None
+
+    async def _emit(_request, event, _payload):
+        if event == "a2a.payment.failed":
+            emitted["webhooks"].append(event)
+
+    def _log(event, **_kwargs):
+        if event == "a2a.payment.failed":
+            emitted["log_failed"] += 1
+
+    async def _alert(**_kwargs):
+        return None
+
+    monkeypatch.setattr(a2a, "run_idempotent", _run_idempotent)
+    monkeypatch.setattr(a2a, "get_idempotency_key", _idem_key)
+    monkeypatch.setattr(a2a, "enforce_agent_payment_rate_limit", _rate_limit)
+    monkeypatch.setattr(a2a, "_run_a2a_guardrails", _guardrails)
+    monkeypatch.setattr(a2a, "_emit_a2a_webhook", _emit)
+    monkeypatch.setattr(a2a, "log_payment_event", _log)
+    monkeypatch.setattr(a2a, "alert_payment_failure", _alert)
+    return emitted
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc_name", ["KYAViolationError", "MandateViolationError"])
+async def test_a2a_pay_deny_exceptions_return_403_with_failure_emission(
+    exc_name, _site1_neutralized
+):
+    from decimal import Decimal
+
+    from fastapi import HTTPException
+
+    from server.routes.protocol.a2a import A2APayRequest, a2a_pay
+
+    orch = _RaisingOrchestrator(_orchestrator_exc(exc_name))
+    agents = {
+        "agent_sender": _Agent("agent_sender", "org_1"),
+        "agent_recipient": _Agent("agent_recipient", "org_1"),
+    }
+    wallets = {
+        "agent_sender": _Wallet("agent_sender", "wal_sender"),
+        "agent_recipient": _Wallet("agent_recipient", "wal_recipient"),
+    }
+    deps = _make_deps(orch, agents=agents, wallets=wallets)
+
+    req = A2APayRequest(
+        sender_agent_id="agent_sender",
+        recipient_agent_id="agent_recipient",
+        amount=Decimal("1.0"),
+        token="USDC",
+        chain="base_sepolia",
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await a2a_pay(req, request=object(), deps=deps, principal=_Principal())
+
+    # Deny outcomes are 403, not 500.
+    assert exc_info.value.status_code == 403
+    # Failure log + webhook still emitted on deny.
+    assert _site1_neutralized["log_failed"] == 1
+    assert _site1_neutralized["webhooks"] == ["a2a.payment.failed"]
