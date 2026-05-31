@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 
@@ -313,7 +314,7 @@ class CardRepository:
             return await self.get_by_card_id(card_id)
 
     async def update_funded_amount(
-        self, card_id: str, amount: float
+        self, card_id: str, amount: Decimal
     ) -> dict[str, Any] | None:
         if not self._use_postgres():
             card = self._cards.get(card_id)

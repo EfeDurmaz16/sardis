@@ -54,13 +54,15 @@ class CardProviderCompatAdapter:
             reuse_cardholder_id=reuse_cardholder_id,
         )
 
-    async def fund_card(self, card_id: str, amount: float):
+    async def fund_card(self, card_id: str, amount: Decimal):
         card = await self._repo.get_by_card_id(card_id)
         if not card or not card.get("provider_card_id"):
             raise RuntimeError("Card not found or missing provider_card_id")
         return await self._provider.fund_card(
             provider_card_id=card["provider_card_id"],
-            amount=Decimal(str(amount)),
+            # Defensive: coerce to Decimal exactly (no float) even if a legacy
+            # caller still passes a str/int.
+            amount=amount if isinstance(amount, Decimal) else Decimal(str(amount)),
         )
 
     async def freeze_card(self, provider_card_id: str):
