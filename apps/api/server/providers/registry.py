@@ -157,7 +157,104 @@ class ProviderRegistry:
         # are not overridden; these fill the slot only when it is still empty.
         cls._build_fiat_accounts(env=env, ports=ports, owned=owned)
 
+        # --- Offramp aggregators (Onramper / Transak Stream / Coinbase) ---
+        # crypto->fiat conversion leg.  Env-gated; each fills the OFFRAMP slot
+        # only when it is still empty (Circle CPN + Increase keep precedence).
+        cls._build_offramp(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_offramp(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Crypto->fiat offramp aggregators. Tried in order; first configured
+        # wins. Higher-priority offramps (Circle CPN, Increase bank leg) keep
+        # precedence — these fill the slot only when it is still empty.
+        if ProviderCapability.OFFRAMP in ports:
+            return
+
+        onramper_key = env.get("ONRAMPER_API_KEY")
+        if onramper_key:
+            try:
+                from .offramp import (
+                    OnramperOfframpAdapter,
+                    OnramperOfframpClient,
+                    OnramperOfframpConfig,
+                )
+
+                client = OnramperOfframpClient(
+                    OnramperOfframpConfig(
+                        api_key=onramper_key,
+                        environment=env.get(
+                            "ONRAMPER_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.OFFRAMP] = OnramperOfframpAdapter(client)
+                logger.info("ProviderRegistry: OFFRAMP -> onramper")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: onramper offramp init failed: %s", exc)
+
+        transak_stream_key = env.get("TRANSAK_STREAM_API_KEY") or env.get("TRANSAK_API_KEY")
+        if transak_stream_key:
+            try:
+                from .offramp import (
+                    TransakStreamClient,
+                    TransakStreamConfig,
+                    TransakStreamOfframpAdapter,
+                )
+
+                client = TransakStreamClient(
+                    TransakStreamConfig(
+                        api_key=transak_stream_key,
+                        environment=env.get(
+                            "TRANSAK_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                        partner_id=env.get("TRANSAK_PARTNER_ID"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.OFFRAMP] = TransakStreamOfframpAdapter(client)
+                logger.info("ProviderRegistry: OFFRAMP -> transak_stream")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: transak stream offramp init failed: %s", exc)
+
+        cb_key_name = env.get("COINBASE_CDP_API_KEY_NAME") or env.get("CDP_API_KEY_NAME")
+        cb_key_private = env.get("COINBASE_CDP_API_KEY_PRIVATE") or env.get("CDP_API_KEY_PRIVATE")
+        if cb_key_name and cb_key_private:
+            try:
+                from .offramp import (
+                    CoinbaseOfframpAdapter,
+                    CoinbaseOfframpClient,
+                    CoinbaseOfframpConfig,
+                )
+
+                client = CoinbaseOfframpClient(
+                    CoinbaseOfframpConfig(
+                        api_key_name=cb_key_name,
+                        api_key_private=cb_key_private,
+                        environment=env.get(
+                            "COINBASE_OFFRAMP_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.OFFRAMP] = CoinbaseOfframpAdapter(client)
+                logger.info("ProviderRegistry: OFFRAMP -> coinbase_offramp")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: coinbase offramp init failed: %s", exc)
 
     @staticmethod
     def _build_fiat_accounts(
