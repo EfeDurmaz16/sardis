@@ -40,6 +40,7 @@ from .ports.capabilities import (
     CardPort,
     CustodyPort,
     FiatAccountPort,
+    FraudSignalPort,
     KycPort,
     KytPort,
     NotificationPort,
@@ -53,6 +54,7 @@ from .sandbox import (
     SandboxCardPort,
     SandboxCustodyPort,
     SandboxFiatAccountPort,
+    SandboxFraudSignalPort,
     SandboxKycPort,
     SandboxKytPort,
     SandboxNotificationPort,
@@ -85,6 +87,7 @@ _SANDBOX_FACTORIES = {
     ProviderCapability.KYC: lambda: SandboxKycPort(provider="sandbox"),
     ProviderCapability.KYT: lambda: SandboxKytPort(provider="sandbox"),
     ProviderCapability.NOTIFICATION: lambda: SandboxNotificationPort(provider="sandbox"),
+    ProviderCapability.FRAUD_SIGNAL: lambda: SandboxFraudSignalPort(provider="sandbox"),
 }
 
 
@@ -218,7 +221,80 @@ class ProviderRegistry:
         # path), so .get() returns the sandbox impl rather than failing closed.
         cls._build_notification(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Fraud signal feed (Stripe Radar / SEON) ------------------
+        # External cross-customer fraud signals the in-house Guard / RiskEngine
+        # combines with its own behavioral score.  Signal-only — never decides
+        # allow/deny (Sardis owns the decision, the moat).  Env-gated; when no
+        # key is set the registry falls back to the SIMULATED sandbox feed so
+        # dev + tests run with NO keys.  Not required-in-production: a missing
+        # feed degrades to internal-only scoring, it does not block a money path.
+        cls._build_fraud_signal(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_fraud_signal(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # First configured wins. SEON is the primary agent-fraud feed (device /
+        # email / IP / phone intelligence scored on whatever subset Sardis can
+        # supply); Stripe Radar contributes network risk on Stripe-processed
+        # card legs.
+        if ProviderCapability.FRAUD_SIGNAL in ports:
+            return
+
+        seon_key = env.get("SEON_API_KEY")
+        if seon_key:
+            try:
+                from .fraud import SeonClient, SeonConfig, SeonFraudSignalAdapter
+
+                client = SeonClient(
+                    SeonConfig(
+                        api_key=seon_key,
+                        environment=env.get(
+                            "SEON_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                        base_url=env.get("SEON_BASE_URL", "https://api.seon.io"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.FRAUD_SIGNAL] = SeonFraudSignalAdapter(client)
+                logger.info("ProviderRegistry: FRAUD_SIGNAL -> seon")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: seon init failed: %s", exc)
+
+        stripe_key = env.get("STRIPE_RADAR_API_KEY") or env.get("STRIPE_SECRET_KEY")
+        if stripe_key:
+            try:
+                from .fraud import (
+                    StripeRadarClient,
+                    StripeRadarConfig,
+                    StripeRadarFraudSignalAdapter,
+                )
+
+                client = StripeRadarClient(
+                    StripeRadarConfig(
+                        api_key=stripe_key,
+                        environment=env.get(
+                            "STRIPE_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.FRAUD_SIGNAL] = StripeRadarFraudSignalAdapter(
+                    client
+                )
+                logger.info("ProviderRegistry: FRAUD_SIGNAL -> stripe_radar")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: stripe radar init failed: %s", exc)
 
     @staticmethod
     def _build_notification(
@@ -991,6 +1067,9 @@ class ProviderRegistry:
 
     def notification(self) -> NotificationPort:
         return self.get(ProviderCapability.NOTIFICATION)  # type: ignore[return-value]
+
+    def fraud_signal(self) -> FraudSignalPort:
+        return self.get(ProviderCapability.FRAUD_SIGNAL)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle
