@@ -151,7 +151,74 @@ class ProviderRegistry:
         if onramp is not None:
             ports[ProviderCapability.ONRAMP] = onramp
 
+        # --- Fiat accounts (Dakota / Increase) + offramp bank leg -----
+        # Env-gated: each activates only when its key is set.  Existing
+        # higher-priority providers (Lithic fiat account, Circle CPN offramp)
+        # are not overridden; these fill the slot only when it is still empty.
+        cls._build_fiat_accounts(env=env, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_fiat_accounts(
+        *,
+        env: Mapping[str, str],
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Dakota (crypto-native: inbound fiat auto-settles to USDC). Preferred
+        # fiat-account provider when configured and Lithic has not taken it.
+        dakota_key = env.get("DAKOTA_API_KEY")
+        if dakota_key and ProviderCapability.FIAT_ACCOUNT not in ports:
+            try:
+                from .dakota import DakotaClient, DakotaConfig, DakotaFiatAccountAdapter
+
+                client = DakotaClient(
+                    DakotaConfig(
+                        api_key=dakota_key,
+                        environment=env.get("DAKOTA_ENVIRONMENT", "sandbox"),
+                        webhook_public_key_hex=env.get("DAKOTA_WEBHOOK_PUBLIC_KEY"),
+                    )
+                )
+                ports[ProviderCapability.FIAT_ACCOUNT] = DakotaFiatAccountAdapter(client)
+                owned.append(client)
+                logger.info("ProviderRegistry: FIAT_ACCOUNT -> dakota")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: dakota init failed: %s", exc)
+
+        # Increase (FDIC partner-bank rails). Fills the fiat-account slot when
+        # still empty and provides the offramp bank leg when Circle CPN is
+        # absent.  One client backs both adapters.
+        increase_key = env.get("INCREASE_API_KEY")
+        need_fiat = ProviderCapability.FIAT_ACCOUNT not in ports
+        need_offramp = ProviderCapability.OFFRAMP not in ports
+        if increase_key and (need_fiat or need_offramp):
+            try:
+                from .increase import (
+                    IncreaseClient,
+                    IncreaseConfig,
+                    IncreaseFiatAccountAdapter,
+                    IncreaseOfframpAdapter,
+                )
+
+                client = IncreaseClient(
+                    IncreaseConfig(
+                        api_key=increase_key,
+                        environment=env.get("INCREASE_ENVIRONMENT", "sandbox"),
+                        webhook_secret=env.get("INCREASE_WEBHOOK_SECRET"),
+                    )
+                )
+                owned.append(client)
+                if need_fiat:
+                    ports[ProviderCapability.FIAT_ACCOUNT] = IncreaseFiatAccountAdapter(
+                        client
+                    )
+                    logger.info("ProviderRegistry: FIAT_ACCOUNT -> increase")
+                if need_offramp:
+                    ports[ProviderCapability.OFFRAMP] = IncreaseOfframpAdapter(client)
+                    logger.info("ProviderRegistry: OFFRAMP -> increase")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: increase init failed: %s", exc)
 
     @staticmethod
     def _build_onramp(
