@@ -162,17 +162,25 @@ class ProviderRegistry:
         owned: list[Any],
     ) -> OnrampPort | None:
         # Conduit (fiat -> USDC on Tempo) takes precedence when configured.
-        try:
-            from server.services.conduit_onramp import get_conduit_service
+        # Read keys from the injected env (do not call get_conduit_service(),
+        # which reads os.environ directly and would ignore a test-injected env).
+        conduit_key = env.get("CONDUIT_API_KEY")
+        conduit_secret = env.get("CONDUIT_API_SECRET")
+        if conduit_key and conduit_secret:
+            try:
+                from server.services.conduit_onramp import ConduitOnrampService
 
-            conduit = get_conduit_service()
-        except Exception as exc:  # noqa: BLE001 - optional path
-            logger.warning("ProviderRegistry: conduit init failed: %s", exc)
-            conduit = None
-        if conduit is not None:
-            owned.append(conduit)
-            logger.info("ProviderRegistry: ONRAMP -> conduit")
-            return ConduitOnrampAdapter(conduit)
+                sandbox = env.get("CONDUIT_SANDBOX", "true").lower() in ("true", "1", "yes")
+                conduit = ConduitOnrampService(
+                    api_key=conduit_key,
+                    api_secret=conduit_secret,
+                    sandbox=sandbox,
+                )
+                owned.append(conduit)
+                logger.info("ProviderRegistry: ONRAMP -> conduit")
+                return ConduitOnrampAdapter(conduit)
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: conduit init failed: %s", exc)
 
         # Turnkey native onramp (Coinbase/MoonPay widget).
         api_key = env.get("TURNKEY_API_PUBLIC_KEY") or env.get("TURNKEY_API_KEY")
