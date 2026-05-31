@@ -36,6 +36,7 @@ from .ports.capabilities import (
     FiatAccountPort,
     OfframpPort,
     OnrampPort,
+    SwapPort,
 )
 from .ports.types import ProviderCapability, ProviderNotConfigured
 from .sandbox import (
@@ -162,7 +163,124 @@ class ProviderRegistry:
         # only when it is still empty (Circle CPN + Increase keep precedence).
         cls._build_offramp(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Swap (LI.FI / 0x v2 / Jupiter) ---------------------------
+        # Same-chain / cross-token swap.  Env-gated; tried in order, first
+        # configured wins.  Each captures its integrator-fee (revenue) param.
+        cls._build_swap(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_swap(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Swap providers. Tried in order; first configured wins. LI.FI works
+        # keyless (low rate limits) so it activates when LIFI_ENABLED is truthy
+        # OR a key/fee is set; 0x requires a key; Jupiter works keyless via the
+        # lite host but only wires when JUPITER_ENABLED/key is set so the
+        # default dev fallback stays the SIMULATED sandbox impl.
+        if ProviderCapability.SWAP in ports:
+            return
+
+        def _flag(name: str) -> bool:
+            return env.get(name, "").strip().lower() in ("true", "1", "yes")
+
+        def _int(name: str) -> int | None:
+            raw = env.get(name)
+            if raw is None or raw.strip() == "":
+                return None
+            try:
+                return int(raw)
+            except ValueError:
+                logger.warning("ProviderRegistry: invalid int env %s=%r", name, raw)
+                return None
+
+        def _float(name: str) -> float | None:
+            raw = env.get(name)
+            if raw is None or raw.strip() == "":
+                return None
+            try:
+                return float(raw)
+            except ValueError:
+                logger.warning("ProviderRegistry: invalid float env %s=%r", name, raw)
+                return None
+
+        # LI.FI — keyless-capable; wire when explicitly enabled, keyed, or a
+        # default integrator fee is configured.
+        lifi_key = env.get("LIFI_API_KEY")
+        if lifi_key or _flag("LIFI_ENABLED") or _float("LIFI_FEE") is not None:
+            try:
+                from .swap import LifiClient, LifiConfig, LifiSwapAdapter
+
+                client = LifiClient(
+                    LifiConfig(
+                        api_key=lifi_key,
+                        environment=env.get(
+                            "LIFI_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                        integrator=env.get("LIFI_INTEGRATOR", "sardis"),
+                        fee=_float("LIFI_FEE"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.SWAP] = LifiSwapAdapter(client)
+                logger.info("ProviderRegistry: SWAP -> lifi")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: lifi init failed: %s", exc)
+
+        # 0x Swap API v2 — requires an API key.
+        zerox_key = env.get("ZEROX_API_KEY") or env.get("ZERO_EX_API_KEY")
+        if zerox_key:
+            try:
+                from .swap import ZeroExClient, ZeroExConfig, ZeroExSwapAdapter
+
+                client = ZeroExClient(
+                    ZeroExConfig(
+                        api_key=zerox_key,
+                        environment=env.get(
+                            "ZEROX_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                        swap_fee_bps=_int("ZEROX_SWAP_FEE_BPS"),
+                        swap_fee_recipient=env.get("ZEROX_SWAP_FEE_RECIPIENT"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.SWAP] = ZeroExSwapAdapter(client)
+                logger.info("ProviderRegistry: SWAP -> zerox")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: zerox init failed: %s", exc)
+
+        # Jupiter — keyless-capable (lite host); wire when enabled or keyed.
+        jupiter_key = env.get("JUPITER_API_KEY")
+        if jupiter_key or _flag("JUPITER_ENABLED"):
+            try:
+                from .swap import JupiterClient, JupiterConfig, JupiterSwapAdapter
+
+                client = JupiterClient(
+                    JupiterConfig(
+                        api_key=jupiter_key,
+                        environment=env.get(
+                            "JUPITER_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                        platform_fee_bps=_int("JUPITER_PLATFORM_FEE_BPS"),
+                        fee_account=env.get("JUPITER_FEE_ACCOUNT"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.SWAP] = JupiterSwapAdapter(client)
+                logger.info("ProviderRegistry: SWAP -> jupiter")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: jupiter init failed: %s", exc)
 
     @staticmethod
     def _build_offramp(
@@ -484,6 +602,9 @@ class ProviderRegistry:
 
     def offramp(self) -> OfframpPort:
         return self.get(ProviderCapability.OFFRAMP)  # type: ignore[return-value]
+
+    def swap(self) -> SwapPort:
+        return self.get(ProviderCapability.SWAP)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle
