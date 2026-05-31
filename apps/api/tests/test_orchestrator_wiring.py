@@ -15,6 +15,7 @@ from sardis.core import load_settings
 from server.dependencies import (
     DependencyConfig,
     DependencyContainer,
+    build_moat_ports,
     configure_payment_runtime,
 )
 
@@ -81,3 +82,44 @@ def test_dedup_store_durable_and_settlement_lock_in_production() -> None:
     orch = _build_container().payment_orchestrator
     assert not isinstance(orch._dedup_store, InMemoryDedupStore)
     assert orch._settlement_lock is not None
+
+
+def test_build_moat_ports_fails_closed_without_redis_in_production() -> None:
+    """In production, a missing/unbuildable Redis dedup store must raise rather
+    than silently fall back to in-memory (non-durable) duplicate protection."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    import pytest
+
+    prod_settings = SimpleNamespace(is_production=True)
+    with pytest.raises(RuntimeError, match="durable Redis dedup store required"):
+        build_moat_ports(
+            prod_settings,
+            database_url="postgresql://localhost/sardis",
+            use_postgres=True,
+            kya_service=MagicMock(),
+            sanctions_service=MagicMock(),
+            redis_url=None,
+            environ={},  # no SARDIS_REDIS_URL/REDIS_URL/UPSTASH_REDIS_URL
+        )
+
+
+def test_build_moat_ports_allows_inmemory_dedup_outside_production() -> None:
+    """Dev/test keep the in-memory dedup fallback (no raise)."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from sardis.core.dedup_store import InMemoryDedupStore
+
+    dev_settings = SimpleNamespace(is_production=False)
+    moat = build_moat_ports(
+        dev_settings,
+        database_url="memory://",
+        use_postgres=False,
+        kya_service=MagicMock(),
+        sanctions_service=MagicMock(),
+        redis_url=None,
+        environ={},
+    )
+    assert isinstance(moat.dedup_store, InMemoryDedupStore)

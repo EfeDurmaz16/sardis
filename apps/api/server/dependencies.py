@@ -152,8 +152,8 @@ class MoatPortsConfig:
     sanctions_service: Any
     dedup_store: Any
     spending_mandate_lookup: Any
-    settlement_lock: Any
-    reconciliation_queue: Any
+    settlement_lock: Any | None
+    reconciliation_queue: Any | None
 
 
 @dataclass(frozen=True)
@@ -742,25 +742,44 @@ def build_moat_ports(
 
     - ``spending_mandate_lookup``: DB-backed revocation/scope enforcement.
     - ``dedup_store``: Redis (durable) when a Redis URL is available, else
-      in-memory (dev only).
+      in-memory (dev only). Fail-closed in production: a non-durable dedup
+      store would leave duplicate-payment protection process-local, so we
+      raise rather than silently degrade on a money path.
     - ``settlement_lock`` / ``reconciliation_queue``: Postgres-backed when
       running on Postgres, else ``None`` (dev/in-memory).
+
+    ``redis_url`` is authoritative when explicitly passed (the resolved value
+    from ``create_app`` / the container). Only fall back to the environment
+    triplet when it was not supplied.
     """
     env = environ if environ is not None else os.environ
 
     from sardis.core.dedup_store import InMemoryDedupStore, RedisDedupStore
     from sardis.core.spending_mandate_lookup import SpendingMandateLookup
 
-    resolved_redis_url = (
-        redis_url
-        or env.get("SARDIS_REDIS_URL")
+    resolved_redis_url = redis_url if redis_url is not None else (
+        env.get("SARDIS_REDIS_URL")
         or env.get("REDIS_URL")
         or env.get("UPSTASH_REDIS_URL")
     )
     redis_client = _build_redis_client(resolved_redis_url)
-    dedup_store = (
+    dedup_store: Any = (
         RedisDedupStore(redis_client) if redis_client is not None else InMemoryDedupStore()
     )
+
+    # Fail-closed: production/staging MUST use a durable, shared dedup store.
+    # A silent InMemoryDedupStore fallback (missing URL OR failed client
+    # construction) would make duplicate-payment protection process-local.
+    # configure_payment_runtime runs before the cache backend is resolved, so
+    # this guard is the moat's own enforcement point.
+    if isinstance(dedup_store, InMemoryDedupStore) and getattr(
+        settings, "is_production", False
+    ):
+        raise RuntimeError(
+            "CRITICAL: durable Redis dedup store required in production — "
+            "set SARDIS_REDIS_URL and install the redis extra "
+            "(pip install 'sardis[redis]')."
+        )
 
     spending_mandate_lookup = SpendingMandateLookup(
         dsn=database_url if use_postgres else "memory://"

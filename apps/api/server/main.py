@@ -52,6 +52,7 @@ from .dependencies import (
     expose_support_services_state,
     expose_treasury_runtime_state,
     initialize_turnkey_client,
+    resolve_cache_backend,
     resolve_storage_backend,
     validate_live_execution_config,
 )
@@ -479,6 +480,12 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     compliance = compliance_config.compliance_engine
     identity_registry = IdentityRegistry()
 
+    # Resolve the Redis URL once (single source of truth) and thread it into the
+    # moat so it reuses the already-resolved value instead of re-reading env.
+    # This runs before configure_api_support_services, which resolves the same
+    # backend again (resolve_cache_backend is a pure, idempotent resolver).
+    resolved_redis_url = resolve_cache_backend(settings).redis_url
+
     payment_runtime = configure_payment_runtime(
         settings=settings,
         database_url=database_url,
@@ -492,6 +499,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         # spending-mandate revocation, durable dedup, and the settlement lock.
         kya_service=kya_service,
         sanctions_service=sanctions_service,
+        redis_url=resolved_redis_url,
     )
     verifier = payment_runtime.verifier
     orchestrator = payment_runtime.orchestrator

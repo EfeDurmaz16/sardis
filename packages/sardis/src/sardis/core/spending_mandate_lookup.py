@@ -155,6 +155,16 @@ class SpendingMandateLookup:
             revoked_at=data.get("revoked_at"),
             revoked_by=data.get("revoked_by"),
             revocation_reason=data.get("revocation_reason"),
+            # Facility / credit-draw authority is NOT persisted on the
+            # spending_mandates table (migration 071 has no facility_* columns).
+            # We hydrate defensively from the row so the fields populate if the
+            # columns are ever added, but the SpendingMandate defaults keep
+            # borrowing authority OFF (fail-closed): existing spend authority
+            # must never imply draw authority.
+            facility_authority_allowed=bool(data.get("facility_authority_allowed", False)),
+            allowed_facility_ids=list(data.get("allowed_facility_ids") or []),
+            facility_max_draw=_to_decimal(data.get("facility_max_draw")),
+            facility_scope=data.get("facility_scope") or {},
             version=data.get("version") or 1,
             metadata=data.get("metadata") or {},
             created_at=data.get("created_at") or datetime.now(UTC),
