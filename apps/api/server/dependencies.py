@@ -139,6 +139,10 @@ class PaymentRuntimeConfig:
     #: + delivery notifier). Exposed so the ApprovalRequest API can record
     #: decisions against the SAME gate the orchestrator re-executes from.
     approval_gate: Any | None = None
+    #: Programmable-recourse engine wired into the orchestrator (durable signed
+    #: RecourseHold store + swappable executor). Exposed so the escrow/dispute
+    #: API backs holds onto the SAME engine the orchestrator opens them from.
+    recourse_engine: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -940,6 +944,34 @@ def configure_payment_runtime(
     except Exception as exc:  # noqa: BLE001 - gate is optional in dev
         logger.warning("approval_gate unavailable, approvals fail-closed: %s", exc)
 
+    # ── Programmable Recourse engine (durable signed holds + swappable exec) ──
+    # When a payment carries a policy-defined recourse window, the orchestrator
+    # opens a durable, signed RecourseHold after settlement. The executor is
+    # env-gated (SARDIS_RECOURSE_MODE): NoopRecourseExecutor in dev/tests and
+    # whenever live escrow is not configured (no keys needed). The SAME engine
+    # instance backs the escrow/dispute API so its holds and the orchestrator's
+    # are one surface.
+    recourse_engine = None
+    try:
+        from sardis.core.recourse_engine import RecourseEngine
+        from sardis.core.recourse_executor import resolve_default_executor
+        from sardis.core.recourse_hold_repository import (
+            InMemoryRecourseHoldStore,
+            PostgresRecourseHoldStore,
+        )
+
+        recourse_store: Any = (
+            PostgresRecourseHoldStore()
+            if use_postgres
+            else InMemoryRecourseHoldStore()
+        )
+        recourse_engine = RecourseEngine(
+            store=recourse_store,
+            executor=resolve_default_executor(),
+        )
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("recourse_engine unavailable, recourse disabled: %s", exc)
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
@@ -953,6 +985,7 @@ def configure_payment_runtime(
         settlement_lock=moat.settlement_lock,
         reconciliation_queue=moat.reconciliation_queue,
         approval_gate=approval_gate,
+        recourse_engine=recourse_engine,
     )
 
     return PaymentRuntimeConfig(
@@ -961,6 +994,7 @@ def configure_payment_runtime(
         verifier=verifier,
         orchestrator=orchestrator,
         approval_gate=approval_gate,
+        recourse_engine=recourse_engine,
     )
 
 
@@ -1625,6 +1659,32 @@ class DependencyContainer:
         return ApprovalGate(store=store, notifier=notifier)
 
     @cached_property
+    def recourse_engine(self) -> Any:
+        """Programmable-recourse engine (durable signed RecourseHold store +
+        swappable executor).
+
+        Owns the recourse *decision/policy/evidence* (the moat). The executor is
+        env-gated (``SARDIS_RECOURSE_MODE``): NoopRecourseExecutor in dev/tests
+        and whenever live escrow is not configured (no keys needed); the vendored
+        Circle RefundProtocol wrapper only when ``=live`` with a chain client.
+        The escrow/dispute API resolves this SAME engine so its holds and the
+        orchestrator-opened holds are one surface.
+        """
+        from sardis.core.recourse_engine import RecourseEngine
+        from sardis.core.recourse_executor import resolve_default_executor
+        from sardis.core.recourse_hold_repository import (
+            InMemoryRecourseHoldStore,
+            PostgresRecourseHoldStore,
+        )
+
+        store: Any = (
+            PostgresRecourseHoldStore()
+            if self.use_postgres
+            else InMemoryRecourseHoldStore()
+        )
+        return RecourseEngine(store=store, executor=resolve_default_executor())
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
@@ -1651,6 +1711,7 @@ class DependencyContainer:
             settlement_lock=moat.settlement_lock,
             reconciliation_queue=moat.reconciliation_queue,
             approval_gate=self.approval_gate,
+            recourse_engine=self.recourse_engine,
         )
 
     # =========================================================================

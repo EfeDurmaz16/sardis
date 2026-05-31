@@ -933,6 +933,11 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     app.state.settlement_service = settlement_service
     app.state.merchant_webhook_service = merchant_webhook_service
 
+    # Expose the programmable-recourse engine (the SAME instance the orchestrator
+    # opens holds from) so the escrow/dispute API backs holds onto real money
+    # movement instead of a DB-only record.
+    app.state.recourse_engine = getattr(payment_runtime, "recourse_engine", None)
+
     checkout_base_url = merchant_checkout_runtime.checkout_base_url
     register_merchant_routes(
         app,
