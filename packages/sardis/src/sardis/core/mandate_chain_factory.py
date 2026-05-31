@@ -187,6 +187,11 @@ def build_mandate_chain(
         amount_minor=amount_minor,
         destination=counterparty,
         audit_hash=attestation,
+        # The orchestrator reads ``payment.agent_id`` (not ``subject``) for KYA,
+        # fastpath, group policy and the agent-scoped spending-mandate lookup.
+        # Without this, those enforcement paths are silently skipped on
+        # factory-built (a2a / ap2 / pay) chains.
+        agent_id=agent_id,
         wallet_id=wallet_id,
         merchant_domain=merchant,
     )

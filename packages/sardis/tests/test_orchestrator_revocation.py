@@ -16,12 +16,14 @@ move.  The happy path (an active mandate) must still proceed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from sardis.core.orchestrator import PaymentOrchestrator, PolicyViolationError
+from sardis.core.spending_mandate import SpendingMandate
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -162,3 +164,78 @@ async def test_active_mandate_allows_execution_to_proceed():
     assert result.status == "submitted"
     chain_exec.dispatch_payment.assert_awaited_once()
     lookup.get_active_mandate.assert_awaited_once()
+
+
+class _RealSpendingMandate(SpendingMandate):
+    """A real SpendingMandate with a $100 per-tx + lifetime limit.
+
+    Records every ``record_spend`` call so the orchestrator's post-settlement
+    mandate-spend persistence (P1-3) can be asserted.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            principal_id="prn_1",
+            issuer_id="iss_1",
+            id="smdt_limit_001",
+            agent_id="agent_revoked",
+            amount_per_tx=Decimal("100"),
+            amount_total=Decimal("100"),
+            currency="USDC",
+        )
+        self.recorded: list[Decimal] = []
+
+    def record_spend(self, amount: Decimal) -> None:  # noqa: D401 - test stub
+        self.recorded.append(Decimal(str(amount)))
+        self.spent_total += Decimal(str(amount))
+
+
+@pytest.mark.asyncio
+async def test_amount_minor_checked_in_token_units_not_raw_minor():
+    """P1-2: a 50-USDC payment (amount_minor=50_000_000) must be checked as 50,
+    not 50_000_000, against the mandate's token-unit ($100) limits.
+
+    A typed PaymentMandate has no major-unit ``amount`` — only ``amount_minor``.
+    The orchestrator must normalize minor -> token units before check_payment,
+    or a 50-USDC payment is falsely denied against a $100 cap.
+    """
+    mandate = _RealSpendingMandate()
+    lookup = MagicMock()
+    lookup.get_active_mandate = AsyncMock(return_value=mandate)
+
+    orch, chain_exec = _build_orchestrator(spending_mandate_lookup=lookup)
+    # 50 USDC == 50_000_000 minor units; no major-unit `amount` (typed mandate).
+    chain = _FakeMandateChain(
+        payment=_FakePayment(amount=None, amount_minor=50_000_000, token="USDC")
+    )
+
+    result = await orch.execute_chain(chain)
+
+    # Must pass: 50 USDC <= $100 per-tx limit.
+    assert result.status == "submitted"
+    chain_exec.dispatch_payment.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_mandate_spend_persisted_after_success():
+    """P1-3: after a successful settlement the mandate's spent_total must be
+    persisted via the lookup's record_spend, in token units (50, not 50e6)."""
+    mandate = _RealSpendingMandate()
+    lookup = MagicMock()
+    lookup.get_active_mandate = AsyncMock(return_value=mandate)
+    lookup.record_spend = AsyncMock()
+
+    orch, chain_exec = _build_orchestrator(spending_mandate_lookup=lookup)
+    chain = _FakeMandateChain(
+        payment=_FakePayment(amount=None, amount_minor=50_000_000, token="USDC")
+    )
+
+    result = await orch.execute_chain(chain)
+    assert result.status == "submitted"
+
+    # The mandate spend was persisted exactly once, in token units.
+    lookup.record_spend.assert_awaited_once()
+    kwargs = lookup.record_spend.await_args.kwargs
+    args = lookup.record_spend.await_args.args
+    recorded_amount = kwargs.get("amount") if "amount" in kwargs else (args[1] if len(args) > 1 else args[0])
+    assert Decimal(str(recorded_amount)) == Decimal("50")

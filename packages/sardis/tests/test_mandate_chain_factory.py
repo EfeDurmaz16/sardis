@@ -101,6 +101,30 @@ def test_decimals_override_for_non_usdc():
     assert chain.payment.amount_minor == 500
 
 
+def test_agent_id_set_on_payment_for_orchestrator_lookups():
+    """P1-1: the orchestrator reads ``payment.agent_id`` / ``payment.from_agent``
+    for KYA, fastpath, group policy and the agent-scoped spending-mandate lookup.
+
+    The factory only stores the acting agent on ``subject`` historically, so
+    those orchestrator code paths were silently skipped on factory-built chains.
+    The acting agent must be exposed as ``payment.agent_id``.
+    """
+    chain = build_mandate_chain(
+        agent_id="agt_acting",
+        amount="10.00",
+        currency="USDC",
+        counterparty="0xabc",
+        wallet_id="wal_x",
+        mandate_id="md_x",
+    )
+    assert chain.payment.agent_id == "agt_acting"
+    # The orchestrator's `agent_id or from_agent` read must resolve the agent.
+    resolved = getattr(chain.payment, "agent_id", None) or getattr(
+        chain.payment, "from_agent", None
+    )
+    assert resolved == "agt_acting"
+
+
 def test_passes_orchestrator_post_init_validation():
     # Building must not raise the MandateChain.__post_init__ ValueError
     # (same subject, ordered expirations, payment <= cart total).

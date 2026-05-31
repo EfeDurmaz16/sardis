@@ -111,6 +111,35 @@ class SpendingMandateLookup:
 
         return self._row_to_mandate(row)
 
+    async def record_spend(self, mandate_id: str, amount: Any) -> None:
+        """Increment ``spent_total`` on the spending_mandates row by ``amount``.
+
+        Called by the orchestrator after a successful settlement so lifetime /
+        total caps reflect the new spend.  ``amount`` is in token (major) units,
+        matching the ``NUMERIC(20,6)`` ``spent_total`` column.
+
+        In non-Postgres (dev/in-memory) mode this is a no-op — there is no
+        durable mandate row to update.  Postgres errors propagate so the
+        orchestrator can queue reconciliation (the on-chain payment already
+        settled; the stale spent_total must be repaired, not silently lost).
+        """
+        if not self._use_postgres or not mandate_id:
+            return
+
+        pool = await self._get_pool()
+        if pool is None:
+            return
+
+        spend = _to_decimal(amount) or Decimal("0")
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE spending_mandates "
+                "SET spent_total = COALESCE(spent_total, 0) + $1, updated_at = now() "
+                "WHERE id = $2",
+                spend,
+                mandate_id,
+            )
+
     @staticmethod
     def _row_to_mandate(row: Any) -> SpendingMandate:
         """Hydrate a DB row into a :class:`SpendingMandate` domain object."""

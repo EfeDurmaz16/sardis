@@ -71,6 +71,11 @@ class PaymentMandate(MandateBase):
     # - modality distinguishes human-present vs human-not-present flows
     ai_agent_presence: bool = True
     transaction_modality: Literal["human_present", "human_not_present"] = "human_present"
+    # Acting agent (execution-only hint, NOT part of the AP2 signature payload).
+    # The orchestrator reads ``payment.agent_id`` for KYA, fastpath, group-policy
+    # and the agent-scoped spending-mandate lookup.  ``subject`` carries the same
+    # agent for chain-consistency, but agent-scoped enforcement reads this field.
+    agent_id: str | None = None
     # Execution-only hint (not part of AP2 signature payload).
     # When present, chain executors should use this to select the signing wallet.
     wallet_id: str | None = None
