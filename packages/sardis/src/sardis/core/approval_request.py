@@ -36,13 +36,11 @@ import json
 import os
 import secrets
 import time
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
-
 
 # ── Identifiers ────────────────────────────────────────────────────────
 
@@ -459,7 +457,3 @@ def build_approval_request(
         chain_snapshot=chain_snapshot,
         metadata=metadata or {},
     )
-
-
-def _uuid_hex() -> str:  # small helper kept for parity with other modules
-    return uuid.uuid4().hex

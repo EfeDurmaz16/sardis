@@ -16,11 +16,16 @@ from sardis.core.approval_request_repository import InMemoryApprovalRequestStore
 
 
 def _req(**over):
-    base = dict(
-        agent_id="a1", mandate_id="m1", amount=Decimal("50"), currency="USDC",
-        counterparty="0xabc", reason="over threshold",
-        policy_hash="ph", mandate_hash="mh",
-    )
+    base = {
+        "agent_id": "a1",
+        "mandate_id": "m1",
+        "amount": Decimal("50"),
+        "currency": "USDC",
+        "counterparty": "0xabc",
+        "reason": "over threshold",
+        "policy_hash": "ph",
+        "mandate_hash": "mh",
+    }
     base.update(over)
     return build_approval_request(**base)
 
