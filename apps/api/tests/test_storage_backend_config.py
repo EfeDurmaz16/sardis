@@ -881,6 +881,7 @@ class FakePaymentOrchestrator:
         approval_gate: object = None,
         recourse_engine: object = None,
         recourse_window_resolver: object = None,
+        risk_engine: object = None,
     ) -> None:
         self.wallet_manager = wallet_manager
         self.compliance = compliance
