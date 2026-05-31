@@ -28,12 +28,16 @@ def _build_container() -> DependencyContainer:
 
 
 def test_container_orchestrator_has_moat_ports_wired() -> None:
-    """DependencyContainer.payment_orchestrator must inject the moat ports."""
+    """DependencyContainer.payment_orchestrator must inject the moat ports.
+
+    P2-8: the spending-mandate lookup is the exception in dev/in-memory mode —
+    a no-op lookup that always returns None would, given the fail-closed
+    orchestrator, DENY every local payment as ``no_active_spending_mandate``.
+    So in memory mode it is intentionally NOT injected (mandate enforcement is
+    skipped locally); a dedicated Postgres test pins that prod DOES wire it.
+    """
     orch = _build_container().payment_orchestrator
 
-    assert orch._spending_mandate_lookup is not None, (
-        "mandate lookup not injected — revocation is inert"
-    )
     assert orch._kya_service is not None, "KYA service not injected"
     assert orch._sanctions_service is not None, "sanctions service not injected"
     assert orch._dedup_store is not None
@@ -60,8 +64,10 @@ def test_payment_runtime_orchestrator_has_moat_ports_wired() -> None:
     )
     orch = runtime.orchestrator
 
-    assert orch._spending_mandate_lookup is not None, (
-        "mandate lookup not injected — revocation is inert"
+    # P2-8: in memory mode the lookup is intentionally absent (see
+    # test_container_orchestrator_has_moat_ports_wired).
+    assert orch._spending_mandate_lookup is None, (
+        "in-memory mode must NOT inject a no-op lookup (would deny all dev payments)"
     )
     assert orch._kya_service is not None, "KYA service not injected"
     assert orch._sanctions_service is not None, "sanctions service not injected"
@@ -123,3 +129,43 @@ def test_build_moat_ports_allows_inmemory_dedup_outside_production() -> None:
         environ={},
     )
     assert isinstance(moat.dedup_store, InMemoryDedupStore)
+
+
+def test_build_moat_ports_skips_mandate_lookup_in_memory_mode() -> None:
+    """P2-8: dev/in-memory mode must NOT inject a no-op spending_mandate_lookup.
+
+    A no-op lookup always returns None and, with the fail-closed orchestrator,
+    would deny EVERY local payment as ``no_active_spending_mandate``.
+    """
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    moat = build_moat_ports(
+        SimpleNamespace(is_production=False),
+        database_url="memory://",
+        use_postgres=False,
+        kya_service=MagicMock(),
+        sanctions_service=MagicMock(),
+        redis_url=None,
+        environ={},
+    )
+    assert moat.spending_mandate_lookup is None
+
+
+def test_build_moat_ports_wires_mandate_lookup_on_postgres() -> None:
+    """Postgres mode must wire the real DB-backed lookup (revocation active)."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from sardis.core.spending_mandate_lookup import SpendingMandateLookup
+
+    moat = build_moat_ports(
+        SimpleNamespace(is_production=False),
+        database_url="postgresql://localhost/sardis",
+        use_postgres=True,
+        kya_service=MagicMock(),
+        sanctions_service=MagicMock(),
+        redis_url="redis://localhost:6379",
+        environ={},
+    )
+    assert isinstance(moat.spending_mandate_lookup, SpendingMandateLookup)

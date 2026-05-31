@@ -997,12 +997,10 @@ async def a2a_pay(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
             ) from e
 
-        # Post-execution: record spend (best-effort)
-        if deps.wallet_manager:
-            try:
-                await deps.wallet_manager.async_record_spend(mandate)
-            except Exception as e:
-                logger.warning("Failed to record spend for A2A mandate %s: %s", mandate.mandate_id, e)
+        # Spend is recorded by the orchestrator's Phase 3.5 (async_record_spend
+        # on the same wallet_manager) during execute_chain above. Recording it
+        # again here would double-count policy totals / window counters for a
+        # successful A2A payment, so it is intentionally NOT repeated.
 
         log_payment_event("a2a.payment.completed",
             org_id=str(principal.organization_id),
@@ -1842,12 +1840,10 @@ async def _handle_payment_request(
             error_code="execution_failed",
         )
 
-    # Record spend state for policy enforcement
-    if deps.wallet_manager:
-        try:
-            await deps.wallet_manager.async_record_spend(mandate)
-        except Exception:
-            logger.warning("Failed to record spend for A2A message mandate %s", mandate.mandate_id)
+    # Spend is recorded by the orchestrator's Phase 3.5 during execute_chain
+    # above (async_record_spend on the same wallet_manager). Recording it again
+    # here would double-count policy totals for a successful A2A payment, so it
+    # is intentionally NOT repeated.
 
     return A2AMessageResponse(
         message_id=str(uuid.uuid4()),

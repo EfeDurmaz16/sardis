@@ -103,12 +103,12 @@ class _Principal:
         self.is_admin = is_admin
 
 
-def _make_deps(orchestrator, *, agents, wallets):
+def _make_deps(orchestrator, *, agents, wallets, wallet_manager=None):
     deps = A2ADependencies(
         wallet_repo=_WalletRepo(wallets),
         agent_repo=_AgentRepo(agents),
         chain_executor=object(),  # truthy: passes the "executor not available" gate
-        wallet_manager=None,
+        wallet_manager=wallet_manager,
         ledger=None,
         compliance=None,
         identity_registry=None,
@@ -118,6 +118,30 @@ def _make_deps(orchestrator, *, agents, wallets):
     )
     deps.orchestrator = orchestrator
     return deps
+
+
+class _SpendCountingWalletManager:
+    """Counts async_record_spend calls (proxy for policy spend recording)."""
+
+    def __init__(self):
+        self.record_calls = 0
+
+    async def async_record_spend(self, _payment):
+        self.record_calls += 1
+
+
+class _SpendRecordingOrchestrator(_SpyOrchestrator):
+    """Records spend exactly once via the wallet manager, like Phase 3.5."""
+
+    def __init__(self, wallet_manager):
+        super().__init__()
+        self._wallet_manager = wallet_manager
+
+    async def execute_chain(self, chain):
+        result = await super().execute_chain(chain)
+        # Mimic the orchestrator's Phase 3.5 spend recording.
+        await self._wallet_manager.async_record_spend(chain.payment)
+        return result
 
 
 def _msg(sender="agent_sender", recipient="agent_recipient"):
@@ -178,6 +202,29 @@ async def test_a2a_payment_request_calls_execute_chain():
     assert chain.payment.token == "USDC"
     assert chain.payment.chain == "base_sepolia"
     assert chain.payment.destination == "0x" + "22" * 20
+
+
+@pytest.mark.asyncio
+async def test_a2a_payment_records_spend_exactly_once(_bypass_a2a_guardrails):
+    """P2-7: the orchestrator owns spend recording (Phase 3.5). The a2a handler
+    must NOT additionally call async_record_spend or policy totals double-count.
+    """
+    wm = _SpendCountingWalletManager()
+    orch = _SpendRecordingOrchestrator(wm)
+    agents = {
+        "agent_sender": _Agent("agent_sender", "org_1"),
+        "agent_recipient": _Agent("agent_recipient", "org_1"),
+    }
+    wallets = {"agent_recipient": _Wallet("agent_recipient", "wal_recipient")}
+    deps = _make_deps(orch, agents=agents, wallets=wallets, wallet_manager=wm)
+
+    resp = await _handle_payment_request(
+        _msg(), request=object(), deps=deps, principal=_Principal()
+    )
+
+    assert resp.status == "completed", resp.error
+    # Exactly once: the orchestrator recorded it; a2a must not record again.
+    assert wm.record_calls == 1
 
 
 # ---------------------------------------------------------------------------

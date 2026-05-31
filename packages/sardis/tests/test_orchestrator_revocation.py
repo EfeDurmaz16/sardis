@@ -334,3 +334,17 @@ async def test_dispatch_failure_releases_reservation_for_retry():
 
     # The reservation must have been released — a retry can reserve again.
     assert await dedup.reserve(chain.payment.mandate_id) is True
+
+
+@pytest.mark.asyncio
+async def test_no_lookup_configured_does_not_deny_payment():
+    """P2-8: when no spending_mandate_lookup is configured (dev/in-memory mode),
+    a payment must NOT be denied as no_active_spending_mandate — mandate
+    enforcement is simply skipped, matching prior dev behavior."""
+    orch, chain_exec = _build_orchestrator(spending_mandate_lookup=None)
+    chain = _FakeMandateChain()
+
+    result = await orch.execute_chain(chain)
+
+    assert result.status == "submitted"
+    chain_exec.dispatch_payment.assert_awaited_once()

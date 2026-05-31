@@ -781,8 +781,16 @@ def build_moat_ports(
             "(pip install 'sardis[redis]')."
         )
 
-    spending_mandate_lookup = SpendingMandateLookup(
-        dsn=database_url if use_postgres else "memory://"
+    # In Postgres mode, wire the DB-backed lookup so revocation/scope/limit
+    # enforcement is active.  In dev/in-memory mode the lookup has no table to
+    # read and its get_active_mandate ALWAYS returns None — and the orchestrator
+    # now fails CLOSED on a None from a configured lookup.  Injecting it in dev
+    # would therefore deny EVERY local/in-memory payment as
+    # ``no_active_spending_mandate``.  So we leave it unset in dev (mandate
+    # enforcement is skipped locally, matching prior dev behavior); production
+    # always runs on Postgres and gets the real lookup.
+    spending_mandate_lookup: Any | None = (
+        SpendingMandateLookup(dsn=database_url) if use_postgres else None
     )
 
     settlement_lock: Any | None = None
