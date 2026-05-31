@@ -32,6 +32,7 @@ from .adapters import (
     TurnkeyOnrampAdapter,
 )
 from .ports.capabilities import (
+    BridgePort,
     CapabilityPort,
     FiatAccountPort,
     OfframpPort,
@@ -168,7 +169,87 @@ class ProviderRegistry:
         # configured wins.  Each captures its integrator-fee (revenue) param.
         cls._build_swap(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Bridge (Squid / CCTP v2) ---------------------------------
+        # Cross-chain bridge (the Base/Solana -> Tempo pattern).  Env-gated;
+        # tried in order, first configured wins.  Squid needs an integrator id;
+        # CCTP is keyless/canonical and is opt-in via a flag so the dev default
+        # stays the SIMULATED sandbox impl.
+        cls._build_bridge(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_bridge(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Cross-chain bridge providers. Tried in order; first configured wins.
+        if ProviderCapability.BRIDGE in ports:
+            return
+
+        def _flag(name: str) -> bool:
+            return env.get(name, "").strip().lower() in ("true", "1", "yes")
+
+        def _float(name: str, default: float) -> float:
+            raw = env.get(name)
+            if raw is None or raw.strip() == "":
+                return default
+            try:
+                return float(raw)
+            except ValueError:
+                logger.warning("ProviderRegistry: invalid float env %s=%r", name, raw)
+                return default
+
+        # Squid — intent-based aggregation; live on Tempo day-one (pathUSD).
+        # Requires an integrator id on every request.
+        squid_integrator = env.get("SQUID_INTEGRATOR_ID")
+        if squid_integrator:
+            try:
+                from .bridge import SquidBridgeAdapter, SquidClient, SquidConfig
+
+                client = SquidClient(
+                    SquidConfig(
+                        integrator_id=squid_integrator,
+                        environment=env.get(
+                            "SQUID_ENVIRONMENT",
+                            "production" if is_production else "staging",
+                        ),
+                        slippage_percent=_float("SQUID_SLIPPAGE_PERCENT", 1.0),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.BRIDGE] = SquidBridgeAdapter(client)
+                logger.info("ProviderRegistry: BRIDGE -> squid")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: squid init failed: %s", exc)
+
+        # CCTP v2 — canonical USDC burn/mint; keyless (Iris is public), so it
+        # must be explicitly enabled to wire (otherwise the dev default stays
+        # the SIMULATED sandbox impl).
+        if _flag("CCTP_ENABLED"):
+            try:
+                from .bridge import CctpBridgeAdapter, CctpClient, CctpConfig
+
+                client = CctpClient(
+                    CctpConfig(
+                        environment=env.get(
+                            "CCTP_ENVIRONMENT",
+                            "production" if is_production else "sandbox",
+                        ),
+                        fast=env.get("CCTP_FAST", "true").strip().lower()
+                        in ("true", "1", "yes"),
+                    )
+                )
+                owned.append(client)
+                ports[ProviderCapability.BRIDGE] = CctpBridgeAdapter(client)
+                logger.info("ProviderRegistry: BRIDGE -> cctp")
+                return
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: cctp init failed: %s", exc)
 
     @staticmethod
     def _build_swap(
@@ -605,6 +686,9 @@ class ProviderRegistry:
 
     def swap(self) -> SwapPort:
         return self.get(ProviderCapability.SWAP)  # type: ignore[return-value]
+
+    def bridge(self) -> BridgePort:
+        return self.get(ProviderCapability.BRIDGE)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle
