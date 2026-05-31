@@ -1,3 +1,8 @@
+# Private productization planning, audit dossier & specs — contain unfixed
+# security findings (exploit maps with file:line). MUST NOT be published to the
+# public repo. Keep local / move to a private repo if you want them tracked.
+docs/productization/
+
 # Python
 __pycache__/
 *.py[cod]
