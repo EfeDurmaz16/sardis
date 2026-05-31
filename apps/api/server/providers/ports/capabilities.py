@@ -29,6 +29,7 @@ from .types import (
     ProviderCapability,
     ProviderResult,
     RelayedDecision,
+    RiskSignalResult,
 )
 
 
@@ -249,6 +250,35 @@ class KytPort(CapabilityPort, Protocol):
     async def screen_counterparty(
         self, *, name: str, metadata: dict[str, Any] | None = None
     ) -> ProviderResult: ...
+
+
+@runtime_checkable
+class FraudSignalPort(CapabilityPort, Protocol):
+    """External fraud/risk signal feed (Stripe Radar, SEON).
+
+    Why a port and not a decision: Sardis owns the risk DECISION + policy (the
+    moat).  External feeds contribute *cross-customer* signals Sardis cannot
+    self-generate — Stripe's network fraud model, SEON's device/email/IP
+    intelligence — but they NEVER decide allow/deny.  :meth:`score` returns a
+    normalized :class:`RiskSignalResult`; the in-house ``RiskEngine`` combines
+    that score with its own behavioral score and maps to the binding action.
+
+    Fail-closed contract: on a transport/auth/shape failure the adapter raises
+    :class:`ProviderError`.  For a high-value money path the RiskEngine treats a
+    raising feed as "cannot clear" — it escalates to REQUIRE_APPROVAL / BLOCK
+    rather than silently allowing.  ``custody_model`` is always
+    :data:`CustodyModel.SIMULATED`: no funds ever flow through this port.
+    """
+
+    async def score(self, context: dict[str, Any]) -> RiskSignalResult:
+        """Score a transaction context and return a normalized risk signal.
+
+        ``context`` is an opaque dict the engine assembles (agent id, amount,
+        currency, counterparty, ip / email / device hints when available).  The
+        adapter maps only the fields it understands; it must not require a field
+        Sardis cannot supply for an agent-initiated payment.
+        """
+        ...
 
 
 @runtime_checkable

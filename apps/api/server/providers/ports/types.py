@@ -67,6 +67,9 @@ class ProviderCapability(str, Enum):
     KYC = "kyc"
     KYT = "kyt"
     NOTIFICATION = "notification"
+    #: External fraud/risk signal feed (Stripe Radar, SEON).  Contributes a
+    #: score the in-house RiskEngine combines — it NEVER decides the outcome.
+    FRAUD_SIGNAL = "fraud_signal"
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,50 @@ class RelayedDecision:
     #: Channel-specific authenticity proof (opaque to the port; the engine /
     #: adapter validates it).  E.g. OTP code/token, signed relay payload.
     proof: dict[str, Any] = field(default_factory=dict)
+    raw: dict[str, Any] = field(default_factory=dict)
+
+
+class RecommendedAction(str, Enum):
+    """A signal provider's *recommendation* — advisory only.
+
+    Sardis owns the risk DECISION.  A :class:`FraudSignalPort` reports what it
+    would do with the transaction in isolation; the in-house RiskEngine treats
+    this as one input among many and makes the binding call.  It is deliberately
+    coarser than the engine's own action ladder.
+    """
+
+    #: Provider sees no elevated risk.
+    ALLOW = "allow"
+    #: Provider would route to manual review / step-up.
+    REVIEW = "review"
+    #: Provider would decline outright.
+    DECLINE = "decline"
+    #: Provider could not assess (insufficient data, not sent to network).
+    NOT_ASSESSED = "not_assessed"
+
+
+@dataclass(frozen=True)
+class RiskSignalResult:
+    """One external fraud-signal feed's read on a transaction.
+
+    The contract every :class:`FraudSignalPort` returns.  It carries a
+    normalized 0-100 ``score`` (higher = riskier), human-readable ``reasons``,
+    and a coarse ``recommended_action`` — but it is *advisory*: the in-house
+    RiskEngine combines it with the internal behavioral score and any other
+    feeds, then makes the binding ALLOW / FLAG / REQUIRE_APPROVAL / BLOCK
+    decision.  ``sandbox`` flags a simulated read so it can never be mistaken
+    for a live cross-customer signal.
+    """
+
+    provider: str
+    #: Normalized 0-100 risk score (higher = riskier).
+    score: float
+    reasons: tuple[str, ...] = ()
+    recommended_action: RecommendedAction = RecommendedAction.NOT_ASSESSED
+    sandbox: bool = True
+    #: Provider-side identifier for replay / audit (Stripe charge id, SEON id).
+    reference: str | None = None
+    #: Untouched vendor payload for audit replay.
     raw: dict[str, Any] = field(default_factory=dict)
 
 

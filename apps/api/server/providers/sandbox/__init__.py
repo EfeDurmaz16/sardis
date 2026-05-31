@@ -7,6 +7,7 @@ from .impls import (
     SandboxCardPort,
     SandboxCustodyPort,
     SandboxFiatAccountPort,
+    SandboxFraudSignalPort,
     SandboxKycPort,
     SandboxKytPort,
     SandboxNotificationPort,
@@ -26,4 +27,5 @@ __all__ = [
     "SandboxKycPort",
     "SandboxKytPort",
     "SandboxNotificationPort",
+    "SandboxFraudSignalPort",
 ]

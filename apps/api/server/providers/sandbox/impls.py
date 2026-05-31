@@ -20,6 +20,7 @@ from ..ports.capabilities import (
     CardPort,
     CustodyPort,
     FiatAccountPort,
+    FraudSignalPort,
     KycPort,
     KytPort,
     NotificationPort,
@@ -34,7 +35,9 @@ from ..ports.types import (
     NormalizedTxn,
     ProviderCapability,
     ProviderResult,
+    RecommendedAction,
     RelayedDecision,
+    RiskSignalResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -288,6 +291,29 @@ class SandboxKytPort(_SandboxBase, KytPort):
         self, *, name: str, metadata: dict[str, Any] | None = None
     ) -> ProviderResult:
         return self._result(reference=_ref("kyt"), status="clear", risk="low", hits=[])
+
+
+class SandboxFraudSignalPort(_SandboxBase, FraudSignalPort):
+    """Deterministic mock fraud-signal feed for dev + tests (no keys, no I/O).
+
+    Returns a clean, low-risk signal so the in-house RiskEngine's behavioral
+    score drives the decision with no external influence — exactly what we want
+    when no real feed is configured.  Marked ``sandbox=True`` so it can never be
+    mistaken for a live cross-customer signal.
+    """
+
+    capability = ProviderCapability.FRAUD_SIGNAL
+
+    async def score(self, context: dict[str, Any]) -> RiskSignalResult:
+        return RiskSignalResult(
+            provider=self._provider,
+            score=0.0,
+            reasons=("sandbox: no external fraud signal feed configured",),
+            recommended_action=RecommendedAction.NOT_ASSESSED,
+            sandbox=True,
+            reference=_ref("fraud"),
+            raw={"simulated": True},
+        )
 
 
 class SandboxNotificationPort(_SandboxBase, NotificationPort):
