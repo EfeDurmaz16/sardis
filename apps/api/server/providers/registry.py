@@ -36,6 +36,8 @@ from .ports.capabilities import (
     CapabilityPort,
     CardPort,
     FiatAccountPort,
+    KycPort,
+    KytPort,
     OfframpPort,
     OnrampPort,
     SwapPort,
@@ -185,7 +187,97 @@ class ProviderRegistry:
         # registry falls back to the SIMULATED sandbox card (no money moves).
         cls._build_cards(env=env, is_production=is_production, ports=ports, owned=owned)
 
+        # --- Compliance (Didit KYC/KYB + Didit/OpenSanctions KYT) -----
+        # Identity (KYC port) and screening (KYT port).  Env-gated; each
+        # activates only when its key is set.  OpenSanctions is preferred for
+        # KYT (raw on-chain address coverage); Didit backs KYC/KYB and the KYT
+        # fallback.  KYT is required-in-production, so when no real KYT provider
+        # is set the registry fails closed in prod (handled by .get()).
+        cls._build_compliance(env=env, is_production=is_production, ports=ports, owned=owned)
+
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_compliance(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        default_env = "production" if is_production else "sandbox"
+
+        # Didit (one /v3/ API): backs the KYC port and provides a KYT fallback.
+        didit_key = env.get("DIDIT_API_KEY")
+        didit_client = None
+        if didit_key:
+            try:
+                from .compliance import (
+                    DiditClient,
+                    DiditConfig,
+                    DiditKycAdapter,
+                    DiditKytAdapter,
+                )
+
+                didit_client = DiditClient(
+                    DiditConfig(
+                        api_key=didit_key,
+                        kyc_workflow_id=env.get("DIDIT_KYC_WORKFLOW_ID")
+                        or env.get("DIDIT_WORKFLOW_ID"),
+                        kyb_workflow_id=env.get("DIDIT_KYB_WORKFLOW_ID"),
+                        webhook_secret=env.get("DIDIT_WEBHOOK_SECRET"),
+                        callback_url=env.get("DIDIT_CALLBACK_URL"),
+                        environment=env.get("DIDIT_ENVIRONMENT", default_env),
+                    )
+                )
+                owned.append(didit_client)
+                if ProviderCapability.KYC not in ports:
+                    ports[ProviderCapability.KYC] = DiditKycAdapter(didit_client)
+                    logger.info("ProviderRegistry: KYC -> didit")
+                # Didit KYT only fills the slot if OpenSanctions has not (below
+                # runs first when its key is set); kept as the fallback.
+                if ProviderCapability.KYT not in ports:
+                    ports[ProviderCapability.KYT] = DiditKytAdapter(didit_client)
+                    logger.info("ProviderRegistry: KYT -> didit")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: didit init failed: %s", exc)
+
+        # OpenSanctions: preferred KYT provider (raw address + counterparty).
+        # Overrides a Didit KYT fallback when its key is present.
+        opensanctions_key = env.get("OPENSANCTIONS_API_KEY")
+        if opensanctions_key:
+            try:
+                from .compliance import (
+                    OpenSanctionsClient,
+                    OpenSanctionsConfig,
+                    OpenSanctionsKytAdapter,
+                )
+
+                def _float(name: str, default: float) -> float:
+                    raw = env.get(name)
+                    if raw is None or raw.strip() == "":
+                        return default
+                    try:
+                        return float(raw)
+                    except ValueError:
+                        logger.warning("ProviderRegistry: invalid float env %s=%r", name, raw)
+                        return default
+
+                client = OpenSanctionsClient(
+                    OpenSanctionsConfig(
+                        api_key=opensanctions_key,
+                        scope=env.get("OPENSANCTIONS_SCOPE", "default"),
+                        algorithm=env.get("OPENSANCTIONS_ALGORITHM", "best"),
+                        threshold=_float("OPENSANCTIONS_THRESHOLD", 0.7),
+                        environment=env.get("OPENSANCTIONS_ENVIRONMENT", default_env),
+                    )
+                )
+                owned.append(client)
+                # OpenSanctions takes precedence for KYT over the Didit fallback.
+                ports[ProviderCapability.KYT] = OpenSanctionsKytAdapter(client)
+                logger.info("ProviderRegistry: KYT -> opensanctions")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: opensanctions init failed: %s", exc)
 
     @staticmethod
     def _build_cards(
@@ -778,6 +870,12 @@ class ProviderRegistry:
 
     def card(self) -> CardPort:
         return self.get(ProviderCapability.CARD)  # type: ignore[return-value]
+
+    def kyc(self) -> KycPort:
+        return self.get(ProviderCapability.KYC)  # type: ignore[return-value]
+
+    def kyt(self) -> KytPort:
+        return self.get(ProviderCapability.KYT)  # type: ignore[return-value]
 
     # ------------------------------------------------------------------
     # Lifecycle
