@@ -103,7 +103,11 @@ class _ActiveMandateLookup:
         self.calls += 1
         m = self._mandate
         # Same selection the SQL performs: agent/wallet scope AND status active.
-        scoped = m.agent_id in (agent_id, None) or m.wallet_id in (wallet_id, None)
+        # None-tolerant match — an unprovided id does not constrain, but a
+        # provided id that mismatches the mandate's id excludes the row.
+        scoped = (agent_id is None or m.agent_id == agent_id) or (
+            wallet_id is None or m.wallet_id == wallet_id
+        )
         if not scoped:
             return None
         if m.status != MandateStatus.ACTIVE:
@@ -154,14 +158,12 @@ class _AsyncPolicyStore:
     def __init__(self, policy: SpendingPolicy) -> None:
         self._policies = {policy.agent_id: policy}
 
+    # Only fetch_policy + record_spend are exercised by the orchestrator path
+    # under test; set_policy/delete_policy from the AsyncPolicyStore protocol
+    # are intentionally omitted (not part of this e2e).
+
     async def fetch_policy(self, agent_id: str) -> SpendingPolicy | None:
         return self._policies.get(agent_id)
-
-    async def set_policy(self, agent_id: str, policy: SpendingPolicy) -> None:
-        self._policies[agent_id] = policy
-
-    async def delete_policy(self, agent_id: str) -> bool:
-        return self._policies.pop(agent_id, None) is not None
 
     async def record_spend(self, agent_id: str, amount: Decimal) -> SpendingPolicy:
         policy = self._policies[agent_id]
@@ -315,8 +317,7 @@ async def test_moat_revoke_blocks_next_payment_no_money_moved(wired):
     # 1) Authority present → payment goes through and money moves once.
     first = await orch.execute_chain(_chain(amount="40", mandate_id="md_pre_revoke"))
     assert first.status == "submitted"
-    assert chain_executor.dispatch_payment.await_count == 1
-    dispatches_before_revoke = chain_executor.dispatch_payment.await_count
+    chain_executor.dispatch_payment.assert_awaited_once()
 
     # 2) REVOKE the mandate through its real lifecycle transition. After this,
     #    is_active is False and the lookup (status='active' filter) returns None.
@@ -335,9 +336,9 @@ async def test_moat_revoke_blocks_next_payment_no_money_moved(wired):
     # the MANDATE_VALIDATION audit entry below.
     assert exc_info.value.rule_id == "no_active_spending_mandate"
 
-    # NO MONEY MOVED on the revoked attempt: dispatch count unchanged, no new
-    # ledger entry beyond the pre-revoke payment.
-    assert chain_executor.dispatch_payment.await_count == dispatches_before_revoke
+    # NO MONEY MOVED on the revoked attempt: still exactly one dispatch (the
+    # pre-revoke payment), no new ledger entry.
+    chain_executor.dispatch_payment.assert_awaited_once()
     assert len(ledger.entries) == 1  # only the pre-revoke payment persisted
 
     # The lookup was actually consulted for the revoked attempt.
@@ -351,3 +352,24 @@ async def test_moat_revoke_blocks_next_payment_no_money_moved(wired):
     )
     assert revoke_entry.success is False
     assert revoke_entry.details.get("reason") == "no_active_spending_mandate"
+
+
+@pytest.mark.asyncio
+async def test_lookup_scope_filter_excludes_wrong_subject(real_mandate):
+    """Lock the _ActiveMandateLookup scope filter.
+
+    With BOTH a wrong agent_id and a wrong wallet_id, an ACTIVE mandate must
+    still be excluded (returns None) — guarding against the all-True scope bug
+    where ``None`` membership made the filter a no-op.
+    """
+    lookup = _ActiveMandateLookup(real_mandate)  # ACTIVE mandate
+
+    # Correct ids → returned.
+    assert await lookup.get_active_mandate(agent_id=AGENT_ID, wallet_id=WALLET_ID) is real_mandate
+    # Both ids wrong → excluded by the scope filter (not by status).
+    assert (
+        await lookup.get_active_mandate(
+            agent_id="agt_wrong", wallet_id="wal_wrong"
+        )
+        is None
+    )
