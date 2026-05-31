@@ -1536,6 +1536,23 @@ class DependencyContainer:
         return SpendingMandateLookup(dsn=dsn)
 
     @cached_property
+    def provider_registry(self) -> Any:
+        """Unified provider layer: every external money/identity service behind
+        a typed capability port.
+
+        Single env-gated construction point.  Real adapters activate only when
+        their keys are set; otherwise a SANDBOX impl backs the capability so dev
+        and tests run green without live keys (fail-closed in production for
+        required capabilities).  Execution routes resolve their capability port
+        from this one instance rather than constructing vendor clients ad-hoc,
+        so the authority core is never bypassed — adapters only execute what the
+        orchestrator already authorized.
+        """
+        from server.providers.registry import ProviderRegistry
+
+        return ProviderRegistry.from_settings(self._settings)
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
@@ -1776,6 +1793,9 @@ class DependencyContainer:
 # Global container instance (initialized in create_app)
 _container: DependencyContainer | None = None
 
+# Fallback provider registry for when the container is not initialized (tests).
+_fallback_provider_registry: Any | None = None
+
 
 def get_container() -> DependencyContainer:
     """Get the global dependency container."""
@@ -1799,5 +1819,80 @@ def init_container(
 
 def reset_container() -> None:
     """Reset the global container (for testing)."""
-    global _container
+    global _container, _fallback_provider_registry
     _container = None
+    _fallback_provider_registry = None
+
+
+# ---------------------------------------------------------------------------
+# Provider-layer FastAPI dependencies
+#
+# Execution routes resolve their capability port through these so every
+# external money/identity call goes through the one env-gated registry — and
+# only AFTER the orchestrator has authorized the movement.  The ports execute;
+# they never authorize, initiate, or settle on their own.
+# ---------------------------------------------------------------------------
+
+
+def get_provider_registry() -> Any:
+    """Return the singleton :class:`ProviderRegistry`.
+
+    Prefers the global container's instance (the production path).  When the
+    container has not been initialized (e.g. an app constructed via
+    ``create_app()`` without running the lifespan startup, as in tests), build
+    and cache a registry from loaded settings so the provider-layer routes stay
+    reachable without coupling to container init order.
+    """
+    global _fallback_provider_registry
+    if _container is not None:
+        return _container.provider_registry
+    if _fallback_provider_registry is None:
+        from server.providers.registry import ProviderRegistry
+
+        _fallback_provider_registry = ProviderRegistry.from_settings(load_settings())
+    return _fallback_provider_registry
+
+
+def get_custody_port() -> Any:
+    """CustodyPort (Turnkey MPC / sandbox)."""
+    return get_provider_registry().custody()
+
+
+def get_onramp_port() -> Any:
+    """OnrampPort (Conduit / Turnkey / Onramper / Transak / Daimo / sandbox)."""
+    return get_provider_registry().onramp()
+
+
+def get_offramp_port() -> Any:
+    """OfframpPort (Circle CPN / Increase / Onramper / Transak / Coinbase / sandbox)."""
+    return get_provider_registry().offramp()
+
+
+def get_fiat_account_port() -> Any:
+    """FiatAccountPort (Lithic / Dakota / Increase / sandbox)."""
+    return get_provider_registry().fiat_account()
+
+
+def get_swap_port() -> Any:
+    """SwapPort (LI.FI / 0x / Jupiter / sandbox)."""
+    return get_provider_registry().swap()
+
+
+def get_bridge_port() -> Any:
+    """BridgePort (Squid / CCTP v2 / sandbox)."""
+    return get_provider_registry().bridge()
+
+
+def get_card_port() -> Any:
+    """CardPort (Crossmint / Lithic / Stripe Issuing / sandbox)."""
+    return get_provider_registry().card()
+
+
+def get_kyc_port() -> Any:
+    """KycPort (Didit / sandbox)."""
+    return get_provider_registry().kyc()
+
+
+def get_kyt_port() -> Any:
+    """KytPort (OpenSanctions / Didit / sandbox)."""
+    return get_provider_registry().kyt()

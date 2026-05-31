@@ -19,7 +19,6 @@ Design rules:
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any, Protocol, runtime_checkable
 
 from .types import (

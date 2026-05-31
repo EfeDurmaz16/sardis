@@ -116,3 +116,101 @@ class TurnkeyOnrampAdapter:
             status=status.status,
             raw={},
         )
+
+
+class TurnkeyCustodyAdapter:
+    """:class:`CustodyPort` over the Turnkey MPC client.
+
+    **Non-custodial.**  Turnkey signs/derives for a wallet the user controls;
+    the adapter NEVER initiates or broadcasts a transfer.  ``sign_payload``
+    only stamps an *already-authorized* payload the orchestrator handed it
+    (the orchestrator's Phase-3 chain executor builds the unsigned tx and
+    broadcasts the returned signature) — no policy, KYA, or mandate logic
+    lives here.
+
+    ``wallet_ref`` is the Turnkey ``walletId``.  The signing address /
+    public key is supplied per call via ``payload["sign_with"]`` (the
+    orchestrator already resolved which key it authorized).
+    """
+
+    capability = ProviderCapability.CUSTODY
+
+    def __init__(self, client: Any, *, sandbox: bool = False) -> None:
+        self._client = client
+        self._sandbox = sandbox
+
+    @property
+    def provider(self) -> str:
+        return "turnkey"
+
+    @property
+    def custody_model(self) -> CustodyModel:
+        return CustodyModel.NON_CUSTODIAL
+
+    @property
+    def sandbox(self) -> bool:
+        return self._sandbox
+
+    async def get_address(self, wallet_ref: str, *, chain: str) -> str:
+        try:
+            wallet = await self._client.get_wallet(wallet_ref)
+        except Exception as exc:  # noqa: BLE001 - normalized below
+            raise ProviderError(
+                f"turnkey_get_wallet_failed: {exc}",
+                provider=self.provider,
+                capability=self.capability,
+                retryable=True,
+            ) from exc
+        # Turnkey returns wallet accounts; pick the first matching address/pubkey.
+        accounts = (
+            wallet.get("wallet", {}).get("accounts")
+            or wallet.get("accounts")
+            or []
+        )
+        for acct in accounts:
+            addr = acct.get("address") or acct.get("publicKey")
+            if addr:
+                return addr
+        raise ProviderError(
+            "turnkey_no_account_for_wallet",
+            provider=self.provider,
+            capability=self.capability,
+        )
+
+    async def sign_payload(
+        self, wallet_ref: str, *, payload: dict[str, Any]
+    ) -> ProviderResult:
+        sign_with = payload.get("sign_with") or payload.get("address")
+        unsigned = payload.get("unsigned_transaction") or payload.get("unsignedTransaction")
+        if not sign_with or not unsigned:
+            raise ProviderError(
+                "turnkey_sign_payload_missing_fields: require sign_with + unsigned_transaction",
+                provider=self.provider,
+                capability=self.capability,
+            )
+        tx_type = payload.get("transaction_type", "TRANSACTION_TYPE_ETHEREUM")
+        try:
+            result = await self._client.sign_transaction(
+                wallet_id=wallet_ref,
+                unsigned_transaction=unsigned,
+                sign_with=sign_with,
+                transaction_type=tx_type,
+            )
+        except Exception as exc:  # noqa: BLE001 - normalized below
+            raise ProviderError(
+                f"turnkey_sign_failed: {exc}",
+                provider=self.provider,
+                capability=self.capability,
+                retryable=True,
+            ) from exc
+        signed = result.get("signedTransaction") if isinstance(result, dict) else None
+        return ProviderResult(
+            provider=self.provider,
+            capability=self.capability,
+            custody_model=self.custody_model,
+            sandbox=self.sandbox,
+            reference=sign_with,
+            status="signed" if signed else "failed",
+            ok=bool(signed),
+            raw=dict(result) if isinstance(result, dict) else {"result": result},
+        )

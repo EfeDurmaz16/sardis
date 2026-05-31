@@ -29,12 +29,14 @@ from .adapters import (
     CircleCpnOfframpAdapter,
     ConduitOnrampAdapter,
     LithicFiatAccountAdapter,
+    TurnkeyCustodyAdapter,
     TurnkeyOnrampAdapter,
 )
 from .ports.capabilities import (
     BridgePort,
     CapabilityPort,
     CardPort,
+    CustodyPort,
     FiatAccountPort,
     KycPort,
     KytPort,
@@ -128,6 +130,13 @@ class ProviderRegistry:
         ports: dict[ProviderCapability, CapabilityPort] = {}
         owned: list[Any] = []
 
+        # --- Custody (Turnkey MPC) ------------------------------------
+        # Required-in-production: signs already-authorized payloads for a
+        # wallet the user controls (non-custodial).  Env-gated; when keys are
+        # absent the registry falls back to the SIMULATED sandbox custody port
+        # in non-prod and fails closed in prod (handled by .get()).
+        cls._build_custody(env=env, is_production=is_production, ports=ports, owned=owned)
+
         # --- Fiat account (Lithic) ------------------------------------
         storage_url = env.get("DATABASE_URL", "") or getattr(settings, "database_url", "") or ""
         use_postgres = storage_url.startswith(("postgresql://", "postgres://"))
@@ -196,6 +205,40 @@ class ProviderRegistry:
         cls._build_compliance(env=env, is_production=is_production, ports=ports, owned=owned)
 
         return cls(is_production=is_production, ports=ports, owned_clients=owned)
+
+    @staticmethod
+    def _build_custody(
+        *,
+        env: Mapping[str, str],
+        is_production: bool,
+        ports: dict[ProviderCapability, CapabilityPort],
+        owned: list[Any],
+    ) -> None:
+        # Custody/signing providers. First configured wins. Turnkey is primary
+        # (MPC, non-custodial). The signing key client is a thin httpx wrapper
+        # the registry owns and closes.
+        if ProviderCapability.CUSTODY in ports:
+            return
+
+        api_key = env.get("TURNKEY_API_PUBLIC_KEY") or env.get("TURNKEY_API_KEY")
+        api_private = env.get("TURNKEY_API_PRIVATE_KEY")
+        org_id = env.get("TURNKEY_ORGANIZATION_ID")
+        if api_key and api_private and org_id:
+            try:
+                from sardis.wallet.turnkey_client import TurnkeyClient
+
+                client = TurnkeyClient(
+                    api_key=api_key,
+                    api_private_key=api_private,
+                    organization_id=org_id,
+                )
+                owned.append(client)
+                ports[ProviderCapability.CUSTODY] = TurnkeyCustodyAdapter(
+                    client, sandbox=not is_production
+                )
+                logger.info("ProviderRegistry: CUSTODY -> turnkey")
+            except Exception as exc:  # noqa: BLE001 - optional path
+                logger.warning("ProviderRegistry: turnkey custody init failed: %s", exc)
 
     @staticmethod
     def _build_compliance(
@@ -853,6 +896,9 @@ class ProviderRegistry:
         return capability in self._real
 
     # Typed convenience accessors (narrow the protocol for callers/IDEs).
+    def custody(self) -> CustodyPort:
+        return self.get(ProviderCapability.CUSTODY)  # type: ignore[return-value]
+
     def fiat_account(self) -> FiatAccountPort:
         return self.get(ProviderCapability.FIAT_ACCOUNT)  # type: ignore[return-value]
 

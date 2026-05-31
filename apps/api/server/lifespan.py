@@ -691,6 +691,19 @@ async def lifespan(app: FastAPI):
         except (RuntimeError, OSError, ValueError, AttributeError) as e:
             logger.warning(f"Error closing merchant webhook service: {e}")
 
+    # Close the provider-layer registry's owned httpx clients (only if the
+    # registry was actually constructed — accessing the cached_property here
+    # would otherwise build it just to tear it down).
+    try:
+        from server.dependencies import get_container
+
+        container = get_container()
+        if "provider_registry" in container.__dict__:
+            await container.provider_registry.aclose()
+            logger.info("Provider registry clients closed")
+    except (RuntimeError, OSError, ValueError, AttributeError) as e:
+        logger.warning(f"Error closing provider registry: {e}")
+
     if hasattr(app.state, "cache_service"):
         try:
             await app.state.cache_service.close()

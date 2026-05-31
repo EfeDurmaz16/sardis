@@ -10,7 +10,6 @@ USDC to the destination wallet; Sardis never holds the funds.
 
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any
 
 from ...services.conduit_onramp import ConduitOnrampService

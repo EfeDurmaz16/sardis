@@ -138,6 +138,7 @@ from .route_registry.providers import (
     register_partner_card_webhook_routes,
     register_polar_webhook_routes,
     register_provider_integration_routes,
+    register_provider_layer_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
@@ -696,6 +697,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_faucet_routes(app)
 
     register_provider_integration_routes(app, settings=settings)
+
+    register_provider_layer_routes(app)
 
     treasury_runtime = configure_treasury_runtime(
         settings,

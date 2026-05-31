@@ -225,6 +225,65 @@ class TestRegistryFailClosed:
 # ---------------------------------------------------------------------------
 
 
+class TestTurnkeyCustodyAdapter:
+    """CustodyPort: signs an already-authorized payload; never initiates."""
+
+    @pytest.mark.asyncio
+    async def test_sign_payload_delegates_and_normalizes(self):
+        from server.providers.adapters import TurnkeyCustodyAdapter
+
+        captured = {}
+
+        class _FakeClient:
+            async def sign_transaction(
+                self, *, wallet_id, unsigned_transaction, sign_with, transaction_type
+            ):
+                captured.update(
+                    wallet_id=wallet_id,
+                    unsigned=unsigned_transaction,
+                    sign_with=sign_with,
+                    tx_type=transaction_type,
+                )
+                return {"signedTransaction": "deadbeef"}
+
+        adapter = TurnkeyCustodyAdapter(_FakeClient(), sandbox=False)
+        assert adapter.custody_model == CustodyModel.NON_CUSTODIAL
+        result = await adapter.sign_payload(
+            "wallet_1",
+            payload={"sign_with": "0xabc", "unsigned_transaction": "02f0"},
+        )
+        assert result.ok is True
+        assert result.status == "signed"
+        assert captured["wallet_id"] == "wallet_1"
+        assert captured["sign_with"] == "0xabc"
+
+    @pytest.mark.asyncio
+    async def test_sign_payload_rejects_missing_fields(self):
+        from server.providers.adapters import TurnkeyCustodyAdapter
+        from server.providers.ports import ProviderError
+
+        adapter = TurnkeyCustodyAdapter(object(), sandbox=False)
+        with pytest.raises(ProviderError):
+            await adapter.sign_payload("wallet_1", payload={"sign_with": "0xabc"})
+
+    def test_registry_wires_custody_when_turnkey_keys_set(self):
+        # Turnkey's client derives a P-256 key from the hex private key at
+        # construction, so the fake must be valid hex (not a money secret).
+        fake_priv = "01" * 32
+        reg = ProviderRegistry.from_settings(
+            _dev_settings(),
+            environ={
+                "TURNKEY_API_PUBLIC_KEY": "pk_test",
+                "TURNKEY_API_PRIVATE_KEY": fake_priv,
+                "TURNKEY_ORGANIZATION_ID": "org_test",
+            },
+        )
+        assert reg.has_real(ProviderCapability.CUSTODY)
+        cust = reg.get(ProviderCapability.CUSTODY)
+        assert cust.provider == "turnkey"
+        assert cust.custody_model == CustodyModel.NON_CUSTODIAL
+
+
 class TestLithicAdapterNormalization:
     @pytest.mark.asyncio
     async def test_create_payout_uses_minor_units(self):
@@ -277,8 +336,8 @@ class TestLithicAdapterNormalization:
         """Adapter webhook verification uses the client's Svix verifier."""
         import base64
 
-        from server.providers.lithic_treasury import LithicTreasuryClient
         from server.providers.adapters import LithicFiatAccountAdapter
+        from server.providers.lithic_treasury import LithicTreasuryClient
 
         secret = "whsec_" + base64.b64encode(b"sekret").decode()
         client = LithicTreasuryClient(api_key="k", webhook_secret=secret)

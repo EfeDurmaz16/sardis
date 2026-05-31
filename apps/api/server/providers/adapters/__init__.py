@@ -9,11 +9,12 @@ from __future__ import annotations
 from .circle import CircleCpnOfframpAdapter
 from .conduit import ConduitOnrampAdapter
 from .lithic import LithicFiatAccountAdapter
-from .turnkey import TurnkeyOnrampAdapter
+from .turnkey import TurnkeyCustodyAdapter, TurnkeyOnrampAdapter
 
 __all__ = [
     "CircleCpnOfframpAdapter",
     "ConduitOnrampAdapter",
     "LithicFiatAccountAdapter",
+    "TurnkeyCustodyAdapter",
     "TurnkeyOnrampAdapter",
 ]
