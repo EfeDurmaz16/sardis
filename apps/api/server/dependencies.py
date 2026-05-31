@@ -138,6 +138,25 @@ class PaymentRuntimeConfig:
 
 
 @dataclass(frozen=True)
+class MoatPortsConfig:
+    """Resolved optional execution-authority ports for the orchestrator.
+
+    These are the "moat" enforcement hooks: spending-mandate revocation lookup,
+    KYA, sanctions screening, durable dedup, the settlement advisory lock, and
+    the durable reconciliation queue.  When omitted the orchestrator silently
+    falls back to inert / in-memory behaviour, so they MUST be wired in
+    production.
+    """
+
+    kya_service: Any
+    sanctions_service: Any
+    dedup_store: Any
+    spending_mandate_lookup: Any
+    settlement_lock: Any | None
+    reconciliation_queue: Any | None
+
+
+@dataclass(frozen=True)
 class APISupportServicesConfig:
     """Resolved API support services exposed through app.state."""
 
@@ -688,6 +707,113 @@ def configure_core_services(
     )
 
 
+def _build_redis_client(redis_url: str | None) -> Any | None:
+    """Construct an async Redis client from a URL, or ``None`` if unavailable.
+
+    Connection is lazy (``redis.asyncio.from_url`` does not connect eagerly), so
+    this is safe to call from a synchronous DI accessor.
+    """
+    if not redis_url:
+        return None
+    try:
+        import redis.asyncio as aioredis
+
+        return aioredis.from_url(redis_url, decode_responses=True)
+    except Exception as e:  # pragma: no cover - redis import/url failure
+        logger.warning("Redis client unavailable for dedup store: %s", e)
+        return None
+
+
+def build_moat_ports(
+    settings: Any,
+    *,
+    database_url: str,
+    use_postgres: bool,
+    kya_service: Any,
+    sanctions_service: Any,
+    redis_url: str | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> MoatPortsConfig:
+    """Construct the orchestrator's execution-authority ("moat") ports.
+
+    Single source of truth shared by ``configure_payment_runtime`` (the prod
+    path used by ``create_app``) and ``DependencyContainer.payment_orchestrator``
+    so the moat cannot drift inert in one path while being wired in the other.
+
+    - ``spending_mandate_lookup``: DB-backed revocation/scope enforcement.
+    - ``dedup_store``: Redis (durable) when a Redis URL is available, else
+      in-memory (dev only). Fail-closed in production: a non-durable dedup
+      store would leave duplicate-payment protection process-local, so we
+      raise rather than silently degrade on a money path.
+    - ``settlement_lock`` / ``reconciliation_queue``: Postgres-backed when
+      running on Postgres, else ``None`` (dev/in-memory).
+
+    ``redis_url`` is authoritative when explicitly passed (the resolved value
+    from ``create_app`` / the container). Only fall back to the environment
+    triplet when it was not supplied.
+    """
+    env = environ if environ is not None else os.environ
+
+    from sardis.core.dedup_store import InMemoryDedupStore, RedisDedupStore
+    from sardis.core.spending_mandate_lookup import SpendingMandateLookup
+
+    resolved_redis_url = redis_url if redis_url is not None else (
+        env.get("SARDIS_REDIS_URL")
+        or env.get("REDIS_URL")
+        or env.get("UPSTASH_REDIS_URL")
+    )
+    redis_client = _build_redis_client(resolved_redis_url)
+    dedup_store: Any = (
+        RedisDedupStore(redis_client) if redis_client is not None else InMemoryDedupStore()
+    )
+
+    # Fail-closed: production/staging MUST use a durable, shared dedup store.
+    # A silent InMemoryDedupStore fallback (missing URL OR failed client
+    # construction) would make duplicate-payment protection process-local.
+    # configure_payment_runtime runs before the cache backend is resolved, so
+    # this guard is the moat's own enforcement point.
+    if isinstance(dedup_store, InMemoryDedupStore) and getattr(
+        settings, "is_production", False
+    ):
+        raise RuntimeError(
+            "CRITICAL: durable Redis dedup store required in production — "
+            "set SARDIS_REDIS_URL and install the redis extra "
+            "(pip install 'sardis[redis]')."
+        )
+
+    # In Postgres mode, wire the DB-backed lookup so revocation/scope/limit
+    # enforcement is active.  In dev/in-memory mode the lookup has no table to
+    # read and its get_active_mandate ALWAYS returns None — and the orchestrator
+    # now fails CLOSED on a None from a configured lookup.  Injecting it in dev
+    # would therefore deny EVERY local/in-memory payment as
+    # ``no_active_spending_mandate``.  So we leave it unset in dev (mandate
+    # enforcement is skipped locally, matching prior dev behavior); production
+    # always runs on Postgres and gets the real lookup.
+    spending_mandate_lookup: Any | None = (
+        SpendingMandateLookup(dsn=database_url) if use_postgres else None
+    )
+
+    settlement_lock: Any | None = None
+    reconciliation_queue: Any | None = None
+    if use_postgres:
+        from sardis.core.database import LazyPool
+        from sardis.core.reconciliation_queue_postgres import PostgresReconciliationQueue
+        from sardis.core.settlement_lock import SettlementLock
+
+        pool = LazyPool()
+        settlement_lock = SettlementLock(pool)
+        reconciliation_queue = PostgresReconciliationQueue(pool)
+
+    return MoatPortsConfig(
+        kya_service=kya_service,
+        sanctions_service=sanctions_service,
+        dedup_store=dedup_store,
+        spending_mandate_lookup=spending_mandate_lookup,
+        settlement_lock=settlement_lock,
+        reconciliation_queue=reconciliation_queue,
+    )
+
+
 def configure_payment_runtime(
     settings: Any,
     *,
@@ -704,6 +830,10 @@ def configure_payment_runtime(
     replay_cache_cls: Any | None = None,
     mandate_verifier_cls: Any | None = None,
     payment_orchestrator_cls: Any | None = None,
+    kya_service: Any | None = None,
+    sanctions_service: Any | None = None,
+    group_policy: Any | None = None,
+    redis_url: str | None = None,
 ) -> PaymentRuntimeConfig:
     """Create mandate verification and payment orchestration primitives."""
     if (
@@ -750,11 +880,41 @@ def configure_payment_runtime(
         archive=archive,
         identity_registry=identity_registry,
     )
+
+    if group_policy is None:
+        try:
+            from sardis.core.agent_groups import AgentGroupRepository
+            from sardis.core.group_policy import GroupPolicyEvaluator
+
+            group_repo = AgentGroupRepository(
+                dsn=database_url if use_postgres else "memory://"
+            )
+            group_policy = GroupPolicyEvaluator(group_repo=group_repo)
+        except Exception as e:
+            logger.warning("Group policy evaluator unavailable: %s", e)
+            group_policy = None
+
+    moat = build_moat_ports(
+        settings,
+        database_url=database_url,
+        use_postgres=use_postgres,
+        kya_service=kya_service,
+        sanctions_service=sanctions_service,
+        redis_url=redis_url,
+    )
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
         chain_executor=chain_executor,
         ledger=ledger_store,
+        group_policy=group_policy,
+        kya_service=moat.kya_service,
+        sanctions_service=moat.sanctions_service,
+        dedup_store=moat.dedup_store,
+        spending_mandate_lookup=moat.spending_mandate_lookup,
+        settlement_lock=moat.settlement_lock,
+        reconciliation_queue=moat.reconciliation_queue,
     )
 
     return PaymentRuntimeConfig(
@@ -1356,15 +1516,51 @@ class DependencyContainer:
             return None
 
     @cached_property
+    def sanctions_service(self) -> Any:
+        """Get sanctions screening service (fail-fast in production)."""
+        return configure_sanctions_service(self._settings).service
+
+    @cached_property
+    def kya_service(self) -> Any:
+        """Get KYA (know-your-agent) verification service."""
+        from sardis.compliance import create_kya_service
+        liveness_timeout = int(os.getenv("SARDIS_KYA_LIVENESS_TIMEOUT_SECONDS", "300"))
+        dsn = self.database_url if self.use_postgres else "memory://"
+        return create_kya_service(liveness_timeout=liveness_timeout, dsn=dsn)
+
+    @cached_property
+    def spending_mandate_lookup(self) -> Any:
+        """Get DB-backed spending-mandate lookup (revocation/scope enforcement)."""
+        from sardis.core.spending_mandate_lookup import SpendingMandateLookup
+        dsn = self.database_url if self.use_postgres else "memory://"
+        return SpendingMandateLookup(dsn=dsn)
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
-        """Get payment orchestrator."""
+        """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
+
+        moat = build_moat_ports(
+            self._settings,
+            database_url=self.database_url,
+            use_postgres=self.use_postgres,
+            kya_service=self.kya_service,
+            sanctions_service=self.sanctions_service,
+            redis_url=self._config.redis_url,
+        )
+
         return PaymentOrchestrator(
             wallet_manager=self.wallet_manager,
             compliance=self.compliance_engine,
             chain_executor=self._chain_executor,
             ledger=self.ledger_store,
             group_policy=self.group_policy,
+            kya_service=moat.kya_service,
+            sanctions_service=moat.sanctions_service,
+            dedup_store=moat.dedup_store,
+            spending_mandate_lookup=moat.spending_mandate_lookup,
+            settlement_lock=moat.settlement_lock,
+            reconciliation_queue=moat.reconciliation_queue,
         )
 
     # =========================================================================

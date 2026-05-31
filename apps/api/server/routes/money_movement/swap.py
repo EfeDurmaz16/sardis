@@ -9,11 +9,13 @@ import logging
 import os
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from server.authz import require_principal
+
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_principal)])
 
 
 # ── Request/Response Models ──────────────────────────────────────────────

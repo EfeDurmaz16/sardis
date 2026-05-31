@@ -70,13 +70,15 @@ class TestMVPPathPolicyEnforcement:
 
 
 class TestA2APayPathPolicyEnforcement:
-    """A2A routes use the control plane with the policy adapter."""
+    """A2A routes use the PaymentOrchestrator (single fail-closed path)."""
 
-    def test_a2a_uses_policy_engine_adapter_for_pay_and_messages(self) -> None:
+    def test_a2a_uses_orchestrator_for_pay_and_messages(self) -> None:
+        # Policy is enforced inside PaymentOrchestrator.execute_chain for both
+        # a2a payment sites, replacing the deprecated ControlPlane.submit path.
         source = _source("server.routes.protocol.a2a")
-        assert source.count("ControlPlane(") >= 2
-        assert source.count("PolicyEngineAdapter(deps.wallet_manager)") >= 2
-        assert source.count("wallet_manager_not_configured") >= 2
+        assert "ControlPlane(" not in source
+        assert source.count("execute_chain(") >= 2
+        assert source.count("build_mandate_chain(") >= 2
 
     def test_a2a_records_spend_after_successful_paths(self) -> None:
         source = _source("server.routes.protocol.a2a")
@@ -84,7 +86,9 @@ class TestA2APayPathPolicyEnforcement:
 
     def test_a2a_denials_are_fail_closed(self) -> None:
         source = _source("server.routes.protocol.a2a")
-        assert "IntentStatus.REJECTED" in source
+        # Orchestrator policy/compliance violations are mapped to 403 at both sites.
+        assert "PolicyViolationError" in source
+        assert "ComplianceViolationError" in source
         assert "policy_denied" in source
         assert "HTTP_403_FORBIDDEN" in source
 

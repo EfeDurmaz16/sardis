@@ -84,10 +84,12 @@ IMPORTANT: Never bypass this orchestrator to execute payments directly.
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Any, Protocol
 
@@ -103,6 +105,39 @@ logger = logging.getLogger(__name__)
 # instances so that custom handlers registered at app startup apply globally.
 _handler_registry = StateHandlerRegistry()
 register_default_handlers(_handler_registry)
+
+
+def _resolve_token_amount(payment: Any) -> Decimal:
+    """Resolve a payment's amount in TOKEN (major) units as a ``Decimal``.
+
+    Money correctness: typed :class:`PaymentMandate` objects (factory / a2a /
+    ap2 / pay paths) carry money ONLY as integer ``amount_minor``.  Spending
+    mandates and policies express their limits in token/major units (e.g. a
+    ``$100`` per-tx cap).  Comparing raw ``amount_minor`` (e.g. 50_000_000 for
+    50 USDC) against a token-unit limit produces false denials.
+
+    Resolution order:
+      1. A major-unit ``amount`` attribute, when present and non-None — already
+         in token units (legacy duck-typed payments).
+      2. Otherwise ``amount_minor`` converted to token units using the payment
+         token's decimals (via the token registry, falling back to 6 decimals
+         for unknown symbols — the stablecoins Sardis supports all use 6).
+    """
+    major = getattr(payment, "amount", None)
+    if major is not None:
+        return Decimal(str(major))
+
+    amount_minor = int(getattr(payment, "amount_minor", 0) or 0)
+    token = getattr(payment, "token", None)
+    decimals = 6  # default for the stablecoins Sardis supports
+    if token is not None:
+        try:
+            from sardis.core.tokens import TokenType, get_token_metadata
+
+            decimals = get_token_metadata(TokenType(str(token))).decimals
+        except (ValueError, KeyError):
+            decimals = 6
+    return Decimal(amount_minor) / (Decimal(10) ** decimals)
 
 
 # ============ Execution Phases ============
@@ -375,6 +410,14 @@ class SpendingMandateLookupPort(Protocol):
         """Return the active SpendingMandate for the agent/wallet, or None."""
         ...
 
+    async def record_spend(self, mandate_id: str, amount: Any) -> None:
+        """Persist ``amount`` (token units) against the mandate's spent_total.
+
+        Called after a successful settlement so lifetime/window caps reflect
+        the new spend.  In-memory implementations may no-op.
+        """
+        ...
+
 
 class ReconciliationQueuePort(Protocol):
     """Interface for reconciliation queue storage."""
@@ -538,6 +581,19 @@ class PaymentOrchestrator:
         else:
             logger.warning(f"[{phase.value}] mandate={mandate_id} FAILED: {error}")
 
+    async def _enqueue_reconciliation(self, entry: ReconciliationEntry) -> None:
+        """Enqueue a reconciliation entry, awaiting async implementations.
+
+        The in-memory queue's ``enqueue`` is synchronous; the Postgres queue's
+        is a coroutine.  Calling the Postgres one without awaiting would return
+        an un-awaited coroutine and silently DROP the reconciliation row (a
+        successful on-chain payment whose spend/ledger state never reconciles).
+        Normalize by awaiting whenever ``enqueue`` returns an awaitable.
+        """
+        result = self._reconciliation_queue.enqueue(entry)
+        if inspect.isawaitable(result):
+            await result
+
     async def execute_chain(self, chain: MandateChain) -> PaymentResult:
         """
         Execute a verified mandate chain.
@@ -662,89 +718,126 @@ class PaymentOrchestrator:
                     kya_level=kya_level,
                 )
 
-        # ── Phase 0.5: Spending Mandate Validation (optional, fail-fast) ─
-        # If a spending mandate lookup service is configured, check that the
-        # payment is authorized by an active spending mandate.  Mandates
-        # enforce merchant scope, amount limits, rail permissions, and
-        # approval thresholds.  If no mandate exists, pass through for
-        # backward compatibility.
+        # ── Phase 0.5: Spending Mandate Validation (FAIL-CLOSED) ─────────
+        # If a spending mandate lookup service is configured, the payment MUST
+        # be authorized by an *active* spending mandate.  The lookup only
+        # returns mandates with ``status = 'active'`` — so revoked, suspended,
+        # expired and exhausted mandates yield ``None`` and MUST be denied
+        # here (this is the whole point of revocation: authority is removed).
+        #
+        # FAIL-CLOSED CONTRACT: when a lookup is configured and no active
+        # mandate is found, we DENY before compliance / chain / ledger run.
+        # We never let a payment through on a missing mandate or a lookup
+        # error — the lookup re-raises on DB error and we convert that to a
+        # denial rather than swallowing it into an allow.
+        #
+        # NOTE: the mandate is bound to a distinct local (``spending_mandate``)
+        # rather than ``sm`` — ``sm`` is the PaymentStateMachine created above
+        # and must not be clobbered, or the later state-machine transitions
+        # would break.
         spending_mandate_id = ""
+        # Captured for Phase 3.5: after settlement we must persist the mandate
+        # spend (lifetime cap accuracy).  None when no mandate governs this pay.
+        spending_mandate_spend: Decimal | None = None
         if self._spending_mandate_lookup is not None:
             try:
                 agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
                 wallet_id = getattr(payment, 'wallet_id', None) or getattr(payment, 'subject', None)
-                sm = await self._spending_mandate_lookup.get_active_mandate(
+                spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
                     agent_id=agent_id,
                     wallet_id=wallet_id,
                 )
-                if sm is not None:
-                    from decimal import Decimal as _DecM
-                    pay_amount = getattr(payment, 'amount', None) or getattr(payment, 'amount_minor', 0)
-                    merchant_id = getattr(payment, 'merchant_id', None) or getattr(payment, 'destination', None)
-                    rail = getattr(payment, 'rail', None)
-                    chain_name = getattr(payment, 'chain', None)
-                    token = getattr(payment, 'token', None)
-
-                    check = sm.check_payment(
-                        amount=_DecM(str(pay_amount)),
-                        merchant=merchant_id,
-                        rail=rail,
-                        chain=chain_name,
-                        token=token,
-                    )
-
-                    if not check.approved:
-                        self._audit(
-                            mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                            {"spending_mandate_id": sm.id,
-                             "error_code": check.error_code,
-                             "agent_id": agent_id},
-                            check.reason,
-                        )
-                        raise MandateViolationError(
-                            check.reason,
-                            mandate_id=mandate_id,
-                            error_code=check.error_code,
-                        )
-
-                    if check.requires_approval:
-                        self._audit(
-                            mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                            {"spending_mandate_id": sm.id,
-                             "requires_approval": True,
-                             "agent_id": agent_id},
-                            "Mandate requires human approval for this amount",
-                        )
-                        raise MandateViolationError(
-                            f"Payment of {pay_amount} requires human approval "
-                            f"(threshold: {sm.approval_threshold})",
-                            mandate_id=mandate_id,
-                            error_code="MANDATE_APPROVAL_REQUIRED",
-                            requires_approval=True,
-                        )
-
-                    spending_mandate_id = sm.id
-                    self._audit(
-                        mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
-                        {"spending_mandate_id": sm.id,
-                         "mandate_version": check.mandate_version,
-                         "agent_id": agent_id},
-                    )
-                else:
-                    # No mandate found — pass through (backward compatible)
-                    self._audit(
-                        mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
-                        {"spending_mandate_id": None,
-                         "reason": "no_active_mandate_found"},
-                    )
             except MandateViolationError:
                 raise
             except Exception as e:
-                # Fail-closed: mandate validation errors = deny
+                # Fail-closed: a lookup error (e.g. DB down) is a DENY, never
+                # an allow.  Audit and reject before anything else runs.
                 self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
-                           error=f"mandate_validation_error: {e}")
+                           {"agent_id": agent_id, "wallet_id": wallet_id},
+                           error=f"mandate_lookup_error: {e}")
+                raise PolicyViolationError(
+                    f"Spending mandate lookup error (fail-closed): {e}",
+                    mandate_id=mandate_id,
+                    rule_id="spending_mandate_lookup_error",
+                )
+
+            if spending_mandate is None:
+                # FAIL-CLOSED: no active mandate (revoked / suspended / expired
+                # / exhausted / never issued).  Authority is absent — DENY.
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": None,
+                     "agent_id": agent_id,
+                     "wallet_id": wallet_id,
+                     "reason": "no_active_spending_mandate"},
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                )
+                raise PolicyViolationError(
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                    mandate_id=mandate_id,
+                    rule_id="no_active_spending_mandate",
+                )
+
+            # An active mandate exists — enforce its scope/limits/approvals.
+            # Mandate limits are in TOKEN (major) units; typed PaymentMandates
+            # only carry integer minor units.  Normalize so a 50-USDC payment
+            # is checked as 50, not 50_000_000, against a $100 cap.
+            pay_amount = _resolve_token_amount(payment)
+            merchant_id = getattr(payment, 'merchant_id', None) or getattr(payment, 'destination', None)
+            rail = getattr(payment, 'rail', None)
+            chain_name = getattr(payment, 'chain', None)
+            token = getattr(payment, 'token', None)
+
+            check = spending_mandate.check_payment(
+                amount=pay_amount,
+                merchant=merchant_id,
+                rail=rail,
+                chain=chain_name,
+                token=token,
+            )
+
+            if not check.approved:
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": spending_mandate.id,
+                     "error_code": check.error_code,
+                     "agent_id": agent_id},
+                    check.reason,
+                )
                 raise MandateViolationError(
-                    f"Mandate validation error: {e}", mandate_id=mandate_id)
+                    check.reason,
+                    mandate_id=mandate_id,
+                    error_code=check.error_code,
+                )
+
+            if check.requires_approval:
+                self._audit(
+                    mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                    {"spending_mandate_id": spending_mandate.id,
+                     "requires_approval": True,
+                     "agent_id": agent_id},
+                    "Mandate requires human approval for this amount",
+                )
+                raise MandateViolationError(
+                    f"Payment of {pay_amount} requires human approval "
+                    f"(threshold: {spending_mandate.approval_threshold})",
+                    mandate_id=mandate_id,
+                    error_code="MANDATE_APPROVAL_REQUIRED",
+                    requires_approval=True,
+                )
+
+            spending_mandate_id = spending_mandate.id
+            # Persist this amount (token units) against the mandate after
+            # settlement so lifetime/window caps reflect the new spend.
+            spending_mandate_spend = pay_amount
+            self._audit(
+                mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
+                {"spending_mandate_id": spending_mandate.id,
+                 "mandate_version": getattr(check, "mandate_version", None),
+                 "agent_id": agent_id},
+            )
 
         # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
         # This is where spending policies are enforced.  The wallet manager
@@ -899,6 +992,34 @@ class PaymentOrchestrator:
         )
         await _handler_registry.fire_on_enter(PaymentState.LOCKED, sm, record)
 
+        # ── Atomic dedup reservation (BEFORE dispatch) ──────────────────
+        # The pre-dispatch ``check()`` above and the post-settlement
+        # ``check_and_set()`` are not atomic together: two workers could both
+        # pass ``check()`` and both dispatch the same mandate. ``reserve()`` is
+        # an atomic check-and-set (Redis ``SET NX``) that lets exactly one
+        # worker proceed. This guards duplicate *executions* and is distinct
+        # from the SettlementLock, which serializes per payment_object_id (a
+        # unique per-execution id) and so cannot dedup across executions of the
+        # same mandate. Stores expose ``reserve``; tolerate ones that don't.
+        did_reserve = False
+        if hasattr(self._dedup_store, "reserve"):
+            reserved = await self._dedup_store.reserve(mandate_id)
+            did_reserve = reserved
+            if not reserved:
+                logger.warning(
+                    "Duplicate execution blocked at reserve: mandate_id=%s", mandate_id
+                )
+                # Another worker already reserved/settled. Return its result if
+                # available; otherwise reject the concurrent duplicate.
+                existing_after = await self._dedup_store.check(mandate_id)
+                if existing_after is not None:
+                    return existing_after
+                raise ChainExecutionError(
+                    "Another worker is already settling this payment (duplicate reservation)",
+                    mandate_id=mandate_id,
+                    chain=payment.chain,
+                )
+
         # Phase 3: Chain Execution (protected by SettlementLock)
         # Acquire a PostgreSQL advisory lock keyed on the payment_object_id
         # (not mandate_id — multiple payments can share one mandate).
@@ -916,7 +1037,9 @@ class PaymentOrchestrator:
                     sm, payment, payment_object_id,
                 )
         except SettlementLockError:
-            # Another worker is already settling this payment — reject
+            # Another worker is already settling this payment — reject.
+            # Do NOT release the dedup reservation: a sibling worker is
+            # legitimately mid-flight on this mandate.
             self._audit(mandate_id, ExecutionPhase.CHAIN_EXECUTION, False,
                        error="settlement_lock_contention")
             raise ChainExecutionError(
@@ -924,6 +1047,19 @@ class PaymentOrchestrator:
                 mandate_id=mandate_id,
                 chain=payment.chain,
             )
+        except Exception:
+            # Dispatch failed and NO money moved (settlement raises before/at
+            # dispatch). Release the reservation so a legitimate retry of this
+            # mandate is not blocked for the full dedup TTL.
+            if did_reserve and hasattr(self._dedup_store, "release"):
+                try:
+                    await self._dedup_store.release(mandate_id)
+                except Exception:  # pragma: no cover - best-effort cleanup
+                    logger.warning(
+                        "Failed to release dedup reservation after dispatch failure: %s",
+                        mandate_id,
+                    )
+            raise
 
         # ── Phase 3.5: Update Policy Spend State (mandatory) ────────────
         # After a successful on-chain payment, we MUST record the spend so
@@ -955,11 +1091,55 @@ class PaymentOrchestrator:
                 chain_receipt=receipt,
                 error=f"spend_state_update_failed: {e}",
             )
-            self._reconciliation_queue.enqueue(spend_recon)
+            await self._enqueue_reconciliation(spend_recon)
             logger.warning(
                 "Queued spend-state reconciliation for mandate=%s tx=%s",
                 mandate_id, receipt.tx_hash,
             )
+
+        # ── Phase 3.5a: Persist Spending-Mandate Spend (lifetime cap) ───
+        # The MANDATE_VALIDATION phase validated against ``spending_mandate.
+        # spent_total``.  Recording spend only against the policy state (above)
+        # would leave the mandate's ``spent_total`` stale, so a lifetime-budget
+        # mandate could be exceeded across payments.  Persist the spend here.
+        # Fail-safe: a persistence failure AFTER settlement must NOT crash the
+        # payment — it is queued for reconciliation instead.
+        if (
+            self._spending_mandate_lookup is not None
+            and spending_mandate_id
+            and spending_mandate_spend is not None
+            and hasattr(self._spending_mandate_lookup, "record_spend")
+        ):
+            try:
+                await self._spending_mandate_lookup.record_spend(
+                    mandate_id=spending_mandate_id,
+                    amount=spending_mandate_spend,
+                )
+                self._audit(
+                    mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, True,
+                    {"spending_mandate_id": spending_mandate_id,
+                     "mandate_spend_recorded": str(spending_mandate_spend)},
+                )
+            except Exception as e:
+                self._audit(
+                    mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, False,
+                    {"spending_mandate_id": spending_mandate_id},
+                    error=f"mandate_spend_record_failed: {e}",
+                )
+                logger.error(
+                    "Spending-mandate spend persistence failed for mandate=%s "
+                    "(spending_mandate=%s): %s",
+                    mandate_id, spending_mandate_id, e,
+                )
+                await self._enqueue_reconciliation(ReconciliationEntry(
+                    mandate_id=mandate_id,
+                    chain_tx_hash=receipt.tx_hash,
+                    chain=receipt.chain,
+                    audit_anchor=receipt.audit_anchor,
+                    payment_mandate=payment,
+                    chain_receipt=receipt,
+                    error=f"mandate_spend_persistence_failed: {e}",
+                ))
 
         # ── Phase 3.5b: Update Group Spend State ────────────────────────
         # If the agent belongs to a group, record the spend against all
@@ -1015,7 +1195,7 @@ class PaymentOrchestrator:
                 chain_receipt=receipt,
                 error=str(e),
             )
-            self._reconciliation_queue.enqueue(reconciliation_entry)
+            await self._enqueue_reconciliation(reconciliation_entry)
 
             logger.error(
                 f"Ledger append failed but payment succeeded on-chain. "
