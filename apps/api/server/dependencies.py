@@ -972,6 +972,27 @@ def configure_payment_runtime(
     except Exception as exc:  # noqa: BLE001 - engine is optional in dev
         logger.warning("recourse_engine unavailable, recourse disabled: %s", exc)
 
+    # ── Guard / RiskEngine (in-house behavioral score + external feeds) ──
+    # The RiskEngine reuses the in-house AnomalyEngine for the behavioral score
+    # and folds in any configured external FraudSignalPort feeds (Stripe Radar /
+    # SEON) resolved from the provider registry.  Env-gated through the registry:
+    # with no feed key set, the registry returns the SIMULATED sandbox feed, so
+    # the engine runs internal-only (dev/tests).  Sardis owns the decision; feeds
+    # only contribute signals.  Optional + fail-closed (a None engine simply
+    # skips Phase 1.6; a configured engine never fails open on the money path).
+    risk_engine = None
+    try:
+        from server.providers.registry import ProviderRegistry
+        from sardis.guardrails.risk_engine import RiskEngine
+
+        fraud_feed = ProviderRegistry.from_settings(settings).fraud_signal()
+        # Only wire a real cross-customer feed; the sandbox feed adds nothing
+        # (the internal AnomalyEngine already covers the no-external-feed case).
+        feeds = [fraud_feed] if not getattr(fraud_feed, "sandbox", True) else []
+        risk_engine = RiskEngine(fraud_feeds=feeds)
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("risk_engine unavailable, Guard Phase 1.6 disabled: %s", exc)
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
@@ -986,6 +1007,7 @@ def configure_payment_runtime(
         reconciliation_queue=moat.reconciliation_queue,
         approval_gate=approval_gate,
         recourse_engine=recourse_engine,
+        risk_engine=risk_engine,
     )
 
     return PaymentRuntimeConfig(
@@ -1685,6 +1707,26 @@ class DependencyContainer:
         return RecourseEngine(store=store, executor=resolve_default_executor())
 
     @cached_property
+    def risk_engine(self) -> Any:
+        """Guard / RiskEngine: in-house behavioral score + external fraud feeds.
+
+        Sardis owns the risk decision (the moat); external FraudSignalPort feeds
+        (Stripe Radar / SEON) only contribute signals.  Env-gated via the
+        registry: only a real (non-sandbox) feed is wired, otherwise the engine
+        runs internal-only off the in-house AnomalyEngine — so dev/tests run with
+        no keys.
+        """
+        from sardis.guardrails.risk_engine import RiskEngine
+
+        try:
+            feed = self.provider_registry.fraud_signal()
+            feeds = [feed] if not getattr(feed, "sandbox", True) else []
+        except Exception as exc:  # noqa: BLE001 - feed is optional
+            logger.warning("risk_engine: no external fraud feed resolved: %s", exc)
+            feeds = []
+        return RiskEngine(fraud_feeds=feeds)
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
@@ -1712,6 +1754,7 @@ class DependencyContainer:
             reconciliation_queue=moat.reconciliation_queue,
             approval_gate=self.approval_gate,
             recourse_engine=self.recourse_engine,
+            risk_engine=self.risk_engine,
         )
 
     # =========================================================================
