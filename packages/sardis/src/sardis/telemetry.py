@@ -27,10 +27,13 @@ logger = logging.getLogger("sardis_sdk.telemetry")
 class TelemetryConfig:
     """Configuration for SDK telemetry.
 
-    All fields can be overridden via environment variables.
+    Telemetry is OPT-IN: it is OFF by default and only activates when the
+    consumer explicitly opts in (``SARDIS_TELEMETRY_ENABLED=true`` or
+    ``TelemetryConfig(enabled=True)``). All fields can be overridden via
+    environment variables.
     """
 
-    enabled: bool = True
+    enabled: bool = False
     agent_id: str | None = None
     agent_name: str = "unnamed-agent"
     framework: str | None = None
@@ -41,8 +44,9 @@ class TelemetryConfig:
     @classmethod
     def from_env(cls, **overrides: Any) -> TelemetryConfig:
         """Build config from environment variables, with keyword overrides taking precedence."""
-        enabled_str = os.environ.get("SARDIS_TELEMETRY_ENABLED", "true")
-        enabled = enabled_str.lower() not in ("false", "0", "no", "off")
+        # Opt-in: default OFF. Only the explicit truthy values turn it on.
+        enabled_str = os.environ.get("SARDIS_TELEMETRY_ENABLED", "false")
+        enabled = enabled_str.lower() in ("true", "1", "yes", "on")
 
         agent_id = os.environ.get("SARDIS_AGENT_ID")
         agent_name = os.environ.get("SARDIS_AGENT_NAME", "unnamed-agent")

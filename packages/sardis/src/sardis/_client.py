@@ -51,6 +51,7 @@ from typing import (
 
 import httpx
 
+from ._version import __version__
 from .models.errors import (
     APIError,
     AuthenticationError,
@@ -98,8 +99,9 @@ logger = logging.getLogger("sardis_sdk")
 # Type variable for generic responses
 T = TypeVar("T")
 
-# SDK Version
-__version__ = "1.1.0"
+# SDK Version is sourced from the single source of truth (sardis._version),
+# which is kept in lockstep with [project].version in pyproject.toml. Do NOT
+# hardcode a version string here — it drifted (1.1.0 vs 2.0.0a0) before.
 
 
 class LogLevel(str, Enum):
@@ -389,8 +391,11 @@ class BaseClient:
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
-            telemetry: Telemetry configuration. True for defaults, False to disable,
-                       or a TelemetryConfig instance for custom settings.
+            telemetry: Telemetry is OPT-IN (off by default). True to opt in
+                       with env-derived defaults, False to disable, or a
+                       TelemetryConfig instance for custom settings. None (the
+                       default) reads SARDIS_TELEMETRY_ENABLED and stays off
+                       unless explicitly enabled.
         """
         if not api_key:
             raise ValueError("API key is required")
@@ -423,10 +428,15 @@ class BaseClient:
         self._token_refresh_callback = token_refresh_callback
         self._token_info: TokenInfo | None = None
 
-        # Configure telemetry
+        # Configure telemetry. Telemetry is OPT-IN: the default (telemetry=None)
+        # reads env and stays OFF unless SARDIS_TELEMETRY_ENABLED is truthy.
+        # Passing telemetry=True is an explicit opt-in and force-enables it;
+        # telemetry=False force-disables; a TelemetryConfig is used as-is.
         if telemetry is False:
             self._telemetry_config: TelemetryConfig | None = None
-        elif telemetry is True or telemetry is None:
+        elif telemetry is True:
+            self._telemetry_config = TelemetryConfig.from_env(enabled=True)
+        elif telemetry is None:
             self._telemetry_config = TelemetryConfig.from_env()
         else:
             self._telemetry_config = telemetry
@@ -615,8 +625,11 @@ class AsyncSardis(BaseClient):
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
-            telemetry: Telemetry configuration. True for defaults, False to disable,
-                       or a TelemetryConfig instance for custom settings.
+            telemetry: Telemetry is OPT-IN (off by default). True to opt in
+                       with env-derived defaults, False to disable, or a
+                       TelemetryConfig instance for custom settings. None (the
+                       default) reads SARDIS_TELEMETRY_ENABLED and stays off
+                       unless explicitly enabled.
         """
         super().__init__(
             api_key=api_key,
@@ -1166,8 +1179,11 @@ class Sardis(BaseClient):
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
             default_headers: Additional headers to include in all requests
-            telemetry: Telemetry configuration. True for defaults, False to disable,
-                       or a TelemetryConfig instance for custom settings.
+            telemetry: Telemetry is OPT-IN (off by default). True to opt in
+                       with env-derived defaults, False to disable, or a
+                       TelemetryConfig instance for custom settings. None (the
+                       default) reads SARDIS_TELEMETRY_ENABLED and stays off
+                       unless explicitly enabled.
         """
         super().__init__(
             api_key=api_key,
