@@ -88,6 +88,7 @@ from .route_registry.agents import register_agent_lifecycle_routes
 from .route_registry.authority import (
     register_authority_routes,
     register_facility_request_routes,
+    register_revocation_routes,
     register_spending_mandate_routes,
 )
 from .route_registry.billing import (
@@ -899,6 +900,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_billing_routes(app)
 
     register_spending_mandate_routes(app)
+
+    # Propagating-Revocation: ONE revoke kills authority across every rail and
+    # returns a signed proof. Exposes the SAME engine the orchestrator denies
+    # revoked mandates from on app.state for the kill-switch routes.
+    register_revocation_routes(
+        app,
+        revocation_engine=getattr(payment_runtime, "revocation_engine", None),
+    )
 
     register_agent_auth_routes(app)
 

@@ -12,6 +12,7 @@ from server.routes.authority import (
     facility_requests,
     mandates,
     mvp,
+    revocations,
     spending_mandates,
 )
 from server.routes.authority import approval_config as approval_config_router
@@ -201,6 +202,30 @@ def register_spending_mandate_routes(app: FastAPI) -> None:
         prefix="/api/v2/spending-mandates",
         tags=["spending-mandates"],
     )
+
+
+def register_revocation_routes(app: FastAPI, *, revocation_engine: Any | None) -> None:
+    """Register the Propagating-Revocation (kill-switch) routes.
+
+    Exposes the SHARED RevocationEngine on ``app.state.revocation_engine`` — the
+    same instance the orchestrator denies revoked mandates from — so the routes
+    return its signed proof rather than a parallel record.  The routes themselves
+    fail closed (503) when the engine is absent; we still register them so the
+    surface exists and reports unavailability honestly instead of 404-ing.
+    """
+    app.state.revocation_engine = revocation_engine
+    app.include_router(
+        revocations.router,
+        prefix="/api/v2/revocations",
+        tags=["revocations"],
+    )
+    if revocation_engine is None:
+        logger.warning(
+            "Revocation routes registered but no engine wired — kill switch "
+            "will fail closed (503) until SARDIS revocation_engine is configured"
+        )
+    else:
+        logger.info("Propagating-Revocation (kill-switch) routes registered")
 
 
 def register_mandate_delegation_routes(app: FastAPI) -> None:

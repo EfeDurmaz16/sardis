@@ -106,17 +106,24 @@ class RevocationEngine:
         reason: str = "",
         scope: str = "all",
         agent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Revocation:
         """Atomically propagate a revocation across every rail.
 
         ``agent_id`` is an optional hint used to reach agent-scoped rails (cards,
         approvals, in-flight payments) when the target is a *mandate* (a mandate
         carries an agent).  For ``target_kind=agent`` it defaults to
-        ``target_ref``.  Returns the durable :class:`Revocation` with its signed
+        ``target_ref``.  ``metadata`` is an optional caller-supplied dict merged
+        into the durable record (the API layer stamps the owning
+        ``organization_id`` here so reads/verification are org-scoped); it does
+        NOT enter the signed decision payload, so org tenancy is an access
+        boundary, not part of the tamper-evident proof.  Returns the durable
+        :class:`Revocation` with its signed
         :class:`~sardis.core.revocation.RevocationProof`.
 
         Idempotent: a re-revoke of an already-revoked target returns the same
-        revocation + proof without re-propagating.
+        revocation + proof without re-propagating (the original record + its
+        metadata/owner are preserved).
         """
         # 1) Idempotency — same target → same proof, no double-propagation.
         existing = await self._store.get_active_for_target(
@@ -131,12 +138,15 @@ class RevocationEngine:
             )
             return existing
 
+        base_metadata: dict[str, Any] = dict(metadata or {})
+        if reason:
+            base_metadata.setdefault("reason", reason)
         rev = build_revocation(
             target_kind=target_kind,
             target_ref=target_ref,
             requested_by=requested_by,
             scope=scope,
-            metadata={"reason": reason} if reason else {},
+            metadata=base_metadata,
         )
         # 2) Persist the decision BEFORE propagating (crash-safe).
         await self._store.create(rev)
