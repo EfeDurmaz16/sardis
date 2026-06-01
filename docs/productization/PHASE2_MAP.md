@@ -210,3 +210,32 @@ Method: stricter INSERT/UPDATE/DELETE scan over `core/*` vs `apps/api/{repositor
 - Hold `3032 passed / 15 skipped` at every commit.
 - Any (c) item that resists a clean, test-green collapse → leave + record **DONE_WITH_CONCERNS** with the exact reason. Never trade money-path correctness for tidiness.
 - All migration work is **repo-level only**; the live Neon cutover is a separate deploy step, not this workflow.
+
+---
+
+## 7. Migration-squash execution addendum (2026-06-01, repo-level only)
+
+### 7.1 102_* collision — FIXED
+- `102_stripe_connect.sql` renumbered → `112_stripe_connect.sql` (next free ordinal; 111 was head). Header comment updated; the two migrations touch disjoint tables (`merchants`/`stripe_connect_payouts` vs `idempotency_records`) and `112` keeps its prior alphabetical-last apply position, so reorder is schema-safe.
+- Verified: simulating the runner's `^[0-9]+` version parse over `[0-9]*.sql` (rollbacks skipped) now yields **zero duplicate ordinals**; both `102_idempotency_request_hash` and `112_stripe_connect` are distinct and both apply. Tests: **3032 passed / 15 skipped** (unchanged from baseline).
+
+### 7.2 Alembic decision — DO NOT RETIRE (MAP §5.2 was WRONG)
+- §5.2 claimed alembic is "not referenced by `.github/` CI". **This is false.** `.github/workflows/deploy.yml` runs `cd apps/api && alembic upgrade head` as the **database-migration step for BOTH staging and production deploys** (lines ~96-101 and ~166-171). Alembic is the *live deploy-time migration mechanism*, not dead weight.
+- Per the diligence rule (trust the code over the doc), alembic is **retained**. Removing it would break the production deploy workflow.
+- **DONE_WITH_CONCERNS:** alembic head is `030` while the SQL chain head is `112`. The deploy workflow therefore only applies migrations up to `030`; SQL migrations `031..112` are applied to Neon out-of-band (manual `run_migrations.sh`), not by the deploy pipeline. This is a real drift/coverage gap but reconciling it touches the **live deploy path + live DB** → explicitly out of scope for this repo-level phase. Flagged for a dedicated deploy-pipeline task.
+
+### 7.3 Squashed baseline — NOT SHIPPED (schema-equivalence could not be cleanly proven → STOP)
+- Attempted the gold-standard build: spin up an ephemeral local Postgres 14 cluster, apply every non-rollback `[0-9]*.sql` in runner (sorted-glob) order, then `pg_dump --schema-only` and diff the dump against the chain to prove `baseline == current`.
+- **The chain does NOT apply cleanly to a fresh empty database.** Applying 001→112 to an empty DB fails at **7 distinct pre-existing break points** (none introduced by the 102/112 rename):
+  | File | Error |
+  |---|---|
+  | `022_organizations.sql` | `teams_org_id_fkey` FK fails — `organizations.id` is `UUID` (from `001`), but `022` redefines it as `TEXT` under `CREATE TABLE IF NOT EXISTS` (a no-op since the table already exists), then declares `teams.org_id TEXT REFERENCES organizations(id)` → UUID/TEXT mismatch |
+  | `031_checkout_hardening.sql` | `function gen_random_bytes(integer) does not exist` (pgcrypto not enabled on a bare DB) |
+  | `037_durable_idempotency.sql` | `functions in index predicate must be marked IMMUTABLE` |
+  | `054_x402_integration.sql` | references `x402_settlements` which doesn't exist yet at that point |
+  | `062_card_routing.sql` | references `cards` relation which doesn't exist |
+  | `083_subscriptions.sql` | `column "org_id" does not exist` |
+  | `089_notification_configs.sql` | `INSERT INTO schema_migrations` uses a `name` column that doesn't exist in the runner's `schema_migrations` table |
+- Implication: there is no single deterministic "current schema" reproducible from the chain on an empty DB. The only authoritative "current schema" lives on the incrementally-evolved Neon DB (where, e.g., `022`'s TEXT redefinition was silently skipped and 089's bookkeeping insert behaved differently). Hand-assembling a baseline from the `.sql` text would be an **unverified guess of the live schema** — which the task forbids shipping.
+- **Decision: STOP on the baseline (per task rule "if schema-equivalence cannot be cleanly proven, STOP; do NOT ship an unverified baseline").** No `000_baseline.sql` was created. The 7 break points above are the prerequisite cleanup before any squash is possible; fixing them changes DDL/behavior and must be done as a separate, carefully-staged, test-and-live-DB-validated task — not silently folded into a squash.
+- The ephemeral Postgres cluster and all scratch artifacts were removed; no live DB was touched at any point.
