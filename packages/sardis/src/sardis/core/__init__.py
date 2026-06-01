@@ -133,6 +133,9 @@ from .delegation_engine import (
     DelegationEngine,
     DelegationError,
 )
+from .delegation_lookup import (
+    DelegationAwareMandateLookup,
+)
 from .delegation_repository import (
     DelegationStore,
     InMemoryDelegationStore,
@@ -731,6 +734,7 @@ __all__ = [
     "new_delegation_id",
     "AttenuationResult",
     "ChainCheckResult",
+    "DelegationAwareMandateLookup",
     "DelegationEngine",
     "DelegationError",
     "DelegationStore",

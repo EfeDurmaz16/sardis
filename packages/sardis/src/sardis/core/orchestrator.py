@@ -204,6 +204,13 @@ class PaymentResult:
     #: the money is settled but a time-boxed recourse/dispute window is open;
     #: ``status`` is still the normal success status (money DID move).
     recourse_hold_id: str = ""
+    #: The resolved attenuated delegation chain when the payment was made by a
+    #: DELEGATEE rather than the root mandate holder — root mandate first, then
+    #: every delegation hop, leaf last.  Empty for a direct (non-delegated)
+    #: payment.  Each link was re-checked fail-closed at execution time (Phase
+    #: 0.5).  Recorded here so it can be bound into the portable
+    #: Proof-of-Authority emitted on every authorized execution.
+    delegation_chain: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -443,15 +450,25 @@ class SpendingMandateLookupPort(Protocol):
         self,
         agent_id: str | None = None,
         wallet_id: str | None = None,
+        payment: Any | None = None,
     ) -> Any | None:
-        """Return the active SpendingMandate for the agent/wallet, or None."""
+        """Return the active SpendingMandate for the agent/wallet, or None.
+
+        ``payment`` is the optional in-flight payment context (amount, merchant,
+        rail, …).  Plain root-mandate lookups ignore it; a delegation-aware
+        lookup needs it to re-check the WHOLE attenuated delegation chain at
+        EXECUTION time (every link non-revoked + within cap/scope + non-expired,
+        else the lookup returns ``None`` and the orchestrator denies fail-closed).
+        """
         ...
 
     async def record_spend(self, mandate_id: str, amount: Any) -> None:
         """Persist ``amount`` (token units) against the mandate's spent_total.
 
         Called after a successful settlement so lifetime/window caps reflect
-        the new spend.  In-memory implementations may no-op.
+        the new spend.  In-memory implementations may no-op.  A delegation-aware
+        lookup ALSO decrements the acting delegatee AND every ancestor delegation
+        in the resolved chain (a child spend consumes parent budget).
         """
         ...
 
@@ -823,14 +840,30 @@ class PaymentOrchestrator:
         # Captured for Phase 3.5: after settlement we must persist the mandate
         # spend (lifetime cap accuracy).  None when no mandate governs this pay.
         spending_mandate_spend: Decimal | None = None
+        # The resolved attenuated delegation chain (root mandate first, leaf
+        # delegation last) when the acting agent is a DELEGATEE rather than the
+        # root mandate holder.  Stays empty for a direct (non-delegated) payment.
+        # Recorded on the PaymentResult so it can be bound into the portable
+        # Proof-of-Authority emitted on every authorized execution.
+        delegation_chain: list[Any] = []
         if self._spending_mandate_lookup is not None:
             try:
                 agent_id = getattr(payment, 'agent_id', None) or getattr(payment, 'from_agent', None)
                 wallet_id = getattr(payment, 'wallet_id', None) or getattr(payment, 'subject', None)
-                spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
-                    agent_id=agent_id,
-                    wallet_id=wallet_id,
-                )
+                # Pass the in-flight payment so a delegation-aware lookup can
+                # re-check the attenuated chain at EXECUTION time.  Tolerate
+                # legacy lookups whose signature predates the ``payment`` kwarg.
+                try:
+                    spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
+                        agent_id=agent_id,
+                        wallet_id=wallet_id,
+                        payment=payment,
+                    )
+                except TypeError:
+                    spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
+                        agent_id=agent_id,
+                        wallet_id=wallet_id,
+                    )
             except MandateViolationError:
                 raise
             except Exception as e:
@@ -940,11 +973,29 @@ class PaymentOrchestrator:
             # Persist this amount (token units) against the mandate after
             # settlement so lifetime/window caps reflect the new spend.
             spending_mandate_spend = pay_amount
+            # ── Capture the resolved attenuated delegation chain ────────────
+            # A delegation-aware lookup re-checks the WHOLE chain (every link
+            # non-revoked + within cap/scope + non-expired) BEFORE returning the
+            # root mandate above — so reaching this point means the chain already
+            # authorized fail-closed.  Pull the resolved chain (keyed by the
+            # unique per-execution mandate_id) so it can be recorded on the
+            # PaymentResult and bound into the Proof-of-Authority.  Direct
+            # (non-delegated) payments return an empty chain.
+            if hasattr(self._spending_mandate_lookup, "get_resolved_chain"):
+                try:
+                    delegation_chain = (
+                        self._spending_mandate_lookup.get_resolved_chain(mandate_id)
+                        or []
+                    )
+                except Exception:  # pragma: no cover - chain capture is additive
+                    delegation_chain = []
             self._audit(
                 mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
                 {"spending_mandate_id": spending_mandate.id,
                  "mandate_version": getattr(check, "mandate_version", None),
-                 "agent_id": agent_id},
+                 "agent_id": agent_id,
+                 "delegation_depth": (len(delegation_chain) - 1) if delegation_chain else 0,
+                 "is_delegated": bool(delegation_chain)},
             )
 
         # ── Phase 1: Policy Validation (fail-fast) ──────────────────────
@@ -1403,6 +1454,52 @@ class PaymentOrchestrator:
                     error=f"mandate_spend_persistence_failed: {e}",
                 ))
 
+        # ── Phase 3.5a-bis: Decrement the attenuated delegation chain ───
+        # When a DELEGATEE made this payment, the spend draws down its own
+        # delegation cap AND every ancestor delegation's cap (a child spend
+        # consumes parent budget — the cardinal attenuation rule, enforced at
+        # spend time so the next chain re-check sees the reduced remaining).
+        # The root SpendingMandate's spent_total was already recorded in Phase
+        # 3.5a above, so this NEVER double-counts the root — it touches only the
+        # Delegation hops.  Each hop is decremented atomically (per-row update);
+        # a failure is queued for reconciliation, never crashes a settled pay.
+        if (
+            delegation_chain
+            and self._spending_mandate_lookup is not None
+            and spending_mandate_spend is not None
+            and hasattr(self._spending_mandate_lookup, "record_chain_spend")
+        ):
+            try:
+                await self._spending_mandate_lookup.record_chain_spend(
+                    delegation_chain, spending_mandate_spend,
+                )
+                leaf = delegation_chain[-1]
+                self._audit(
+                    mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, True,
+                    {"delegation_leaf_id": getattr(leaf, "id", None),
+                     "delegation_hops_decremented": len(delegation_chain) - 1,
+                     "chain_spend_recorded": str(spending_mandate_spend)},
+                )
+            except Exception as e:
+                self._audit(
+                    mandate_id, ExecutionPhase.POLICY_STATE_UPDATE, False,
+                    {"delegation_leaf_id": getattr(delegation_chain[-1], "id", None)},
+                    error=f"delegation_chain_spend_failed: {e}",
+                )
+                logger.error(
+                    "Delegation chain spend persistence failed for mandate=%s: %s",
+                    mandate_id, e,
+                )
+                await self._enqueue_reconciliation(ReconciliationEntry(
+                    mandate_id=mandate_id,
+                    chain_tx_hash=receipt.tx_hash,
+                    chain=receipt.chain,
+                    audit_anchor=receipt.audit_anchor,
+                    payment_mandate=payment,
+                    chain_receipt=receipt,
+                    error=f"delegation_chain_spend_persistence_failed: {e}",
+                ))
+
         # ── Phase 3.5b: Update Group Spend State ────────────────────────
         # If the agent belongs to a group, record the spend against all
         # group budgets so future group policy checks are accurate.
@@ -1478,6 +1575,7 @@ class PaymentOrchestrator:
                 execution_time_ms=execution_time,
                 fastpath=fastpath if fastpath.eligible else None,
                 spending_mandate_id=spending_mandate_id,
+                delegation_chain=delegation_chain,
             )
             await self._dedup_store.check_and_set(mandate_id, result)
             return result
@@ -1522,6 +1620,7 @@ class PaymentOrchestrator:
             fastpath=fastpath if fastpath.eligible else None,
             spending_mandate_id=spending_mandate_id,
             recourse_hold_id=recourse_hold_id,
+            delegation_chain=delegation_chain,
         )
         await self._dedup_store.check_and_set(mandate_id, result)
         return result
