@@ -11,16 +11,30 @@ Status meanings:
 The monorepo was consolidated from 47 packages into 5 in May 2026; see
 PR #387 / commit `5ab3e301` for the rationale.
 
+The backend payment engine and the reference FastAPI service moved to the
+private service repository in the OSS/private split; this matrix now covers the
+public SDK + adapter surface only.
+
 ## Core
 
 | Path | Why it exists | Required before stable |
 | --- | --- | --- |
-| `packages/sardis/` | Unified Python SDK umbrella (v2.0.0a0). Consolidates the prior 30+ `sardis-*` packages into one. Submodules: `core`, `cards`, `ledger`, `chain`, `ucp`, `protocol`, `compliance`, `guardrails`, `checkout`, `wallet`, `ramp`, `cli`. Integration extras: `langchain`, `crewai`, `openai-agents`, `autogpt`, `browser-use`, `composio`, `adk`, `a2a`, `anthropic`, `ai-sdk`. | Maintain MIGRATION_NOTES; keep `packages/sardis/tests/` suite green. |
+| `packages/sardis/` | Unified Python SDK umbrella (v2.0.0a0): the published thin client (`_client`, `models`, `resources`, `cli`, `integrations`, `bulk`, `pagination`, `telemetry`). Integration extras: `langchain`, `crewai`, `openai-agents`, `autogpt`, `browser-use`, `composio`, `adk`, `a2a`, `anthropic`, `ai-sdk`. | Keep `packages/sardis/tests/` client suite green. |
 | `packages/sardis-js/` | Unified TypeScript SDK umbrella (v2.0.0-rc.0). Replaces the prior fragmented `@sardis/sdk` + `@sardis/ai-sdk` packages. Provides the `sardis-migrate` codemod. | Keep subpath exports stable; codemod from v1 maintained. |
-| `apps/api/` | Reference FastAPI implementation for public API contracts. | Keep route registry under `apps/api/server/route_registry/`. |
 
 ## Supported
 
 | Path | Why it exists | Required before stable |
 | --- | --- | --- |
 | `packages/sardis-mcp-server/` | MCP server binary (`npx @sardis/mcp-server`) exposing Sardis tools to MCP-aware clients. | Keep schema tests and examples current. |
+| `packages/sardis-reference/` | Reference simulator and protocol verifiers contributors can run without private credentials. | Keep verifier fixtures aligned with the published protocol payloads. |
+| `packages/sardis-agent-tools/` | Framework-agnostic agent tool definitions wrapping the SDK client. | Keep tool schemas in sync with the SDK surface. |
+| `packages/sardis-hermes/` | Hermes agent-framework adapter built on the Sardis client. | Keep the adapter green against the published client. |
+| `packages/sardis-nemoclaw/` | NeMoClaw agent-framework adapter built on the Sardis client. | Keep the adapter green against the published client. |
+| `packages/sardis-openclaw/` | OpenClaw agent-framework adapter built on the Sardis client. | Keep the adapter green against the published client. |
+
+## Demo
+
+| Path | Why it exists | Required before stable |
+| --- | --- | --- |
+| `packages/create-sardis-app/` | `create-sardis-app` scaffolder for bootstrapping a Sardis SDK project. | Keep the generated template building against the current SDK. |

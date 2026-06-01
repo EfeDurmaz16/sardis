@@ -27,10 +27,9 @@ commit `5ab3e301`); see `docs/packages.md` for the current package list.
   credential requirements.
 - Security-sensitive work must include fail-closed tests or a clear validation
   command.
-- Keep source placement aligned with `docs/oss/source-layout.md`. The reference
-  API source tree is `apps/api/server`; do not reintroduce the old
-  repeated API package names, extra API `src` layer, or legacy flat router
-  bucket.
+- Keep source placement aligned with `docs/oss/source-layout.md`. The backend
+  payment engine and the FastAPI service live in the private service repo; do
+  not reintroduce a backend API source tree or repeated API package names here.
 - Keep package layout aligned with `docs/oss/package-layout.md`.
 
 ## Core Contribution Paths
@@ -39,15 +38,18 @@ These packages are the stable OSS center of gravity.
 
 | Area | Packages | Good contributions | Validation |
 | --- | --- | --- | --- |
-| Python SDK umbrella | `packages/sardis/` | Submodule fixes (`core`, `cards`, `ledger`, `chain`, `protocol`, `compliance`, `guardrails`, `checkout`, `wallet`, `ramp`, `cli`), integration extras (`langchain`, `crewai`, `openai-agents`, `anthropic`, `ai-sdk`, etc.), typed examples, error handling, idempotency helpers | `uv run pytest packages/sardis/tests -q` |
+| Python SDK client | `packages/sardis/` | Client fixes (`_client`, `models`, `resources`, `cli`, `integrations`), integration extras (`langchain`, `crewai`, `openai-agents`, `anthropic`, `ai-sdk`, etc.), typed examples, error handling, idempotency helpers | `uv run pytest packages/sardis/tests -q` |
 | TypeScript SDK umbrella | `packages/sardis-js/` | Subpath export stability, v1 codemod updates, type fixes, examples | `pnpm --filter sardis test`; `pnpm --filter sardis typecheck` |
-| Reference API | `apps/api/` | Route tests, OpenAPI alignment, middleware safety, domain routing cleanup | `uv run pytest apps/api/tests -q`; `pnpm run check:contributor` |
 
 ## Supported Package Paths
 
 | Area | Packages | Good contributions | Validation |
 | --- | --- | --- | --- |
 | Agent tooling | `packages/sardis-mcp-server/` | MCP schema improvements, examples, simulated-response labeling | `pnpm --filter @sardis/mcp-server build`; `pnpm --filter @sardis/mcp-server test` |
+| Reference + verifiers | `packages/sardis-reference/` | Simulator/verifier fixtures, protocol payload alignment, credential-free examples | `pnpm --filter @sardis/reference test` |
+| Agent tools | `packages/sardis-agent-tools/` | Tool-definition fixes, SDK-surface alignment | `pnpm --filter @sardis/agent-tools test` |
+| Framework adapters | `packages/sardis-hermes/`, `packages/sardis-nemoclaw/`, `packages/sardis-openclaw/` | Adapter fixes against the published client, examples | package build/test for the touched adapter |
+| Project scaffolder | `packages/create-sardis-app/` | Template updates, generated-project build fixes | `pnpm --filter create-sardis-app build` |
 
 ## What Not To Put In Public PRs
 
@@ -66,10 +68,10 @@ Use `docs/oss/public-private-boundary.md` when a file looks borderline.
 
 | Change | Put tests in |
 | --- | --- |
-| API route, middleware, auth, webhooks | `apps/api/tests/` |
-| Anything inside the Python umbrella | `packages/sardis/tests/<submodule>/` |
+| Python SDK client behavior | `packages/sardis/tests/` |
 | TypeScript SDK behavior | `packages/sardis-js/__tests__/` |
 | MCP server | `packages/sardis-mcp-server/` package tests |
+| Reference / adapters | the touched package's own test dir |
 
 Root tests are a migration backlog, not the default contribution path. If a
 root test becomes important for a new PR, move it to the owning package first

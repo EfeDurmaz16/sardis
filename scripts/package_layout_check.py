@@ -41,13 +41,6 @@ FORBIDDEN_TRACKED_SEGMENTS = {
     ),
 }
 
-REFERENCE_API_REQUIRED_PATHS = (
-    "apps/api/server/__init__.py",
-    "apps/api/server/main.py",
-    "apps/api/server/routes/",
-    "apps/api/server/route_registry/",
-)
-
 REQUIRED_DOC_SNIPPETS = {
     PACKAGE_LAYOUT_DOC: (
         "Deployable applications use role-based source roots",
@@ -136,10 +129,6 @@ def main() -> int:
         for segment, reason in FORBIDDEN_TRACKED_SEGMENTS.items():
             if segment in parts:
                 errors.append(f"Forbidden tracked path segment in {path}: {reason}")
-
-    for required_path in REFERENCE_API_REQUIRED_PATHS:
-        if not has_tracked_path(files, required_path):
-            errors.append(f"Reference API layout path is missing: {required_path}")
 
     if has_tracked_path(files, "apps/api/src/"):
         errors.append(

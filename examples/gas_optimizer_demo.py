@@ -1,132 +1,79 @@
 """
-Gas Optimizer Demo - Multi-chain gas estimation and route finding.
+Cheapest-route payments — public client SDK.
 
-This example demonstrates how to use the GasOptimizer to:
-1. Estimate gas costs for transactions on different chains
-2. Find the cheapest route for a transfer across multiple chains
-3. Monitor gas prices across all supported chains
+Sardis auto-routes a payment across supported chains to minimize cost. You don't
+run a gas optimizer yourself: omit the `chain` argument and the backend picks the
+cheapest route, returning the chosen chain + provider + fee in `result["route"]`.
+This example contrasts auto-routing with pinning a specific chain.
+
+Public surface only: the `sardis` client SDK talks to a hosted Sardis
+deployment. Gas estimation and route selection are owned by the backend.
+
+    export SARDIS_API_KEY=sk_live_...
+    # optional: export SARDIS_API_URL=https://your-sardis-api.example.com
+    python examples/gas_optimizer_demo.py
 """
-import asyncio
+from __future__ import annotations
+
+import json
+import os
+import sys
 from decimal import Decimal
 
-from sardis.chain.gas_optimizer import get_gas_optimizer
 
-
-async def demo_gas_estimation():
-    """Demo: Estimate gas for individual chains."""
-    print("=" * 60)
-    print("Gas Estimation Demo")
+def section(title: str) -> None:
+    print("\n" + "=" * 60)
+    print(title)
     print("=" * 60)
 
-    optimizer = get_gas_optimizer(cache_ttl_seconds=30)
 
-    # Test different chains
-    chains = ["ethereum", "base", "polygon", "arbitrum", "optimism"]
+def main() -> None:
+    from sardis import Sardis
 
-    for chain in chains:
-        estimate = await optimizer.estimate_gas(
+    api_key = os.environ.get("SARDIS_API_KEY")
+    if not api_key:
+        sys.exit("SARDIS_API_KEY not set. export SARDIS_API_KEY=sk_live_... and retry.")
+
+    client = Sardis(api_key=api_key)
+
+    to = os.environ.get("DEMO_RECIPIENT", "0xRecipientAddressOrMerchantDomain")
+    amount = "100.00"
+
+    # 1. Auto-route: omit `chain` and let Sardis choose the cheapest path.
+    section("Auto-route (Sardis picks the cheapest chain)")
+    result = client.pay.execute(to=to, amount=amount, currency="USDC")
+    print(f"status:  {result.get('status')}")
+    print(f"chain:   {result.get('chain')}  <- chosen by the optimizer")
+    print(f"tx_hash: {result.get('tx_hash')}")
+    print(f"ledger:  {result.get('ledger_tx_id')}")
+    route = result.get("route")
+    if route:
+        print("route (chain / provider / fee metadata):")
+        print(json.dumps(route, indent=2, default=str))
+
+    # 2. Compare candidate chains with the simulator BEFORE paying — this is the
+    #    public, money-free way to inspect routing per chain. simulate() returns
+    #    the policy decision and any route/cost hints the deployment exposes.
+    section("Per-chain dry-run comparison (no money moves)")
+    # Use an agent's policy context for the simulation. Create a throwaway agent.
+    agent = client.agents.create(name="route-compare-bot")
+    for chain in ("base", "polygon", "arbitrum", "optimism"):
+        sim = client.simulation.simulate(
+            agent_id=agent.id,
+            amount=Decimal(amount),
+            currency="USDC",
             chain=chain,
-            token="USDC",
-            amount=Decimal("100"),
-            destination="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+            merchant_id=to,
         )
+        decision = sim.get("decision") or sim.get("status") or "?"
+        cost = sim.get("estimated_cost_usd") or sim.get("gas_cost_usd") or "n/a"
+        print(f"  {chain:<10} decision={decision:<18} est_cost={cost}")
 
-        print(f"\n{chain.upper()}:")
-        print(f"  Gas Price: {estimate.gas_price_gwei:.6f} gwei")
-        print(f"  Gas Units: {estimate.estimated_gas_units:,}")
-        print(f"  Cost (USD): ${estimate.estimated_cost_usd:.4f}")
-        print(f"  Time: ~{estimate.estimated_time_seconds}s")
-        print(f"  Congestion: {estimate.congestion_level}")
-
-
-async def demo_route_finding():
-    """Demo: Find cheapest route across chains."""
-    print("\n" + "=" * 60)
-    print("Route Finding Demo")
-    print("=" * 60)
-
-    optimizer = get_gas_optimizer()
-
-    # Find cheapest route for a USDC transfer
-    routes = await optimizer.find_cheapest_route(
-        token="USDC",
-        amount=Decimal("500"),
-        destination="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-        source_chains=["ethereum", "base", "polygon", "arbitrum", "optimism"],
-    )
-
-    print(f"\nFound {len(routes)} routes, ranked by cost:\n")
-
-    for i, route in enumerate(routes, 1):
-        recommended = "⭐ RECOMMENDED" if route.recommended else ""
-        print(f"{i}. {route.source_chain.upper()} {recommended}")
-        print(f"   Gas Cost: ${route.estimated_gas_cost_usd:.6f}")
-        print(f"   Total Cost: ${route.estimated_total_cost_usd:.6f}")
-        print(f"   Time: ~{route.estimated_time_seconds}s")
-        print()
-
-
-async def demo_gas_price_monitoring():
-    """Demo: Monitor gas prices across all chains."""
-    print("=" * 60)
-    print("Gas Price Monitoring Demo")
-    print("=" * 60)
-
-    optimizer = get_gas_optimizer()
-
-    prices = await optimizer.get_gas_prices()
-
-    print(f"\nCurrent gas prices across {len(prices)} chains:\n")
-
-    # Sort by gas cost
-    sorted_chains = sorted(
-        prices.items(),
-        key=lambda x: x[1].estimated_cost_usd
-    )
-
-    for chain, estimate in sorted_chains:
-        print(f"{chain:20} {estimate.gas_price_gwei:10.6f} gwei  "
-              f"${estimate.estimated_cost_usd:8.6f}  "
-              f"({estimate.congestion_level})")
-
-
-async def demo_cache_behavior():
-    """Demo: Show caching behavior."""
-    print("\n" + "=" * 60)
-    print("Cache Behavior Demo")
-    print("=" * 60)
-
-    optimizer = get_gas_optimizer(cache_ttl_seconds=5)
-
-    print("\nFetching gas price for Base (first call)...")
-    price1 = await optimizer._get_gas_price("base")
-    print(f"Price: {price1} gwei")
-
-    print("\nFetching again immediately (should use cache)...")
-    price2 = await optimizer._get_gas_price("base")
-    print(f"Price: {price2} gwei")
-    print(f"Same as before: {price1 == price2}")
-
-    print("\nWaiting 6 seconds for cache to expire...")
-    await asyncio.sleep(6)
-
-    print("Fetching again (cache expired, will fetch fresh)...")
-    price3 = await optimizer._get_gas_price("base")
-    print(f"Price: {price3} gwei")
-    print("May differ due to market conditions")
-
-
-async def main():
-    """Run all demos."""
-    await demo_gas_estimation()
-    await demo_route_finding()
-    await demo_gas_price_monitoring()
-    await demo_cache_behavior()
-
-    print("\n" + "=" * 60)
-    print("Demo Complete!")
-    print("=" * 60)
+    section("Done")
+    print("Omit `chain` to auto-route; pass `chain=` to pin one. The optimizer,")
+    print("gas estimation, and route ranking all live in the private backend —")
+    print("the client just declares intent and reads the chosen route back.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

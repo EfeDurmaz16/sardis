@@ -1,33 +1,28 @@
-"""Sardis Connect End-to-End Demo
+"""Sardis Connect — agent-side end-to-end demo (public client SDK).
 
-Demonstrates the full Sardis Connect flow:
-1. Merchant registers + connects Stripe account
-2. Agent discovers API via /.well-known/sardis.json
-3. Agent pays via spending mandate (with NL policy)
-4. Settlement routes to merchant's Stripe account (USD)
-5. Multi-protocol: same agent can pay via x402, MPP, or direct USDC
+Shows how an AI agent consumes a Sardis-Connected, priced API: discover the
+service, validate the spend against a natural-language policy (dry-run), then
+pay. Settlement to the merchant (USD via Stripe Connect, USDC, x402, or MPP)
+is handled by the Sardis backend — the agent never touches that machinery, and
+neither does this script.
 
-Run: python demos/sardis_connect_e2e_demo.py
-Requires: SARDIS_API_URL, STRIPE_API_KEY (test mode)
+Public surface only: the `sardis` client SDK talks to a hosted Sardis
+deployment. The merchant-onboarding / Stripe-Connect / settlement engine is
+private and is intentionally NOT imported here.
+
+Run:
+    export SARDIS_API_KEY=sk_live_...
+    # optional: export SARDIS_API_URL=https://your-sardis-api.example.com
+    python demos/sardis_connect_e2e_demo.py
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sys
 from decimal import Decimal
-from pathlib import Path
 
-# Add packages to path
-_root = Path(__file__).parent.parent
-for _pkg in ["sardis-core", "sardis-api", "sardis-checkout", "sardis-mpp", "sardis-connect"]:
-    _p = _root / "packages" / _pkg / "src"
-    if _p.exists():
-        sys.path.insert(0, str(_p))
-
-# Also add the simple SDK
-sys.path.insert(0, str(_root / "sardis"))
+from sardis import Sardis
 
 
 def separator(title: str) -> None:
@@ -36,292 +31,98 @@ def separator(title: str) -> None:
     print(f"{'=' * 60}\n")
 
 
-async def demo_step_1_merchant_setup():
-    """Step 1: Merchant registers and gets credentials."""
-    separator("Step 1: Merchant Registration")
+# A priced service manifest is what an agent fetches from a merchant's
+# /.well-known/sardis.json. We hard-code one here purely as demo input — it is
+# plain data, not an engine object.
+SERVICE_MANIFEST = {
+    "name": "Acme AI API",
+    "base_url": "https://api.acme-ai.com",
+    "accepts": ["usdc", "x402", "card"],
+    "endpoints": [
+        {"path": "/api/generate", "method": "POST", "price": "0.05", "desc": "Generate text"},
+        {"path": "/api/analyze", "method": "POST", "price": "0.10", "desc": "Sentiment/entities"},
+        {"path": "/api/embed", "method": "POST", "price": "0.01", "desc": "Text embeddings"},
+    ],
+}
 
-    from sardis.core.merchant import Merchant, MerchantRepository
 
-    merchant = Merchant(
-        name="Acme AI API",
-        settlement_preference="stripe_connect",
-        category="AI/ML",
-        mcc_code="5734",
+def main() -> None:
+    api_key = os.environ.get("SARDIS_API_KEY")
+    if not api_key:
+        sys.exit("SARDIS_API_KEY not set. export SARDIS_API_KEY=sk_live_... and retry.")
+
+    client = Sardis(api_key=api_key)
+
+    print("\n+----------------------------------------------------------+")
+    print("|  SARDIS CONNECT - agent-side end-to-end demo             |")
+    print("|  An agent discovers a priced API, checks policy, pays.   |")
+    print("+----------------------------------------------------------+")
+
+    # Step 1: Set up the paying agent + wallet + policy.
+    separator("Step 1: Agent, wallet, natural-language policy")
+    agent = client.agents.create(
+        name="connect-research-bot",
+        description="Pays per-call AI APIs for research.",
     )
-
-    print(f"  Merchant ID:    {merchant.merchant_id}")
-    print(f"  Name:           {merchant.name}")
-    print(f"  Settlement:     {merchant.settlement_preference}")
-    print(f"  Category:       {merchant.category}")
-    print()
-
-    return merchant
-
-
-async def demo_step_2_stripe_connect(merchant):
-    """Step 2: Merchant connects their Stripe account."""
-    separator("Step 2: Stripe Connect Onboarding")
-
-    from sardis.core.stripe_connect import ConnectAccount
-
-    # Simulate what happens after Express onboarding
-    account = ConnectAccount(
-        account_id="acct_demo_express_001",
-        charges_enabled=True,
-        payouts_enabled=True,
-        details_submitted=True,
-        onboarding_state="complete",
-        disabled_reason=None,
-        current_deadline=None,
-        requirements_currently_due=[],
-        requirements_past_due=[],
+    wallet = client.wallets.create(agent_id=agent.id, currency="USDC")
+    client.policies.apply(
+        agent_id=agent.id,
+        natural_language=(
+            "Spend at most $1 per transaction, $50 per day, $500 per month "
+            "on AI API calls. Only pay api.acme-ai.com, openai.com and "
+            "anthropic.com."
+        ),
     )
+    print(f"  agent:  {agent.id}")
+    print(f"  wallet: {wallet.id}")
+    print("  policy: $1/tx, $50/day, $500/mo; merchant allowlist applied")
 
-    merchant.stripe_account_id = account.account_id
-    merchant.stripe_charges_enabled = True
-    merchant.stripe_payouts_enabled = True
-    merchant.stripe_onboarding_state = "complete"
+    # Step 2: Agent discovers the merchant's priced API.
+    separator("Step 2: Discover service (/.well-known/sardis.json)")
+    print(f"  Service:   {SERVICE_MANIFEST['name']}")
+    print(f"  Accepts:   {', '.join(SERVICE_MANIFEST['accepts'])}")
+    for ep in SERVICE_MANIFEST["endpoints"]:
+        print(f"    {ep['method']} {ep['path']} -- ${ep['price']} -- {ep['desc']}")
 
-    print(f"  Stripe Account: {account.account_id}")
-    print(f"  Charges:        {'Enabled' if account.charges_enabled else 'Disabled'}")
-    print(f"  Payouts:        {'Enabled' if account.payouts_enabled else 'Disabled'}")
-    print(f"  State:          {account.onboarding_state}")
-    print()
-    print("  Merchant receives USD in their Stripe account.")
-    print("  They never see USDC, wallets, or chain IDs.")
-    print()
-
-    return account
-
-
-async def demo_step_3_agent_discovery():
-    """Step 3: Agent discovers the merchant's API."""
-    separator("Step 3: Agent Discovery (/.well-known/sardis.json)")
-
-    from sardis_connect.models import PricedEndpoint, ServiceManifest
-
-    manifest = ServiceManifest(
-        name="Acme AI API",
-        description="Text generation and analysis API",
-        base_url="https://api.acme-ai.com",
-        merchant_id="merch_demo_001",
-        endpoints=[
-            PricedEndpoint(
-                path="/api/generate",
-                method="POST",
-                price=Decimal("0.05"),
-                description="Generate text using our LLM",
-                category="ai",
-            ),
-            PricedEndpoint(
-                path="/api/analyze",
-                method="POST",
-                price=Decimal("0.10"),
-                description="Analyze text for sentiment/entities",
-                category="ai",
-            ),
-            PricedEndpoint(
-                path="/api/embed",
-                method="POST",
-                price=Decimal("0.01"),
-                description="Generate text embeddings",
-                category="ai",
-            ),
-        ],
-    )
-
-    print("  Agent fetches: GET https://api.acme-ai.com/.well-known/sardis.json")
-    print()
-    print(f"  Service:     {manifest.name}")
-    print(f"  Accepts:     {', '.join(manifest.accepts)}")
-    print(f"  Endpoints:   {len(manifest.endpoints)}")
-    for ep in manifest.endpoints:
-        print(f"    {ep.method} {ep.path} — ${ep.price} — {ep.description}")
-    print()
-
-    return manifest
-
-
-async def demo_step_4_mandate_check():
-    """Step 4: Agent's spending mandate validates the payment."""
-    separator("Step 4: Spending Mandate Validation")
-
-    from sardis.core.spending_mandate import ApprovalMode, SpendingMandate
-
-    mandate = SpendingMandate(
-        principal_id="usr_alice",
-        issuer_id="usr_alice",
-        agent_id="agent_research_bot",
-        purpose_scope="AI API calls for research",
-        amount_per_tx=Decimal("1.00"),
-        amount_daily=Decimal("50.00"),
-        amount_monthly=Decimal("500.00"),
-        merchant_scope={"allowed": ["*.acme-ai.com", "openai.com", "anthropic.com"]},
-        allowed_rails=["usdc", "card"],
-        approval_mode=ApprovalMode.AUTO,
-    )
-
-    print(f"  Mandate:     {mandate.id}")
-    print(f"  Agent:       {mandate.agent_id}")
-    print(f"  Per-tx:      ${mandate.amount_per_tx}")
-    print(f"  Daily:       ${mandate.amount_daily}")
-    print(f"  Monthly:     ${mandate.amount_monthly}")
-    print(f"  Merchants:   {mandate.merchant_scope.get('allowed', [])}")
-    print()
-
-    # Test: $0.05 to Acme AI → APPROVED
-    r1 = mandate.check_payment(Decimal("0.05"), merchant="api.acme-ai.com")
-    print(f"  Check: $0.05 to api.acme-ai.com → {'APPROVED' if r1.approved else 'DENIED'}")
-
-    # Test: $5.00 to Acme AI → DENIED (over per-tx limit)
-    r2 = mandate.check_payment(Decimal("5.00"), merchant="api.acme-ai.com")
-    print(f"  Check: $5.00 to api.acme-ai.com → {'APPROVED' if r2.approved else f'DENIED ({r2.reason})'}")
-
-    # Test: $0.05 to random vendor → DENIED (not in allowlist)
-    r3 = mandate.check_payment(Decimal("0.05"), merchant="sketchy-api.com")
-    print(f"  Check: $0.05 to sketchy-api.com → {'APPROVED' if r3.approved else f'DENIED ({r3.reason})'}")
-
-    print()
-    return mandate
-
-
-async def demo_step_5_nl_policy():
-    """Step 5: Natural language policy parsing."""
-    separator("Step 5: Natural Language Policy")
-
-    from sardis.core.nl_policy_parser import RegexPolicyParser
-
-    parser = RegexPolicyParser()
-
-    policies = [
-        "Maximum $50 per day on AI API calls",
-        "No more than $1 per transaction, monthly limit $500",
-        "Spend up to $200 per week, require approval above $100",
+    # Step 3: Validate each candidate spend against policy (dry-run, no money).
+    separator("Step 3: Policy simulation (dry-run, no money moves)")
+    checks = [
+        ("api.acme-ai.com", Decimal("0.05")),   # allowed + under cap
+        ("api.acme-ai.com", Decimal("5.00")),   # over per-tx cap
+        ("sketchy-api.com", Decimal("0.05")),   # not on allowlist
     ]
+    for merchant, amount in checks:
+        sim = client.simulation.simulate(
+            agent_id=agent.id,
+            amount=amount,
+            currency="USD",
+            merchant_id=merchant,
+        )
+        decision = sim.get("decision") or sim.get("status") or sim
+        reason = sim.get("reason", "")
+        print(f"  ${amount} -> {merchant:18} : {decision} {reason}")
 
-    for text in policies:
-        result = parser.parse(text)
-        limits = result.get("spending_limits", [])
-        approval = result.get("requires_approval_above")
-        print(f'  "{text}"')
-        for lim in limits:
-            amt = lim.get("max_amount", lim.get("amount", "?"))
-            print(f"    → ${amt} {lim['period']}")
-        if approval:
-            print(f"    → Approval required above ${approval}")
-        print()
+    # Step 4: Execute the one spend that passed.
+    separator("Step 4: Pay the allowed call")
+    result = client.pay.execute(
+        to="api.acme-ai.com",
+        amount="0.05",
+        currency="USDC",
+    )
+    print(f"  status:  {result.get('status')}")
+    print(f"  tx_hash: {result.get('tx_hash')}")
+    print(f"  chain:   {result.get('chain')}")
+    print(f"  ledger:  {result.get('ledger_tx_id')}")
+    if result.get("route"):
+        print(f"  route:   {json.dumps(result['route'], default=str)}")
 
-
-async def demo_step_6_multi_protocol():
-    """Step 6: Multi-protocol payment demonstration."""
-    separator("Step 6: Multi-Protocol Payment Rails")
-
-    protocols = [
-        {
-            "name": "Direct USDC",
-            "endpoint": "POST /api/v2/pay",
-            "use_case": "General payments — on-chain USDC transfer",
-            "chains": ["Base", "Tempo", "Ethereum", "Polygon", "Arbitrum"],
-            "latency": "~12s (block confirmation)",
-            "cost": "< $0.01 gas (gasless via Circle Paymaster)",
-        },
-        {
-            "name": "x402 Protocol",
-            "endpoint": "X402Client.request(method, url)",
-            "use_case": "API micropayments — automatic HTTP 402 handling",
-            "chains": ["Base", "Polygon", "Solana"],
-            "latency": "~2s (optimistic)",
-            "cost": "< $0.01 gas",
-        },
-        {
-            "name": "MPP (Stripe)",
-            "endpoint": "POST /api/v2/mpp/sessions",
-            "use_case": "Stripe merchant payments — fiat settlement",
-            "chains": ["Tempo (stablecoins)", "Card networks (SPT)"],
-            "latency": "~1s (session-based)",
-            "cost": "Stripe standard fees",
-        },
-    ]
-
-    for proto in protocols:
-        print(f"  [{proto['name']}]")
-        print(f"    Endpoint: {proto['endpoint']}")
-        print(f"    Use case: {proto['use_case']}")
-        print(f"    Chains:   {', '.join(proto['chains'])}")
-        print(f"    Latency:  {proto['latency']}")
-        print(f"    Cost:     {proto['cost']}")
-        print()
-
-    print("  All three protocols share:")
-    print("    - Same spending mandate enforcement")
-    print("    - Same KYC/AML compliance stack")
-    print("    - Same audit trail (append-only ledger)")
-    print("    - Same agent identity (KYA/TAP)")
-    print()
-    print("  Agent chooses protocol based on merchant capability.")
-    print("  Sardis orchestrates — the agent doesn't need to know the details.")
-    print()
-
-
-async def demo_step_7_settlement():
-    """Step 7: Settlement — how the merchant gets paid."""
-    separator("Step 7: Settlement (Zero-Crypto Merchant)")
-
-    print("  Payment flow:")
-    print()
-    print("  Agent (LangChain/CrewAI/etc.)")
-    print("    │")
-    print("    ├─ Spending mandate check ✓")
-    print("    ├─ KYC/AML check ✓")
-    print("    │")
-    print("    ▼")
-    print("  Sardis Orchestrator")
-    print("    │")
-    print("    ├─ Select best rail (x402/MPP/USDC)")
-    print("    ├─ Execute payment (stablecoin)")
-    print("    │")
-    print("    ▼")
-    print("  Settlement Engine")
-    print("    │")
-    print("    ├─ Stripe Connect Transfer ($X.XX USD)")
-    print("    ├─ Stripe auto-payout → merchant bank")
-    print("    │")
-    print("    ▼")
-    print("  Merchant receives: $X.XX USD in bank account")
-    print()
-    print("  Merchant never sees: USDC, wallet addresses, chain IDs,")
-    print("  gas fees, or any blockchain complexity.")
-    print()
-
-
-async def main():
-    print()
-    print("╔══════════════════════════════════════════════════════════╗")
-    print("║           SARDIS CONNECT — End-to-End Demo             ║")
-    print("║   Zero-crypto agent payments for traditional companies  ║")
-    print("╚══════════════════════════════════════════════════════════╝")
-
-    merchant = await demo_step_1_merchant_setup()
-    account = await demo_step_2_stripe_connect(merchant)
-    manifest = await demo_step_3_agent_discovery()
-    mandate = await demo_step_4_mandate_check()
-    await demo_step_5_nl_policy()
-    await demo_step_6_multi_protocol()
-    await demo_step_7_settlement()
-
-    separator("Summary")
-    print("  Sardis Connect enables:")
-    print("    1. Any company → agent-ready in 3 lines (sardis-connect SDK)")
-    print("    2. Zero crypto exposure (merchant receives USD via Stripe)")
-    print("    3. Natural language spending policies (main differentiator)")
-    print("    4. Protocol-agnostic (x402 + MPP + USDC through one integration)")
-    print("    5. Full compliance (KYC + AML + audit trail)")
-    print()
-    print("  'Your API is already valuable.")
-    print("   Sardis Connect makes it agent-ready in 5 minutes —")
-    print("   you receive USD, we handle the rest.'")
-    print()
+    separator("How the merchant gets paid (handled by Sardis, not the agent)")
+    print("  The agent paid in USDC. Sardis settles to the merchant in their")
+    print("  preferred form -- USD via Stripe Connect, USDC, x402, or MPP --")
+    print("  and records the transaction in the append-only ledger.")
+    print("  The merchant never sees wallets, chain IDs, or gas. The agent")
+    print("  never sees the settlement rail. Sardis is the seam between them.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

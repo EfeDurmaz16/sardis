@@ -26,43 +26,22 @@ FORBIDDEN_TRACKED_PREFIXES = (
     "packages/reference-api/",
 )
 
+# The deployable reference API moved to the private service repository as part
+# of the OSS/private split, so this gate no longer requires apps/api to exist.
+# It now only guards against reintroducing forbidden API source layouts and
+# keeps the published-library layout docs honest.
 REQUIRED_PATHS = (
-    "apps/api/server",
-    "apps/api/server/routes",
-    "apps/api/server/route_registry",
-    "apps/api/server/route_registry/static_routes.py",
     "docs/oss/source-layout.md",
 )
 
 REQUIRED_DOC_SNIPPETS = {
-    "docs/oss/source-layout.md": (
-        "apps/api/server/route_registry/",
-        "route_registry/static_routes.py",
-        "card_runtime.py",
-        "checkout_runtime.py",
-        "funding_runtime.py",
-        "1,000-line ceiling",
-        "app.include_router",
-        "packages/sardis-api/src/sardis_api/",
-    ),
     "docs/oss/contribution-map.md": (
         "docs/oss/source-layout.md",
-        "apps/api/server",
     ),
     "docs/oss/testing.md": (
         "python3 scripts/source_layout_check.py",
         "source-layout guard",
     ),
-}
-
-MAX_ROUTE_RELATIVE_PARTS = 2
-MAX_MAIN_LINES = 1000
-
-FORBIDDEN_MAIN_SNIPPETS = {
-    ".include_router(": "route mounting must stay in route_registry helpers",
-    "APIRouter": "main.py must not define route implementations",
-    "from server.routes": "route implementation imports must stay out of main.py",
-    "from .routes": "route implementation imports must stay out of main.py",
 }
 
 FORBIDDEN_API_PACKAGE_PARTS = {
@@ -120,59 +99,15 @@ def main() -> int:
                     f"{snippet}"
                 )
 
-    route_root = ROOT / "apps/api/server/routes"
-    if route_root.exists():
-        for path in route_root.rglob("*.py"):
-            relative_parts = path.relative_to(route_root).parts
-            if len(relative_parts) > MAX_ROUTE_RELATIVE_PARTS:
-                errors.append(
-                    "Route implementation is nested too deeply: "
-                    f"{path.relative_to(ROOT).as_posix()}"
-                )
-            if len(relative_parts) == MAX_ROUTE_RELATIVE_PARTS:
-                domain, filename = relative_parts
-                module_name = Path(filename).stem
-                if module_name == domain:
-                    errors.append(
-                        "Route implementation repeats its domain folder: "
-                        f"{path.relative_to(ROOT).as_posix()}. Rename the file "
-                        "to the route role, such as lifecycle, accounts, screening, "
-                        "records, webhooks, or capabilities."
-                    )
-
-    main_py = ROOT / "apps/api/server/main.py"
-    if main_py.exists():
-        main_lines = main_py.read_text(encoding="utf-8").splitlines()
-        main_line_count = len(main_lines)
-        if main_line_count > MAX_MAIN_LINES:
-            errors.append(
-                "API composition root is too large: "
-                f"apps/api/server/main.py has {main_line_count} lines "
-                f"(limit {MAX_MAIN_LINES}). Move route registration into "
-                "route_registry/ or runtime construction into focused *_runtime.py helpers."
-            )
-        for line_no, line in enumerate(main_lines, start=1):
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            for snippet, reason in FORBIDDEN_MAIN_SNIPPETS.items():
-                if snippet in line:
-                    errors.append(
-                        "Forbidden API composition-root route wiring in "
-                        f"apps/api/server/main.py:{line_no}: "
-                        f"{reason}."
-                    )
-
     if errors:
         print("Source layout check failed:")
         for error in errors:
             print(f"  - {error}")
         print(
-            "\nThe API source tree must stay at apps/api/server. "
-            "Do not reintroduce packages/sardis-api, packages/api, "
-            "apps/api/src, "
-            "sardis_api, or the legacy server/routers bucket. Route "
-            "implementations should stay at routes/<domain>/<module>.py."
+            "\nThe public repo must not reintroduce a backend API source tree. "
+            "Do not add packages/sardis-api, packages/api, apps/api/src, or "
+            "sardis_api import packages; the deployable API lives in the private "
+            "service repository."
         )
         return 1
 

@@ -82,48 +82,9 @@ jobs:
       - name: Run ruff lint
         run: uv run ruff check .
 
-      - name: Run API tests with coverage
-        run: >-
-          uv run pytest apps/api/tests/ -v --tb=short
-          --cov=packages/sardis/src/sardis/core
-          --cov=apps/api/server
-          --cov-report=xml
-          --cov-fail-under=40
-
-      - name: Run package tests
+      - name: Run public SDK client tests
         run: |
           uv run pytest packages/sardis/tests/ -v --tb=short
-
-      - name: Check OpenAPI route contract snapshot
-        run: uv run python apps/api/scripts/generate_openapi.py --check
-
-  idempotency-replay-e2e:
-    name: Idempotency Replay E2E
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: |
-            **/pyproject.toml
-            **/uv.lock
-
-      - name: Install dependencies
-        run: uv sync --extra all --extra dev
-
-      - name: Run idempotency/replay E2E gate
-        run: bash scripts/release/idempotency_replay_e2e_check.sh
 
   contracts-gas:
     name: Contracts Gas Ceiling

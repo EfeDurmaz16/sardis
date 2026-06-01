@@ -24,7 +24,7 @@ message if it is missing.
 | [`demo_trust_scoring.py`](demo_trust_scoring.py) | KYA trust scoring and tier progression (NEW → BASIC → TRUSTED → VERIFIED) and how limits scale |
 | [`demo_multi_agent.py`](demo_multi_agent.py) | Multi-agent patterns: split payment, shared-treasury group payment, cascade failover |
 | [`demo_escrow.py`](demo_escrow.py) | Agent-to-agent escrow lifecycle: CREATED → FUNDED → DELIVERED → RELEASED (with dispute paths) |
-| [`full_payment_demo.py`](full_payment_demo.py) | Full in-repo path through `sardis.core` / `sardis.chain` / `sardis.protocol` |
+| [`full_payment_demo.py`](full_payment_demo.py) | End-to-end payment via the public client SDK: agent → wallet → NL policy → simulate (dry-run) → `pay.execute` → ledger |
 
 ### Nested projects
 

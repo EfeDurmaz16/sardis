@@ -13,8 +13,8 @@ GitHub repository:
 - `apps/landing/app/sitemap.ts`
 - `apps/landing/app/llms.txt/route.ts`
 - `apps/landing/app/llms-full.txt/route.ts`
-- public docs pages under `docs-site/content/docs/`
-- environment examples such as `.env.example` and `.env.production.example`
+- public docs pages under `docs/`
+- environment examples such as `.env.example`
 
 Do not list `https://app.sardis.sh`, dashboard signup, dashboard API keys,
 hosted checkout, or hosted billing as canonical OSS surfaces in these files.
