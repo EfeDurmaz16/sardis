@@ -9,9 +9,11 @@ CREATE TABLE IF NOT EXISTS idempotency_records (
     expires_at      TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '7 days')
 );
 
+-- Plain b-tree index on expires_at to accelerate the retention sweep
+-- (DELETE ... WHERE expires_at < now()). A partial predicate using now()
+-- is rejected by Postgres because now() is STABLE, not IMMUTABLE.
 CREATE INDEX IF NOT EXISTS idx_idempotency_expires
-    ON idempotency_records (expires_at)
-    WHERE expires_at < now();
+    ON idempotency_records (expires_at);
 
 -- Retention cleanup: run periodically
 -- DELETE FROM idempotency_records WHERE expires_at < now();
