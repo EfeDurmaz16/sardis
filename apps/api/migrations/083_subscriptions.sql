@@ -3,7 +3,7 @@
 -- Subscriptions auto-generate payment objects on a schedule.
 -- Supports billing cycles, grace periods, trials, and usage metering.
 
-CREATE TABLE IF NOT EXISTS subscriptions (
+CREATE TABLE IF NOT EXISTS mandate_subscriptions (
     subscription_id TEXT PRIMARY KEY,              -- sub_xxx
     org_id TEXT NOT NULL,
     mandate_id TEXT NOT NULL,
@@ -45,17 +45,17 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_subs_org ON subscriptions(org_id);
-CREATE INDEX IF NOT EXISTS idx_subs_mandate ON subscriptions(mandate_id);
-CREATE INDEX IF NOT EXISTS idx_subs_merchant ON subscriptions(merchant_id);
-CREATE INDEX IF NOT EXISTS idx_subs_status ON subscriptions(status);
-CREATE INDEX IF NOT EXISTS idx_subs_next_charge ON subscriptions(next_charge_at)
+CREATE INDEX IF NOT EXISTS idx_subs_org ON mandate_subscriptions(org_id);
+CREATE INDEX IF NOT EXISTS idx_subs_mandate ON mandate_subscriptions(mandate_id);
+CREATE INDEX IF NOT EXISTS idx_subs_merchant ON mandate_subscriptions(merchant_id);
+CREATE INDEX IF NOT EXISTS idx_subs_status ON mandate_subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_subs_next_charge ON mandate_subscriptions(next_charge_at)
     WHERE status IN ('active', 'trial');
 
 -- Charge intents: individual charge attempts within a subscription
 CREATE TABLE IF NOT EXISTS charge_intents (
     charge_id TEXT PRIMARY KEY,                    -- chg_xxx
-    subscription_id TEXT NOT NULL REFERENCES subscriptions(subscription_id),
+    subscription_id TEXT NOT NULL REFERENCES mandate_subscriptions(subscription_id),
     payment_object_id TEXT,
     amount NUMERIC(20,6) NOT NULL,
     currency TEXT DEFAULT 'USDC',
@@ -74,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_charges_status ON charge_intents(status);
 -- Usage meters: metered billing with countersignature
 CREATE TABLE IF NOT EXISTS usage_meters (
     meter_id TEXT PRIMARY KEY,                     -- meter_xxx
-    subscription_id TEXT NOT NULL REFERENCES subscriptions(subscription_id),
+    subscription_id TEXT NOT NULL REFERENCES mandate_subscriptions(subscription_id),
     metric_name TEXT NOT NULL,
     unit_price NUMERIC(20,8) NOT NULL,
     currency TEXT DEFAULT 'USDC',
