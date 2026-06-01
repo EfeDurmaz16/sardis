@@ -8,8 +8,9 @@ Provides session-based MPP payment management:
 - Create MPP sessions with spending mandates
 - Execute payments within sessions
 - Close sessions and settle remaining
-- Policy evaluation and dry-run simulation (EXPERIMENTAL STUB — /evaluate is a
-  default-allow placeholder, NOT wired to the Sardis Guard policy engine)
+- Policy evaluation and dry-run simulation (/evaluate and /simulate route through
+  the real SpendingPolicy engine — the same engine the PaymentOrchestrator uses —
+  and are fail-closed: no agent_id / no policy / engine error => DENY)
 - Virtual card issuance (EXPERIMENTAL / DEAD — depends on a `sardis_mpp` package
   that does not exist on disk; returns 503)
 
@@ -242,51 +243,140 @@ async def close_session(
     return mpp_session_response_from_record(session)
 
 
-@router.post("/evaluate", response_model=PolicyEvaluateResponse)
-async def evaluate_policy(
+# Number of distinct checks the SpendingPolicy engine runs (see
+# SpendingPolicy.evaluate docstring). Reported for transparency; the engine
+# short-circuits on the first failure.
+_POLICY_CHECK_COUNT = 12
+
+
+async def _evaluate_against_real_policy(
     req: PolicyEvaluateRequest,
-    principal: Principal = Depends(require_principal),
-):
-    """Evaluate policy for an MPP payment.
+    request: Request,
+    principal: Principal,
+) -> PolicyEvaluateResponse:
+    """Evaluate an MPP payment against the agent's real SpendingPolicy.
 
-    EXPERIMENTAL / STUB — this does NOT call the Sardis Guard policy engine.
-    It is a near-constant placeholder (default-allow plus a single hardcoded
-    $10,000 cap) and must not be relied on as a real control-plane check.
-    See docs/productization/research/PROTOCOL_STRATEGY.md (MPP /evaluate stub).
+    Fail-closed: requires an agent_id and a resolvable policy. Any engine error,
+    missing store, missing agent, or missing policy => DENY. There is no
+    default-allow path.
     """
-    # STUB: default-allow placeholder. NOT wired to Sardis Guard / the policy engine.
-    allowed = True
-    reason = "ALLOWED by default policy"
-    checks_passed = 12
-    checks_total = 12
+    if not req.agent_id:
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason="agent_id_required_for_policy_evaluation",
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
 
-    # Basic limit checks
-    if req.amount > Decimal("10000"):
-        allowed = False
-        reason = "Amount exceeds maximum single payment limit ($10,000)"
-        checks_passed = 11
+    policy_store = getattr(request.app.state, "policy_store", None)
+    if policy_store is None:
+        # No policy engine wired => cannot make a real decision => deny.
+        logger.error("MPP /evaluate: no policy_store on app.state — failing closed")
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason="policy_store_not_configured",
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
+
+    # Authorization: an org may only evaluate its own agents.
+    agent_repo = getattr(request.app.state, "agent_repo", None)
+    if agent_repo is not None:
+        agent = await agent_repo.get(req.agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        if not principal.is_admin and agent.owner_id != principal.org_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    try:
+        policy = await policy_store.fetch_policy(req.agent_id)
+    except Exception as exc:  # store/db error => fail closed
+        logger.error("MPP /evaluate: policy fetch failed for %s: %s", req.agent_id, exc)
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason="policy_lookup_error",
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
+
+    if policy is None:
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason="no_policy_for_agent",
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
+
+    # Real deterministic execution-context guard (chain/token allowlists).
+    ctx_ok, ctx_reason = policy.validate_execution_context(
+        destination=None,
+        chain=req.network,
+        token=req.currency,
+    )
+    if not ctx_ok:
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason=ctx_reason,
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
+
+    # Real SpendingPolicy evaluation (same engine the orchestrator uses, minus
+    # the on-chain balance lookup which a dry-run pre-flight cannot perform).
+    try:
+        ok, reason = policy.validate_payment(
+            amount=req.amount,
+            fee=Decimal("0"),
+            merchant_id=req.merchant,
+            merchant_category=req.merchant_category,
+            mcc_code=req.mcc_code,
+        )
+    except Exception as exc:  # any engine error => fail closed
+        logger.error("MPP /evaluate: policy engine error for %s: %s", req.agent_id, exc)
+        return PolicyEvaluateResponse(
+            allowed=False,
+            reason="policy_engine_error",
+            checks_passed=0,
+            checks_total=_POLICY_CHECK_COUNT,
+        )
 
     logger.info(
-        "MPP policy evaluation: amount=%s merchant=%s result=%s",
-        req.amount, req.merchant, "ALLOWED" if allowed else "DENIED",
+        "MPP policy evaluation (real): agent=%s amount=%s merchant=%s result=%s reason=%s",
+        req.agent_id, req.amount, req.merchant, "ALLOWED" if ok else "DENIED", reason,
     )
 
     return PolicyEvaluateResponse(
-        allowed=allowed,
+        allowed=ok,
         reason=reason,
-        checks_passed=checks_passed,
-        checks_total=checks_total,
+        checks_passed=_POLICY_CHECK_COUNT if ok else _POLICY_CHECK_COUNT - 1,
+        checks_total=_POLICY_CHECK_COUNT,
     )
+
+
+@router.post("/evaluate", response_model=PolicyEvaluateResponse)
+async def evaluate_policy(
+    req: PolicyEvaluateRequest,
+    request: Request,
+    principal: Principal = Depends(require_principal),
+):
+    """Evaluate an MPP payment against the agent's real SpendingPolicy.
+
+    Routes through the same SpendingPolicy engine the PaymentOrchestrator uses
+    (amount/scope/MCC/per-tx/total/window/merchant/drift/approval checks). It is
+    fail-closed: no agent_id, no policy, or any engine error => DENY. There is
+    no default-allow path.
+    """
+    return await _evaluate_against_real_policy(req, request, principal)
 
 
 @router.post("/simulate", response_model=PolicyEvaluateResponse)
 async def simulate_policy(
     req: PolicyEvaluateRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Dry-run policy check without executing payment."""
-    # Same as evaluate but explicitly labeled as simulation
-    return await evaluate_policy(req, principal)
+    """Dry-run policy check without executing payment (same engine as /evaluate)."""
+    return await _evaluate_against_real_policy(req, request, principal)
 
 
 # ── Virtual Card Issuance via Laso/Locus MPP ─────────────────────────
