@@ -3,9 +3,35 @@
 EXPERIMENTAL / PARTIAL — non-conformant adapter, NOT production. API-Version
 value is 2026-01-16 (current spec dir is 2026-04-17); diverges on response
 objects / status enum / complete shape, persists to tables that may not exist
-(in-memory fallback), and bypasses the Sardis mandate / policy / orchestrator /
-ledger entirely. Do not present as ACP conformance.
+(in-memory fallback). Do not present as ACP conformance.
 See docs/productization/research/PROTOCOL_STRATEGY.md (ACP, quarantine-experimental).
+
+FIRST-CLASS MONEY PATH (no longer a moat bypass).  Every checkout completion
+runs the Sardis fail-closed authority gates via ``PaymentOrchestrator
+.evaluate_chain`` (``_run_acp_gates``) BEFORE any payment is recorded or
+settled: KYA, spending-mandate lookup + revocation, spending policy, group
+policy, Guard/RiskEngine, and compliance/sanctions.  A deny raises 403 and the
+order is never recorded.  Gates run bound to the MERCHANT ORG principal
+(``agent_id = "acp_merchant:<org>"``) — ACP carries no Sardis buyer agent (the
+buyer's authority lives with the AI platform, e.g. ChatGPT), so we never
+fabricate one.  We run gates ONLY, never the orchestrator's chain dispatch: the
+funds are moved by an external party (the buyer's agent broadcasts the crypto
+transfer; the PSP/issuer captures the card), so dispatching would double-spend.
+
+PROOF BEFORE ``succeeded``.  An order is marked ``succeeded`` only on verified
+proof, never on a request alone:
+  * crypto      — real on-chain verification (``_verify_crypto_onchain``):
+                  mined receipt, status==1, chain-specific confirmations, and an
+                  ERC-20 Transfer of the expected token to the TRUSTED merchant
+                  settlement address for >= the expected amount.  Any degraded /
+                  ambiguous path stays ``processing``; a reverted tx -> ``failed``.
+  * spt         — Stripe PaymentIntent ``status == "succeeded"`` (Stripe is the
+                  PSP that captures); otherwise ``processing``.
+  * issuer_card — DONE_WITH_CONCERNS: stays ``processing`` after the issuer
+                  ``active`` verification.  No clearly-available Crossmint
+                  settlement signal exists for an externally-charged issued card
+                  (the merchant does not see the issuer's clearing for a card it
+                  did not itself charge); see the issuer_card branch note below.
 
 PCI POSTURE — Sardis is the **merchant/seller**, never a PSP.  This router NEVER
 accepts a raw PAN/CVV/expiry.  The only card credential it consumes is an
@@ -663,6 +689,96 @@ async def _verify_crypto_onchain(
 
 
 # ---------------------------------------------------------------------------
+# Orchestrator authority gates (the Sardis moat) for the ACP merchant path
+# ---------------------------------------------------------------------------
+
+async def _run_acp_gates(
+    *,
+    deps: ACPDependencies,
+    principal: Principal,
+    session_id: str,
+    amount: Decimal,
+    currency: str,
+    counterparty: str,
+    chain: str,
+    purpose: str,
+) -> None:
+    """Run the orchestrator's fail-closed authority gates for an ACP order.
+
+    This is what makes ACP a first-class money path instead of a bypass: every
+    ACP completion runs KYA / spending-mandate / revocation / policy / group /
+    Guard / compliance via ``orchestrator.evaluate_chain`` BEFORE any payment is
+    recorded or settled.  It runs gates ONLY — never dispatch — because the
+    funds are moved by an external party (the buyer's agent for crypto; the PSP
+    /issuer for the card), so dispatching here would double-spend.
+
+    Principal binding (fail-closed, no fabricated authority): ACP carries no
+    Sardis buyer ``agent_id`` (the buyer's authority lives with the AI platform,
+    e.g. ChatGPT); Sardis is the merchant/seller.  We bind the ACTING subject to
+    the merchant org principal — ``agent_id = "acp_merchant:<org>"`` — so policy
+    / Guard / compliance run against a real subject, and we never invent a buyer
+    agent.  When a spending-mandate lookup is configured, the orchestrator will
+    fail closed unless an active mandate authorizes this merchant subject — the
+    correct conservative behavior (revoked / absent mandate -> deny).
+
+    Deny outcomes map to 403; the orchestrator-not-wired case maps to 503
+    (fail-closed: ACP must not silently skip the moat).
+    """
+    from sardis.core.mandate_chain_factory import build_mandate_chain
+    from sardis.core.orchestrator import (
+        ComplianceViolationError,
+        KYAViolationError,
+        MandateViolationError,
+        PaymentExecutionError,
+        PolicyViolationError,
+        RiskViolationError,
+    )
+
+    if deps.orchestrator is None:
+        # Fail-closed: never complete an ACP order without running the gates.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="orchestrator_not_configured: ACP money path requires the policy/mandate gates",
+        )
+
+    org_id = str(principal.organization_id)
+    chain_obj = build_mandate_chain(
+        agent_id=f"acp_merchant:{org_id}",
+        amount=amount,
+        currency=str(currency).upper(),
+        counterparty=counterparty,
+        chain=chain,
+        purpose=purpose,
+        merchant_domain="sardis.sh",
+        issuer=f"org:{org_id}",
+        mandate_id=f"acp_{session_id}",
+    )
+
+    try:
+        await deps.orchestrator.evaluate_chain(chain_obj)
+    except (
+        PolicyViolationError,
+        MandateViolationError,
+        KYAViolationError,
+        ComplianceViolationError,
+        RiskViolationError,
+    ) as exc:
+        logger.info("ACP order %s denied by orchestrator gates: %s", session_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"payment_denied: {exc}",
+        ) from exc
+    except PaymentExecutionError as exc:
+        # Any other orchestrator execution-layer error -> fail-closed (do not
+        # let an ambiguous gate result through as an allow).
+        logger.warning("ACP order %s gate error: %s", session_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"payment_denied: {exc}",
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
 # Endpoints: Checkout Sessions
 # ---------------------------------------------------------------------------
 
@@ -789,6 +905,7 @@ async def complete_checkout_session(
     body: ACPCompleteCheckoutRequest,
     principal: Principal = Depends(require_principal),
     api_version: str = Depends(_validate_api_version),
+    deps: ACPDependencies = Depends(get_deps),
 ) -> ACPCheckoutSessionResponse:
     """Complete an ACP checkout session with payment.
 
@@ -847,6 +964,24 @@ async def complete_checkout_session(
             detail="missing_payment: payment_data (tokenized) or crypto_payment is required",
         )
 
+    # ── Sardis moat: run the orchestrator authority gates BEFORE recording ──
+    # KYA / spending-mandate / revocation / policy / Guard / compliance, bound
+    # to the merchant org principal.  A deny raises 403 here and the order is
+    # never recorded or settled.  This runs for every ACP money branch so ACP
+    # is a first-class money path, not a bypass.  (Gates only — never dispatch;
+    # the funds are moved by the buyer's agent / external PSP, see _run_acp_gates.)
+    _gate_counterparty = data.get("settlement_address") or "acp:merchant_settlement"
+    await _run_acp_gates(
+        deps=deps,
+        principal=principal,
+        session_id=session_id,
+        amount=total_amount,
+        currency=currency,
+        counterparty=_gate_counterparty,
+        chain=(body.crypto_payment.chain if body.crypto_payment else "base"),
+        purpose=f"acp_checkout:{session_id}",
+    )
+
     payment_method_used: str
 
     # --- Tokenized card / SPT (issuer-delegated, PAN-free) ---
@@ -889,9 +1024,26 @@ async def complete_checkout_session(
                     ),
                 )
             card_info = await _verify_issuer_card(token)
-            # Verified with the issuer (PAN stays in the issuer vault). The
-            # actual capture/authorization is the issuer's; Sardis records the
-            # tokenized reference and marks processing until a settlement signal.
+            # DONE_WITH_CONCERNS — issuer_card stays ``processing``.
+            #
+            # We verify the card is chargeable (issuer ``active`` state via the
+            # CardPort; PAN stays in the issuer vault), but "chargeable" is NOT
+            # "charged and settled".  There is no clearly-available Crossmint
+            # settlement signal Sardis (as the merchant) can consume to flip this
+            # to ``succeeded``: Crossmint's public webhooks
+            # (orders.payment.succeeded/failed) are Checkout-V3 events for
+            # Crossmint-HOSTED orders, NOT a card-issuing authorization/settlement
+            # event for a virtual card an external merchant/PSP charged. As the
+            # merchant, Sardis never sees the issuer's clearing for a card it did
+            # not itself charge.  Per the ACP checkout spec, ``complete`` does not
+            # require synchronous capture; order lifecycle is conveyed via webhooks.
+            # A real flip would require one of (all out of scope without provider
+            # confirmation): (a) correlating a Crossmint-hosted order id; (b) a
+            # documented Crossmint card-transaction/authorization API; or (c) the
+            # merchant PSP's own capture webhook.  Until then, fail-closed:
+            # stay ``processing`` — never fake completion.
+            # Refs: developers.openai.com/commerce/specs/checkout ;
+            #       docs.crossmint.com/payments/advanced/webhooks
             data["issuer_card_ref"] = card_info["card_id"]
             data["issuer_card_last_four"] = card_info.get("last_four")
             data["payment_status"] = ACPPaymentStatus.processing.value
@@ -924,18 +1076,64 @@ async def complete_checkout_session(
         data["crypto_token"] = crypto.token
         payment_method_used = "crypto"
 
-        # FAIL-CLOSED: this adapter does not yet perform a real on-chain
-        # verification (tx receipt + amount + recipient + confirmations). It
-        # MUST NOT mark an order ``succeeded`` without that proof. Record the
-        # tx and mark ``processing`` — a settlement signal (verified out of
-        # band) is required before the order is paid.
-        logger.info(
-            "ACP crypto payment recorded (unverified, processing): tx=%s chain=%s token=%s",
-            crypto.tx_hash,
-            crypto.chain,
-            crypto.token,
-        )
-        data["payment_status"] = ACPPaymentStatus.processing.value
+        # FAIL-CLOSED on-chain verification.  An order is marked ``succeeded``
+        # ONLY when the recorded tx_hash is confirmed on-chain: mined receipt,
+        # status==1, chain-specific confirmations, and an ERC-20 Transfer of the
+        # expected token to the TRUSTED merchant settlement address for >= the
+        # expected amount.  Any degraded/ambiguous path stays ``processing``
+        # (retryable once finalized); a reverted tx is marked ``failed``.
+        settlement_address = data.get("settlement_address")
+        if not settlement_address:
+            # No trusted recipient bound at create -> we cannot verify "paid to
+            # the expected merchant".  Never derive the recipient from the tx.
+            # Stay processing (fail-closed) until a settlement address exists.
+            logger.warning(
+                "ACP crypto %s: no trusted settlement_address bound; staying processing "
+                "(set SARDIS_ACP_SETTLEMENT_ADDRESS[_%s])",
+                session_id, str(crypto.chain).upper(),
+            )
+            data["payment_status"] = ACPPaymentStatus.processing.value
+        else:
+            # Expected amount in the token's minor units (stablecoins = 6 dp).
+            try:
+                from sardis.core.tokens import TokenType, get_token_metadata
+                decimals = get_token_metadata(TokenType(str(crypto.token).upper())).decimals
+            except Exception:
+                decimals = 6
+            expected_amount_minor = int(
+                (total_amount * (Decimal(10) ** decimals)).to_integral_value()
+            )
+            try:
+                proof = await _verify_crypto_onchain(
+                    tx_hash=crypto.tx_hash,
+                    chain=crypto.chain,
+                    token=crypto.token,
+                    expected_recipient=settlement_address,
+                    expected_amount_minor=expected_amount_minor,
+                )
+                data["crypto_proof"] = proof
+                data["payment_status"] = ACPPaymentStatus.succeeded.value
+                logger.info(
+                    "ACP crypto %s VERIFIED on-chain: tx=%s confirmations=%s amount_minor=%s",
+                    session_id, crypto.tx_hash, proof["confirmations"], proof["amount_minor"],
+                )
+            except CryptoVerificationError as exc:
+                if exc.tx_failed:
+                    # The on-chain tx reverted — a genuine payment failure.
+                    data["payment_status"] = ACPPaymentStatus.failed.value
+                    data["payment_error"] = f"crypto_tx_failed: {exc.reason}"
+                    logger.warning(
+                        "ACP crypto %s tx FAILED on-chain: tx=%s reason=%s",
+                        session_id, crypto.tx_hash, exc.reason,
+                    )
+                else:
+                    # Not mined / too few confirmations / no matching transfer /
+                    # RPC error -> stay processing (retryable), NEVER succeed.
+                    data["payment_status"] = ACPPaymentStatus.processing.value
+                    logger.info(
+                        "ACP crypto %s unverified (processing): tx=%s reason=%s",
+                        session_id, crypto.tx_hash, exc.reason,
+                    )
 
     # Only flip to completed once payment is actually succeeded; otherwise the
     # session stays open so it can be retried / settled out of band.

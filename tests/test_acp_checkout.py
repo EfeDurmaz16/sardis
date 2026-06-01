@@ -34,8 +34,14 @@ def _clean_acp_state():
 
 @pytest.fixture
 def acp_app():
-    """Create a test FastAPI app with the ACP router."""
+    """Create a test FastAPI app with the ACP router.
+
+    Wires a permissive fake orchestrator so the Sardis authority gates run and
+    ALLOW (the moat is exercised, never skipped).  Tests that need a deny wire a
+    denying orchestrator via ``set_acp_orchestrator``.
+    """
     from server.authz import Principal, require_principal
+    from server.routes.protocol import acp
     from server.routes.protocol.acp import router
 
     app = FastAPI()
@@ -51,9 +57,41 @@ def acp_app():
         return test_principal
 
     app.dependency_overrides[require_principal] = _override_principal
+
+    # Default: an orchestrator whose gates pass (evaluate_chain returns None).
+    app.dependency_overrides[acp.get_deps] = lambda: acp.ACPDependencies(
+        orchestrator=_AllowingOrchestrator(),
+        chain_executor=None,
+    )
     app.include_router(router, prefix="/api/v2")
 
     return app
+
+
+class _AllowingOrchestrator:
+    """Fake orchestrator whose authority gates always pass."""
+
+    async def evaluate_chain(self, chain):  # noqa: ANN001
+        return None
+
+
+class _DenyingOrchestrator:
+    """Fake orchestrator whose authority gates deny with a given exception."""
+
+    def __init__(self, exc):
+        self._exc = exc
+
+    async def evaluate_chain(self, chain):  # noqa: ANN001
+        raise self._exc
+
+
+def set_acp_orchestrator(app, orchestrator):
+    """Swap the wired ACP orchestrator for a test on the given app."""
+    from server.routes.protocol import acp
+
+    app.dependency_overrides[acp.get_deps] = lambda: acp.ACPDependencies(
+        orchestrator=orchestrator, chain_executor=None,
+    )
 
 
 @pytest.fixture
