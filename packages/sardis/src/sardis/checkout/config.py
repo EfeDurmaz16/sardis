@@ -22,7 +22,7 @@ CHECKOUT_CHAIN_CONFIG = {
         "fee_model": "tip20",  # Gas paid in stablecoin
     },
     "tempo_testnet": {
-        "chain_id": 42429,
+        "chain_id": 42431,  # Moderato testnet (authoritative); was 42429
         "usdc_address": "0x20c0000000000000000000000000000000000000",
         "fee_model": "tip20",
     },
