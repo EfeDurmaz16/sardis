@@ -11,6 +11,10 @@
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto (provides gen_random_bytes, gen_random_uuid) — required by
+-- later migrations (e.g. 031 client_secret generation). Idempotent; matches
+-- the extensions already enabled on the live database.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- -----------------------------------------------------------------------------
 -- Organizations

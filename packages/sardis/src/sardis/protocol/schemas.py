@@ -10,7 +10,7 @@ from sardis.core.mandates import PaymentMandate
 # AP2 Protocol Version Constants
 # NOTE: Sardis-native version strings, NOT an AP2 spec conformance claim. The
 # verified mandate format is Sardis-native (DataIntegrityProof + base64), not
-# AP2's W3C VC SD-JWT+KB. See docs/productization/research/PROTOCOL_STRATEGY.md.
+# AP2's W3C VC SD-JWT+KB.
 AP2_PROTOCOL_VERSION = "2025.1"
 AP2_SUPPORTED_VERSIONS = ["2025.0", "2025.1"]
 

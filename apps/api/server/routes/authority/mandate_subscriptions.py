@@ -101,7 +101,7 @@ async def create_mandate_subscription(
         next_charge = now + timedelta(days=req.trial_days)
 
     await Database.execute(
-        """INSERT INTO subscriptions
+        """INSERT INTO mandate_subscriptions
            (subscription_id, org_id, mandate_id, merchant_id, agent_id,
             billing_cycle, charge_amount, currency, description,
             grace_period_days, trial_days,
@@ -154,7 +154,7 @@ async def list_mandate_subscriptions(
     where = " AND ".join(conditions)
     sort_col = _validate_sort_column("created_at")
     rows = await Database.fetch(
-        f"SELECT * FROM subscriptions WHERE {where} ORDER BY {sort_col} DESC",
+        f"SELECT * FROM mandate_subscriptions WHERE {where} ORDER BY {sort_col} DESC",
         *params,
     )
     return [_row_to_response(r) for r in rows]
@@ -173,7 +173,7 @@ async def cancel_mandate_subscription(
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM subscriptions WHERE subscription_id = $1 AND org_id = $2 FOR UPDATE NOWAIT",
+            "SELECT * FROM mandate_subscriptions WHERE subscription_id = $1 AND org_id = $2 FOR UPDATE NOWAIT",
             subscription_id, principal.org_id,
         )
         if not row:
@@ -182,12 +182,12 @@ async def cancel_mandate_subscription(
             raise HTTPException(status_code=409, detail=f"Already {row['status']}")
 
         await conn.execute(
-            "UPDATE subscriptions SET status = 'cancelled', cancelled_at = now(), updated_at = now() WHERE subscription_id = $1",
+            "UPDATE mandate_subscriptions SET status = 'cancelled', cancelled_at = now(), updated_at = now() WHERE subscription_id = $1",
             subscription_id,
         )
 
     updated = await Database.fetchrow(
-        "SELECT * FROM subscriptions WHERE subscription_id = $1", subscription_id
+        "SELECT * FROM mandate_subscriptions WHERE subscription_id = $1", subscription_id
     )
     return _row_to_response(updated)
 
@@ -206,7 +206,7 @@ async def amend_mandate_subscription(
 
     async with Database.transaction() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM subscriptions WHERE subscription_id = $1 AND org_id = $2 FOR UPDATE NOWAIT",
+            "SELECT * FROM mandate_subscriptions WHERE subscription_id = $1 AND org_id = $2 FOR UPDATE NOWAIT",
             subscription_id, principal.org_id,
         )
         if not row:
@@ -230,12 +230,12 @@ async def amend_mandate_subscription(
         updates.append("updated_at = now()")
         params.append(subscription_id)
         await conn.execute(
-            f"UPDATE subscriptions SET {', '.join(updates)} WHERE subscription_id = ${idx}",
+            f"UPDATE mandate_subscriptions SET {', '.join(updates)} WHERE subscription_id = ${idx}",
             *params,
         )
 
     updated = await Database.fetchrow(
-        "SELECT * FROM subscriptions WHERE subscription_id = $1", subscription_id
+        "SELECT * FROM mandate_subscriptions WHERE subscription_id = $1", subscription_id
     )
     return _row_to_response(updated)
 

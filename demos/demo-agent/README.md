@@ -183,11 +183,11 @@ sardis> quit
 
 ## Troubleshooting
 
-**"sardis_sdk not installed"**
+**"sardis not installed"**
 ```bash
-pip install sardis-sdk
+pip install "sardis[langchain]"
 # Or install from local packages:
-pip install -e ../../packages/sardis-sdk-python
+pip install -e ../../packages/sardis
 ```
 
 **"Connection refused"**

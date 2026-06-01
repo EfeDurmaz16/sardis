@@ -4,7 +4,7 @@ CrewAI Procurement Team Example
 A multi-agent procurement system using CrewAI + Sardis.
 
 Setup:
-    pip install sardis-crewai crewai crewai-tools
+    pip install "sardis[crewai]" crewai crewai-tools
 
 Usage:
     export SARDIS_API_KEY="sk_..."
@@ -15,13 +15,13 @@ import os
 
 from crewai import Agent, Crew, Task
 
-from sardis import SardisClient
-from sardis_crewai import get_sardis_tools
+from sardis import Sardis
+from sardis.integrations.crewai import create_sardis_tools
 
 
 def main():
     # Initialize Sardis
-    sardis = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+    sardis = Sardis(api_key=os.environ["SARDIS_API_KEY"])
 
     wallet = sardis.wallets.create(
         name="procurement-team",
@@ -29,7 +29,7 @@ def main():
         policy="Max $500/day, only for SaaS and cloud services, require approval above $200"
     )
 
-    tools = get_sardis_tools(client=sardis, wallet_id=wallet.id)
+    tools = create_sardis_tools(client=sardis, wallet_id=wallet.id)
 
     # Define agents
     researcher = Agent(

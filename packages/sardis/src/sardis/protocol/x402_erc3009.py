@@ -14,6 +14,69 @@ from typing import Any
 
 USDC_TRANSFER_WITH_AUTHORIZATION_SELECTOR = "0xe3ee160e"
 
+# EIP-712 domains for stablecoin TransferWithAuthorization, keyed by Sardis
+# network identifier. (name, version, chainId, verifyingContract).
+#
+# These bind a recovered signature to a *specific* token contract on a
+# *specific* chain — without this, a signature for one chain/token could be
+# replayed against another. Sourced from sardis.core config + token map.
+#
+# USDC contracts implement EIP-3009 with EIP-712 domain version "2".
+_USDC_EIP712_DOMAINS: dict[str, dict[str, Any]] = {
+    "base": {
+        "name": "USD Coin",
+        "version": "2",
+        "chainId": 8453,
+        "verifyingContract": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    },
+    "base_sepolia": {
+        "name": "USDC",
+        "version": "2",
+        "chainId": 84532,
+        "verifyingContract": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    },
+    "ethereum": {
+        "name": "USD Coin",
+        "version": "2",
+        "chainId": 1,
+        "verifyingContract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    },
+    "polygon": {
+        "name": "USD Coin",
+        "version": "2",
+        "chainId": 137,
+        "verifyingContract": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    },
+    "arbitrum": {
+        "name": "USD Coin",
+        "version": "2",
+        "chainId": 42161,
+        "verifyingContract": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    },
+    "optimism": {
+        "name": "USD Coin",
+        "version": "2",
+        "chainId": 10,
+        "verifyingContract": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+    },
+}
+
+
+class ERC3009VerificationError(ValueError):
+    """Raised when an ERC-3009 authorization signature cannot be verified."""
+
+
+def resolve_eip712_domain(network: str) -> dict[str, Any]:
+    """Resolve the USDC EIP-712 domain for a Sardis network identifier.
+
+    Raises:
+        ERC3009VerificationError: if the network is unknown / unsupported.
+    """
+    domain = _USDC_EIP712_DOMAINS.get((network or "").strip().lower())
+    if domain is None:
+        raise ERC3009VerificationError(f"unsupported_network_for_eip3009:{network}")
+    return dict(domain)
+
 # EIP-712 domain fields for USDC
 EIP712_DOMAIN_TYPE = [
     {"name": "name", "type": "string"},
@@ -255,12 +318,126 @@ def _hex_to_bytes32(hex_string: str) -> bytes:
     return result
 
 
+def _nonce_to_bytes32(nonce: str) -> bytes:
+    """Normalize an ERC-3009 nonce (hex string) to exactly 32 bytes."""
+    return _hex_to_bytes32(nonce)
+
+
+def recover_transfer_authorization_signer(
+    auth: ERC3009Authorization,
+    signature: str | bytes,
+    *,
+    network: str,
+) -> str:
+    """Recover the signer address from an EIP-3009 TransferWithAuthorization signature.
+
+    Verifies a real EIP-712 typed-data signature over the canonical USDC
+    ``TransferWithAuthorization`` struct, bound to the token contract + chain id
+    for ``network``. Returns the recovered EOA address (checksummed).
+
+    Args:
+        auth: The authorization fields the signer committed to.
+        signature: 65-byte ECDSA signature (hex string or bytes).
+        network: Sardis network id used to resolve the EIP-712 domain.
+
+    Raises:
+        ERC3009VerificationError: if the signature is malformed or recovery fails.
+    """
+    try:
+        from eth_account import Account
+        from eth_account.messages import encode_typed_data
+    except ImportError as exc:  # pragma: no cover - dependency guard
+        raise ERC3009VerificationError("eth_account_not_installed") from exc
+
+    domain = resolve_eip712_domain(network)
+
+    message = {
+        "from": auth.from_address,
+        "to": auth.to_address,
+        "value": int(auth.value),
+        "validAfter": int(auth.valid_after),
+        "validBefore": int(auth.valid_before),
+        "nonce": _nonce_to_bytes32(auth.nonce),
+    }
+
+    sig: bytes
+    if isinstance(signature, bytes):
+        sig = signature
+    else:
+        s = signature.strip()
+        if s.startswith("0x"):
+            s = s[2:]
+        try:
+            sig = bytes.fromhex(s)
+        except ValueError as exc:
+            raise ERC3009VerificationError("signature_not_hex") from exc
+    if len(sig) != 65:
+        raise ERC3009VerificationError(f"signature_bad_length:{len(sig)}")
+
+    try:
+        signable = encode_typed_data(
+            domain,
+            {"TransferWithAuthorization": TRANSFER_WITH_AUTHORIZATION_TYPE},
+            message,
+        )
+        recovered = Account.recover_message(signable, signature=sig)
+    except ERC3009VerificationError:
+        raise
+    except Exception as exc:  # malformed addresses, bad nonce, etc.
+        raise ERC3009VerificationError(f"recovery_failed:{exc}") from exc
+
+    return recovered
+
+
+def verify_transfer_authorization(
+    auth: ERC3009Authorization,
+    signature: str | bytes,
+    *,
+    network: str,
+    expected_payer: str | None = None,
+    now: int | None = None,
+) -> tuple[bool, str | None]:
+    """Fully verify an EIP-3009 authorization: signer recovery + binding + timing.
+
+    Fail-closed: returns ``(False, reason)`` on any inconsistency.
+
+    Checks:
+        1. Timing window (validAfter / validBefore).
+        2. EIP-712 signer recovery against the network's USDC domain.
+        3. Recovered signer == ``auth.from_address`` (the payer who authorized).
+        4. Recovered signer == ``expected_payer`` (if supplied — the x402 payload's
+           claimed ``payer_address``).
+    """
+    ts_ok, ts_reason = validate_authorization_timing(auth, now=now)
+    if not ts_ok:
+        return False, ts_reason
+
+    try:
+        recovered = recover_transfer_authorization_signer(
+            auth, signature, network=network
+        )
+    except ERC3009VerificationError as exc:
+        return False, str(exc)
+
+    if recovered.lower() != auth.from_address.lower():
+        return False, "signer_mismatch_authorization_from"
+
+    if expected_payer is not None and recovered.lower() != expected_payer.lower():
+        return False, "signer_mismatch_payer_address"
+
+    return True, None
+
+
 __all__ = [
     "USDC_TRANSFER_WITH_AUTHORIZATION_SELECTOR",
     "EIP712_DOMAIN_TYPE",
     "TRANSFER_WITH_AUTHORIZATION_TYPE",
     "ERC3009Authorization",
+    "ERC3009VerificationError",
     "build_transfer_authorization",
     "validate_authorization_timing",
     "encode_authorization_params",
+    "resolve_eip712_domain",
+    "recover_transfer_authorization_signer",
+    "verify_transfer_authorization",
 ]

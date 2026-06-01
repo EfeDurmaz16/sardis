@@ -326,3 +326,7 @@ apps/landing/app/manifesto/
 !apps/landing/app/manifesto/
 !apps/landing/app/manifesto/page.tsx
 apps/landing/app/manifesto.txt/
+
+# Production-hardening audit working docs (do not commit)
+docs/productization/PRODHARDEN_*.md
+PRODHARDEN_*.md

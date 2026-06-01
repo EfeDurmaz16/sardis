@@ -4,7 +4,7 @@ LangChain Payment Agent Example
 Demonstrates an AI agent that can make payments using Sardis + LangChain.
 
 Setup:
-    pip install sardis-langchain langchain langchain-openai
+    pip install "sardis[langchain]" langchain langchain-openai
 
 Usage:
     export SARDIS_API_KEY="sk_..."
@@ -17,13 +17,13 @@ from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 
-from sardis import SardisClient
-from sardis_langchain import SardisToolkit
+from sardis import Sardis
+from sardis.integrations.langchain import SardisToolkit
 
 
 def main():
     # Initialize Sardis
-    sardis = SardisClient(api_key=os.environ["SARDIS_API_KEY"])
+    sardis = Sardis(api_key=os.environ["SARDIS_API_KEY"])
 
     # Create agent wallet with spending policy
     wallet = sardis.wallets.create(

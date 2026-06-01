@@ -1,19 +1,28 @@
 """Pydantic models for the Agentic Commerce Protocol (ACP).
 
 EXPERIMENTAL / PARTIAL — these shapes diverge from the current ACP spec
-(targets stale 2026-01-30; current is 2026-04-17) and are NOT a conformance
-claim. See docs/productization/research/PROTOCOL_STRATEGY.md (ACP).
+(API-Version value 2026-01-16; current spec dir is 2026-04-17) and are NOT a
+conformance claim. See docs/productization/research/PROTOCOL_STRATEGY.md (ACP).
 
-Sketches the data shapes toward the ACP OpenAPI specification. Covers checkout
-sessions, delegate payment, webhook events, and SPT integration.
+PCI POSTURE — Sardis is the **merchant/seller** here, never a PSP.  The merchant
+side of the ACP delegated-payment model NEVER receives a raw PAN/CVV/expiry: the
+only credential that crosses into Sardis is an **opaque, tokenized** reference
+minted by a regulated issuer/PSP (a Stripe Shared Payment Token, or an
+issuer-delegated virtual-card reference whose PAN lives in the issuer's PCI
+vault — e.g. Crossmint/Rain ``card_id``).  Raw-card intake was removed; any
+inbound raw-PAN body is rejected fail-closed (the field does not exist on the
+request models, so it 422s; the PSP ``/delegate_payment`` endpoint is gone).
 
-Reference: https://docs.stripe.com/agentic-commerce/protocol
+Covers checkout sessions, the tokenized complete shape, webhook events, and SPT.
+
+Reference: https://docs.stripe.com/agentic-commerce/acp
+Roles / PAN boundary: https://developers.openai.com/commerce/guides/key-concepts
 """
 from __future__ import annotations
 
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +30,9 @@ from pydantic import BaseModel, Field
 # ACP version
 # ---------------------------------------------------------------------------
 
-ACP_API_VERSION = "2026-01-30"
+# API-Version header value (current spec version directory is 2026-04-17; the
+# header value the ecosystem sends is 2026-01-16).
+ACP_API_VERSION = "2026-01-16"
 
 
 # ---------------------------------------------------------------------------
@@ -160,19 +171,78 @@ class ACPCryptoPayment(BaseModel):
     token: str = Field(default="USDC", description="Token symbol")
 
 
-class ACPCompleteCheckoutRequest(BaseModel):
-    """Complete an ACP checkout session with payment."""
-    payment_method: Literal["delegate_payment", "crypto", "spt"] = Field(
+# ---------------------------------------------------------------------------
+# Tokenized payment data (ACP delegated-payment merchant shape)
+# ---------------------------------------------------------------------------
+#
+# These mirror the ACP merchant ``complete`` ``payment_data`` shape: a handler
+# id plus a tokenized instrument.  NO raw PAN/CVV/expiry exists here — only an
+# opaque credential token minted by a real issuer/PSP.
+
+#: Tokenized credential kinds Sardis accepts as a merchant.  ``spt`` is a Stripe
+#: Shared Payment Token; ``issuer_card`` is an issuer-delegated virtual-card
+#: reference (e.g. Crossmint/Rain ``card_id``) whose PAN lives in the issuer's
+#: PCI vault.  No kind here carries cardholder data.
+ACPCredentialType = Literal["spt", "issuer_card"]
+
+
+class ACPPaymentCredential(BaseModel):
+    """Tokenized payment credential — opaque to Sardis, never a PAN.
+
+    ``token`` is either an SPT (``spt_...``) or an issuer-delegated card
+    reference (the issuer/PSP holds the actual card data).
+    """
+    model_config = {"extra": "forbid"}
+
+    type: ACPCredentialType
+    token: str = Field(
         ...,
-        description="Payment method: delegate_payment (card via ACP), crypto (on-chain), or spt (Stripe SPT)",
+        min_length=8,
+        description="Opaque credential token (e.g. spt_... or an issuer card_id). Never a PAN.",
     )
-    delegate_payment_token: str | None = Field(
+
+
+class ACPPaymentInstrument(BaseModel):
+    """Payment instrument carrying only a tokenized credential."""
+    model_config = {"extra": "forbid"}
+
+    type: Literal["card", "wallet_token"] = "card"
+    credential: ACPPaymentCredential
+
+
+class ACPPaymentData(BaseModel):
+    """ACP merchant ``complete`` payment data — tokenized only.
+
+    Carries a payment-handler id, a tokenized instrument, and (optionally) a
+    billing address.  ``extra='forbid'`` guarantees a raw-card field
+    (``number``/``cvc``/``exp_*``) is rejected with 422 — fail-closed: Sardis
+    can never accept a PAN on this path.
+    """
+    model_config = {"extra": "forbid"}
+
+    handler_id: str = Field(..., min_length=1, description="Payment handler / PSP id")
+    instrument: ACPPaymentInstrument
+    billing_address: ACPAddress | None = None
+
+
+class ACPCompleteCheckoutRequest(BaseModel):
+    """Complete an ACP checkout session with payment.
+
+    Exactly one of two PAN-free branches:
+
+    * ``payment_data`` — tokenized issuer-delegated card / SPT (canonical ACP).
+    * ``crypto_payment`` — Sardis-native on-chain stablecoin transfer.
+
+    ``extra='forbid'`` rejects legacy raw-card / delegate-token bodies (422):
+    the removed ``payment_method`` / ``delegate_payment_token`` /
+    ``shared_payment_granted_token`` fields no longer exist, so any client still
+    sending them fails closed.
+    """
+    model_config = {"extra": "forbid"}
+
+    payment_data: ACPPaymentData | None = Field(
         None,
-        description="Delegate payment token (vt_...) for card payments",
-    )
-    shared_payment_granted_token: str | None = Field(
-        None,
-        description="Stripe Shared Payment Token (spt_...) for SPT payments",
+        description="Tokenized payment data (issuer-delegated card or SPT). Never a PAN.",
     )
     crypto_payment: ACPCryptoPayment | None = Field(
         None,
@@ -198,52 +268,6 @@ class ACPCheckoutSessionResponse(BaseModel):
     created_at: str | None = None
     updated_at: str | None = None
     api_version: str = ACP_API_VERSION
-
-
-# ---------------------------------------------------------------------------
-# Delegate Payment models
-# ---------------------------------------------------------------------------
-
-class ACPDelegatePaymentCard(BaseModel):
-    """Card details for delegate payment."""
-    type: Literal["card"] = "card"
-    number: str = Field(..., description="Card number")
-    exp_month: int = Field(..., ge=1, le=12)
-    exp_year: int = Field(..., ge=2025)
-    cvc: str = Field(..., min_length=3, max_length=4)
-    name: str | None = None
-
-
-class ACPDelegateAllowance(BaseModel):
-    """Spending allowance constraints for delegate payment."""
-    reason: Literal["one_time"] = "one_time"
-    max_amount: int = Field(..., gt=0, description="Max amount in smallest currency unit (cents)")
-    currency: str = Field(default="usd")
-    checkout_session_id: str = Field(..., description="ACP checkout session this allowance is for")
-    merchant_id: str | None = None
-    expires_at: str | None = Field(None, description="ISO 8601 expiration timestamp")
-
-
-class ACPRiskSignal(BaseModel):
-    """Risk signal from the agent's risk assessment."""
-    type: str = Field(..., description="Signal type (e.g., device_fingerprint, ip_reputation)")
-    score: float = Field(..., ge=0, le=1)
-    action: str = Field(default="allow", description="Recommended action")
-
-
-class ACPDelegatePaymentRequest(BaseModel):
-    """Receive card credentials from an agent, tokenize via Stripe."""
-    payment_method: ACPDelegatePaymentCard
-    allowance: ACPDelegateAllowance
-    billing_address: ACPAddress | None = None
-    risk_signals: list[ACPRiskSignal] = Field(default_factory=list)
-
-
-class ACPDelegatePaymentResponse(BaseModel):
-    """Response after tokenizing delegate payment credentials."""
-    id: str = Field(..., description="Delegate payment token (vt_...)")
-    created: str
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------

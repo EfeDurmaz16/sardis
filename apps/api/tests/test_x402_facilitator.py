@@ -61,8 +61,77 @@ def test_challenge_generation():
     assert decoded["payment_id"] == body["payment_id"]
 
 
-def test_verify_endpoint():
-    """POST /verify accepts a valid payload."""
+def _signed_authorization(challenge, *, value=None, network=None):
+    """Produce a real EIP-3009 signed authorization + payer for a challenge.
+
+    Returns (payer_address, authorization_dict, signature_hex).
+    """
+    from eth_account import Account
+    from eth_account.messages import encode_typed_data
+    from sardis.protocol.x402_erc3009 import (
+        TRANSFER_WITH_AUTHORIZATION_TYPE,
+        resolve_eip712_domain,
+    )
+
+    acct = Account.create()
+    nonce_hex = "0x" + "11" * 32
+    amount = value if value is not None else int(challenge.amount)
+    domain = resolve_eip712_domain(network or challenge.network)
+    message = {
+        "from": acct.address,
+        "to": challenge.payee_address,
+        "value": amount,
+        "validAfter": 0,
+        "validBefore": 9999999999,
+        "nonce": bytes.fromhex(nonce_hex[2:]),
+    }
+    signable = encode_typed_data(
+        domain,
+        {"TransferWithAuthorization": TRANSFER_WITH_AUTHORIZATION_TYPE},
+        message,
+    )
+    signed = acct.sign_message(signable)
+    auth = {
+        "from": acct.address,
+        "to": challenge.payee_address,
+        "value": str(amount),
+        "validAfter": 0,
+        "validBefore": 9999999999,
+        "nonce": nonce_hex,
+    }
+    return acct.address, auth, "0x" + signed.signature.hex()
+
+
+def test_verify_accepts_valid_eip3009_signature():
+    """POST /verify accepts a payload with a real, valid EIP-3009 signature."""
+    app = _create_test_app()
+    client = TestClient(app)
+
+    header, challenge = _make_challenge_header()
+    payer, auth, signature = _signed_authorization(challenge)
+
+    response = client.post("/api/v2/x402/verify", json={
+        "payment_id": challenge.payment_id,
+        "payer_address": payer,
+        "amount": challenge.amount,
+        "nonce": challenge.nonce,
+        "signature": signature,
+        "authorization": auth,
+        "challenge_header": header,
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["payment_id"] == challenge.payment_id
+    assert body["accepted"] is True, body
+
+
+def test_verify_rejects_unsigned_payload():
+    """A payload with a junk signature and no authorization is REJECTED.
+
+    This is the core fail-closed guarantee: x402 /verify must never accept an
+    unverified payment proof. (Was previously 'accepted without sig'.)
+    """
     app = _create_test_app()
     client = TestClient(app)
 
@@ -79,9 +148,62 @@ def test_verify_endpoint():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["payment_id"] == challenge.payment_id
-    # Without signature verification, should still be accepted
-    assert "accepted" in body
+    assert body["accepted"] is False
+    assert "authorization_missing" in body["reason"] or "signature" in body["reason"]
+
+
+def test_verify_rejects_forged_signature():
+    """A valid authorization signed by a DIFFERENT key (forged) is REJECTED."""
+    app = _create_test_app()
+    client = TestClient(app)
+
+    header, challenge = _make_challenge_header()
+    payer, auth, _good_sig = _signed_authorization(challenge)
+
+    # Attacker keeps the victim's authorization/payer but supplies a signature
+    # from their own (different) challenge — recovery will not match payer.
+    _other_header, other_challenge = _make_challenge_header()
+    _attacker, _attacker_auth, attacker_sig = _signed_authorization(other_challenge)
+
+    response = client.post("/api/v2/x402/verify", json={
+        "payment_id": challenge.payment_id,
+        "payer_address": payer,
+        "amount": challenge.amount,
+        "nonce": challenge.nonce,
+        "signature": attacker_sig,
+        "authorization": auth,
+        "challenge_header": header,
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is False
+    assert "signature_invalid" in body["reason"]
+
+
+def test_verify_rejects_authorization_amount_tamper():
+    """An authorization whose value != challenge amount is REJECTED."""
+    app = _create_test_app()
+    client = TestClient(app)
+
+    header, challenge = _make_challenge_header()
+    # Sign for a different (smaller) value than the challenge demands.
+    payer, auth, signature = _signed_authorization(challenge, value=1)
+
+    response = client.post("/api/v2/x402/verify", json={
+        "payment_id": challenge.payment_id,
+        "payer_address": payer,
+        "amount": challenge.amount,
+        "nonce": challenge.nonce,
+        "signature": signature,
+        "authorization": auth,
+        "challenge_header": header,
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is False
+    assert "value_mismatch" in body["reason"]
 
 
 def test_dry_run_returns_preview():

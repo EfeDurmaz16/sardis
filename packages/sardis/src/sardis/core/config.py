@@ -444,7 +444,7 @@ class SardisSettings(BaseSettings):
         ChainConfig(
             name="tempo_testnet",
             rpc_url="https://rpc.testnet.tempo.xyz",
-            chain_id=42429,
+            chain_id=42431,  # Moderato testnet (authoritative: ChainList/Tempo docs + pympp/foundry); was 42429
             stablecoins=["USDC"],
             settlement_vault="",
         ),

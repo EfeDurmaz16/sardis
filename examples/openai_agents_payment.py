@@ -1,158 +1,53 @@
 #!/usr/bin/env python3
 """
-OpenAI Function Calling + Sardis Payment Example
-=================================================
+OpenAI Agents SDK + Sardis tools
+================================
 
-This example shows how to build an OpenAI agent that uses Sardis
-to make real payments with policy enforcement.
+Give an OpenAI Agents SDK agent Sardis payment tools (pay / check-balance /
+check-policy), all policy-enforced by Sardis.
 
-The agent receives a task, decides it needs to purchase API credits,
-and Sardis enforces the spending policy before executing.
+Concept: `configure(...)` sets the default Sardis client, then
+`get_sardis_tools()` returns function tools you hand straight to an `Agent`.
 
 Prerequisites:
-    pip install openai sardis
+    pip install "sardis[openai-agents]" openai-agents
 
 Run:
     export OPENAI_API_KEY=sk-...
-    export SARDIS_API_KEY=sk_...
+    export SARDIS_API_KEY=sk_live_...
+    export SARDIS_WALLET_ID=wallet_...   # the wallet the tools spend from
     python examples/openai_agents_payment.py
 """
+from __future__ import annotations
 
-import json
 import os
-from decimal import Decimal
+import sys
 
-from openai import OpenAI
+from agents import Agent, Runner
 
-from sardis import SardisClient
-
-# --- Sardis Setup -----------------------------------------------------------
-
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_demo"))
-
-# Create an agent + wallet for this workflow
-agent = sardis.agents.create(
-    name="openai-procurement-agent",
-    description="OpenAI function-calling procurement agent",
-)
-wallet = sardis.wallets.create(
-    agent_id=agent.agent_id,
-    chain="base_sepolia",
-    currency="USDC",
-    limit_per_tx=Decimal("100.00"),
-    limit_total=Decimal("500.00"),
-)
-
-# --- OpenAI Tool Definition --------------------------------------------------
-
-SARDIS_PAY_TOOL = {
-    "type": "function",
-    "function": {
-        "name": "sardis_pay",
-        "description": (
-            "Execute a payment through Sardis. The payment is checked against "
-            "the wallet's spending policy before execution. Returns the "
-            "transaction result including approval/denial reason."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "to": {
-                    "type": "string",
-                    "description": "Recipient address or merchant identifier",
-                },
-                "amount": {
-                    "type": "string",
-                    "description": "Amount in USD (e.g. '25.00')",
-                },
-                "token": {
-                    "type": "string",
-                    "enum": ["USDC", "USDT", "EURC"],
-                    "description": "Stablecoin to use for payment",
-                },
-                "purpose": {
-                    "type": "string",
-                    "description": "Reason for the payment",
-                },
-            },
-            "required": ["to", "amount", "token", "purpose"],
-        },
-    },
-}
+from sardis.integrations.openai_agents import configure, get_sardis_tools
 
 
-def handle_sardis_pay(args: dict) -> str:
-    """Execute a Sardis payment and return the result as JSON."""
-    result = sardis.wallets.transfer(
-        wallet.wallet_id,
-        destination=args["to"],
-        amount=Decimal(args["amount"]),
-        token=args["token"],
-        chain="base_sepolia",
-        domain="openai.com",
-        memo=args["purpose"],
+def main() -> None:
+    api_key = os.environ.get("SARDIS_API_KEY")
+    wallet_id = os.environ.get("SARDIS_WALLET_ID")
+    if not api_key or not wallet_id:
+        sys.exit("Set SARDIS_API_KEY and SARDIS_WALLET_ID and retry.")
+
+    # Point the Sardis tools at your client + wallet.
+    configure(api_key=api_key, wallet_id=wallet_id)
+
+    agent = Agent(
+        name="procurement-agent",
+        instructions="You pay for API credits and SaaS. Every payment is policy-checked.",
+        tools=get_sardis_tools(),
     )
-    return json.dumps({
-        "status": result.status,
-        "tx_hash": result.tx_hash,
-        "amount": str(result.amount),
-        "token": result.token,
-        "chain": result.chain,
-    })
 
-
-# --- Agent Loop --------------------------------------------------------------
-
-def run_agent(task: str):
-    """Run an OpenAI agent that can make payments via Sardis."""
-    client = OpenAI()
-
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a procurement agent. You help purchase software tools "
-                "and API credits. You have a Sardis wallet with a spending "
-                "policy. Use the sardis_pay tool to execute payments. Always "
-                "explain what you're purchasing and why before paying."
-            ),
-        },
-        {"role": "user", "content": task},
-    ]
-
-    print(f"Task: {task}\n")
-
-    while True:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            tools=[SARDIS_PAY_TOOL],
-        )
-
-        choice = response.choices[0]
-        message = choice.message
-        messages.append(message)
-
-        # If the model wants to call a tool
-        if message.tool_calls:
-            for tool_call in message.tool_calls:
-                args = json.loads(tool_call.function.arguments)
-                print(f"Agent → sardis_pay({args['amount']} {args['token']} to {args['to']})")
-                print(f"  Purpose: {args['purpose']}")
-
-                result = handle_sardis_pay(args)
-                print(f"  Result: {result}\n")
-
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result,
-                })
-        else:
-            # Final response
-            print(f"Agent: {message.content}")
-            break
+    result = Runner.run_sync(
+        agent, "Check the balance, then pay $5 of OpenAI credits to openai.com."
+    )
+    print(result.final_output)
 
 
 if __name__ == "__main__":
-    run_agent("Purchase $20 of OpenAI API credits for our research project.")
+    main()

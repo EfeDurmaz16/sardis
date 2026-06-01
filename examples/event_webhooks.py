@@ -45,7 +45,7 @@ def on_policy_event(event: WebhookEvent) -> None:
     print(f"    Agent: {data.get('agent_id', 'n/a')}")
     print(f"    Amount: ${data.get('amount', 'n/a')}")
 
-    if event.event_type == EventType.POLICY_VIOLATION:
+    if event.event_type == EventType.POLICY_VIOLATED:
         print(f"    VIOLATION: {data.get('reason', 'Unknown')}")
         print(f"    Checks failed: {data.get('checks_failed', [])}")
 
@@ -115,8 +115,13 @@ def setup_subscriptions():
 
 # --- Simulate events --------------------------------------------------------
 
-def simulate_payment_flow():
-    """Simulate a sequence of payment events."""
+async def simulate_payment_flow():
+    """Simulate a sequence of payment events.
+
+    ``EventBus.emit`` is async and takes ``(event_type, data)`` — it builds the
+    ``WebhookEvent`` internally and routes it to matching subscribers. We await
+    each emit (``fire_and_forget=False``) so the handlers run before the summary.
+    """
     print("=" * 60)
     print("Simulating Payment Flow")
     print("=" * 60)
@@ -124,8 +129,8 @@ def simulate_payment_flow():
 
     # 1. Policy check passed
     print("1. Agent requests payment - policy check passes")
-    bus.emit(WebhookEvent(
-        event_type=EventType.POLICY_CHECK_PASSED,
+    await bus.emit(
+        EventType.POLICY_CHECK_PASSED,
         data={
             "agent_id": "agent-001",
             "amount": 25.00,
@@ -133,13 +138,14 @@ def simulate_payment_flow():
             "destination": "openai.com",
             "checks_passed": ["amount_limit", "token_allowed", "destination_not_blocked"],
         },
-    ))
+        fire_and_forget=False,
+    )
     print()
 
-    # 2. Spend recorded
-    print("2. Payment executed - spend recorded")
-    bus.emit(WebhookEvent(
-        event_type=EventType.SPEND_RECORDED,
+    # 2. Payment executed
+    print("2. Payment executed")
+    await bus.emit(
+        EventType.PAYMENT_COMPLETED,
         data={
             "agent_id": "agent-001",
             "amount": 25.00,
@@ -147,13 +153,14 @@ def simulate_payment_flow():
             "running_total": 125.00,
             "tx_id": "tx_abc123",
         },
-    ))
+        fire_and_forget=False,
+    )
     print()
 
     # 3. Policy violation
     print("3. Agent tries blocked payment - policy violation")
-    bus.emit(WebhookEvent(
-        event_type=EventType.POLICY_VIOLATION,
+    await bus.emit(
+        EventType.POLICY_VIOLATED,
         data={
             "agent_id": "agent-001",
             "amount": 500.00,
@@ -162,26 +169,28 @@ def simulate_payment_flow():
             "reason": "Destination gambling.com is blocked",
             "checks_failed": ["destination_blocked"],
         },
-    ))
+        fire_and_forget=False,
+    )
     print()
 
     # 4. Spend threshold warning
     print("4. Spend approaches limit - threshold warning")
-    bus.emit(WebhookEvent(
-        event_type=EventType.SPEND_THRESHOLD_WARNING,
+    await bus.emit(
+        EventType.SPEND_THRESHOLD_WARNING,
         data={
             "agent_id": "agent-001",
             "running_total": 900.00,
             "limit_total": 1000.00,
             "percent_used": 90,
         },
-    ))
+        fire_and_forget=False,
+    )
     print()
 
     # 5. Approval needed
     print("5. Large payment requires human approval")
-    bus.emit(WebhookEvent(
-        event_type=EventType.APPROVAL_REQUESTED,
+    await bus.emit(
+        EventType.APPROVAL_REQUESTED,
         data={
             "agent_id": "agent-001",
             "amount": 250.00,
@@ -189,7 +198,8 @@ def simulate_payment_flow():
             "destination": "aws.amazon.com",
             "reason": "Amount exceeds approval threshold of $200",
         },
-    ))
+        fire_and_forget=False,
+    )
     print()
 
 
@@ -226,5 +236,5 @@ if __name__ == "__main__":
     print()
 
     setup_subscriptions()
-    simulate_payment_flow()
+    asyncio.run(simulate_payment_flow())
     print_summary()

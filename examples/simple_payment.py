@@ -1,85 +1,47 @@
 #!/usr/bin/env python3
 """
-Simple Payment Demo
-===================
+Simple payment
+==============
 
-This example shows how to create a wallet and execute a payment
-using the Sardis payment protocol.
+The smallest possible Sardis example: execute one policy-checked payment with
+the unified `pay` endpoint.
 
-Run:
+Concept: `client.pay.execute(...)` runs the full authority path (mandate ->
+policy -> compliance -> execute -> signed ledger) in a single call.
+
+Requires a Sardis API key (the client talks to a Sardis deployment):
+    export SARDIS_API_KEY=sk_live_...
+    # optional: export SARDIS_API_URL=https://your-sardis-api.example.com
     python examples/simple_payment.py
 """
+from __future__ import annotations
 
+import os
 import sys
 
-sys.path.insert(0, ".")
-
-from sardis import Transaction, Wallet
+from sardis import Sardis
 
 
-def main():
-    print("=" * 50)
-    print("Sardis Payment Protocol - Simple Demo")
-    print("=" * 50)
-    print()
+def main() -> None:
+    api_key = os.environ.get("SARDIS_API_KEY")
+    if not api_key:
+        sys.exit("SARDIS_API_KEY not set. export SARDIS_API_KEY=sk_live_... and retry.")
 
-    # Create a wallet with initial balance
-    print("1. Creating wallet with $50 USDC...")
-    wallet = Wallet(initial_balance=50, currency="USDC")
-    print(f"   Wallet ID: {wallet.wallet_id}")
-    print(f"   Balance: ${wallet.balance} {wallet.currency}")
-    print()
+    client = Sardis(api_key=api_key)
 
-    # Create and execute a transaction
-    print("2. Executing payment of $2 to OpenAI API...")
-    tx = Transaction(
-        from_wallet=wallet,
-        to="openai:api",
-        amount=2,
-        purpose="GPT-4 API call"
+    # One call = mandate verification + policy + compliance + execution + ledger.
+    result = client.pay.execute(
+        to="0xRecipientAddressOrMerchantDomain",
+        amount="2.00",
+        currency="USDC",
+        chain="base",  # omit to let Sardis auto-route the cheapest chain
     )
 
-    result = tx.execute()
-    print(f"   Transaction ID: {result.tx_id}")
-    print(f"   Status: {result.status.value}")
-    print(f"   TX Hash: {result.tx_hash}")
-    print()
+    print(f"status:   {result.get('status')}")
+    print(f"tx_hash:  {result.get('tx_hash')}")
+    print(f"chain:    {result.get('chain')}")
+    print(f"ledger:   {result.get('ledger_tx_id')}")
 
-    # Check new balance
-    print("3. Checking wallet balance...")
-    print(f"   New Balance: ${wallet.balance} {wallet.currency}")
-    print(f"   Total Spent: ${wallet.spent_total}")
-    print()
-
-    # Execute another payment
-    print("4. Executing another payment of $5 to Anthropic...")
-    tx2 = Transaction(
-        from_wallet=wallet,
-        to="anthropic:claude",
-        amount=5,
-        purpose="Claude API call"
-    )
-
-    result2 = tx2.execute()
-    print(f"   Status: {result2.status.value}")
-    print(f"   TX Hash: {result2.tx_hash}")
-    print()
-
-    # Final summary
-    print("=" * 50)
-    print("Summary")
-    print("=" * 50)
-    print(f"   Final Balance: ${wallet.balance} {wallet.currency}")
-    print(f"   Total Spent: ${wallet.spent_total}")
-    print(f"   Remaining Limit: ${wallet.remaining_limit()}")
-    print()
-    print("✓ Demo completed successfully!")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-

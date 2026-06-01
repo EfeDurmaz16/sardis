@@ -92,9 +92,9 @@ async def run_demo(
     )
     from sardis.core.identity import AgentIdentity
     from sardis.core.mandates import VCProof
-    from sardis_chain import ChainExecutor
-    from sardis_protocol import MandateVerifier
-    from sardis_protocol.storage import ReplayCache
+    from sardis.chain import ChainExecutor
+    from sardis.protocol import MandateVerifier
+    from sardis.protocol.storage import ReplayCache
 
     # Load settings
     settings = load_settings()
@@ -312,7 +312,7 @@ async def run_demo(
             print("   No real funds were transferred.")
         else:
             print("\n🔗 View on Explorer:")
-            from sardis_chain.executor import CHAIN_CONFIGS
+            from sardis.chain.executor import CHAIN_CONFIGS
             chain_config = CHAIN_CONFIGS.get(chain, {})
             explorer = chain_config.get("explorer", "")
             if explorer:

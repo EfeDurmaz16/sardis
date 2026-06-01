@@ -77,6 +77,7 @@ from .middleware import (
     register_exception_handlers,
     setup_logging,
 )
+from .observability import init_otel, init_sentry, instrument_app
 from .openapi_schema import custom_openapi
 from .route_registry.accounts import (
     register_account_group_routes,
@@ -168,43 +169,10 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     """Create and configure the FastAPI application."""
     settings = settings or load_settings()
 
-    # Initialize Sentry for error monitoring (if configured)
-    sentry_dsn = os.getenv("SENTRY_DSN")
-    if sentry_dsn:
-        try:
-            import sentry_sdk
-            from sentry_sdk.integrations.asyncpg import AsyncPGIntegration
-            from sentry_sdk.integrations.fastapi import FastApiIntegration
-
-            sentry_sdk.init(
-                dsn=sentry_dsn,
-                environment=settings.environment,
-                traces_sample_rate=0.1 if settings.is_production else 1.0,
-                profiles_sample_rate=0.1 if settings.is_production else 1.0,
-                integrations=[
-                    FastApiIntegration(transaction_style="endpoint"),
-                    AsyncPGIntegration(),
-                ],
-                send_default_pii=False,
-            )
-            logger.info("Sentry monitoring initialized")
-        except ImportError:
-            logger.warning("SENTRY_DSN is set but sentry-sdk is not installed")
-
-    # Initialize OpenTelemetry distributed tracing (alongside Sentry)
-    if settings.otel_enabled:
-        try:
-            from .telemetry import init_telemetry, instrument_asyncpg
-
-            init_telemetry(
-                service_name=settings.otel_service_name,
-                exporter=settings.otel_exporter,
-                endpoint=settings.otel_endpoint,
-                sample_rate=settings.otel_sample_rate,
-            )
-            instrument_asyncpg()
-        except Exception as exc:
-            logger.warning("OpenTelemetry initialization failed: %s", exc)
+    # Initialize Sentry error monitoring + OpenTelemetry tracing (no-ops
+    # unless configured). See server/observability.py.
+    init_sentry(settings)
+    init_otel(settings)
 
     is_production = os.getenv("SARDIS_ENVIRONMENT", "dev").strip().lower() in ("prod", "production")
 
@@ -236,14 +204,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     from .middleware.mpp_gate import _Mpp402, _mpp_402_handler
     app.add_exception_handler(_Mpp402, _mpp_402_handler)  # type: ignore[arg-type]
 
-    # Instrument FastAPI with OpenTelemetry (after app creation)
-    if settings.otel_enabled:
-        try:
-            from .telemetry import instrument_fastapi
-
-            instrument_fastapi(app)
-        except Exception as exc:
-            logger.warning("OTEL FastAPI instrumentation failed: %s", exc)
+    # Instrument FastAPI with OpenTelemetry (after app creation; no-op unless enabled)
+    instrument_app(app, settings)
 
     # Exclude paths for middleware
     health_paths = ["/", "/health", "/health/live", "/api/v2/health", "/ready", "/live"]
