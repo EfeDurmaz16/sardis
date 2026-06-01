@@ -97,8 +97,10 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
-          cd apps/api
-          alembic upgrade head
+          # SQL migration runner is the single source of truth (alembic retired).
+          # Applies all of apps/api/migrations/001..NNN; idempotent via
+          # schema_migrations tracking, fail-loud on any SQL error.
+          bash scripts/run_migrations.sh
 
       - name: Deploy to Vercel (Staging)
         uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25
@@ -167,8 +169,13 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
         run: |
-          cd apps/api
-          alembic upgrade head
+          # SQL migration runner is the single source of truth (alembic retired).
+          # Applies all of apps/api/migrations/001..NNN; idempotent via
+          # schema_migrations tracking, fail-loud on any SQL error.
+          # NOTE: a ONE-TIME reconciliation against the live DB is required
+          # before the first runner-based deploy — see
+          # docs/productization/MIGRATION_CUTOVER.md.
+          bash scripts/run_migrations.sh
 
       - name: Deploy to Vercel (Production)
         uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # v25

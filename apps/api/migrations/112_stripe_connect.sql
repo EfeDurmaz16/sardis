@@ -1,12 +1,19 @@
 -- =============================================================================
--- Sardis Migration: 102_stripe_connect
+-- Sardis Migration: 112_stripe_connect
 -- =============================================================================
 --
 -- Add Stripe Connect Express account columns to merchants table.
 -- Enables merchants to link their Stripe account for fiat settlement
 -- via Sardis Connect (zero-crypto merchant experience).
 --
--- Apply: psql $DATABASE_URL -f migrations/102_stripe_connect.sql
+-- Apply: psql $DATABASE_URL -f migrations/112_stripe_connect.sql
+--
+-- NOTE: Renumbered from 102 -> 112 to resolve a version-ordinal collision with
+-- 102_idempotency_request_hash.sql. run_migrations.sh derives the
+-- schema_migrations version from the leading integer, so two files at ordinal
+-- 102 caused the alphabetically-second file (this one) to be silently SKIPPED
+-- on a fresh DB. Touches disjoint tables (merchants / stripe_connect_payouts)
+-- vs idempotency_records, so reordering after 111 is schema-safe.
 --
 -- =============================================================================
 
