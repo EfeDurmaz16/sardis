@@ -1,142 +1,140 @@
-# Phase 2 — Persistence Rebuild: GATE result
+# Phase 2 — Migration / Deploy Reconciliation: GATE result
 
 **Branch:** `feat/persistence-rebuild` · **Worktree:** `/Users/efebarandurmaz/sardis-phase2`
 **Date:** 2026-06-01 · GATE engineer
 
-This is the build/test/lint gate summary for the persistence-consolidation phase.
-For the full per-overlap analysis see `PHASE2_MAP.md` (survey) and
-`PHASE2_CONSOLIDATION_DONE_WITH_CONCERNS.md` (dispositions + backlog). This doc
-does not repeat them; it records that the gate is green and what is deferred.
+The go-live blocker (PHASE2_MAP.md §7 + the migration-phase report) was twofold:
+(a) the SQL migration chain `apps/api/migrations/*.sql` did **not** apply cleanly
+to an empty Postgres (7 documented break points); (b) the deploy pipeline ran
+`alembic upgrade head` (head **030**), so migrations **031–113** — including all
+the new moat/primitive tables — were **never applied by the deploy pipeline**, and
+a fresh prod deploy would crash. This phase makes the **SQL migrations the single
+source of truth AND the deploy mechanism**, stands a fresh DB up cleanly from
+them, switches the deploy pipeline to apply all of them, retires alembic, and adds
+a CI guard. This doc is the build/test/lint gate + the final clean-apply proof.
+
+For the persistence survey see `PHASE2_MAP.md`; for the founder's one-time live-Neon
+cutover see `MIGRATION_CUTOVER.md` (gitignored, local-only).
+
+---
 
 ## GATE result — GREEN
 
 ```
-uv sync                                                   → resolved 423 pkgs, OK
-uv run pytest apps/api/tests packages/sardis/tests -q     → 3037 passed, 15 skipped, 0 failed (85s)
-uv run ruff check apps/api packages/sardis                → All checks passed!
+uv sync                                                → resolved 421 pkgs; uninstalled alembic/mako/markupsafe (retired)
+uv run pytest apps/api/tests packages/sardis/tests -q  → 3037 passed, 15 skipped, 0 failed (104.76s)
+uv run ruff check apps/api packages/sardis             → All checks passed!
 ```
 
-### The 15 skips are pre-existing and NOT phase-2 regressions
+The 15 skips are pre-existing env-/dep-gated tests (missing optional `immudb` /
+`sardis_ucp`, `SARDIS_TEST_POSTGRES_DSN` unset, prod-only durability assertions),
+not phase-2 regressions — same set as the MAP baseline.
 
-Verified by `git blame`/`git log` on the skip-annotated files: every skip is
-either an unconditional import/env guard or was introduced on `main` by
-`342da6d6` ("fix(ci): unblock 3 main CI gates (#395)"), **not** by any of the
-four phase-2 commits (`dd9aa66e`, `7cd33532`, `3daa8eb5`, `196eead4`). They fall
-into three buckets:
+## Final clean ephemeral apply — PROOF
 
-- **Missing optional deps / packages:** `immudb` not installed (2 ledger tests),
-  `sardis_ucp not installed`, `db_engine.py`/`records.py`/`sardis-ledger`
-  not-found (3 ledger-precision tests).
-- **Env-gated (need a real Postgres / prod env):** `SARDIS_TEST_POSTGRES_DSN`
-  unset (facility-gate migration), prod/staging-only durability assertions,
-  admin-login-unavailable email verification, concurrency holds-unavailable.
-- **Explicitly pre-existing, tracked separately (annotated on main):**
-  facility-gate pilot-readiness `blocked` vs `passed`, two partner-card webhook
-  mocks not wired post-consolidation.
+Verified against an **ephemeral local Docker `postgres:16-alpine`** (matching the
+prod engine + the CI service container), applying the chain exactly as the deploy
+pipeline does, then torn down. The live Neon DB was never touched.
 
-This matches the dossier's note that the pre-existing ledger DB-connection
-skips are unrelated to this work.
+```
+Guard 1 (no duplicate ordinals):  OK — every migration ordinal is unique (113 migrations)
+Quarantine 083:                    083 seeded into schema_migrations (runner SKIPs it)
+Guard 2 (fresh-from-empty apply):  bash scripts/run_migrations.sh → reached [DONE] 113_facility_gate.sql, exit 0
+Guard 3 (idempotent re-run):       second run → 0 [APPLYING], 113 [SKIP], exit 0
+Guard 4 (moat tables, under bash): OK — spending_mandates, approval_requests, recourse_holds, revocations, delegations all present
+Post-apply state:                  171 public tables, 119 schema_migrations rows
+```
 
-## What was consolidated (committed, repo-level only)
+Per-break-point object verification on the fresh DB:
 
-1. **`102_*` migration collision — FIXED** (`7cd33532`). Two files parsed to
-   ordinal `102` in `scripts/run_migrations.sh`; the alphabetical glob applied
-   `102_idempotency_request_hash.sql` and then **silently skipped**
-   `102_stripe_connect.sql` forever. Renamed `102_stripe_connect.sql →
-   112_stripe_connect.sql` (next free slot after head 111; disjoint tables, keeps
-   alphabetical-last position → schema-safe reorder). Verified: zero duplicate
-   forward ordinals remain (`001` only appears via its `_rollback` companion,
-   which the runner skips at line 47).
+| Break point | Fix | Fresh-DB proof |
+|---|---|---|
+| **022** organizations FK UUID-vs-TEXT | Made 022 column types + columns match the 001 schema | `organizations.id` = `uuid`; `teams` has 2 resolved FK constraints |
+| **031** `gen_random_bytes` | Enable `pgcrypto` in 001 | `pg_extension` has `pgcrypto` |
+| **037** non-IMMUTABLE index predicate | Drop the `now()` predicate from the idempotency index | `idempotency_records` table present, chain applied past 037 |
+| **054** missing `x402_settlements` | Create the base `x402_settlements` table in 054 | `x402_settlements` present |
+| **062** missing `cards` | Create the base `cards` table in 062 | `cards` present |
+| **089** `schema_migrations.name` | Insert via `(version, description)` (runner's real columns) | `schema_migrations` row `089` present; `notification_configs` present |
+| **083** missing `org_id` (016 vs 083 `subscriptions` shape conflict) | **Quarantined + documented** — not a DDL fix; data-model decision needing the live schema | row `083` recorded as `[QUARANTINED]`; `charge_intents` correctly absent |
+| (102 collision) | Renumber `102_stripe_connect.sql` → `112_*` | both `idempotency_records.request_hash` AND `stripe_connect_payouts` present |
 
-2. **Canonical model index — ADDED** (`3daa8eb5`). New `sardis.canonical_models`:
-   an additive, behaviour-identical re-export index giving ONE source-of-truth
-   pointer for the entities the MAP flagged as "defined twice" (Agent, Wallet,
-   Payment, Group, TokenLimit). `Engine*`/`Sdk*` names resolve to the existing
-   canonical classes; bare names resolve to the engine (money-path) domain. No
-   new types, no field/wire/DB change. Locked by identity tests (re-exports are
-   the SAME class objects) + a money-safety guard (`Wallet.is_frozen/freeze()`
-   stays on the engine model, never leaks into the public DTO).
+## What changed in the deploy path
 
-3. **Dual-persistence collapse — NONE this pass, by design** (`196eead4`). Every
-   MAP §2 overlap was re-verified against source; none is simultaneously a
-   genuine redundant duplicate, clearly money-safe, AND test-green-trivial. Two
-   decisive facts: (a) `apps/api/tests/conftest.py` runs the whole apps/api suite
-   under `DATABASE_URL=memory://`, so the in-memory dual-mode branches are the
-   *tested* path (not dead code) — deleting any breaks the suite; (b) the
-   single-owner SDK-core repos already use a clean `Protocol` + `InMemory*` +
-   `Postgres*` design over the shared `Database` primitive, with `InMemory*`
-   used by 10 test files — nothing redundant to remove. Per hard-rule 1
-   (money-correctness over tidiness), all overlaps are DEFERRED + documented
-   rather than force-collapsed.
+1. **Deploy switch (`a8be60d3`).** `.github/workflows/deploy.yml` — BOTH the
+   `deploy-api-staging` and `deploy-api-production` jobs now run
+   `bash scripts/run_migrations.sh` (against the job's `DATABASE_URL` secret)
+   instead of `cd apps/api && alembic upgrade head`. The runner applies the full
+   `001 … 113` chain, is idempotent (`schema_migrations` version tracking +
+   `IF NOT EXISTS`), and fails loud (`ON_ERROR_STOP=1`) so a broken migration can
+   never produce a false "complete". `scripts/release/deployment_config_check.sh`
+   was updated to assert `bash scripts/run_migrations.sh` (not `alembic upgrade
+   head`).
 
-## Schema baseline approach
+2. **Alembic retired (`e8e624a8`, `1c4beb7b`).** `apps/api/alembic/` (30 versions)
+   + `alembic.ini` deleted; the only DDL alembic still owned that the SQL chain
+   lacked — facility-gate (alembic rev 030) — was **ported to SQL migration
+   `113_facility_gate.sql`**. `test_facility_gate_migration.py` now drives the SQL
+   runner (no alembic import). `alembic` dropped from `pyproject` (uv sync
+   uninstalled it). The 3 residual "alembic" mentions in repo config are benign
+   comments noting the retirement. The migration runner was hardened
+   (fail-loud, version tracking, `--mark-applied` / `--dry-run` modes).
 
-A squashed single-file baseline was **intentionally NOT shipped** (`7cd33532`).
-The `001 → 112` SQL chain does not apply cleanly to a fresh empty Postgres —
-7 pre-existing break points (022 UUID/TEXT FK, 031 `gen_random_bytes`, 037
-non-IMMUTABLE index predicate, 054/062 missing relations, 083 missing column,
-089 `schema_migrations.name`), documented in `PHASE2_MAP.md §7`. Because no
-deterministic "current schema" is reproducible from the chain on an empty DB,
-schema-equivalence cannot be cleanly proven, and hand-assembling a baseline
-would be an unverified guess at the live Neon schema — which the task forbids.
-The honest outcome: collision fixed, break points documented, baseline stopped
-pending a live-schema dump.
+3. **CI guard (`3b8efea0`).** New `.github/workflows/migrations.yml` runs on any
+   change to `apps/api/migrations/**`, `scripts/run_migrations.sh`, or itself,
+   against an ephemeral `postgres:16` service container (never Neon). Four guards:
+   (1) no duplicate ordinals (the 102-style collision), (2) full chain applies
+   fresh-from-empty (the real deploy step), (3) re-run is a clean no-op
+   (idempotency), (4) the key moat tables exist (`spending_mandates`,
+   `approval_requests`, `recourse_holds`, `revocations`, `delegations`). 083 is
+   quarantined explicitly and loudly (seeded so the runner SKIPs it) — when 083 is
+   fixed, that step is deleted and the chain must go green on its own. This
+   replaces the dead `migration_alignment_check.sh` alembic-alignment fiction.
 
-**Alembic is NOT dead** (correcting MAP §5.2): `.github/workflows/deploy.yml`
-runs `alembic upgrade head` as the live staging+production DB-migration step.
-It is retained. There is a real drift (alembic head `030` vs SQL chain head
-`112`) — deferred, see below.
+Net: the SQL chain is now the single source of truth for the schema **and** the
+deploy mechanism; a fresh DB stands up cleanly (083 quarantined); the deploy
+pipeline applies the whole chain; alembic is gone; CI guards it forever.
 
-## DEFERRED follow-ups (careful, staged, out of scope for this repo-level phase)
+## The one outstanding item — 083 (deferred by design)
 
-Money-path consolidations — each needs a **characterization test first**, then a
-behaviour-preserving move, validated against a real DB:
+`083_subscriptions.sql` does not apply to an empty DB: migration **016** already
+owns a `subscriptions` table with an incompatible shape (`id` PK, `wallet_id`, no
+`org_id`), so 083's `CREATE TABLE IF NOT EXISTS subscriptions` (`subscription_id`
+PK, `org_id`, …) no-ops and its `org_id` index / `charge_intents` / `usage_meters`
+statements fail. Two live code paths expect the two different shapes for the same
+table name (`subscriptions_repository.py` + `billing_events` → 016 shape;
+`mandate_subscriptions.py` + `billing/usage.py` → 083 shape). Resolving this is a
+**data-model decision** (rename one table or merge column sets) that requires
+knowledge of the **live Neon `subscriptions` schema** and cannot be settled from
+the repo alone — so it is intentionally NOT force-fixed. It is **quarantined** in
+both CI and the cutover (on Neon 083's CREATE was a no-op too, so it does not block
+deploys today). A brand-new stand-up-from-empty prod deploy must not be attempted
+until 083 is resolved in a dedicated, live-validated task; everyday idempotent
+re-deploys are unaffected.
 
-- **`spending_mandates`** — single-owner repo; pin concurrent `spent_total +=`
-  spend-accrual + idempotency (`FOR UPDATE`) semantics before moving writers.
-- **`payment_objects` / `*_state_transitions` / `mandate_state_transitions`** —
-  append-only money-state-machine tables; document the two triggers per table +
-  ordering invariants before any unification.
-- **`wallets`** — consolidate read/CRUD only; leave freeze (`wallets/emergency.py`)
-  and spend-counter reset (`jobs/spending_reset.py`) writes in place.
-- **`agents` side-writes** — fold heartbeat/event writes behind the repo seam
-  only if the heartbeat `xmax = 0` inserted-detection, SSE side-effect, and
-  COALESCE-preserve semantics are reproduced exactly.
-- **`funding_cells` / `erc8183_jobs`** — concurrency-sensitive state machines;
-  characterization tests required.
-- **`organizations` provisioning** (control-plane, MEDIUM) — introduce one
-  `ensure_org(...)` helper, migrate the two thin callers one at a time,
-  preserving each conflict policy + settings shape.
-- **`subscriptions`** — confirm whether `subscriptions_repository` (PK `id`) and
-  `authority/mandate_subscriptions` (key `subscription_id`) are the same physical
-  table; likely distinct domains that should stay separate.
+## FOUNDER one-time live-Neon cutover (do NOT automate)
 
-Tidiness long tail (no SQL change, large diff, schedule independently):
+The repo + CI + deploy pipeline only ever touch ephemeral/local databases. The
+single manual step that touches the live Neon DB is the **founder's**, documented
+precisely in **`docs/productization/MIGRATION_CUTOVER.md`** (gitignored, local).
+Summary of that procedure (staging first, then production):
 
-- **Inline route DTOs** — MAP §4 flags ~653 inline models across ~109 files;
-  pure DTO extraction into `apps/api/server/schemas/*`, worst-offenders first,
-  per-file, tests green.
-- **Field-level DTO↔domain collapse** of the canonical entities — needs an
-  adapter layer, not a deletion (merging would leak engine/money-safety state
-  into the public wire DTO, or strip it from the engine model).
+1. **Backup** — create a Neon branch of the target DB (instant copy-on-write
+   rollback).
+2. **Inspect** the mismatch (READ-ONLY): `alembic_version` (single row `030`) vs
+   `schema_migrations` (missing rows for 031–112).
+3. **Confirm physical presence** — spot-check that the 031–112 objects
+   (`spending_mandates`, `approval_requests`, `recourse_holds`, `revocations`,
+   `delegations`, `stripe_connect_payouts`) already exist on Neon (they were applied
+   out-of-band). If any are absent, STOP.
+4. **Seed bookkeeping** — `DATABASE_URL="$NEON_URL" bash scripts/run_migrations.sh
+   --mark-applied` records every repo version as applied **without executing any
+   SQL** (writes only to `schema_migrations`, no DDL/DML against real tables).
+5. **Verify** — `--dry-run` must report **zero pending** (all `[SKIP]`).
+6. **Migration 113 caveat** — facility-gate tables were created by the old alembic
+   030, so `--mark-applied` correctly records 113. Only on a DB where facility
+   tables are absent: delete the 113 row and let the runner apply it.
+7. **Rollback** — `schema_migrations` is pure bookkeeping; `TRUNCATE
+   schema_migrations` and re-seed, or restore the Neon branch.
 
-Deploy-pipeline / live-DB tasks (explicitly NOT this workflow):
-
-- **Live-DB baseline cutover** — dumping the live Neon schema to produce a
-  verified squashed baseline is a **separate deploy step**, not this repo-level
-  phase.
-- **Alembic head drift** — alembic head `030` vs SQL chain head `112`; the
-  deploy pipeline applies ≤030 via alembic, 031..112 applied out-of-band. Real
-  coverage gap; touches the live deploy path + live DB → dedicated task.
-
-## Honesty statement
-
-The conservative pass collapses no dual-persistence and ships no squashed
-baseline. That is the correct result, not skipped work: the dual-persistence
-here is overwhelmingly intentional lifecycle-phase separation over a money-path
-(not accidental duplication), the in-memory branches are the test substrate, and
-the SQL chain is not clean-appliable to an empty DB. The real latent bug (the
-`102_*` silent-skip collision) is fixed, the duplicate-model situation has a
-canonical index, and every safe-but-staged consolidation is documented with a
-verified reason and a characterization-test-first plan. Money-correctness over
-tidiness, tests green at every step.
+After cutover, the deploy pipeline's `bash scripts/run_migrations.sh` is safe and
+idempotent on Neon: it applies only genuinely new migrations and skips the rest.
