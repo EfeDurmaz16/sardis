@@ -7,8 +7,9 @@ import hmac
 import json
 import logging
 import os
+import re
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -195,6 +196,185 @@ def _kya_strict_registration() -> bool:
     if explicit:
         return _is_truthy_env(explicit)
     return (os.getenv("SARDIS_ENVIRONMENT", "dev") or "dev").strip().lower() in {"prod", "production"}
+
+
+# Multichain address fan-out for a single provisioned signing key.
+_WALLET_ADDRESS_CHAINS = (
+    "base_sepolia", "base", "ethereum", "polygon", "arbitrum", "optimism", "tempo",
+)
+
+
+async def _provision_agent_wallet(
+    deps: AgentDependencies,
+    *,
+    agent_id: str,
+    limit_per_tx: Decimal,
+    limit_total: Decimal,
+    currency: str = "USDC",
+) -> object:
+    """Provision a wallet for an agent, fail-closed on the money path.
+
+    Behaviour by execution mode:
+
+    - **Turnkey available and succeeds** → a real non-custodial MPC wallet with
+      on-chain addresses (the production path).
+    - **Turnkey unavailable / fails, simulated mode** (dev / test / sim) → a wallet
+      honestly labelled ``mpc_provider="simulated"`` with a clearly-marked
+      simulated address. It is NOT labelled "turnkey", so a created agent never
+      claims a live MPC wallet it does not have. Simulated wallets cannot move
+      real funds (the chain executor is gated on ``chain_mode``).
+    - **Turnkey unavailable / fails, live mode** (staging_live / production_live) →
+      raises ``RuntimeError``. We refuse to create an address-less wallet and
+      report success: the caller rolls back and returns 503. Fail-closed.
+
+    Raises:
+        RuntimeError: when a real wallet cannot be provisioned in a live mode.
+    """
+    from server.execution_mode import SIMULATED_MODE, resolve_execution_mode
+
+    addresses: dict[str, str] | None = None
+    wallet_id_override: str | None = None
+    provider = "turnkey"
+
+    provisioned = False
+    if deps.wallet_manager:
+        try:
+            result = await deps.wallet_manager.create_turnkey_wallet(
+                wallet_name=f"agent_{agent_id}",
+                agent_id=agent_id,
+            )
+            wallet_id_override = result.get("wallet_id")
+            addrs = result.get("addresses") or []
+            first_addr = None
+            if addrs:
+                first_addr = addrs[0].get("address") if isinstance(addrs[0], dict) else addrs[0]
+            if isinstance(first_addr, str) and first_addr:
+                addresses = dict.fromkeys(_WALLET_ADDRESS_CHAINS, first_addr)
+                provisioned = True
+            else:
+                logger.warning(
+                    "Turnkey returned no address for agent %s wallet provisioning", agent_id
+                )
+        except Exception as exc:
+            logger.warning("Turnkey wallet creation failed for agent %s: %s", agent_id, exc)
+
+    if not provisioned:
+        mode = resolve_execution_mode()
+        if mode != SIMULATED_MODE:
+            # Live mode: never fabricate a dead wallet. Fail closed.
+            raise RuntimeError(
+                "wallet_provisioning_unavailable: cannot create an on-chain wallet "
+                f"(execution_mode={mode}). Turnkey MPC custody is required in live mode."
+            )
+        # Simulated/dev: deterministic, clearly-labelled simulated address.
+        sim_addr = "0x" + hashlib.sha256(f"sim:{agent_id}".encode()).hexdigest()[:40]
+        addresses = dict.fromkeys(_WALLET_ADDRESS_CHAINS, sim_addr)
+        provider = "simulated"
+        wallet_id_override = None
+
+    return await deps.wallet_repo.create(
+        agent_id=agent_id,
+        wallet_id=wallet_id_override,
+        mpc_provider=provider,
+        currency=currency,
+        limit_per_tx=limit_per_tx,
+        limit_total=limit_total,
+        addresses=addresses,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Natural-language instruction parsing for /instruct
+# ---------------------------------------------------------------------------
+
+_PAYMENT_VERBS = ("buy", "purchase", "pay", "send", "transfer", "spend", "subscribe")
+_BALANCE_KEYWORDS = ("balance", "how much", "funds", "wallet")
+_POLICY_KEYWORDS = ("policy", "limit", "rules", "spending policy", "what can i spend")
+
+# $123.45 | 123 usd | usd 50 | 50 dollars
+_AMOUNT_RE = re.compile(
+    r"(?:[$€]\s*(?P<sym>[0-9][0-9,]*(?:\.[0-9]+)?))"
+    r"|(?:(?P<pre_cur>usd|usdc|eur|eurc|dollars?)\s*(?P<after>[0-9][0-9,]*(?:\.[0-9]+)?))"
+    r"|(?:(?P<before>[0-9][0-9,]*(?:\.[0-9]+)?)\s*(?P<post_cur>usd|usdc|eur|eurc|dollars?))",
+    re.IGNORECASE,
+)
+# "... to/at/from <merchant>" — capture a short merchant token
+_MERCHANT_RE = re.compile(
+    r"\b(?:to|at|from|on)\s+(?P<merchant>[A-Za-z0-9][A-Za-z0-9._\- ]{1,40}?)"
+    r"(?=\s+(?:for|to pay|using|with|amount|\$|€)|[.,!?]|$)",
+    re.IGNORECASE,
+)
+
+
+def _extract_amount(text: str) -> Decimal | None:
+    """Extract a monetary amount from free text. Returns None if none found."""
+    m = _AMOUNT_RE.search(text)
+    if not m:
+        return None
+    raw = m.group("sym") or m.group("after") or m.group("before")
+    if not raw:
+        return None
+    try:
+        value = Decimal(raw.replace(",", ""))
+    except (InvalidOperation, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def _extract_merchant(text: str) -> str | None:
+    m = _MERCHANT_RE.search(text)
+    if not m:
+        return None
+    merchant = m.group("merchant").strip().rstrip(".,!? ")
+    return merchant or None
+
+
+def _classify_instruction(text: str) -> str:
+    """Return one of: 'payment', 'balance', 'policy', 'other'."""
+    low = text.lower()
+    # Query intents take precedence so "spending policy" isn't mistaken for the
+    # "spend" payment verb.
+    if any(kw in low for kw in _POLICY_KEYWORDS):
+        return "policy"
+    if any(kw in low for kw in _BALANCE_KEYWORDS):
+        return "balance"
+    # Word-boundary match so "spending"/"payment" don't trip the verb list.
+    if any(re.search(rf"\b{re.escape(v)}\b", low) for v in _PAYMENT_VERBS):
+        return "payment"
+    return "other"
+
+
+def _spending_policy_from_agent(agent: Agent):
+    """Build a real SpendingPolicy from an agent's limits + policy.
+
+    Mirrors the same fields the orchestrator enforces (per-tx cap, lifetime
+    total, merchant allow/block, blocked categories, approval threshold) so the
+    /instruct preflight evaluation matches production enforcement semantics.
+    """
+    from sardis.core.spending_policy import MerchantRule, SpendingPolicy
+
+    pol = agent.policy
+    limits = agent.spending_limits
+
+    merchant_rules: list[MerchantRule] = []
+    for blocked in (pol.blocked_merchants or []):
+        merchant_rules.append(MerchantRule(rule_type="deny", merchant_id=blocked))
+    for blocked_cat in (pol.blocked_categories or []):
+        merchant_rules.append(MerchantRule(rule_type="deny", category=blocked_cat))
+    if pol.allowed_merchants is not None:
+        for allowed in pol.allowed_merchants:
+            merchant_rules.append(MerchantRule(rule_type="allow", merchant_id=allowed))
+
+    approval_threshold = pol.require_approval_above
+
+    return SpendingPolicy(
+        agent_id=agent.agent_id,
+        limit_per_tx=limits.per_transaction,
+        limit_total=limits.total,
+        blocked_merchant_categories=list(pol.blocked_categories or []),
+        merchant_rules=merchant_rules,
+        approval_threshold=approval_threshold,
+    )
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -559,43 +739,27 @@ async def create_agent(
             if downgraded is not None:
                 agent = downgraded
 
-    # Optionally create a wallet for the agent
+    # Optionally create a wallet for the agent. Fail-closed: in live mode, if a
+    # real MPC wallet cannot be provisioned we roll back the agent and 503 rather
+    # than returning a "created" agent that owns a dead, address-less wallet.
     if request.create_wallet:
-        addresses: dict[str, str] | None = None
-        wallet_id_override: str | None = None
-
-        # Call Turnkey to create a real MPC wallet with an on-chain address
-        if deps.wallet_manager:
-            try:
-                provider_result = await deps.wallet_manager.create_turnkey_wallet(
-                    wallet_name=f"agent_{agent.agent_id}",
-                    agent_id=agent.agent_id,
-                )
-                wallet_id_override = provider_result.get("wallet_id")
-                addrs = provider_result.get("addresses") or []
-                first_addr = None
-                if addrs:
-                    first_addr = addrs[0].get("address") if isinstance(addrs[0], dict) else addrs[0]
-                if isinstance(first_addr, str) and first_addr:
-                    addresses = {
-                        "base_sepolia": first_addr, "base": first_addr,
-                        "ethereum": first_addr, "polygon": first_addr,
-                        "arbitrum": first_addr, "optimism": first_addr,
-                        "tempo": first_addr,
-                    }
-            except Exception as e:
-                logger.warning("Turnkey wallet creation failed for agent %s: %s", agent.agent_id, e)
-                # Fall through — wallet will be created without addresses (can be fixed later)
-
-        wallet = await deps.wallet_repo.create(
-            agent_id=agent.agent_id,
-            wallet_id=wallet_id_override,
-            mpc_provider="turnkey",
-            currency="USDC",
-            limit_per_tx=spending_limits.per_transaction if spending_limits else Decimal("100.00"),
-            limit_total=spending_limits.total if spending_limits else Decimal("1000.00"),
-            addresses=addresses,
-        )
+        try:
+            wallet = await _provision_agent_wallet(
+                deps,
+                agent_id=agent.agent_id,
+                limit_per_tx=spending_limits.per_transaction if spending_limits else Decimal("100.00"),
+                limit_total=spending_limits.total if spending_limits else Decimal("1000.00"),
+            )
+        except RuntimeError as exc:
+            await deps.agent_repo.delete(agent.agent_id)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "wallet_provisioning_unavailable",
+                    "reason_code": "SARDIS.AGENT.WALLET_PROVISIONING_FAILED",
+                    "hint": "Create the agent with create_wallet=false and bind a wallet later, or configure Turnkey custody.",
+                },
+            ) from exc
         await deps.agent_repo.bind_wallet(agent.agent_id, wallet.wallet_id)
         agent.wallet_id = wallet.wallet_id
 
@@ -732,40 +896,24 @@ async def create_payment_identity(
 
     wallet_id = agent.wallet_id
     if not wallet_id and request.ensure_wallet:
-        pi_addresses: dict[str, str] | None = None
-        pi_wallet_id_override: str | None = None
-
-        # Call Turnkey to create a real MPC wallet with an on-chain address
-        if deps.wallet_manager:
-            try:
-                pi_result = await deps.wallet_manager.create_turnkey_wallet(
-                    wallet_name=f"agent_{agent.agent_id}",
-                    agent_id=agent.agent_id,
-                )
-                pi_wallet_id_override = pi_result.get("wallet_id")
-                pi_addrs = pi_result.get("addresses") or []
-                pi_first = None
-                if pi_addrs:
-                    pi_first = pi_addrs[0].get("address") if isinstance(pi_addrs[0], dict) else pi_addrs[0]
-                if isinstance(pi_first, str) and pi_first:
-                    pi_addresses = {
-                        "base_sepolia": pi_first, "base": pi_first,
-                        "ethereum": pi_first, "polygon": pi_first,
-                        "arbitrum": pi_first, "optimism": pi_first,
-                        "tempo": pi_first,
-                    }
-            except Exception as e:
-                logger.warning("Turnkey wallet creation failed for payment identity %s: %s", agent.agent_id, e)
-
-        wallet = await deps.wallet_repo.create(
-            agent_id=agent.agent_id,
-            wallet_id=pi_wallet_id_override,
-            mpc_provider="turnkey",
-            currency="USDC",
-            limit_per_tx=agent.spending_limits.per_transaction,
-            limit_total=agent.spending_limits.total,
-            addresses=pi_addresses,
-        )
+        # Fail-closed: refuse to mint a payment identity over a dead, address-less
+        # wallet. In live mode without real custody this 503s instead of lying.
+        try:
+            wallet = await _provision_agent_wallet(
+                deps,
+                agent_id=agent.agent_id,
+                limit_per_tx=agent.spending_limits.per_transaction,
+                limit_total=agent.spending_limits.total,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "wallet_provisioning_unavailable",
+                    "reason_code": "SARDIS.AGENT.WALLET_PROVISIONING_FAILED",
+                    "hint": "Bind an existing wallet before creating a payment identity, or configure Turnkey custody.",
+                },
+            ) from exc
         wallet_id = wallet.wallet_id
         await deps.agent_repo.bind_wallet(agent.agent_id, wallet_id)
         agent.wallet_id = wallet_id
@@ -897,9 +1045,13 @@ class InstructAgentRequest(BaseModel):
 class InstructAgentResponse(BaseModel):
     agent_id: str
     instruction: str
+    intent: str = "other"  # payment | balance | policy | other
+    decision: str | None = None  # allow | requires_approval | deny (payment intents)
+    reason_code: str | None = None  # policy reason code for payment intents
     response: str
+    parsed: dict | None = None  # extracted amount / merchant
     tool_call: dict | None = None
-    tx_id: str | None = None
+    tx_id: str | None = None  # always None — /instruct never executes a payment
     error: str | None = None
 
 
@@ -910,17 +1062,24 @@ async def instruct_agent(
     deps: AgentDependencies = Depends(get_deps),
     principal: Principal = Depends(require_principal),
 ):
-    """Send a natural language instruction to an agent for policy-checked execution."""
+    """Evaluate a natural-language instruction against the agent's real policy.
+
+    This endpoint is **read-only**: it never moves money. Payment-style
+    instructions are parsed for an amount + merchant and run through the same
+    ``SpendingPolicy`` engine the orchestrator uses (``validate_payment``), so
+    the returned ``decision`` (allow / requires_approval / deny) matches what
+    production enforcement would do. To actually execute a payment, the caller
+    must use the dedicated payment endpoints with a signed mandate.
+    """
     agent = await deps.agent_repo.get(agent_id)
     if not agent:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Agent not found")
     if not principal.is_admin and agent.owner_id != principal.organization_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    instruction = request.instruction.lower().strip()
+    intent = _classify_instruction(request.instruction)
 
-    # Simple instruction parsing for demo
-    if any(kw in instruction for kw in ["balance", "how much", "funds", "wallet"]):
+    if intent == "balance":
         wallet = None
         if agent.wallet_id:
             wallet = await deps.wallet_repo.get(agent.wallet_id)
@@ -928,38 +1087,117 @@ async def instruct_agent(
             return InstructAgentResponse(
                 agent_id=agent_id,
                 instruction=request.instruction,
-                response=f"Your wallet ({wallet.wallet_id}) has spending limits of ${float(wallet.limit_per_tx):.2f} per transaction and ${float(wallet.limit_total):.2f} total. Currency: {wallet.currency}.",
+                intent="balance",
+                response=(
+                    f"Wallet {wallet.wallet_id} ({wallet.mpc_provider}) has limits of "
+                    f"${float(wallet.limit_per_tx):.2f} per transaction and "
+                    f"${float(wallet.limit_total):.2f} total. Currency: {wallet.currency}."
+                ),
                 tool_call={"name": "get_wallet_balance", "arguments": {"wallet_id": wallet.wallet_id}},
             )
         return InstructAgentResponse(
             agent_id=agent_id,
             instruction=request.instruction,
-            response="No wallet is currently bound to this agent. Create one via the Dashboard or API.",
+            intent="balance",
+            response="No wallet is currently bound to this agent. Create or bind one before transacting.",
         )
 
-    if any(kw in instruction for kw in ["policy", "limit", "rules", "spending"]):
+    if intent == "policy":
         sl = agent.spending_limits
         return InstructAgentResponse(
             agent_id=agent_id,
             instruction=request.instruction,
-            response=f"Current spending policy: ${float(sl.per_transaction):.2f}/tx, ${float(sl.daily):.2f}/day, ${float(sl.monthly):.2f}/month, ${float(sl.total):.2f} total limit.",
+            intent="policy",
+            response=(
+                f"Spending policy: ${float(sl.per_transaction):.2f}/tx, "
+                f"${float(sl.daily):.2f}/day, ${float(sl.monthly):.2f}/month, "
+                f"${float(sl.total):.2f} total limit."
+            ),
             tool_call={"name": "get_spending_policy", "arguments": {"agent_id": agent_id}},
         )
 
-    if any(kw in instruction for kw in ["buy", "purchase", "pay", "send", "transfer"]):
-        sl = agent.spending_limits
+    if intent == "payment":
+        amount = _extract_amount(request.instruction)
+        merchant = _extract_merchant(request.instruction)
+        parsed = {
+            "amount": str(amount) if amount is not None else None,
+            "merchant": merchant,
+        }
+
+        if amount is None:
+            return InstructAgentResponse(
+                agent_id=agent_id,
+                instruction=request.instruction,
+                intent="payment",
+                decision="deny",
+                reason_code="amount_not_specified",
+                parsed=parsed,
+                response=(
+                    "I could not determine an amount from that instruction. "
+                    "Specify an amount (e.g. 'pay $20 to openai') so I can evaluate it "
+                    "against your spending policy."
+                ),
+            )
+
+        # Real policy evaluation — same engine the orchestrator runs before
+        # execution. Read-only: no balance lookup, no DB spend tracking, no money moved.
+        policy = _spending_policy_from_agent(agent)
+        approved, reason = policy.validate_payment(
+            amount,
+            Decimal("0"),
+            merchant_id=merchant,
+        )
+
+        if not approved:
+            decision = "deny"
+        elif reason == "requires_approval":
+            decision = "requires_approval"
+        else:
+            decision = "allow"
+
+        merchant_txt = f" to {merchant}" if merchant else ""
+        if decision == "allow":
+            response = (
+                f"A payment of ${float(amount):.2f}{merchant_txt} is within policy and would be "
+                f"auto-approved. This is an evaluation only — submit a signed payment "
+                f"mandate to execute it."
+            )
+        elif decision == "requires_approval":
+            response = (
+                f"A payment of ${float(amount):.2f}{merchant_txt} exceeds the auto-approval "
+                f"threshold and would require human approval before execution."
+            )
+        else:
+            response = (
+                f"A payment of ${float(amount):.2f}{merchant_txt} would be denied by policy "
+                f"(reason: {reason})."
+            )
+
         return InstructAgentResponse(
             agent_id=agent_id,
             instruction=request.instruction,
-            response=f"I can process payments within my spending policy (${float(sl.per_transaction):.2f}/tx limit). To execute a payment, use the simulate-purchase endpoint or provide a specific amount and merchant.",
-            tool_call={"name": "evaluate_payment_intent", "arguments": {"instruction": request.instruction}},
+            intent="payment",
+            decision=decision,
+            reason_code=reason,
+            parsed=parsed,
+            response=response,
+            tool_call={
+                "name": "evaluate_payment_intent",
+                "arguments": {"amount": str(amount), "merchant": merchant},
+            },
         )
 
-    # Default response
+    # Unrecognized instruction.
     return InstructAgentResponse(
         agent_id=agent_id,
         instruction=request.instruction,
-        response=f"I'm {agent.name}, a Sardis-managed AI agent. I can help with: checking balances, reviewing spending policies, and processing payments within my authorized limits. What would you like to do?",
+        intent="other",
+        response=(
+            f"I'm {agent.name}, a Sardis-managed agent. I can report your wallet status, "
+            f"explain your spending policy, and evaluate a proposed payment "
+            f"(e.g. 'pay $20 to openai') against that policy. I do not execute payments "
+            f"from this endpoint."
+        ),
     )
 
 

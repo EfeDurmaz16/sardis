@@ -11,7 +11,7 @@ Multi-agent procurement system with Sardis + CrewAI.
 ## Setup
 
 ```bash
-pip install sardis-crewai crewai crewai-tools
+pip install "sardis[crewai]" crewai crewai-tools
 ```
 
 ## Run

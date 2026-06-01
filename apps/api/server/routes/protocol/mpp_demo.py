@@ -1,12 +1,19 @@
 """MPP Demo — Real intelligence endpoint for Stripe MPP team demo.
 
+THIS endpoint sits behind the MPP-*conformant* gate (``mpp_gate``): the
+"Payment" HTTP auth scheme (402 → pay on Tempo → retry with credential → 200 +
+Payment-Receipt). It is the wire-protocol surface; the Sardis-native session/
+budget authority lives in ``routes/protocol/mpp.py``.
+
 Demonstrates the dual-access MPP gate middleware:
 1. Authenticated users (API key / JWT) → free access
 2. Unauthenticated users → 402 challenge, pay via Tempo, resend with credential
 3. Payment validated → data returned with Payment-Receipt header
 
-Returns real network data (agent counts, transaction volume) and runs real
-policy evaluation when agent_id is supplied.
+Returns real network data (agent counts, transaction volume) and runs the real
+SpendingPolicy engine — the same one ``/api/v2/mpp/evaluate`` uses — when an
+agent_id is supplied (fail-closed: no policy_store / no agent_id / engine error
+=> DENIED).
 
 Designed for Ben Berke (Stripe) to test with `npx mppx`.
 
@@ -21,12 +28,14 @@ from __future__ import annotations
 import logging
 import os
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse
 
 from server.middleware.mpp_gate import add_mpp_receipt_header, mpp_gate
+from server.services.mpp_policy import evaluate_mpp_policy
 
 logger = logging.getLogger(__name__)
 
@@ -114,65 +123,49 @@ async def _fetch_network_status() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Policy check (lightweight for demo)
+# Policy check — delegates to the real SpendingPolicy engine
 # ---------------------------------------------------------------------------
 
-_MAX_SINGLE_PAYMENT = 100.0  # $100 max per request
-_DAILY_LIMIT = 1000.0  # $1,000 daily cap
-_daily_total = 0.0
-_daily_reset: str = ""
 
+async def _policy_check(
+    request: Request,
+    *,
+    agent_id: str,
+    amount: float,
+    merchant: str,
+    currency: str,
+    network: str = "tempo",
+) -> dict[str, Any]:
+    """Run the real Sardis SpendingPolicy and return demo-shaped results.
 
-def _policy_check(amount: float, merchant: str, currency: str) -> dict[str, Any]:
-    """Run Sardis policy checks and return detailed results."""
-    global _daily_total, _daily_reset
+    Single source of policy truth: the same ``evaluate_mpp_policy`` engine that
+    ``/api/v2/mpp/evaluate`` uses. Fail-closed — no policy_store / no agent /
+    engine error => DENIED. No hardcoded thresholds, no module-global counter.
+    """
+    try:
+        amount_dec = Decimal(str(amount))
+    except (InvalidOperation, ValueError):
+        return {
+            "result": "DENIED",
+            "reason": "invalid_amount",
+            "checks_passed": 0,
+            "checks_total": 12,
+        }
 
-    today = datetime.now(UTC).strftime("%Y-%m-%d")
-    if _daily_reset != today:
-        _daily_total = 0.0
-        _daily_reset = today
-
-    details: list[dict[str, Any]] = []
-    all_passed = True
-
-    # Check 1: Single-payment limit
-    single_ok = amount <= _MAX_SINGLE_PAYMENT
-    details.append({
-        "check": "single_payment_limit",
-        "limit": _MAX_SINGLE_PAYMENT,
-        "passed": single_ok,
-    })
-    if not single_ok:
-        all_passed = False
-
-    # Check 2: Daily spending cap
-    daily_ok = (_daily_total + amount) <= _DAILY_LIMIT
-    details.append({
-        "check": "daily_spending_cap",
-        "limit": _DAILY_LIMIT,
-        "spent_today": _daily_total,
-        "passed": daily_ok,
-    })
-    if not daily_ok:
-        all_passed = False
-
-    # Check 3: Currency allowlist
-    currency_ok = currency.upper() in {"USDC", "USDT", "DAI", "PATH_USD"}
-    details.append({
-        "check": "currency_allowlist",
-        "currency": currency,
-        "passed": currency_ok,
-    })
-    if not currency_ok:
-        all_passed = False
-
-    checks_passed = sum(1 for d in details if d["passed"])
-
+    policy_store = getattr(getattr(request.app, "state", None), "policy_store", None)
+    decision = await evaluate_mpp_policy(
+        policy_store=policy_store,
+        agent_id=agent_id,
+        amount=amount_dec,
+        merchant=merchant,
+        currency=currency,
+        network=network,
+    )
     return {
-        "result": "ALLOWED" if all_passed else "DENIED",
-        "checks_passed": checks_passed,
-        "checks_total": len(details),
-        "details": details,
+        "result": "ALLOWED" if decision.allowed else "DENIED",
+        "reason": decision.reason,
+        "checks_passed": decision.checks_passed,
+        "checks_total": decision.checks_total,
     }
 
 
@@ -205,14 +198,11 @@ async def paid_data(
     - merchant: Merchant identifier (default "demo-merchant")
     - currency: Currency code (default "USDC")
     """
-    # MPP receipt tracking (only relevant for paid requests)
-    price_float = float(DEMO_PRICE)
+    # MPP receipt tracking (only relevant for paid requests). Replay/double-spend
+    # protection lives in the gate's pympp store (tx-hash put_if_absent), not in
+    # a process-local counter.
     receipt = getattr(getattr(request, "state", None), "mpp_receipt", None)
-
     if receipt is not None:
-        # Track spend for the daily cap
-        global _daily_total
-        _daily_total += price_float
         logger.info(
             "MPP demo: payment verified (receipt=%s, amount=%s)",
             receipt.reference,
@@ -233,7 +223,13 @@ async def paid_data(
 
     # Run real policy check if agent_id is provided
     if agent_id is not None:
-        policy_result = _policy_check(amount, merchant, currency)
+        policy_result = await _policy_check(
+            request,
+            agent_id=agent_id,
+            amount=amount,
+            merchant=merchant,
+            currency=currency,
+        )
         data["policy_check"] = {
             "agent_id": agent_id,
             "amount": amount,

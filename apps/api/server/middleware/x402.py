@@ -86,7 +86,11 @@ class X402MiddlewareConfig:
         )
 
 
-# Header constants (re-exported from protocol for convenience)
+# Header constants.
+# Canonical x402 v1 headers (the real, interoperable transport):
+X402_X_PAYMENT_HEADER = "X-PAYMENT"
+X402_X_PAYMENT_RESPONSE_HEADER = "X-PAYMENT-RESPONSE"
+# Legacy Sardis-native headers (kept for backward compatibility):
 X402_PAYMENT_SIGNATURE_HEADER = "PAYMENT-SIGNATURE"
 X402_PAYMENT_RESPONSE_HEADER = "PAYMENT-RESPONSE"
 X402_PAYMENT_REQUIRED_HEADER = "PaymentRequired"
@@ -122,13 +126,39 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
         if rule is None:
             return await call_next(request)
 
+        # Prefer the canonical X-PAYMENT header; fall back to the legacy
+        # PAYMENT-SIGNATURE header for backward compatibility.
+        x_payment = request.headers.get(X402_X_PAYMENT_HEADER)
         sig_header = request.headers.get(X402_PAYMENT_SIGNATURE_HEADER)
-        if not sig_header:
+        if not x_payment and not sig_header:
             return self._generate_402(request, rule)
 
-        # Verify and settle
-        result = await self._verify_and_settle(request, sig_header, rule)
+        if x_payment:
+            result = await self._verify_and_settle_canonical(request, x_payment, rule)
+        else:
+            result = await self._verify_and_settle(request, sig_header, rule)
+
         if not result["success"]:
+            # Canonical x402: settlement failure is signaled with HTTP 402 plus
+            # the X-PAYMENT-RESPONSE header (transport spec). Legacy callers got a
+            # 400; preserve that for the legacy header path.
+            if x_payment:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "x402Version": 1,
+                        "error": result.get("error", "payment_verification_failed"),
+                    },
+                    headers={
+                        X402_X_PAYMENT_RESPONSE_HEADER: self._encode_settlement_response(
+                            success=False,
+                            transaction="",
+                            network=result.get("network", rule.network),
+                            payer=result.get("payer_address", ""),
+                            error_reason=result.get("error"),
+                        )
+                    },
+                )
             return JSONResponse(
                 status_code=400,
                 content={"error": result.get("error", "payment_verification_failed")},
@@ -139,7 +169,14 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        # Add payment receipt header
+        # Canonical settlement-result header (X-PAYMENT-RESPONSE).
+        response.headers[X402_X_PAYMENT_RESPONSE_HEADER] = self._encode_settlement_response(
+            success=True,
+            transaction=result.get("tx_hash", ""),
+            network=result.get("network", rule.network),
+            payer=result.get("payer_address", ""),
+        )
+        # Legacy receipt header (kept for backward compatibility).
         receipt_data = {
             "payment_id": result.get("payment_id", ""),
             "status": "settled",
@@ -149,6 +186,36 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
         response.headers[X402_PAYMENT_RESPONSE_HEADER] = encoded
 
         return response
+
+    @staticmethod
+    def _encode_settlement_response(
+        *,
+        success: bool,
+        transaction: str,
+        network: str,
+        payer: str,
+        error_reason: str | None = None,
+    ) -> str:
+        """Build the canonical base64 X-PAYMENT-RESPONSE header value."""
+        from sardis.protocol.x402_canonical import (
+            SettlementResponse,
+            encode_x_payment_response_header,
+            sardis_network_to_canonical,
+        )
+
+        try:
+            canonical_net = sardis_network_to_canonical(network)
+        except Exception:
+            canonical_net = network
+        return encode_x_payment_response_header(
+            SettlementResponse(
+                success=success,
+                transaction=transaction or "",
+                network=canonical_net,
+                payer=payer or "",
+                error_reason=error_reason if not success else None,
+            )
+        )
 
     def _generate_402(self, request: Request, rule: X402PricingRule) -> JSONResponse:
         """Generate a 402 Payment Required response with challenge."""
@@ -179,23 +246,208 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
 
         challenge_header = serialize_challenge_header(challenge)
 
+        # Canonical x402 v1 accepts:[PaymentRequirements] (spec §5.1) — the real,
+        # interoperable 402 body that x402-fetch / CDP clients read. Legacy flat
+        # keys (error/payment_id/amount/...) and the PaymentRequired header are
+        # retained alongside for backward compatibility.
+        canonical_accepts = self._build_canonical_accepts(request, rule)
+        content: dict = {
+            "x402Version": 1,
+            "error": "payment_required",
+            "accepts": canonical_accepts,
+            # legacy flat fields:
+            "payment_id": challenge.payment_id,
+            "amount": challenge.amount,
+            "currency": challenge.currency,
+            "network": challenge.network,
+            "payee_address": challenge.payee_address,
+            "expires_at": challenge.expires_at,
+            "scheme": rule.scheme,
+        }
+
         return JSONResponse(
             status_code=402,
-            content={
-                "error": "payment_required",
-                "payment_id": challenge.payment_id,
-                "amount": challenge.amount,
-                "currency": challenge.currency,
-                "network": challenge.network,
-                "payee_address": challenge.payee_address,
-                "expires_at": challenge.expires_at,
-                "scheme": rule.scheme,
-            },
+            content=content,
             headers={
                 X402_PAYMENT_REQUIRED_HEADER: challenge_header,
                 "Content-Type": "application/json",
             },
         )
+
+    def _build_canonical_accepts(self, request: Request, rule: X402PricingRule) -> list[dict]:
+        """Build the canonical accepts:[PaymentRequirements] array for a 402."""
+        from sardis.protocol.x402_canonical import PaymentRequirements
+
+        try:
+            canonical_net = self._canonical_network(rule.network)
+        except Exception:
+            canonical_net = rule.network
+
+        # EIP-712 token domain (name/version) for the extra field, sourced from
+        # Sardis's hardcoded USDC domains (never client-supplied).
+        extra: dict | None = None
+        asset = rule.token_address
+        try:
+            from sardis.protocol.x402_erc3009 import resolve_eip712_domain
+
+            domain = resolve_eip712_domain(rule.network)
+            extra = {"name": domain["name"], "version": domain["version"]}
+            if not asset:
+                asset = domain["verifyingContract"]
+        except Exception:
+            pass
+
+        req = PaymentRequirements(
+            scheme=rule.scheme,
+            network=canonical_net,
+            max_amount_required=rule.amount,
+            asset=asset or "",
+            pay_to=self.config.payee_address,
+            resource=str(request.url),
+            description=f"Access to {request.url.path}",
+            max_timeout_seconds=rule.ttl_seconds,
+            mime_type="application/json",
+            output_schema=None,
+            extra=extra,
+        )
+        return [req.to_dict()]
+
+    @staticmethod
+    def _canonical_network(network: str) -> str:
+        from sardis.protocol.x402_canonical import sardis_network_to_canonical
+
+        return sardis_network_to_canonical(network)
+
+    async def _verify_and_settle_canonical(
+        self,
+        request: Request,
+        x_payment_header: str,
+        rule: X402PricingRule,
+    ) -> dict:
+        """Verify a canonical X-PAYMENT header and settle through the control plane.
+
+        Decodes the canonical PaymentPayload, binds it to the rule-derived
+        PaymentRequirements, runs the EIP-3009 verifier (fail-closed), then
+        settles on-chain via the existing settler.
+        """
+        try:
+            from sardis.protocol.x402_canonical import (
+                PaymentRequirements,
+                X402WireError,
+                decode_x_payment_header,
+            )
+        except ImportError:
+            return {"success": False, "error": "x402_modules_not_available"}
+
+        try:
+            payload = decode_x_payment_header(x_payment_header)
+        except X402WireError as exc:
+            logger.warning("x402 middleware: invalid X-PAYMENT header: %s", exc)
+            return {"success": False, "error": exc.code.value}
+
+        try:
+            canonical_net = self._canonical_network(rule.network)
+        except Exception:
+            canonical_net = rule.network
+
+        asset = rule.token_address
+        extra: dict | None = None
+        try:
+            from sardis.protocol.x402_erc3009 import resolve_eip712_domain
+
+            domain = resolve_eip712_domain(rule.network)
+            extra = {"name": domain["name"], "version": domain["version"]}
+            if not asset:
+                asset = domain["verifyingContract"]
+        except Exception:
+            pass
+
+        requirements = PaymentRequirements(
+            scheme=rule.scheme,
+            network=canonical_net,
+            max_amount_required=rule.amount,
+            asset=asset or "",
+            pay_to=self.config.payee_address,
+            resource=str(request.url),
+            description=f"Access to {request.url.path}",
+            max_timeout_seconds=rule.ttl_seconds,
+            extra=extra,
+        )
+
+        # Reuse the route's canonical verifier (single source of money-path truth).
+        from server.routes.protocol.x402 import _verify_canonical_payment
+
+        is_valid, invalid_reason, payer = _verify_canonical_payment(payload, requirements)
+        if not is_valid:
+            return {
+                "success": False,
+                "error": invalid_reason,
+                "payer_address": payer or "",
+                "network": rule.network,
+            }
+
+        # Settle on-chain via the existing settler.
+        try:
+            from sardis.chain.executor import ChainExecutor
+            from sardis.protocol.x402 import X402Challenge, X402PaymentPayload
+            from sardis.protocol.x402_settlement import (
+                DatabaseSettlementStore,
+                X402Settlement,
+                X402SettlementStatus,
+                X402Settler,
+            )
+        except ImportError:
+            return {"success": False, "error": "x402_modules_not_available"}
+
+        auth = payload.authorization
+        challenge = X402Challenge(
+            payment_id=f"x402c_{auth.nonce}",
+            resource_uri=str(request.url),
+            amount=rule.amount,
+            currency=rule.currency,
+            payee_address=self.config.payee_address,
+            network=rule.network,
+            token_address=asset or "",
+            expires_at=int(auth.valid_before),
+            nonce=auth.nonce,
+        )
+        native_payload = X402PaymentPayload(
+            payment_id=challenge.payment_id,
+            payer_address=payer,
+            amount=auth.value,
+            nonce=auth.nonce,
+            signature=payload.signature,
+            authorization=auth.to_dict(),
+        )
+        try:
+            store = DatabaseSettlementStore()
+            settler = X402Settler(store=store, chain_executor=ChainExecutor())
+            settlement = X402Settlement(
+                payment_id=challenge.payment_id,
+                status=X402SettlementStatus.VERIFIED,
+                challenge=challenge,
+                payload=native_payload,
+            )
+            await store.save(settlement)
+            settled = await settler.settle(settlement)
+        except Exception as exc:
+            logger.warning("x402 middleware: canonical settle failed: %s", exc)
+            return {
+                "success": False,
+                "error": "unexpected_settle_error",
+                "payer_address": payer,
+                "network": rule.network,
+            }
+
+        return {
+            "success": settled.status == X402SettlementStatus.SETTLED,
+            "payment_id": challenge.payment_id,
+            "payer_address": payer,
+            "amount": auth.value,
+            "tx_hash": settled.tx_hash or "",
+            "network": rule.network,
+            "error": settled.error or "",
+        }
 
     async def _verify_and_settle(
         self,
@@ -263,4 +515,6 @@ __all__ = [
     "X402MiddlewareConfig",
     "X402PricingRegistry",
     "X402PricingRule",
+    "X402_X_PAYMENT_HEADER",
+    "X402_X_PAYMENT_RESPONSE_HEADER",
 ]

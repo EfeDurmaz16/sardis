@@ -11,7 +11,7 @@ The agent receives a purchasing task, reasons about costs, checks the
 wallet balance, and executes payments through Sardis.
 
 Prerequisites:
-    pip install google-adk sardis-adk
+    pip install "sardis[adk]" google-adk
 
 Run:
     export GOOGLE_API_KEY=...
@@ -20,19 +20,22 @@ Run:
 """
 
 import os
+import sys
 
 from google.adk import Agent, Runner
 from google.adk.sessions import InMemorySessionService
-from sardis_adk import SardisToolkit
+from sardis.integrations.adk import SardisToolkit
 
 # --- Sardis Setup -----------------------------------------------------------
 
+_api_key = os.environ.get("SARDIS_API_KEY")
+_wallet_id = os.environ.get("SARDIS_WALLET_ID")
+if not _api_key or not _wallet_id:
+    sys.exit("Set SARDIS_API_KEY and SARDIS_WALLET_ID and retry.")
+
 # Create the toolkit - this configures all Sardis tools with your API key
 # and a default wallet for the agent to use.
-toolkit = SardisToolkit(
-    api_key=os.environ.get("SARDIS_API_KEY", "sk_test_demo"),
-    wallet_id=os.environ.get("SARDIS_WALLET_ID", "wallet_demo"),
-)
+toolkit = SardisToolkit(api_key=_api_key, wallet_id=_wallet_id)
 
 # Get ADK FunctionTool instances
 sardis_tools = toolkit.get_tools()

@@ -65,6 +65,13 @@ class PolicyEvaluateRequest(BaseModel):
     payment_type: str = "mpp_tempo"
     currency: str = "USDC"
     network: str = "tempo"
+    agent_id: str | None = Field(
+        default=None,
+        description="Agent whose active SpendingPolicy governs this payment. "
+        "Required for a real policy evaluation; absent => fail-closed deny.",
+    )
+    merchant_category: str | None = None
+    mcc_code: str | None = None
 
 
 class PolicyEvaluateResponse(BaseModel):

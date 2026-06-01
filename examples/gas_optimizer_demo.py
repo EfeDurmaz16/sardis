@@ -9,7 +9,7 @@ This example demonstrates how to use the GasOptimizer to:
 import asyncio
 from decimal import Decimal
 
-from sardis_chain.gas_optimizer import get_gas_optimizer
+from sardis.chain.gas_optimizer import get_gas_optimizer
 
 
 async def demo_gas_estimation():

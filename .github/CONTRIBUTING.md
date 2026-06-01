@@ -4,6 +4,32 @@ Sardis is an open-source financial authority layer for AI agents. The best contr
 
 The hosted dashboard, managed provider operations, sales material, investor material, and customer-specific workflows are outside the public contribution path.
 
+New here? Read [`ARCHITECTURE.md`](../ARCHITECTURE.md) first — it is the map of
+the repository (the single authority path, the typed provider ports, the route
+domains, and a "where to make your first change" table). The goal is that you can
+understand the layout and open a useful PR in under an hour.
+
+## What is contributable vs commercial
+
+This repo is MIT open-core. **Contributable:** the authority core (mandates,
+policy, approvals, revocation, signed audit), the typed provider-port contracts
+and sandbox adapters, the three SDKs/MCP server, protocol adapters, examples,
+tests, and public docs. **Not contributable here:** the hosted dashboard,
+managed credential vault / provider operations, and any sales/investor/customer
+material. The exact line is in
+[`docs/oss/public-private-boundary.md`](../docs/oss/public-private-boundary.md);
+per-package paths and validation commands are in
+[`docs/oss/contribution-map.md`](../docs/oss/contribution-map.md).
+
+## The experimental quarantine
+
+`packages/sardis/src/sardis/protocol/experimental/` holds protocol code that is
+**not production-ready** — in-memory simulations, draft-EIP sketches with
+unverified crypto, or unwired schemes. Nothing in `core/`, `routes/`, or
+`middleware/` may depend on it. If you finish hardening an adapter (real
+verification + fail-closed + bad-case tests), it graduates out of
+`experimental/`. Do not add new production wiring that imports from there.
+
 ## Good First Contribution Areas
 
 - Fix SDK docs or quickstarts that drift from the actual API.
@@ -20,17 +46,17 @@ For package-specific contribution paths and validation commands, use
 
 Read:
 
-- `README.md`
-- `docs/oss/goal.md`
-- `docs/oss/public-private-boundary.md`
-- `docs/oss/contribution-map.md`
-- `docs/oss/ci-cd.md`
-- `docs/packages.md`
-- `docs/development.md`
-- `docs/oss/testing.md`
-- `SECURITY.md`
-- `CODE_OF_CONDUCT.md`
-- `SUPPORT.md`
+- [`README.md`](../README.md) — what Sardis is, install, the open-core boundary
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md) — the repo map: authority path, provider ports, where to make your first change
+- [`docs/oss/public-private-boundary.md`](../docs/oss/public-private-boundary.md) — what is OSS-contributable vs commercial
+- [`docs/oss/contribution-map.md`](../docs/oss/contribution-map.md) — per-package contribution paths and validation commands
+- [`docs/oss/ci-cd.md`](../docs/oss/ci-cd.md)
+- [`docs/packages.md`](../docs/packages.md) — package maturity matrix
+- [`docs/development.md`](../docs/development.md)
+- [`docs/oss/testing.md`](../docs/oss/testing.md)
+- [`.github/SECURITY.md`](SECURITY.md)
+- [`.github/CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- [`.github/SUPPORT.md`](SUPPORT.md)
 
 ## Setup
 
@@ -59,7 +85,7 @@ pnpm run check:ci-map
 pnpm run check:github-templates
 pnpm run check:community
 pnpm run check:contribution-map
-pnpm --filter @sardis/sdk typecheck
+pnpm --filter sardis typecheck
 pnpm --filter @sardis/mcp-server build
 uv run pytest apps/api/tests/test_merchant_checkout.py -q
 ```

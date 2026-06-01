@@ -1,13 +1,18 @@
-"""x402 HTTP 402 Payment Required protocol — EXPERIMENTAL / PARTIAL adapter.
+"""x402 HTTP 402 Payment Required protocol adapter.
 
-NOT certified x402 conformance. The wire format here is Sardis-native and
-diverges from the canonical x402 spec: it uses invented headers
-(PAYMENT-SIGNATURE / PAYMENT-RESPONSE / PaymentRequired) rather than
-X-PAYMENT / X-PAYMENT-RESPONSE, a flat custom JSON instead of
-accepts:[PaymentRequirements] + nested authorization, and
-verify_payment_payload only checks the signature when a caller supplies a
-verify_signature_fn (server call sites do not, so EIP-3009 is not verified).
-See docs/productization/research/PROTOCOL_STRATEGY.md (x402, fix-then-keep).
+Wire-format note: the headers here are Sardis-native (PAYMENT-SIGNATURE /
+PAYMENT-RESPONSE / PaymentRequired) rather than the canonical x402
+X-PAYMENT / X-PAYMENT-RESPONSE, with a flat JSON payload instead of
+accepts:[PaymentRequirements]. This is NOT a certified x402 conformance claim.
+
+Signature verification IS real and fail-closed at the facilitator boundary:
+the /verify route (apps/api/server/routes/protocol/x402.py) recovers the
+EIP-3009 TransferWithAuthorization signer via EIP-712 (see
+sardis.protocol.x402_erc3009.verify_transfer_authorization) and rejects forged,
+unsigned, or unbound payloads. `verify_payment_payload` below performs the
+field-level checks (expiry / nonce / amount / payment_id); signature recovery is
+applied by the route as a mandatory additional gate. The `verify_signature_fn`
+hook remains for callers that want to inject custom signature schemes.
 
 Provides:
 - Challenge generation (server -> client, 402 response)

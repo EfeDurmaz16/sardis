@@ -1,48 +1,63 @@
 # Public / Private Repository Boundary
 
-Sardis should use a clean open-core split:
+Sardis is open-core. This repository is the **public** half: the authority core,
+the provider-port contracts, the three published SDKs/MCP server, protocol
+adapters, examples, and public docs. The hosted Sardis Cloud (dashboard, managed
+provider operations, billing, customer workflows) lives in a separate private
+repository and is **not** part of this tree.
 
-- `sardis` remains the public OSS repository for protocol, SDK, policy, evidence, adapter contracts, examples, and conformance.
-- `sardis-cloud` or `sardis-product` should hold hosted dashboard, managed provider operations, billing, customer workflows, and private commercial material.
+This doc is the canonical line. It is kept accurate to the **current** 3-package
+tree (the May 2026 consolidation merged the old 30+ `sardis-*` packages into
+`sardis`, `sardis` (npm), and `@sardis/mcp-server`). For the structural map, see
+[`../../ARCHITECTURE.md`](../../ARCHITECTURE.md).
 
-## Keep Public
+## Public (this repo)
 
-| Area | Paths | Reason |
+| Area | Paths | Why it's public |
 | --- | --- | --- |
-| Protocol and API contracts | `docs/api/`, `docs/docs/api/`, `packages/sardis-protocol/`, `packages/sardis-a2a/`, `packages/sardis-ucp/` | These define interoperable agent-payment semantics. |
-| SDKs and CLI | `src/sardis/`, `packages/sardis-sdk-python/`, `packages/sardis-sdk-js/`, `packages/sardis-cli/` | Contributors need typed client surfaces and local tooling. |
-| Core authority primitives | `packages/sardis-core/`, `packages/sardis-ledger/`, `packages/sardis-wallet/`, `packages/sardis-chain/` | These express business logic that should be inspectable. |
-| API implementation | `apps/api/` | Keep as the reference implementation, but separate hosted-only routes over time. |
-| MCP and framework integrations | `packages/sardis-mcp-server/`, `packages/sardis-ai-sdk/`, `packages/sardis-langchain/`, `packages/sardis-crewai/`, `examples/` | These are the main contribution surface for agent ecosystems. |
-| Simulators and demos | `demos/`, `examples/`, sandbox-only provider adapters | Useful for adoption when they run without private credentials. |
-| Public docs | `README.md`, `SECURITY.md`, `docs/docs/`, `docs/quickstart/`, `docs/architecture/`, `docs/oss/` | Public explanation and contributor onboarding. |
-| Public landing explanation | `apps/landing/` | May explain Sardis and link to docs/GitHub; hosted-product CTAs must follow `docs/oss/landing-surface.md`. |
+| Authority core | `packages/sardis/src/sardis/core/`, `.../ledger/`, `.../wallet/`, `.../guardrails/` | Mandates, policy, spend tracking, audit — the inspectable moat. |
+| Protocol adapters | `packages/sardis/src/sardis/protocol/`, `apps/api/server/routes/protocol/` | Interoperable agent-payment semantics (AP2, TAP, x402, MPP, …). |
+| Provider-port contracts + sandbox/BYO adapters | `apps/api/server/providers/` | The typed capability ports and credential-free sandbox impls. |
+| Reference API | `apps/api/` | The runnable FastAPI service that wires the core to the ports. |
+| Python SDK + CLI | `packages/sardis/` | The published `sardis` package and its submodules. |
+| TypeScript SDK | `packages/sardis-js/` | The published `sardis` npm package. |
+| MCP server | `packages/sardis-mcp-server/` | The published `@sardis/mcp-server`. |
+| Framework integrations | `packages/sardis/src/sardis/integrations/`, `packages/sardis-js` subpaths | LangChain, CrewAI, OpenAI Agents, ADK, A2A, Vercel AI SDK, … |
+| Examples + demos | `examples/`, `demos/` | Adoption material that runs without private credentials. |
+| Smart contracts | `contracts/` | Wallet / escrow / ledger-anchor Solidity + Foundry tests. |
+| Public docs | `README.md`, `ARCHITECTURE.md`, `docs/` (incl. `docs/oss/`), `llms.txt` | Explanation and contributor onboarding. |
+| Public landing | `apps/landing/` | Explains Sardis and links to docs/GitHub; hosted-product CTAs follow [`landing-surface.md`](landing-surface.md). |
 
-## Move Private
+## Private (not in this repo)
 
-| Area | Current paths | Destination |
-| --- | --- | --- |
-| Hosted dashboard | `apps/dashboard/` | Removed from public tracking; recover into private product repo from history if needed. |
-| Checkout UI if used as product surface | `packages/sardis-checkout-ui/` | Removed from public tracking unless it becomes a public embeddable widget. |
-| Hosted product design system | `packages/ui-web/` | Removed from public tracking unless Sardis intentionally publishes a public UI package. |
-| Managed dashboard deployment workflows | Product-only dashboard deploy jobs | Private product repo or manually triggered internal workflow; public OSS CI/CD should not deploy the hosted dashboard. |
-| GTM and sales material | `docs/sales/`, `scripts/gtm/`, `scripts/outreach/` | Private product/commercial repo. |
-| Investor, YC, diligence, hiring, partnership drafts | `docs/cdp/`, `docs/hiring/`, `docs/partnerships/`, `docs/yc/` | Private company repo. |
-| Production compliance operations | SOC2 evidence, go/no-go evidence, internal runbooks | Private compliance repo unless sanitized into public templates. |
+These live in the private product/company repos and must never be added here:
 
-## Near-Term Policy
+| Area | Why it's private |
+| --- | --- |
+| Hosted dashboard + product UI | Managed-product surface, not part of the open core. |
+| Managed credential vault + provider operations | Holds live provider credentials and routing for the hosted product. |
+| Billing / customer workflows | Commercial operations. |
+| GTM, sales, outreach material | Go-to-market; not a contribution surface. |
+| Investor, YC, diligence, hiring, partnership drafts | Company-confidential. |
+| Production compliance operations (SOC2 evidence, runbooks) | Sensitive operational material (sanitized templates may be public). |
 
-1. Do not add new tracked sales, investor, customer, hiring, or private partnership material to this repository.
-2. Public examples must run without production provider credentials.
-3. Public CI must not depend on dashboard secrets, hosted billing, customer data, or provider accounts.
-4. Provider-specific code may stay public only when it is a generic adapter or sandbox integration.
-5. Product-only paths should be marked `private-candidate` until moved.
-6. Public indexing surfaces such as sitemap, LLM metadata, SDK examples, CLI demos, docs, and environment templates must not route contributors into the private hosted product. See `docs/oss/landing-surface.md`.
+## Policy
 
-## Extraction Plan
+1. Do not add tracked sales, investor, customer, hiring, GTM, or private
+   partnership material to this repository.
+2. Public examples and demos must run without production provider credentials;
+   if a key is required, fail fast with a clear message — never a fake fallback.
+3. Public CI must not depend on dashboard secrets, hosted billing, customer
+   data, or live provider accounts.
+4. Provider-specific code stays public only as a generic capability-port adapter
+   or a sandbox integration (see [`../../apps/api/server/providers/README.md`](../../apps/api/server/providers/README.md)).
+5. Genuinely unfinished protocol code is quarantined under
+   `packages/sardis/src/sardis/protocol/experimental/` — see
+   [`../../.github/CONTRIBUTING.md`](../../.github/CONTRIBUTING.md).
+6. Public indexing surfaces (sitemap, `llms.txt`, SDK examples, CLI demos, docs,
+   `.env.example`) must not route contributors into the private hosted product.
+   See [`landing-surface.md`](landing-surface.md).
 
-1. Freeze public API and SDK contracts.
-2. Remove tracked private docs from the public repo and leave a manifest.
-3. Make public CI OSS-only.
-4. Move dashboard/product packages to a private repo using a history-preserving export if needed.
-5. Consume public Sardis packages from the private product repo via published packages or a pinned git tag.
+The boundary is enforced in CI by the credential-free contributor gate
+(`pnpm run check:contributor`), which includes `oss_surface_check` (blocks
+tracked private paths) and the other surface checkers.

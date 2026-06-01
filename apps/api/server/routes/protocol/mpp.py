@@ -8,8 +8,9 @@ Provides session-based MPP payment management:
 - Create MPP sessions with spending mandates
 - Execute payments within sessions
 - Close sessions and settle remaining
-- Policy evaluation and dry-run simulation (EXPERIMENTAL STUB — /evaluate is a
-  default-allow placeholder, NOT wired to the Sardis Guard policy engine)
+- Policy evaluation and dry-run simulation (/evaluate and /simulate route through
+  the real SpendingPolicy engine — the same engine the PaymentOrchestrator uses —
+  and are fail-closed: no agent_id / no policy / engine error => DENY)
 - Virtual card issuance (EXPERIMENTAL / DEAD — depends on a `sardis_mpp` package
   that does not exist on disk; returns 503)
 
@@ -20,7 +21,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -56,6 +56,7 @@ from server.repositories.mpp_session_repository import (
     record_payment,
 )
 from server.services.mpp_execution import execute_chain_payment
+from server.services.mpp_policy import evaluate_mpp_policy
 from server.services.mpp_virtual_cards import issue_mpp_virtual_card
 
 logger = logging.getLogger(__name__)
@@ -242,51 +243,74 @@ async def close_session(
     return mpp_session_response_from_record(session)
 
 
+async def _evaluate_against_real_policy(
+    req: PolicyEvaluateRequest,
+    request: Request,
+    principal: Principal,
+) -> PolicyEvaluateResponse:
+    """Evaluate an MPP payment against the agent's real SpendingPolicy.
+
+    Fail-closed: requires an agent_id and a resolvable policy. Any engine error,
+    missing store, missing agent, or missing policy => DENY. There is no
+    default-allow path. Delegates to the shared ``evaluate_mpp_policy`` engine
+    (the single MPP policy source of truth) after enforcing org authorization.
+    """
+    policy_store = getattr(request.app.state, "policy_store", None)
+
+    # Authorization: an org may only evaluate its own agents. This happens
+    # before the shared evaluator (which performs no ownership check). We only
+    # look the agent up when we have a real agent_id and store to act on.
+    if req.agent_id:
+        agent_repo = getattr(request.app.state, "agent_repo", None)
+        if agent_repo is not None:
+            agent = await agent_repo.get(req.agent_id)
+            if not agent:
+                raise HTTPException(status_code=404, detail="Agent not found")
+            if not principal.is_admin and agent.owner_id != principal.org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+    decision = await evaluate_mpp_policy(
+        policy_store=policy_store,
+        agent_id=req.agent_id,
+        amount=req.amount,
+        merchant=req.merchant,
+        currency=req.currency,
+        network=req.network,
+        merchant_category=req.merchant_category,
+        mcc_code=req.mcc_code,
+    )
+    return PolicyEvaluateResponse(
+        allowed=decision.allowed,
+        reason=decision.reason,
+        checks_passed=decision.checks_passed,
+        checks_total=decision.checks_total,
+    )
+
+
 @router.post("/evaluate", response_model=PolicyEvaluateResponse)
 async def evaluate_policy(
     req: PolicyEvaluateRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Evaluate policy for an MPP payment.
+    """Evaluate an MPP payment against the agent's real SpendingPolicy.
 
-    EXPERIMENTAL / STUB — this does NOT call the Sardis Guard policy engine.
-    It is a near-constant placeholder (default-allow plus a single hardcoded
-    $10,000 cap) and must not be relied on as a real control-plane check.
-    See docs/productization/research/PROTOCOL_STRATEGY.md (MPP /evaluate stub).
+    Routes through the same SpendingPolicy engine the PaymentOrchestrator uses
+    (amount/scope/MCC/per-tx/total/window/merchant/drift/approval checks). It is
+    fail-closed: no agent_id, no policy, or any engine error => DENY. There is
+    no default-allow path.
     """
-    # STUB: default-allow placeholder. NOT wired to Sardis Guard / the policy engine.
-    allowed = True
-    reason = "ALLOWED by default policy"
-    checks_passed = 12
-    checks_total = 12
-
-    # Basic limit checks
-    if req.amount > Decimal("10000"):
-        allowed = False
-        reason = "Amount exceeds maximum single payment limit ($10,000)"
-        checks_passed = 11
-
-    logger.info(
-        "MPP policy evaluation: amount=%s merchant=%s result=%s",
-        req.amount, req.merchant, "ALLOWED" if allowed else "DENIED",
-    )
-
-    return PolicyEvaluateResponse(
-        allowed=allowed,
-        reason=reason,
-        checks_passed=checks_passed,
-        checks_total=checks_total,
-    )
+    return await _evaluate_against_real_policy(req, request, principal)
 
 
 @router.post("/simulate", response_model=PolicyEvaluateResponse)
 async def simulate_policy(
     req: PolicyEvaluateRequest,
+    request: Request,
     principal: Principal = Depends(require_principal),
 ):
-    """Dry-run policy check without executing payment."""
-    # Same as evaluate but explicitly labeled as simulation
-    return await evaluate_policy(req, principal)
+    """Dry-run policy check without executing payment (same engine as /evaluate)."""
+    return await _evaluate_against_real_policy(req, request, principal)
 
 
 # ── Virtual Card Issuance via Laso/Locus MPP ─────────────────────────
@@ -297,19 +321,18 @@ async def issue_virtual_card(
     req: IssueCardRequest,
     principal: Principal = Depends(require_principal),
 ):
-    """Issue a virtual prepaid card via Laso Finance MPP service.
+    """Issue a virtual prepaid card. Amount must be between $5 and $1,000.
 
-    The card is a non-reloadable Visa prepaid card issued through
-    the Locus MPP proxy. Amount must be between $5 and $1,000.
+    Provider status (see PROTO_mpp_report.md, decision D1):
+    - Sandbox / non-live mode (SARDIS_CHAIN_MODE != "live"): returns a simulated
+      card (``sandbox=true``) — working, for development only.
+    - Live mode: depends on a real MPP card issuer (Laso/Locus) that is NOT yet
+      integrated (``sardis_mpp`` package does not exist). The live path therefore
+      returns 503 — it never fakes a real card. Enabling live issuance requires a
+      founder decision on the issuer integration.
 
-    If session_id is provided, the card amount will be deducted
-    from the MPP session budget.
-
-    Restrictions:
-    - US-only (IP-locked)
-    - Non-reloadable
-    - No 3D Secure
-    - Card amount must match checkout total exactly
+    If session_id is provided, the card amount is checked against (and on success
+    deducted from) the MPP session budget.
     """
     # If session provided, check budget
     if req.session_id:

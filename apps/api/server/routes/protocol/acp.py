@@ -1,11 +1,25 @@
 """Agentic Commerce Protocol (ACP) seller endpoints.
 
-EXPERIMENTAL / PARTIAL — non-conformant adapter, NOT production. Targets a
-stale spec version (2026-01-30; current is 2026-04-17), diverges on response
-objects / status enum / complete + delegate shapes, persists to tables that do
-not exist (in-memory only), and bypasses the Sardis mandate / policy /
-orchestrator / ledger entirely. Do not present as ACP conformance.
+EXPERIMENTAL / PARTIAL — non-conformant adapter, NOT production. API-Version
+value is 2026-01-16 (current spec dir is 2026-04-17); diverges on response
+objects / status enum / complete shape, persists to tables that may not exist
+(in-memory fallback), and bypasses the Sardis mandate / policy / orchestrator /
+ledger entirely. Do not present as ACP conformance.
 See docs/productization/research/PROTOCOL_STRATEGY.md (ACP, quarantine-experimental).
+
+PCI POSTURE — Sardis is the **merchant/seller**, never a PSP.  This router NEVER
+accepts a raw PAN/CVV/expiry.  The only card credential it consumes is an
+**opaque tokenized reference** minted by a regulated issuer/PSP:
+
+  * ``spt``         — a Stripe Shared Payment Token (``spt_...``), or
+  * ``issuer_card`` — an issuer-delegated virtual-card reference (Crossmint/Rain
+    ``card_id``) whose PAN lives in the issuer's PCI vault.  Sardis verifies the
+    reference against the issuer via the provider-layer ``CardPort`` and charges
+    by reference only.
+
+The legacy PSP ``POST /delegate_payment`` raw-card intake endpoint was REMOVED:
+any inbound raw-PAN body now fails closed (404 / 422), so cardholder data can
+never enter Sardis's process.
 
 Sketches Sardis-powered seller endpoints toward Stripe's ACP so AI agents
 (ChatGPT, Claude, etc.) could check out programmatically once rebuilt as a
@@ -15,11 +29,11 @@ Endpoints:
   POST   /checkout_sessions              -- Create checkout session
   GET    /checkout_sessions/{id}         -- Get checkout session
   POST   /checkout_sessions/{id}         -- Update checkout session
-  POST   /checkout_sessions/{id}/complete -- Complete checkout (SPT / delegate / crypto)
+  POST   /checkout_sessions/{id}/complete -- Complete checkout (tokenized card / SPT / crypto)
   POST   /checkout_sessions/{id}/cancel  -- Cancel checkout
-  POST   /delegate_payment               -- Receive card credentials, tokenize via Stripe
 
-Reference: https://docs.stripe.com/agentic-commerce/protocol
+Reference: https://docs.stripe.com/agentic-commerce/acp
+Roles / PAN boundary: https://developers.openai.com/commerce/guides/key-concepts
 """
 from __future__ import annotations
 
@@ -43,8 +57,6 @@ from server.models.acp import (
     ACPCheckoutStatus,
     ACPCompleteCheckoutRequest,
     ACPCreateCheckoutRequest,
-    ACPDelegatePaymentRequest,
-    ACPDelegatePaymentResponse,
     ACPFulfillment,
     ACPFulfillmentType,
     ACPLineItem,
@@ -96,7 +108,6 @@ def _validate_api_version(
 # ---------------------------------------------------------------------------
 
 _sessions: dict[str, dict[str, Any]] = {}
-_delegate_tokens: dict[str, dict[str, Any]] = {}
 
 
 async def _persist_session(session_id: str, data: dict[str, Any]) -> None:
@@ -136,8 +147,16 @@ def _gen_session_id() -> str:
     return f"csn_{secrets.token_hex(12)}"
 
 
-def _gen_delegate_token_id() -> str:
-    return f"vt_{secrets.token_hex(12)}"
+def _mask_token(token: str) -> str:
+    """Mask a single-use payment credential before persisting it.
+
+    A tokenized credential (SPT / issuer card ref) is not a PAN, but it is a
+    bearer payment credential — never store it in cleartext.  We keep a
+    SHA-256 hash (for idempotency / audit correlation) plus a short suffix.
+    """
+    digest = hashlib.sha256(token.encode()).hexdigest()
+    suffix = token[-4:] if len(token) >= 4 else token
+    return f"sha256:{digest}:...{suffix}"
 
 
 # ---------------------------------------------------------------------------
@@ -331,37 +350,6 @@ async def _emit_order_webhook(
 # Stripe helpers
 # ---------------------------------------------------------------------------
 
-async def _create_stripe_payment_method(card: dict[str, Any]) -> str | None:
-    """Create a Stripe PaymentMethod from raw card details.
-
-    Returns the PaymentMethod ID (pm_...) or None if Stripe is not configured.
-    """
-    stripe_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_key:
-        logger.warning("STRIPE_SECRET_KEY not set -- delegate payment tokenization skipped")
-        return None
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(
-            "https://api.stripe.com/v1/payment_methods",
-            auth=(stripe_key, ""),
-            data={
-                "type": "card",
-                "card[number]": card["number"],
-                "card[exp_month]": str(card["exp_month"]),
-                "card[exp_year]": str(card["exp_year"]),
-                "card[cvc]": card["cvc"],
-            },
-        )
-        if resp.status_code != 200:
-            logger.error("Stripe PaymentMethod creation failed: %s", resp.text)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Stripe PaymentMethod creation failed: {resp.json().get('error', {}).get('message', 'unknown')}",
-            )
-        return resp.json()["id"]
-
-
 async def _create_stripe_payment_intent_with_spt(
     spt_token: str,
     amount_cents: int,
@@ -400,42 +388,65 @@ async def _create_stripe_payment_intent_with_spt(
         return resp.json()
 
 
-async def _create_stripe_payment_intent_with_pm(
-    payment_method_id: str,
-    amount_cents: int,
-    currency: str,
-) -> dict[str, Any]:
-    """Create and confirm a Stripe PaymentIntent using a PaymentMethod.
+# ---------------------------------------------------------------------------
+# Issuer-delegated card verification (PAN-free)
+# ---------------------------------------------------------------------------
 
-    Returns the PaymentIntent object from Stripe.
+async def _verify_issuer_card(card_ref: str) -> dict[str, Any]:
+    """Verify an issuer-delegated virtual-card reference via the CardPort.
+
+    The card reference (e.g. a Crossmint/Rain ``card_id``) points at a card
+    whose PAN lives in the issuer's PCI vault — Sardis never sees the number.
+    We confirm the card exists and is in a chargeable (``active``) state with
+    the issuer before completing the order.  Fails closed: any provider error,
+    unknown card, or non-active status rejects the payment.
+
+    Returns the normalized issued-card payload (tokenized refs only) on success.
     """
-    stripe_key = os.getenv("STRIPE_SECRET_KEY")
-    if not stripe_key:
+    try:
+        from server.dependencies import get_card_port
+    except Exception as exc:  # pragma: no cover - import wiring
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Stripe not configured -- cannot process delegate payment",
-        )
+            detail="issuer_card_port_unavailable: card issuer not configured",
+        ) from exc
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        resp = await client.post(
-            "https://api.stripe.com/v1/payment_intents",
-            auth=(stripe_key, ""),
-            data={
-                "amount": str(amount_cents),
-                "currency": currency,
-                "payment_method": payment_method_id,
-                "confirm": "true",
-            },
+    try:
+        card_port = get_card_port()
+    except Exception as exc:
+        logger.warning("ACP issuer-card port resolution failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="issuer_card_port_unavailable: card issuer not configured",
+        ) from exc
+
+    # Re-assert the card's state with the issuer.  ``set_state(active)`` is the
+    # CardPort verb that round-trips through the issuer and returns the
+    # normalized (tokenized) card; a missing/closed card raises and we reject.
+    try:
+        result = await card_port.set_state(card_ref, state="active")
+    except Exception as exc:  # noqa: BLE001 - normalized into a fail-closed 4xx
+        logger.warning("ACP issuer-card verification failed for %s: %s", card_ref, exc)
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"issuer_card_unverified: {exc}",
+        ) from exc
+
+    ok = getattr(result, "ok", False)
+    card_status = getattr(result, "status", None)
+    raw = getattr(result, "raw", {}) or {}
+    if not ok or card_status not in {"active", None}:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"issuer_card_not_chargeable: status={card_status!r}",
         )
-        if resp.status_code != 200:
-            error_body = resp.json()
-            error_msg = error_body.get("error", {}).get("message", "unknown error")
-            logger.error("Stripe delegate PaymentIntent failed: %s", error_msg)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Stripe delegate payment failed: {error_msg}",
-            )
-        return resp.json()
+    # raw is tokenized-only (card_id / last_four / expiry) — never a PAN.
+    return {
+        "card_id": raw.get("card_id") or card_ref,
+        "status": card_status,
+        "last_four": raw.get("last_four"),
+        "currency": raw.get("currency", "USD"),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -563,16 +574,24 @@ async def complete_checkout_session(
 ) -> ACPCheckoutSessionResponse:
     """Complete an ACP checkout session with payment.
 
-    Supports three payment methods:
+    PAN-free.  Exactly one tokenized branch:
 
-    1. **spt** -- Stripe Shared Payment Token (``spt_...``).
-       Creates a PaymentIntent using the granted token.
+    1. **payment_data.instrument.credential.type == "spt"** -- Stripe Shared
+       Payment Token (``spt_...``).  Creates a PaymentIntent using the granted
+       token; the PAN lives in Stripe's vault.
 
-    2. **delegate_payment** -- Card credentials tokenized via ``/delegate_payment``.
-       Uses the delegate token (``vt_...``) to charge the card.
+    2. **payment_data.instrument.credential.type == "issuer_card"** --
+       Issuer-delegated virtual-card reference (Crossmint/Rain ``card_id``).
+       Sardis verifies the reference with the issuer via the ``CardPort`` and
+       charges by reference; the PAN lives in the issuer's PCI vault.
 
-    3. **crypto** -- On-chain stablecoin transfer.
-       The agent provides a ``tx_hash`` for verification.
+    3. **crypto_payment** -- On-chain stablecoin transfer.  The agent provides a
+       ``tx_hash``; fail-closed (see below) — never marked ``succeeded`` without
+       a real on-chain confirmation.
+
+    A raw PAN / CVV / expiry is never accepted: those fields do not exist on the
+    request model (``extra='forbid'`` → 422) and the PSP raw-card intake endpoint
+    was removed.
     """
     data = await _get_session_or_404(session_id)
 
@@ -598,128 +617,130 @@ async def complete_checkout_session(
     currency = totals.get("currency", "usd")
     amount_cents = int(total_amount * 100)
 
-    # --- SPT payment ---
-    if body.payment_method == "spt":
-        token = body.shared_payment_granted_token
-        if not token or not token.startswith("spt_"):
+    # Fail-closed: exactly one tokenized payment branch must be present.
+    if body.payment_data is not None and body.crypto_payment is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="ambiguous_payment: provide exactly one of payment_data or crypto_payment",
+        )
+    if body.payment_data is None and body.crypto_payment is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="missing_payment: payment_data (tokenized) or crypto_payment is required",
+        )
+
+    payment_method_used: str
+
+    # --- Tokenized card / SPT (issuer-delegated, PAN-free) ---
+    if body.payment_data is not None:
+        credential = body.payment_data.instrument.credential
+        token = credential.token
+
+        if credential.type == "spt":
+            if not token.startswith("spt_"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="invalid_spt: credential.token must be a Stripe SPT (spt_...)",
+                )
+            stripe_key = os.getenv("STRIPE_SECRET_KEY")
+            if stripe_key:
+                pi = await _create_stripe_payment_intent_with_spt(token, amount_cents, currency)
+                data["payment_intent_id"] = pi.get("id")
+                data["payment_status"] = (
+                    ACPPaymentStatus.succeeded.value
+                    if pi.get("status") == "succeeded"
+                    else ACPPaymentStatus.processing.value
+                )
+            else:
+                # Dev mode: accept a well-formed token (no real settlement).
+                logger.info("ACP dev mode: accepting SPT without Stripe (masked)")
+                data["payment_status"] = ACPPaymentStatus.succeeded.value
+            payment_method_used = "spt"
+
+        elif credential.type == "issuer_card":
+            # Reject obvious raw-PAN values defensively (digits-only of card
+            # length) before touching the issuer — a card reference is opaque,
+            # not a 13-19 digit number.
+            stripped = token.replace(" ", "").replace("-", "")
+            if stripped.isdigit() and 12 <= len(stripped) <= 19:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=(
+                        "raw_pan_rejected: credential.token must be an issuer-delegated "
+                        "card reference, not a card number. Sardis never accepts a PAN."
+                    ),
+                )
+            card_info = await _verify_issuer_card(token)
+            # Verified with the issuer (PAN stays in the issuer vault). The
+            # actual capture/authorization is the issuer's; Sardis records the
+            # tokenized reference and marks processing until a settlement signal.
+            data["issuer_card_ref"] = card_info["card_id"]
+            data["issuer_card_last_four"] = card_info.get("last_four")
+            data["payment_status"] = ACPPaymentStatus.processing.value
+            payment_method_used = "issuer_card"
+
+        else:  # pragma: no cover - Literal guards this at validation time
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="shared_payment_granted_token must be a valid SPT (spt_...)",
+                detail=f"unsupported_credential_type: {credential.type}",
             )
 
-        stripe_key = os.getenv("STRIPE_SECRET_KEY")
-        if stripe_key:
-            pi = await _create_stripe_payment_intent_with_spt(token, amount_cents, currency)
-            data["payment_intent_id"] = pi.get("id")
-            data["payment_status"] = ACPPaymentStatus.succeeded.value if pi.get("status") == "succeeded" else ACPPaymentStatus.processing.value
-        else:
-            # Dev mode: accept any well-formed token
-            logger.info("ACP dev mode: accepting SPT %s without Stripe", token)
-            data["payment_status"] = ACPPaymentStatus.succeeded.value
+        data["payment_method_used"] = payment_method_used
+        # Never persist a payment credential in cleartext — store a hashed ref.
+        data["credential_ref"] = _mask_token(token)
+        data["credential_type"] = credential.type
 
-        data["payment_method_used"] = "spt"
-        data["spt_token"] = token
-
-    # --- Delegate payment ---
-    elif body.payment_method == "delegate_payment":
-        vt = body.delegate_payment_token
-        if not vt or not vt.startswith("vt_"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="delegate_payment_token must be a valid token (vt_...)",
-            )
-
-        # Look up the delegate token
-        token_data = _delegate_tokens.get(vt)
-        if token_data is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Delegate payment token {vt} not found",
-            )
-
-        # Validate allowance
-        allowance = token_data.get("allowance", {})
-        if allowance.get("checkout_session_id") and allowance["checkout_session_id"] != session_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Delegate payment token was issued for a different checkout session",
-            )
-        if allowance.get("max_amount") and amount_cents > allowance["max_amount"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Amount {amount_cents} exceeds delegate payment allowance of {allowance['max_amount']}",
-            )
-
-        # Charge via Stripe if configured
-        pm_id = token_data.get("stripe_payment_method_id")
-        if pm_id:
-            pi = await _create_stripe_payment_intent_with_pm(pm_id, amount_cents, currency)
-            data["payment_intent_id"] = pi.get("id")
-            data["payment_status"] = ACPPaymentStatus.succeeded.value if pi.get("status") == "succeeded" else ACPPaymentStatus.processing.value
-        else:
-            # Dev mode
-            logger.info("ACP dev mode: accepting delegate token %s without Stripe", vt)
-            data["payment_status"] = ACPPaymentStatus.succeeded.value
-
-        data["payment_method_used"] = "delegate_payment"
-        data["delegate_payment_token"] = vt
-
-    # --- Crypto payment ---
-    elif body.payment_method == "crypto":
+    # --- Crypto payment (fail-closed) ---
+    else:
         crypto = body.crypto_payment
-        if not crypto:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="crypto_payment is required for crypto payment method",
-            )
+        assert crypto is not None  # guarded above
         if not crypto.tx_hash:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="crypto_payment.tx_hash is required",
             )
 
-        # In production, verify the tx on-chain via sardis-chain
-        # For now, accept the tx_hash and mark as processing
         data["payment_method_used"] = "crypto"
         data["crypto_tx_hash"] = crypto.tx_hash
         data["crypto_chain"] = crypto.chain
         data["crypto_token"] = crypto.token
+        payment_method_used = "crypto"
 
-        # Try to verify via chain executor
-        try:
-            from sardis.chain.executor import ChainExecutor
-
-            ChainExecutor()
-            # Verification would check tx receipt, amount, recipient
-            logger.info(
-                "ACP crypto payment: tx=%s chain=%s token=%s",
-                crypto.tx_hash,
-                crypto.chain,
-                crypto.token,
-            )
-            data["payment_status"] = ACPPaymentStatus.succeeded.value
-        except Exception as exc:
-            logger.warning("Chain verification unavailable, accepting tx: %s", exc)
-            data["payment_status"] = ACPPaymentStatus.succeeded.value
-
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported payment method: {body.payment_method}",
+        # FAIL-CLOSED: this adapter does not yet perform a real on-chain
+        # verification (tx receipt + amount + recipient + confirmations). It
+        # MUST NOT mark an order ``succeeded`` without that proof. Record the
+        # tx and mark ``processing`` — a settlement signal (verified out of
+        # band) is required before the order is paid.
+        logger.info(
+            "ACP crypto payment recorded (unverified, processing): tx=%s chain=%s token=%s",
+            crypto.tx_hash,
+            crypto.chain,
+            crypto.token,
         )
+        data["payment_status"] = ACPPaymentStatus.processing.value
 
-    data["status"] = ACPCheckoutStatus.completed
+    # Only flip to completed once payment is actually succeeded; otherwise the
+    # session stays open so it can be retried / settled out of band.
+    if data["payment_status"] == ACPPaymentStatus.succeeded.value:
+        data["status"] = ACPCheckoutStatus.completed
     data["updated_at"] = now
     await _persist_session(session_id, data)
 
     logger.info(
-        "ACP session completed: %s via %s",
+        "ACP session %s: %s via %s (payment=%s)",
+        "completed" if data["status"] == ACPCheckoutStatus.completed else "pending",
         session_id,
-        body.payment_method,
+        payment_method_used,
+        data["payment_status"],
     )
 
-    # Emit order_update webhook (confirmed)
-    await _emit_order_webhook(data, ACPWebhookEventType.order_update, ACPOrderStatus.confirmed)
+    # Emit order_update webhook only when the order is actually confirmed
+    # (payment succeeded). A processing/unverified payment must not signal a
+    # confirmed order downstream.
+    if data["status"] == ACPCheckoutStatus.completed:
+        await _emit_order_webhook(
+            data, ACPWebhookEventType.order_update, ACPOrderStatus.confirmed
+        )
 
     return _build_response(data)
 
@@ -765,79 +786,44 @@ async def cancel_checkout_session(
 
 
 # ---------------------------------------------------------------------------
-# Endpoint: Delegate Payment
+# Endpoint: Delegate Payment (QUARANTINED — raw-PAN intake removed)
 # ---------------------------------------------------------------------------
+#
+# The legacy ``POST /delegate_payment`` endpoint accepted a raw PAN + CVV and
+# forwarded it to Stripe, putting Sardis in PCI-DSS cardholder-data scope. That
+# is the **PSP** role; Sardis is the **merchant/seller**, which per the ACP role
+# model never receives a PAN. The endpoint is retained ONLY as an explicit
+# fail-closed quarantine: it accepts no request body, parses no card data, and
+# always rejects with 501 + a clear reason_code pointing callers at the
+# issuer-delegated token model. This guarantees a raw PAN can never enter the
+# process here.
 
-@router.post(
+@router.api_route(
     "/delegate_payment",
-    response_model=ACPDelegatePaymentResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Receive card credentials from agent, tokenize via Stripe",
+    methods=["POST", "PUT", "PATCH"],
+    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+    summary="REMOVED — raw-PAN intake is not accepted (use an issuer-delegated token)",
+    include_in_schema=False,
 )
-async def delegate_payment(
-    body: ACPDelegatePaymentRequest,
+async def delegate_payment_removed(
     principal: Principal = Depends(require_principal),
-    api_version: str = Depends(_validate_api_version),
-) -> ACPDelegatePaymentResponse:
-    """Receive card credentials from an AI agent and tokenize them.
+) -> None:
+    """Quarantine guard: Sardis (merchant role) never accepts a raw PAN.
 
-    The agent provides raw card details with spending allowance constraints.
-    Sardis tokenizes the card via Stripe (creating a PaymentMethod) and
-    returns a delegate payment token (``vt_...``) that can be used to
-    complete an ACP checkout session.
-
-    The allowance is enforced when the token is used:
-    - ``max_amount``: maximum charge in smallest currency unit
-    - ``checkout_session_id``: restricts token to a specific session
-    - ``expires_at``: optional expiration timestamp
-
-    Card details are never stored -- only the Stripe PaymentMethod ID is retained.
+    The PSP raw-card intake was removed. No request body is read, so no
+    cardholder data is parsed or forwarded. Always fails closed (501).
     """
-    token_id = _gen_delegate_token_id()
-    now = datetime.now(UTC).isoformat()
-
-    # Tokenize via Stripe
-    stripe_pm_id = await _create_stripe_payment_method(body.payment_method.model_dump())
-
-    # Store token with allowance (card details are NOT stored)
-    token_data: dict[str, Any] = {
-        "id": token_id,
-        "owner_id": principal.organization_id,
-        "stripe_payment_method_id": stripe_pm_id,
-        "allowance": body.allowance.model_dump(),
-        "billing_address": body.billing_address.model_dump() if body.billing_address else None,
-        "risk_signals": [rs.model_dump() for rs in body.risk_signals],
-        "created_at": now,
-        "used": False,
-    }
-    _delegate_tokens[token_id] = token_data
-
-    # Persist to DB
-    try:
-        from sardis.core.database import Database
-        await Database.execute(
-            """INSERT INTO acp_delegate_tokens (token_id, data, created_at)
-               VALUES ($1, $2, NOW())""",
-            token_id, json.dumps(token_data, default=str),
-        )
-    except Exception as exc:
-        logger.warning("ACP delegate token DB persist failed for %s: %s", token_id, exc)
-
-    logger.info(
-        "ACP delegate payment token created: %s (stripe_pm=%s, session=%s)",
-        token_id,
-        stripe_pm_id or "none",
-        body.allowance.checkout_session_id,
-    )
-
-    return ACPDelegatePaymentResponse(
-        id=token_id,
-        created=now,
-        metadata={
-            "allowance_max_amount": body.allowance.max_amount,
-            "allowance_currency": body.allowance.currency,
-            "checkout_session_id": body.allowance.checkout_session_id,
-            "has_stripe_pm": stripe_pm_id is not None,
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail={
+            "reason_code": "raw_pan_not_accepted",
+            "message": (
+                "Sardis is the ACP merchant/seller and never accepts a raw PAN/CVV. "
+                "Use an issuer-delegated tokenized credential when completing a "
+                "checkout session: POST /checkout_sessions/{id}/complete with "
+                "payment_data.instrument.credential = {type: 'spt'|'issuer_card', "
+                "token: <opaque issuer/PSP token>}."
+            ),
         },
     )
 

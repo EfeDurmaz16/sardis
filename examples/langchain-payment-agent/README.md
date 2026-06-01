@@ -5,7 +5,7 @@ AI agent that makes payments using Sardis + LangChain.
 ## Setup
 
 ```bash
-pip install sardis-langchain langchain langchain-openai
+pip install "sardis[langchain]" langchain langchain-openai
 ```
 
 ## Run
