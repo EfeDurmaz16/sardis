@@ -1,145 +1,85 @@
 #!/usr/bin/env python3
 """
-LangChain Agent + Sardis Payment Tool
-======================================
+LangChain agent + Sardis toolkit
+================================
 
-This example shows how to use Sardis as a LangChain tool, allowing
-a ReAct agent to reason about purchases and execute policy-checked
-payments.
+Give a LangChain agent a bounded financial surface: the Sardis toolkit exposes
+pay / check-balance / check-policy / set-policy / list-transactions as LangChain
+tools, all enforced by the same policy engine.
 
-The agent receives a request, reasons about whether to purchase,
-calls the Sardis tool, and gets a policy-enforced result.
+Concept: `SardisToolkit(client, wallet_id).get_tools()` returns ready-to-use
+LangChain `BaseTool`s — you do not hand-roll payment tools.
 
 Prerequisites:
-    pip install langchain langchain-openai sardis
+    pip install "sardis[langchain]" langchain langchain-openai
 
 Run:
     export OPENAI_API_KEY=sk-...
-    export SARDIS_API_KEY=sk_...
+    export SARDIS_API_KEY=sk_live_...
     python examples/langchain_sardis_agent.py
 """
+from __future__ import annotations
 
 import os
-from decimal import Decimal
+import sys
 
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
-from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-from sardis import SardisClient
+from sardis import Sardis
+from sardis.integrations.langchain import SardisToolkit
 
-# --- Sardis Setup -----------------------------------------------------------
-
-sardis = SardisClient(api_key=os.environ.get("SARDIS_API_KEY", "sk_demo"))
-
-agent = sardis.agents.create(
-    name="langchain-agent",
-    description="LangChain procurement agent",
-)
-wallet = sardis.wallets.create(
-    agent_id=agent.agent_id,
-    chain="base_sepolia",
-    currency="USDC",
-    limit_per_tx=Decimal("200.00"),
-    limit_total=Decimal("1000.00"),
-)
-
-
-# --- LangChain Tools --------------------------------------------------------
-
-@tool
-def sardis_pay(to: str, amount: str, token: str, purpose: str) -> str:
-    """Execute a payment through Sardis with policy enforcement.
-
-    Args:
-        to: Recipient address or merchant identifier (e.g. 'openai.com')
-        amount: Amount in USD (e.g. '25.00')
-        token: Stablecoin to use - one of USDC, USDT, EURC
-        purpose: Reason for the payment
-    """
-    result = sardis.wallets.transfer(
-        wallet.wallet_id,
-        destination=to,
-        amount=Decimal(amount),
-        token=token,
-        chain="base_sepolia",
-        domain="langchain-agent.local",
-        memo=purpose,
-    )
-    return (
-        f"Status: {result.status} | "
-        f"Amount: {result.amount} {token} | "
-        f"TX: {result.tx_hash} | "
-        f"Chain: {result.chain}"
-    )
-
-
-@tool
-def sardis_balance() -> str:
-    """Check the current wallet balance and spending limits."""
-    info = sardis.wallets.get_balance(wallet.wallet_id, chain="base_sepolia", token="USDC")
-    return (
-        f"Wallet: {info.wallet_id} | "
-        f"Chain: {info.chain} | "
-        f"Balance: {info.balance} {info.token}"
-    )
-
-
-# --- Agent Setup -------------------------------------------------------------
-
-PROMPT = PromptTemplate.from_template("""You are a procurement agent with a Sardis wallet.
-You can make payments for software tools, API credits, and cloud services.
-
-Before making any payment:
-1. State what you're purchasing and why
-2. Check the wallet balance if needed
-3. Execute the payment with a clear purpose
+PROMPT = PromptTemplate.from_template(
+    """You are a procurement agent with a Sardis wallet. You can pay for software,
+API credits, and cloud services — every payment is policy-checked by Sardis.
 
 You have access to the following tools:
-
 {tools}
 
 Tool names: {tool_names}
 
-Use the following format:
-
+Use this format:
 Question: the input question you must answer
 Thought: think about what to do
 Action: the action to take (one of [{tool_names}])
 Action Input: the input to the action
 Observation: the result of the action
-... (repeat Thought/Action/Observation as needed)
+... (repeat as needed)
 Thought: I now know the final answer
-Final Answer: the final answer to the question
+Final Answer: the final answer
 
 Begin!
 
 Question: {input}
-Thought:{agent_scratchpad}""")
+Thought:{agent_scratchpad}"""
+)
 
 
-def run_agent(task: str):
-    """Run a LangChain ReAct agent with Sardis payment tools."""
+def main() -> None:
+    api_key = os.environ.get("SARDIS_API_KEY")
+    if not api_key:
+        sys.exit("SARDIS_API_KEY not set. export SARDIS_API_KEY=sk_live_... and retry.")
+
+    client = Sardis(api_key=api_key)
+    agent = client.agents.create(name="langchain-agent")
+    wallet = client.wallets.create(name="langchain-wallet", chain="base")
+
+    tools = SardisToolkit(client=client, wallet_id=wallet.wallet_id).get_tools()
+
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
-    tools = [sardis_pay, sardis_balance]
-
-    agent = create_react_agent(llm, tools, PROMPT)
     executor = AgentExecutor(
-        agent=agent,
+        agent=create_react_agent(llm, tools, PROMPT),
         tools=tools,
         verbose=True,
         handle_parsing_errors=True,
     )
 
-    print(f"Task: {task}\n{'=' * 60}\n")
+    task = "Check the wallet balance, then pay $5 of Anthropic API credits to anthropic.com."
+    print(f"agent={agent.agent_id} wallet={wallet.wallet_id}\nTask: {task}\n{'=' * 60}")
     result = executor.invoke({"input": task})
-    print(f"\n{'=' * 60}")
-    print(f"Result: {result['output']}")
+    print(f"{'=' * 60}\nResult: {result['output']}")
 
 
 if __name__ == "__main__":
-    run_agent(
-        "I need to purchase $30 of Anthropic API credits and $15 of "
-        "GitHub Copilot for our development team. Check the balance first."
-    )
+    main()
