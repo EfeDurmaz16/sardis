@@ -152,6 +152,11 @@ class DelegationEngine:
                 error_code="DELEGATOR_NOT_FOUND",
             )
 
+        # Omission means INHERIT (a narrowing, never a widening): a child with no
+        # explicit expiry adopts its delegator's expiry rather than outliving it.
+        if expires_at is None:
+            expires_at = self._delegator_expiry(delegator, delegator_kind)
+
         att = self._attenuate(
             delegator=delegator,
             delegator_kind=delegator_kind,
