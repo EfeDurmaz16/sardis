@@ -1,0 +1,571 @@
+{
+  "chains": [
+    {
+      "name": "valid_chain",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": true,
+        "reason": null
+      }
+    },
+    {
+      "name": "intent_invalid_type",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "bogus",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "intent_invalid_type"
+      }
+    },
+    {
+      "name": "cart_invalid_type",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "bogus",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "cart_invalid_type"
+      }
+    },
+    {
+      "name": "payment_invalid_type",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "bogus",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "payment_invalid_type"
+      }
+    },
+    {
+      "name": "agent_presence_required",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": false,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "payment_agent_presence_required"
+      }
+    },
+    {
+      "name": "subject_mismatch",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "other",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "subject_mismatch"
+      }
+    },
+    {
+      "name": "merchant_domain_mismatch",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "evil.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "merchant_domain_mismatch"
+      }
+    },
+    {
+      "name": "payment_exceeds_cart_total",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 20000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "payment_exceeds_cart_total"
+      }
+    },
+    {
+      "name": "goal_drift_scope_mismatch",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "casino.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "casino.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "goal_drift_scope_mismatch"
+      }
+    },
+    {
+      "name": "action_description_hash_mismatch",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 1000600,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "deadbeef"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "action_description_hash_mismatch"
+      }
+    },
+    {
+      "name": "mandate_expired",
+      "chain": {
+        "intent": {
+          "mandateId": "i1",
+          "mandateType": "intent",
+          "subject": "agent_x",
+          "purpose": "intent",
+          "expiresAt": 999999,
+          "scope": [
+            "cloud"
+          ],
+          "requestedAmount": 10000,
+          "naturalLanguageDescription": "Buy cloud compute from AWS",
+          "actionDescriptionHash": "6cc634474242305bd266afbc267a960130c24132fb89c479328fcdf6cdebea7a"
+        },
+        "cart": {
+          "mandateId": "c1",
+          "mandateType": "cart",
+          "subject": "agent_x",
+          "purpose": "cart",
+          "expiresAt": 1000600,
+          "merchantDomain": "aws.amazon.com",
+          "subtotalMinor": 9000,
+          "taxesMinor": 1000,
+          "currency": "USD"
+        },
+        "payment": {
+          "mandateId": "p1",
+          "mandateType": "payment",
+          "subject": "agent_x",
+          "purpose": "checkout",
+          "expiresAt": 1000600,
+          "amountMinor": 10000,
+          "destination": "0xabc",
+          "merchantDomain": "aws.amazon.com",
+          "aiAgentPresence": true,
+          "transactionModality": "human_present"
+        }
+      },
+      "now": 1000000,
+      "expected": {
+        "accepted": false,
+        "reason": "mandate_expired"
+      }
+    }
+  ],
+  "drift": [
+    {
+      "name": "in_scope",
+      "intentAmount": 10000,
+      "scope": [
+        "cloud"
+      ],
+      "payAmount": 10000,
+      "merchant": "aws.amazon.com",
+      "expected": {
+        "score": 0.0,
+        "reasons": []
+      }
+    },
+    {
+      "name": "scope_mismatch",
+      "intentAmount": 10000,
+      "scope": [
+        "cloud"
+      ],
+      "payAmount": 10000,
+      "merchant": "randomshop.com",
+      "expected": {
+        "score": 0.8,
+        "reasons": [
+          "scope_mismatch:intent=['cloud'],merchant=randomshop.com"
+        ]
+      }
+    },
+    {
+      "name": "amount_deviation",
+      "intentAmount": 10000,
+      "scope": [
+        "cloud"
+      ],
+      "payAmount": 15000,
+      "merchant": "aws.amazon.com",
+      "expected": {
+        "score": 0.25,
+        "reasons": [
+          "amount_deviation:0.50"
+        ]
+      }
+    },
+    {
+      "name": "high_risk",
+      "intentAmount": 10000,
+      "scope": [
+        "cloud"
+      ],
+      "payAmount": 10000,
+      "merchant": "casino.com",
+      "expected": {
+        "score": 1.0,
+        "reasons": [
+          "scope_mismatch:intent=['cloud'],merchant=casino.com",
+          "high_risk_domain:casino.com"
+        ]
+      }
+    }
+  ]
+}

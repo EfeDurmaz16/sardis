@@ -9,3 +9,5 @@ export { verifyDelegationEvidence } from './delegation-evidence.js';
 export { verifyRevocationProof, computeOutcome } from './revocation-proof.js';
 export * as delegationEvidence from './delegation-evidence.js';
 export * as revocationProof from './revocation-proof.js';
+export * from './ap2.js';
+export * from './drift.js';
