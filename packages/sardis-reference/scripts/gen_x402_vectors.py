@@ -24,8 +24,8 @@ from eth_account.messages import encode_typed_data  # noqa: E402
 from eth_utils import keccak  # noqa: E402
 
 from sardis.protocol.x402_erc3009 import (  # noqa: E402
-    ERC3009Authorization,
     TRANSFER_WITH_AUTHORIZATION_TYPE,
+    ERC3009Authorization,
     resolve_eip712_domain,
     validate_authorization_timing,
     verify_transfer_authorization,

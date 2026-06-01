@@ -80,6 +80,7 @@ async def run_demo(
     print(f"Amount: ${amount:.2f} USDC")
 
     # Import Sardis modules
+    from sardis.chain import ChainExecutor
     from sardis.core import (
         CardStatus,
         CardType,
@@ -92,7 +93,6 @@ async def run_demo(
     )
     from sardis.core.identity import AgentIdentity
     from sardis.core.mandates import VCProof
-    from sardis.chain import ChainExecutor
     from sardis.protocol import MandateVerifier
     from sardis.protocol.storage import ReplayCache
 
