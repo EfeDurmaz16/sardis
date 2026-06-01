@@ -312,15 +312,6 @@ video/out/
 brand/
 *.tsbuildinfo
 *.mp4
-apps/canvas-site/_astro/
-apps/canvas-site/css/
-apps/canvas-site/js/
-apps/canvas-site/*/index.html
-apps/canvas-site/index.html
-apps/canvas-site/llms-full.txt
-apps/canvas-site/llms.txt
-apps/canvas-site/robots.txt
-apps/canvas-site/sitemap.xml
 apps/landing/app/landing-alt/
 apps/landing/app/manifesto/
 !apps/landing/app/manifesto/
