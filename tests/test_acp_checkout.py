@@ -26,12 +26,10 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clean_acp_state():
     """Reset in-memory ACP state between tests."""
-    from server.routes.protocol.acp import _delegate_tokens, _sessions
+    from server.routes.protocol.acp import _sessions
     _sessions.clear()
-    _delegate_tokens.clear()
     yield
     _sessions.clear()
-    _delegate_tokens.clear()
 
 
 @pytest.fixture
@@ -64,6 +62,70 @@ def client(acp_app):
 
 
 # ---------------------------------------------------------------------------
+# Tokenized payment-data helpers (PAN-free)
+# ---------------------------------------------------------------------------
+
+def _spt_body(token: str) -> dict:
+    """Build a tokenized complete body for a Stripe Shared Payment Token."""
+    return {
+        "payment_data": {
+            "handler_id": "stripe",
+            "instrument": {
+                "type": "card",
+                "credential": {"type": "spt", "token": token},
+            },
+        }
+    }
+
+
+def _issuer_card_body(card_ref: str, *, handler_id: str = "crossmint") -> dict:
+    """Build a tokenized complete body for an issuer-delegated card reference."""
+    return {
+        "payment_data": {
+            "handler_id": handler_id,
+            "instrument": {
+                "type": "card",
+                "credential": {"type": "issuer_card", "token": card_ref},
+            },
+        }
+    }
+
+
+class _FakeCardResult:
+    """Minimal stand-in for the provider ProviderResult (tokenized only)."""
+
+    def __init__(self, *, ok=True, status="active", card_id="crd_abc123", last_four="4242"):
+        self.ok = ok
+        self.status = status
+        self.raw = {
+            "card_id": card_id,
+            "status": status,
+            "last_four": last_four,
+            "currency": "USD",
+        }
+
+
+class _FakeCardPort:
+    """Mocked Crossmint-style CardPort. NEVER returns a PAN."""
+
+    def __init__(self, result=None, *, raise_exc=None):
+        self._result = result if result is not None else _FakeCardResult()
+        self._raise = raise_exc
+        self.calls = []
+
+    async def set_state(self, card_ref, *, state):
+        self.calls.append((card_ref, state))
+        if self._raise is not None:
+            raise self._raise
+        return self._result
+
+
+def _patch_card_port(port):
+    """Patch the dependency resolver to return the mocked CardPort."""
+    return patch("server.dependencies.get_card_port", return_value=port)
+
+
+# ---------------------------------------------------------------------------
 # Create checkout session
 # ---------------------------------------------------------------------------
 
@@ -86,7 +148,7 @@ class TestCreateCheckoutSession:
         assert data["totals"]["total"] == "99.00"
         assert data["totals"]["currency"] == "usd"
         assert data["payment"]["methods_supported"] == ["card", "crypto"]
-        assert data["api_version"] == "2026-01-30"
+        assert data["api_version"] == "2026-01-16"
 
     def test_create_with_buyer_and_fulfillment(self, client):
         """Create session with full buyer info and fulfillment."""
@@ -282,10 +344,7 @@ class TestUpdateCheckoutSession:
         # Complete it
         client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_test12345678",
-            },
+            json=_spt_body("spt_test12345678"),
         )
 
         # Try to update
@@ -321,7 +380,7 @@ class TestUpdateCheckoutSession:
 class TestCompleteCheckoutSession:
 
     def test_complete_with_spt(self, client):
-        """Complete with a Shared Payment Token (dev mode, no Stripe key)."""
+        """Complete with a tokenized Shared Payment Token (dev mode)."""
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
@@ -330,10 +389,7 @@ class TestCompleteCheckoutSession:
 
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_abc123def456",
-            },
+            json=_spt_body("spt_abc123def456"),
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -341,7 +397,7 @@ class TestCompleteCheckoutSession:
         assert data["payment"]["status"] == "succeeded"
 
     def test_complete_with_invalid_spt(self, client):
-        """Reject invalid SPT token format."""
+        """Reject a credential typed `spt` whose token is not an spt_."""
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
@@ -350,16 +406,165 @@ class TestCompleteCheckoutSession:
 
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "invalid_token",
-            },
+            json=_spt_body("invalid_token"),
         )
         assert resp.status_code == 400
-        assert "spt_" in resp.json()["detail"]
+        assert "spt" in resp.json()["detail"].lower()
 
-    def test_complete_with_crypto(self, client):
-        """Complete with crypto payment (on-chain tx)."""
+    def test_complete_with_issuer_card(self, client):
+        """Complete with an issuer-delegated card reference (mocked CardPort)."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        port = _FakeCardPort(_FakeCardResult(ok=True, status="active", card_id="crd_x1_abcdef"))
+        with _patch_card_port(port):
+            resp = client.post(
+                f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+                json=_issuer_card_body("crd_x1_abcdef"),
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        # Verified with the issuer; PAN never touched Sardis. Stays `processing`
+        # (and `open`) until a settlement signal — fail-closed, not auto-paid.
+        assert data["payment"]["status"] == "processing"
+        assert data["status"] == "open"
+        assert port.calls == [("crd_x1_abcdef", "active")]
+
+    def test_complete_issuer_card_unverified_fails_closed(self, client):
+        """Issuer rejects/unknown card -> fail closed (402), session not completed."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        port = _FakeCardPort(raise_exc=RuntimeError("card not found"))
+        with _patch_card_port(port):
+            resp = client.post(
+                f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+                json=_issuer_card_body("crd_missing_ref"),
+            )
+        assert resp.status_code == 402
+        assert "issuer_card_unverified" in str(resp.json()["detail"])
+
+        # Session must still be open, not completed.
+        get_resp = client.get(f"/api/v2/acp/checkout_sessions/{session_id}")
+        assert get_resp.json()["status"] == "open"
+
+    def test_complete_issuer_card_not_active_fails_closed(self, client):
+        """A frozen/closed issuer card is not chargeable -> 402."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        port = _FakeCardPort(_FakeCardResult(ok=True, status="frozen"))
+        with _patch_card_port(port):
+            resp = client.post(
+                f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+                json=_issuer_card_body("crd_frozen_ref"),
+            )
+        assert resp.status_code == 402
+        assert "not_chargeable" in str(resp.json()["detail"])
+
+    def test_complete_rejects_raw_pan_as_issuer_token(self, client):
+        """A raw card number passed as a credential token is rejected (422)."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        # No CardPort patch: the raw-PAN guard must reject before any issuer call.
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json=_issuer_card_body("4242424242424242"),
+        )
+        assert resp.status_code == 422
+        assert "raw_pan_rejected" in str(resp.json()["detail"])
+
+    def test_complete_rejects_raw_card_fields(self, client):
+        """A legacy raw-card body (number/cvc/exp) is rejected (422), never 2xx."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        for body in (
+            {
+                "payment_method": "delegate_payment",
+                "delegate_payment_token": "vt_test",
+            },
+            {
+                "payment_data": {
+                    "handler_id": "stripe",
+                    "instrument": {
+                        "type": "card",
+                        "credential": {
+                            "type": "issuer_card",
+                            "token": "crd_x",
+                            "number": "4242424242424242",
+                            "cvc": "123",
+                        },
+                    },
+                }
+            },
+            {
+                "number": "4242424242424242",
+                "exp_month": 12,
+                "exp_year": 2030,
+                "cvc": "123",
+            },
+        ):
+            resp = client.post(
+                f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+                json=body,
+            )
+            assert resp.status_code == 422, body
+
+    def test_complete_missing_payment_rejected(self, client):
+        """No payment_data and no crypto -> 400 (fail closed)."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json={},
+        )
+        assert resp.status_code == 400
+        assert "missing_payment" in str(resp.json()["detail"])
+
+    def test_complete_ambiguous_payment_rejected(self, client):
+        """Both payment_data and crypto -> 400 (fail closed)."""
+        create_resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        session_id = create_resp.json()["id"]
+
+        body = _spt_body("spt_abc12345")
+        body["crypto_payment"] = {
+            "tx_hash": "0x" + "a" * 64,
+            "chain": "base",
+            "token": "USDC",
+        }
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json=body,
+        )
+        assert resp.status_code == 400
+        assert "ambiguous_payment" in str(resp.json()["detail"])
+
+    def test_complete_with_crypto_processing(self, client):
+        """Crypto without on-chain verification stays processing/open (fail-closed)."""
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
@@ -369,7 +574,6 @@ class TestCompleteCheckoutSession:
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
             json={
-                "payment_method": "crypto",
                 "crypto_payment": {
                     "tx_hash": "0xabc123def456789012345678901234567890123456789012345678901234abcd",
                     "chain": "base",
@@ -379,7 +583,9 @@ class TestCompleteCheckoutSession:
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["status"] == "completed"
+        # Not marked succeeded/completed without a real receipt.
+        assert data["payment"]["status"] == "processing"
+        assert data["status"] == "open"
 
     def test_complete_crypto_missing_tx_hash(self, client):
         """Reject crypto payment without tx_hash."""
@@ -389,104 +595,12 @@ class TestCompleteCheckoutSession:
         )
         session_id = create_resp.json()["id"]
 
+        # tx_hash is a required field on ACPCryptoPayment -> 422 at validation.
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "crypto",
-            },
+            json={"crypto_payment": {"chain": "base"}},
         )
-        assert resp.status_code == 400
-
-    def test_complete_with_delegate_payment(self, client):
-        """Complete with delegate payment token (dev mode)."""
-        # First create a delegate token
-        from server.routes.protocol.acp import _delegate_tokens
-        _delegate_tokens["vt_test123"] = {
-            "id": "vt_test123",
-            "stripe_payment_method_id": None,
-            "allowance": {
-                "reason": "one_time",
-                "max_amount": 99999,
-                "currency": "usd",
-                "checkout_session_id": "",  # any session
-            },
-        }
-
-        create_resp = client.post(
-            "/api/v2/acp/checkout_sessions",
-            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
-        )
-        session_id = create_resp.json()["id"]
-
-        resp = client.post(
-            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "delegate_payment",
-                "delegate_payment_token": "vt_test123",
-            },
-        )
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "completed"
-
-    def test_complete_delegate_wrong_session(self, client):
-        """Reject delegate token scoped to a different session."""
-        from server.routes.protocol.acp import _delegate_tokens
-        _delegate_tokens["vt_scoped"] = {
-            "id": "vt_scoped",
-            "stripe_payment_method_id": None,
-            "allowance": {
-                "reason": "one_time",
-                "max_amount": 99999,
-                "currency": "usd",
-                "checkout_session_id": "csn_other_session",
-            },
-        }
-
-        create_resp = client.post(
-            "/api/v2/acp/checkout_sessions",
-            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
-        )
-        session_id = create_resp.json()["id"]
-
-        resp = client.post(
-            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "delegate_payment",
-                "delegate_payment_token": "vt_scoped",
-            },
-        )
-        assert resp.status_code == 403
-        assert "different checkout session" in resp.json()["detail"]
-
-    def test_complete_delegate_exceeds_allowance(self, client):
-        """Reject when amount exceeds delegate allowance."""
-        from server.routes.protocol.acp import _delegate_tokens
-        _delegate_tokens["vt_small"] = {
-            "id": "vt_small",
-            "stripe_payment_method_id": None,
-            "allowance": {
-                "reason": "one_time",
-                "max_amount": 100,  # $1.00 max
-                "currency": "usd",
-                "checkout_session_id": "",
-            },
-        }
-
-        create_resp = client.post(
-            "/api/v2/acp/checkout_sessions",
-            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
-        )
-        session_id = create_resp.json()["id"]
-
-        resp = client.post(
-            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "delegate_payment",
-                "delegate_payment_token": "vt_small",
-            },
-        )
-        assert resp.status_code == 403
-        assert "exceeds" in resp.json()["detail"]
+        assert resp.status_code == 422
 
     def test_complete_already_completed(self, client):
         """Cannot complete an already-completed session."""
@@ -499,19 +613,13 @@ class TestCompleteCheckoutSession:
         # Complete first time
         client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_first",
-            },
+            json=_spt_body("spt_first1234"),
         )
 
         # Try again
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_second",
-            },
+            json=_spt_body("spt_second123"),
         )
         assert resp.status_code == 409
 
@@ -527,10 +635,7 @@ class TestCompleteCheckoutSession:
 
         resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_test",
-            },
+            json=_spt_body("spt_test12345"),
         )
         assert resp.status_code == 409
 
@@ -563,10 +668,7 @@ class TestCancelCheckoutSession:
 
         client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_test",
-            },
+            json=_spt_body("spt_test12345"),
         )
 
         resp = client.post(f"/api/v2/acp/checkout_sessions/{session_id}/cancel")
@@ -587,13 +689,14 @@ class TestCancelCheckoutSession:
 
 
 # ---------------------------------------------------------------------------
-# Delegate Payment
+# Delegate Payment — QUARANTINED (raw-PAN intake removed, fail-closed)
 # ---------------------------------------------------------------------------
 
-class TestDelegatePayment:
+class TestDelegatePaymentQuarantined:
+    """The raw-PAN PSP endpoint is removed. It must never accept a card."""
 
-    def test_delegate_payment_creates_token(self, client):
-        """Create a delegate payment token (dev mode, no Stripe key)."""
+    def test_raw_pan_intake_rejected(self, client):
+        """Posting a raw card to /delegate_payment fails closed (501), no 2xx."""
         resp = client.post(
             "/api/v2/acp/delegate_payment",
             json={
@@ -601,9 +704,8 @@ class TestDelegatePayment:
                     "type": "card",
                     "number": "4242424242424242",
                     "exp_month": 12,
-                    "exp_year": 2027,
+                    "exp_year": 2030,
                     "cvc": "123",
-                    "name": "Agent Smith",
                 },
                 "allowance": {
                     "reason": "one_time",
@@ -611,47 +713,18 @@ class TestDelegatePayment:
                     "currency": "usd",
                     "checkout_session_id": "csn_test123",
                 },
-                "billing_address": {
-                    "name": "Agent Smith",
-                    "line_one": "123 AI Blvd",
-                    "city": "San Francisco",
-                    "state": "CA",
-                    "country": "US",
-                    "postal_code": "94105",
-                },
-                "risk_signals": [
-                    {"type": "device_fingerprint", "score": 0.9, "action": "allow"},
-                ],
             },
         )
-        assert resp.status_code == 201
-        data = resp.json()
-        assert data["id"].startswith("vt_")
-        assert data["metadata"]["allowance_max_amount"] == 10000
-        assert data["metadata"]["checkout_session_id"] == "csn_test123"
+        assert resp.status_code == 501
+        detail = resp.json()["detail"]
+        assert detail["reason_code"] == "raw_pan_not_accepted"
+        assert "issuer-delegated" in detail["message"]
 
-    def test_delegate_payment_minimal(self, client):
-        """Create delegate token with minimal fields."""
-        resp = client.post(
-            "/api/v2/acp/delegate_payment",
-            json={
-                "payment_method": {
-                    "type": "card",
-                    "number": "4242424242424242",
-                    "exp_month": 6,
-                    "exp_year": 2028,
-                    "cvc": "456",
-                },
-                "allowance": {
-                    "reason": "one_time",
-                    "max_amount": 5000,
-                    "currency": "usd",
-                    "checkout_session_id": "csn_any",
-                },
-            },
-        )
-        assert resp.status_code == 201
-        assert resp.json()["id"].startswith("vt_")
+    def test_delegate_endpoint_no_body_still_rejects(self, client):
+        """Even an empty body fails closed — no card data is ever parsed."""
+        resp = client.post("/api/v2/acp/delegate_payment", json={})
+        assert resp.status_code == 501
+        assert resp.json()["detail"]["reason_code"] == "raw_pan_not_accepted"
 
 
 # ---------------------------------------------------------------------------
@@ -667,14 +740,14 @@ class TestAPIVersionHeader:
             json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
         )
         assert resp.status_code == 201
-        assert resp.json()["api_version"] == "2026-01-30"
+        assert resp.json()["api_version"] == "2026-01-16"
 
     def test_explicit_supported_version(self, client):
         """Accept explicit supported version."""
         resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
-            headers={"API-Version": "2026-01-30"},
+            headers={"API-Version": "2026-01-16"},
         )
         assert resp.status_code == 201
 
@@ -722,13 +795,10 @@ class TestACPLifecycle:
         assert update_resp.status_code == 200
         assert update_resp.json()["totals"]["total"] == "149.00"  # 50 + 99
 
-        # 3. Complete with SPT
+        # 3. Complete with tokenized SPT
         complete_resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "spt",
-                "shared_payment_granted_token": "spt_granted_abc123",
-            },
+            json=_spt_body("spt_granted_abc123"),
         )
         assert complete_resp.status_code == 200
         assert complete_resp.json()["status"] == "completed"
@@ -739,31 +809,9 @@ class TestACPLifecycle:
         assert get_resp.status_code == 200
         assert get_resp.json()["status"] == "completed"
 
-    def test_full_delegate_lifecycle(self, client):
-        """Full lifecycle: delegate_payment -> create -> complete."""
-        # 1. Create delegate token
-        delegate_resp = client.post(
-            "/api/v2/acp/delegate_payment",
-            json={
-                "payment_method": {
-                    "type": "card",
-                    "number": "4242424242424242",
-                    "exp_month": 12,
-                    "exp_year": 2028,
-                    "cvc": "999",
-                },
-                "allowance": {
-                    "reason": "one_time",
-                    "max_amount": 100000,
-                    "currency": "usd",
-                    "checkout_session_id": "",
-                },
-            },
-        )
-        assert delegate_resp.status_code == 201
-        vt_id = delegate_resp.json()["id"]
-
-        # 2. Create checkout session
+    def test_full_issuer_card_lifecycle(self, client):
+        """Full lifecycle: create -> complete with an issuer-delegated card ref."""
+        # 1. Create checkout session
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
             json={
@@ -772,19 +820,20 @@ class TestACPLifecycle:
         )
         session_id = create_resp.json()["id"]
 
-        # 3. Complete with delegate token
-        complete_resp = client.post(
-            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
-            json={
-                "payment_method": "delegate_payment",
-                "delegate_payment_token": vt_id,
-            },
-        )
+        # 2. Complete with an issuer-delegated card reference (mocked CardPort).
+        port = _FakeCardPort(_FakeCardResult(ok=True, status="active", card_id="crd_life"))
+        with _patch_card_port(port):
+            complete_resp = client.post(
+                f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+                json=_issuer_card_body("crd_life"),
+            )
         assert complete_resp.status_code == 200
-        assert complete_resp.json()["status"] == "completed"
+        # Verified with the issuer; processing until settlement (fail-closed).
+        assert complete_resp.json()["payment"]["status"] == "processing"
+        assert port.calls == [("crd_life", "active")]
 
     def test_full_crypto_lifecycle(self, client):
-        """Full lifecycle: create -> complete with crypto."""
+        """Full lifecycle: create -> complete with crypto (processing, fail-closed)."""
         # 1. Create
         create_resp = client.post(
             "/api/v2/acp/checkout_sessions",
@@ -798,7 +847,6 @@ class TestACPLifecycle:
         complete_resp = client.post(
             f"/api/v2/acp/checkout_sessions/{session_id}/complete",
             json={
-                "payment_method": "crypto",
                 "crypto_payment": {
                     "tx_hash": "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
                     "chain": "base",
@@ -807,7 +855,8 @@ class TestACPLifecycle:
             },
         )
         assert complete_resp.status_code == 200
-        assert complete_resp.json()["status"] == "completed"
+        # Not auto-completed without an on-chain receipt.
+        assert complete_resp.json()["payment"]["status"] == "processing"
 
 
 # ---------------------------------------------------------------------------
