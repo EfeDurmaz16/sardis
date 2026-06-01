@@ -204,6 +204,88 @@ def _gen_session_id() -> str:
     return f"csn_{secrets.token_hex(12)}"
 
 
+# ---------------------------------------------------------------------------
+# On-chain tx claim registry — one settled tx settles exactly one ACP order
+# ---------------------------------------------------------------------------
+#
+# A confirmed on-chain Transfer to the (single, global) merchant settlement
+# address is, by itself, NOT proof that *this* order was paid: the SAME
+# tx_hash can be replayed across many sessions of the same amount, each one
+# independently passing ``_verify_crypto_onchain`` and being marked
+# ``succeeded`` — one payment, N fulfilled orders (double-credit).
+#
+# We close that by claiming the ``(chain, tx_hash)`` pair for exactly one
+# session at the moment we are about to mark it ``succeeded``.  The claim is
+# atomic and fail-closed: if the pair is already claimed by a DIFFERENT
+# session, the order is NOT credited (409).  Re-claiming for the SAME session
+# (idempotent retry) is allowed.
+
+_tx_claims: dict[str, str] = {}  # "<chain>:<tx_hash>" -> session_id
+
+
+def _tx_claim_key(chain: str, tx_hash: str) -> str:
+    return f"{str(chain).strip().lower()}:{str(tx_hash).strip().lower()}"
+
+
+class TxAlreadyClaimedError(Exception):
+    """The (chain, tx_hash) pair was already consumed by another session."""
+
+    def __init__(self, key: str, owner_session: str) -> None:
+        super().__init__(f"tx already claimed by {owner_session}")
+        self.key = key
+        self.owner_session = owner_session
+
+
+async def _claim_tx_for_session(chain: str, tx_hash: str, session_id: str) -> None:
+    """Atomically bind a settled on-chain tx to exactly one ACP session.
+
+    Fail-closed: raises :class:`TxAlreadyClaimedError` if the pair is already
+    owned by a different session.  Re-claiming for the same session is a no-op
+    (idempotent retry of complete on a still-open session).
+
+    The in-memory map is the authoritative guard for single-process / dev and
+    tests; the DB unique index (``acp_settled_tx``) is the durable, multi-
+    process guard.  We claim in the DB FIRST (so a cross-process race is caught
+    by the unique constraint) and reconcile the in-memory map to the DB owner.
+    """
+    key = _tx_claim_key(chain, tx_hash)
+
+    # Durable claim first — the unique index is the cross-process source of
+    # truth.  ON CONFLICT DO NOTHING means "row already exists"; we then read
+    # the owner back and only accept it if it is THIS session.
+    db_owner: str | None = None
+    try:
+        from sardis.core.database import Database
+        await Database.execute(
+            """INSERT INTO acp_settled_tx (claim_key, session_id, claimed_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (claim_key) DO NOTHING""",
+            key, session_id,
+        )
+        row = await Database.fetchrow(
+            "SELECT session_id FROM acp_settled_tx WHERE claim_key = $1", key,
+        )
+        if row is not None:
+            db_owner = row["session_id"]
+    except Exception as exc:
+        # DB unavailable (dev / tests) — fall back to the in-memory guard only.
+        # This is NOT a silent allow: the in-memory map below still enforces
+        # single-claim within the process, and a degraded DB never *grants* a
+        # claim it cannot persist.
+        logger.warning("ACP tx-claim DB path unavailable for %s: %s", key, exc)
+
+    if db_owner is not None and db_owner != session_id:
+        # Durable record says another session already consumed this tx.
+        _tx_claims[key] = db_owner
+        raise TxAlreadyClaimedError(key, db_owner)
+
+    existing = _tx_claims.get(key)
+    if existing is not None and existing != session_id:
+        raise TxAlreadyClaimedError(key, existing)
+
+    _tx_claims[key] = session_id
+
+
 def _resolve_settlement_address(chain: str | None = None) -> str | None:
     """Resolve the TRUSTED merchant settlement (pay-to) address for crypto.
 
@@ -1111,6 +1193,25 @@ async def complete_checkout_session(
                     expected_recipient=settlement_address,
                     expected_amount_minor=expected_amount_minor,
                 )
+                # Replay guard: a confirmed Transfer to the (single, global)
+                # merchant settlement address proves SOMEONE paid — not that
+                # THIS order was paid.  Claim the tx for exactly one session
+                # before crediting, or the same tx settles N orders.
+                try:
+                    await _claim_tx_for_session(crypto.chain, crypto.tx_hash, session_id)
+                except TxAlreadyClaimedError as exc:
+                    logger.warning(
+                        "ACP crypto %s: tx=%s already consumed by session %s — "
+                        "refusing double-credit",
+                        session_id, crypto.tx_hash, exc.owner_session,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            "crypto_tx_already_used: this on-chain transaction has "
+                            "already settled another checkout session"
+                        ),
+                    ) from exc
                 data["crypto_proof"] = proof
                 data["payment_status"] = ACPPaymentStatus.succeeded.value
                 logger.info(
