@@ -118,6 +118,26 @@ from .constants import (
     RetryConfig as RetryDefaults,
 )
 from .database import SCHEMA_SQL, Database, init_database
+from .delegation import (
+    MAX_DELEGATION_DEPTH,
+    Delegation,
+    DelegationEvidence,
+    DelegationScope,
+    DelegationStatus,
+    DelegatorKind,
+    new_delegation_id,
+)
+from .delegation_engine import (
+    AttenuationResult,
+    ChainCheckResult,
+    DelegationEngine,
+    DelegationError,
+)
+from .delegation_repository import (
+    DelegationStore,
+    InMemoryDelegationStore,
+    PostgresDelegationStore,
+)
 from .dispute import (
     Dispute,
     DisputeEvidence,
@@ -701,6 +721,21 @@ __all__ = [
     "EscrowHold",
     "EscrowManager",
     "EscrowStatus",
+    # Attenuated Delegation Graph
+    "MAX_DELEGATION_DEPTH",
+    "Delegation",
+    "DelegationEvidence",
+    "DelegationScope",
+    "DelegationStatus",
+    "DelegatorKind",
+    "new_delegation_id",
+    "AttenuationResult",
+    "ChainCheckResult",
+    "DelegationEngine",
+    "DelegationError",
+    "DelegationStore",
+    "InMemoryDelegationStore",
+    "PostgresDelegationStore",
     # Disputes
     "Dispute",
     "DisputeEvidence",
