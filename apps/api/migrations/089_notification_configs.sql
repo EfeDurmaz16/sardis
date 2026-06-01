@@ -35,6 +35,6 @@ CREATE TABLE IF NOT EXISTS notification_delivery_log (
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_config ON notification_delivery_log(config_id);
 CREATE INDEX IF NOT EXISTS idx_notification_delivery_created ON notification_delivery_log(created_at);
 
-INSERT INTO schema_migrations (version, name, applied_at)
-VALUES (89, '089_notification_configs', now())
+INSERT INTO schema_migrations (version, description, applied_at)
+VALUES ('089', '089_notification_configs', now())
 ON CONFLICT (version) DO NOTHING;
