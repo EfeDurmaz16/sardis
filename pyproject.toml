@@ -64,7 +64,7 @@ Changelog = "https://docs.sardis.sh/changelog"
 
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests"]
+testpaths = ["packages/sardis/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -163,26 +163,17 @@ bypass-selection = true
 
 [tool.uv.sources]
 sardis = { path = "packages/sardis", editable = true }
-sardis-reference-api = { path = "apps/api", editable = true }
 
 [dependency-groups]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-cov>=4.1",
+    "pytest-httpx>=0.30",
+    "respx>=0.22.0",
     "hypothesis>=6.112",
     "mypy>=1.8",
     "ruff>=0.2",
-    # Root-level integration tests import from the reference API + umbrella
-    "fastapi>=0.115,<1.0",
-    "starlette>=0.41",
-    "python-multipart>=0.0.9",
-    "respx>=0.22.0",
-    "PyJWT>=2.12.0",
-    "PyNaCl>=1.5",
-    "numpy>=2.0",
-    "scipy>=1.11",
-    # Reference API installs its runtime deps (FastAPI extras, prometheus-client,
-    # SQLAlchemy, web3, etc.) so root-level integration tests can import server.
-    "sardis-reference-api",
+    # The thin-client SDK package, installed editable so its tests can run.
+    "sardis",
 ]
