@@ -68,7 +68,6 @@ def _signed_authorization(challenge, *, value=None, network=None):
     """
     from eth_account import Account
     from eth_account.messages import encode_typed_data
-
     from sardis.protocol.x402_erc3009 import (
         TRANSFER_WITH_AUTHORIZATION_TYPE,
         resolve_eip712_domain,

@@ -5,9 +5,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from sardis.core.mpp import MPPPayment, MPPPaymentStatus, MPPSession, MPPSessionStatus
 from sardis.core.spending_policy import SpendingPolicy
+
 from server.authz import Principal, require_principal
 
 
