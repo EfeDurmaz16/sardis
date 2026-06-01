@@ -111,6 +111,36 @@ class SpendingMandateLookup:
 
         return self._row_to_mandate(row)
 
+    async def get_mandate_by_id(self, mandate_id: str) -> SpendingMandate | None:
+        """Fetch ONE spending mandate by id, regardless of status, or ``None``.
+
+        Used as the ``mandate_resolver`` for the
+        :class:`~sardis.core.delegation_engine.DelegationEngine`: resolving an
+        attenuated delegation chain walks up to the root SpendingMandate by id.
+        Unlike :meth:`get_active_mandate`, this does NOT filter on
+        ``status = 'active'`` — the chain re-check inspects the row's status
+        itself (``is_active`` / ``check_payment``) and fails closed on a
+        revoked/expired root, so returning the row (not ``None``) is what lets
+        the chain check attribute the denial to the dead root link.
+        """
+        if not self._use_postgres or not mandate_id:
+            return None
+        pool = await self._get_pool()
+        if pool is None:
+            return None
+        try:
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM spending_mandates WHERE id = $1", mandate_id
+                )
+        except Exception:
+            # Fail closed: an unconfirmable root mandate must not grant authority.
+            logger.exception("Spending mandate by-id lookup failed (id=%s)", mandate_id)
+            raise
+        if row is None:
+            return None
+        return self._row_to_mandate(row)
+
     async def record_spend(self, mandate_id: str, amount: Any) -> None:
         """Increment ``spent_total`` on the spending_mandates row by ``amount``.
 

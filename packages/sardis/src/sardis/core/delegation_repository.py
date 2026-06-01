@@ -73,6 +73,16 @@ class DelegationStore(Protocol):
         """Increment ``spent_total`` on one hop by ``amount`` (token units)."""
         ...
 
+    async def list_for_org(
+        self, *, organization_id: str, delegatee: str | None = None
+    ) -> builtins.list[Delegation]:
+        """List delegations owned by an org (optionally for one delegatee).
+
+        Org ownership is the ``org_id`` column; the API surface stamps it on
+        every minted delegation so reads/lists are tenant-scoped.
+        """
+        ...
+
 
 # ── In-memory (dev / tests) ────────────────────────────────────────────
 
@@ -123,6 +133,20 @@ class InMemoryDelegationStore:
         row.spent_total = (row.spent_total or Decimal("0")) + Decimal(str(amount))
         if row.amount_cap is not None and row.spent_total >= row.amount_cap:
             row.status = DelegationStatus.EXHAUSTED
+
+    async def list_for_org(
+        self, *, organization_id: str, delegatee: str | None = None
+    ) -> builtins.list[Delegation]:
+        def _owner(d: Delegation) -> str:
+            return (d.metadata or {}).get("organization_id") or d.org_id
+
+        rows = [
+            d
+            for d in self._rows.values()
+            if _owner(d) == organization_id
+            and (delegatee is None or d.delegatee == delegatee)
+        ]
+        return sorted(rows, key=lambda d: d.created_at, reverse=True)
 
 
 # ── Postgres (production durability) ───────────────────────────────────
@@ -223,6 +247,24 @@ class PostgresDelegationStore:
             parent_kind,
             parent_ref,
         )
+        return [_row_to_delegation(r) for r in rows]
+
+    async def list_for_org(
+        self, *, organization_id: str, delegatee: str | None = None
+    ) -> builtins.list[Delegation]:
+        if delegatee is None:
+            rows = await Database.fetch(
+                f"SELECT {_COLUMNS} FROM delegations WHERE org_id = $1 "
+                "ORDER BY created_at DESC",
+                organization_id,
+            )
+        else:
+            rows = await Database.fetch(
+                f"SELECT {_COLUMNS} FROM delegations "
+                "WHERE org_id = $1 AND delegatee = $2 ORDER BY created_at DESC",
+                organization_id,
+                delegatee,
+            )
         return [_row_to_delegation(r) for r in rows]
 
     async def record_spend(self, delegation_id: str, amount: Decimal) -> None:

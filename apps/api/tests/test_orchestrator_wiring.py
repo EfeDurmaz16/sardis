@@ -153,10 +153,14 @@ def test_build_moat_ports_skips_mandate_lookup_in_memory_mode() -> None:
 
 
 def test_build_moat_ports_wires_mandate_lookup_on_postgres() -> None:
-    """Postgres mode must wire the real DB-backed lookup (revocation active)."""
+    """Postgres mode must wire the real DB-backed lookup (revocation active),
+    wrapped by the delegation-aware lookup so the attenuated chain is re-checked
+    fail-closed at execution time."""
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    from sardis.core.delegation_engine import DelegationEngine
+    from sardis.core.delegation_lookup import DelegationAwareMandateLookup
     from sardis.core.spending_mandate_lookup import SpendingMandateLookup
 
     moat = build_moat_ports(
@@ -168,4 +172,9 @@ def test_build_moat_ports_wires_mandate_lookup_on_postgres() -> None:
         redis_url="redis://localhost:6379",
         environ={},
     )
-    assert isinstance(moat.spending_mandate_lookup, SpendingMandateLookup)
+    # The orchestrator's lookup is the delegation-aware wrapper over the real
+    # DB-backed SpendingMandateLookup, and the shared DelegationEngine is exposed.
+    lookup = moat.spending_mandate_lookup
+    assert isinstance(lookup, DelegationAwareMandateLookup)
+    assert isinstance(lookup._base, SpendingMandateLookup)
+    assert isinstance(moat.delegation_engine, DelegationEngine)
