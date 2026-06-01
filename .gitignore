@@ -329,3 +329,4 @@ apps/landing/app/manifesto.txt/
 
 # Production-hardening audit working docs (do not commit)
 docs/productization/PRODHARDEN_*.md
+PRODHARDEN_*.md
