@@ -1,0 +1,520 @@
+[
+  {
+    "name": "approved_auto",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "10000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": true,
+      "errorCode": null,
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "not_active_revoked",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "revoked",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "10000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_NOT_ACTIVE",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "amount_exceeded",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "60000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_AMOUNT_EXCEEDED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "budget_exhausted",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "95000",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "10000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_BUDGET_EXHAUSTED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "merchant_blocked",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {
+        "blocked": [
+          "evil.com"
+        ]
+      },
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchant": "evil.com"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_MERCHANT_BLOCKED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "merchant_not_allowed",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {
+        "allowed": [
+          "good.com"
+        ]
+      },
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchant": "other.com"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_MERCHANT_NOT_ALLOWED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "merchant_wildcard_allowed",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {
+        "allowed": [
+          "*.foo.com"
+        ]
+      },
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchant": "api.foo.com"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": true,
+      "errorCode": null,
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "rail_not_allowed",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "usdc"
+      ],
+      "approvalMode": "auto"
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "rail": "card"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_RAIL_NOT_ALLOWED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "chain_not_allowed",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto",
+      "allowedChains": [
+        "base"
+      ]
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "chain": "polygon"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_CHAIN_NOT_ALLOWED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "token_not_allowed",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "auto",
+      "allowedTokens": [
+        "USDC"
+      ]
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "token": "USDT"
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": false,
+      "errorCode": "MANDATE_TOKEN_NOT_ALLOWED",
+      "requiresApproval": false
+    }
+  },
+  {
+    "name": "requires_approval_threshold",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "threshold",
+      "approvalThreshold": {
+        "minor": "5000",
+        "currency": "USDC"
+      }
+    },
+    "spend": {
+      "amount": {
+        "minor": "10000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": true,
+      "errorCode": null,
+      "requiresApproval": true
+    }
+  },
+  {
+    "name": "always_human",
+    "mandate": {
+      "id": "mandate_test",
+      "status": "active",
+      "validFromMs": 1780317086525,
+      "expiresAtMs": 1780320746525,
+      "merchantScope": {},
+      "amountPerTx": {
+        "minor": "50000",
+        "currency": "USDC"
+      },
+      "amountTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "currency": "USDC",
+      "allowedRails": [
+        "card",
+        "usdc",
+        "bank"
+      ],
+      "approvalMode": "always_human"
+    },
+    "spend": {
+      "amount": {
+        "minor": "100",
+        "currency": "USDC"
+      }
+    },
+    "now": 1780317146525,
+    "expected": {
+      "approved": true,
+      "errorCode": null,
+      "requiresApproval": true
+    }
+  }
+]

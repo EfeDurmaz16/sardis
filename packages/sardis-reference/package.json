@@ -1,0 +1,98 @@
+{
+  "name": "@sardis/reference",
+  "version": "0.1.0",
+  "description": "How Sardis decides if an agent may spend — a pure, deterministic, money-free TS mirror of the Sardis authority-decision and protocol-verification logic (policy simulator + offline proof/mandate verifiers).",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.cjs"
+    },
+    "./policy": {
+      "types": "./dist/policy/index.d.ts",
+      "import": "./dist/policy/index.js",
+      "require": "./dist/policy/index.cjs"
+    },
+    "./verify": {
+      "types": "./dist/verify/index.d.ts",
+      "import": "./dist/verify/index.js",
+      "require": "./dist/verify/index.cjs"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "import": "./dist/identity/index.js",
+      "require": "./dist/identity/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "sardis",
+    "ai-agents",
+    "agent-payments",
+    "spending-policy",
+    "policy-engine",
+    "authority-proof",
+    "ap2",
+    "tap",
+    "x402",
+    "mandate",
+    "delegation",
+    "deterministic",
+    "offline-verification",
+    "ed25519",
+    "typescript"
+  ],
+  "author": "Sardis <sdk@sardis.sh>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "directory": "packages/sardis-reference"
+  },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@noble/hashes": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "sideEffects": false
+}

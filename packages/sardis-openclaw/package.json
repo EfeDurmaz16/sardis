@@ -1,0 +1,37 @@
+{
+  "name": "@sardis/openclaw",
+  "version": "0.1.0",
+  "description": "OpenClaw skill pack for Sardis — markdown skills that teach an OpenClaw agent how to set a budget, check policy before spending, pay invoices, issue cards, and verify the audit trail through Sardis, with a fail-closed dangerous-pattern block-list. Instructions only; no money code.",
+  "type": "module",
+  "files": [
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node ./scripts/validate-skills.mjs"
+  },
+  "keywords": [
+    "sardis",
+    "openclaw",
+    "ai-agents",
+    "agent-payments",
+    "skill-pack",
+    "governance"
+  ],
+  "author": "Sardis <sdk@sardis.sh>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "directory": "packages/sardis-openclaw"
+  },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
