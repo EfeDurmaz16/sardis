@@ -12,6 +12,7 @@ from server.routes.authority import (
     facility_requests,
     mandates,
     mvp,
+    revocations,
     spending_mandates,
 )
 from server.routes.authority import approval_config as approval_config_router
@@ -22,6 +23,11 @@ try:
     from server.routes.authority import approvals as approvals_router
 except ImportError:
     approvals_router = None  # type: ignore[assignment]
+
+try:
+    from server.routes.authority import approval_requests as approval_requests_router
+except ImportError:
+    approval_requests_router = None  # type: ignore[assignment]
 
 logger = logging.getLogger("server.api.route_registry.authority")
 
@@ -45,6 +51,7 @@ def register_authority_routes(
     audit_store: Any,
     identity_registry: Any,
     dsn: str,
+    approval_gate: Any | None = None,
 ) -> Any | None:
     """Register mandate/AP2/MVP authority routes and return approval service."""
     approval_service = None
@@ -112,6 +119,32 @@ def register_authority_routes(
     else:
         logger.info("Approvals router not yet available (dependencies not complete)")
 
+    # ── Engine-side ApprovalRequest API (the closed-loop human-in-the-loop) ──
+    # Distinct from the legacy `appr_` UI approvals above: this is the `apreq_`
+    # surface the sardis-cloud Approvals page uses to list pending requests and
+    # POST a decision that RE-EXECUTES the payment through the orchestrator's
+    # single fail-closed path. Only wired when an approval_gate is configured.
+    if approval_requests_router is not None and approval_gate is not None:
+        try:
+            approval_requests_router.set_deps(
+                approval_requests_router.ApprovalRequestDependencies(
+                    gate=approval_gate,
+                    orchestrator=orchestrator,
+                )
+            )
+            app.include_router(
+                approval_requests_router.router,
+                prefix="/api/v2/approval-requests",
+                tags=["approval-requests"],
+            )
+            logger.info("ApprovalRequest (closed-loop) router registered")
+        except Exception as exc:  # noqa: BLE001 - optional surface
+            logger.warning("ApprovalRequest router not registered: %s", exc)
+    else:
+        logger.info(
+            "ApprovalRequest router not registered (no approval_gate configured)"
+        )
+
     return approval_service
 
 
@@ -169,6 +202,30 @@ def register_spending_mandate_routes(app: FastAPI) -> None:
         prefix="/api/v2/spending-mandates",
         tags=["spending-mandates"],
     )
+
+
+def register_revocation_routes(app: FastAPI, *, revocation_engine: Any | None) -> None:
+    """Register the Propagating-Revocation (kill-switch) routes.
+
+    Exposes the SHARED RevocationEngine on ``app.state.revocation_engine`` — the
+    same instance the orchestrator denies revoked mandates from — so the routes
+    return its signed proof rather than a parallel record.  The routes themselves
+    fail closed (503) when the engine is absent; we still register them so the
+    surface exists and reports unavailability honestly instead of 404-ing.
+    """
+    app.state.revocation_engine = revocation_engine
+    app.include_router(
+        revocations.router,
+        prefix="/api/v2/revocations",
+        tags=["revocations"],
+    )
+    if revocation_engine is None:
+        logger.warning(
+            "Revocation routes registered but no engine wired — kill switch "
+            "will fail closed (503) until SARDIS revocation_engine is configured"
+        )
+    else:
+        logger.info("Propagating-Revocation (kill-switch) routes registered")
 
 
 def register_mandate_delegation_routes(app: FastAPI) -> None:

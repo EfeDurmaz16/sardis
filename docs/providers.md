@@ -1,0 +1,262 @@
+# Provider Layer — Environment Variables & Status
+
+Every external money/identity service is reached through a typed **capability
+port** (`apps/api/server/providers/ports`) resolved by `ProviderRegistry`. Each
+provider is **env-gated**: it activates only when its keys below are set;
+otherwise a `SIMULATED` sandbox impl backs the capability so dev/test run green
+without live keys. Required capabilities (`CUSTODY`, `KYT`) **fail closed** in
+production when unconfigured.
+
+- Adapters **execute** only what the orchestrator already authorized — they
+  never authorize, initiate, or settle money on their own.
+- Runtime capability matrix: `GET /api/v2/providers/matrix`.
+- All keys are **server-only secrets** unless marked `(config/public)`.
+- See `.env.example` for a copy-paste block; the canonical env names live in
+  `ProviderRegistry.from_settings` (`apps/api/server/providers/registry.py`).
+
+## Live-capable vs sandbox-only today
+
+"Live-capable" = an adapter that talks to the real provider when its keys are
+set. "Sandbox-only today" = no real adapter yet (only the `SIMULATED` impl). The
+column reflects code in this branch, not whether *we* have a contract/keys.
+
+| Capability    | Provider          | Status        | custody_model       | Where to get keys |
+|---------------|-------------------|---------------|---------------------|-------------------|
+| custody       | Turnkey (MPC)     | live-capable  | NON_CUSTODIAL       | app.turnkey.com → API Keys |
+| fiat_account  | Dakota            | live-capable  | PARTNER_CUSTODIED   | dakota.xyz dashboard |
+| fiat_account  | Increase          | live-capable  | PARTNER_CUSTODIED   | dashboard.increase.com |
+| fiat_account  | Lithic            | live-capable  | PARTNER_CUSTODIED   | dashboard.lithic.com |
+| onramp        | Conduit           | live-capable  | PARTNER_CUSTODIED   | conduit.financial |
+| onramp        | Turnkey native    | live-capable  | NON_CUSTODIAL       | app.turnkey.com (widget providers pre-uploaded) |
+| onramp        | Onramper          | live-capable  | PARTNER_CUSTODIED   | onramper.com dashboard |
+| onramp        | Transak           | live-capable  | PARTNER_CUSTODIED   | dashboard.transak.com |
+| onramp        | Daimo Pay         | live-capable  | PARTNER_CUSTODIED   | pay.daimo.com |
+| offramp       | Circle CPN        | live-capable  | PARTNER_CUSTODIED   | Circle CPN program (SardisSettings.circle_cpn) |
+| offramp       | Increase          | live-capable  | PARTNER_CUSTODIED   | dashboard.increase.com |
+| offramp       | Onramper          | live-capable  | PARTNER_CUSTODIED   | onramper.com dashboard |
+| offramp       | Transak Stream    | live-capable  | PARTNER_CUSTODIED   | dashboard.transak.com |
+| offramp       | Coinbase Offramp  | live-capable  | PARTNER_CUSTODIED   | portal.cdp.coinbase.com |
+| swap          | LI.FI             | live-capable  | NON_CUSTODIAL       | li.fi portal (keyless-capable) |
+| swap          | 0x v2             | live-capable  | NON_CUSTODIAL       | dashboard.0x.org |
+| swap          | Jupiter           | live-capable  | NON_CUSTODIAL       | station.jup.ag (keyless-capable) |
+| bridge        | Squid             | live-capable  | NON_CUSTODIAL       | app.squidrouter.com (integrator id) |
+| bridge        | CCTP v2           | live-capable  | NON_CUSTODIAL       | keyless (public Circle Iris); opt-in via flag |
+| card          | Crossmint         | live-capable  | PARTNER_CUSTODIED   | crossmint.com console (+ Rain key) |
+| card          | Lithic            | live-capable  | PARTNER_CUSTODIED   | dashboard.lithic.com |
+| card          | Stripe Issuing    | live-capable  | PARTNER_CUSTODIED   | dashboard.stripe.com |
+| kyc           | Didit             | live-capable  | PARTNER_CUSTODIED   | business.didit.me |
+| kyt           | OpenSanctions     | live-capable  | PARTNER_CUSTODIED   | opensanctions.org/api |
+| kyt           | Didit (fallback)  | live-capable  | PARTNER_CUSTODIED   | business.didit.me |
+| notification  | Twilio            | live-capable  | NON_CUSTODIAL       | console.twilio.com (Verify + Messaging) |
+| notification  | Photon/Spectrum   | live-capable* | NON_CUSTODIAL       | photon.codes (needs Node sidecar — see below) |
+
+Selection within a capability is **first-configured-wins**, in the precedence
+order the registry tries them (see `_build_*` methods). Sandbox (`SIMULATED`)
+backs any capability whose providers are all unconfigured.
+
+## Env vars by capability
+
+### CUSTODY (required-in-production)
+- `TURNKEY_API_PUBLIC_KEY`, `TURNKEY_API_PRIVATE_KEY`, `TURNKEY_ORGANIZATION_ID`
+
+### FIAT ACCOUNTS
+- Dakota: `DAKOTA_API_KEY`, `DAKOTA_ENVIRONMENT` (config), `DAKOTA_WEBHOOK_PUBLIC_KEY`
+- Increase: `INCREASE_API_KEY`, `INCREASE_ENVIRONMENT` (config), `INCREASE_WEBHOOK_SECRET`
+- Lithic: `LITHIC_API_KEY`, `LITHIC_WEBHOOK_SECRET`, `LITHIC_ENVIRONMENT` (config)
+
+### ONRAMP
+- Conduit: `CONDUIT_API_KEY`, `CONDUIT_API_SECRET`, `CONDUIT_SANDBOX` (config)
+- Turnkey native: reuses the CUSTODY Turnkey keys
+- Onramper: `ONRAMPER_API_KEY`, `ONRAMPER_SIGNING_SECRET`, `ONRAMPER_ENVIRONMENT` (config)
+- Transak: `TRANSAK_API_KEY`, `TRANSAK_API_SECRET`, `TRANSAK_ENVIRONMENT` (config), `TRANSAK_REFERRER_DOMAIN` (config/public)
+- Daimo: `DAIMO_PAY_API_KEY` (or `DAIMO_API_KEY`), `DAIMO_ENVIRONMENT` (config)
+
+### OFFRAMP
+- Circle CPN: via `SardisSettings.circle_cpn` (`CIRCLE_CPN_*`)
+- Onramper: reuses `ONRAMPER_API_KEY`
+- Transak Stream: `TRANSAK_STREAM_API_KEY` (or `TRANSAK_API_KEY`), `TRANSAK_PARTNER_ID` (config)
+- Coinbase Offramp: `COINBASE_CDP_API_KEY_NAME`, `COINBASE_CDP_API_KEY_PRIVATE`, `COINBASE_OFFRAMP_ENVIRONMENT` (config)
+- Increase: reuses `INCREASE_API_KEY`
+
+### SWAP
+- LI.FI: `LIFI_API_KEY` (optional), `LIFI_ENABLED` (config), `LIFI_INTEGRATOR` (config), `LIFI_FEE` (config), `LIFI_ENVIRONMENT` (config)
+- 0x: `ZEROX_API_KEY` (or `ZERO_EX_API_KEY`), `ZEROX_SWAP_FEE_BPS` (config), `ZEROX_SWAP_FEE_RECIPIENT` (config), `ZEROX_ENVIRONMENT` (config)
+- Jupiter: `JUPITER_API_KEY` (optional), `JUPITER_ENABLED` (config), `JUPITER_PLATFORM_FEE_BPS` (config), `JUPITER_FEE_ACCOUNT` (config)
+
+### BRIDGE
+- Squid: `SQUID_INTEGRATOR_ID`, `SQUID_ENVIRONMENT` (config), `SQUID_SLIPPAGE_PERCENT` (config)
+- CCTP v2: `CCTP_ENABLED` (config, opt-in), `CCTP_FAST` (config), `CCTP_ENVIRONMENT` (config) — keyless
+
+### CARDS
+- Crossmint: `CROSSMINT_API_KEY`, `CROSSMINT_RAIN_API_KEY` (or `RAIN_API_KEY`), `CROSSMINT_ENVIRONMENT` (config)
+- Lithic: reuses `LITHIC_API_KEY`, `LITHIC_ENVIRONMENT` (config)
+- Stripe Issuing: `STRIPE_ISSUING_API_KEY` (or `STRIPE_SECRET_KEY`), `STRIPE_ISSUING_ENVIRONMENT` (config)
+
+### KYC / KYB
+- Didit: `DIDIT_API_KEY`, `DIDIT_KYC_WORKFLOW_ID` (or `DIDIT_WORKFLOW_ID`), `DIDIT_KYB_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET`, `DIDIT_CALLBACK_URL` (config/public), `DIDIT_ENVIRONMENT` (config)
+
+### KYT / AML (required-in-production)
+- OpenSanctions: `OPENSANCTIONS_API_KEY`, `OPENSANCTIONS_SCOPE` (config), `OPENSANCTIONS_ALGORITHM` (config), `OPENSANCTIONS_THRESHOLD` (config), `OPENSANCTIONS_ENVIRONMENT` (config)
+- Didit KYT (fallback): reuses `DIDIT_API_KEY`
+
+### NOTIFICATION (human-in-the-loop approval delivery — delivery only, never decides)
+First-configured-wins: Twilio, then Photon/Spectrum. Unconfigured ⇒ `SIMULATED`
+sandbox impl (logs the approval, auto-resolvable in tests). **Not**
+required-in-production — a missing notifier degrades to dashboard-only approval,
+not a blocked money path.
+- Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (or `TWILIO_MESSAGING_SERVICE_SID`), `TWILIO_VERIFY_SERVICE_SID` (OTP step-up for high-value approvals)
+- Photon/Spectrum: `PHOTON_RELAY_URL` (or `SPECTRUM_RELAY_URL`), `PHOTON_RELAY_SECRET` (or `SPECTRUM_RELAY_SECRET`), and optionally `PHOTON_PROJECT_ID` / `PHOTON_PROJECT_SECRET` (Spectrum Cloud control-plane creds the sidecar forwards). `RELAY_URL`+`RELAY_SECRET` are required to wire it.
+
+#### Photon/Spectrum integration path (researched May 2026)
+Spectrum's **message-send** surface — including the `poll()` interactive builder
+that renders the **Approve / Deny** choice — exists **only in the TypeScript SDK**
+`spectrum-ts` (`Spectrum({ projectId, projectSecret })` → `space.send(poll(…))`;
+github.com/photon-hq/spectrum-ts, photon.codes/docs/spectrum-ts/content). The
+hosted **Spectrum Cloud REST API** (`spectrum.photon.codes/openapi/json`, Basic
+`base64(projectId:projectSecret)`) is a **control plane only** (projects / lines /
+platforms / users / webhooks) — it has **no message-send endpoint**. Inbound
+human decisions arrive as **webhooks** (HTTP POST, HMAC-SHA256-signed); a button
+press is a `poll_option` content event (photon.codes/docs/webhooks/events).
+
+Therefore the lowest-friction correct path from Python is a **thin Node sidecar**
+(or the existing sardis-cloud TS surface) that owns `spectrum-ts`. Sardis builds
+the agent-native interactive payload in Python (`PhotonRelayNotificationAdapter.
+build_interactive_payload` → `{text, interactive:{kind:"poll", options:["Approve",
+"Deny"], callback_id}}`), HMAC-signs it, and POSTs it to the sidecar; the sidecar
+runs `space.send(poll(…))`. The press returns as a `poll_option` webhook → the
+sidecar (or Spectrum) forwards it HMAC-signed → Sardis verifies the signature and
+calls `record_decision`. Sardis owns the decision/policy/evidence; Spectrum is
+swappable delivery. **`*live-capable` is gated on the Node sidecar** — the Python
+adapter is complete and tested against a mock sidecar; the sidecar itself is a
+documented follow-up (scaffold below), not half-built.
+
+Minimal sidecar contract (follow-up to scaffold):
+- `POST {PHOTON_RELAY_URL}/approvals/send` — body is the adapter's signed JSON
+  (`approval_id`, `message.interactive` poll, `channels`, `project_id`); headers
+  `x-sardis-signature` (HMAC-SHA256 of the raw body) and `x-spectrum-authorization`
+  (Basic creds to forward). Sidecar verifies the HMAC, then
+  `space.send(poll(question, "Approve", "Deny"))`. Returns `{job_id}`.
+- Inbound: sidecar receives the Spectrum `poll_option` webhook, re-signs the
+  decision (`{callback_id, option, from}`) with the shared secret, and POSTs it to
+  Sardis's inbound approval-decision route. Sardis verifies via
+  `verify_relay_signature`, maps the option with `decision_from_poll_option`, and
+  calls `record_decision(proof={"relay_verified": True, …})`. An unsigned/forged
+  decision fails closed.
+
+#### The closed human-in-the-loop loop (engine + API)
+The notification port is only the *delivery* half. The *decision/policy/evidence*
+half is the Sardis engine (the moat):
+
+1. The orchestrator hits `requires_approval` (spending-mandate threshold or
+   policy escalation) → `ApprovalGate.open_request` creates a durable, signed
+   `ApprovalRequest` (`apreq_…`, status `pending`), binds the policy+mandate
+   snapshot hashes, snapshots the verified mandate chain, and relays it via the
+   NotificationPort. **No money moves**; the caller gets
+   `PaymentResult(status="pending_approval", approval_id=…)`.
+2. A human decides — in the dashboard, or via Twilio SMS/OTP / Photon poll. The
+   decision reaches the engine through the **ApprovalRequest API**:
+   - `GET  /api/v2/approval-requests` — list pending (the sardis-cloud queue feed)
+   - `GET  /api/v2/approval-requests/{id}` — one request + signed evidence
+   - `POST /api/v2/approval-requests/{id}/decision` — record approve/deny
+   - `POST /api/v2/approval-requests/expire` — sweep past-deadline (fail-closed)
+   The approver is the **authenticated principal** (not a body field); the
+   decision is recorded as HMAC-signed `DecisionEvidence`. High-value requests
+   (`requires_step_up`) refuse approval without verified OTP step-up (→ `409`).
+3. On **approve**, the route calls `PaymentOrchestrator.execute_on_approval`,
+   which re-runs the snapshotted chain through the **single fail-closed path** —
+   mandate / policy / compliance / revocation are ALL re-checked. A mandate
+   revoked *after* approval is still blocked at re-execution (never trust a stale
+   approval). Re-execution is idempotent: the `reexecuted` flag flips before
+   dispatch, so a duplicate approve cannot settle twice. On **deny/expire** the
+   request is terminal and money stays blocked.
+
+What needs live keys vs. runs key-free:
+- **No keys:** the whole loop runs end-to-end. Delivery falls back to the
+  `SIMULATED` sandbox notifier; decision signing uses the `dev-` HMAC fallback
+  (dev/test only). This is what the test suite exercises.
+- **Twilio:** set `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN` (+ a from-number/
+  messaging-service and, for step-up, `TWILIO_VERIFY_SERVICE_SID`).
+- **Photon/Spectrum:** set `PHOTON_RELAY_URL`+`PHOTON_RELAY_SECRET` **and stand up
+  the Node sidecar** (above) — the TS-only `poll()` send cannot run from Python.
+- **Production:** `SARDIS_APPROVAL_HMAC_KEY` is **required** (fail-closed) so
+  decision evidence is signed with a real, auditable key.
+
+## PROGRAMMABLE RECOURSE (escrow / dispute window) — LIGHT
+
+A payment can carry a **policy-defined, time-boxed recourse window**. When it
+does, after a successful settlement the orchestrator opens a durable, signed
+`RecourseHold` (`packages/sardis/src/sardis/core/recourse_hold.py`) instead of
+treating the payment as immediately final. Funds (or a claim on them) sit in the
+hold for the window, then resolve down **exactly one fail-closed path**:
+
+```
+held ──expire(window passed)──▶ released   (settle to recipient)
+  ├──refund(within window)─────▶ refunded   (return to payer, <= held)
+  └──dispute───────────────────▶ disputed ──┬─resolve_refund─▶ resolved (refund)
+                                             └─resolve_release▶ resolved (release)
+```
+
+**The moat is the decision, not the escrow.** Sardis owns the hold state
+machine, the policy/mandate snapshot, and the **signed `DecisionEvidence`** on
+every transition (same HMAC pattern as `ApprovalRequest`/`ExecutionReceipt`).
+Money movement is *swappable execution* behind `RecourseExecutorPort`
+(`recourse_executor.py`): the `NoopRecourseExecutor` (default) records intent
+and moves no real money, and `RefundProtocolExecutor` wraps the **vendored
+Circle RefundProtocol** (`contracts/src/RefundProtocol.sol`, Apache-2.0) +
+reverse-transfer for the refund leg. We did **not** build custom escrow
+infrastructure or an arbitration system — we wrap what already exists.
+
+Fail-closed invariants (enforced in the domain *and* at the DB layer):
+- a hold cannot be released twice;
+- a refund can never exceed the held amount (`refunded <= held`);
+- a dispute resolves through exactly one path;
+- a settling transition only persists after the executor reports success.
+
+### API surface (`routes/commerce/escrow_disputes.py`, `/api/v2`)
+
+Previously DB-only ("recorded rows but moved zero money" — a dossier finding).
+Now every money decision flows through the single `RecourseEngine` path; the
+`disputes`/`evidence` rows remain for *evidence collection only*. All endpoints
+require `require_principal` and are **org-scoped** (a hold is stamped with the
+creating org; cross-org access returns `404`, not `403`).
+
+   - `POST /api/v2/escrow` — open a windowed hold (auto-opens via policy when a
+     mandate carries `recourse_window_seconds`; this route opens one explicitly)
+   - `GET  /api/v2/escrow` — list the org's open (`held`/`disputed`) holds
+   - `GET  /api/v2/escrow/{hold_id}` — one hold + state
+   - `POST /api/v2/escrow/{hold_id}/refund` — **refund within the window**
+     (full or partial, `<= held`; reverse-transfer via the executor)
+   - `POST /api/v2/escrow/{hold_id}/confirm-delivery` — RELEASE to the recipient
+   - `POST /api/v2/escrow/{hold_id}/dispute` — open a dispute (pauses auto-release)
+   - `POST /api/v2/disputes/{dispute_id}/resolve` — settle a disputed hold down
+     one path (`refund | release`); `resolved_split` is treated as a refund of
+     the payer's share, keeping the light primitive's single-resolution contract
+   - `POST /api/v2/disputes/{dispute_id}/evidence`, `GET /api/v2/disputes/{id}`
+     — evidence collection / read (DB record, not a money decision)
+
+Expiry is settled by `RecourseEngine.sweep_expired()` (releases `held` holds
+whose window has passed; disputed holds are intentionally excluded).
+
+What needs live keys vs. runs key-free:
+- **No keys:** the whole surface runs end-to-end. `SARDIS_RECOURSE_MODE` defaults
+  to `noop` (state machine is truth, no chain, no money moves); evidence signing
+  uses the `dev-` HMAC fallback (dev/test only). This is what the test suite
+  (`apps/api/tests/test_recourse_escrow_api.py`,
+  `packages/sardis/tests/test_recourse_*`) exercises.
+- **Live escrow:** set `SARDIS_RECOURSE_MODE=live`, inject a chain client, and
+  point `SARDIS_REFUND_PROTOCOL_ADDRESS` (or per-chain
+  `SARDIS_<CHAIN>_REFUND_PROTOCOL_ADDRESS`) at the deployed RefundProtocol.
+- **Production:** `SARDIS_RECOURSE_HMAC_KEY` is **required** (fail-closed).
+
+### Deferred (intentionally out of scope for the LIGHT primitive)
+
+- **Third-party / decentralized arbitration.** Disputes today resolve by an
+  authorized party (the merchant/operator principal) down a single path. A
+  neutral arbiter network, `refundByArbiter` flows, and on-chain arbitration are
+  *not* built — the engine's evidence model is arbiter-ready, but wiring an
+  external arbitration system is deferred.
+- **Multi-leg / split settlement.** `resolved_split` collapses to a payer
+  refund; a true split (partial-refund + partial-release in one atomic
+  settlement) is deferred — the primitive treats refund as terminal.
+- **Live RefundProtocol chain client** (the injected `client`) — the wrapper
+  exists; the production chain client is provided by the chain layer, not here.

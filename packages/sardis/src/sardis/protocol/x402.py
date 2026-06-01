@@ -1,9 +1,18 @@
-"""x402 HTTP 402 Payment Required protocol implementation.
+"""x402 HTTP 402 Payment Required protocol — EXPERIMENTAL / PARTIAL adapter.
 
-Implements:
+NOT certified x402 conformance. The wire format here is Sardis-native and
+diverges from the canonical x402 spec: it uses invented headers
+(PAYMENT-SIGNATURE / PAYMENT-RESPONSE / PaymentRequired) rather than
+X-PAYMENT / X-PAYMENT-RESPONSE, a flat custom JSON instead of
+accepts:[PaymentRequirements] + nested authorization, and
+verify_payment_payload only checks the signature when a caller supplies a
+verify_signature_fn (server call sites do not, so EIP-3009 is not verified).
+See docs/productization/research/PROTOCOL_STRATEGY.md (x402, fix-then-keep).
+
+Provides:
 - Challenge generation (server -> client, 402 response)
 - Payment payload construction and verification (client -> server)
-- v2 standardized headers (PAYMENT-SIGNATURE, PAYMENT-RESPONSE)
+- Sardis-native headers (PAYMENT-SIGNATURE, PAYMENT-RESPONSE)
 
 Reference: https://www.x402.org/
 """

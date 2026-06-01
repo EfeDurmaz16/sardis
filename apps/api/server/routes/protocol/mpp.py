@@ -1,11 +1,17 @@
 """MPP (Machine Payments Protocol) API endpoints.
 
+NOTE: This is a Sardis-native session/budget-authority surface over Postgres,
+NOT the MPP wire protocol. It is partial and not a conformance claim — see
+docs/productization/research/PROTOCOL_STRATEGY.md (MPP, fix-then-keep / rename).
+
 Provides session-based MPP payment management:
 - Create MPP sessions with spending mandates
 - Execute payments within sessions
 - Close sessions and settle remaining
-- Policy evaluation and dry-run simulation
-- Virtual card issuance via Laso Finance
+- Policy evaluation and dry-run simulation (EXPERIMENTAL STUB — /evaluate is a
+  default-allow placeholder, NOT wired to the Sardis Guard policy engine)
+- Virtual card issuance (EXPERIMENTAL / DEAD — depends on a `sardis_mpp` package
+  that does not exist on disk; returns 503)
 
 Persistence: Uses PostgreSQL (mpp_sessions + mpp_payments tables from migration 075)
 when DATABASE_URL is set. Falls back to in-memory for dev/demo.
@@ -241,8 +247,14 @@ async def evaluate_policy(
     req: PolicyEvaluateRequest,
     principal: Principal = Depends(require_principal),
 ):
-    """Evaluate Sardis policy for an MPP payment (proxy to Sardis Guard)."""
-    # Basic policy evaluation — in production, this calls the Sardis Guard service
+    """Evaluate policy for an MPP payment.
+
+    EXPERIMENTAL / STUB — this does NOT call the Sardis Guard policy engine.
+    It is a near-constant placeholder (default-allow plus a single hardcoded
+    $10,000 cap) and must not be relied on as a real control-plane check.
+    See docs/productization/research/PROTOCOL_STRATEGY.md (MPP /evaluate stub).
+    """
+    # STUB: default-allow placeholder. NOT wired to Sardis Guard / the policy engine.
     allowed = True
     reason = "ALLOWED by default policy"
     checks_passed = 12

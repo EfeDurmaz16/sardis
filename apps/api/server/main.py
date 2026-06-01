@@ -88,6 +88,7 @@ from .route_registry.agents import register_agent_lifecycle_routes
 from .route_registry.authority import (
     register_authority_routes,
     register_facility_request_routes,
+    register_revocation_routes,
     register_spending_mandate_routes,
 )
 from .route_registry.billing import (
@@ -138,6 +139,7 @@ from .route_registry.providers import (
     register_partner_card_webhook_routes,
     register_polar_webhook_routes,
     register_provider_integration_routes,
+    register_provider_layer_routes,
     register_stripe_connect_routes,
     register_stripe_funding_routes,
     register_stripe_webhook_routes,
@@ -545,6 +547,7 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         audit_store=audit_store,
         identity_registry=identity_registry,
         dsn=database_url if use_postgres else "memory://",
+        approval_gate=getattr(payment_runtime, "approval_gate", None),
     )
 
     register_pay_endpoint(
@@ -696,6 +699,8 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_faucet_routes(app)
 
     register_provider_integration_routes(app, settings=settings)
+
+    register_provider_layer_routes(app)
 
     treasury_runtime = configure_treasury_runtime(
         settings,
@@ -896,6 +901,14 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
 
     register_spending_mandate_routes(app)
 
+    # Propagating-Revocation: ONE revoke kills authority across every rail and
+    # returns a signed proof. Exposes the SAME engine the orchestrator denies
+    # revoked mandates from on app.state for the kill-switch routes.
+    register_revocation_routes(
+        app,
+        revocation_engine=getattr(payment_runtime, "revocation_engine", None),
+    )
+
     register_agent_auth_routes(app)
 
     register_polar_webhook_routes(app)
@@ -928,6 +941,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     # Store settlement service on app.state for background jobs
     app.state.settlement_service = settlement_service
     app.state.merchant_webhook_service = merchant_webhook_service
+
+    # Expose the programmable-recourse engine (the SAME instance the orchestrator
+    # opens holds from) so the escrow/dispute API backs holds onto real money
+    # movement instead of a DB-only record.
+    app.state.recourse_engine = getattr(payment_runtime, "recourse_engine", None)
+
+    # Expose the SAME Guard RiskEngine the orchestrator consults pre-execution so
+    # the read-only Guard surface (recent agent risk signals) reflects the exact
+    # decisions that gated the money path.  May be None in dev (Phase 1.6 off).
+    app.state.risk_engine = getattr(orchestrator, "_risk_engine", None)
 
     checkout_base_url = merchant_checkout_runtime.checkout_base_url
     register_merchant_routes(

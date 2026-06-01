@@ -1,7 +1,11 @@
 """Pydantic models for the Agentic Commerce Protocol (ACP).
 
-Implements the data shapes from the ACP OpenAPI specification (version 2026-01-30).
-Covers checkout sessions, delegate payment, webhook events, and SPT integration.
+EXPERIMENTAL / PARTIAL — these shapes diverge from the current ACP spec
+(targets stale 2026-01-30; current is 2026-04-17) and are NOT a conformance
+claim. See docs/productization/research/PROTOCOL_STRATEGY.md (ACP).
+
+Sketches the data shapes toward the ACP OpenAPI specification. Covers checkout
+sessions, delegate payment, webhook events, and SPT integration.
 
 Reference: https://docs.stripe.com/agentic-commerce/protocol
 """

@@ -126,6 +126,21 @@ def _sign(secret: str, body: bytes) -> str:
     return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 
 
+def _svix_sign(secret: str, *, webhook_id: str, timestamp: str, body: bytes) -> str:
+    """Produce a Standard Webhooks (Svix) v1 signature header value.
+
+    Mirrors what Lithic sends: key = base64-decode(secret without whsec_),
+    signed content = "id.timestamp.body", base64( HMAC-SHA256 ), "v1," prefix.
+    """
+    import base64
+
+    raw = secret[len("whsec_") :] if secret.startswith("whsec_") else secret
+    key = base64.b64decode(raw)
+    signed = b"%s.%s.%s" % (webhook_id.encode(), timestamp.encode(), body)
+    sig = base64.b64encode(hmac.new(key, signed, hashlib.sha256).digest()).decode()
+    return f"v1,{sig}"
+
+
 _VALID_TREASURY_PAYLOAD = {
     "token": "evt_1",
     "event_type": "ACH_ORIGINATION_SETTLED",
@@ -206,22 +221,49 @@ class TestTreasuryWebhookSignatureEnforcement:
         assert response.status_code != 500
 
     def test_valid_signature_accepted(self):
-        """With a valid secret+signature, webhook processes normally."""
-        secret = "treasury_webhook_secret"
+        """With a valid secret + Svix-signed headers, webhook processes."""
+        import base64
+        import time
+
+        # Lithic secrets are whsec_<base64>; the verifier base64-decodes them.
+        secret = "whsec_" + base64.b64encode(b"treasury_webhook_secret").decode()
         app = _build_treasury_app(secret=secret, env="sandbox")
         app.state.cache_service = _FakeCacheService()
         client = TestClient(app)
 
         body = json.dumps(_VALID_TREASURY_PAYLOAD).encode()
-        sig = _sign(secret, body)
+        ts = str(int(time.time()))
+        sig = _svix_sign(secret, webhook_id="msg_1", timestamp=ts, body=body)
 
         response = client.post(
             "/api/v2/treasury/payments",
             content=body,
-            headers={"x-lithic-hmac": sig},
+            headers={
+                "webhook-id": "msg_1",
+                "webhook-timestamp": ts,
+                "webhook-signature": sig,
+            },
         )
 
         assert response.status_code == 200
+
+    def test_rejects_raw_hmac_signature(self):
+        """The old raw-hex HMAC scheme (x-lithic-hmac) must be rejected."""
+        import base64
+
+        secret = "whsec_" + base64.b64encode(b"treasury_webhook_secret").decode()
+        app = _build_treasury_app(secret=secret, env="sandbox")
+        app.state.cache_service = _FakeCacheService()
+        client = TestClient(app)
+
+        body = json.dumps(_VALID_TREASURY_PAYLOAD).encode()
+        response = client.post(
+            "/api/v2/treasury/payments",
+            content=body,
+            headers={"x-lithic-hmac": _sign(secret, body)},
+        )
+
+        assert response.status_code == 401
 
 
 # ---------------------------------------------------------------------------

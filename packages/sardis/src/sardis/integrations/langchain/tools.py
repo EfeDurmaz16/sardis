@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
@@ -20,6 +21,53 @@ if TYPE_CHECKING:
     from langchain_core.callbacks import CallbackManagerForToolRun
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Natural language policy parser (self-contained)
+#
+# This used to `from sardis.client import _parse_policy`, a module that does not
+# exist (the client lives at sardis._client and never exported _parse_policy),
+# so the import was dead and raised ImportError the moment SardisSetPolicyTool
+# ran. Parse locally instead; mirrors sardis.integrations.anthropic.handlers.
+# ---------------------------------------------------------------------------
+
+
+def _parse_policy(text: str) -> dict[str, Any]:
+    """Parse a natural-language spending policy into structured limits.
+
+    Handles patterns like:
+      - "Max $100 per transaction" / "$200 per tx"
+      - "Max $500/day" / "Daily limit $500"
+    """
+    result: dict[str, Any] = {}
+    text_lower = text.lower()
+
+    m = re.search(
+        r"max\s+\$?([\d,]+(?:\.\d+)?)\s*(?:per\s+(?:transaction|tx)|/tx)",
+        text_lower,
+    )
+    if m:
+        result["max_per_tx"] = Decimal(m.group(1).replace(",", ""))
+
+    if "max_per_tx" not in result:
+        m = re.search(
+            r"\$?([\d,]+(?:\.\d+)?)\s*per\s+(?:transaction|tx)",
+            text_lower,
+        )
+        if m:
+            result["max_per_tx"] = Decimal(m.group(1).replace(",", ""))
+
+    m = re.search(r"max\s+\$?([\d,]+(?:\.\d+)?)\s*/\s*day", text_lower)
+    if m:
+        result["max_total"] = Decimal(m.group(1).replace(",", ""))
+
+    if "max_total" not in result:
+        m = re.search(r"daily\s+limit\s+\$?([\d,]+(?:\.\d+)?)", text_lower)
+        if m:
+            result["max_total"] = Decimal(m.group(1).replace(",", ""))
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -325,9 +373,7 @@ class SardisSetPolicyTool(BaseTool):
         try:
             wallet = self.client.wallets.get(self.wallet_id)
 
-            # Use the same natural-language parser as Sardis
-            from sardis.client import _parse_policy
-
+            # Parse the natural-language policy into structured limits.
             parsed = _parse_policy(policy)
 
             old_limit_per_tx = wallet.limit_per_tx

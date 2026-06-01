@@ -12,6 +12,7 @@ from server.routes.providers import (
     mastercard_webhooks,
     partner_card_webhooks,
     polar_webhook,
+    provider_layer,
     striga,
     stripe_connect,
     stripe_funding,
@@ -19,6 +20,16 @@ from server.routes.providers import (
 )
 
 logger = logging.getLogger("server.api.route_registry.providers")
+
+
+def register_provider_layer_routes(app: FastAPI) -> None:
+    """Register the unified provider-layer execution surface.
+
+    Always registered: every capability resolves to a real adapter when its
+    keys are set, otherwise a sandbox impl, so the surface is safe in dev/test.
+    """
+    app.include_router(provider_layer.router, prefix="/api/v2")
+    logger.info("Provider-layer routes enabled at /api/v2/providers")
 
 
 def register_provider_integration_routes(app: FastAPI, *, settings) -> None:

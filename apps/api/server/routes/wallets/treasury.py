@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import hmac
 import json
 import os
 import uuid
@@ -466,12 +465,22 @@ async def receive_lithic_payments_webhook(
 
     _require_webhook_secret(secret, env)
     if secret:
-        signature = request.headers.get("x-lithic-hmac", "")
-        if not signature:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="missing_webhook_signature")
-        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(signature, expected):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid_webhook_signature")
+        # Lithic signs webhooks with the Standard Webhooks (Svix) scheme, not a
+        # raw hex HMAC.  Verify via the Lithic client so the scheme lives in one
+        # place (webhook-id / webhook-timestamp / webhook-signature headers,
+        # whsec_ base64 key, signed content "id.timestamp.body", base64 sig).
+        from server.providers.lithic_treasury import LithicTreasuryClient
+
+        # Build a verify-only client bound to the route's resolved secret so we
+        # never depend on whatever secret the cached client happened to capture.
+        verifier = LithicTreasuryClient(
+            api_key="webhook-verify-only", webhook_secret=secret
+        )
+        if not verifier.verify_webhook(body=body, headers=dict(request.headers)):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid_webhook_signature",
+            )
 
     try:
         payload = json.loads(body)

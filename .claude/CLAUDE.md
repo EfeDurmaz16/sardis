@@ -47,7 +47,7 @@ sardis/
 │       └── launch-coordinator.md
 ├── src/sardis/             # Simple Python SDK (public interface)
 ├── apps/api/               # FastAPI reference API implementation
-├── packages/               # Core monorepo packages (⚠️ list below may be stale — run `ls packages/` for truth)
+├── packages/               # ⚠️ STALE TREE BELOW. On feat/provider-layer there are exactly 3 published packages: sardis (Python umbrella), sardis-js, sardis-mcp-server. Run `ls packages/` for truth; the per-package list below predates the consolidation.
 │   │
 │   │ ── Core platform ──
 │   ├── sardis-core/        # Domain models, config, database, spending policy

@@ -542,12 +542,13 @@ def create_cards_router(
                     raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Failed to execute offramp")
 
                 try:
-                    await card_provider.fund_card(card_id=card_id, amount=float(payload.amount))
+                    await card_provider.fund_card(card_id=card_id, amount=payload.amount)
                 except Exception as e:
                     logger.warning("Lithic fund_card call failed (offramp still processing): %s", e)
 
-                current = card.get("funded_amount", 0) or 0
-                row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
+                # Sum balances as Decimal — never float (money-correctness).
+                current = Decimal(str(card.get("funded_amount", 0) or 0))
+                row = await card_repo.update_funded_amount(card_id, current + payload.amount)
                 await _reservation("consumed", reference_id=str(tx.transaction_id))
                 return 200, {
                     **(row or {}),
@@ -576,9 +577,10 @@ def create_cards_router(
                         detail="fiat_treasury_account_not_mapped",
                     )
 
-            await card_provider.fund_card(card_id=card_id, amount=float(payload.amount))
-            current = card.get("funded_amount", 0) or 0
-            row = await card_repo.update_funded_amount(card_id, float(current) + float(payload.amount))
+            await card_provider.fund_card(card_id=card_id, amount=payload.amount)
+            # Sum balances as Decimal — never float (money-correctness).
+            current = Decimal(str(card.get("funded_amount", 0) or 0))
+            row = await card_repo.update_funded_amount(card_id, current + payload.amount)
             await _reservation("consumed", reference_id=card_id)
             return 200, {**(row or {}), "funding_source": "fiat"}
 

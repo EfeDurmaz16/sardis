@@ -135,6 +135,21 @@ class PaymentRuntimeConfig:
     replay_cache: Any
     verifier: Any
     orchestrator: Any
+    #: Human-in-the-loop gate wired into the orchestrator (durable signed store
+    #: + delivery notifier). Exposed so the ApprovalRequest API can record
+    #: decisions against the SAME gate the orchestrator re-executes from.
+    approval_gate: Any | None = None
+    #: Programmable-recourse engine wired into the orchestrator (durable signed
+    #: RecourseHold store + swappable executor). Exposed so the escrow/dispute
+    #: API backs holds onto the SAME engine the orchestrator opens them from.
+    recourse_engine: Any | None = None
+    #: Propagating-revocation engine (the lead-wedge kill switch). ONE revoke
+    #: atomically propagates across every rail — mandate, spend objects, cards
+    #: (via CardPort), pending approvals (via the SAME ApprovalGate), in-flight
+    #: payments — and returns a signed, independently-verifiable RevocationProof.
+    #: Fail-closed: a downstream kill that cannot be confirmed is blocked_pending
+    #: and the orchestrator still denies the revoked mandate at execution time.
+    revocation_engine: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -814,6 +829,160 @@ def build_moat_ports(
     )
 
 
+def build_revocation_engine(
+    *,
+    use_postgres: bool,
+    approval_gate: Any | None = None,
+    provider_registry: Any | None = None,
+) -> Any | None:
+    """Wire the Propagating-Revocation engine across every real rail.
+
+    The lead-wedge kill switch: ONE ``revoke`` atomically propagates across the
+    mandate (authority root), outstanding spend objects, the agent's cards (via
+    the provider-layer ``CardPort``), pending approvals (via the SAME
+    ``ApprovalGate`` the orchestrator re-executes from), and in-flight payments —
+    and returns a signed, independently-verifiable ``RevocationProof``.
+
+    Each leg is wired to its canonical surface and is env/DB-gated:
+
+    * mandate + spend-object: Postgres adapters over ``spending_mandates`` /
+      ``payment_objects`` in production; in-memory mocks in dev/tests.
+    * cards: ``ProviderCardFreezer`` over the registry's ``CardPort``
+      (real provider when keys are set; sandbox impl otherwise). Enumeration of
+      the agent's cards goes through ``virtual_cards``; no cards index ⇒ the leg
+      contributes no targets (still fail-closed: the mandate is revoked).
+    * approvals: ``ApprovalGateRevoker`` over the shared gate (signed deny).
+    * in-flight: ``CallbackInFlightBlocker`` over the transactions ledger.
+
+    Fail-closed everywhere: a downstream kill that cannot be confirmed is
+    recorded ``blocked_pending`` and the orchestrator still denies the revoked
+    mandate at execution time. Returns ``None`` only if the engine cannot be
+    constructed at all (dev import failure) — never a half-wired engine.
+    """
+    try:
+        from sardis.core.database import Database
+        from sardis.core.revocation_engine import RevocationEngine
+        from sardis.core.revocation_ports import (
+            ApprovalGateRevoker,
+            CallbackInFlightBlocker,
+            InMemoryInFlightBlocker,
+            InMemoryMandateRevoker,
+            InMemorySpendObjectRevoker,
+            ProviderCardFreezer,
+        )
+        from sardis.core.revocation_repository import (
+            InMemoryRevocationStore,
+            PostgresRevocationStore,
+        )
+    except Exception as exc:  # noqa: BLE001 - engine optional in dev
+        logger.warning("revocation_engine unavailable: %s", exc)
+        return None
+
+    store: Any
+    mandate_revoker: Any
+    spend_object_revoker: Any
+    in_flight_blocker: Any
+
+    if use_postgres:
+        from sardis.core.revocation_ports import (
+            PostgresMandateRevoker,
+            PostgresSpendObjectRevoker,
+        )
+
+        store = PostgresRevocationStore()
+        mandate_revoker = PostgresMandateRevoker(Database)
+        spend_object_revoker = PostgresSpendObjectRevoker(Database)
+
+        async def _enumerate_in_flight(*, agent_id, mandate_ids):
+            # In-flight = transactions still in a pre-settlement state for the
+            # agent's wallets. Keyed via the mandate's wallet on the tx rows.
+            if not mandate_ids:
+                return []
+            rows = await Database.fetch(
+                """
+                SELECT t.external_id AS ref, t.status AS status
+                FROM transactions t
+                JOIN spending_mandates m
+                  ON m.wallet_id::text = t.from_wallet_id::text
+                WHERE m.id = ANY($1::text[])
+                  AND t.status IN ('pending','authorized','queued','submitting')
+                """,
+                list(mandate_ids),
+            )
+            return [(r["ref"], r["status"]) for r in rows]
+
+        async def _block_in_flight(ref):
+            # Best-effort block of a pre-settlement tx. A broadcast already on
+            # chain cannot be un-sent: rowcount 0 ⇒ unconfirmed ⇒ blocked_pending.
+            tag = await Database.execute(
+                """
+                UPDATE transactions SET status = 'blocked'
+                WHERE external_id = $1
+                  AND status IN ('pending','authorized','queued','submitting')
+                """,
+                ref,
+            )
+            try:
+                return int(str(tag).rsplit(" ", 1)[-1]) > 0
+            except (ValueError, AttributeError):
+                return False
+
+        in_flight_blocker = CallbackInFlightBlocker(
+            _enumerate_in_flight, _block_in_flight
+        )
+    else:
+        # Dev/in-memory: empty mocks (no rows) keep the engine constructible
+        # without a DB. Real propagation happens only on Postgres.
+        store = InMemoryRevocationStore()
+        mandate_revoker = InMemoryMandateRevoker({})
+        spend_object_revoker = InMemorySpendObjectRevoker({})
+        in_flight_blocker = InMemoryInFlightBlocker({})
+
+    # Cards: freeze via the provider-layer CardPort. The registry returns a real
+    # adapter when keys are set, a sandbox impl otherwise (mock when no keys).
+    card_freezer = None
+    if provider_registry is not None:
+        try:
+            card_port = provider_registry.card()
+
+            async def _enumerate_cards(*, target_kind, target_ref):
+                if not use_postgres or target_kind != "agent":
+                    return []
+                try:
+                    rows = await Database.fetch(
+                        """
+                        SELECT vc.provider_card_id AS ref
+                        FROM virtual_cards vc
+                        JOIN wallets w ON w.id = vc.wallet_id
+                        WHERE w.agent_id = $1
+                          AND vc.status NOT IN ('frozen','closed','canceled')
+                          AND vc.provider_card_id IS NOT NULL
+                        """,
+                        target_ref,
+                    )
+                except Exception as exc:  # noqa: BLE001 - no cards index ⇒ no targets
+                    logger.warning("revocation: card enumeration failed: %s", exc)
+                    return []
+                return [r["ref"] for r in rows]
+
+            card_freezer = ProviderCardFreezer(card_port, _enumerate_cards)
+        except Exception as exc:  # noqa: BLE001 - card leg optional
+            logger.warning("revocation: card freezer unavailable: %s", exc)
+
+    approval_revoker = (
+        ApprovalGateRevoker(approval_gate) if approval_gate is not None else None
+    )
+
+    return RevocationEngine(
+        store=store,
+        mandate_revoker=mandate_revoker,
+        spend_object_revoker=spend_object_revoker,
+        card_freezer=card_freezer,
+        approval_revoker=approval_revoker,
+        in_flight_blocker=in_flight_blocker,
+    )
+
+
 def configure_payment_runtime(
     settings: Any,
     *,
@@ -834,6 +1003,7 @@ def configure_payment_runtime(
     sanctions_service: Any | None = None,
     group_policy: Any | None = None,
     redis_url: str | None = None,
+    notification_port: Any | None = None,
 ) -> PaymentRuntimeConfig:
     """Create mandate verification and payment orchestration primitives."""
     if (
@@ -903,6 +1073,107 @@ def configure_payment_runtime(
         redis_url=redis_url,
     )
 
+    # ── Human-in-the-loop gate (durable signed store + delivery notifier) ──
+    # The gate persists signed ApprovalRequests and relays them to a human via
+    # the swappable NotificationPort (real Twilio/Photon when keys are set; a
+    # sandbox notifier otherwise — so dev and tests run with NO keys). Delivery
+    # NEVER decides the outcome; the orchestrator re-checks policy/mandate at
+    # re-execution time. The SAME gate instance is returned on the runtime config
+    # so the ApprovalRequest API records decisions the orchestrator reads back.
+    approval_gate = None
+    try:
+        from sardis.core.approval_gate import ApprovalGate
+        from sardis.core.approval_request_repository import (
+            InMemoryApprovalRequestStore,
+            PostgresApprovalRequestStore,
+        )
+
+        approval_store: Any = (
+            PostgresApprovalRequestStore()
+            if use_postgres
+            else InMemoryApprovalRequestStore()
+        )
+        notifier = notification_port
+        if notifier is None:
+            try:
+                from server.providers.registry import ProviderRegistry
+
+                notifier = ProviderRegistry.from_settings(settings).notification()
+            except Exception as exc:  # noqa: BLE001 - delivery is optional
+                logger.warning("approval_gate: no notification port resolved: %s", exc)
+        approval_gate = ApprovalGate(store=approval_store, notifier=notifier)
+    except Exception as exc:  # noqa: BLE001 - gate is optional in dev
+        logger.warning("approval_gate unavailable, approvals fail-closed: %s", exc)
+
+    # ── Programmable Recourse engine (durable signed holds + swappable exec) ──
+    # When a payment carries a policy-defined recourse window, the orchestrator
+    # opens a durable, signed RecourseHold after settlement. The executor is
+    # env-gated (SARDIS_RECOURSE_MODE): NoopRecourseExecutor in dev/tests and
+    # whenever live escrow is not configured (no keys needed). The SAME engine
+    # instance backs the escrow/dispute API so its holds and the orchestrator's
+    # are one surface.
+    recourse_engine = None
+    try:
+        from sardis.core.recourse_engine import RecourseEngine
+        from sardis.core.recourse_executor import resolve_default_executor
+        from sardis.core.recourse_hold_repository import (
+            InMemoryRecourseHoldStore,
+            PostgresRecourseHoldStore,
+        )
+
+        recourse_store: Any = (
+            PostgresRecourseHoldStore()
+            if use_postgres
+            else InMemoryRecourseHoldStore()
+        )
+        recourse_engine = RecourseEngine(
+            store=recourse_store,
+            executor=resolve_default_executor(),
+        )
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("recourse_engine unavailable, recourse disabled: %s", exc)
+
+    # ── Guard / RiskEngine (in-house behavioral score + external feeds) ──
+    # The RiskEngine reuses the in-house AnomalyEngine for the behavioral score
+    # and folds in any configured external FraudSignalPort feeds (Stripe Radar /
+    # SEON) resolved from the provider registry.  Env-gated through the registry:
+    # with no feed key set, the registry returns the SIMULATED sandbox feed, so
+    # the engine runs internal-only (dev/tests).  Sardis owns the decision; feeds
+    # only contribute signals.  Optional + fail-closed (a None engine simply
+    # skips Phase 1.6; a configured engine never fails open on the money path).
+    risk_engine = None
+    try:
+        from sardis.guardrails.risk_engine import RiskEngine
+
+        from server.providers.registry import ProviderRegistry
+
+        # Combine ALL configured real cross-customer feeds (SEON + Radar); the
+        # sandbox fallback adds nothing (the internal AnomalyEngine already
+        # covers the no-external-feed case), so it is excluded by the accessor.
+        feeds = list(ProviderRegistry.from_settings(settings).fraud_signal_feeds())
+        risk_engine = RiskEngine(fraud_feeds=feeds)
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("risk_engine unavailable, Guard Phase 1.6 disabled: %s", exc)
+
+    # ── Propagating-Revocation engine (the lead-wedge kill switch) ──
+    # Wired across the SAME rails the rest of the runtime uses: the mandate /
+    # spend-object Postgres surfaces, the CardPort from the provider registry,
+    # the SAME ApprovalGate the orchestrator re-executes from, and the in-flight
+    # transactions ledger. ONE revoke propagates across all of them and returns a
+    # signed RevocationProof; fail-closed (blocked_pending + execution-time deny)
+    # when a downstream kill cannot be confirmed.
+    revocation_engine = None
+    try:
+        from server.providers.registry import ProviderRegistry
+
+        revocation_engine = build_revocation_engine(
+            use_postgres=use_postgres,
+            approval_gate=approval_gate,
+            provider_registry=ProviderRegistry.from_settings(settings),
+        )
+    except Exception as exc:  # noqa: BLE001 - engine is optional in dev
+        logger.warning("revocation_engine unavailable: %s", exc)
+
     orchestrator = payment_orchestrator_cls(
         wallet_manager=wallet_manager,
         compliance=compliance_engine,
@@ -915,6 +1186,9 @@ def configure_payment_runtime(
         spending_mandate_lookup=moat.spending_mandate_lookup,
         settlement_lock=moat.settlement_lock,
         reconciliation_queue=moat.reconciliation_queue,
+        approval_gate=approval_gate,
+        recourse_engine=recourse_engine,
+        risk_engine=risk_engine,
     )
 
     return PaymentRuntimeConfig(
@@ -922,6 +1196,9 @@ def configure_payment_runtime(
         replay_cache=replay_cache,
         verifier=verifier,
         orchestrator=orchestrator,
+        approval_gate=approval_gate,
+        recourse_engine=recourse_engine,
+        revocation_engine=revocation_engine,
     )
 
 
@@ -1536,6 +1813,128 @@ class DependencyContainer:
         return SpendingMandateLookup(dsn=dsn)
 
     @cached_property
+    def provider_registry(self) -> Any:
+        """Unified provider layer: every external money/identity service behind
+        a typed capability port.
+
+        Single env-gated construction point.  Real adapters activate only when
+        their keys are set; otherwise a SANDBOX impl backs the capability so dev
+        and tests run green without live keys (fail-closed in production for
+        required capabilities).  Execution routes resolve their capability port
+        from this one instance rather than constructing vendor clients ad-hoc,
+        so the authority core is never bypassed — adapters only execute what the
+        orchestrator already authorized.
+        """
+        from server.providers.registry import ProviderRegistry
+
+        return ProviderRegistry.from_settings(self._settings)
+
+    @cached_property
+    def approval_gate(self) -> Any:
+        """Human-in-the-loop ApprovalGate (durable signed store + delivery notifier).
+
+        The gate owns the durable, signed :class:`ApprovalRequest` store and the
+        swappable delivery notifier (the provider-layer NotificationPort: real
+        Twilio/Photon when keys are set, sandbox otherwise — so dev and tests run
+        with NO keys). Delivery NEVER decides the outcome; the orchestrator
+        re-checks policy/mandate at re-execution time.
+        """
+        from sardis.core.approval_gate import ApprovalGate
+        from sardis.core.approval_request_repository import (
+            InMemoryApprovalRequestStore,
+            PostgresApprovalRequestStore,
+        )
+
+        store: Any = (
+            PostgresApprovalRequestStore()
+            if self.use_postgres
+            else InMemoryApprovalRequestStore()
+        )
+
+        # Resolve the delivery notifier from the unified provider layer. The
+        # registry returns a real adapter only when keys are set; otherwise a
+        # sandbox notifier — so the loop runs end-to-end with no live keys.
+        notifier: Any = None
+        try:
+            notifier = self.provider_registry.notification()
+        except Exception as exc:  # noqa: BLE001 - delivery is optional/best-effort
+            logger.warning("approval_gate: no notification port resolved: %s", exc)
+
+        return ApprovalGate(store=store, notifier=notifier)
+
+    @cached_property
+    def recourse_engine(self) -> Any:
+        """Programmable-recourse engine (durable signed RecourseHold store +
+        swappable executor).
+
+        Owns the recourse *decision/policy/evidence* (the moat). The executor is
+        env-gated (``SARDIS_RECOURSE_MODE``): NoopRecourseExecutor in dev/tests
+        and whenever live escrow is not configured (no keys needed); the vendored
+        Circle RefundProtocol wrapper only when ``=live`` with a chain client.
+        The escrow/dispute API resolves this SAME engine so its holds and the
+        orchestrator-opened holds are one surface.
+        """
+        from sardis.core.recourse_engine import RecourseEngine
+        from sardis.core.recourse_executor import resolve_default_executor
+        from sardis.core.recourse_hold_repository import (
+            InMemoryRecourseHoldStore,
+            PostgresRecourseHoldStore,
+        )
+
+        store: Any = (
+            PostgresRecourseHoldStore()
+            if self.use_postgres
+            else InMemoryRecourseHoldStore()
+        )
+        return RecourseEngine(store=store, executor=resolve_default_executor())
+
+    @cached_property
+    def revocation_engine(self) -> Any:
+        """Propagating-Revocation engine — the lead-wedge kill switch.
+
+        ONE ``revoke`` atomically propagates across EVERY rail: the mandate
+        (authority root, denied at execution by the orchestrator), outstanding
+        spend objects, the agent's cards (via the SAME provider-layer CardPort),
+        pending approvals (via the SAME ApprovalGate the orchestrator
+        re-executes from), and in-flight payments — returning a signed,
+        independently-verifiable RevocationProof. Fail-closed: a downstream kill
+        that cannot be confirmed is blocked_pending, and the authority is still
+        denied at execution time. Reuses the SAME approval_gate + provider
+        registry instances so the kill goes through the canonical surfaces.
+        """
+        registry: Any = None
+        try:
+            registry = self.provider_registry
+        except Exception as exc:  # noqa: BLE001 - card leg optional
+            logger.warning("revocation_engine: no provider registry resolved: %s", exc)
+        return build_revocation_engine(
+            use_postgres=self.use_postgres,
+            approval_gate=self.approval_gate,
+            provider_registry=registry,
+        )
+
+    @cached_property
+    def risk_engine(self) -> Any:
+        """Guard / RiskEngine: in-house behavioral score + external fraud feeds.
+
+        Sardis owns the risk decision (the moat); external FraudSignalPort feeds
+        (Stripe Radar / SEON) only contribute signals.  Env-gated via the
+        registry: only a real (non-sandbox) feed is wired, otherwise the engine
+        runs internal-only off the in-house AnomalyEngine — so dev/tests run with
+        no keys.
+        """
+        from sardis.guardrails.risk_engine import RiskEngine
+
+        try:
+            # ALL configured real feeds (SEON + Radar), not just one — the engine
+            # combines every cross-customer signal with its behavioral score.
+            feeds = list(self.provider_registry.fraud_signal_feeds())
+        except Exception as exc:  # noqa: BLE001 - feed is optional
+            logger.warning("risk_engine: no external fraud feed resolved: %s", exc)
+            feeds = []
+        return RiskEngine(fraud_feeds=feeds)
+
+    @cached_property
     def payment_orchestrator(self) -> Any:
         """Get payment orchestrator with execution-authority ("moat") ports wired."""
         from sardis.core.orchestrator import PaymentOrchestrator
@@ -1561,6 +1960,9 @@ class DependencyContainer:
             spending_mandate_lookup=moat.spending_mandate_lookup,
             settlement_lock=moat.settlement_lock,
             reconciliation_queue=moat.reconciliation_queue,
+            approval_gate=self.approval_gate,
+            recourse_engine=self.recourse_engine,
+            risk_engine=self.risk_engine,
         )
 
     # =========================================================================
@@ -1776,6 +2178,9 @@ class DependencyContainer:
 # Global container instance (initialized in create_app)
 _container: DependencyContainer | None = None
 
+# Fallback provider registry for when the container is not initialized (tests).
+_fallback_provider_registry: Any | None = None
+
 
 def get_container() -> DependencyContainer:
     """Get the global dependency container."""
@@ -1799,5 +2204,80 @@ def init_container(
 
 def reset_container() -> None:
     """Reset the global container (for testing)."""
-    global _container
+    global _container, _fallback_provider_registry
     _container = None
+    _fallback_provider_registry = None
+
+
+# ---------------------------------------------------------------------------
+# Provider-layer FastAPI dependencies
+#
+# Execution routes resolve their capability port through these so every
+# external money/identity call goes through the one env-gated registry — and
+# only AFTER the orchestrator has authorized the movement.  The ports execute;
+# they never authorize, initiate, or settle on their own.
+# ---------------------------------------------------------------------------
+
+
+def get_provider_registry() -> Any:
+    """Return the singleton :class:`ProviderRegistry`.
+
+    Prefers the global container's instance (the production path).  When the
+    container has not been initialized (e.g. an app constructed via
+    ``create_app()`` without running the lifespan startup, as in tests), build
+    and cache a registry from loaded settings so the provider-layer routes stay
+    reachable without coupling to container init order.
+    """
+    global _fallback_provider_registry
+    if _container is not None:
+        return _container.provider_registry
+    if _fallback_provider_registry is None:
+        from server.providers.registry import ProviderRegistry
+
+        _fallback_provider_registry = ProviderRegistry.from_settings(load_settings())
+    return _fallback_provider_registry
+
+
+def get_custody_port() -> Any:
+    """CustodyPort (Turnkey MPC / sandbox)."""
+    return get_provider_registry().custody()
+
+
+def get_onramp_port() -> Any:
+    """OnrampPort (Conduit / Turnkey / Onramper / Transak / Daimo / sandbox)."""
+    return get_provider_registry().onramp()
+
+
+def get_offramp_port() -> Any:
+    """OfframpPort (Circle CPN / Increase / Onramper / Transak / Coinbase / sandbox)."""
+    return get_provider_registry().offramp()
+
+
+def get_fiat_account_port() -> Any:
+    """FiatAccountPort (Lithic / Dakota / Increase / sandbox)."""
+    return get_provider_registry().fiat_account()
+
+
+def get_swap_port() -> Any:
+    """SwapPort (LI.FI / 0x / Jupiter / sandbox)."""
+    return get_provider_registry().swap()
+
+
+def get_bridge_port() -> Any:
+    """BridgePort (Squid / CCTP v2 / sandbox)."""
+    return get_provider_registry().bridge()
+
+
+def get_card_port() -> Any:
+    """CardPort (Crossmint / Lithic / Stripe Issuing / sandbox)."""
+    return get_provider_registry().card()
+
+
+def get_kyc_port() -> Any:
+    """KycPort (Didit / sandbox)."""
+    return get_provider_registry().kyc()
+
+
+def get_kyt_port() -> Any:
+    """KytPort (OpenSanctions / Didit / sandbox)."""
+    return get_provider_registry().kyt()

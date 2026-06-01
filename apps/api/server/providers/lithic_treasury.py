@@ -5,15 +5,25 @@ USD-first at launch, but request/response models remain currency-aware.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Lithic signs webhooks with the Standard Webhooks / Svix scheme:
+#   signed content = f"{webhook-id}.{webhook-timestamp}.{raw_body}"
+#   key            = base64-decode(secret without the "whsec_" prefix)
+#   signature      = base64( HMAC-SHA256(key, signed_content) )
+#   header value   = space-delimited "v1,<sig>" entries (one per active key)
+# Ref: https://docs.lithic.com/docs/events-api + https://docs.svix.com
+_SVIX_TOLERANCE_SECONDS = 5 * 60
 
 _DIRECTION = Literal["COLLECTION", "PAYMENT"]
 _METHOD = Literal["ACH_NEXT_DAY", "ACH_SAME_DAY"]
@@ -344,11 +354,73 @@ class LithicTreasuryClient:
         payload = {"payment_token": payment_token}
         return await self._request("POST", "/v1/simulate/payments/release", json=payload)
 
-    def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
+    def verify_webhook(self, *, body: bytes, headers: dict[str, str]) -> bool:
+        """Verify a Lithic webhook using the Standard Webhooks (Svix) scheme.
+
+        Fail-closed: returns ``False`` on any missing secret/header, malformed
+        secret, stale timestamp, or signature mismatch.
+
+        ``headers`` is matched case-insensitively for ``webhook-id``,
+        ``webhook-timestamp`` and ``webhook-signature``.
+        """
         if not self._webhook_secret:
             return False
-        expected = hmac.new(self._webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(signature, expected)
+
+        lower = {k.lower(): v for k, v in headers.items()}
+        webhook_id = lower.get("webhook-id") or lower.get("svix-id")
+        timestamp = lower.get("webhook-timestamp") or lower.get("svix-timestamp")
+        sig_header = lower.get("webhook-signature") or lower.get("svix-signature")
+        if not (webhook_id and timestamp and sig_header):
+            return False
+
+        # Reject stale/future timestamps (replay protection).
+        try:
+            ts = int(timestamp)
+        except (TypeError, ValueError):
+            return False
+        if abs(time.time() - ts) > _SVIX_TOLERANCE_SECONDS:
+            return False
+
+        key = self._webhook_signing_key()
+        if key is None:
+            return False
+
+        signed_content = b"%s.%s.%s" % (webhook_id.encode(), timestamp.encode(), body)
+        expected = base64.b64encode(
+            hmac.new(key, signed_content, hashlib.sha256).digest()
+        ).decode()
+
+        # The header is a space-delimited list of "v1,<sig>" entries.
+        for entry in sig_header.split(" "):
+            _, _, candidate = entry.partition(",")
+            if candidate and hmac.compare_digest(candidate, expected):
+                return True
+        return False
+
+    def _webhook_signing_key(self) -> bytes | None:
+        """Decode the ``whsec_``-prefixed base64 signing secret to raw bytes."""
+        secret = self._webhook_secret
+        if secret.startswith("whsec_"):
+            secret = secret[len("whsec_") :]
+        try:
+            return base64.b64decode(secret)
+        except (ValueError, TypeError):
+            logger.warning("Lithic webhook secret is not valid base64; cannot verify")
+            return None
+
+    def verify_webhook_signature(self, body: bytes, signature: str) -> bool:
+        """Deprecated raw-HMAC verifier (kept for back-compat).
+
+        Lithic does NOT sign with a raw hex HMAC — it uses the Svix scheme
+        (see :meth:`verify_webhook`).  This method is retained only so callers
+        that have not yet migrated do not break at import time; it always
+        returns ``False`` to fail closed and force migration.
+        """
+        logger.warning(
+            "verify_webhook_signature is deprecated and fails closed; "
+            "use verify_webhook(body=..., headers=...) (Svix scheme)"
+        )
+        return False
 
     def _to_payment(self, payload: dict[str, Any]) -> LithicPayment:
         ext = str(payload.get("external_bank_account_token", ""))
