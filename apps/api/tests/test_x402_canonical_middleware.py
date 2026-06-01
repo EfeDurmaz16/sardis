@@ -119,11 +119,11 @@ def test_canonical_x_payment_forged_signature_rejected_with_payment_response():
     attacker = Account.create()
     _v, victim_xp = _sign_x_payment(to=PAYEE, value=10000, signer=victim)
     # Decode victim payload, replace signature with attacker's over a different msg.
+    from eth_account.messages import encode_typed_data
     from sardis.protocol.x402_canonical import (
         decode_x_payment_header,
         encode_x_payment_header,
     )
-    from eth_account.messages import encode_typed_data
     from sardis.protocol.x402_erc3009 import (
         TRANSFER_WITH_AUTHORIZATION_TYPE,
         resolve_eip712_domain,

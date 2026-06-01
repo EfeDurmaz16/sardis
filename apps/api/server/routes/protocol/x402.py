@@ -314,10 +314,10 @@ def _parse_canonical_request(body: dict):
     """
     from sardis.protocol.x402_canonical import (
         X402_VERSION,
-        X402ErrorCode,
-        X402WireError,
         PaymentPayload,
         PaymentRequirements,
+        X402ErrorCode,
+        X402WireError,
     )
 
     version = body.get("x402Version")
@@ -516,8 +516,8 @@ async def _settle_canonical(body: dict) -> X402CanonicalSettleResponse:
         from sardis.protocol.x402_settlement import (
             DatabaseSettlementStore,
             X402Settlement,
-            X402Settler,
             X402SettlementStatus,
+            X402Settler,
         )
     except ImportError as exc:
         logger.warning("x402 canonical settle: settlement infra unavailable: %s", exc)

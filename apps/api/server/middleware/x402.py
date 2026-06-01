@@ -393,8 +393,8 @@ class X402PaymentMiddleware(BaseHTTPMiddleware):
             from sardis.protocol.x402_settlement import (
                 DatabaseSettlementStore,
                 X402Settlement,
-                X402Settler,
                 X402SettlementStatus,
+                X402Settler,
             )
         except ImportError:
             return {"success": False, "error": "x402_modules_not_available"}
