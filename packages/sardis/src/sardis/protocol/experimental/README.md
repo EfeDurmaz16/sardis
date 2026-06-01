@@ -9,8 +9,7 @@ not to ship it. Do not reference them in pitches, docs, or marketing that
 implies production capability, and do not depend on them from `core/`,
 `routes/`, or `middleware/`.
 
-Per the protocol audit (`docs/productization/research/PROTOCOL_STRATEGY.md`,
-"quarantine-experimental" verdicts):
+Why each module is quarantined:
 
 | Module | Why it is here |
 |---|---|

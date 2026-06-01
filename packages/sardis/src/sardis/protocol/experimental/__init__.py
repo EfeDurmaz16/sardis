@@ -1,10 +1,10 @@
 """Research / experimental protocol adapters — NOT production.
 
-The modules in this package are quarantined per the protocol audit
-(``docs/productization/research/PROTOCOL_STRATEGY.md``): in-memory
-simulations, draft-EIP sketches with unverified crypto, or unwired schemes
-with no production caller. They make NO conformance claims and must not be
-depended on from ``core/``, ``routes/``, or ``middleware/``. See README.md.
+The modules in this package are quarantined because each is one of: an
+in-memory simulation, a draft-EIP sketch with unverified crypto, or an
+unwired scheme with no production caller. They make NO conformance claims
+and must not be depended on from ``core/``, ``routes/``, or ``middleware/``.
+See README.md for the per-module rationale.
 """
 
 import contextlib
