@@ -91,6 +91,7 @@ class RevocationTargetKind(str, Enum):
     AGENT = "agent"  # kill all authority of an agent (the common case)
     MANDATE = "mandate"  # kill one specific spending mandate + its derivations
     PRINCIPAL = "principal"  # kill all authority granted by a principal
+    DELEGATION = "delegation"  # kill one delegation hop + its entire subtree
 
 
 class RevocationStatus(str, Enum):
@@ -113,6 +114,7 @@ class PropagationKind(str, Enum):
     """Which rail / object class a single propagation target belongs to."""
 
     MANDATE = "mandate"  # the SpendingMandate(s) themselves
+    DELEGATION = "delegation"  # attenuated delegation subtree (derived authority)
     SPEND_OBJECT = "spend_object"  # one-time PaymentObjects / passes
     CARD = "card"  # virtual cards (frozen via CardPort)
     APPROVAL = "approval"  # pending ApprovalRequests

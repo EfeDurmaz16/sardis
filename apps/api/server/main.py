@@ -87,6 +87,7 @@ from .route_registry.admin import register_admin_routes
 from .route_registry.agents import register_agent_lifecycle_routes
 from .route_registry.authority import (
     register_authority_routes,
+    register_delegation_routes,
     register_facility_request_routes,
     register_revocation_routes,
     register_spending_mandate_routes,
@@ -907,6 +908,17 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
     register_revocation_routes(
         app,
         revocation_engine=getattr(payment_runtime, "revocation_engine", None),
+    )
+
+    # Attenuated Delegation Graph (object-capability for money) + portable
+    # Proof-of-Authority: scoped/bounded/revocable sub-delegation enforced
+    # fail-closed at every hop AND re-checked at execution time, plus an offline-
+    # verifiable credential of authorization. Shares the SAME engine the
+    # orchestrator enforces the chain from and the revocation engine propagates
+    # a subtree kill over.
+    register_delegation_routes(
+        app,
+        delegation_engine=getattr(payment_runtime, "delegation_engine", None),
     )
 
     register_agent_auth_routes(app)

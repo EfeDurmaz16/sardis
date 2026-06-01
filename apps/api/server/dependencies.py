@@ -150,6 +150,12 @@ class PaymentRuntimeConfig:
     #: Fail-closed: a downstream kill that cannot be confirmed is blocked_pending
     #: and the orchestrator still denies the revoked mandate at execution time.
     revocation_engine: Any | None = None
+    #: Attenuated Delegation Graph engine (object-capability for money). Mints,
+    #: resolves, and re-checks attenuating delegation chains; exposed on
+    #: app.state so the delegation routes (create / list / chain) and the
+    #: revocation subtree propagation share the SAME engine the orchestrator
+    #: enforces the chain from at execution time.
+    delegation_engine: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -169,6 +175,12 @@ class MoatPortsConfig:
     spending_mandate_lookup: Any
     settlement_lock: Any | None
     reconciliation_queue: Any | None
+    #: The Attenuated Delegation Graph engine wrapped into the mandate lookup
+    #: above (so the orchestrator re-checks the whole chain fail-closed at
+    #: execution time). Exposed separately so the revocation engine can wire its
+    #: subtree revoker over the SAME DelegationStore. ``None`` in dev/in-memory
+    #: (no delegation table) — delegated payments are a Postgres-mode feature.
+    delegation_engine: Any | None = None
 
 
 @dataclass(frozen=True)
@@ -804,9 +816,31 @@ def build_moat_ports(
     # ``no_active_spending_mandate``.  So we leave it unset in dev (mandate
     # enforcement is skipped locally, matching prior dev behavior); production
     # always runs on Postgres and gets the real lookup.
-    spending_mandate_lookup: Any | None = (
+    base_mandate_lookup: Any | None = (
         SpendingMandateLookup(dsn=database_url) if use_postgres else None
     )
+
+    # ── Attenuated Delegation Graph (object-capability for money) ──────────
+    # Wrap the base mandate lookup with a delegation-aware lookup so the
+    # orchestrator's Phase 0.5 re-checks the WHOLE attenuated chain fail-closed
+    # at execution time (every hop non-revoked + within cap/scope + non-expired)
+    # whenever the acting agent is a delegatee. Direct payments pass through to
+    # the base lookup unchanged. Postgres-only: the in-memory dev path has no
+    # delegations table and never injects a lookup (see note above).
+    delegation_engine: Any | None = None
+    spending_mandate_lookup: Any | None = base_mandate_lookup
+    if use_postgres and base_mandate_lookup is not None:
+        from sardis.core.delegation_engine import DelegationEngine
+        from sardis.core.delegation_lookup import DelegationAwareMandateLookup
+        from sardis.core.delegation_repository import PostgresDelegationStore
+
+        delegation_engine = DelegationEngine(
+            store=PostgresDelegationStore(),
+            mandate_resolver=base_mandate_lookup.get_mandate_by_id,
+        )
+        spending_mandate_lookup = DelegationAwareMandateLookup(
+            base=base_mandate_lookup, engine=delegation_engine
+        )
 
     settlement_lock: Any | None = None
     reconciliation_queue: Any | None = None
@@ -826,6 +860,7 @@ def build_moat_ports(
         spending_mandate_lookup=spending_mandate_lookup,
         settlement_lock=settlement_lock,
         reconciliation_queue=reconciliation_queue,
+        delegation_engine=delegation_engine,
     )
 
 
@@ -834,6 +869,7 @@ def build_revocation_engine(
     use_postgres: bool,
     approval_gate: Any | None = None,
     provider_registry: Any | None = None,
+    delegation_engine: Any | None = None,
 ) -> Any | None:
     """Wire the Propagating-Revocation engine across every real rail.
 
@@ -973,6 +1009,21 @@ def build_revocation_engine(
         ApprovalGateRevoker(approval_gate) if approval_gate is not None else None
     )
 
+    # Attenuated Delegation Graph: revoking a mandate/agent/delegation must kill
+    # the ENTIRE delegation subtree. Wire the subtree revoker over the SAME
+    # DelegationStore the orchestrator's chain re-check reads from, so a revoke
+    # here flips every descendant delegation to ``revoked`` and the execution-
+    # time chain check denies any payment under that subtree. Absent a wired
+    # delegation engine (dev/in-memory) the leg contributes no targets — the
+    # mandate is still revoked, so authority is gone fail-closed regardless.
+    delegation_revoker = None
+    if delegation_engine is not None:
+        store_for_deleg = getattr(delegation_engine, "_store", None)
+        if store_for_deleg is not None:
+            from sardis.core.revocation_ports import DelegationSubtreeRevoker
+
+            delegation_revoker = DelegationSubtreeRevoker(store_for_deleg)
+
     return RevocationEngine(
         store=store,
         mandate_revoker=mandate_revoker,
@@ -980,6 +1031,7 @@ def build_revocation_engine(
         card_freezer=card_freezer,
         approval_revoker=approval_revoker,
         in_flight_blocker=in_flight_blocker,
+        delegation_revoker=delegation_revoker,
     )
 
 
@@ -1170,6 +1222,7 @@ def configure_payment_runtime(
             use_postgres=use_postgres,
             approval_gate=approval_gate,
             provider_registry=ProviderRegistry.from_settings(settings),
+            delegation_engine=moat.delegation_engine,
         )
     except Exception as exc:  # noqa: BLE001 - engine is optional in dev
         logger.warning("revocation_engine unavailable: %s", exc)
@@ -1199,6 +1252,7 @@ def configure_payment_runtime(
         approval_gate=approval_gate,
         recourse_engine=recourse_engine,
         revocation_engine=revocation_engine,
+        delegation_engine=moat.delegation_engine,
     )
 
 

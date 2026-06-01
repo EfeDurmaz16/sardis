@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from server.routes.authority import (
     ap2,
     credentials,
+    delegations,
     facility_requests,
     mandates,
     mvp,
@@ -226,6 +227,41 @@ def register_revocation_routes(app: FastAPI, *, revocation_engine: Any | None) -
         )
     else:
         logger.info("Propagating-Revocation (kill-switch) routes registered")
+
+
+def register_delegation_routes(
+    app: FastAPI, *, delegation_engine: Any | None
+) -> None:
+    """Register the Attenuated Delegation Graph + Proof-of-Authority routes.
+
+    Exposes the SHARED DelegationEngine on ``app.state.delegation_engine`` — the
+    same instance the orchestrator re-checks the attenuated chain from at
+    execution time and the revocation engine propagates a subtree kill over — so
+    the routes mint/resolve against the same authority graph. The mutating
+    routes fail closed (503) when the engine is absent (dev/in-memory has no
+    delegations table); the public Proof-of-Authority verification routes need no
+    engine and are always available.
+    """
+    app.state.delegation_engine = delegation_engine
+    # Org-scoped delegation CRUD + chain + revoke + evidence verify.
+    app.include_router(
+        delegations.router,
+        prefix="/api/v2/delegations",
+        tags=["delegations"],
+    )
+    # PUBLIC, unauthenticated portable Proof-of-Authority verification + JWK.
+    app.include_router(
+        delegations.public_router,
+        prefix="/api/v2/authority/proofs",
+        tags=["proof-of-authority"],
+    )
+    if delegation_engine is None:
+        logger.warning(
+            "Delegation routes registered but no engine wired — attenuated "
+            "delegation will fail closed (503) until Postgres is configured"
+        )
+    else:
+        logger.info("Attenuated Delegation Graph + Proof-of-Authority routes registered")
 
 
 def register_mandate_delegation_routes(app: FastAPI) -> None:

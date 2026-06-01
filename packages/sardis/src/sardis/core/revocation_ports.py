@@ -85,6 +85,29 @@ class SpendObjectRevokerPort(Protocol):
         ...
 
 
+class DelegationRevokerPort(Protocol):
+    kind = PropagationKind.DELEGATION
+
+    async def revoke_subtree(
+        self,
+        *,
+        mandate_ids: list[str],
+        agent_id: str | None,
+        delegation_ids: list[str],
+        requested_by: str,
+        reason: str,
+    ) -> list[KillOutcome]:
+        """Revoke the ENTIRE delegation subtree reachable from the target.
+
+        Revoking a parent must kill all descendant delegations: delegations
+        rooted at any killed mandate (``root_mandate_id in mandate_ids``),
+        delegations a revoked agent holds (``delegatee == agent_id``) plus their
+        descendants, and any directly-targeted ``delegation_ids`` plus their
+        descendants.  Returns one :class:`KillOutcome` per delegation touched.
+        """
+        ...
+
+
 class CardFreezerPort(Protocol):
     kind = PropagationKind.CARD
 
@@ -191,6 +214,93 @@ class InMemorySpendObjectRevoker:
                 continue
             o["status"] = "revoked"
             outcomes.append(KillOutcome.killed(oid, "spend object revoked"))
+        return outcomes
+
+
+class DelegationSubtreeRevoker:
+    """Revoke an entire delegation subtree over a :class:`DelegationStore`.
+
+    Works against BOTH the in-memory and Postgres stores (it only uses the
+    store's ``get`` / ``children_of`` / ``save`` surface), so one adapter serves
+    dev/tests and production.  The walk is breadth-first from every seed
+    (mandate roots, the revoked agent's held delegations, directly-targeted
+    delegations), marking each reachable delegation revoked and recording a
+    :class:`KillOutcome`.
+
+    Cycle-safe (a ``seen`` set) and idempotent (already-revoked hops are
+    reported ``already_dead``).  Fail-closed: a hop that cannot be persisted is
+    reported ``blocked_pending`` — the execution-time chain re-check still denies
+    any payment whose chain contains a non-active link, so authority is gone even
+    if a row's status write is unconfirmed.
+    """
+
+    kind = PropagationKind.DELEGATION
+
+    def __init__(self, store: Any) -> None:
+        # ``store`` is a DelegationStore (get / children_of / save). Injected so
+        # this never imports a live pool and is unit-testable with the in-memory
+        # store.
+        self._store = store
+
+    async def revoke_subtree(
+        self,
+        *,
+        mandate_ids: list[str],
+        agent_id: str | None,
+        delegation_ids: list[str],
+        requested_by: str,
+        reason: str,
+    ) -> list[KillOutcome]:
+        from .delegation import DelegationStatus
+
+        # 1) Collect the seed delegations: roots of killed mandates, the agent's
+        #    held delegations, and any directly-targeted delegations.
+        seeds: dict[str, Any] = {}
+        for mid in mandate_ids:
+            for d in await self._store.children_of(parent_kind="mandate", parent_ref=mid):
+                seeds[d.id] = d
+        for did in delegation_ids:
+            d = await self._store.get(did)
+            if d is not None:
+                seeds[d.id] = d
+        if agent_id is not None and hasattr(self._store, "get_for_delegatee"):
+            # The agent may hold a delegation as a delegatee — kill it + subtree.
+            held = await self._store.get_for_delegatee(agent_id)
+            if held is not None:
+                seeds[held.id] = held
+
+        # 2) BFS the subtree from every seed, killing each reachable delegation.
+        outcomes: list[KillOutcome] = []
+        seen: set[str] = set()
+        queue: list[Any] = list(seeds.values())
+        while queue:
+            d = queue.pop(0)
+            if d.id in seen:
+                continue
+            seen.add(d.id)
+
+            if d.status == DelegationStatus.REVOKED:
+                outcomes.append(KillOutcome.already_dead(d.id, "delegation already revoked"))
+            else:
+                d.revoke(revoked_by=requested_by, reason=reason or "authority revoked")
+                try:
+                    await self._store.save(d)
+                    outcomes.append(KillOutcome.killed(d.id, "delegation revoked"))
+                except Exception as exc:  # noqa: BLE001 - surfaced, not swallowed
+                    outcomes.append(
+                        KillOutcome.blocked_pending(
+                            d.id,
+                            f"delegation revoke not persisted ({exc}); blocked at execution",
+                        )
+                    )
+
+            # Enqueue this delegation's direct children (descend the subtree).
+            for child in await self._store.children_of(
+                parent_kind="delegation", parent_ref=d.id
+            ):
+                if child.id not in seen:
+                    queue.append(child)
+
         return outcomes
 
 
@@ -425,6 +535,10 @@ class PostgresMandateRevoker:
     async def revoke_for_target(
         self, *, target_kind: str, target_ref: str, requested_by: str, reason: str
     ) -> list[KillOutcome]:
+        # A delegation-targeted revoke has no SpendingMandate row to flip here —
+        # the delegation subtree revoker handles it. Return no mandate targets.
+        if target_kind == "delegation":
+            return []
         where, params = self._where(target_kind, target_ref)
         rows = await self._db.fetch(
             f"SELECT id, status FROM spending_mandates WHERE {where}", *params
@@ -680,6 +794,8 @@ __all__ = [
     "ApprovalRevokerPort",
     "CallbackInFlightBlocker",
     "CardFreezerPort",
+    "DelegationRevokerPort",
+    "DelegationSubtreeRevoker",
     "InFlightBlockerPort",
     "InMemoryApprovalRevoker",
     "InMemoryCardFreezer",

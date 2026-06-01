@@ -57,6 +57,7 @@ from .revocation import (
 from .revocation_ports import (
     ApprovalRevokerPort,
     CardFreezerPort,
+    DelegationRevokerPort,
     InFlightBlockerPort,
     KillOutcome,
     MandateRevokerPort,
@@ -82,6 +83,7 @@ class RevocationEngine:
         store: RevocationStore,
         mandate_revoker: MandateRevokerPort,
         spend_object_revoker: SpendObjectRevokerPort | None = None,
+        delegation_revoker: DelegationRevokerPort | None = None,
         card_freezer: CardFreezerPort | None = None,
         approval_revoker: ApprovalRevokerPort | None = None,
         in_flight_blocker: InFlightBlockerPort | None = None,
@@ -90,6 +92,11 @@ class RevocationEngine:
         self._store = store
         self._mandate_revoker = mandate_revoker
         self._spend_object_revoker = spend_object_revoker
+        # Attenuated Delegation Graph: revoking a mandate/agent/delegation must
+        # propagate to the ENTIRE delegation subtree (every descendant
+        # delegation -> revoked).  Optional: a deployment without delegation
+        # contributes no delegation targets.
+        self._delegation_revoker = delegation_revoker
         self._card_freezer = card_freezer
         self._approval_revoker = approval_revoker
         self._in_flight_blocker = in_flight_blocker
@@ -167,6 +174,16 @@ class RevocationEngine:
         # 4) Enumerate + kill derived authority across the remaining rails.
         await self._kill_spend_objects(rev, mandate_ids=revoked_mandate_ids,
                                        requested_by=requested_by)
+        # Attenuated Delegation Graph: kill the ENTIRE delegation subtree
+        # reachable from the target (delegations rooted at a killed mandate, the
+        # revoked agent's held delegation + descendants, or the directly-targeted
+        # delegation + descendants).  Runs after mandates so it has the killed
+        # mandate ids that root the subtrees.
+        await self._kill_delegations(
+            rev, mandate_ids=revoked_mandate_ids, effective_agent=effective_agent,
+            target_kind=target_kind, target_ref=target_ref,
+            requested_by=requested_by, reason=reason,
+        )
         await self._kill_cards(rev, target_kind=target_kind, target_ref=target_ref,
                                effective_agent=effective_agent, requested_by=requested_by)
         await self._kill_approvals(rev, agent_id=effective_agent,
@@ -244,6 +261,40 @@ class RevocationEngine:
                 mandate_ids=mandate_ids, requested_by=requested_by
             ),
             fallback_ref=",".join(mandate_ids),
+        )
+
+    async def _kill_delegations(
+        self,
+        rev: Revocation,
+        *,
+        mandate_ids: list[str],
+        effective_agent: str | None,
+        target_kind: RevocationTargetKind,
+        target_ref: str,
+        requested_by: str,
+        reason: str,
+    ) -> None:
+        if self._delegation_revoker is None:
+            return
+        # A delegation-targeted revoke seeds the subtree with that delegation id;
+        # otherwise the subtree is seeded by the killed mandates + the agent's
+        # held delegation.
+        delegation_ids = (
+            [target_ref] if target_kind == RevocationTargetKind.DELEGATION else []
+        )
+        if not mandate_ids and not delegation_ids and effective_agent is None:
+            return
+        await self._safe_call(
+            rev,
+            PropagationKind.DELEGATION,
+            self._delegation_revoker.revoke_subtree(
+                mandate_ids=mandate_ids,
+                agent_id=effective_agent,
+                delegation_ids=delegation_ids,
+                requested_by=requested_by,
+                reason=reason,
+            ),
+            fallback_ref=target_ref,
         )
 
     async def _kill_cards(
@@ -404,6 +455,8 @@ class RevocationEngine:
              lambda: self._retry_approvals(rev, effective_agent, mandate_ids)),
             (PropagationKind.SPEND_OBJECT,
              lambda: self._retry_spend_objects(rev, mandate_ids)),
+            (PropagationKind.DELEGATION,
+             lambda: self._retry_delegations(rev, effective_agent, mandate_ids)),
         ):
             if not any(
                 t.kind == kind and not t.is_confirmed_dead() for t in rev.targets
@@ -497,6 +550,25 @@ class RevocationEngine:
             return None
         outcomes = await self._spend_object_revoker.revoke_for_mandates(
             mandate_ids=mandate_ids, requested_by=rev.requested_by
+        )
+        return {o.ref: o for o in outcomes}
+
+    async def _retry_delegations(
+        self, rev: Revocation, effective_agent: str | None, mandate_ids: list[str]
+    ) -> dict[str, KillOutcome] | None:
+        if self._delegation_revoker is None:
+            return None
+        delegation_ids = (
+            [rev.target_ref]
+            if rev.target_kind == RevocationTargetKind.DELEGATION
+            else []
+        )
+        outcomes = await self._delegation_revoker.revoke_subtree(
+            mandate_ids=mandate_ids,
+            agent_id=effective_agent,
+            delegation_ids=delegation_ids,
+            requested_by=rev.requested_by,
+            reason=str(rev.metadata.get("reason") or "authority revoked"),
         )
         return {o.ref: o for o in outcomes}
 
