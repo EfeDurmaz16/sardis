@@ -4,10 +4,11 @@
 
 **Before making any factual claim about this codebase — integrations, packages, chain support, deployment state, version numbers, or traction metrics — you MUST verify against the live system, not this doc.**
 
-- **Package list?** Run `ls packages/sardis-*/pyproject.toml packages/sardis-*/package.json` — not this file.
-- **Chain support?** Read `packages/sardis-core/src/sardis_v2_core/config.py` (`ChainConfig` entries) and `tokens.py` (`contract_addresses` maps) — not this file.
+- **Package list?** Run `ls packages/` — there are exactly **3** published packages: `sardis` (Python umbrella), `sardis-js` (TS SDK, npm name `sardis`), `sardis-mcp-server`. The old 30+ `sardis-*` packages were consolidated into these in May 2026. Not "56", not "12+".
+- **Chain support?** Read `packages/sardis/src/sardis/core/config.py` (`ChainConfig` entries) and `packages/sardis/src/sardis/core/tokens.py` (`contract_addresses` maps) — not this file.
+- **Integrations?** Glob `packages/sardis/src/sardis/integrations/` — they are submodules now, not separate packages.
 - **Deployment state?** Check Cloud Run / Vercel / block explorers — not memory, not docs.
-- **Integration list?** See `~/.claude/projects/-Users-efebarandurmaz-sardis/memory/integrations_real_list_april_2026.md` or glob `packages/sardis-*`.
+- **Repo structure?** Read [`ARCHITECTURE.md`](../ARCHITECTURE.md) — the canonical, code-accurate map.
 
 This doc is a **starting point**, not the source of truth. It drifts. It has drifted. If you catch a claim here that conflicts with the codebase, **trust the code and update this file.**
 
@@ -29,83 +30,30 @@ This doc is a **starting point**, not the source of truth. It drifts. It has dri
 
 ## Repository Structure
 
+Canonical, code-accurate map: [`ARCHITECTURE.md`](../ARCHITECTURE.md). The
+current tree (post May-2026 consolidation):
+
 ```
 sardis/
-├── .claude/                # Claude Code configuration
-│   ├── agents/             # Autonomous agent definitions
-│   │   ├── social-media-agent.md
-│   │   ├── product-hunt-agent.md
-│   │   ├── competitor-watch-agent.md
-│   │   ├── developer-relations-agent.md
-│   │   └── launch-orchestrator-agent.md
-│   └── skills/             # Reusable skill definitions
-│       ├── social-media-content.md
-│       ├── product-hunt-launch.md
-│       ├── content-repurpose.md
-│       ├── competitor-analysis.md
-│       ├── developer-advocacy.md
-│       └── launch-coordinator.md
-├── src/sardis/             # Simple Python SDK (public interface)
-├── apps/api/               # FastAPI reference API implementation
-├── packages/               # ⚠️ STALE TREE BELOW. On feat/provider-layer there are exactly 3 published packages: sardis (Python umbrella), sardis-js, sardis-mcp-server. Run `ls packages/` for truth; the per-package list below predates the consolidation.
-│   │
-│   │ ── Core platform ──
-│   ├── sardis-core/        # Domain models, config, database, spending policy
-│   ├── sardis-chain/       # Multi-chain executor, CCTP, paymaster
-│   ├── sardis-protocol/    # AP2 / TAP protocol verification
-│   ├── sardis-wallet/      # Wallet management, MPC, Tempo keychain
-│   ├── sardis-ledger/      # Append-only audit trail + Merkle anchoring
-│   ├── sardis-compliance/  # KYC (Didit) + AML (Elliptic)
-│   ├── sardis-cards/       # Virtual cards (Stripe Issuing)
-│   ├── sardis-checkout/    # Pay with Sardis merchant flows
-│   ├── sardis-guardrails/  # Agent guardrails
-│   ├── sardis-zk-policy/   # ZK-proof-based policy enforcement
-│   ├── sardis-ucp/         # Universal Commerce Protocol
-│   │
-│   │ ── SDKs and CLI ──
-│   ├── sardis-sdk-python/  # Full Python SDK
-│   ├── sardis-sdk-js/      # TypeScript SDK
-│   ├── sardis-cli/         # Command-line tool
-│   ├── sardis-mcp-server/  # MCP server (Claude Desktop, Cursor, Windsurf)
-│   │
-│   │ ── AI framework integrations ──
-│   ├── sardis-langchain/     # LangChain toolkit (v1.0.0 published)
-│   ├── sardis-crewai/        # CrewAI multi-agent integration
-│   ├── sardis-autogpt/       # AutoGPT block integration
-│   ├── sardis-openai-agents/ # OpenAI Agents SDK integration
-│   ├── sardis-openai/        # OpenAI direct integration
-│   ├── sardis-agent-sdk/     # Claude Agent SDK integration
-│   ├── sardis-adk/           # Google Agent Development Kit
-│   ├── sardis-a2a/           # Google Agent-to-Agent protocol
-│   ├── sardis-agentkit/      # Coinbase AgentKit
-│   ├── sardis-browser-use/   # Browser Use integration
-│   ├── sardis-composio/      # Composio tool marketplace
-│   ├── sardis-openclaw/      # OpenClaw integration
-│   ├── sardis-stagehand/     # Stagehand / Browserbase integration
-│   ├── sardis-ai-sdk/        # Vercel AI SDK integration
-│   ├── sardis-activepieces/  # Activepieces workflow piece
-│   ├── n8n-nodes-sardis/     # n8n workflow automation node
-│   ├── sardis-e2b/           # E2B sandbox template
-│   ├── sardis-gpt/           # ChatGPT Custom GPT Actions
-│   │
-│   │ ── Payment / infra providers ──
-│   ├── sardis-coinbase/    # Coinbase services (CDP, x402, onramp)
-│   ├── sardis-lightspark/  # Lightning Network payments
-│   ├── sardis-striga/      # Striga banking/cards
-│   ├── sardis-mpp/         # Machine Payments Protocol + Tempo payment methods
-│   ├── sardis-ramp/        # On/off ramp providers
-├── contracts/              # Solidity smart contracts
-│   └── src/
-│       ├── SardisWalletFactory.sol
-│       ├── SardisAgentWallet.sol
-│       └── SardisEscrow.sol
+├── apps/api/server/        # Reference FastAPI service (routes/, providers/, dependencies.py, lifespan.py)
 ├── apps/landing/           # Public landing/docs website
+├── packages/               # Exactly 3 published packages
+│   ├── sardis/              # Python umbrella: thin Sardis client + in-repo runtime core
+│   │   └── src/sardis/      #   core/ chain/ protocol/ wallet/ ledger/ cards/ compliance/
+│   │       └── integrations/#   langchain, crewai, openai_agents, anthropic, adk, a2a, ... (submodules)
+│   ├── sardis-js/           # TypeScript SDK (npm name: `sardis`)
+│   └── sardis-mcp-server/   # MCP server (npm: `@sardis/mcp-server`)
+├── contracts/              # Solidity (Foundry): SardisWalletFactory / SardisAgentWallet / SardisEscrow
+├── examples/               # Single-concept runnable scripts (see examples/README.md)
+├── demos/                  # Larger end-to-end scenarios (see demos/README.md)
+├── docs/                   # Public docs incl. docs/oss/ (OSS policy) and docs/architecture/
 ├── tests/                  # Legacy root migration backlog; prefer package tests
-├── examples/               # Usage examples
-├── demos/                  # Demo applications
-├── docs/                   # Public documentation, architecture, OSS policy
-└── scripts/                # Utility scripts
+└── scripts/                # Contributor gate + repo-hygiene checkers
 ```
+
+The old per-package tree (`sardis-core`, `sardis-langchain`, `sardis-coinbase`,
+…, 30+ entries) no longer exists — those are now submodules under
+`packages/sardis/src/sardis/`. Do not cite them as packages.
 
 ## Key Protocols
 
@@ -120,7 +68,7 @@ sardis/
 
 ## Supported Chains & Tokens
 
-**Source of truth:** `packages/sardis-core/src/sardis_v2_core/config.py` (`ChainConfig` list) and `tokens.py` (`contract_addresses` map). Verify against the code before quoting in any pitch / investor deck / marketing copy — this table drifts.
+**Source of truth:** `packages/sardis/src/sardis/core/config.py` (`ChainConfig` list) and `packages/sardis/src/sardis/core/tokens.py` (`contract_addresses` map). Verify against the code before quoting in any pitch / investor deck / marketing copy — this table drifts.
 
 **Production mainnets (live, from `config.py`):**
 
@@ -229,7 +177,7 @@ UPSTASH_REDIS_URL=...        # Caching
 ## Common Tasks
 
 ### Adding a New Chain
-1. Add chain config to `sardis-core/src/sardis_v2_core/config.py`
+1. Add chain config to `packages/sardis/src/sardis/core/config.py`
 2. Add token addresses to `tokens.py`
 3. Update chain executor in `sardis-chain`
 4. Add tests
@@ -248,10 +196,12 @@ UPSTASH_REDIS_URL=...        # Caching
 ## Important Files
 
 ### Core Code
-- `packages/sardis-core/src/sardis_v2_core/config.py` - Central configuration
-- `packages/sardis-core/src/sardis_v2_core/spending_policy.py` - Policy engine
-- `packages/sardis-chain/src/sardis_v2_chain/executor.py` - Chain execution
-- `packages/sardis-protocol/src/sardis_v2_protocol/ap2.py` - AP2 verification
+- `packages/sardis/src/sardis/core/config.py` - Central configuration
+- `packages/sardis/src/sardis/core/spending_policy.py` - Policy engine
+- `packages/sardis/src/sardis/core/orchestrator.py` - PaymentOrchestrator (single authority path)
+- `packages/sardis/src/sardis/chain/executor.py` - Chain execution
+- `packages/sardis/src/sardis/protocol/verifier.py` - AP2 mandate verification
+- `apps/api/server/providers/` - Provider port layer + adapters
 - `contracts/src/SardisAgentWallet.sol` - Agent wallet contract
 
 ### OSS Policy
