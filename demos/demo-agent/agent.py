@@ -32,7 +32,9 @@ class SardisAgent:
         wallet_id: str | None = None,
         agent_id: str | None = None,
     ):
-        self.api_key = api_key or os.getenv("SARDIS_API_KEY", "sk_test_demo")
+        self.api_key = api_key or os.getenv("SARDIS_API_KEY")
+        if not self.api_key:
+            raise ValueError("Set SARDIS_API_KEY (or pass api_key=) to run the demo agent.")
         self.api_url = api_url or os.getenv("SARDIS_API_URL", "http://localhost:8000")
         self.wallet_id = wallet_id
         self.agent_id = agent_id or f"demo_agent_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
@@ -43,10 +45,10 @@ class SardisAgent:
     async def initialize(self) -> None:
         """Initialize the agent with Sardis client and tools."""
         try:
-            from sardis_sdk import SardisClient
-            from sardis_sdk.integrations.langchain import create_sardis_tools
+            from sardis import AsyncSardis
+            from sardis.integrations.langchain import SardisToolkit
 
-            self._client = SardisClient(
+            self._client = AsyncSardis(
                 api_key=self.api_key,
                 base_url=self.api_url,
             )
@@ -69,11 +71,10 @@ class SardisAgent:
                 console.print(f"[green]Created wallet: {self.wallet_id}[/green]")
 
             # Create LangChain tools
-            self._tools = create_sardis_tools(
-                self._client,
+            self._tools = SardisToolkit(
+                client=self._client,
                 wallet_id=self.wallet_id,
-                agent_id=self.agent_id,
-            )
+            ).get_tools()
 
             console.print(f"[green]Agent initialized with {len(self._tools)} tools[/green]")
 
