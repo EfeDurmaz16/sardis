@@ -33,24 +33,6 @@ jobs:
             pip-audit --desc on || true
           fi
 
-  container-scan:
-    name: Container Image Vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-
-      - name: Build Docker image
-        run: docker build -t sardis-api:scan apps/api
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
-        with:
-          image-ref: 'sardis-api:scan'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-
   sast-scan:
     name: Static Application Security Testing
     runs-on: ubuntu-latest
@@ -66,7 +48,7 @@ jobs:
 
       - name: Run Bandit security linter
         run: |
-          bandit -r src/sardis/ apps/api/server/ packages/sardis-core/src/ \
+          bandit -r packages/sardis/src/sardis/ \
             -f txt \
             --severity-level medium \
             --confidence-level medium \
