@@ -949,3 +949,287 @@ class TestACPWebhooks:
             hashlib.sha256,
         ).hexdigest()
         assert computed == parts["v1"]
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator gating (the Sardis moat) — denials block the ACP order
+# ---------------------------------------------------------------------------
+
+
+class TestACPOrchestratorGating:
+    """ACP completion must run the fail-closed authority gates."""
+
+    def _open_session(self, client):
+        resp = client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        )
+        return resp.json()["id"]
+
+    def test_policy_denial_blocks_order(self, acp_app):
+        """A policy denial from the orchestrator blocks the order (403, not paid)."""
+        from sardis.core.orchestrator import PolicyViolationError
+
+        set_acp_orchestrator(
+            acp_app, _DenyingOrchestrator(PolicyViolationError("over_limit", mandate_id="m")),
+        )
+        client = TestClient(acp_app)
+        session_id = self._open_session(client)
+
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json=_spt_body("spt_blocked123"),
+        )
+        assert resp.status_code == 403
+        assert "payment_denied" in str(resp.json()["detail"])
+
+        # Session must NOT be completed.
+        got = client.get(f"/api/v2/acp/checkout_sessions/{session_id}").json()
+        assert got["status"] == "open"
+        assert got["payment"]["status"] in ("pending", "processing")
+
+    def test_revocation_blocks_order(self, acp_app):
+        """A revoked/absent spending mandate (PolicyViolationError) blocks the order."""
+        from sardis.core.orchestrator import PolicyViolationError
+
+        set_acp_orchestrator(
+            acp_app,
+            _DenyingOrchestrator(
+                PolicyViolationError(
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                    mandate_id="m",
+                    rule_id="no_active_spending_mandate",
+                )
+            ),
+        )
+        client = TestClient(acp_app)
+        session_id = self._open_session(client)
+
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json=_spt_body("spt_revoked12"),
+        )
+        assert resp.status_code == 403
+        got = client.get(f"/api/v2/acp/checkout_sessions/{session_id}").json()
+        assert got["status"] == "open"
+
+    def test_compliance_denial_blocks_crypto(self, acp_app, monkeypatch):
+        """A compliance/sanctions denial blocks even a crypto order (403)."""
+        from sardis.core.orchestrator import ComplianceViolationError
+
+        monkeypatch.setenv("SARDIS_ACP_SETTLEMENT_ADDRESS", "0x" + "11" * 20)
+        set_acp_orchestrator(
+            acp_app,
+            _DenyingOrchestrator(ComplianceViolationError("sanctions_hit", mandate_id="m")),
+        )
+        client = TestClient(acp_app)
+        session_id = self._open_session(client)
+
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json={"crypto_payment": {"tx_hash": "0x" + "a" * 64, "chain": "base", "token": "USDC"}},
+        )
+        assert resp.status_code == 403
+
+    def test_orchestrator_not_wired_fails_closed(self, acp_app):
+        """No orchestrator wired -> 503 (fail-closed, moat never skipped)."""
+        from server.routes.protocol import acp
+
+        acp_app.dependency_overrides[acp.get_deps] = lambda: acp.ACPDependencies(
+            orchestrator=None, chain_executor=None,
+        )
+        client = TestClient(acp_app)
+        session_id = self._open_session(client)
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json=_spt_body("spt_nowire1234"),
+        )
+        assert resp.status_code == 503
+        assert "orchestrator_not_configured" in str(resp.json()["detail"])
+
+
+# ---------------------------------------------------------------------------
+# On-chain crypto verification — succeeded ONLY on confirmed proof
+# ---------------------------------------------------------------------------
+
+_BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+_TRANSFER_SIG = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+_MERCHANT = "0x" + "ab" * 20  # trusted settlement address (lowercased compare)
+
+
+def _topic_addr(addr: str) -> str:
+    return "0x" + "0" * 24 + addr[2:].lower()
+
+
+def _transfer_log(*, token=_BASE_USDC, to=_MERCHANT, value_minor=99_000_000):
+    return {
+        "address": token,
+        "topics": [_TRANSFER_SIG, _topic_addr("0x" + "cd" * 20), _topic_addr(to)],
+        "data": hex(value_minor),
+    }
+
+
+def _receipt(*, status=1, block=100, logs=None):
+    return {
+        "status": hex(status),
+        "blockNumber": hex(block),
+        "logs": logs if logs is not None else [_transfer_log()],
+    }
+
+
+class _FakeRPC:
+    """Minimal fake ProductionRPCClient for on-chain verification tests."""
+
+    def __init__(self, *, receipt=None, current_block=200, raise_on_receipt=False):
+        self._receipt = receipt
+        self._current_block = current_block
+        self._raise = raise_on_receipt
+
+    async def get_transaction_receipt(self, tx_hash):
+        if self._raise:
+            raise RuntimeError("rpc down")
+        return self._receipt
+
+    async def get_block_number(self):
+        return self._current_block
+
+
+class TestACPCryptoOnChainVerification:
+    """processing -> succeeded only when the tx_hash is confirmed on-chain."""
+
+    def _setup(self, acp_app, monkeypatch, fake_rpc):
+        monkeypatch.setenv("SARDIS_ACP_SETTLEMENT_ADDRESS", _MERCHANT)
+        # _AllowingOrchestrator already wired by the fixture.
+        import sardis.chain.rpc_client as rpc_mod
+
+        monkeypatch.setattr(rpc_mod, "get_rpc_client", lambda chain, **k: fake_rpc)
+        return TestClient(acp_app)
+
+    def _open(self, client):
+        return client.post(
+            "/api/v2/acp/checkout_sessions",
+            json={"items": [{"id": "sardis_pro_monthly", "quantity": 1}]},
+        ).json()["id"]
+
+    def _complete(self, client, session_id, tx="0x" + "f" * 64):
+        return client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json={"crypto_payment": {"tx_hash": tx, "chain": "base", "token": "USDC"}},
+        )
+
+    def test_valid_confirmed_tx_succeeds(self, acp_app, monkeypatch):
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=_receipt(), current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["payment"]["status"] == "succeeded"
+        assert data["status"] == "completed"
+
+    def test_not_mined_stays_processing(self, acp_app, monkeypatch):
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=None))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+        assert resp.json()["status"] == "open"
+
+    def test_reverted_tx_is_failed(self, acp_app, monkeypatch):
+        client = self._setup(
+            acp_app, monkeypatch, _FakeRPC(receipt=_receipt(status=0), current_block=200),
+        )
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        # A reverted tx is a genuine failure, never succeeded/completed.
+        assert resp.json()["payment"]["status"] == "failed"
+        assert resp.json()["status"] == "open"
+
+    def test_insufficient_confirmations_stays_processing(self, acp_app, monkeypatch):
+        # base requires 3 confs; block=100, current=101 -> only 2 confs.
+        client = self._setup(
+            acp_app, monkeypatch, _FakeRPC(receipt=_receipt(block=100), current_block=101),
+        )
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_wrong_recipient_stays_processing(self, acp_app, monkeypatch):
+        bad = _receipt(logs=[_transfer_log(to="0x" + "99" * 20)])
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=bad, current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_underpaid_stays_processing(self, acp_app, monkeypatch):
+        bad = _receipt(logs=[_transfer_log(value_minor=98_000_000)])  # < 99 USDC
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=bad, current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_overpaid_succeeds(self, acp_app, monkeypatch):
+        good = _receipt(logs=[_transfer_log(value_minor=120_000_000)])  # >= 99 USDC
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=good, current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "succeeded"
+
+    def test_wrong_token_contract_stays_processing(self, acp_app, monkeypatch):
+        bad = _receipt(logs=[_transfer_log(token="0x" + "de" * 20)])  # not USDC contract
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=bad, current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_no_transfer_log_stays_processing(self, acp_app, monkeypatch):
+        bad = _receipt(logs=[])
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=bad, current_block=200))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_rpc_error_stays_processing(self, acp_app, monkeypatch):
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(raise_on_receipt=True))
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_no_settlement_address_stays_processing(self, acp_app, monkeypatch):
+        # No SARDIS_ACP_SETTLEMENT_ADDRESS -> cannot verify recipient -> processing.
+        monkeypatch.delenv("SARDIS_ACP_SETTLEMENT_ADDRESS", raising=False)
+        import sardis.chain.rpc_client as rpc_mod
+
+        monkeypatch.setattr(
+            rpc_mod, "get_rpc_client",
+            lambda chain, **k: _FakeRPC(receipt=_receipt(), current_block=200),
+        )
+        client = TestClient(acp_app)
+        session_id = self._open(client)
+        resp = self._complete(client, session_id)
+        assert resp.json()["payment"]["status"] == "processing"
+
+    def test_replay_same_tx_twice_is_idempotent(self, acp_app, monkeypatch):
+        """Verifying the same confirmed tx twice is safe (second attempt 409)."""
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=_receipt(), current_block=200))
+        session_id = self._open(client)
+        first = self._complete(client, session_id)
+        assert first.json()["payment"]["status"] == "succeeded"
+        # Replaying complete on a completed session is rejected (no double-credit).
+        second = self._complete(client, session_id)
+        assert second.status_code == 409
+
+    def test_unsupported_chain_stays_processing(self, acp_app, monkeypatch):
+        monkeypatch.setenv("SARDIS_ACP_SETTLEMENT_ADDRESS", _MERCHANT)
+        import sardis.chain.rpc_client as rpc_mod
+
+        monkeypatch.setattr(
+            rpc_mod, "get_rpc_client",
+            lambda chain, **k: _FakeRPC(receipt=_receipt(), current_block=200),
+        )
+        client = TestClient(acp_app)
+        session_id = self._open(client)
+        resp = client.post(
+            f"/api/v2/acp/checkout_sessions/{session_id}/complete",
+            json={"crypto_payment": {"tx_hash": "0x" + "f" * 64, "chain": "nonsense_chain", "token": "USDC"}},
+        )
+        assert resp.json()["payment"]["status"] == "processing"
