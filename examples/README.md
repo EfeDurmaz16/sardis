@@ -9,16 +9,6 @@ All Python examples target the published `sardis` package
 (`pip install "sardis[langchain]"`, etc.) — each file's docstring lists its
 prerequisites.
 
-## Credential-free (run immediately, no API key)
-
-These exercise in-process Sardis primitives — `python examples/<file>`:
-
-| Example | Concept |
-| --- | --- |
-| [`budget_allocation_demo.py`](budget_allocation_demo.py) | Budget allocation across agents |
-| [`event_webhooks.py`](event_webhooks.py) | EventBus pub/sub + webhook event routing |
-| [`gas_optimizer_demo.py`](gas_optimizer_demo.py) | Multi-chain gas estimation / cheapest route |
-
 ## Require a Sardis API key
 
 Set `export SARDIS_API_KEY=sk_live_...` (the `Sardis` client talks to a Sardis
@@ -30,7 +20,10 @@ deployment). Start here:
 | [`quickstart_5min.py`](quickstart_5min.py) | Full flow: agent → wallet → policy → check → pay |
 | [`agent_to_agent.py`](agent_to_agent.py) | Two agents; one pays the other (policy-enforced) |
 | [`api_demo.py`](api_demo.py) | Drive the reference API + SDK end to end |
-| [`alert_integration_example.py`](alert_integration_example.py) | Real-time alerts + WebSocket alert stream |
+| [`alert_integration_example.py`](alert_integration_example.py) | Real-time alerts via webhook subscriptions (`client.webhooks`) |
+| [`event_webhooks.py`](event_webhooks.py) | Webhook subscription lifecycle + receiver-side signature verify |
+| [`budget_allocation_demo.py`](budget_allocation_demo.py) | Budget across agents via agent groups (`client.groups`) |
+| [`gas_optimizer_demo.py`](gas_optimizer_demo.py) | Cheapest-route payments via `pay.execute` auto-routing |
 
 ## Framework integrations (API key + framework deps)
 
