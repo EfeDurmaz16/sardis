@@ -1,8 +1,8 @@
 """sardis — Payment OS for the Agent Economy.
 
 Public surface is intentionally tiny so ``import sardis`` stays fast.
-Submodules (``sardis.core``, ``sardis.cards``, etc.) load lazily via PEP 562
-``__getattr__`` only when accessed.
+The thin-client submodules (``sardis.cli``, ``sardis.integrations``) load
+lazily via PEP 562 ``__getattr__`` only when accessed.
 """
 from __future__ import annotations
 
@@ -17,20 +17,12 @@ if TYPE_CHECKING:
 __all__ = ["Sardis", "AsyncSardis", "__version__"]
 
 # Public, advertised submodules shipped in the published wheel. The thin-client
-# surface only — the CLI and the framework integrations.
+# surface only — the CLI and the framework integrations. The backend engine
+# (core, chain, cards, checkout, compliance, wallet, ledger, ucp, ramp,
+# guardrails, protocol) lives in the private service repository and is not part
+# of this public package.
 _LAZY_SUBMODULES = frozenset({
     "cli", "integrations",
-})
-
-# Backend submodules. These are NOT shipped in the published PyPI wheel (see the
-# exclude list in pyproject.toml). They exist only in the source tree / editable
-# workspace install used by apps/api. We do NOT advertise them in __dir__ or in
-# the public lazy set, and a pip consumer cannot import them — in particular
-# ``sardis.chain.ChainExecutor`` (a policy-BYPASSING executor) is unreachable
-# from the published package. They remain importable in-repo for the backend.
-_BACKEND_SUBMODULES = frozenset({
-    "core", "cards", "ledger", "chain", "ucp", "protocol",
-    "compliance", "guardrails", "checkout", "wallet", "ramp",
 })
 
 
@@ -55,13 +47,6 @@ def __getattr__(name: str) -> Any:
         globals()[name] = value
         return value
     if name in _LAZY_SUBMODULES:
-        module = importlib.import_module(f"sardis.{name}")
-        globals()[name] = module
-        return module
-    # Backend submodules are not advertised, but if the source tree / editable
-    # backend is present (apps/api), allow in-repo access. In the published
-    # wheel these modules are absent, so the import raises ModuleNotFoundError.
-    if name in _BACKEND_SUBMODULES:
         module = importlib.import_module(f"sardis.{name}")
         globals()[name] = module
         return module

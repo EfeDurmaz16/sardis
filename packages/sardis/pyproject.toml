@@ -84,57 +84,19 @@ Changelog     = "https://github.com/EfeDurmaz16/sardis/blob/main/packages/sardis
 
 # PUBLISHED WHEEL SURFACE (thin client only).
 #
-# The source tree under src/sardis also contains the backend (core, chain,
-# cards, checkout, compliance, wallet, ledger, ucp, ramp, guardrails, protocol).
-# apps/api imports those locally via the editable workspace install
-# (`[tool.uv.sources] sardis = { path = "packages/sardis", editable = true }`),
-# so excluding them here does NOT affect the dev/test suite — only the artifact
-# uploaded to PyPI.
-#
-# We EXCLUDE the backend from the published wheel for two reasons:
-#   1. Moat leak: shipping sardis.chain made ChainExecutor (a policy-BYPASSING
-#      executor that talks straight to the orchestrator-less dispatch path)
-#      importable by any pip user. The published surface must not expose an
-#      execution path that skips the policy engine.
-#   2. Dependency bloat: the backend pulls in asyncpg/fastapi/web3/etc. that a
-#      thin API client does not need.
-#
-# The published wheel contains ONLY the thin client surface:
+# The backend engine (core, chain, cards, checkout, compliance, wallet, ledger,
+# ucp, ramp, guardrails, protocol) no longer lives in this public source tree —
+# it was moved to the private service repository as part of the OSS/private
+# split. The published wheel therefore contains ONLY the thin client surface,
+# which is also the entire source tree here:
 #   _client, _version, bulk, pagination, telemetry, py.typed,
 #   resources/, models/, integrations/, cli/.
-# (protocol/ is excluded: it is server-side API payloads coupled to sardis.core
-#  — "Typed protocol payloads for the API service" — not a pip-consumer surface.)
+#
+# This keeps the public surface free of (a) any policy-BYPASSING execution path
+# and (b) heavy backend dependencies (asyncpg/fastapi/web3/etc.).
 [tool.hatch.build.targets.wheel]
 packages = ["src/sardis"]
-exclude = [
-  "src/sardis/core",
-  "src/sardis/chain",
-  "src/sardis/cards",
-  "src/sardis/checkout",
-  "src/sardis/compliance",
-  "src/sardis/wallet",
-  "src/sardis/ledger",
-  "src/sardis/ucp",
-  "src/sardis/ramp",
-  "src/sardis/guardrails",
-  "src/sardis/protocol",
-]
 
 [tool.hatch.build.targets.sdist]
-# The sdist mirrors the published wheel surface (thin client only). The backend
-# stays in the git source tree for the editable workspace install but is not
-# distributed.
+# The sdist mirrors the thin client surface in src/sardis.
 include = ["/src", "/README.md", "/CHANGELOG.md", "/LICENSE"]
-exclude = [
-  "src/sardis/core",
-  "src/sardis/chain",
-  "src/sardis/cards",
-  "src/sardis/checkout",
-  "src/sardis/compliance",
-  "src/sardis/wallet",
-  "src/sardis/ledger",
-  "src/sardis/ucp",
-  "src/sardis/ramp",
-  "src/sardis/guardrails",
-  "src/sardis/protocol",
-]
