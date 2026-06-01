@@ -694,6 +694,272 @@ class PaymentOrchestrator:
         if inspect.isawaitable(result):
             await result
 
+    async def evaluate_chain(self, chain: MandateChain) -> None:
+        """Run the fail-closed authority *gates* for a mandate chain WITHOUT
+        dispatching, recording spend, or appending to the ledger.
+
+        This is the gating-only sibling of :meth:`execute_chain`.  It runs the
+        same collaborators in the same fail-closed order:
+
+            Phase 0    KYA verification
+            Phase 0.5  spending-mandate lookup + scope/limits (revocation is
+                       enforced here — a revoked/absent mandate yields a deny)
+            Phase 1    spending-policy validation
+            Phase 1.5  group policy
+            Phase 1.6  Guard / RiskEngine
+            Phase 2    compliance / sanctions
+
+        It is intended for money paths where Sardis is NOT the party that moves
+        the funds — e.g. the ACP merchant path, where the buyer's agent has
+        ALREADY broadcast an on-chain transfer (crypto) or an external PSP /
+        issuer captures the card.  Calling :meth:`execute_chain` there would
+        dispatch a SECOND payment (double-spend); this method applies the
+        Sardis moat (mandate / policy / Guard / revocation / KYA / compliance)
+        without touching the chain.
+
+        Approval-escalation outcomes (mandate / policy / Guard ``require_approval``)
+        are treated as denials here (raised), because there is no money path to
+        suspend pending a human decision — the order must NOT proceed unless the
+        gates pass outright.  Proof of settlement is verified separately by the
+        caller (e.g. on-chain receipt verification for crypto).
+
+        Raises
+        ------
+        KYAViolationError, MandateViolationError, PolicyViolationError,
+        ComplianceViolationError, RiskViolationError
+            On any deny / fail-closed outcome.  No money moves and nothing is
+            recorded.
+        """
+        payment = chain.payment
+        mandate_id = payment.mandate_id
+        agent_id = getattr(payment, "agent_id", None) or getattr(payment, "from_agent", None)
+
+        # ── Phase 0: KYA Verification (fail-closed) ─────────────────────────
+        if self._kya_service is not None and agent_id:
+            try:
+                from decimal import Decimal as _Dec
+                pay_amount = getattr(payment, "amount", None) or getattr(payment, "amount_minor", 0)
+                merchant_id = getattr(payment, "merchant_id", None)
+                kya_result = await self._kya_service.check_agent(
+                    agent_id=agent_id,
+                    amount=_Dec(str(pay_amount)),
+                    merchant_id=merchant_id,
+                )
+                if not kya_result.allowed:
+                    self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, False,
+                               {"agent_id": agent_id, "gate_only": True},
+                               kya_result.reason)
+                    raise KYAViolationError(
+                        kya_result.reason or "kya_denied",
+                        mandate_id=mandate_id,
+                        kya_level=getattr(kya_result, "level", None),
+                        reason=kya_result.reason,
+                    )
+                self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, True,
+                           {"agent_id": agent_id, "gate_only": True})
+            except KYAViolationError:
+                raise
+            except Exception as e:
+                self._audit(mandate_id, ExecutionPhase.KYA_VERIFICATION, False,
+                           {"gate_only": True}, error=f"kya_error: {e}")
+                raise KYAViolationError(f"KYA verification error: {e}", mandate_id=mandate_id)
+
+        # ── Phase 0.5: Spending Mandate Validation (fail-closed) ────────────
+        if self._spending_mandate_lookup is not None:
+            wallet_id = getattr(payment, "wallet_id", None) or getattr(payment, "subject", None)
+            try:
+                try:
+                    spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
+                        agent_id=agent_id, wallet_id=wallet_id, payment=payment,
+                    )
+                except TypeError:
+                    spending_mandate = await self._spending_mandate_lookup.get_active_mandate(
+                        agent_id=agent_id, wallet_id=wallet_id,
+                    )
+            except MandateViolationError:
+                raise
+            except Exception as e:
+                self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                           {"agent_id": agent_id, "wallet_id": wallet_id, "gate_only": True},
+                           error=f"mandate_lookup_error: {e}")
+                raise PolicyViolationError(
+                    f"Spending mandate lookup error (fail-closed): {e}",
+                    mandate_id=mandate_id, rule_id="spending_mandate_lookup_error",
+                )
+
+            if spending_mandate is None:
+                # Revoked / suspended / expired / exhausted / never issued — DENY.
+                self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                           {"agent_id": agent_id, "wallet_id": wallet_id,
+                            "reason": "no_active_spending_mandate", "gate_only": True},
+                           "No active spending mandate authorizes this payment")
+                raise PolicyViolationError(
+                    "No active spending mandate authorizes this payment "
+                    "(revoked, suspended, expired, or never issued)",
+                    mandate_id=mandate_id, rule_id="no_active_spending_mandate",
+                )
+
+            pay_amount = _resolve_token_amount(payment)
+            merchant_id = getattr(payment, "merchant_id", None) or getattr(payment, "destination", None)
+            check = spending_mandate.check_payment(
+                amount=pay_amount,
+                merchant=merchant_id,
+                rail=getattr(payment, "rail", None),
+                chain=getattr(payment, "chain", None),
+                token=getattr(payment, "token", None),
+            )
+            if not check.approved:
+                self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                           {"spending_mandate_id": spending_mandate.id,
+                            "error_code": check.error_code, "gate_only": True},
+                           check.reason)
+                raise MandateViolationError(
+                    check.reason, mandate_id=mandate_id, error_code=check.error_code,
+                )
+            if check.requires_approval:
+                # No money path to suspend in a gate-only evaluation — deny.
+                self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, False,
+                           {"spending_mandate_id": spending_mandate.id,
+                            "requires_approval": True, "gate_only": True},
+                           "Mandate requires human approval (denied in gate-only path)")
+                raise MandateViolationError(
+                    "Payment requires human approval and cannot be auto-approved "
+                    "on this path",
+                    mandate_id=mandate_id, error_code="MANDATE_APPROVAL_REQUIRED",
+                    requires_approval=True,
+                )
+            self._audit(mandate_id, ExecutionPhase.MANDATE_VALIDATION, True,
+                       {"spending_mandate_id": spending_mandate.id, "gate_only": True})
+
+        # ── Phase 1: Policy Validation (fail-closed) ────────────────────────
+        try:
+            if hasattr(self._wallet_manager, "async_validate_policies"):
+                policy = await self._wallet_manager.async_validate_policies(payment)
+            else:
+                policy = self._wallet_manager.validate_policies(payment)
+            if not policy.allowed:
+                self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                           {"rule_id": getattr(policy, "rule_id", None), "gate_only": True},
+                           policy.reason)
+                raise PolicyViolationError(
+                    policy.reason or "policy_denied",
+                    mandate_id=mandate_id, rule_id=getattr(policy, "rule_id", None),
+                )
+            _policy_reason = getattr(policy, "reason", None) or ""
+            if "requires_approval" in _policy_reason or getattr(policy, "required_approvals", 0) > 0:
+                self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                           {"requires_approval": True, "gate_only": True}, _policy_reason)
+                raise PolicyViolationError(
+                    "Policy requires human approval for this payment",
+                    mandate_id=mandate_id, rule_id="policy_requires_approval",
+                )
+            self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, True,
+                       {"rule_id": getattr(policy, "rule_id", None), "gate_only": True})
+        except PolicyViolationError:
+            raise
+        except Exception as e:
+            self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                       {"gate_only": True}, error=str(e))
+            raise PolicyViolationError(f"Policy validation error: {e}", mandate_id=mandate_id)
+
+        # ── Phase 1.5: Group Policy (fail-closed) ───────────────────────────
+        if self._group_policy is not None and agent_id:
+            try:
+                from decimal import Decimal as _Decimal
+                pay_amount = getattr(payment, "amount", None) or getattr(payment, "amount_minor", 0)
+                group_result = await self._group_policy.evaluate(
+                    agent_id=agent_id,
+                    amount=_Decimal(str(pay_amount)),
+                    fee=_Decimal(str(getattr(payment, "fee", None) or "0")),
+                    merchant_id=getattr(payment, "merchant_id", None),
+                    merchant_category=getattr(payment, "merchant_category", None),
+                )
+                if not group_result.allowed:
+                    self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                               {"group_reason": group_result.reason, "gate_only": True},
+                               f"group_policy_denied: {group_result.reason}")
+                    raise PolicyViolationError(
+                        f"Group policy denied: {group_result.reason}",
+                        mandate_id=mandate_id,
+                        rule_id=f"group:{getattr(group_result, 'group_id', 'unknown')}",
+                    )
+            except PolicyViolationError:
+                raise
+            except Exception as e:
+                self._audit(mandate_id, ExecutionPhase.POLICY_VALIDATION, False,
+                           {"gate_only": True}, error=f"group_policy_error: {e}")
+                raise PolicyViolationError(f"Group policy error: {e}", mandate_id=mandate_id)
+
+        # ── Phase 1.6: Guard / Risk Assessment (fail-closed) ────────────────
+        if self._risk_engine is not None:
+            risk_amount = _resolve_token_amount(payment)
+            risk_counterparty = getattr(payment, "merchant_id", None) or getattr(payment, "destination", None)
+            try:
+                from sardis.guardrails.risk_engine import GuardAction
+                meta = getattr(payment, "metadata", None) or {}
+                decision = await self._risk_engine.assess(
+                    agent_id=str(agent_id or ""),
+                    amount=risk_amount,
+                    counterparty=risk_counterparty,
+                    merchant_category=getattr(payment, "merchant_category", None)
+                    or meta.get("merchant_category"),
+                    baseline_mean=meta.get("baseline_mean"),
+                    baseline_std=meta.get("baseline_std"),
+                    recent_tx_count_1h=meta.get("recent_tx_count_1h", 0),
+                    is_new_merchant=meta.get("is_new_merchant", False),
+                    hour_of_day=meta.get("hour_of_day"),
+                    typical_hours=meta.get("typical_hours"),
+                    signal_context=meta.get("signal_context"),
+                )
+            except RiskViolationError:
+                raise
+            except Exception as e:
+                self._audit(mandate_id, ExecutionPhase.RISK_ASSESSMENT, False,
+                           {"agent_id": agent_id, "gate_only": True},
+                           error=f"risk_engine_error: {e}")
+                raise RiskViolationError(f"Risk assessment error: {e}", mandate_id=mandate_id)
+
+            evidence = decision.to_dict()
+            # BLOCK and REQUIRE_APPROVAL both deny on the gate-only path (no money
+            # path to suspend pending a human decision). FLAG/ALLOW proceed.
+            if decision.action in (GuardAction.BLOCK, GuardAction.REQUIRE_APPROVAL):
+                self._audit(mandate_id, ExecutionPhase.RISK_ASSESSMENT, False,
+                           {"agent_id": agent_id, "action": decision.action.value,
+                            "score": decision.combined_score, "evidence": evidence,
+                            "gate_only": True},
+                           f"guard_denied: score={decision.combined_score:.1f}")
+                raise RiskViolationError(
+                    f"Payment denied by Guard risk engine "
+                    f"(action={decision.action.value}, score={decision.combined_score:.1f}/100)",
+                    mandate_id=mandate_id, score=decision.combined_score, evidence=evidence,
+                )
+            self._audit(mandate_id, ExecutionPhase.RISK_ASSESSMENT, True,
+                       {"agent_id": agent_id, "action": decision.action.value,
+                        "score": decision.combined_score, "gate_only": True})
+
+        # ── Phase 2: Compliance / Sanctions (fail-closed) ───────────────────
+        try:
+            compliance = await self._compliance.preflight(payment)
+            if not compliance.allowed:
+                self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
+                           {"provider": compliance.provider, "rule_id": compliance.rule_id,
+                            "gate_only": True},
+                           compliance.reason)
+                raise ComplianceViolationError(
+                    compliance.reason or "compliance_denied",
+                    mandate_id=mandate_id, provider=compliance.provider,
+                    rule_id=compliance.rule_id,
+                )
+            self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, True,
+                       {"provider": compliance.provider, "rule_id": compliance.rule_id,
+                        "gate_only": True})
+        except ComplianceViolationError:
+            raise
+        except Exception as e:
+            self._audit(mandate_id, ExecutionPhase.COMPLIANCE_CHECK, False,
+                       {"gate_only": True}, error=str(e))
+            raise ComplianceViolationError(f"Compliance check error: {e}", mandate_id=mandate_id)
+
     async def execute_chain(
         self,
         chain: MandateChain,
