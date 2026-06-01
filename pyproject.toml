@@ -41,12 +41,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# All Sardis sub-functionality now lives in the umbrella `sardis` package.
-# Install with extras: `pip install sardis[langchain,crewai,openai-agents,...]`
-# See packages/sardis/pyproject.toml for the full extras list.
-all = [
-    "sardis[anthropic,langchain,crewai,openai-agents,autogpt,browser-use,composio,adk,a2a,ai-sdk,postgres,redis,immudb,chain]",
-]
+# End-user integration extras live on the published `sardis` package itself —
+# install with e.g. `pip install sardis[langchain,crewai,openai-agents,...]`
+# (see packages/sardis/pyproject.toml for the full list). The workspace
+# coordinator deliberately does NOT pull an `all` umbrella: those heavy,
+# opt-in integration deps (crewai/browser-use/etc.) should not enter the
+# repo's dev lock — keeping them out drops a pile of transitive-only CVEs
+# (chromadb/pillow/ecdsa/…) that never touch the client SDK core runtime.
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
