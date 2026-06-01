@@ -211,6 +211,14 @@ class PaymentResult:
     #: 0.5).  Recorded here so it can be bound into the portable
     #: Proof-of-Authority emitted on every authorized execution.
     delegation_chain: list[Any] = field(default_factory=list)
+    #: Portable, offline-verifiable Proof-of-Authority emitted on every ALLOWED
+    #: execution alongside the ExecutionReceipt.  Self-contained: an
+    #: ``AuthorityProof`` (sardis.core.authority_proof) signed with Ed25519 that
+    #: a merchant / auditor / regulator can verify with the PUBLISHED public key
+    #: — no DB, no live Sardis.  Binds {action id, agent, amount, counterparty,
+    #: policy_hash, mandate_hash, delegation_chain, decision=ALLOWED, issued_at,
+    #: evaluated inputs}.  None only on the legacy paths where no money moved.
+    authority_proof: Any | None = None
 
 
 @dataclass
@@ -592,6 +600,7 @@ class PaymentOrchestrator:
         recourse_engine: Any | None = None,
         recourse_window_resolver: Any | None = None,
         risk_engine: Any | None = None,
+        authority_proof_secret: bytes | str | None = None,
     ) -> None:
         self._wallet_manager = wallet_manager
         self._compliance = compliance
@@ -632,6 +641,11 @@ class PaymentOrchestrator:
         # path is unchanged (back-compat) — the a2a route still runs the legacy
         # anomaly guardrail.  This NEVER fails open on a money path.
         self._risk_engine = risk_engine
+        # Optional override for the Ed25519 signing key used to mint the portable
+        # Proof-of-Authority (sardis.core.authority_proof).  None -> resolved from
+        # SARDIS_AUTHORITY_PROOF_PRIVATE_KEY (fail-closed in prod/staging) at sign
+        # time.  Tests inject a deterministic 32-byte seed.
+        self._authority_proof_secret = authority_proof_secret
         self._audit_log: deque[ExecutionAuditEntry] = deque(maxlen=10_000)
 
         # Warn when using in-memory audit log in production
@@ -1561,8 +1575,17 @@ class PaymentOrchestrator:
                 f"mandate_id={mandate_id}, tx_hash={receipt.tx_hash}, error={e}"
             )
 
-            # Return result with warning - payment DID succeed
+            # Return result with warning - payment DID succeed (money moved
+            # on-chain), so the action WAS authorized — emit the proof too.
             execution_time = (time.time() - start_time) * 1000
+            authority_proof = self._emit_authority_proof(
+                payment=payment,
+                receipt=receipt,
+                mandate_id=mandate_id,
+                spending_mandate=spending_mandate,
+                spending_mandate_id=spending_mandate_id,
+                delegation_chain=delegation_chain,
+            )
             result = PaymentResult(
                 mandate_id=mandate_id,
                 ledger_tx_id="PENDING_RECONCILIATION",
@@ -1576,6 +1599,7 @@ class PaymentOrchestrator:
                 fastpath=fastpath if fastpath.eligible else None,
                 spending_mandate_id=spending_mandate_id,
                 delegation_chain=delegation_chain,
+                authority_proof=authority_proof,
             )
             await self._dedup_store.check_and_set(mandate_id, result)
             return result
@@ -1608,6 +1632,16 @@ class PaymentOrchestrator:
                 spending_mandate=spending_mandate,
             )
 
+        # ── Portable Proof-of-Authority (emitted on every ALLOWED execution) ─
+        authority_proof = self._emit_authority_proof(
+            payment=payment,
+            receipt=receipt,
+            mandate_id=mandate_id,
+            spending_mandate=spending_mandate,
+            spending_mandate_id=spending_mandate_id,
+            delegation_chain=delegation_chain,
+        )
+
         result = PaymentResult(
             mandate_id=mandate_id,
             ledger_tx_id=ledger_tx.tx_id,
@@ -1621,9 +1655,110 @@ class PaymentOrchestrator:
             spending_mandate_id=spending_mandate_id,
             recourse_hold_id=recourse_hold_id,
             delegation_chain=delegation_chain,
+            authority_proof=authority_proof,
         )
         await self._dedup_store.check_and_set(mandate_id, result)
         return result
+
+    def _emit_authority_proof(
+        self,
+        *,
+        payment: Any,
+        receipt: Any,
+        mandate_id: str,
+        spending_mandate: Any | None,
+        spending_mandate_id: str,
+        delegation_chain: list[Any],
+    ) -> Any | None:
+        """Mint the portable Proof-of-Authority for this ALLOWED execution.
+
+        Emitted alongside the ExecutionReceipt.  Self-contained and signed with
+        Ed25519 so any holder of the PUBLISHED public key can verify offline that
+        this agent was authorized for this exact action — binding the policy /
+        mandate snapshot, the evaluated inputs, and (when delegated) the whole
+        attenuated delegation chain.  Fail-closed-but-safe: the money already
+        moved, so a failure here is audited and swallowed (never crash a settled
+        payment) — but in prod/staging a missing signing key DOES raise at sign
+        time, which is the intended fail-closed posture for a credential.
+        """
+        try:
+            from .approval_gate import hash_snapshot
+            from .authority_proof import build_authority_proof
+
+            agent = (
+                getattr(payment, "agent_id", None)
+                or getattr(payment, "from_agent", None)
+                or getattr(payment, "subject", None)
+                or "unknown_agent"
+            )
+            # When the action ran under delegation, the acting principal is the
+            # leaf delegatee; bind that as the authorized agent.
+            if delegation_chain:
+                leaf = delegation_chain[-1]
+                agent = getattr(leaf, "delegatee", None) or agent
+
+            amount_minor = int(getattr(payment, "amount_minor", 0) or 0)
+            token = getattr(payment, "token", None)
+            currency = str(token) if token is not None else getattr(payment, "currency", "USDC")
+            counterparty = (
+                getattr(payment, "merchant_id", None)
+                or getattr(payment, "destination", None)
+                or getattr(payment, "to_address", None)
+                or "unknown_counterparty"
+            )
+            amount_major = _resolve_token_amount(payment)
+
+            # Policy / mandate snapshot hashes — the same canonical snapshot
+            # binding used by the recourse / approval paths.
+            mandate_hash = hash_snapshot(spending_mandate) if spending_mandate else ""
+            policy_hash = hash_snapshot(
+                {
+                    "mandate_id": mandate_id,
+                    "agent": agent,
+                    "amount_minor": amount_minor,
+                    "currency": currency,
+                    "counterparty": counterparty,
+                    "spending_mandate_id": spending_mandate_id,
+                }
+            )
+
+            inputs = {
+                "rail": getattr(payment, "rail", None),
+                "chain": getattr(payment, "chain", None) or getattr(receipt, "chain", None),
+                "token": str(token) if token is not None else None,
+                "category": getattr(payment, "category", None),
+                "mcc": getattr(payment, "mcc", None),
+                "tx_hash": getattr(receipt, "tx_hash", None),
+            }
+
+            proof = build_authority_proof(
+                action_id=mandate_id,
+                agent=str(agent),
+                amount_minor=amount_minor,
+                currency=str(currency),
+                counterparty=str(counterparty),
+                policy_hash=policy_hash,
+                mandate_hash=mandate_hash,
+                spending_mandate_id=spending_mandate_id,
+                amount=amount_major,
+                inputs=inputs,
+                delegation_chain=delegation_chain,
+                secret=self._authority_proof_secret,
+            )
+            self._audit(
+                mandate_id, ExecutionPhase.COMPLETED, True,
+                {"authority_proof_id": proof.proof_id,
+                 "is_delegated": bool(delegation_chain),
+                 "delegation_depth": (len(delegation_chain) - 1) if delegation_chain else 0},
+            )
+            return proof
+        except Exception as e:  # noqa: BLE001 - never crash a settled payment
+            self._audit(
+                mandate_id, ExecutionPhase.COMPLETED, False,
+                error=f"authority_proof_emit_failed: {e}",
+            )
+            logger.error("Authority proof emission failed for mandate=%s: %s", mandate_id, e)
+            return None
 
     async def _maybe_open_recourse(
         self,

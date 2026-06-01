@@ -48,6 +48,16 @@ from .approval_context import (
     hash_value,
     verify_approval_context,
 )
+from .authority_proof import (
+    AuthorityProof,
+    build_authority_proof,
+    new_proof_id,
+    public_jwk,
+    public_key_b64url,
+    public_key_bytes,
+    reduce_delegation_chain,
+    resolve_signing_key,
+)
 from .cache import CacheBackend, CacheService, InMemoryCache, RedisCache, create_cache_service
 from .cell_claim import CellClaimAlgorithm, InsufficientCellsError
 from .circuit_breaker import (
@@ -427,6 +437,15 @@ __all__ = [
     "hash_value",
     "hash_cart",
     "verify_approval_context",
+    # Proof-of-Authority (portable, offline-verifiable credential)
+    "AuthorityProof",
+    "build_authority_proof",
+    "new_proof_id",
+    "public_jwk",
+    "public_key_b64url",
+    "public_key_bytes",
+    "reduce_delegation_chain",
+    "resolve_signing_key",
     # Exceptions
     "SardisException",
     "SardisValidationError",
