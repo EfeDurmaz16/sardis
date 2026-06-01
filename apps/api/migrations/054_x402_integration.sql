@@ -2,6 +2,21 @@
 -- Extends existing x402_settlements table with control plane tracking fields
 -- and adds pricing rules for server-side middleware.
 
+-- Base x402_settlements table. Canonical definition lives in
+-- packages/sardis/src/sardis/core/database.py; created here so the SQL
+-- migration chain is self-contained on a fresh database. IF NOT EXISTS keeps
+-- this a no-op on any DB where the table already exists.
+CREATE TABLE IF NOT EXISTS x402_settlements (
+    payment_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'verified',
+    challenge JSONB,
+    payload JSONB,
+    tx_hash TEXT,
+    settled_at TIMESTAMPTZ,
+    error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Add control plane integration columns to existing x402_settlements table
 DO $$
 BEGIN
