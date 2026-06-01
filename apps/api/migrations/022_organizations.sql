@@ -3,8 +3,13 @@
 
 -- Table 1: organizations
 -- Top-level organizational entity with billing and plan information
+-- NOTE: organizations.id is UUID (defined canonically in migration 001).
+-- This CREATE TABLE IF NOT EXISTS is a no-op on any DB where 001 already ran;
+-- it is kept only so a fresh apply has the table present. The id type here
+-- MUST match 001 (UUID) so the foreign keys below resolve. Migration 086
+-- reconciles the remaining columns onto the 001 schema.
 CREATE TABLE IF NOT EXISTS organizations (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
     plan TEXT NOT NULL DEFAULT 'free',  -- free, pro, enterprise
@@ -17,11 +22,23 @@ CREATE TABLE IF NOT EXISTS organizations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Reconcile the 001 organizations schema (id, external_id, name, settings,
+-- is_active, ...) with the columns this migration and the org router expect.
+-- On a fresh DB the CREATE TABLE IF NOT EXISTS above is a no-op (001 already
+-- created the table), so add the missing columns idempotently before indexing
+-- them. Mirrors migration 086 (which remains an idempotent no-op afterward).
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS slug TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS billing_email TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
+
 -- Table 2: teams
 -- Teams within organizations with optional hierarchy and budget limits
 CREATE TABLE IF NOT EXISTS teams (
     id TEXT PRIMARY KEY,
-    org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     parent_team_id TEXT REFERENCES teams(id) ON DELETE SET NULL,
     budget_limit NUMERIC(38,18),  -- Optional spending cap for this team
@@ -35,7 +52,7 @@ CREATE TABLE IF NOT EXISTS teams (
 -- User memberships in organizations with roles and team assignments
 CREATE TABLE IF NOT EXISTS org_members (
     id TEXT PRIMARY KEY,
-    org_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     user_id TEXT NOT NULL,  -- External user ID (from auth system)
     role TEXT NOT NULL DEFAULT 'viewer',  -- org_admin, team_admin, policy_admin, agent_operator, viewer
     teams TEXT[] DEFAULT '{}',  -- Array of team IDs this member belongs to
@@ -72,7 +89,7 @@ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'agents' AND column_name = 'org_id'
     ) THEN
-        ALTER TABLE agents ADD COLUMN org_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+        ALTER TABLE agents ADD COLUMN org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
         CREATE INDEX idx_agents_org_id ON agents(org_id);
     END IF;
 END $$;
@@ -97,7 +114,7 @@ BEGIN
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'wallets' AND column_name = 'org_id'
         ) THEN
-            ALTER TABLE wallets ADD COLUMN org_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+            ALTER TABLE wallets ADD COLUMN org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
             CREATE INDEX idx_wallets_org_id ON wallets(org_id);
         END IF;
     END IF;
@@ -111,7 +128,7 @@ BEGIN
             SELECT 1 FROM information_schema.columns
             WHERE table_name = 'api_keys' AND column_name = 'org_id'
         ) THEN
-            ALTER TABLE api_keys ADD COLUMN org_id TEXT REFERENCES organizations(id) ON DELETE CASCADE;
+            ALTER TABLE api_keys ADD COLUMN org_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
             CREATE INDEX idx_api_keys_org_id ON api_keys(org_id);
         END IF;
     END IF;
