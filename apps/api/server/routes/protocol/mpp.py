@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from decimal import Decimal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -57,6 +56,7 @@ from server.repositories.mpp_session_repository import (
     record_payment,
 )
 from server.services.mpp_execution import execute_chain_payment
+from server.services.mpp_policy import evaluate_mpp_policy
 from server.services.mpp_virtual_cards import issue_mpp_virtual_card
 
 logger = logging.getLogger(__name__)
@@ -243,12 +243,6 @@ async def close_session(
     return mpp_session_response_from_record(session)
 
 
-# Number of distinct checks the SpendingPolicy engine runs (see
-# SpendingPolicy.evaluate docstring). Reported for transparency; the engine
-# short-circuits on the first failure.
-_POLICY_CHECK_COUNT = 12
-
-
 async def _evaluate_against_real_policy(
     req: PolicyEvaluateRequest,
     request: Request,
@@ -258,98 +252,38 @@ async def _evaluate_against_real_policy(
 
     Fail-closed: requires an agent_id and a resolvable policy. Any engine error,
     missing store, missing agent, or missing policy => DENY. There is no
-    default-allow path.
+    default-allow path. Delegates to the shared ``evaluate_mpp_policy`` engine
+    (the single MPP policy source of truth) after enforcing org authorization.
     """
-    if not req.agent_id:
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason="agent_id_required_for_policy_evaluation",
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
-
     policy_store = getattr(request.app.state, "policy_store", None)
-    if policy_store is None:
-        # No policy engine wired => cannot make a real decision => deny.
-        logger.error("MPP /evaluate: no policy_store on app.state — failing closed")
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason="policy_store_not_configured",
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
 
-    # Authorization: an org may only evaluate its own agents.
-    agent_repo = getattr(request.app.state, "agent_repo", None)
-    if agent_repo is not None:
-        agent = await agent_repo.get(req.agent_id)
-        if not agent:
-            raise HTTPException(status_code=404, detail="Agent not found")
-        if not principal.is_admin and agent.owner_id != principal.org_id:
-            raise HTTPException(status_code=403, detail="Access denied")
+    # Authorization: an org may only evaluate its own agents. This happens
+    # before the shared evaluator (which performs no ownership check). We only
+    # look the agent up when we have a real agent_id and store to act on.
+    if req.agent_id:
+        agent_repo = getattr(request.app.state, "agent_repo", None)
+        if agent_repo is not None:
+            agent = await agent_repo.get(req.agent_id)
+            if not agent:
+                raise HTTPException(status_code=404, detail="Agent not found")
+            if not principal.is_admin and agent.owner_id != principal.org_id:
+                raise HTTPException(status_code=403, detail="Access denied")
 
-    try:
-        policy = await policy_store.fetch_policy(req.agent_id)
-    except Exception as exc:  # store/db error => fail closed
-        logger.error("MPP /evaluate: policy fetch failed for %s: %s", req.agent_id, exc)
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason="policy_lookup_error",
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
-
-    if policy is None:
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason="no_policy_for_agent",
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
-
-    # Real deterministic execution-context guard (chain/token allowlists).
-    ctx_ok, ctx_reason = policy.validate_execution_context(
-        destination=None,
-        chain=req.network,
-        token=req.currency,
+    decision = await evaluate_mpp_policy(
+        policy_store=policy_store,
+        agent_id=req.agent_id,
+        amount=req.amount,
+        merchant=req.merchant,
+        currency=req.currency,
+        network=req.network,
+        merchant_category=req.merchant_category,
+        mcc_code=req.mcc_code,
     )
-    if not ctx_ok:
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason=ctx_reason,
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
-
-    # Real SpendingPolicy evaluation (same engine the orchestrator uses, minus
-    # the on-chain balance lookup which a dry-run pre-flight cannot perform).
-    try:
-        ok, reason = policy.validate_payment(
-            amount=req.amount,
-            fee=Decimal("0"),
-            merchant_id=req.merchant,
-            merchant_category=req.merchant_category,
-            mcc_code=req.mcc_code,
-        )
-    except Exception as exc:  # any engine error => fail closed
-        logger.error("MPP /evaluate: policy engine error for %s: %s", req.agent_id, exc)
-        return PolicyEvaluateResponse(
-            allowed=False,
-            reason="policy_engine_error",
-            checks_passed=0,
-            checks_total=_POLICY_CHECK_COUNT,
-        )
-
-    logger.info(
-        "MPP policy evaluation (real): agent=%s amount=%s merchant=%s result=%s reason=%s",
-        req.agent_id, req.amount, req.merchant, "ALLOWED" if ok else "DENIED", reason,
-    )
-
     return PolicyEvaluateResponse(
-        allowed=ok,
-        reason=reason,
-        checks_passed=_POLICY_CHECK_COUNT if ok else _POLICY_CHECK_COUNT - 1,
-        checks_total=_POLICY_CHECK_COUNT,
+        allowed=decision.allowed,
+        reason=decision.reason,
+        checks_passed=decision.checks_passed,
+        checks_total=decision.checks_total,
     )
 
 
@@ -387,19 +321,18 @@ async def issue_virtual_card(
     req: IssueCardRequest,
     principal: Principal = Depends(require_principal),
 ):
-    """Issue a virtual prepaid card via Laso Finance MPP service.
+    """Issue a virtual prepaid card. Amount must be between $5 and $1,000.
 
-    The card is a non-reloadable Visa prepaid card issued through
-    the Locus MPP proxy. Amount must be between $5 and $1,000.
+    Provider status (see PROTO_mpp_report.md, decision D1):
+    - Sandbox / non-live mode (SARDIS_CHAIN_MODE != "live"): returns a simulated
+      card (``sandbox=true``) — working, for development only.
+    - Live mode: depends on a real MPP card issuer (Laso/Locus) that is NOT yet
+      integrated (``sardis_mpp`` package does not exist). The live path therefore
+      returns 503 — it never fakes a real card. Enabling live issuance requires a
+      founder decision on the issuer integration.
 
-    If session_id is provided, the card amount will be deducted
-    from the MPP session budget.
-
-    Restrictions:
-    - US-only (IP-locked)
-    - Non-reloadable
-    - No 3D Secure
-    - Card amount must match checkout total exactly
+    If session_id is provided, the card amount is checked against (and on success
+    deducted from) the MPP session budget.
     """
     # If session provided, check budget
     if req.session_id:
