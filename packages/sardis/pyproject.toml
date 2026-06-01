@@ -58,9 +58,11 @@ ai-sdk        = []
 postgres      = ["psycopg[binary,pool]>=3.2", "sqlalchemy>=2.0"]
 redis         = ["redis>=5.2"]
 immudb        = ["immudb-py>=1.5"]
-chain         = ["web3>=6.20", "eth-account>=0.13", "eth-abi>=5.0"]
+# NOTE: the `chain` extra (web3/eth-account/eth-abi) was removed — the public
+# `sardis` package is the HTTP client SDK and does no on-chain work; on-chain
+# execution lives in the private backend. (Dropped a no-fix `ecdsa` vuln.)
 all = [
-  "sardis[anthropic,langchain,crewai,openai-agents,autogpt,browser-use,composio,adk,a2a,ai-sdk,postgres,redis,immudb,chain]",
+  "sardis[anthropic,langchain,crewai,openai-agents,autogpt,browser-use,composio,adk,a2a,ai-sdk,postgres,redis,immudb]",
 ]
 dev = [
   "pytest>=8.0",
