@@ -1,0 +1,68 @@
+{
+  "name": "@sardis/nemoclaw",
+  "version": "0.1.0",
+  "description": "NemoClaw governance layer for Sardis — governs an agent's spend inside a sandboxed container. Wraps the five Sardis verbs with the classify -> commit -> allow/requires_approval/deny gate, binding the sandboxId into every commit.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "keywords": [
+    "sardis",
+    "nemoclaw",
+    "ai-agents",
+    "agent-payments",
+    "sandbox",
+    "governance",
+    "typescript"
+  ],
+  "author": "Sardis <sdk@sardis.sh>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "directory": "packages/sardis-nemoclaw"
+  },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+  },
+  "dependencies": {
+    "@sardis/agent-tools": "workspace:*",
+    "sardis": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "sideEffects": false
+}

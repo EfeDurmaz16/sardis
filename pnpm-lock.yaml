@@ -331,6 +331,28 @@ importers:
         specifier: ^4.1.1
         version: 4.1.1(@opentelemetry/api@1.9.1)(@types/node@20.19.30)(jsdom@25.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))(msw@2.12.9(@types/node@20.19.30)(typescript@5.9.3))(vite@8.0.12(@types/node@20.19.30)(esbuild@0.27.2)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))
 
+  packages/sardis-nemoclaw:
+    dependencies:
+      '@sardis/agent-tools':
+        specifier: workspace:*
+        version: link:../sardis-agent-tools
+      sardis:
+        specifier: workspace:*
+        version: link:../sardis-js
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.30
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(@microsoft/api-extractor@7.57.7(@types/node@20.19.30))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.1(@opentelemetry/api@1.9.1)(@types/node@20.19.30)(jsdom@25.0.1(bufferutil@4.1.0)(utf-8-validate@6.0.6))(msw@2.12.9(@types/node@20.19.30)(typescript@5.9.3))(vite@8.0.12(@types/node@20.19.30)(esbuild@0.27.2)(jiti@2.6.1)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.3))
+
   packages/sardis-reference:
     dependencies:
       '@noble/ed25519':
