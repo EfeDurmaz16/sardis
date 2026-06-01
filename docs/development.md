@@ -36,7 +36,7 @@ pnpm repo:core-imports
 pnpm repo:package-validation
 pnpm repo:stale-paths:local
 pnpm check:openapi
-pnpm --filter @sardis/sdk typecheck
+pnpm --filter sardis typecheck
 pnpm --filter @sardis/mcp-server build
 uv run pytest apps/api/tests/test_merchant_checkout.py -q
 ```
