@@ -32,7 +32,7 @@ require_match 'VITE_API_URL: https://api-staging.sardis.sh' .github/workflows/de
 require_match 'VITE_API_URL: https://api.sardis.sh' .github/workflows/deploy.yml "prod landing deploy must use prod API URL"
 require_match 'deploy-api-staging:' .github/workflows/deploy.yml "deploy workflow missing API staging job"
 require_match 'deploy-api-production:' .github/workflows/deploy.yml "deploy workflow missing API production job"
-require_match 'alembic upgrade head' .github/workflows/deploy.yml "API deploy must run alembic migrations"
+require_match 'bash scripts/run_migrations.sh' .github/workflows/deploy.yml "API deploy must run the SQL migration runner (alembic retired)"
 require_match 'Release gate - webhook conformance' .github/workflows/deploy.yml "deploy workflow must include webhook conformance release gate"
 require_match 'webhook_conformance_check.sh' .github/workflows/deploy.yml "deploy workflow must run webhook conformance script"
 
