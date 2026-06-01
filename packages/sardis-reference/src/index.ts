@@ -7,6 +7,18 @@
  * owns execution; this package owns the decision contract so the ecosystem can
  * audit it offline.
  *
- * Barrels are populated by the type/policy/verify modules in later commits.
+ * Public surface:
+ *   - types   : the authority-primitive contract (Money, SpendObject,
+ *               SpendingPolicy, Mandate, Delegation, Revocation,
+ *               ProofOfAuthority, AP2/TAP/x402 types, 9 ProviderPorts).
+ *   - policy  : simulateSpend / checkExecutionContext / checkMandate /
+ *               checkAttenuation / resolveChain  (the decision engine).
+ *   - verify  : verifyAuthorityProof / verifyDelegationEvidence /
+ *               verifyRevocationProof / verifyChainStructure / computeDrift /
+ *               verifyTapRequest / validateAuthorizationTiming /
+ *               verifyTimingAndBinding / eip712Digest  (the verifiers).
  */
-export {};
+
+export * from './types/index.js';
+export * from './policy/index.js';
+export * from './verify/index.js';
