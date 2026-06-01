@@ -1,5 +1,11 @@
 """MPP dual-access gate — FastAPI dependency for pay-per-request endpoints.
 
+THIS is Sardis's MPP-*conformant* surface: it speaks the "Payment" HTTP
+authentication scheme (402 challenge → client pays off-band on Tempo → retry
+with ``Authorization: Payment <credential>`` → 200 + ``Payment-Receipt``) via
+the pympp SDK. (The session/budget authority in ``routes/protocol/mpp.py`` is
+NOT the wire protocol — it is a Sardis-native Postgres surface.)
+
 Dual access logic:
 - Authorization header present and does NOT start with "Payment " → authenticated
   user, pass through free.  The endpoint's own auth dependency (require_principal,
@@ -7,8 +13,16 @@ Dual access logic:
 - Authorization header starts with "Payment " → MPP credential, validate payment.
 - No Authorization header → return 402 with WWW-Authenticate challenge via pympp.
 
+Fail-closed (money path): a paid gate must never serve free data when it cannot
+verify payment. If pympp is not installed or ``MPP_SECRET_KEY`` is unset, every
+unauthenticated request gets 503 (payment verification unavailable) — never a
+silent 200. Replay protection is mandatory: a settled tx hash that has already
+been consumed is rejected via a durable replay store.
+
 Env vars:
-    MPP_SECRET_KEY      — HMAC secret shared with MPP network (required for challenge)
+    MPP_SECRET_KEY      — HMAC secret for stateless challenge verification.
+                          REQUIRED for the gate to verify payments. Missing ⇒
+                          paid requests fail closed (503), never free.
     MPP_RECIPIENT       — Wallet address that receives payments
     SARDIS_MPP_NETWORK  — "testnet" (default) or "mainnet"
 """
@@ -24,6 +38,8 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import Response as StarletteResponse
+
+from server.middleware.mpp_replay_store import CacheBackedReplayStore
 
 
 class _Mpp402(Exception):
@@ -82,19 +98,69 @@ _DEFAULT_RECIPIENT = "0x99085505f506576c5C5342cAFEf14d6be43e0E9C"
 _mpp_server: Any = None
 
 
-def _get_mpp_server() -> Any:
-    """Create and cache the Mpp server instance."""
+def reset_mpp_server() -> None:
+    """Drop the cached Mpp server (test isolation / config reload)."""
+    global _mpp_server
+    _mpp_server = None
+
+
+def _resolve_secret_key() -> str | None:
+    """Read the MPP HMAC secret. Returns None (not "") if unset/blank."""
+    secret = os.getenv("MPP_SECRET_KEY", "").strip()
+    return secret or None
+
+
+def _resolve_replay_store(request: Request | None) -> Any:
+    """Build a durable replay store from the app's cache backend, if available.
+
+    Returns a ``CacheBackedReplayStore`` (backed by Redis when configured, else
+    in-memory) or ``None`` when no cache backend is reachable. ``None`` means
+    pympp runs without its store-based tx-hash replay protection, so we only
+    permit that in non-fatal dev paths — production wiring always has a cache
+    backend on ``app.state.cache_service``.
+    """
+    cache_service = getattr(getattr(request, "app", None), "state", None)
+    cache_service = getattr(cache_service, "cache_service", None) if cache_service else None
+    backend = getattr(cache_service, "_backend", None)
+    if backend is None:
+        return None
+    return CacheBackedReplayStore(backend)
+
+
+def _get_mpp_server(request: Request | None = None) -> Any:
+    """Create and cache the Mpp server instance.
+
+    Returns ``None`` when the gate cannot verify payments — i.e. pympp is not
+    installed OR ``MPP_SECRET_KEY`` is unset. Callers MUST treat ``None`` as
+    fail-closed (deny / 503), never as free passthrough.
+    """
     global _mpp_server
     if _mpp_server is not None:
         return _mpp_server
 
     if not _HAS_MPP:
+        logger.warning("MPP gate: pympp not installed — paid requests will fail closed (503)")
+        return None
+
+    secret_key = _resolve_secret_key()
+    if secret_key is None:
+        logger.warning(
+            "MPP gate: MPP_SECRET_KEY unset — cannot verify payments, paid requests "
+            "will fail closed (503)"
+        )
         return None
 
     network = os.getenv("SARDIS_MPP_NETWORK", "testnet").strip().lower()
     cfg = _NETWORK_CONFIG.get(network, _NETWORK_CONFIG["testnet"])
 
     recipient = os.getenv("MPP_RECIPIENT", _DEFAULT_RECIPIENT)
+
+    store = _resolve_replay_store(request)
+    if store is None:
+        logger.warning(
+            "MPP gate: no cache backend on app.state.cache_service — tx-hash replay "
+            "protection runs without a durable store (dev only)"
+        )
 
     method = tempo(
         intents={"charge": ChargeIntent()},
@@ -103,15 +169,21 @@ def _get_mpp_server() -> Any:
         recipient=recipient,
     )
 
+    # secret_key + store passed explicitly: secret enables stateless challenge
+    # verification; store is auto-wired into ChargeIntent for tx-hash replay
+    # protection (Mpp._wire_store).
     _mpp_server = Mpp.create(
         method=method,
         realm="sardis.sh",
+        secret_key=secret_key,
+        store=store,
     )
     logger.info(
-        "MPP gate server initialised (network=%s, chain=%s, recipient=%s)",
+        "MPP gate server initialised (network=%s, chain=%s, recipient=%s, replay_store=%s)",
         network,
         cfg["chain_id"],
         recipient,
+        "durable" if store is not None else "none",
     )
     return _mpp_server
 
@@ -166,14 +238,31 @@ def mpp_gate(
                 },
             )
 
-        server = _get_mpp_server()
+        def _unavailable_response() -> JSONResponse:
+            # Fail-closed: the gate cannot verify payment (pympp missing or
+            # MPP_SECRET_KEY unset). A paid endpoint MUST NOT serve free data,
+            # so we deny rather than pass through.
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "payment_verification_unavailable",
+                    "message": (
+                        "This endpoint requires payment via MPP, but payment "
+                        "verification is not currently available. Authenticate "
+                        "with an API key for free access."
+                    ),
+                    "docs": "https://docs.sardis.sh/mpp",
+                },
+            )
+
+        server = _get_mpp_server(request)
 
         # -----------------------------------------------------------
         # 2. MPP payment credential — validate
         # -----------------------------------------------------------
         if authorization.startswith("Payment "):
             if server is None:
-                return  # pympp not installed → no-op
+                raise _Mpp402(response=_unavailable_response())
 
             result = await server.charge(
                 authorization=authorization,
@@ -207,7 +296,8 @@ def mpp_gate(
         # 3. No auth, no payment → issue 402 challenge
         # -----------------------------------------------------------
         if server is None:
-            return  # pympp not installed → no-op passthrough
+            # Fail-closed: cannot mint a verifiable challenge → deny, never free.
+            raise _Mpp402(response=_unavailable_response())
 
         result = await server.charge(
             authorization=None,
@@ -249,6 +339,7 @@ def add_mpp_receipt_header(request: Request, response: JSONResponse) -> None:
 __all__ = [
     "mpp_gate",
     "add_mpp_receipt_header",
+    "reset_mpp_server",
     "_Mpp402",
     "_mpp_402_handler",
 ]

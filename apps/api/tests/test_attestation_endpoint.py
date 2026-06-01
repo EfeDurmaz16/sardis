@@ -12,7 +12,7 @@ from sardis.core.attestation_envelope import (
     verify_attestation_signature,
 )
 
-from server.authz import Principal, require_principal
+from server.authz import Principal, optional_principal, require_principal
 from server.routes.evidence.attestation import router
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -30,8 +30,22 @@ def _admin_principal() -> Principal:
 def _build_app() -> FastAPI:
     app = FastAPI()
     app.dependency_overrides[require_principal] = _admin_principal
+    # The endpoint resolves the caller via optional_principal; override it to an
+    # authenticated principal so these tests exercise attestation logic, not the
+    # payment gate (the gate has its own dedicated tests in test_mpp_gate.py).
+    app.dependency_overrides[optional_principal] = _admin_principal
     app.include_router(router, prefix="/api/v2")
     return app
+
+
+# The attestation endpoint is behind the MPP pay-per-request gate, which is
+# fail-closed: unauthenticated callers must pay (or get 503 when payment
+# verification is unavailable). These tests exercise the *authenticated-free*
+# path — the documented "API key / JWT => free" branch — so we send a
+# non-"Payment " Authorization header (the gate passes any non-"Payment "
+# Authorization through free; the overridden optional_principal supplies the
+# resolved caller).
+_FREE_AUTH = {"Authorization": "Bearer test-authenticated-caller"}
 
 
 class _FakeConn:
@@ -196,7 +210,7 @@ def test_attestation_endpoint_returns_envelope():
     client = TestClient(app)
 
     with patch(_POOL_PATCH, new=AsyncMock(return_value=pool)):
-        resp = client.get("/api/v2/payments/pay_001/attestation")
+        resp = client.get("/api/v2/payments/pay_001/attestation", headers=_FREE_AUTH)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -217,7 +231,7 @@ def test_attestation_endpoint_404_not_found():
     client = TestClient(app)
 
     with patch(_POOL_PATCH, new=AsyncMock(return_value=pool)):
-        resp = client.get("/api/v2/payments/pay_unknown/attestation")
+        resp = client.get("/api/v2/payments/pay_unknown/attestation", headers=_FREE_AUTH)
 
     assert resp.status_code == 404
     assert "not found" in resp.json()["detail"].lower()
@@ -242,7 +256,7 @@ def test_attestation_endpoint_404_no_decision():
     client = TestClient(app)
 
     with patch(_POOL_PATCH, new=AsyncMock(return_value=pool)):
-        resp = client.get("/api/v2/payments/pay_002/attestation")
+        resp = client.get("/api/v2/payments/pay_002/attestation", headers=_FREE_AUTH)
 
     assert resp.status_code == 404
     assert "attestation" in resp.json()["detail"].lower()
