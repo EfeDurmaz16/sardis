@@ -22,3 +22,4 @@
 export * from './types/index.js';
 export * from './policy/index.js';
 export * from './verify/index.js';
+export * as identity from './identity/index.js';

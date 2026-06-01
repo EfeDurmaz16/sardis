@@ -79,6 +79,36 @@ const ok = verifyAuthorityProof(proof, publishedEd25519PublicKeyB64url);
 // wrong key — makes this false.
 ```
 
+## Agent identity — issue a proof (TS), verify anywhere
+
+The verify side above is symmetric with an **issue** side under
+`@sardis/reference/identity`: a TS agent runtime can MINT a Proof-of-Authority
+that the Python backend (and the verifier above) accepts with only the published
+public key. Both sides sign **byte-identical** canonical claims.
+
+```ts
+import { identity } from '@sardis/reference';
+// or: import { issueAuthorityProof, publicKeyB64url } from '@sardis/reference/identity';
+
+const proof = identity.issueAuthorityProof(
+  {
+    actionId: 'act_123',
+    agent: 'agent_b',
+    amountMinor: 5_000_000n, // 5 USDC, minor units — never a float
+    currency: 'USDC',
+    counterparty: 'merchant.example',
+  },
+  ed25519PrivateSeed, // 32-byte seed (raw / hex / base64url); dev seed by default
+);
+
+const jws = identity.toJws(proof);                 // "<payload>.<signature>"
+identity.verifyAuthorityProof(proof, identity.publicKeyB64url(ed25519PrivateSeed)); // true
+```
+
+The private seed is always supplied by the caller — this package has **no key
+custody and no env-key resolution** (production signing lives fail-closed in the
+private backend). It signs a *claim about authority*; it never moves money.
+
 ## Mandates, delegation, and protocol verifiers
 
 ```ts
