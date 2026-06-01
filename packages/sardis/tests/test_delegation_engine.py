@@ -30,18 +30,18 @@ SECRET = "test-delegation-secret"
 
 def _root_mandate(**overrides) -> SpendingMandate:
     """A $500 root mandate for agent A, scoped to two counterparties."""
-    defaults = dict(
-        principal_id="usr_human",
-        issuer_id="usr_human",
-        id="mandate_root_A",
-        agent_id="agent_A",
-        amount_total=Decimal("500"),
-        amount_per_tx=Decimal("500"),
-        currency="USDC",
-        merchant_scope={"allowed": ["aws.amazon.com", "openai.com", "anthropic.com"]},
-        allowed_rails=["usdc", "card"],
-        expires_at=datetime.now(UTC) + timedelta(days=30),
-    )
+    defaults = {
+        "principal_id": "usr_human",
+        "issuer_id": "usr_human",
+        "id": "mandate_root_A",
+        "agent_id": "agent_A",
+        "amount_total": Decimal("500"),
+        "amount_per_tx": Decimal("500"),
+        "currency": "USDC",
+        "merchant_scope": {"allowed": ["aws.amazon.com", "openai.com", "anthropic.com"]},
+        "allowed_rails": ["usdc", "card"],
+        "expires_at": datetime.now(UTC) + timedelta(days=30),
+    }
     defaults.update(overrides)
     return SpendingMandate(**defaults)
 
@@ -266,7 +266,7 @@ async def test_valid_chain_resolves_and_authorizes():
 
     chain = await eng.resolve_chain("tool_C")
     # root mandate + B + C, root-first.
-    assert [getattr(x, "id") for x in chain] == [root.id, b.id, c.id]
+    assert [x.id for x in chain] == [root.id, b.id, c.id]
 
     res = await eng.check_chain(
         chain, amount=Decimal("15"), counterparty="openai.com", rail="usdc"
