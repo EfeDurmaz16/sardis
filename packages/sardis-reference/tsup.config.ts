@@ -1,0 +1,20 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: {
+    index: 'src/index.ts',
+    'types/index': 'src/types/index.ts',
+    'policy/index': 'src/policy/index.ts',
+    'verify/index': 'src/verify/index.ts',
+  },
+  format: ['esm', 'cjs'],
+  dts: true,
+  sourcemap: true,
+  clean: true,
+  splitting: false,
+  treeshake: true,
+  target: 'node18',
+  outExtension({ format }) {
+    return { js: format === 'cjs' ? '.cjs' : '.js' };
+  },
+});
