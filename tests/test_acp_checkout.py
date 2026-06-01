@@ -26,10 +26,12 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _clean_acp_state():
     """Reset in-memory ACP state between tests."""
-    from server.routes.protocol.acp import _sessions
+    from server.routes.protocol.acp import _sessions, _tx_claims
     _sessions.clear()
+    _tx_claims.clear()
     yield
     _sessions.clear()
+    _tx_claims.clear()
 
 
 @pytest.fixture
@@ -1233,3 +1235,42 @@ class TestACPCryptoOnChainVerification:
             json={"crypto_payment": {"tx_hash": "0x" + "f" * 64, "chain": "nonsense_chain", "token": "USDC"}},
         )
         assert resp.json()["payment"]["status"] == "processing"
+
+    def test_same_tx_cannot_settle_two_sessions(self, acp_app, monkeypatch):
+        """REGRESSION (double-credit): one confirmed on-chain tx settles exactly
+        ONE ACP order.  Replaying the same tx_hash against a SECOND session must
+        be refused (409) and that session must NOT be credited.
+        """
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=_receipt(), current_block=200))
+        tx = "0x" + "a1" * 32
+
+        # Session 1: pays $99 USDC on-chain -> succeeds (legitimately).
+        s1 = self._open(client)
+        r1 = self._complete(client, s1, tx=tx)
+        assert r1.status_code == 200
+        assert r1.json()["payment"]["status"] == "succeeded"
+
+        # Session 2: a brand-new $99 cart, reusing the SAME tx_hash. The tx is
+        # genuinely confirmed on-chain to the merchant for >= the amount, so the
+        # on-chain verifier alone would pass — the claim registry must block it.
+        s2 = self._open(client)
+        r2 = self._complete(client, s2, tx=tx)
+        assert r2.status_code == 409
+        assert "already" in str(r2.json()["detail"]).lower()
+
+        # Session 2 must remain unpaid/open (never credited off a reused tx).
+        view = client.get(f"/api/v2/acp/checkout_sessions/{s2}").json()
+        assert view["payment"]["status"] != "succeeded"
+        assert view["status"] != "completed"
+
+    def test_same_session_retry_after_success_is_409_not_double_claim(
+        self, acp_app, monkeypatch
+    ):
+        """Re-completing the SAME session (idempotent retry) is the already-
+        completed 409, not a tx-claim collision against itself."""
+        client = self._setup(acp_app, monkeypatch, _FakeRPC(receipt=_receipt(), current_block=200))
+        tx = "0x" + "b2" * 32
+        s = self._open(client)
+        assert self._complete(client, s, tx=tx).json()["payment"]["status"] == "succeeded"
+        again = self._complete(client, s, tx=tx)
+        assert again.status_code == 409
