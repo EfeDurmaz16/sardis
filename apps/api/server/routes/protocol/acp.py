@@ -178,6 +178,31 @@ def _gen_session_id() -> str:
     return f"csn_{secrets.token_hex(12)}"
 
 
+def _resolve_settlement_address(chain: str | None = None) -> str | None:
+    """Resolve the TRUSTED merchant settlement (pay-to) address for crypto.
+
+    This is the address the buyer's agent must pay for an on-chain ACP order to
+    be verifiable.  It MUST come from trusted merchant configuration, bound at
+    session-create time and never mutable by the agent — otherwise on-chain
+    "paid to the expected recipient" verification would be meaningless (an
+    attacker could point the check at their own address).  We NEVER derive the
+    recipient from the transaction itself.
+
+    Resolution order (per-chain override first, then a global default):
+      * ``SARDIS_ACP_SETTLEMENT_ADDRESS_<CHAIN>`` (e.g. ``..._BASE``)
+      * ``SARDIS_ACP_SETTLEMENT_ADDRESS``
+
+    Returns ``None`` when no trusted address is configured — in which case the
+    crypto path CANNOT be completed and MUST stay ``processing`` (fail-closed).
+    """
+    if chain:
+        per_chain = os.getenv(f"SARDIS_ACP_SETTLEMENT_ADDRESS_{chain.upper()}")
+        if per_chain:
+            return per_chain.strip()
+    default = os.getenv("SARDIS_ACP_SETTLEMENT_ADDRESS")
+    return default.strip() if default else None
+
+
 def _mask_token(token: str) -> str:
     """Mask a single-use payment credential before persisting it.
 
@@ -481,6 +506,163 @@ async def _verify_issuer_card(card_ref: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# On-chain crypto verification (processing -> succeeded ONLY on proof)
+# ---------------------------------------------------------------------------
+
+# ERC-20 Transfer(address,address,uint256) event topic0.  Reused from the chain
+# layer's deposit monitor so the decode is consistent everywhere.
+_TRANSFER_EVENT_SIGNATURE = (
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+)
+
+
+class CryptoVerificationError(Exception):
+    """Internal signal that crypto verification could not be completed.
+
+    Raised on ANY degraded / ambiguous path (RPC error, tx not mined, too few
+    confirmations, no matching Transfer log).  The caller treats this as
+    "stay ``processing``" — it is NEVER a success and NEVER a hard failure of
+    the order (the agent can retry once the tx finalizes).  A genuinely *failed*
+    on-chain tx (receipt status == 0) is surfaced via ``tx_failed=True`` so the
+    caller can mark the order ``failed`` instead.
+    """
+
+    def __init__(self, reason: str, *, tx_failed: bool = False) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.tx_failed = tx_failed
+
+
+async def _verify_crypto_onchain(
+    *,
+    tx_hash: str,
+    chain: str,
+    token: str,
+    expected_recipient: str,
+    expected_amount_minor: int,
+) -> dict[str, Any]:
+    """Verify an agent-supplied ``tx_hash`` actually settled the ACP order.
+
+    ALL of the following must hold or the call fails closed (raises
+    :class:`CryptoVerificationError` → caller keeps the order ``processing``):
+
+      1. The tx has a mined receipt (else: not mined yet → processing).
+      2. ``receipt.status == 1`` (0 → the tx reverted: ``tx_failed=True``).
+      3. ``current_block - tx_block + 1 >= confirmations_required`` for the
+         chain (else: mined-but-not-final → processing).
+      4. The receipt contains an ERC-20 ``Transfer`` log where:
+           * ``log.address == STABLECOIN_ADDRESSES[chain][token]`` (the
+             expected token contract — wrong token / unknown chain-token →
+             fail-closed),
+           * decoded ``to == expected_recipient`` (the trusted settlement
+             address — never the tx's own fields),
+           * decoded ``value >= expected_amount_minor`` (overpay OK, underpay
+             fails).
+
+    The recipient is supplied by the caller from trusted session config and is
+    NEVER taken from the transaction.  Returns a small proof dict on success.
+    """
+    # Import the chain layer lazily so the router still loads where the chain
+    # package / RPC config is unavailable (verification then fails closed).
+    try:
+        from sardis.chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
+        from sardis.chain.rpc_client import get_rpc_client
+    except Exception as exc:  # pragma: no cover - import wiring
+        raise CryptoVerificationError(f"chain_layer_unavailable: {exc}") from exc
+
+    chain_tokens = STABLECOIN_ADDRESSES.get(chain)
+    if not chain_tokens:
+        raise CryptoVerificationError(f"unsupported_chain: {chain}")
+    expected_token_addr = chain_tokens.get(str(token).upper())
+    if not expected_token_addr:
+        raise CryptoVerificationError(f"unsupported_token: {token} on {chain}")
+
+    try:
+        rpc = get_rpc_client(chain)
+    except Exception as exc:
+        raise CryptoVerificationError(f"rpc_client_error: {exc}") from exc
+
+    # 1. Receipt — None means not mined yet (stay processing, NOT a failure).
+    try:
+        receipt = await rpc.get_transaction_receipt(tx_hash)
+    except Exception as exc:
+        # RPC error / chain-id mismatch / all endpoints failed -> fail-closed.
+        raise CryptoVerificationError(f"receipt_lookup_error: {exc}") from exc
+    if receipt is None:
+        raise CryptoVerificationError("tx_not_mined")
+
+    # 2. Status — 0 means the tx reverted (a real failure, not a retry case).
+    raw_status = receipt.get("status")
+    try:
+        status_int = int(raw_status, 16) if isinstance(raw_status, str) else int(raw_status)
+    except (TypeError, ValueError) as exc:
+        raise CryptoVerificationError(f"receipt_status_unreadable: {raw_status!r}") from exc
+    if status_int == 0:
+        raise CryptoVerificationError("tx_reverted", tx_failed=True)
+    if status_int != 1:
+        raise CryptoVerificationError(f"unexpected_receipt_status: {status_int}")
+
+    # 3. Confirmations — require chain-specific finality depth.
+    try:
+        tx_block = (
+            int(receipt["blockNumber"], 16)
+            if isinstance(receipt.get("blockNumber"), str)
+            else int(receipt["blockNumber"])
+        )
+        current_block = await rpc.get_block_number()
+    except Exception as exc:
+        raise CryptoVerificationError(f"confirmation_lookup_error: {exc}") from exc
+    confirmations = current_block - tx_block + 1
+    required = ChainExecutor.get_confirmations_required(chain)
+    if confirmations < required:
+        raise CryptoVerificationError(
+            f"insufficient_confirmations: {confirmations}/{required}"
+        )
+
+    # 4. Find a matching ERC-20 Transfer log: token + recipient + amount.
+    logs = receipt.get("logs") or []
+    expected_to = expected_recipient.lower()
+    expected_token_addr_lc = expected_token_addr.lower()
+    matched = False
+    matched_value = 0
+    for log in logs:
+        try:
+            if (log.get("address") or "").lower() != expected_token_addr_lc:
+                continue
+            topics = log.get("topics") or []
+            if len(topics) < 3 or (topics[0] or "").lower() != _TRANSFER_EVENT_SIGNATURE:
+                continue
+            to_addr = ("0x" + topics[2][-40:]).lower()
+            if to_addr != expected_to:
+                continue
+            value = int(log.get("data", "0x"), 16)
+        except (ValueError, TypeError, IndexError):
+            # A malformed log is ignored, not fatal — keep scanning others.
+            continue
+        if value >= expected_amount_minor:
+            matched = True
+            matched_value = value
+            break
+
+    if not matched:
+        raise CryptoVerificationError(
+            "no_matching_transfer: no confirmed Transfer of the expected token "
+            "to the expected recipient for >= the expected amount"
+        )
+
+    return {
+        "tx_hash": tx_hash,
+        "chain": chain,
+        "token": str(token).upper(),
+        "token_contract": expected_token_addr,
+        "recipient": expected_recipient,
+        "amount_minor": matched_value,
+        "confirmations": confirmations,
+        "block_number": tx_block,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Endpoints: Checkout Sessions
 # ---------------------------------------------------------------------------
 
@@ -520,6 +702,11 @@ async def create_checkout_session(
         "buyer_information": body.buyer_information.model_dump() if body.buyer_information else None,
         "affiliate_attribution": body.affiliate_attribution.model_dump() if body.affiliate_attribution else None,
         "webhook_url": body.webhook_url,
+        # Trusted merchant pay-to address bound at create from server config,
+        # immutable for the session lifetime.  Used as the expected on-chain
+        # recipient when verifying a crypto payment; absent -> crypto cannot be
+        # completed (stays processing, fail-closed).
+        "settlement_address": _resolve_settlement_address(),
         "created_at": now,
         "updated_at": now,
     }
