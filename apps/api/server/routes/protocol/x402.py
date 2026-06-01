@@ -95,6 +95,68 @@ class X402ChallengeGenerateResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Signature verification (EIP-3009 / EIP-712) — fail-closed
+# ---------------------------------------------------------------------------
+
+def _verify_x402_signature(payload, challenge) -> tuple[bool, str | None]:
+    """Verify the x402 payload's EIP-3009 signature against its challenge.
+
+    Returns (True, None) only when the signature recovers to the claimed payer,
+    the authorization binds to the challenge's payee + amount, and timing is
+    valid. Any inconsistency → (False, reason). Fail-closed: a missing
+    authorization or signature is a rejection, not a pass.
+    """
+    from sardis.protocol.x402_erc3009 import (
+        ERC3009Authorization,
+        verify_transfer_authorization,
+    )
+
+    auth = payload.authorization or {}
+    if not isinstance(auth, dict) or not auth:
+        return False, "x402_authorization_missing"
+    if not payload.signature:
+        return False, "x402_signature_missing"
+
+    # Required ERC-3009 authorization fields (canonical x402 wire format).
+    try:
+        from_address = str(auth["from"])
+        to_address = str(auth["to"])
+        value = int(auth["value"])
+        valid_after = int(auth.get("validAfter", auth.get("valid_after", 0)))
+        valid_before = int(auth["validBefore"] if "validBefore" in auth else auth["valid_before"])
+        nonce = str(auth["nonce"])
+    except (KeyError, TypeError, ValueError):
+        return False, "x402_authorization_malformed"
+
+    # Bind the signed authorization to the challenge it claims to satisfy.
+    if from_address.lower() != payload.payer_address.lower():
+        return False, "x402_authorization_from_mismatch"
+    if to_address.lower() != challenge.payee_address.lower():
+        return False, "x402_authorization_to_mismatch"
+    if str(value) != str(challenge.amount):
+        return False, "x402_authorization_value_mismatch"
+
+    erc_auth = ERC3009Authorization(
+        from_address=from_address,
+        to_address=to_address,
+        value=value,
+        valid_after=valid_after,
+        valid_before=valid_before,
+        nonce=nonce,
+    )
+
+    ok, reason = verify_transfer_authorization(
+        erc_auth,
+        payload.signature,
+        network=challenge.network,
+        expected_payer=payload.payer_address,
+    )
+    if not ok:
+        return False, f"x402_signature_invalid:{reason}"
+    return True, None
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -131,7 +193,18 @@ async def verify_x402_payload(request: X402VerifyPayloadRequest):
         authorization=request.authorization,
     )
 
+    # Field-level checks (expiry / nonce / amount / payment_id).
     result = verify_payment_payload(payload=payload, challenge=challenge)
+
+    # Real EIP-3009 signature verification (fail-closed, MANDATORY on /verify).
+    # The x402 payment proof is an EIP-712-signed USDC TransferWithAuthorization;
+    # we recover the signer from the signature and bind it to the claimed payer
+    # AND to the challenge's payee/amount/network. A forged or unsigned payload
+    # is rejected here — there is no "accepted without signature" path.
+    if result.accepted:
+        sig_ok, sig_reason = _verify_x402_signature(payload, challenge)
+        if not sig_ok:
+            result = type(result)(False, sig_reason)
 
     # Persist to settlement store
     try:
