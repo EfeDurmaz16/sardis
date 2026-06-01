@@ -11,3 +11,6 @@ export * as delegationEvidence from './delegation-evidence.js';
 export * as revocationProof from './revocation-proof.js';
 export * from './ap2.js';
 export * from './drift.js';
+export * from './tap.js';
+export * from './x402.js';
+export * from './eip712.js';

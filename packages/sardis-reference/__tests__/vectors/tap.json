@@ -1,0 +1,72 @@
+[
+  {
+    "name": "valid",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999940;keyid=\"k1\";alg=\"ed25519\";expires=1000060;nonce=\"n-999940-1000060\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": true,
+      "reason": null
+    }
+  },
+  {
+    "name": "bad_tag",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999940;keyid=\"k1\";alg=\"ed25519\";expires=1000060;nonce=\"n-999940-1000060\";tag=\"nope\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_tag_invalid"
+    }
+  },
+  {
+    "name": "bad_alg",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999940;keyid=\"k1\";alg=\"rsa256\";expires=1000060;nonce=\"n-999940-1000060\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_alg_invalid"
+    }
+  },
+  {
+    "name": "expired",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999880;keyid=\"k1\";alg=\"ed25519\";expires=999990;nonce=\"n-999880-999990\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_expired"
+    }
+  },
+  {
+    "name": "created_not_in_past",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=1000010;keyid=\"k1\";alg=\"ed25519\";expires=1000120;nonce=\"n-1000010-1000120\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_created_not_in_past"
+    }
+  },
+  {
+    "name": "window_too_large",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999940;keyid=\"k1\";alg=\"ed25519\";expires=1010000;nonce=\"n-999940-1010000\";tag=\"agent-payer-auth\"",
+    "signature": "sig1=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_window_too_large"
+    }
+  },
+  {
+    "name": "label_mismatch",
+    "signatureInput": "sig1=(\"@authority\" \"@path\");created=999940;keyid=\"k1\";alg=\"ed25519\";expires=1000060;nonce=\"n-999940-1000060\";tag=\"agent-payer-auth\"",
+    "signature": "sig2=:abcDEF123+/==:",
+    "now": 1000000,
+    "expected": {
+      "accepted": false,
+      "reason": "tap_signature_label_mismatch"
+    }
+  }
+]
