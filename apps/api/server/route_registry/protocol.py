@@ -92,3 +92,29 @@ def register_protocol_v1_routes(app: FastAPI) -> None:
     """Register protocol v1 adapter routes."""
     app.include_router(spt.router, prefix="/api/v2", tags=["spt"])
     app.include_router(acp.router, prefix="/api/v2", tags=["acp"])
+
+
+def register_acp_dependencies(
+    app: FastAPI,
+    *,
+    orchestrator: Any,
+    chain_executor: Any,
+) -> None:
+    """Wire the ACP merchant path to the PaymentOrchestrator.
+
+    ACP runs the orchestrator's fail-closed authority *gates*
+    (``orchestrator.evaluate_chain``) — KYA / spending-mandate / revocation /
+    policy / Guard / compliance — before recording a payment, so ACP is no
+    longer a moat bypass.  It deliberately does NOT use the orchestrator's
+    chain dispatch: the buyer's agent already broadcast the crypto transfer
+    (Sardis verifies the tx on-chain), and an external PSP/issuer captures the
+    card.  Calling dispatch would broadcast a second, double-spending payment.
+
+    Must be called from the app factory (after the orchestrator is built),
+    NOT from the static-route path which has no runtime objects.
+    """
+    app.dependency_overrides[acp.get_deps] = lambda: acp.ACPDependencies(
+        orchestrator=orchestrator,
+        chain_executor=chain_executor,
+    )
+    logger.info("ACP merchant path wired to PaymentOrchestrator (gate-only)")

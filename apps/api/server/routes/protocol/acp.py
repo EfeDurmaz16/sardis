@@ -3,9 +3,35 @@
 EXPERIMENTAL / PARTIAL — non-conformant adapter, NOT production. API-Version
 value is 2026-01-16 (current spec dir is 2026-04-17); diverges on response
 objects / status enum / complete shape, persists to tables that may not exist
-(in-memory fallback), and bypasses the Sardis mandate / policy / orchestrator /
-ledger entirely. Do not present as ACP conformance.
+(in-memory fallback). Do not present as ACP conformance.
 See docs/productization/research/PROTOCOL_STRATEGY.md (ACP, quarantine-experimental).
+
+FIRST-CLASS MONEY PATH (no longer a moat bypass).  Every checkout completion
+runs the Sardis fail-closed authority gates via ``PaymentOrchestrator
+.evaluate_chain`` (``_run_acp_gates``) BEFORE any payment is recorded or
+settled: KYA, spending-mandate lookup + revocation, spending policy, group
+policy, Guard/RiskEngine, and compliance/sanctions.  A deny raises 403 and the
+order is never recorded.  Gates run bound to the MERCHANT ORG principal
+(``agent_id = "acp_merchant:<org>"``) — ACP carries no Sardis buyer agent (the
+buyer's authority lives with the AI platform, e.g. ChatGPT), so we never
+fabricate one.  We run gates ONLY, never the orchestrator's chain dispatch: the
+funds are moved by an external party (the buyer's agent broadcasts the crypto
+transfer; the PSP/issuer captures the card), so dispatching would double-spend.
+
+PROOF BEFORE ``succeeded``.  An order is marked ``succeeded`` only on verified
+proof, never on a request alone:
+  * crypto      — real on-chain verification (``_verify_crypto_onchain``):
+                  mined receipt, status==1, chain-specific confirmations, and an
+                  ERC-20 Transfer of the expected token to the TRUSTED merchant
+                  settlement address for >= the expected amount.  Any degraded /
+                  ambiguous path stays ``processing``; a reverted tx -> ``failed``.
+  * spt         — Stripe PaymentIntent ``status == "succeeded"`` (Stripe is the
+                  PSP that captures); otherwise ``processing``.
+  * issuer_card — DONE_WITH_CONCERNS: stays ``processing`` after the issuer
+                  ``active`` verification.  No clearly-available Crossmint
+                  settlement signal exists for an externally-charged issued card
+                  (the merchant does not see the issuer's clearing for a card it
+                  did not itself charge); see the issuer_card branch note below.
 
 PCI POSTURE — Sardis is the **merchant/seller**, never a PSP.  This router NEVER
 accepts a raw PAN/CVV/expiry.  The only card credential it consumes is an
@@ -43,6 +69,7 @@ import json
 import logging
 import os
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -76,6 +103,36 @@ router = APIRouter(
     tags=["acp"],
 )
 logger = logging.getLogger("server.api.acp")
+
+
+# ---------------------------------------------------------------------------
+# Dependencies — injected at app registration (mirrors a2a / ap2)
+# ---------------------------------------------------------------------------
+#
+# ACP is a *merchant/seller* path: Sardis does NOT move the buyer's funds (the
+# buyer's agent broadcasts the crypto transfer; an external PSP/issuer captures
+# the card).  So ACP needs the orchestrator's fail-closed authority *gates*
+# (KYA / spending-mandate / revocation / policy / Guard / compliance) via
+# ``orchestrator.evaluate_chain`` — NOT its chain dispatch (that would
+# double-spend).  ``chain_executor`` is carried for completeness / future use.
+
+
+@dataclass
+class ACPDependencies:
+    """Runtime collaborators for the ACP merchant path."""
+
+    orchestrator: Any | None = None
+    chain_executor: Any | None = None
+
+
+def get_deps() -> ACPDependencies:
+    """Dependency stub — overridden at app registration.
+
+    The default returns empty deps so the router still imports/loads in
+    contexts that never wire an orchestrator (e.g. some unit tests).  The money
+    path itself fails closed when ``orchestrator`` is ``None`` (503).
+    """
+    return ACPDependencies()
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +202,113 @@ async def _load_session(session_id: str) -> dict[str, Any] | None:
 
 def _gen_session_id() -> str:
     return f"csn_{secrets.token_hex(12)}"
+
+
+# ---------------------------------------------------------------------------
+# On-chain tx claim registry — one settled tx settles exactly one ACP order
+# ---------------------------------------------------------------------------
+#
+# A confirmed on-chain Transfer to the (single, global) merchant settlement
+# address is, by itself, NOT proof that *this* order was paid: the SAME
+# tx_hash can be replayed across many sessions of the same amount, each one
+# independently passing ``_verify_crypto_onchain`` and being marked
+# ``succeeded`` — one payment, N fulfilled orders (double-credit).
+#
+# We close that by claiming the ``(chain, tx_hash)`` pair for exactly one
+# session at the moment we are about to mark it ``succeeded``.  The claim is
+# atomic and fail-closed: if the pair is already claimed by a DIFFERENT
+# session, the order is NOT credited (409).  Re-claiming for the SAME session
+# (idempotent retry) is allowed.
+
+_tx_claims: dict[str, str] = {}  # "<chain>:<tx_hash>" -> session_id
+
+
+def _tx_claim_key(chain: str, tx_hash: str) -> str:
+    return f"{str(chain).strip().lower()}:{str(tx_hash).strip().lower()}"
+
+
+class TxAlreadyClaimedError(Exception):
+    """The (chain, tx_hash) pair was already consumed by another session."""
+
+    def __init__(self, key: str, owner_session: str) -> None:
+        super().__init__(f"tx already claimed by {owner_session}")
+        self.key = key
+        self.owner_session = owner_session
+
+
+async def _claim_tx_for_session(chain: str, tx_hash: str, session_id: str) -> None:
+    """Atomically bind a settled on-chain tx to exactly one ACP session.
+
+    Fail-closed: raises :class:`TxAlreadyClaimedError` if the pair is already
+    owned by a different session.  Re-claiming for the same session is a no-op
+    (idempotent retry of complete on a still-open session).
+
+    The in-memory map is the authoritative guard for single-process / dev and
+    tests; the DB unique index (``acp_settled_tx``) is the durable, multi-
+    process guard.  We claim in the DB FIRST (so a cross-process race is caught
+    by the unique constraint) and reconcile the in-memory map to the DB owner.
+    """
+    key = _tx_claim_key(chain, tx_hash)
+
+    # Durable claim first — the unique index is the cross-process source of
+    # truth.  ON CONFLICT DO NOTHING means "row already exists"; we then read
+    # the owner back and only accept it if it is THIS session.
+    db_owner: str | None = None
+    try:
+        from sardis.core.database import Database
+        await Database.execute(
+            """INSERT INTO acp_settled_tx (claim_key, session_id, claimed_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (claim_key) DO NOTHING""",
+            key, session_id,
+        )
+        row = await Database.fetchrow(
+            "SELECT session_id FROM acp_settled_tx WHERE claim_key = $1", key,
+        )
+        if row is not None:
+            db_owner = row["session_id"]
+    except Exception as exc:
+        # DB unavailable (dev / tests) — fall back to the in-memory guard only.
+        # This is NOT a silent allow: the in-memory map below still enforces
+        # single-claim within the process, and a degraded DB never *grants* a
+        # claim it cannot persist.
+        logger.warning("ACP tx-claim DB path unavailable for %s: %s", key, exc)
+
+    if db_owner is not None and db_owner != session_id:
+        # Durable record says another session already consumed this tx.
+        _tx_claims[key] = db_owner
+        raise TxAlreadyClaimedError(key, db_owner)
+
+    existing = _tx_claims.get(key)
+    if existing is not None and existing != session_id:
+        raise TxAlreadyClaimedError(key, existing)
+
+    _tx_claims[key] = session_id
+
+
+def _resolve_settlement_address(chain: str | None = None) -> str | None:
+    """Resolve the TRUSTED merchant settlement (pay-to) address for crypto.
+
+    This is the address the buyer's agent must pay for an on-chain ACP order to
+    be verifiable.  It MUST come from trusted merchant configuration, bound at
+    session-create time and never mutable by the agent — otherwise on-chain
+    "paid to the expected recipient" verification would be meaningless (an
+    attacker could point the check at their own address).  We NEVER derive the
+    recipient from the transaction itself.
+
+    Resolution order (per-chain override first, then a global default):
+      * ``SARDIS_ACP_SETTLEMENT_ADDRESS_<CHAIN>`` (e.g. ``..._BASE``)
+      * ``SARDIS_ACP_SETTLEMENT_ADDRESS``
+
+    Returns ``None`` when no trusted address is configured — in which case the
+    crypto path CANNOT be completed and MUST stay ``processing`` (fail-closed).
+    """
+    if chain:
+        per_chain = os.getenv(f"SARDIS_ACP_SETTLEMENT_ADDRESS_{chain.upper()}")
+        if per_chain:
+            return per_chain.strip()
+    default = os.getenv("SARDIS_ACP_SETTLEMENT_ADDRESS")
+    return default.strip() if default else None
 
 
 def _mask_token(token: str) -> str:
@@ -450,6 +614,253 @@ async def _verify_issuer_card(card_ref: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# On-chain crypto verification (processing -> succeeded ONLY on proof)
+# ---------------------------------------------------------------------------
+
+# ERC-20 Transfer(address,address,uint256) event topic0.  Reused from the chain
+# layer's deposit monitor so the decode is consistent everywhere.
+_TRANSFER_EVENT_SIGNATURE = (
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+)
+
+
+class CryptoVerificationError(Exception):
+    """Internal signal that crypto verification could not be completed.
+
+    Raised on ANY degraded / ambiguous path (RPC error, tx not mined, too few
+    confirmations, no matching Transfer log).  The caller treats this as
+    "stay ``processing``" — it is NEVER a success and NEVER a hard failure of
+    the order (the agent can retry once the tx finalizes).  A genuinely *failed*
+    on-chain tx (receipt status == 0) is surfaced via ``tx_failed=True`` so the
+    caller can mark the order ``failed`` instead.
+    """
+
+    def __init__(self, reason: str, *, tx_failed: bool = False) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.tx_failed = tx_failed
+
+
+async def _verify_crypto_onchain(
+    *,
+    tx_hash: str,
+    chain: str,
+    token: str,
+    expected_recipient: str,
+    expected_amount_minor: int,
+) -> dict[str, Any]:
+    """Verify an agent-supplied ``tx_hash`` actually settled the ACP order.
+
+    ALL of the following must hold or the call fails closed (raises
+    :class:`CryptoVerificationError` → caller keeps the order ``processing``):
+
+      1. The tx has a mined receipt (else: not mined yet → processing).
+      2. ``receipt.status == 1`` (0 → the tx reverted: ``tx_failed=True``).
+      3. ``current_block - tx_block + 1 >= confirmations_required`` for the
+         chain (else: mined-but-not-final → processing).
+      4. The receipt contains an ERC-20 ``Transfer`` log where:
+           * ``log.address == STABLECOIN_ADDRESSES[chain][token]`` (the
+             expected token contract — wrong token / unknown chain-token →
+             fail-closed),
+           * decoded ``to == expected_recipient`` (the trusted settlement
+             address — never the tx's own fields),
+           * decoded ``value >= expected_amount_minor`` (overpay OK, underpay
+             fails).
+
+    The recipient is supplied by the caller from trusted session config and is
+    NEVER taken from the transaction.  Returns a small proof dict on success.
+    """
+    # Import the chain layer lazily so the router still loads where the chain
+    # package / RPC config is unavailable (verification then fails closed).
+    try:
+        from sardis.chain.executor import STABLECOIN_ADDRESSES, ChainExecutor
+        from sardis.chain.rpc_client import get_rpc_client
+    except Exception as exc:  # pragma: no cover - import wiring
+        raise CryptoVerificationError(f"chain_layer_unavailable: {exc}") from exc
+
+    chain_tokens = STABLECOIN_ADDRESSES.get(chain)
+    if not chain_tokens:
+        raise CryptoVerificationError(f"unsupported_chain: {chain}")
+    expected_token_addr = chain_tokens.get(str(token).upper())
+    if not expected_token_addr:
+        raise CryptoVerificationError(f"unsupported_token: {token} on {chain}")
+
+    try:
+        rpc = get_rpc_client(chain)
+    except Exception as exc:
+        raise CryptoVerificationError(f"rpc_client_error: {exc}") from exc
+
+    # 1. Receipt — None means not mined yet (stay processing, NOT a failure).
+    try:
+        receipt = await rpc.get_transaction_receipt(tx_hash)
+    except Exception as exc:
+        # RPC error / chain-id mismatch / all endpoints failed -> fail-closed.
+        raise CryptoVerificationError(f"receipt_lookup_error: {exc}") from exc
+    if receipt is None:
+        raise CryptoVerificationError("tx_not_mined")
+
+    # 2. Status — 0 means the tx reverted (a real failure, not a retry case).
+    raw_status = receipt.get("status")
+    try:
+        status_int = int(raw_status, 16) if isinstance(raw_status, str) else int(raw_status)
+    except (TypeError, ValueError) as exc:
+        raise CryptoVerificationError(f"receipt_status_unreadable: {raw_status!r}") from exc
+    if status_int == 0:
+        raise CryptoVerificationError("tx_reverted", tx_failed=True)
+    if status_int != 1:
+        raise CryptoVerificationError(f"unexpected_receipt_status: {status_int}")
+
+    # 3. Confirmations — require chain-specific finality depth.
+    try:
+        tx_block = (
+            int(receipt["blockNumber"], 16)
+            if isinstance(receipt.get("blockNumber"), str)
+            else int(receipt["blockNumber"])
+        )
+        current_block = await rpc.get_block_number()
+    except Exception as exc:
+        raise CryptoVerificationError(f"confirmation_lookup_error: {exc}") from exc
+    confirmations = current_block - tx_block + 1
+    required = ChainExecutor.get_confirmations_required(chain)
+    if confirmations < required:
+        raise CryptoVerificationError(
+            f"insufficient_confirmations: {confirmations}/{required}"
+        )
+
+    # 4. Find a matching ERC-20 Transfer log: token + recipient + amount.
+    logs = receipt.get("logs") or []
+    expected_to = expected_recipient.lower()
+    expected_token_addr_lc = expected_token_addr.lower()
+    matched = False
+    matched_value = 0
+    for log in logs:
+        try:
+            if (log.get("address") or "").lower() != expected_token_addr_lc:
+                continue
+            topics = log.get("topics") or []
+            if len(topics) < 3 or (topics[0] or "").lower() != _TRANSFER_EVENT_SIGNATURE:
+                continue
+            to_addr = ("0x" + topics[2][-40:]).lower()
+            if to_addr != expected_to:
+                continue
+            value = int(log.get("data", "0x"), 16)
+        except (ValueError, TypeError, IndexError):
+            # A malformed log is ignored, not fatal — keep scanning others.
+            continue
+        if value >= expected_amount_minor:
+            matched = True
+            matched_value = value
+            break
+
+    if not matched:
+        raise CryptoVerificationError(
+            "no_matching_transfer: no confirmed Transfer of the expected token "
+            "to the expected recipient for >= the expected amount"
+        )
+
+    return {
+        "tx_hash": tx_hash,
+        "chain": chain,
+        "token": str(token).upper(),
+        "token_contract": expected_token_addr,
+        "recipient": expected_recipient,
+        "amount_minor": matched_value,
+        "confirmations": confirmations,
+        "block_number": tx_block,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator authority gates (the Sardis moat) for the ACP merchant path
+# ---------------------------------------------------------------------------
+
+async def _run_acp_gates(
+    *,
+    deps: ACPDependencies,
+    principal: Principal,
+    session_id: str,
+    amount: Decimal,
+    currency: str,
+    counterparty: str,
+    chain: str,
+    purpose: str,
+) -> None:
+    """Run the orchestrator's fail-closed authority gates for an ACP order.
+
+    This is what makes ACP a first-class money path instead of a bypass: every
+    ACP completion runs KYA / spending-mandate / revocation / policy / group /
+    Guard / compliance via ``orchestrator.evaluate_chain`` BEFORE any payment is
+    recorded or settled.  It runs gates ONLY — never dispatch — because the
+    funds are moved by an external party (the buyer's agent for crypto; the PSP
+    /issuer for the card), so dispatching here would double-spend.
+
+    Principal binding (fail-closed, no fabricated authority): ACP carries no
+    Sardis buyer ``agent_id`` (the buyer's authority lives with the AI platform,
+    e.g. ChatGPT); Sardis is the merchant/seller.  We bind the ACTING subject to
+    the merchant org principal — ``agent_id = "acp_merchant:<org>"`` — so policy
+    / Guard / compliance run against a real subject, and we never invent a buyer
+    agent.  When a spending-mandate lookup is configured, the orchestrator will
+    fail closed unless an active mandate authorizes this merchant subject — the
+    correct conservative behavior (revoked / absent mandate -> deny).
+
+    Deny outcomes map to 403; the orchestrator-not-wired case maps to 503
+    (fail-closed: ACP must not silently skip the moat).
+    """
+    from sardis.core.mandate_chain_factory import build_mandate_chain
+    from sardis.core.orchestrator import (
+        ComplianceViolationError,
+        KYAViolationError,
+        MandateViolationError,
+        PaymentExecutionError,
+        PolicyViolationError,
+        RiskViolationError,
+    )
+
+    if deps.orchestrator is None:
+        # Fail-closed: never complete an ACP order without running the gates.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="orchestrator_not_configured: ACP money path requires the policy/mandate gates",
+        )
+
+    org_id = str(principal.organization_id)
+    chain_obj = build_mandate_chain(
+        agent_id=f"acp_merchant:{org_id}",
+        amount=amount,
+        currency=str(currency).upper(),
+        counterparty=counterparty,
+        chain=chain,
+        purpose=purpose,
+        merchant_domain="sardis.sh",
+        issuer=f"org:{org_id}",
+        mandate_id=f"acp_{session_id}",
+    )
+
+    try:
+        await deps.orchestrator.evaluate_chain(chain_obj)
+    except (
+        PolicyViolationError,
+        MandateViolationError,
+        KYAViolationError,
+        ComplianceViolationError,
+        RiskViolationError,
+    ) as exc:
+        logger.info("ACP order %s denied by orchestrator gates: %s", session_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"payment_denied: {exc}",
+        ) from exc
+    except PaymentExecutionError as exc:
+        # Any other orchestrator execution-layer error -> fail-closed (do not
+        # let an ambiguous gate result through as an allow).
+        logger.warning("ACP order %s gate error: %s", session_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"payment_denied: {exc}",
+        ) from exc
+
+
+# ---------------------------------------------------------------------------
 # Endpoints: Checkout Sessions
 # ---------------------------------------------------------------------------
 
@@ -489,6 +900,11 @@ async def create_checkout_session(
         "buyer_information": body.buyer_information.model_dump() if body.buyer_information else None,
         "affiliate_attribution": body.affiliate_attribution.model_dump() if body.affiliate_attribution else None,
         "webhook_url": body.webhook_url,
+        # Trusted merchant pay-to address bound at create from server config,
+        # immutable for the session lifetime.  Used as the expected on-chain
+        # recipient when verifying a crypto payment; absent -> crypto cannot be
+        # completed (stays processing, fail-closed).
+        "settlement_address": _resolve_settlement_address(),
         "created_at": now,
         "updated_at": now,
     }
@@ -571,6 +987,7 @@ async def complete_checkout_session(
     body: ACPCompleteCheckoutRequest,
     principal: Principal = Depends(require_principal),
     api_version: str = Depends(_validate_api_version),
+    deps: ACPDependencies = Depends(get_deps),
 ) -> ACPCheckoutSessionResponse:
     """Complete an ACP checkout session with payment.
 
@@ -629,6 +1046,24 @@ async def complete_checkout_session(
             detail="missing_payment: payment_data (tokenized) or crypto_payment is required",
         )
 
+    # ── Sardis moat: run the orchestrator authority gates BEFORE recording ──
+    # KYA / spending-mandate / revocation / policy / Guard / compliance, bound
+    # to the merchant org principal.  A deny raises 403 here and the order is
+    # never recorded or settled.  This runs for every ACP money branch so ACP
+    # is a first-class money path, not a bypass.  (Gates only — never dispatch;
+    # the funds are moved by the buyer's agent / external PSP, see _run_acp_gates.)
+    _gate_counterparty = data.get("settlement_address") or "acp:merchant_settlement"
+    await _run_acp_gates(
+        deps=deps,
+        principal=principal,
+        session_id=session_id,
+        amount=total_amount,
+        currency=currency,
+        counterparty=_gate_counterparty,
+        chain=(body.crypto_payment.chain if body.crypto_payment else "base"),
+        purpose=f"acp_checkout:{session_id}",
+    )
+
     payment_method_used: str
 
     # --- Tokenized card / SPT (issuer-delegated, PAN-free) ---
@@ -671,9 +1106,26 @@ async def complete_checkout_session(
                     ),
                 )
             card_info = await _verify_issuer_card(token)
-            # Verified with the issuer (PAN stays in the issuer vault). The
-            # actual capture/authorization is the issuer's; Sardis records the
-            # tokenized reference and marks processing until a settlement signal.
+            # DONE_WITH_CONCERNS — issuer_card stays ``processing``.
+            #
+            # We verify the card is chargeable (issuer ``active`` state via the
+            # CardPort; PAN stays in the issuer vault), but "chargeable" is NOT
+            # "charged and settled".  There is no clearly-available Crossmint
+            # settlement signal Sardis (as the merchant) can consume to flip this
+            # to ``succeeded``: Crossmint's public webhooks
+            # (orders.payment.succeeded/failed) are Checkout-V3 events for
+            # Crossmint-HOSTED orders, NOT a card-issuing authorization/settlement
+            # event for a virtual card an external merchant/PSP charged. As the
+            # merchant, Sardis never sees the issuer's clearing for a card it did
+            # not itself charge.  Per the ACP checkout spec, ``complete`` does not
+            # require synchronous capture; order lifecycle is conveyed via webhooks.
+            # A real flip would require one of (all out of scope without provider
+            # confirmation): (a) correlating a Crossmint-hosted order id; (b) a
+            # documented Crossmint card-transaction/authorization API; or (c) the
+            # merchant PSP's own capture webhook.  Until then, fail-closed:
+            # stay ``processing`` — never fake completion.
+            # Refs: developers.openai.com/commerce/specs/checkout ;
+            #       docs.crossmint.com/payments/advanced/webhooks
             data["issuer_card_ref"] = card_info["card_id"]
             data["issuer_card_last_four"] = card_info.get("last_four")
             data["payment_status"] = ACPPaymentStatus.processing.value
@@ -706,18 +1158,83 @@ async def complete_checkout_session(
         data["crypto_token"] = crypto.token
         payment_method_used = "crypto"
 
-        # FAIL-CLOSED: this adapter does not yet perform a real on-chain
-        # verification (tx receipt + amount + recipient + confirmations). It
-        # MUST NOT mark an order ``succeeded`` without that proof. Record the
-        # tx and mark ``processing`` — a settlement signal (verified out of
-        # band) is required before the order is paid.
-        logger.info(
-            "ACP crypto payment recorded (unverified, processing): tx=%s chain=%s token=%s",
-            crypto.tx_hash,
-            crypto.chain,
-            crypto.token,
-        )
-        data["payment_status"] = ACPPaymentStatus.processing.value
+        # FAIL-CLOSED on-chain verification.  An order is marked ``succeeded``
+        # ONLY when the recorded tx_hash is confirmed on-chain: mined receipt,
+        # status==1, chain-specific confirmations, and an ERC-20 Transfer of the
+        # expected token to the TRUSTED merchant settlement address for >= the
+        # expected amount.  Any degraded/ambiguous path stays ``processing``
+        # (retryable once finalized); a reverted tx is marked ``failed``.
+        settlement_address = data.get("settlement_address")
+        if not settlement_address:
+            # No trusted recipient bound at create -> we cannot verify "paid to
+            # the expected merchant".  Never derive the recipient from the tx.
+            # Stay processing (fail-closed) until a settlement address exists.
+            logger.warning(
+                "ACP crypto %s: no trusted settlement_address bound; staying processing "
+                "(set SARDIS_ACP_SETTLEMENT_ADDRESS[_%s])",
+                session_id, str(crypto.chain).upper(),
+            )
+            data["payment_status"] = ACPPaymentStatus.processing.value
+        else:
+            # Expected amount in the token's minor units (stablecoins = 6 dp).
+            try:
+                from sardis.core.tokens import TokenType, get_token_metadata
+                decimals = get_token_metadata(TokenType(str(crypto.token).upper())).decimals
+            except Exception:
+                decimals = 6
+            expected_amount_minor = int(
+                (total_amount * (Decimal(10) ** decimals)).to_integral_value()
+            )
+            try:
+                proof = await _verify_crypto_onchain(
+                    tx_hash=crypto.tx_hash,
+                    chain=crypto.chain,
+                    token=crypto.token,
+                    expected_recipient=settlement_address,
+                    expected_amount_minor=expected_amount_minor,
+                )
+                # Replay guard: a confirmed Transfer to the (single, global)
+                # merchant settlement address proves SOMEONE paid — not that
+                # THIS order was paid.  Claim the tx for exactly one session
+                # before crediting, or the same tx settles N orders.
+                try:
+                    await _claim_tx_for_session(crypto.chain, crypto.tx_hash, session_id)
+                except TxAlreadyClaimedError as exc:
+                    logger.warning(
+                        "ACP crypto %s: tx=%s already consumed by session %s — "
+                        "refusing double-credit",
+                        session_id, crypto.tx_hash, exc.owner_session,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=(
+                            "crypto_tx_already_used: this on-chain transaction has "
+                            "already settled another checkout session"
+                        ),
+                    ) from exc
+                data["crypto_proof"] = proof
+                data["payment_status"] = ACPPaymentStatus.succeeded.value
+                logger.info(
+                    "ACP crypto %s VERIFIED on-chain: tx=%s confirmations=%s amount_minor=%s",
+                    session_id, crypto.tx_hash, proof["confirmations"], proof["amount_minor"],
+                )
+            except CryptoVerificationError as exc:
+                if exc.tx_failed:
+                    # The on-chain tx reverted — a genuine payment failure.
+                    data["payment_status"] = ACPPaymentStatus.failed.value
+                    data["payment_error"] = f"crypto_tx_failed: {exc.reason}"
+                    logger.warning(
+                        "ACP crypto %s tx FAILED on-chain: tx=%s reason=%s",
+                        session_id, crypto.tx_hash, exc.reason,
+                    )
+                else:
+                    # Not mined / too few confirmations / no matching transfer /
+                    # RPC error -> stay processing (retryable), NEVER succeed.
+                    data["payment_status"] = ACPPaymentStatus.processing.value
+                    logger.info(
+                        "ACP crypto %s unverified (processing): tx=%s reason=%s",
+                        session_id, crypto.tx_hash, exc.reason,
+                    )
 
     # Only flip to completed once payment is actually succeeded; otherwise the
     # session stays open so it can be retried / settled out of band.

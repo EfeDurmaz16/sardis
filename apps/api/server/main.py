@@ -132,6 +132,7 @@ from .route_registry.operations import (
 from .route_registry.policy import register_policy_routes
 from .route_registry.protocol import (
     register_a2a_routes,
+    register_acp_dependencies,
     register_erc8183_routes,
     register_mpp_routes,
     register_x402_routes,
@@ -641,6 +642,16 @@ def create_app(settings: SardisSettings | None = None) -> FastAPI:
         audit_store=audit_store,
         approval_service=approval_service,
         orchestrator=orchestrator,
+    )
+
+    # Wire the ACP merchant path to the orchestrator's fail-closed gates
+    # (evaluate_chain). The static-route registration (register_protocol_v1_routes,
+    # called later) mounts the router; this override injects the runtime
+    # orchestrator so ACP is no longer a moat bypass.
+    register_acp_dependencies(
+        app,
+        orchestrator=orchestrator,
+        chain_executor=chain_exec,
     )
 
     ramp_runtime = configure_ramp_runtime(settings)
