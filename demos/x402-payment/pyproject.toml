@@ -3,9 +3,7 @@ name = "sardis-demo-x402"
 version = "0.1.0"
 description = "Sardis x402 HTTP 402 payment demo"
 requires-python = ">=3.11"
-dependencies = [
-  "sardis",
-]
-
-[tool.uv.sources]
-sardis = { path = "../../packages/sardis", editable = true }
+# Pure stdlib: x402 is an open standard and this round-trip needs no Sardis
+# engine and no network. For the audited offline x402 verifier, see the
+# @sardis/reference npm package.
+dependencies = []
