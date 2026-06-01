@@ -1,0 +1,77 @@
+{
+  "network": "base",
+  "now": 1000000,
+  "signer": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+  "valid": {
+    "auth": {
+      "fromAddress": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+      "toAddress": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "value": "5000000",
+      "validAfter": 999900,
+      "validBefore": 1000100,
+      "nonce": "0xabababababababababababababababababababababababababababababababab"
+    },
+    "signature": "0x241fc197b9a382e888d43d32221ddca2d2a98f59c78cf28d6b4cc8a884a8cca768a91700d205c7d290e98f80386f7776a5a05a65f47d4e247f434c1d8368ee8f1c",
+    "eip712Digest": "0x91e4d9748481bb39877be77374f073793e47f3e185ab3b117467868e7d9af048",
+    "recoveredSigner": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+    "expectedPayer": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+    "verify": {
+      "ok": true,
+      "reason": null
+    }
+  },
+  "binding": {
+    "wrong_from": {
+      "fromAddress": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+      "toAddress": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      "value": "5000000",
+      "validAfter": 999900,
+      "validBefore": 1000100,
+      "nonce": "0xabababababababababababababababababababababababababababababababab"
+    }
+  },
+  "timing": {
+    "expired": {
+      "auth": {
+        "fromAddress": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+        "toAddress": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "value": "5000000",
+        "validAfter": 999800,
+        "validBefore": 999900,
+        "nonce": "0xabababababababababababababababababababababababababababababababab"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "authorization_expired"
+      }
+    },
+    "not_yet_valid": {
+      "auth": {
+        "fromAddress": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+        "toAddress": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "value": "5000000",
+        "validAfter": 1000100,
+        "validBefore": 1000200,
+        "nonce": "0xabababababababababababababababababababababababababababababababab"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "authorization_not_yet_valid"
+      }
+    },
+    "inverted_window": {
+      "auth": {
+        "fromAddress": "0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A",
+        "toAddress": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "value": "5000000",
+        "validAfter": 1000100,
+        "validBefore": 999900,
+        "nonce": "0xabababababababababababababababababababababababababababababababab"
+      },
+      "expected": {
+        "ok": false,
+        "reason": "valid_after_must_be_before_valid_before"
+      }
+    }
+  }
+}

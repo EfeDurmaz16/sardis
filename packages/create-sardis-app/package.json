@@ -1,0 +1,55 @@
+{
+  "name": "create-sardis-app",
+  "version": "0.1.0",
+  "description": "Scaffold a minimal AI agent that uses Sardis as a money tool — wallet, budget, and a guarded spend (allow + deny).",
+  "type": "module",
+  "bin": {
+    "create-sardis-app": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup index.ts --format esm --target node18 --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "sardis",
+    "ai-agents",
+    "ai-payments",
+    "agent-payments",
+    "create-app",
+    "scaffold",
+    "wallet",
+    "budget",
+    "spending-policy"
+  ],
+  "author": "Sardis <sdk@sardis.sh>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EfeDurmaz16/sardis.git",
+    "directory": "packages/create-sardis-app"
+  },
+  "homepage": "https://sardis.sh",
+  "bugs": {
+    "url": "https://github.com/EfeDurmaz16/sardis/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

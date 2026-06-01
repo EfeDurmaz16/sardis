@@ -1,0 +1,816 @@
+[
+  {
+    "name": "allow_basic",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "5000",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "allow",
+      "reason": "OK"
+    }
+  },
+  {
+    "name": "amount_zero",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "0",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "amount_must_be_positive"
+    }
+  },
+  {
+    "name": "fee_negative",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "fee": {
+        "minor": "-100",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "fee_must_be_non_negative"
+    }
+  },
+  {
+    "name": "scope_not_allowed",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "compute"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "scope": "retail"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "scope_not_allowed"
+    }
+  },
+  {
+    "name": "scope_allowed",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "compute"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "scope": "compute"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "allow",
+      "reason": "OK"
+    }
+  },
+  {
+    "name": "per_tx_limit",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "20000",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "per_transaction_limit"
+    }
+  },
+  {
+    "name": "per_tx_with_fee",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "fee": {
+        "minor": "100",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "per_transaction_limit"
+    }
+  },
+  {
+    "name": "total_limit_exceeded",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "98000",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "5000",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "total_limit_exceeded"
+    }
+  },
+  {
+    "name": "daily_limit_exceeded",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5,
+      "daily": {
+        "windowType": "daily",
+        "limit": {
+          "minor": "10000",
+          "currency": "USDC"
+        },
+        "currentSpent": {
+          "minor": "9000",
+          "currency": "USDC"
+        },
+        "windowStartMs": 1000000
+      }
+    },
+    "spend": {
+      "amount": {
+        "minor": "2000",
+        "currency": "USDC"
+      }
+    },
+    "now": 1000000,
+    "expected": {
+      "outcome": "deny",
+      "reason": "time_window_limit"
+    }
+  },
+  {
+    "name": "merchant_denied",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [
+        {
+          "ruleId": "r1",
+          "ruleType": "deny",
+          "merchantId": "evil.com"
+        }
+      ],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchantId": "evil.com"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "merchant_denied"
+    }
+  },
+  {
+    "name": "merchant_not_allowlisted",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [
+        {
+          "ruleId": "r2",
+          "ruleType": "allow",
+          "merchantId": "good.com"
+        }
+      ],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchantId": "other.com"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "merchant_not_allowlisted"
+    }
+  },
+  {
+    "name": "merchant_allowlisted",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [
+        {
+          "ruleId": "r2",
+          "ruleType": "allow",
+          "merchantId": "good.com"
+        }
+      ],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "merchantId": "good.com"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "allow",
+      "reason": "OK"
+    }
+  },
+  {
+    "name": "merchant_cap_exceeded",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [
+        {
+          "ruleId": "r3",
+          "ruleType": "allow",
+          "merchantId": "good.com",
+          "maxPerTx": {
+            "minor": "2000",
+            "currency": "USDC"
+          }
+        }
+      ],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "5000",
+        "currency": "USDC"
+      },
+      "merchantId": "good.com"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "merchant_cap_exceeded"
+    }
+  },
+  {
+    "name": "category_per_tx_override_allow",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "500000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [
+        {
+          "ruleId": "r4",
+          "ruleType": "allow",
+          "category": "grocery",
+          "maxPerTx": {
+            "minor": "20000",
+            "currency": "USDC"
+          }
+        }
+      ],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "15000",
+        "currency": "USDC"
+      },
+      "merchantId": "store",
+      "merchantCategory": "groceries"
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "merchant_not_allowlisted"
+    }
+  },
+  {
+    "name": "goal_drift_exceeded",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "driftScore": 0.9
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "deny",
+      "reason": "goal_drift_exceeded"
+    }
+  },
+  {
+    "name": "goal_drift_ok",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5
+    },
+    "spend": {
+      "amount": {
+        "minor": "1000",
+        "currency": "USDC"
+      },
+      "driftScore": 0.3
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "allow",
+      "reason": "OK"
+    }
+  },
+  {
+    "name": "requires_approval",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5,
+      "approvalThreshold": {
+        "minor": "8000",
+        "currency": "USDC"
+      }
+    },
+    "spend": {
+      "amount": {
+        "minor": "9000",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "requires_approval",
+      "reason": "requires_approval"
+    }
+  },
+  {
+    "name": "under_approval_threshold",
+    "policy": {
+      "policyId": "policy_test",
+      "agentId": "agent_test",
+      "trustLevel": "low",
+      "limitPerTx": {
+        "minor": "10000",
+        "currency": "USDC"
+      },
+      "limitTotal": {
+        "minor": "100000",
+        "currency": "USDC"
+      },
+      "spentTotal": {
+        "minor": "0",
+        "currency": "USDC"
+      },
+      "merchantRules": [],
+      "allowedScopes": [
+        "all"
+      ],
+      "blockedMerchantCategories": [],
+      "allowedChains": [],
+      "allowedTokens": [],
+      "allowedDestinations": [],
+      "blockedDestinations": [],
+      "maxDriftScore": 0.5,
+      "approvalThreshold": {
+        "minor": "8000",
+        "currency": "USDC"
+      }
+    },
+    "spend": {
+      "amount": {
+        "minor": "5000",
+        "currency": "USDC"
+      }
+    },
+    "now": 0,
+    "expected": {
+      "outcome": "allow",
+      "reason": "OK"
+    }
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "name": "simple",
+    "value": {
+      "b": 1,
+      "a": "x",
+      "c": [
+        3,
+        {
+          "z": null,
+          "y": true
+        }
+      ]
+    },
+    "canonical": "{\"a\":\"x\",\"b\":1,\"c\":[3,{\"y\":true,\"z\":null}]}",
+    "canonicalHex": "7b2261223a2278222c2262223a312c2263223a5b332c7b2279223a747275652c227a223a6e756c6c7d5d7d"
+  },
+  {
+    "name": "unicode_ascii_escape",
+    "value": {
+      "unicode": "\u00e7a\u011f \u2603",
+      "plain": "hello"
+    },
+    "canonical": "{\"plain\":\"hello\",\"unicode\":\"\\u00e7a\\u011f \\u2603\"}",
+    "canonicalHex": "7b22706c61696e223a2268656c6c6f222c22756e69636f6465223a225c7530306537615c7530313166205c7532363033227d"
+  },
+  {
+    "name": "amount_claim",
+    "value": {
+      "amount_minor": 5000000,
+      "amount": "5.0",
+      "currency": "USDC",
+      "delegation_chain": []
+    },
+    "canonical": "{\"amount\":\"5.0\",\"amount_minor\":5000000,\"currency\":\"USDC\",\"delegation_chain\":[]}",
+    "canonicalHex": "7b22616d6f756e74223a22352e30222c22616d6f756e745f6d696e6f72223a353030303030302c2263757272656e6379223a2255534443222c2264656c65676174696f6e5f636861696e223a5b5d7d"
+  },
+  {
+    "name": "nested_sorted",
+    "value": {
+      "inputs": {
+        "token": "USDC",
+        "chain": "base",
+        "category": "cloud",
+        "rail": "usdc"
+      }
+    },
+    "canonical": "{\"inputs\":{\"category\":\"cloud\",\"chain\":\"base\",\"rail\":\"usdc\",\"token\":\"USDC\"}}",
+    "canonicalHex": "7b22696e70757473223a7b2263617465676f7279223a22636c6f7564222c22636861696e223a2262617365222c227261696c223a2275736463222c22746f6b656e223a2255534443227d7d"
+  }
+]

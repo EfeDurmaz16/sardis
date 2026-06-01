@@ -1,0 +1,51 @@
+{
+  "secret": "dev-test-secret-do-not-use-in-prod",
+  "valid": {
+    "revocationId": "rev_tfydm7_2d8fe150",
+    "targetKind": "agent",
+    "targetRef": "agent_b",
+    "scope": "all",
+    "requestedBy": "principal_a",
+    "revokedAt": "2026-01-01T12:00:00+00:00",
+    "outcome": "propagated",
+    "targets": [
+      {
+        "kind": "mandate",
+        "ref": "mandate_root",
+        "killStatus": "killed",
+        "detail": ""
+      },
+      {
+        "kind": "card",
+        "ref": "card_1",
+        "killStatus": "already_dead",
+        "detail": ""
+      }
+    ],
+    "decisionHash": "264e654fee2957c4d1c471b876550b44c527f28d0973f5ea3b640b742d98a6b9",
+    "signature": "4731114fb0ec559e39b8acd2a2590231e1faa658e5a8a95e6164e7428861d932"
+  },
+  "expectValid": true,
+  "outcomeMatrix": [
+    {
+      "statuses": [
+        "killed",
+        "already_dead"
+      ],
+      "expected": "propagated"
+    },
+    {
+      "statuses": [
+        "killed",
+        "blocked_pending"
+      ],
+      "expected": "blocked_pending_downstream"
+    },
+    {
+      "statuses": [
+        "failed"
+      ],
+      "expected": "blocked_pending_downstream"
+    }
+  ]
+}

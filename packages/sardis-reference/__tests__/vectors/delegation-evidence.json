@@ -1,0 +1,20 @@
+{
+  "secret": "dev-test-secret-do-not-use-in-prod",
+  "valid": {
+    "delegationId": "dlg_fixed_1",
+    "delegatorKind": "mandate",
+    "delegatorRef": "mandate_root",
+    "delegatorPrincipal": "agent_a",
+    "delegatee": "agent_b",
+    "rootMandateId": "mandate_root",
+    "depth": 1,
+    "amountCap": "50",
+    "currency": "USDC",
+    "expiresAt": null,
+    "scopeHash": "fffb546ef676752a7c599b82b664c8f3e4d15f190d6da94b37dabc23fdce62de",
+    "createdAt": "2026-01-01T12:00:00+00:00",
+    "decisionHash": "b68e00dbd40785be86dffe4132a7dc4f0006633488aece5f0cbb2a61fc1321f2",
+    "signature": "45ecea0375d14bb41f30f1d328e43b8855669ed1ab5e37e92b4162c5dfe2704c"
+  },
+  "expectValid": true
+}
