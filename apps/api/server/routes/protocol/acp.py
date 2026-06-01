@@ -43,6 +43,7 @@ import json
 import logging
 import os
 import secrets
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -76,6 +77,36 @@ router = APIRouter(
     tags=["acp"],
 )
 logger = logging.getLogger("server.api.acp")
+
+
+# ---------------------------------------------------------------------------
+# Dependencies — injected at app registration (mirrors a2a / ap2)
+# ---------------------------------------------------------------------------
+#
+# ACP is a *merchant/seller* path: Sardis does NOT move the buyer's funds (the
+# buyer's agent broadcasts the crypto transfer; an external PSP/issuer captures
+# the card).  So ACP needs the orchestrator's fail-closed authority *gates*
+# (KYA / spending-mandate / revocation / policy / Guard / compliance) via
+# ``orchestrator.evaluate_chain`` — NOT its chain dispatch (that would
+# double-spend).  ``chain_executor`` is carried for completeness / future use.
+
+
+@dataclass
+class ACPDependencies:
+    """Runtime collaborators for the ACP merchant path."""
+
+    orchestrator: Any | None = None
+    chain_executor: Any | None = None
+
+
+def get_deps() -> ACPDependencies:
+    """Dependency stub — overridden at app registration.
+
+    The default returns empty deps so the router still imports/loads in
+    contexts that never wire an orchestrator (e.g. some unit tests).  The money
+    path itself fails closed when ``orchestrator`` is ``None`` (503).
+    """
+    return ACPDependencies()
 
 
 # ---------------------------------------------------------------------------
