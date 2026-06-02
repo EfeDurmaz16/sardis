@@ -1,4 +1,3 @@
-packages/sardis-solana-program/.anchor/test-ledger
 contracts/out
 contracts/cache
 contracts/lib
