@@ -296,6 +296,8 @@ gv-team.md
 .windsurf/
 .zencoder/
 skills/
+!packages/sardis-openclaw/skills/
+!packages/sardis-openclaw/skills/**
 skills-lock.json
 AGENTS.md
 
