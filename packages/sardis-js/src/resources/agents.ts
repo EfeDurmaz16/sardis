@@ -8,6 +8,7 @@
  */
 
 import { BaseResource } from '../core/base-resource.js';
+import type { Page } from '../core/pagination.js';
 import type {
   Agent,
   CreateAgentInput,
@@ -97,6 +98,29 @@ export class AgentsResource extends BaseResource {
       return response.map((a) => this._normalize(a));
     }
     return (response.agents || []).map((a) => this._normalize(a));
+  }
+
+  /**
+   * List agents as an auto-paginating {@link Page} — Anthropic-SDK style.
+   *
+   * The returned page is directly async-iterable, so you can stream every agent
+   * across every page without managing cursors:
+   *
+   * @example
+   * ```typescript
+   * for await (const agent of sardis.agents.listPage({ limit: 50 })) {
+   *   console.log(agent.id);
+   * }
+   * ```
+   */
+  async listPage(options?: ListAgentsOptions, requestOptions?: RequestOptions): Promise<Page<Agent>> {
+    const params: Record<string, unknown> = {};
+    if (options?.limit !== undefined) params.limit = options.limit;
+    if (options?.offset !== undefined) params.offset = options.offset;
+    if (options?.is_active !== undefined) params.is_active = options.is_active;
+    const page = await this._list<Agent>('/api/v2/agents', 'agents', params, requestOptions);
+    page.data.forEach((a) => this._normalize(a));
+    return page;
   }
 
   /**

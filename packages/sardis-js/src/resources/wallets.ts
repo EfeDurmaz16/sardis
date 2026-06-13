@@ -6,6 +6,7 @@
  */
 
 import { BaseResource } from '../core/base-resource.js';
+import type { Page } from '../core/pagination.js';
 import type {
   Wallet,
   WalletBalance,
@@ -73,6 +74,29 @@ export class WalletsResource extends BaseResource {
       return response.map((w) => this._normalize(w));
     }
     return (response.wallets || []).map((w) => this._normalize(w));
+  }
+
+  /**
+   * List wallets as an auto-paginating {@link Page} — Anthropic-SDK style.
+   *
+   * @example
+   * ```typescript
+   * for await (const wallet of sardis.wallets.listPage({ agentId: 'agent_1' })) {
+   *   console.log(wallet.id);
+   * }
+   * ```
+   */
+  async listPage(
+    options?: { agentId?: string; limit?: number; offset?: number },
+    requestOptions?: RequestOptions
+  ): Promise<Page<Wallet>> {
+    const params: Record<string, unknown> = {};
+    if (options?.limit !== undefined) params.limit = options.limit;
+    if (options?.offset !== undefined) params.offset = options.offset;
+    if (options?.agentId) params.agent_id = options.agentId;
+    const page = await this._list<Wallet>('/api/v2/wallets', 'wallets', params, requestOptions);
+    page.data.forEach((w) => this._normalize(w));
+    return page;
   }
 
   /**

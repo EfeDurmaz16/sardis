@@ -25,14 +25,22 @@ export type {
 export {
   SardisError,
   APIError,
+  BadRequestError,
   AuthenticationError,
+  PermissionDeniedError,
+  NotFoundError,
+  ConflictError,
+  UnprocessableEntityError,
   RateLimitError,
+  InternalServerError,
   TimeoutError,
   AbortError,
   NetworkError,
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIUserAbortError,
   ValidationError,
   InsufficientBalanceError,
-  NotFoundError,
   PolicyViolationError,
   SpendingLimitError,
   BlockchainError,
@@ -41,3 +49,5 @@ export {
   isRetryableError,
 } from './errors.js';
 export type { ErrorDetails } from './errors.js';
+export { Page } from './pagination.js';
+export type { PageParams, PageResponse, PageFetcher } from './pagination.js';

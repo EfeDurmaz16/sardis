@@ -250,7 +250,18 @@ export class Engine {
       const resetAt = headers['x-ratelimit-reset']
         ? new Date(Number(headers['x-ratelimit-reset']) * 1000)
         : undefined;
-      throw new RateLimitError('Rate limit exceeded', retryAfter, limit, remaining, resetAt);
+      const requestId =
+        headers['request-id'] ?? headers['x-request-id'] ?? headers['x-sardis-request-id'];
+      throw new RateLimitError(
+        'Rate limit exceeded',
+        retryAfter,
+        limit,
+        remaining,
+        resetAt,
+        status,
+        headers,
+        requestId
+      );
     }
 
     // 401 — auth (with one-shot token refresh)
@@ -270,11 +281,15 @@ export class Engine {
         } catch {
           throw new AuthenticationError(
             'Token refresh failed',
-            SardisErrorCode.TOKEN_REFRESH_FAILED
+            SardisErrorCode.TOKEN_REFRESH_FAILED,
+            status,
+            headers
           );
         }
       }
-      throw new AuthenticationError();
+      const requestId =
+        headers['request-id'] ?? headers['x-request-id'] ?? headers['x-sardis-request-id'];
+      throw new AuthenticationError(undefined, undefined, status, headers, requestId);
     }
 
     // 4xx / 5xx

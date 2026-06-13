@@ -295,18 +295,26 @@ export type {
   ResponseInterceptor,
 } from './core/types.js';
 
-// Error hierarchy
+// Error hierarchy — Anthropic-SDK-style status-specific subclasses
 export {
   SardisError,
   APIError,
+  BadRequestError,
   AuthenticationError,
+  PermissionDeniedError,
+  NotFoundError,
+  ConflictError,
+  UnprocessableEntityError,
   RateLimitError,
+  InternalServerError,
   TimeoutError,
   AbortError,
   NetworkError,
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIUserAbortError,
   ValidationError,
   InsufficientBalanceError,
-  NotFoundError,
   PolicyViolationError,
   SpendingLimitError,
   BlockchainError,
@@ -315,6 +323,10 @@ export {
   isRetryableError,
 } from './core/errors.js';
 export type { ErrorDetails } from './core/errors.js';
+
+// Auto-pagination (Anthropic-SDK style)
+export { Page } from './core/pagination.js';
+export type { PageParams, PageResponse, PageFetcher } from './core/pagination.js';
 
 // Domain types
 export * from './types.js';
