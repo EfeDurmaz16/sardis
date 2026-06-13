@@ -7,7 +7,7 @@
 import { z } from 'zod';
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
 import { apiRequest } from '../api.js';
-import { getConfig } from '../config.js';
+import { getConfig, shouldSimulate, LiveModeMisconfiguredError } from '../config.js';
 
 const CreateSessionSchema = z.object({
   spending_limit: z.number().positive().describe('Maximum spending for this session in USD'),
@@ -46,6 +46,23 @@ function serialize(result: unknown): ToolResult {
 
 function errorResult(message: string): ToolResult {
   return { content: [{ type: 'text', text: message }], isError: true };
+}
+
+/**
+ * Resolve whether to simulate. On a live-mode misconfiguration this returns a
+ * ToolResult error (never a fake success); otherwise it returns the boolean.
+ */
+function resolveSimulate(
+  config: ReturnType<typeof getConfig>,
+  operation: string
+): boolean | ToolResult {
+  try {
+    return shouldSimulate(config, operation);
+  } catch (error) {
+    return errorResult(
+      error instanceof LiveModeMisconfiguredError ? error.message : String(error)
+    );
+  }
 }
 
 const IssueCardSchema = z.object({
@@ -161,7 +178,7 @@ export const mppToolDefinitions: ToolDefinition[] = [
   {
     name: 'sardis_mpp_issue_card',
     description:
-      'Issue a virtual prepaid Visa card via Laso Finance MPP service. Cards are single-use, $5-$1,000, funded with USDC. Can be charged against an MPP session budget.',
+      'Issue a virtual prepaid card via the Sardis MPP card service. Cards are single-use, $5-$1,000, funded with USDC. Can be charged against an MPP session budget.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -220,7 +237,9 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_create_session');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       const sessionId = `mpp_sess_sim_${Date.now().toString(36)}`;
       return serialize({
         _simulated: true,
@@ -265,7 +284,9 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_execute');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       const paymentId = `mpp_pay_sim_${Date.now().toString(36)}`;
       const remaining = Math.max(0, 100 - parsed.data.amount); // simulated
       return serialize({
@@ -311,7 +332,9 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_close_session');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       return serialize({
         _simulated: true,
         _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
@@ -338,7 +361,9 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_get_session');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       return serialize({
         _simulated: true,
         _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
@@ -370,21 +395,26 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_issue_card');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       const cardId = `card_sim_${Date.now().toString(36)}`;
       return serialize({
         _simulated: true,
         _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
         card_id: cardId,
-        card_number: '4111XXXXXXXX' + Math.floor(1000 + Math.random() * 9000),
-        cvv: '***',
-        expiry: '12/27',
+        // Obviously-fake token so simulated cards can never be mistaken for a
+        // real PAN. No real card data is ever produced in simulated mode.
+        card_token: `card_sim_${cardId}`,
+        card_number: null,
+        cvv: null,
+        expiry: null,
         amount: parsed.data.amount.toFixed(2),
         currency: parsed.data.currency,
         status: 'issued',
         card_type: 'single_use',
-        provider: 'laso_finance',
-        message: `Virtual Visa card issued for $${parsed.data.amount.toFixed(2)} via Laso Finance MPP`,
+        provider: 'simulated',
+        message: `Simulated virtual card issued for $${parsed.data.amount.toFixed(2)} (no real card created)`,
       });
     }
 
@@ -406,7 +436,9 @@ export const mppToolHandlers: Record<string, ToolHandler> = {
 
     const config = getConfig();
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_mpp_evaluate_policy');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       return serialize({
         _simulated: true,
         _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',

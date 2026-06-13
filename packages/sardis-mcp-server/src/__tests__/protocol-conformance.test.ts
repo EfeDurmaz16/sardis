@@ -11,18 +11,27 @@ import type { PolicyResult } from '../tools/policy.js';
 import * as policyModule from '../tools/policy.js';
 
 // Mock config
-vi.mock('../config.js', () => ({
-  getConfig: vi.fn(() => ({
-    walletId: 'wallet_test_protocol',
-    apiKey: '',
-    chain: 'base_sepolia',
-    mode: 'simulated',
-    agentId: 'agent_test_protocol',
-    requireExplicitApproval: false,
-  })),
-  getBlockedVendors: vi.fn(() => ['BlockedVendor', 'BadActor']),
-  getAllowedVendors: vi.fn(() => ['OpenAI', 'AWS', 'GitHub']),
-}));
+vi.mock('../config.js', () => {
+  class LiveModeMisconfiguredError extends Error {}
+  return {
+    getConfig: vi.fn(() => ({
+      walletId: 'wallet_test_protocol',
+      apiKey: '',
+      chain: 'base_sepolia',
+      mode: 'simulated',
+      agentId: 'agent_test_protocol',
+      requireExplicitApproval: false,
+    })),
+    shouldSimulate: vi.fn((cfg: { apiKey: string; mode: string }, op?: string) => {
+      if (cfg.mode === 'simulated') return true;
+      if (!cfg.apiKey) throw new LiveModeMisconfiguredError(op);
+      return false;
+    }),
+    LiveModeMisconfiguredError,
+    getBlockedVendors: vi.fn(() => ['BlockedVendor', 'BadActor']),
+    getAllowedVendors: vi.fn(() => ['OpenAI', 'AWS', 'GitHub']),
+  };
+});
 
 // Mock wallets for policy checks
 vi.mock('../tools/wallets.js', () => ({
