@@ -158,6 +158,99 @@ Plus `sardis.pay({ ... })` as the one-liner shortcut over `wallets.transfer`.
 
 ---
 
+## Errors
+
+Every failed request throws a typed error. Status codes map to dedicated
+subclasses (same shape as the Anthropic SDK), and all of them extend `APIError`
+so you can catch broadly or narrowly:
+
+```ts
+import {
+  Sardis,
+  APIError,
+  RateLimitError,
+  NotFoundError,
+  AuthenticationError,
+} from "sardis";
+
+try {
+  await sardis.agents.get("agent_missing");
+} catch (err) {
+  if (err instanceof RateLimitError) {
+    console.log(`retry after ${err.retryAfter}s`);
+  } else if (err instanceof NotFoundError) {
+    console.log("no such agent");
+  } else if (err instanceof APIError) {
+    console.log(err.statusCode, err.request_id); // quote request_id to support
+  }
+}
+```
+
+| Status | Error class |
+| --- | --- |
+| 400 | `BadRequestError` |
+| 401 | `AuthenticationError` |
+| 403 | `PermissionDeniedError` |
+| 404 | `NotFoundError` |
+| 409 | `ConflictError` |
+| 422 | `UnprocessableEntityError` |
+| 429 | `RateLimitError` |
+| 5xx | `InternalServerError` |
+| connection drop | `APIConnectionError` |
+| timeout | `APIConnectionTimeoutError` |
+| `signal` abort | `APIUserAbortError` |
+
+Connection-level aliases (`APIConnectionError`, `APIConnectionTimeoutError`,
+`APIUserAbortError`) mirror Anthropic-SDK naming; they are the same classes as
+`NetworkError` / `TimeoutError` / `AbortError`.
+
+---
+
+## Auto-pagination
+
+`listPage(...)` returns a `Page` that is directly async-iterable, so you can
+stream every item across every page without ever touching a cursor:
+
+```ts
+// Stream every agent across all pages.
+for await (const agent of sardis.agents.listPage({ limit: 50 })) {
+  console.log(agent.id);
+}
+
+// Or one page at a time.
+let page = await sardis.wallets.listPage({ agentId: "agent_abc" });
+for (const wallet of page.data) console.log(wallet.id);
+while (page.hasNextPage()) {
+  page = await page.getNextPage();
+}
+
+// Or iterate page objects.
+for await (const p of (await sardis.agents.listPage()).iterPages()) {
+  console.log(p.data.length);
+}
+```
+
+---
+
+## Per-request options
+
+Any method takes an optional final options argument:
+
+```ts
+await sardis.agents.create(
+  { name: "treasurer" },
+  {
+    idempotencyKey: "agent-create-2026-06-13", // Idempotency-Key on writes
+    maxRetries: 5,                              // override client default
+    timeout: 10_000,                            // ms
+    headers: { "X-Trace": "abc" },
+    signal: controller.signal,                  // AbortController
+  },
+);
+```
+
+---
+
 ## Edge & webhooks
 
 The SDK ships no axios, no polyfills — just `fetch`.

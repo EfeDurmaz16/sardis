@@ -203,6 +203,13 @@ export class APIError extends SardisError {
   public readonly statusCode: number;
   /** Response headers (if available) */
   public readonly headers?: Record<string, string>;
+  /**
+   * Request ID extracted from the `request-id` / `x-request-id` response header.
+   *
+   * Mirrors the Anthropic SDK's `error.request_id`. Always quote this when
+   * contacting support.
+   */
+  public readonly request_id?: string;
 
   /**
    * Creates a new APIError instance.
@@ -228,16 +235,24 @@ export class APIError extends SardisError {
     this.name = 'APIError';
     this.statusCode = statusCode;
     this.headers = headers;
+    this.request_id =
+      requestId ?? headers?.['request-id'] ?? headers?.['x-request-id'] ?? headers?.['x-sardis-request-id'];
     Object.setPrototypeOf(this, APIError.prototype);
   }
 
   /**
-   * Creates an APIError from an HTTP response.
+   * Creates the correct {@link APIError} subclass for an HTTP response.
+   *
+   * Mirrors the Anthropic SDK's `APIError.generate` — the returned instance is
+   * a status-specific subclass ({@link BadRequestError}, {@link NotFoundError},
+   * {@link RateLimitError}, ...) so consumers can branch with `instanceof`.
+   * Every subclass still extends {@link APIError}, so existing
+   * `instanceof APIError` checks keep working.
    *
    * @param statusCode - HTTP status code
    * @param body - Response body
    * @param headers - Response headers
-   * @returns APIError instance
+   * @returns APIError (status-specific subclass) instance
    */
   static fromResponse(
     statusCode: number,
@@ -263,6 +278,8 @@ export class APIError extends SardisError {
       details = (errorObj.details as Record<string, unknown>) || {};
       requestId = errorObj.request_id as string;
     }
+    requestId =
+      requestId ?? headers?.['request-id'] ?? headers?.['x-request-id'] ?? headers?.['x-sardis-request-id'];
 
     // Append actionable guidance for common error status codes
     if (statusCode === 401) {
@@ -273,7 +290,42 @@ export class APIError extends SardisError {
       message = message + '\n→ Check status: https://status.sardis.sh';
     }
 
-    return new APIError(message, statusCode, code, details, requestId, headers);
+    const args: APISubclassArgs = [message, statusCode, code, details, requestId, headers];
+    switch (statusCode) {
+      case 400:
+        return new BadRequestError(...args);
+      case 401:
+        return new AuthenticationError(message, SardisErrorCode.UNAUTHORIZED, statusCode, headers, requestId);
+      case 403:
+        return new PermissionDeniedError(...args);
+      case 404:
+        return new NotFoundError(
+          (details.resource_type as string) ?? 'Resource',
+          (details.resource_id as string) ?? '',
+          message,
+          statusCode,
+          headers,
+          requestId
+        );
+      case 409:
+        return new ConflictError(...args);
+      case 422:
+        return new UnprocessableEntityError(...args);
+      case 429:
+        return new RateLimitError(
+          message,
+          headers?.['retry-after'] ? Number(headers['retry-after']) : undefined,
+          headers?.['x-ratelimit-limit'] ? Number(headers['x-ratelimit-limit']) : undefined,
+          headers?.['x-ratelimit-remaining'] ? Number(headers['x-ratelimit-remaining']) : undefined,
+          undefined,
+          statusCode,
+          headers,
+          requestId
+        );
+      default:
+        if (statusCode >= 500) return new InternalServerError(...args);
+        return new APIError(message, statusCode, code, details, requestId, headers);
+    }
   }
 
   /**
@@ -318,6 +370,76 @@ export class APIError extends SardisError {
 }
 
 /**
+ * Positional argument tuple shared by the status-specific {@link APIError}
+ * subclasses, mirroring the Anthropic SDK's subclass constructor signature.
+ */
+type APISubclassArgs = [
+  message: string,
+  statusCode: number,
+  code?: string,
+  details?: Record<string, unknown>,
+  requestId?: string,
+  headers?: Record<string, string>,
+];
+
+/**
+ * 400 Bad Request. Mirrors the Anthropic SDK's `BadRequestError`.
+ */
+export class BadRequestError extends APIError {
+  constructor(...args: APISubclassArgs) {
+    super(args[0], args[1], args[2] ?? SardisErrorCode.BAD_REQUEST, args[3], args[4], args[5]);
+    this.name = 'BadRequestError';
+    Object.setPrototypeOf(this, BadRequestError.prototype);
+  }
+}
+
+/**
+ * 403 Forbidden. Mirrors the Anthropic SDK's `PermissionDeniedError`.
+ */
+export class PermissionDeniedError extends APIError {
+  constructor(...args: APISubclassArgs) {
+    super(args[0], args[1], args[2] ?? SardisErrorCode.FORBIDDEN, args[3], args[4], args[5]);
+    this.name = 'PermissionDeniedError';
+    Object.setPrototypeOf(this, PermissionDeniedError.prototype);
+  }
+}
+
+/**
+ * 409 Conflict. Mirrors the Anthropic SDK's `ConflictError`.
+ */
+export class ConflictError extends APIError {
+  constructor(...args: APISubclassArgs) {
+    super(args[0], args[1], args[2] ?? SardisErrorCode.CONFLICT, args[3], args[4], args[5]);
+    this.name = 'ConflictError';
+    Object.setPrototypeOf(this, ConflictError.prototype);
+  }
+}
+
+/**
+ * 422 Unprocessable Entity. Mirrors the Anthropic SDK's
+ * `UnprocessableEntityError`.
+ */
+export class UnprocessableEntityError extends APIError {
+  constructor(...args: APISubclassArgs) {
+    super(args[0], args[1], args[2] ?? SardisErrorCode.UNPROCESSABLE_ENTITY, args[3], args[4], args[5]);
+    this.name = 'UnprocessableEntityError';
+    Object.setPrototypeOf(this, UnprocessableEntityError.prototype);
+  }
+}
+
+/**
+ * 5xx Internal Server Error. Mirrors the Anthropic SDK's
+ * `InternalServerError`.
+ */
+export class InternalServerError extends APIError {
+  constructor(...args: APISubclassArgs) {
+    super(args[0], args[1], args[2] ?? SardisErrorCode.INTERNAL_SERVER_ERROR, args[3], args[4], args[5]);
+    this.name = 'InternalServerError';
+    Object.setPrototypeOf(this, InternalServerError.prototype);
+  }
+}
+
+/**
  * Authentication error.
  *
  * Thrown when authentication fails due to invalid or missing credentials.
@@ -333,18 +455,27 @@ export class APIError extends SardisError {
  * }
  * ```
  */
-export class AuthenticationError extends SardisError {
+export class AuthenticationError extends APIError {
   /**
    * Creates a new AuthenticationError instance.
    *
+   * Extends {@link APIError} (status 401) for Anthropic-SDK parity, so both
+   * `instanceof AuthenticationError` and `instanceof APIError` hold.
+   *
    * @param message - Human-readable error message
    * @param code - Machine-readable error code
+   * @param statusCode - HTTP status code (defaults to 401)
+   * @param headers - Response headers
+   * @param requestId - Request ID for support reference
    */
   constructor(
     message: string = `Invalid or missing API key. Configure one with ${API_KEY_SETUP_URL}`,
-    code: string = SardisErrorCode.AUTHENTICATION_ERROR
+    code: string = SardisErrorCode.AUTHENTICATION_ERROR,
+    statusCode: number = 401,
+    headers?: Record<string, string>,
+    requestId?: string
   ) {
-    super(message, code, {}, undefined, false);
+    super(message, statusCode, code, {}, requestId, headers);
     this.name = 'AuthenticationError';
     Object.setPrototypeOf(this, AuthenticationError.prototype);
   }
@@ -367,7 +498,7 @@ export class AuthenticationError extends SardisError {
  * }
  * ```
  */
-export class RateLimitError extends SardisError {
+export class RateLimitError extends APIError {
   /** Seconds to wait before retrying */
   public readonly retryAfter?: number;
   /** Rate limit quota (requests per period) */
@@ -380,25 +511,34 @@ export class RateLimitError extends SardisError {
   /**
    * Creates a new RateLimitError instance.
    *
+   * Extends {@link APIError} (status 429) for Anthropic-SDK parity.
+   *
    * @param message - Human-readable error message
    * @param retryAfter - Seconds to wait before retrying
    * @param limit - Rate limit quota
    * @param remaining - Remaining requests
    * @param resetAt - Reset timestamp
+   * @param statusCode - HTTP status code (defaults to 429)
+   * @param headers - Response headers
+   * @param requestId - Request ID for support reference
    */
   constructor(
     message: string = 'Rate limit exceeded. Upgrade at https://sardis.sh/pricing or wait for Retry-After',
     retryAfter?: number,
     limit?: number,
     remaining?: number,
-    resetAt?: Date
+    resetAt?: Date,
+    statusCode: number = 429,
+    headers?: Record<string, string>,
+    requestId?: string
   ) {
     super(
       message,
+      statusCode,
       SardisErrorCode.RATE_LIMIT_EXCEEDED,
       { retry_after: retryAfter, limit, remaining },
-      undefined,
-      true
+      requestId,
+      headers
     );
     this.name = 'RateLimitError';
     this.retryAfter = retryAfter;
@@ -631,7 +771,7 @@ export class InsufficientBalanceError extends SardisError {
  * }
  * ```
  */
-export class NotFoundError extends SardisError {
+export class NotFoundError extends APIError {
   /** Type of resource (e.g., 'Wallet', 'Agent', 'Hold') */
   public readonly resourceType: string;
   /** ID of the resource */
@@ -640,14 +780,31 @@ export class NotFoundError extends SardisError {
   /**
    * Creates a new NotFoundError instance.
    *
+   * Extends {@link APIError} (status 404) for Anthropic-SDK parity.
+   *
    * @param resourceType - Type of resource
    * @param resourceId - ID of the resource
+   * @param message - Optional override message
+   * @param statusCode - HTTP status code (defaults to 404)
+   * @param headers - Response headers
+   * @param requestId - Request ID for support reference
    */
-  constructor(resourceType: string, resourceId: string) {
-    super(`${resourceType} not found: ${resourceId}`, SardisErrorCode.NOT_FOUND, {
-      resource_type: resourceType,
-      resource_id: resourceId,
-    });
+  constructor(
+    resourceType: string,
+    resourceId: string,
+    message?: string,
+    statusCode: number = 404,
+    headers?: Record<string, string>,
+    requestId?: string
+  ) {
+    super(
+      message || `${resourceType} not found: ${resourceId}`,
+      statusCode,
+      SardisErrorCode.NOT_FOUND,
+      { resource_type: resourceType, resource_id: resourceId },
+      requestId,
+      headers
+    );
     this.name = 'NotFoundError';
     this.resourceType = resourceType;
     this.resourceId = resourceId;
@@ -785,6 +942,29 @@ export class BlockchainError extends SardisError {
     Object.setPrototypeOf(this, BlockchainError.prototype);
   }
 }
+
+/**
+ * Connection failure (no HTTP response was received).
+ *
+ * Anthropic-SDK parity alias for {@link NetworkError}: existing code can keep
+ * catching `NetworkError`, while code ported from the Anthropic SDK can catch
+ * `APIConnectionError`. Both refer to the same class.
+ */
+export const APIConnectionError = NetworkError;
+export type APIConnectionError = NetworkError;
+
+/**
+ * Connection timed out. Anthropic-SDK parity alias for {@link TimeoutError}.
+ */
+export const APIConnectionTimeoutError = TimeoutError;
+export type APIConnectionTimeoutError = TimeoutError;
+
+/**
+ * Request aborted by the caller. Anthropic-SDK parity alias for
+ * {@link AbortError}.
+ */
+export const APIUserAbortError = AbortError;
+export type APIUserAbortError = AbortError;
 
 /**
  * Type guard to check if an error is a SardisError.
