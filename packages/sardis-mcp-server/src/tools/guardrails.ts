@@ -2,7 +2,7 @@
  * Guardrails tools for MCP server
  */
 
-import { getConfig } from '../config.js';
+import { getConfig, shouldSimulate, LiveModeMisconfiguredError } from '../config.js';
 import { apiRequest } from '../api.js';
 import type {
   ToolDefinition,
@@ -10,6 +10,27 @@ import type {
   ToolResult,
 } from './types.js';
 import { z } from 'zod';
+
+/**
+ * Resolve whether to simulate. On a live-mode misconfiguration this returns a
+ * ToolResult error (never a fake success); otherwise it returns the boolean.
+ */
+function resolveSimulate(
+  config: ReturnType<typeof getConfig>,
+  operation: string
+): boolean | ToolResult {
+  try {
+    return shouldSimulate(config, operation);
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text',
+        text: error instanceof LiveModeMisconfiguredError ? error.message : String(error),
+      }],
+      isError: true,
+    };
+  }
+}
 
 // Schemas
 const CheckCircuitBreakerSchema = z.object({
@@ -189,7 +210,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
       ? parsed.data.wallet_id
       : config.walletId || 'wallet_default';
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_check_circuit_breaker');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       // Simulated response
       const mockStatus: GuardrailsStatus & { _simulated: boolean; _warning: string } = {
         _simulated: true,
@@ -269,7 +292,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
     const config = getConfig();
     const walletId = parsed.data.wallet_id || config.walletId || 'wallet_default';
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_activate_kill_switch');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       // Simulated response
       return {
         content: [{
@@ -282,7 +307,7 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
             activated_by: 'simulated_user',
             activated_at: new Date().toISOString(),
             reason: parsed.data.reason,
-            message: '⚠️ KILL SWITCH ACTIVATED - All transactions halted',
+            message: 'KILL SWITCH ACTIVATED - All transactions halted',
             status: 'halted',
           }, null, 2),
         }],
@@ -325,7 +350,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
       ? parsed.data.wallet_id
       : config.walletId || 'wallet_default';
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_deactivate_kill_switch');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       // Simulated response
       return {
         content: [{
@@ -336,7 +363,7 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
             wallet_id: walletId,
             kill_switch_active: false,
             deactivated_at: new Date().toISOString(),
-            message: '✓ Kill switch deactivated - Wallet operational',
+            message: 'Kill switch deactivated - Wallet operational',
             status: 'operational',
           }, null, 2),
         }],
@@ -375,7 +402,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
       ? parsed.data.wallet_id
       : config.walletId || 'wallet_default';
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_check_rate_limits');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       // Simulated response
       const mockLimits = {
         _simulated: true,
@@ -445,7 +474,9 @@ export const guardrailsToolHandlers: Record<string, ToolHandler> = {
       if (parsed.data.since) queryParams.set('since', parsed.data.since);
     }
 
-    if (!config.apiKey || config.mode === 'simulated') {
+    const simulate = resolveSimulate(config, 'sardis_get_behavioral_alerts');
+    if (typeof simulate !== 'boolean') return simulate;
+    if (simulate) {
       // Simulated response
       const mockAlerts: BehavioralAlertsResponse & { _simulated: boolean; _warning: string } = {
         _simulated: true,

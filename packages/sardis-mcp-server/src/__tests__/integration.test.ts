@@ -7,17 +7,26 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { getAllTools, getAllToolHandlers } from '../tools/index.js';
 
 // Mock config
-vi.mock('../config.js', () => ({
-  getConfig: vi.fn(() => ({
-    walletId: 'wallet_test_123',
-    apiKey: '',
-    chain: 'base_sepolia',
-    mode: 'simulated',
-    agentId: 'agent_test_123',
-  })),
-  getAllowedVendors: vi.fn(() => ['OpenAI', 'Anthropic', 'AWS', 'Vercel', 'GitHub']),
-  getBlockedVendors: vi.fn(() => ['gambling-site', 'blocked-vendor']),
-}));
+vi.mock('../config.js', () => {
+  class LiveModeMisconfiguredError extends Error {}
+  return {
+    getConfig: vi.fn(() => ({
+      walletId: 'wallet_test_123',
+      apiKey: '',
+      chain: 'base_sepolia',
+      mode: 'simulated',
+      agentId: 'agent_test_123',
+    })),
+    shouldSimulate: vi.fn((cfg: { apiKey: string; mode: string }, op?: string) => {
+      if (cfg.mode === 'simulated') return true;
+      if (!cfg.apiKey) throw new LiveModeMisconfiguredError(op);
+      return false;
+    }),
+    LiveModeMisconfiguredError,
+    getAllowedVendors: vi.fn(() => ['OpenAI', 'Anthropic', 'AWS', 'Vercel', 'GitHub']),
+    getBlockedVendors: vi.fn(() => ['gambling-site', 'blocked-vendor']),
+  };
+});
 
 describe('MCP Server Integration', () => {
   describe('Tool Registry', () => {

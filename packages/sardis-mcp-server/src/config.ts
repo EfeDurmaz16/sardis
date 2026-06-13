@@ -55,7 +55,10 @@ export function loadConfig(): MCPConfig {
     walletId: process.env.SARDIS_WALLET_ID || '',
     agentId: process.env.SARDIS_AGENT_ID || '',
     chain: process.env.SARDIS_CHAIN || 'base_sepolia',
-    mode: (process.env.SARDIS_MODE || 'simulated') as 'live' | 'simulated',
+    // Default to live: simulated mode must be an explicit opt-in
+    // (SARDIS_MODE=simulated). This prevents silently degrading real
+    // payments/cards into fakes when the API key is missing.
+    mode: (process.env.SARDIS_MODE || 'live') as 'live' | 'simulated',
 
     // Policy configuration from environment
     policyBlockedVendors: parseVendorList(
@@ -93,6 +96,50 @@ export function getConfig(): MCPConfig {
  */
 export function resetConfig(): void {
   _config = null;
+}
+
+/**
+ * Error thrown when a tool is invoked in live mode without an API key.
+ *
+ * In live mode we must NEVER silently fall back to simulated/fake results —
+ * doing so makes hallucinated payments and cards look real. We hard-fail
+ * instead so the caller fixes their configuration.
+ */
+export class LiveModeMisconfiguredError extends Error {
+  constructor(operation?: string) {
+    const scope = operation ? ` for "${operation}"` : '';
+    super(
+      `SARDIS_MODE=live${scope} but SARDIS_API_KEY is not set. `
+      + 'Refusing to return a fake result. '
+      + 'Set SARDIS_API_KEY to execute real operations, or set '
+      + 'SARDIS_MODE=simulated to explicitly opt in to simulated data.'
+    );
+    this.name = 'LiveModeMisconfiguredError';
+  }
+}
+
+/**
+ * Decide whether a tool should produce simulated data.
+ *
+ * Rules (trust-first):
+ * - mode === 'simulated' -> simulate (explicit opt-in, no key required).
+ * - mode === 'live' + apiKey present -> do NOT simulate (call the real API).
+ * - mode === 'live' + no apiKey -> THROW. Never silently fake a live result.
+ *
+ * @param operation Optional label used in the error message for clarity.
+ */
+export function shouldSimulate(
+  config: Pick<MCPConfig, 'apiKey' | 'mode'> = getConfig(),
+  operation?: string
+): boolean {
+  if (config.mode === 'simulated') {
+    return true;
+  }
+  // mode === 'live'
+  if (!config.apiKey) {
+    throw new LiveModeMisconfiguredError(operation);
+  }
+  return false;
 }
 
 /**

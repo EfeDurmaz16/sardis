@@ -11,17 +11,29 @@ import {
   paymentToolHandlers,
   paymentToolDefinitions
 } from '../tools/payments.js';
+import { getConfig } from '../config.js';
 
 // Mock config
-vi.mock('../config.js', () => ({
-  getConfig: vi.fn(() => ({
-    walletId: 'wallet_test_123',
-    apiKey: '',  // Empty = simulated mode
-    chain: 'base_sepolia',
-    mode: 'simulated',
-    agentId: 'agent_test',
-  })),
-}));
+vi.mock('../config.js', () => {
+  class LiveModeMisconfiguredError extends Error {}
+  return {
+    getConfig: vi.fn(() => ({
+      walletId: 'wallet_test_123',
+      apiKey: '',  // Empty + mode 'simulated' = explicit simulated opt-in
+      chain: 'base_sepolia',
+      mode: 'simulated',
+      agentId: 'agent_test',
+    })),
+    // Mirror the real config.shouldSimulate logic: simulated mode opts in;
+    // live mode without an API key hard-errors instead of faking a result.
+    shouldSimulate: vi.fn((cfg: { apiKey: string; mode: string }, op?: string) => {
+      if (cfg.mode === 'simulated') return true;
+      if (!cfg.apiKey) throw new LiveModeMisconfiguredError(op);
+      return false;
+    }),
+    LiveModeMisconfiguredError,
+  };
+});
 
 // Mock policy check
 vi.mock('../tools/policy.js', () => ({
@@ -78,6 +90,28 @@ describe('Payment Tools', () => {
       const result2 = await executePayment('Vendor2', 20, 'Test2');
 
       expect(result1.payment_id).not.toBe(result2.payment_id);
+    });
+
+    it('should HARD-ERROR in live mode with no API key (no fake success)', async () => {
+      const mockGetConfig = vi.mocked(getConfig);
+      const original = mockGetConfig.getMockImplementation();
+      mockGetConfig.mockReturnValue({
+        walletId: 'wallet_test_123',
+        apiKey: '',
+        chain: 'base_sepolia',
+        mode: 'live',
+        agentId: 'agent_test',
+      } as ReturnType<typeof getConfig>);
+
+      try {
+        // Must throw (the mocked shouldSimulate raises LiveModeMisconfiguredError)
+        // instead of returning a fake _simulated payment.
+        await expect(
+          executePayment('OpenAI', 50, 'API credits', '0xabc')
+        ).rejects.toThrow();
+      } finally {
+        if (original) mockGetConfig.mockImplementation(original);
+      }
     });
   });
 

@@ -8,7 +8,7 @@ import { z } from 'zod';
 import type { ToolDefinition, ToolHandler, ToolResult } from './types.js';
 import { PaymentRequestSchema, TransactionQuerySchema } from './types.js';
 import { apiRequest } from '../api.js';
-import { getConfig } from '../config.js';
+import { getConfig, shouldSimulate } from '../config.js';
 import { checkPolicy } from './policy.js';
 
 // Response types
@@ -97,18 +97,9 @@ export async function executePayment(
 ): Promise<PaymentResult> {
   const config = getConfig();
 
-  if (!config.apiKey || config.mode === 'simulated') {
-    // SECURITY: Log a warning when falling into simulated mode.
-    // Without an explicit API key, ALL payments silently succeed without executing
-    // on-chain. If this happens in production due to a missing env var, real
-    // payments appear successful but no money actually moves.
-    if (!config.apiKey) {
-      console.error(
-        '[SARDIS SECURITY WARNING] No API key configured — all payments are SIMULATED. '
-        + 'Set SARDIS_API_KEY to enable real transactions. '
-        + 'If this is intentional, set SARDIS_MODE=simulated explicitly.'
-      );
-    }
+  // In live mode without an API key this THROWS instead of faking a success.
+  // Simulated results are only returned when SARDIS_MODE=simulated is set.
+  if (shouldSimulate(config, 'sardis_pay')) {
     // Return simulated result with unique ID
     const uniqueId = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`;
     return {
@@ -163,7 +154,7 @@ export async function executePayment(
 export async function getTransaction(transactionId: string): Promise<LedgerEntry> {
   const config = getConfig();
 
-  if (!config.apiKey || config.mode === 'simulated') {
+  if (shouldSimulate(config, 'sardis_get_transaction')) {
     return {
       _simulated: true,
       _warning: 'This is simulated data. Configure SARDIS_API_KEY for real data.',
@@ -202,7 +193,7 @@ export async function listTransactions(
 ): Promise<LedgerEntry[]> {
   const config = getConfig();
 
-  if (!config.apiKey || config.mode === 'simulated') {
+  if (shouldSimulate(config, 'sardis_list_transactions')) {
     return [
       {
         _simulated: true,
