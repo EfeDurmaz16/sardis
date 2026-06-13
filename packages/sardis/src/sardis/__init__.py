@@ -13,8 +13,50 @@ from sardis._version import __version__
 
 if TYPE_CHECKING:
     from sardis._client import AsyncSardis, Sardis
+    from sardis.models.errors import (
+        APIConnectionError,
+        APIError,
+        APIStatusError,
+        APITimeoutError,
+        AuthenticationError,
+        BadRequestError,
+        ConflictError,
+        InternalServerError,
+        NotFoundError,
+        PermissionDeniedError,
+        RateLimitError,
+        SardisError,
+        UnprocessableEntityError,
+        ValidationError,
+    )
 
-__all__ = ["Sardis", "AsyncSardis", "__version__"]
+# Error classes are part of the advertised top-level surface so agent
+# developers can ``except sardis.RateLimitError`` exactly like the Anthropic
+# SDK (``anthropic.RateLimitError``). Resolved lazily via __getattr__ to keep
+# ``import sardis`` cheap.
+_ERROR_EXPORTS = frozenset({
+    "SardisError",
+    "APIError",
+    "APIStatusError",
+    "APIConnectionError",
+    "APITimeoutError",
+    "BadRequestError",
+    "AuthenticationError",
+    "PermissionDeniedError",
+    "NotFoundError",
+    "ConflictError",
+    "UnprocessableEntityError",
+    "RateLimitError",
+    "InternalServerError",
+    "ValidationError",
+})
+
+__all__ = [
+    "Sardis",
+    "AsyncSardis",
+    "__version__",
+    *sorted(_ERROR_EXPORTS),
+]
 
 # Public, advertised submodules shipped in the published wheel. The thin-client
 # surface only — the CLI and the framework integrations. The backend engine
@@ -46,6 +88,11 @@ def __getattr__(name: str) -> Any:
         value = getattr(module, name)
         globals()[name] = value
         return value
+    if name in _ERROR_EXPORTS:
+        module = importlib.import_module("sardis.models.errors")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
     if name in _LAZY_SUBMODULES:
         module = importlib.import_module(f"sardis.{name}")
         globals()[name] = module
@@ -55,4 +102,11 @@ def __getattr__(name: str) -> Any:
 
 def __dir__() -> list[str]:
     # Only advertise the published thin-client surface.
-    return sorted({*globals(), *_LAZY_SUBMODULES, "Sardis", "AsyncSardis", *_LEGACY_ALIASES})
+    return sorted({
+        *globals(),
+        *_LAZY_SUBMODULES,
+        "Sardis",
+        "AsyncSardis",
+        *_LEGACY_ALIASES,
+        *_ERROR_EXPORTS,
+    })

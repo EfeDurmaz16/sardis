@@ -37,7 +37,7 @@ except ImportError:
     LLAMA_INDEX_AVAILABLE = False
 
 if TYPE_CHECKING:
-    from ..client import Sardis
+    from .._client import Sardis
 
 
 def _generate_mandate_id() -> str:

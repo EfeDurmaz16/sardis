@@ -16,7 +16,7 @@ from .base import AsyncBaseResource, SyncBaseResource
 if TYPE_CHECKING:
     from decimal import Decimal
 
-    from ..client import TimeoutConfig
+    from .._client import TimeoutConfig
 
 
 class AsyncFXResource(AsyncBaseResource):

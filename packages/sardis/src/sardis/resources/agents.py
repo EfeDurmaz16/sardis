@@ -16,7 +16,7 @@ from .base import AsyncBaseResource, SyncBaseResource
 if TYPE_CHECKING:
     import builtins
 
-    from ..client import TimeoutConfig
+    from .._client import TimeoutConfig
 
 
 class AsyncAgentsResource(AsyncBaseResource):

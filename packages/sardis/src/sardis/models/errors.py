@@ -90,6 +90,9 @@ class ErrorCode(str, Enum):
     SERVICE_UNAVAILABLE = "SARDIS_1703"
     BAD_GATEWAY = "SARDIS_1704"
     GATEWAY_TIMEOUT = "SARDIS_1705"
+    PERMISSION_DENIED = "SARDIS_1706"
+    CONFLICT = "SARDIS_1707"
+    UNPROCESSABLE_ENTITY = "SARDIS_1708"
 
     # Blockchain errors (1800-1899)
     BLOCKCHAIN_ERROR = "SARDIS_1800"
@@ -323,11 +326,12 @@ class APIError(SardisError):
     def _get_error_class_for_status(status_code: int) -> type[APIError]:
         """Get the appropriate error class for a status code."""
         status_map = {
-            400: ValidationError,
+            400: BadRequestError,
             401: AuthenticationError,
-            403: AuthenticationError,
+            403: PermissionDeniedError,
             404: NotFoundError,
-            422: ValidationError,
+            409: ConflictError,
+            422: UnprocessableEntityError,
             429: RateLimitError,
             500: ServerError,
             502: BadGatewayError,
@@ -337,7 +341,25 @@ class APIError(SardisError):
         return status_map.get(status_code, APIError)
 
 
-class AuthenticationError(APIError):
+class APIStatusError(APIError):
+    """Error raised when the API returns a non-2xx HTTP status code.
+
+    Mirrors ``anthropic.APIStatusError``: every error tied to an HTTP
+    response (4xx/5xx) inherits from this class, while transport-level
+    failures inherit from :class:`APIConnectionError`. Catch this to handle
+    any status-code-bearing API error in one ``except`` clause::
+
+        try:
+            client.pay.execute(to="0xabc", amount="10.00")
+        except sardis.APIStatusError as exc:
+            print(exc.status_code, exc.message)
+    """
+
+    default_code = ErrorCode.API_ERROR
+    default_message = "API returned an error status"
+
+
+class AuthenticationError(APIStatusError):
     """Authentication or authorization error.
 
     Raised when:
@@ -364,7 +386,7 @@ class AuthenticationError(APIError):
         )
 
 
-class ValidationError(APIError):
+class ValidationError(APIStatusError):
     """Validation error for request data.
 
     Raised when request data fails validation, such as:
@@ -399,7 +421,7 @@ class ValidationError(APIError):
         self.errors = errors
 
 
-class NotFoundError(APIError):
+class NotFoundError(APIStatusError):
     """Resource not found error.
 
     Raised when a requested resource does not exist.
@@ -437,7 +459,7 @@ class NotFoundError(APIError):
         )
 
 
-class RateLimitError(APIError):
+class RateLimitError(APIStatusError):
     """Rate limit exceeded error.
 
     Raised when too many requests have been made in a given time period.
@@ -471,7 +493,7 @@ class RateLimitError(APIError):
         )
 
 
-class InsufficientBalanceError(APIError):
+class InsufficientBalanceError(APIStatusError):
     """Insufficient balance for the requested operation.
 
     Raised when a wallet doesn't have enough funds for a payment or hold.
@@ -514,7 +536,7 @@ class InsufficientBalanceError(APIError):
         )
 
 
-class ServerError(APIError):
+class ServerError(APIStatusError):
     """Internal server error.
 
     Raised when the API encounters an internal error.
@@ -531,6 +553,76 @@ class ServerError(APIError):
             status_code=kwargs.pop("status_code", 500),
             **kwargs,
         )
+
+
+# Anthropic-SDK-compatible alias: ``anthropic.InternalServerError`` is the
+# canonical name agent developers ``except`` on for 5xx responses.
+InternalServerError = ServerError
+
+
+class BadRequestError(APIStatusError):
+    """Malformed request error (HTTP 400).
+
+    Mirrors ``anthropic.BadRequestError``.
+    """
+
+    default_code = ErrorCode.BAD_REQUEST
+    default_message = "Bad request"
+
+    def __init__(self, message: str | None = None, **kwargs: Any):
+        super().__init__(
+            message=message or self.default_message,
+            status_code=kwargs.pop("status_code", 400),
+            **kwargs,
+        )
+
+
+class PermissionDeniedError(AuthenticationError):
+    """Permission denied error (HTTP 403).
+
+    Mirrors ``anthropic.PermissionDeniedError``. Subclasses
+    :class:`AuthenticationError` so existing ``except AuthenticationError``
+    blocks (which previously caught 403) keep working.
+    """
+
+    default_code = ErrorCode.PERMISSION_DENIED
+    default_message = "Permission denied"
+
+    def __init__(self, message: str | None = None, **kwargs: Any):
+        super().__init__(
+            message=message or self.default_message,
+            status_code=kwargs.pop("status_code", 403),
+            **kwargs,
+        )
+
+
+class ConflictError(APIStatusError):
+    """Resource conflict error (HTTP 409).
+
+    Mirrors ``anthropic.ConflictError``.
+    """
+
+    default_code = ErrorCode.CONFLICT
+    default_message = "Conflict"
+
+    def __init__(self, message: str | None = None, **kwargs: Any):
+        super().__init__(
+            message=message or self.default_message,
+            status_code=kwargs.pop("status_code", 409),
+            **kwargs,
+        )
+
+
+class UnprocessableEntityError(ValidationError):
+    """Unprocessable entity error (HTTP 422).
+
+    Mirrors ``anthropic.UnprocessableEntityError``. Subclasses
+    :class:`ValidationError` so existing ``except ValidationError`` blocks
+    (which previously caught 422) keep working.
+    """
+
+    default_code = ErrorCode.UNPROCESSABLE_ENTITY
+    default_message = "Unprocessable entity"
 
 
 class BadGatewayError(APIError):
@@ -619,6 +711,15 @@ class TimeoutError(NetworkError):
 
     default_code = ErrorCode.TIMEOUT_ERROR
     default_message = "Request timed out"
+
+
+# Anthropic-SDK-compatible aliases. In ``anthropic`` the transport-level
+# error base is ``APIConnectionError`` and the timeout subclass is
+# ``APITimeoutError``; agent developers ``except`` on those names. We keep
+# Sardis's ``NetworkError`` / ``TimeoutError`` semantics and expose the
+# Anthropic names as the public, documented spelling.
+APIConnectionError = NetworkError
+APITimeoutError = TimeoutError
 
 
 # Payment-specific errors
@@ -762,15 +863,21 @@ def error_from_code(
 
 __all__ = [
     "ERROR_REGISTRY",
+    # API status errors (Anthropic-style)
+    "APIConnectionError",
     "APIError",
+    "APIStatusError",
+    "APITimeoutError",
     # Authentication
     "AuthenticationError",
     "BadGatewayError",
+    "BadRequestError",
     # Blockchain
     "BlockchainError",
     "ChainNotSupportedError",
     # Compliance
     "ComplianceError",
+    "ConflictError",
     "ConnectionError",
     # Enums
     "ErrorCode",
@@ -783,6 +890,7 @@ __all__ = [
     "HoldExpiredError",
     # Balance
     "InsufficientBalanceError",
+    "InternalServerError",
     "KYCRequiredError",
     # Network
     "NetworkError",
@@ -790,6 +898,7 @@ __all__ = [
     "NotFoundError",
     # Payment
     "PaymentError",
+    "PermissionDeniedError",
     "PolicyViolationError",
     # Rate limiting
     "RateLimitError",
@@ -801,6 +910,7 @@ __all__ = [
     "ServiceUnavailableError",
     "TimeoutError",
     "TransactionFailedError",
+    "UnprocessableEntityError",
     # Validation
     "ValidationError",
     # Utilities

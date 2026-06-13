@@ -40,7 +40,7 @@ import random
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import (
@@ -55,13 +55,16 @@ from ._version import __version__
 from .models.errors import (
     APIError,
     AuthenticationError,
+    BadRequestError,
+    ConflictError,
     ConnectionError,
     NetworkError,
     NotFoundError,
+    PermissionDeniedError,
     RateLimitError,
     SardisError,
     TimeoutError,
-    ValidationError,
+    UnprocessableEntityError,
 )
 from .telemetry import AsyncSardisTelemetry, SardisTelemetry, TelemetryConfig
 
@@ -373,6 +376,7 @@ class BaseClient:
         api_key: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
         retry: RetryConfig | None = None,
         pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
@@ -386,7 +390,10 @@ class BaseClient:
             api_key: Your Sardis API key (required)
             base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
-            retry: Retry configuration
+            max_retries: Anthropic-style shortcut for the number of automatic
+                retries on transient failures (429 / 5xx / connection errors).
+                Overrides ``retry.max_retries`` when both are given.
+            retry: Full retry configuration (backoff, jitter, status codes).
             pool: Connection pool configuration
             log_level: Logging verbosity level
             token_refresh_callback: Optional callback to refresh API token
@@ -415,8 +422,11 @@ class BaseClient:
         else:
             self._timeout = timeout
 
-        # Configure retry
+        # Configure retry. ``max_retries`` is the Anthropic-style shorthand and,
+        # when supplied, takes precedence over an explicit RetryConfig's count.
         self._retry = retry or RetryConfig()
+        if max_retries is not None:
+            self._retry = replace(self._retry, max_retries=max_retries)
 
         # Configure pool
         self._pool = pool or PoolConfig()
@@ -441,14 +451,77 @@ class BaseClient:
         else:
             self._telemetry_config = telemetry
 
+        # Caller-supplied default headers, kept separate so with_options() can
+        # merge new ones without re-deriving the built-in auth/UA headers.
+        self._extra_default_headers = dict(default_headers or {})
+
         # Default headers
         self._default_headers = {
             "X-API-Key": self._api_key,
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": f"sardis-sdk-python/{__version__}",
-            **(default_headers or {}),
+            **self._extra_default_headers,
         }
+
+        # Snapshot the construction options so with_options() can spin up a
+        # cheaply-derived client that shares everything except the overrides.
+        self._init_options: dict[str, Any] = {
+            "api_key": self._api_key,
+            "base_url": self._base_url,
+            "timeout": self._timeout,
+            "retry": self._retry,
+            "pool": self._pool,
+            "log_level": log_level,
+            "token_refresh_callback": token_refresh_callback,
+            "default_headers": self._extra_default_headers,
+            "telemetry": telemetry,
+        }
+
+    def _options_for_with(
+        self,
+        *,
+        timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
+        default_headers: dict[str, str] | None = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Build the kwargs for a derived client from with_options() overrides."""
+        opts = dict(self._init_options)
+        if timeout is not None:
+            opts["timeout"] = timeout
+        if base_url is not None:
+            opts["base_url"] = base_url
+        if api_key is not None:
+            opts["api_key"] = api_key
+        if max_retries is not None:
+            opts["retry"] = replace(self._retry, max_retries=max_retries)
+        if default_headers is not None:
+            opts["default_headers"] = {
+                **self._extra_default_headers,
+                **default_headers,
+            }
+        return opts
+
+    # HTTP methods that mutate state. Like the Anthropic SDK, these get an
+    # auto-generated Idempotency-Key so transparent retries never double-write.
+    _WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+    def _prepare_idempotency(
+        self,
+        method: str,
+        context: RequestContext,
+    ) -> RequestContext:
+        """Ensure write requests carry a stable Idempotency-Key.
+
+        If the caller already supplied one (via with_options / RequestContext)
+        it is preserved; otherwise we mint one once per logical request so it
+        stays constant across automatic retries within this call.
+        """
+        if method.upper() in self._WRITE_METHODS and not context.idempotency_key:
+            context.idempotency_key = f"sardis-retry-{uuid.uuid4()}"
+        return context
 
     def _get_headers(
         self,
@@ -549,13 +622,16 @@ class BaseClient:
                 for k, v in header_details.items():
                     details.setdefault(k, v)
 
-        # Map status codes to exceptions
-        if status_code == 401:
+        # Map status codes to exceptions. Names and status mappings mirror the
+        # official Anthropic Python SDK so agent developers can reuse the same
+        # ``except`` clauses (BadRequestError, PermissionDeniedError, etc.).
+        if status_code == 400:
+            raise BadRequestError(message, details=details, request_id=request_id)
+        elif status_code == 401:
             raise AuthenticationError(message, request_id=request_id)
         elif status_code == 403:
-            raise AuthenticationError(
+            raise PermissionDeniedError(
                 message or "Forbidden",
-                code="FORBIDDEN",
                 request_id=request_id,
             )
         elif status_code == 404:
@@ -565,8 +641,10 @@ class BaseClient:
                 message=message,
                 request_id=request_id,
             )
+        elif status_code == 409:
+            raise ConflictError(message, details=details, request_id=request_id)
         elif status_code == 422:
-            raise ValidationError(message, details=details, request_id=request_id)
+            raise UnprocessableEntityError(message, details=details, request_id=request_id)
         elif status_code == 429:
             retry_after = int(response.headers.get("Retry-After", "5"))
             raise RateLimitError(
@@ -607,6 +685,7 @@ class AsyncSardis(BaseClient):
         api_key: str | None = None,
         base_url: str = BaseClient.DEFAULT_BASE_URL,
         timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
         retry: RetryConfig | None = None,
         pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
@@ -620,6 +699,7 @@ class AsyncSardis(BaseClient):
             api_key: Your Sardis API key (required)
             base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
+            max_retries: Anthropic-style shortcut for the retry count.
             retry: Retry configuration
             pool: Connection pool configuration
             log_level: Logging verbosity level
@@ -635,6 +715,7 @@ class AsyncSardis(BaseClient):
             api_key=api_key,
             base_url=base_url,
             timeout=timeout,
+            max_retries=max_retries,
             retry=retry,
             pool=pool,
             log_level=log_level,
@@ -682,6 +763,35 @@ class AsyncSardis(BaseClient):
         self._pay: AsyncPayResource | None = None
         self._mandate_delegation: Any = None
         self._batch: Any = None
+
+    def with_options(
+        self,
+        *,
+        timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
+        default_headers: dict[str, str] | None = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> AsyncSardis:
+        """Return a new client with the given per-call options overridden.
+
+        Mirrors ``anthropic``'s ``client.with_options(...)``: the returned
+        client shares this client's configuration except for the fields you
+        override, so you can scope a timeout / retry budget / extra headers to
+        a subset of calls without mutating the original::
+
+            strict = client.with_options(max_retries=0, timeout=5.0)
+            await strict.pay.execute(to="0xabc", amount="10.00")
+        """
+        return AsyncSardis(
+            **self._options_for_with(
+                timeout=timeout,
+                max_retries=max_retries,
+                default_headers=default_headers,
+                base_url=base_url,
+                api_key=api_key,
+            )
+        )
 
     @property
     def pay(self) -> AsyncPayResource:
@@ -943,6 +1053,7 @@ class AsyncSardis(BaseClient):
             NetworkError: On network errors
         """
         context = context or RequestContext()
+        context = self._prepare_idempotency(method, context)
         client = await self._get_client()
         url = self._build_url(path)
         request_headers = self._get_headers(context, headers)
@@ -1161,6 +1272,7 @@ class Sardis(BaseClient):
         api_key: str | None = None,
         base_url: str = BaseClient.DEFAULT_BASE_URL,
         timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
         retry: RetryConfig | None = None,
         pool: PoolConfig | None = None,
         log_level: LogLevel = LogLevel.BASIC,
@@ -1174,6 +1286,7 @@ class Sardis(BaseClient):
             api_key: Your Sardis API key (required)
             base_url: API base URL (default: https://api.sardis.sh)
             timeout: Request timeout configuration
+            max_retries: Anthropic-style shortcut for the retry count.
             retry: Retry configuration
             pool: Connection pool configuration
             log_level: Logging verbosity level
@@ -1189,6 +1302,7 @@ class Sardis(BaseClient):
             api_key=api_key,
             base_url=base_url,
             timeout=timeout,
+            max_retries=max_retries,
             retry=retry,
             pool=pool,
             log_level=log_level,
@@ -1242,6 +1356,35 @@ class Sardis(BaseClient):
         self._pay: PayResource | None = None
         self._mandate_delegation: Any = None
         self._batch: Any = None
+
+    def with_options(
+        self,
+        *,
+        timeout: float | TimeoutConfig | None = None,
+        max_retries: int | None = None,
+        default_headers: dict[str, str] | None = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> Sardis:
+        """Return a new client with the given per-call options overridden.
+
+        Mirrors ``anthropic``'s ``client.with_options(...)``: the returned
+        client shares this client's configuration except for the fields you
+        override, so you can scope a timeout / retry budget / extra headers to
+        a subset of calls without mutating the original::
+
+            strict = client.with_options(max_retries=0, timeout=5.0)
+            strict.pay.execute(to="0xabc", amount="10.00")
+        """
+        return Sardis(
+            **self._options_for_with(
+                timeout=timeout,
+                max_retries=max_retries,
+                default_headers=default_headers,
+                base_url=base_url,
+                api_key=api_key,
+            )
+        )
 
     @property
     def pay(self) -> PayResource:
@@ -1503,6 +1646,7 @@ class Sardis(BaseClient):
             NetworkError: On network errors
         """
         context = context or RequestContext()
+        context = self._prepare_idempotency(method, context)
         client = self._get_client()
         url = self._build_url(path)
         request_headers = self._get_headers(context, headers)

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from ..client import TimeoutConfig
+    from .._client import TimeoutConfig
 
 
 class AsyncBatchResource(AsyncBaseResource):
