@@ -44,7 +44,9 @@ python run_demo.py
 ```bash
 # Set environment variables
 export SARDIS_API_KEY="replace-with-your-api-key"
-export SARDIS_API_URL="http://localhost:8000"
+# Hosted sandbox API. (localhost:8000 only works if you run the private
+# reference service yourself — it is not part of this open-source repo.)
+export SARDIS_API_URL="https://api.sardis.sh"
 
 python run_demo.py
 ```
@@ -62,7 +64,7 @@ python run_demo.py --interactive
 python run_demo.py --wallet-id wallet_abc123
 
 # Specify API endpoint
-python run_demo.py --api-url http://localhost:8000 --api-key replace-with-your-api-key
+python run_demo.py --api-url https://api.sardis.sh --api-key replace-with-your-api-key
 ```
 
 ## Demo Scenarios
