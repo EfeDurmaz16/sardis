@@ -55,14 +55,18 @@ from ._version import __version__
 from .models.errors import (
     APIError,
     AuthenticationError,
+    BadGatewayError,
     BadRequestError,
     ConflictError,
     ConnectionError,
+    GatewayTimeoutError,
     NetworkError,
     NotFoundError,
     PermissionDeniedError,
     RateLimitError,
     SardisError,
+    ServerError,
+    ServiceUnavailableError,
     TimeoutError,
     UnprocessableEntityError,
 )
@@ -650,6 +654,22 @@ class BaseClient:
             raise RateLimitError(
                 message or "Rate limit exceeded",
                 retry_after=retry_after,
+                request_id=request_id,
+            )
+        elif status_code == 502:
+            raise BadGatewayError(message, request_id=request_id)
+        elif status_code == 503:
+            raise ServiceUnavailableError(message, request_id=request_id)
+        elif status_code == 504:
+            raise GatewayTimeoutError(message, request_id=request_id)
+        elif status_code >= 500:
+            # 500 and any other 5xx map to ServerError (an APIStatusError), so
+            # `except sardis.APIStatusError` catches every status-bearing error.
+            raise ServerError(
+                message,
+                status_code=status_code,
+                code=code,
+                details=details,
                 request_id=request_id,
             )
         else:

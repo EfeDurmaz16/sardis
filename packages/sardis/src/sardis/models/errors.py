@@ -625,7 +625,7 @@ class UnprocessableEntityError(ValidationError):
     default_message = "Unprocessable entity"
 
 
-class BadGatewayError(APIError):
+class BadGatewayError(APIStatusError):
     """Bad gateway error.
 
     Raised when an upstream service returns an invalid response.
@@ -643,7 +643,7 @@ class BadGatewayError(APIError):
         )
 
 
-class ServiceUnavailableError(APIError):
+class ServiceUnavailableError(APIStatusError):
     """Service unavailable error.
 
     Raised when the API is temporarily unavailable.
@@ -661,7 +661,7 @@ class ServiceUnavailableError(APIError):
         )
 
 
-class GatewayTimeoutError(APIError):
+class GatewayTimeoutError(APIStatusError):
     """Gateway timeout error.
 
     Raised when an upstream service times out.
