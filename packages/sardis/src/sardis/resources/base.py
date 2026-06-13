@@ -17,7 +17,7 @@ from ..pagination import AsyncPaginator, Page, SyncPaginator
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..client import AsyncSardis, RequestContext, Sardis, TimeoutConfig
+    from .._client import AsyncSardis, RequestContext, Sardis, TimeoutConfig
 
 # Type variable for model types
 T = TypeVar("T")

@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     import builtins
     from decimal import Decimal
 
-    from ..client import TimeoutConfig
+    from .._client import TimeoutConfig
 
 
 class AsyncPaymentObjectsResource(AsyncBaseResource):

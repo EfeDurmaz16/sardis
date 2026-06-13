@@ -16,7 +16,7 @@ from ..models.treasury import (
 from .base import AsyncBaseResource, SyncBaseResource
 
 if TYPE_CHECKING:
-    from ..client import TimeoutConfig
+    from .._client import TimeoutConfig
 
 
 class AsyncTreasuryResource(AsyncBaseResource):
