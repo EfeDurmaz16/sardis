@@ -38,7 +38,7 @@ pnpm repo:stale-paths:local
 pnpm check:openapi
 pnpm --filter sardis typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest apps/api/tests/test_merchant_checkout.py -q
+uv run pytest packages/sardis/tests -q
 ```
 
 `pnpm repo:ignored-artifacts` reports ignored generated folders such as
@@ -72,11 +72,14 @@ ignored docs and generated canvases, for obsolete repeated API package paths.
 The default contributor guard only scans tracked public surfaces; use this
 local audit before declaring the checkout clean from a navigation standpoint.
 
-The default maintained Python API suite is:
+The maintained Python test suite in this open repo is the SDK package suite:
 
 ```bash
-uv run pytest apps/api/tests/
+uv run pytest packages/sardis/tests
 ```
+
+The reference API service and its `apps/api/tests/` suite are commercial and
+live in a separate private repository — they are not part of this open tree.
 
 The root `tests/` directory is a legacy migration backlog and is not part of
 the default public CI path until individual tests are moved to their owning

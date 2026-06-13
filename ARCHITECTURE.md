@@ -40,19 +40,34 @@ The authority core and the port contracts are the open moat. The hosted
 operations on top of them are the commercial product. Full detail:
 [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md).
 
+> **The reference API service is commercial and not in this repo.** The runnable
+> FastAPI service (routes, provider-port adapters, the payment engine) lives in a
+> separate private repository. The `apps/api/server/...` paths referenced below
+> describe how that reference service is laid out — they are the canonical names
+> for those modules, but you will not find them in a fresh clone of this open
+> repo. What is open here: the SDKs, the MCP server, smart contracts, protocol
+> adapters, examples, and docs. To run end to end, point the SDKs at the hosted
+> sandbox API or use the in-repo simulator.
+
 ---
 
 ## Repository layout
 
+The open repository ships the published artifacts and the public surface. The
+reference service tree (shown first, in italics) is **not** part of this repo —
+it is here only to name where the commercial backend's modules live.
+
 ```
+(commercial reference service — separate private repo)
+apps/api/server/             # The reference FastAPI service (the "backend").
+├── routes/<domain>/         # HTTP routes, grouped by domain (see below).
+├── providers/               # The provider layer: typed ports + adapters.
+├── route_registry/          # Where routes get wired into the app.
+├── dependencies.py          # DI: builds the orchestrator + provider registry.
+└── lifespan.py              # App startup/shutdown wiring.
+
+(this open repo)
 sardis/
-├── apps/api/server/        # The reference FastAPI service (the "backend").
-│   ├── routes/<domain>/     # HTTP routes, grouped by domain (see below).
-│   ├── providers/           # The provider layer: typed ports + adapters.
-│   ├── route_registry/      # Where routes get wired into the app.
-│   ├── dependencies.py      # DI: builds the orchestrator + provider registry.
-│   └── lifespan.py          # App startup/shutdown wiring.
-│
 ├── packages/               # The three publishable artifacts + their source.
 │   ├── sardis/              # Python: thin API client + in-repo runtime core.
 │   ├── sardis-js/           # TypeScript SDK (published to npm as `sardis`).
@@ -74,9 +89,10 @@ sardis/
 
 ## The authority path, in code
 
-The single entry point for payment execution is `PaymentOrchestrator` in
-[`packages/sardis/src/sardis/core/orchestrator.py`](packages/sardis/src/sardis/core/orchestrator.py).
-Its own docstring states the contract: it is *the only authorized entry point for
+The single entry point for payment execution is `PaymentOrchestrator`
+(`core/orchestrator.py` in the commercial reference service; the engine itself is
+not in this open repo).
+Its docstring states the contract: it is *the only authorized entry point for
 payment execution*, and every payment passes policy → compliance → execution →
 ledger in that order. A `False` from policy raises `PolicyViolationError` and
 nothing further runs; a `requires_approval` result is treated as a denial
@@ -122,7 +138,8 @@ The orchestrator and routes talk only to these ports, so an adapter can only
 *execute* what was already authorized — it cannot authorize, initiate, or settle
 money on its own.
 
-Defined in [`apps/api/server/providers/ports/capabilities.py`](apps/api/server/providers/ports/capabilities.py):
+Defined in `apps/api/server/providers/ports/capabilities.py` (in the commercial
+reference service):
 
 | Capability | Port | Role |
 | --- | --- | --- |
@@ -150,14 +167,16 @@ an unconfigured capability falls back to a `SIMULATED` sandbox impl (always tagg
 `sandbox=True`); in production a **required** capability with no provider raises
 `ProviderNotConfigured` rather than handing back a simulated impl on a money path.
 
-Full detail and the "how to add a provider" checklist:
-[`apps/api/server/providers/README.md`](apps/api/server/providers/README.md).
+Full detail and the "how to add a provider" checklist live in
+`apps/api/server/providers/README.md` (in the commercial reference service).
 
 ---
 
 ## Route domains
 
-HTTP routes live under `apps/api/server/routes/<domain>/`. The domains:
+In the commercial reference service, HTTP routes live under
+`apps/api/server/routes/<domain>/` (not in this open repo). The domains the
+hosted API and SDKs expose:
 
 | Domain | What it covers |
 | --- | --- |
@@ -179,8 +198,10 @@ HTTP routes live under `apps/api/server/routes/<domain>/`. The domains:
 
 ## The protocol adapters
 
-Sardis speaks several agent-payment protocols. They live under
-`apps/api/server/routes/protocol/` and `packages/sardis/src/sardis/protocol/`.
+Sardis speaks several agent-payment protocols. The open protocol adapters live
+under `packages/sardis/src/sardis/protocol/` in this repo; the hosted route
+surface that exposes them (`apps/api/server/routes/protocol/`) is part of the
+commercial reference service.
 
 - **TAP** (Trust Anchor Protocol) and **AP2** (Agent Payment Protocol) are the
   most mature — real signature verification, fail-closed.
@@ -216,8 +237,7 @@ label.
 | --- | --- |
 | Fix an SDK doc/quickstart that drifted | `packages/sardis/README.md`, `examples/` |
 | Add/fix a framework integration | `packages/sardis/src/sardis/integrations/<name>/` |
-| Add a provider adapter | `apps/api/server/providers/<capability>/` + its README |
-| Add a policy / mandate test | `apps/api/tests/`, `packages/sardis/tests/` |
+| Add a policy / mandate test (open surface) | `packages/sardis/tests/` |
 | Add an example | `examples/` (one concept each) + `examples/README.md` |
 | Improve MCP tool schemas | `packages/sardis-mcp-server/` |
 

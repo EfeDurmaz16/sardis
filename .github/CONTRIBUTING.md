@@ -87,7 +87,7 @@ pnpm run check:community
 pnpm run check:contribution-map
 pnpm --filter sardis typecheck
 pnpm --filter @sardis/mcp-server build
-uv run pytest apps/api/tests/test_merchant_checkout.py -q
+uv run pytest packages/sardis/tests -q
 ```
 
 `pnpm run check:contributor` is the fast public-surface gate for most docs,

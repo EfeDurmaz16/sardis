@@ -1,5 +1,11 @@
 # Provider Layer — Environment Variables & Status
 
+> The provider layer described here is part of the **commercial reference API
+> service**, which lives in a separate private repository — the `apps/api/...`
+> paths below name modules in that service, not files in this open repo. This
+> page documents the env contract and capability matrix the hosted/self-hosted
+> service expects. See [`oss/public-private-boundary.md`](oss/public-private-boundary.md).
+
 Every external money/identity service is reached through a typed **capability
 port** (`apps/api/server/providers/ports`) resolved by `ProviderRegistry`. Each
 provider is **env-gated**: it activates only when its keys below are set;
