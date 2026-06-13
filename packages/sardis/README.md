@@ -81,6 +81,46 @@ All resources share the same engine — connection pooling, exponential-backoff 
 
 ---
 
+## Anthropic-style ergonomics
+
+If you already use the official Anthropic Python SDK, the Sardis client feels identical.
+
+```python
+import sardis
+from sardis import Sardis
+
+# Retries + timeout are first-class constructor args (exponential backoff on
+# 429 / 5xx / connection errors).
+client = Sardis(api_key="sk_live_...", max_retries=4, timeout=20.0)
+
+# Per-call overrides without mutating the base client.
+strict = client.with_options(max_retries=0, timeout=5.0)
+strict.pay.execute(to="0xabc...", amount="10.00")
+
+# A layered, Anthropic-named error hierarchy:
+#   SardisError
+#   └─ APIError
+#      ├─ APIStatusError
+#      │  ├─ BadRequestError (400)        ├─ ConflictError (409)
+#      │  ├─ AuthenticationError (401)    ├─ UnprocessableEntityError (422)
+#      │  ├─ PermissionDeniedError (403)  ├─ RateLimitError (429)
+#      │  ├─ NotFoundError (404)          └─ InternalServerError (5xx)
+#      └─ APIConnectionError
+#         └─ APITimeoutError
+try:
+    client.pay.execute(to="0xabc...", amount="10.00")
+except sardis.RateLimitError as exc:
+    print("retry after", exc.retry_after)
+except sardis.APIStatusError as exc:
+    print(exc.status_code, exc.message)
+```
+
+Writes (`POST` / `PUT` / `PATCH` / `DELETE`) automatically carry a stable
+`Idempotency-Key` so transparent retries never double-execute; pass your own via
+a `RequestContext(idempotency_key=...)` to override it.
+
+---
+
 ## Submodules
 
 `import sardis.<name>` to use the runtime primitives directly (lazy-loaded — no startup cost if unused):

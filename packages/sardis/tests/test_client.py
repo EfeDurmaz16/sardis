@@ -20,9 +20,14 @@ import respx
 from sardis import AsyncSardis, Sardis
 from sardis._client import RequestContext, RetryConfig
 from sardis.models.errors import (
+    APIStatusError,
     AuthenticationError,
+    BadRequestError,
+    ConflictError,
     NotFoundError,
+    PermissionDeniedError,
     RateLimitError,
+    UnprocessableEntityError,
     ValidationError,
 )
 
@@ -156,14 +161,61 @@ class TestIdempotencyKey:
         assert route.calls.last.request.headers["Idempotency-Key"] == "idem_abc_123"
 
     @respx.mock
-    def test_no_idempotency_header_without_context_key(self) -> None:
+    def test_idempotency_key_auto_generated_on_write(self) -> None:
+        # Anthropic-style: writes get an auto-generated Idempotency-Key so a
+        # transparent retry never double-executes the mutation.
         route = respx.post(f"{BASE_URL}/api/v2/mandates/execute").mock(
             return_value=httpx.Response(200, json={"ok": True})
         )
         with _make_sync() as client:
             client.execute_payment({"id": "m1"})
 
+        key = route.calls.last.request.headers.get("Idempotency-Key")
+        assert key is not None
+        assert key.startswith("sardis-retry-")
+
+    @respx.mock
+    def test_idempotency_key_not_set_on_get(self) -> None:
+        route = respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(200, json={"status": "ok"})
+        )
+        with _make_sync() as client:
+            client.health()
+
         assert "Idempotency-Key" not in route.calls.last.request.headers
+
+    @respx.mock
+    def test_idempotency_key_stable_across_retries(self) -> None:
+        # The auto-generated key must be identical on the retried attempt.
+        route = respx.post(f"{BASE_URL}/api/v2/mandates/execute").mock(
+            side_effect=[
+                httpx.Response(500, json={"detail": "boom"}),
+                httpx.Response(200, json={"ok": True}),
+            ]
+        )
+        with _make_sync() as client:
+            client.execute_payment({"id": "m1"})
+
+        assert route.call_count == 2
+        first = route.calls[0].request.headers["Idempotency-Key"]
+        second = route.calls[1].request.headers["Idempotency-Key"]
+        assert first == second
+
+    @respx.mock
+    def test_caller_idempotency_key_preserved(self) -> None:
+        route = respx.post(f"{BASE_URL}/api/v2/mandates/execute").mock(
+            return_value=httpx.Response(200, json={"ok": True})
+        )
+        with _make_sync() as client:
+            ctx = RequestContext(idempotency_key="idem_caller_xyz")
+            client._request(
+                "POST",
+                "/api/v2/mandates/execute",
+                json={"mandate": {"id": "m1"}},
+                context=ctx,
+            )
+
+        assert route.calls.last.request.headers["Idempotency-Key"] == "idem_caller_xyz"
 
     @respx.mock
     def test_request_id_header_always_sent(self) -> None:
@@ -236,3 +288,166 @@ class TestErrorMapping:
         async with _make_async() as client:
             with pytest.raises(NotFoundError):
                 await client.health()
+
+    @respx.mock
+    def test_400_maps_to_bad_request_error(self) -> None:
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(400, json={"detail": "bad"})
+        )
+        with _make_sync() as client:
+            with pytest.raises(BadRequestError) as exc:
+                client.health()
+        assert exc.value.status_code == 400
+
+    @respx.mock
+    def test_403_maps_to_permission_denied_error(self) -> None:
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(403, json={"detail": "forbidden"})
+        )
+        with _make_sync() as client:
+            # PermissionDeniedError subclasses AuthenticationError for
+            # backwards compatibility with older except clauses.
+            with pytest.raises(PermissionDeniedError):
+                client.health()
+            with pytest.raises(AuthenticationError):
+                client.health()
+
+    @respx.mock
+    def test_409_maps_to_conflict_error(self) -> None:
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(409, json={"detail": "exists"})
+        )
+        with _make_sync() as client:
+            with pytest.raises(ConflictError):
+                client.health()
+
+    @respx.mock
+    def test_422_maps_to_unprocessable_entity_error(self) -> None:
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(
+                422, json={"detail": [{"loc": ["body", "x"], "msg": "required"}]}
+            )
+        )
+        with _make_sync() as client:
+            # UnprocessableEntityError subclasses ValidationError.
+            with pytest.raises(UnprocessableEntityError):
+                client.health()
+            with pytest.raises(ValidationError):
+                client.health()
+
+    @respx.mock
+    def test_status_errors_are_api_status_errors(self) -> None:
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(404, json={"detail": "missing"})
+        )
+        with _make_sync() as client:
+            with pytest.raises(APIStatusError):
+                client.health()
+
+
+class TestWithOptions:
+    def test_with_options_returns_new_client(self) -> None:
+        client = _make_sync()
+        derived = client.with_options(max_retries=0, timeout=5.0)
+        assert derived is not client
+        assert isinstance(derived, Sardis)
+        assert derived._retry.max_retries == 0
+        # Original is unchanged.
+        assert client._retry.max_retries == 3
+
+    def test_with_options_merges_default_headers(self) -> None:
+        client = Sardis(api_key=API_KEY, base_url=BASE_URL)
+        derived = client.with_options(default_headers={"X-Tenant": "acme"})
+        assert derived._default_headers["X-Tenant"] == "acme"
+        assert "X-Tenant" not in client._default_headers
+
+    @respx.mock
+    def test_with_options_header_sent_on_request(self) -> None:
+        route = respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(200, json={"status": "ok"})
+        )
+        base = Sardis(api_key=API_KEY, base_url=BASE_URL, retry=_no_wait_retry())
+        with base.with_options(default_headers={"X-Tenant": "acme"}) as client:
+            client.health()
+        assert route.calls.last.request.headers["X-Tenant"] == "acme"
+
+    def test_async_with_options_returns_async_client(self) -> None:
+        client = _make_async()
+        derived = client.with_options(max_retries=1)
+        assert isinstance(derived, AsyncSardis)
+        assert derived._retry.max_retries == 1
+
+
+class TestMaxRetries:
+    @respx.mock
+    def test_max_retries_constructor_caps_attempts(self) -> None:
+        route = respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(500, json={"detail": "boom"})
+        )
+        # max_retries=0 -> exactly one attempt, no retry.
+        client = Sardis(
+            api_key=API_KEY,
+            base_url=BASE_URL,
+            max_retries=0,
+            retry=_no_wait_retry(),
+        )
+        with client, pytest.raises(Exception):
+            client.health()
+        assert route.call_count == 1
+
+
+class TestResourceCalls:
+    @respx.mock
+    def test_pay_execute_posts_to_pay_endpoint(self) -> None:
+        route = respx.post(f"{BASE_URL}/api/v2/pay").mock(
+            return_value=httpx.Response(
+                200, json={"status": "executed", "tx_hash": "0xdead"}
+            )
+        )
+        with _make_sync() as client:
+            result = client.pay.execute(to="0xabc", amount="25.00", chain="base")
+
+        assert result["tx_hash"] == "0xdead"
+        sent = route.calls.last.request
+        body = sent.content.decode()
+        assert '"to":"0xabc"' in body.replace(" ", "")
+        assert '"amount":"25.00"' in body.replace(" ", "")
+        assert '"chain":"base"' in body.replace(" ", "")
+        # Writes carry an auto idempotency key.
+        assert sent.headers.get("Idempotency-Key", "").startswith("sardis-retry-")
+
+    @respx.mock
+    async def test_async_pay_execute(self) -> None:
+        respx.post(f"{BASE_URL}/api/v2/pay").mock(
+            return_value=httpx.Response(200, json={"status": "executed"})
+        )
+        async with _make_async() as client:
+            result = await client.pay.execute(to="0xabc", amount="1.00")
+        assert result["status"] == "executed"
+
+    @respx.mock
+    def test_wallets_list_parses_items(self) -> None:
+        respx.get(f"{BASE_URL}/api/v2/wallets").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    "wallets": [
+                        {
+                            "wallet_id": "w_1",
+                            "agent_id": "a_1",
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "updated_at": "2026-01-01T00:00:00Z",
+                        },
+                        {
+                            "wallet_id": "w_2",
+                            "agent_id": "a_1",
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "updated_at": "2026-01-01T00:00:00Z",
+                        },
+                    ]
+                },
+            )
+        )
+        with _make_sync() as client:
+            wallets = client.wallets.list(agent_id="a_1")
+        assert [w.wallet_id for w in wallets] == ["w_1", "w_2"]
