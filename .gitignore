@@ -151,6 +151,10 @@ docs/compliance/
 docs/runbooks/
 docs/superpowers/
 apps/dashboard/
+# Reference API service moved to the private repo in the June 2026 OSS split.
+# Keep any leftover local checkout (and its compiled .pyc / cache debris) out
+# of the public repo. See docs/oss/public-private-boundary.md.
+apps/api/
 packages/sardis-checkout-ui/
 packages/ui-web/
 

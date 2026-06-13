@@ -163,11 +163,15 @@ Every financial action follows a single authority path — there is no code path
 that bypasses policy:
 
 ```
-agent -> SDK/MCP -> apps/api routes -> PaymentOrchestrator
+agent -> SDK/MCP -> hosted/reference API routes -> PaymentOrchestrator
   (mandate verify -> policy -> spend tracking -> compliance -> execute) -> signed ledger
 ```
 
-The orchestrator depends only on typed provider ports (custody, fiat_account,
+The reference API service and the PaymentOrchestrator engine are commercial and
+are not in this open repository — this repo is the open surface (SDKs, MCP
+server, smart contracts, protocol adapters, examples, docs). Point the SDKs at
+the hosted sandbox API (`SARDIS_API_URL`, default https://api.sardis.sh) to run
+end to end. The orchestrator depends only on typed provider ports (custody, fiat_account,
 onramp, offramp, swap, bridge, card, kyc, kyt, …) — never a vendor SDK directly.
 Bring your own provider (Stripe, Lithic, Turnkey, Circle, your bank, x402 servers,
 or a custom adapter); Sardis enforces the authority layer above them.

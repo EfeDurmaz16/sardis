@@ -192,13 +192,14 @@ pip install -e ../../packages/sardis
 
 **"Connection refused"**
 ```bash
-# Start the Sardis API server first:
-cd ../../apps/api
-uvicorn server.main:create_app --factory --port 8000
+# Point the SDK at a reachable Sardis API. The reference API service is
+# commercial and not in this open repo; use the hosted sandbox:
+export SARDIS_API_URL=https://api.sardis.sh
+export SARDIS_API_KEY=sk_...
 ```
 
 **Running in simulation mode**
-The demo will automatically fall back to simulation mode if the API is unavailable. All policy checks are performed locally.
+The demo automatically falls back to simulation mode if no API is reachable, so it runs credential-free. All policy checks are performed locally.
 
 ## Next Steps
 

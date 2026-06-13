@@ -8,17 +8,19 @@ Run the narrowest suite that covers your change:
 
 ```bash
 pnpm run check:contributor
-uv run pytest apps/api/tests/ -q
-uv run pytest packages/sardis-core/tests/ -q
-uv run pytest packages/sardis-ledger/tests/ -q
-uv run pytest packages/sardis-chain/tests/ -q
-pnpm --filter @sardis/sdk test
+uv run pytest packages/sardis/tests -q
+pnpm --filter sardis test
 pnpm --filter @sardis/mcp-server test
 ```
 
 The root `package.json` `test` script runs the maintained package-owned suites.
-Root `pyproject.toml` also points pytest at `apps/api/tests` by
-default.
+
+> The reference API service and its `apps/api/tests/` suite are **commercial**
+> and live in a separate private repository — they are not part of this open
+> tree. The `apps/api/server` paths named in the guard sections below are the
+> canonical module names for that reference service; the layout and stale-path
+> guards keep public surfaces pointing at those canonical names without
+> requiring the service itself to be present here.
 
 Some protocol packages are intentionally validated with package-local source
 paths instead of relying on a published install. Use these commands when
@@ -27,8 +29,10 @@ changing paid HTTP protocol behavior:
 ```bash
 PYTHONPATH=packages/sardis-protocol/src uv run pytest packages/sardis-protocol/tests -q
 PYTHONPATH=packages/sardis-mpp/src uv run --with pympp pytest packages/sardis-mpp/tests -q
-PYTHONPATH=apps/api uv run pytest apps/api/tests/test_x402_middleware.py apps/api/tests/test_mpp_router.py -q
 ```
+
+The reference service's own route-level protocol tests (the `apps/api/tests/`
+middleware and router suites) ship with the commercial service, not this repo.
 
 Run those protocol targets separately. The package-local protocol tests and
 legacy root protocol tests load different pytest `tests.conftest` modules, so
@@ -59,10 +63,10 @@ it into the owning package first:
 
 | Test kind | Target |
 | --- | --- |
-| API route and middleware tests | `apps/api/tests/` |
-| Policy, mandate, orchestration, and authority tests | `packages/sardis-core/tests/` |
-| Ledger, receipt, and reconciliation tests | `packages/sardis-ledger/tests/` |
-| Chain, token, Tempo, and Solana tests | `packages/sardis-chain/tests/` |
+| API route and middleware tests | commercial reference service (`apps/api/tests/`, separate private repo) |
+| Policy, mandate, orchestration, and authority tests | `packages/sardis/tests/` |
+| Ledger, receipt, and reconciliation tests | `packages/sardis/tests/` |
+| Chain, token, Tempo, and Solana tests | `packages/sardis/tests/` |
 | SDK examples and contract tests | owning SDK package or docs test suite |
 
 ## Migration Inventory

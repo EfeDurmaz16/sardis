@@ -272,12 +272,22 @@ git clone https://github.com/EfeDurmaz16/sardis.git
 cd sardis
 pnpm run doctor && uv sync && pnpm install --frozen-lockfile
 
-# Contributor gate
+# Contributor gate (credential-free)
 pnpm run check:contributor
 
-# Start the reference API
-uv run uvicorn --app-dir apps/api server.main:create_app --factory --port 8000
+# SDK + MCP tests
+uv run pytest packages/sardis/tests
+pnpm --filter @sardis/mcp-server build
 ```
+
+> **The reference API service is commercial.** This repository is the open
+> surface — SDKs, MCP server, smart contracts, protocol adapters, examples, and
+> docs. The runnable FastAPI service (routes, provider-port adapters, the
+> payment engine) lives in a separate private repository and is **not** in this
+> tree. Point the SDKs at the hosted sandbox API (`SARDIS_API_URL`, default
+> `https://api.sardis.sh`) to run end to end, or use the in-repo simulator for
+> credential-free local development. See
+> [`docs/oss/public-private-boundary.md`](docs/oss/public-private-boundary.md).
 
 ## Community
 
