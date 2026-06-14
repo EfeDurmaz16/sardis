@@ -50,10 +50,7 @@ def non_success_check_count(status_check_rollup: list[dict[str, Any]]) -> int:
     count = 0
     for check in status_check_rollup:
         conclusion = check.get("conclusion")
-        status = check.get("status")
         if conclusion in {"SUCCESS", "SKIPPED"}:
-            continue
-        if status in {"COMPLETED"} and conclusion in {"SUCCESS", "SKIPPED"}:
             continue
         count += 1
     return count
