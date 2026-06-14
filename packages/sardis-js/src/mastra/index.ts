@@ -126,9 +126,7 @@ export function createSardisMastraTools(
       inputSchema: HoldCaptureSchema,
       execute: async ({ context }) => {
         const input = HoldCaptureSchema.parse(context);
-        return (client.holds as unknown as {
-          capture: (id: string, body: Record<string, unknown>) => Promise<unknown>;
-        }).capture(input.holdId, input.amount ? { amount: input.amount } : {});
+        return client.holds.capture(input.holdId, input.amount);
       },
     },
     sardis_void_hold: {
@@ -137,9 +135,7 @@ export function createSardisMastraTools(
       inputSchema: HoldVoidSchema,
       execute: async ({ context }) => {
         const input = HoldVoidSchema.parse(context);
-        return (client.holds as unknown as { void: (id: string) => Promise<unknown> }).void(
-          input.holdId,
-        );
+        return client.holds.void(input.holdId);
       },
     },
     sardis_get_balance: {
@@ -148,12 +144,7 @@ export function createSardisMastraTools(
       inputSchema: BalanceSchema,
       execute: async ({ context }) => {
         const input = BalanceSchema.parse(context);
-        return (client.wallets as unknown as {
-          getBalance: (id: string, params: Record<string, unknown>) => Promise<unknown>;
-        }).getBalance(walletId, {
-          ...(input.token ? { token: input.token } : {}),
-          ...(input.chain ? { chain: input.chain } : {}),
-        });
+        return client.wallets.getBalance(walletId, input.chain ?? 'base', input.token ?? 'USDC');
       },
     },
     sardis_check_policy: {
@@ -162,12 +153,11 @@ export function createSardisMastraTools(
       inputSchema: PolicyCheckSchema,
       execute: async ({ context }) => {
         const input = PolicyCheckSchema.parse(context);
-        return (client.policies as unknown as {
-          check: (body: Record<string, unknown>) => Promise<unknown>;
-        }).check({
+        return client.policies.check({
+          agent_id: opts.agentId ?? '',
           amount: input.amount,
-          ...(input.merchant ? { merchant: input.merchant } : {}),
-          ...(input.category ? { category: input.category } : {}),
+          ...(input.merchant ? { merchant_id: input.merchant } : {}),
+          ...(input.category ? { merchant_category: input.category } : {}),
         });
       },
     },
