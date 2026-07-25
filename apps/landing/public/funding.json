@@ -1,0 +1,93 @@
+{
+  "$schema": "https://fundingjson.org/schema/v1.1.0.json",
+  "version": "v1.1.0",
+  "entity": {
+    "type": "individual",
+    "role": "maintainer",
+    "name": "Efe Baran Durmaz",
+    "email": "efe@sardis.sh",
+    "description": "Independent open-source maintainer building governance infrastructure for autonomous agents: policy checks, human approvals, revocation, and tamper-evident audit evidence before consequential actions (local execution and financial authority). Based in Ankara, Turkey; maintains Sardis and Agentbox.",
+    "webpageUrl": {
+      "url": "https://sardis.sh"
+    }
+  },
+  "projects": [
+    {
+      "guid": "agentbox",
+      "name": "Agentbox",
+      "description": "Local-first governed runtime for autonomous agents. Intercepts risky host actions (shell, network, credentials, filesystem), routes them through deterministic policy and out-of-band approval, and records auditable execution evidence. Provides an AgentPod contract so agents can run task-scoped cells without unsupervised access to the real machine.",
+      "webpageUrl": {
+        "url": "https://github.com/EfeDurmaz16/agentbox",
+        "wellKnown": "https://github.com/EfeDurmaz16/agentbox/blob/main/.well-known/funding-manifest-urls"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/EfeDurmaz16/agentbox",
+        "wellKnown": "https://github.com/EfeDurmaz16/agentbox/blob/main/.well-known/funding-manifest-urls"
+      },
+      "licenses": ["spdx:Apache-2.0"],
+      "tags": [
+        "developer-tools",
+        "security",
+        "ai-agents",
+        "runtime",
+        "policy",
+        "audit",
+        "rust"
+      ]
+    },
+    {
+      "guid": "sardis",
+      "name": "Sardis",
+      "description": "Open-source financial authority layer for AI agents. Enforces signed mandates, deterministic spend policy, approvals, revocation, and audit packets before any wallet, card, stablecoin, payment API, or x402 endpoint moves money. Ships MIT-licensed SDKs (Python/TypeScript), an MCP server, and framework adapters so agents can request spend under human-defined bounds.",
+      "webpageUrl": {
+        "url": "https://sardis.sh"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/EfeDurmaz16/sardis",
+        "wellKnown": "https://github.com/EfeDurmaz16/sardis/blob/main/.well-known/funding-manifest-urls"
+      },
+      "licenses": ["spdx:MIT"],
+      "tags": [
+        "developer-tools",
+        "payments",
+        "ai-agents",
+        "policy",
+        "sdk",
+        "mcp",
+        "security"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "bank-wire",
+        "type": "bank",
+        "address": "",
+        "description": "International bank transfer. Email efe@sardis.sh for account details and any required tax forms."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "oss-maintenance-10k",
+        "status": "active",
+        "name": "Agent governance OSS maintenance (6 months)",
+        "description": "Part-time maintainer stipend to harden and document the open agent-governance stack: Agentbox AgentPod/policy/approval/audit releases and docs; Sardis public SDK/MCP/reference policy simulator maintenance and examples. Does not fund the private hosted commercial engine.",
+        "amount": 10000,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["bank-wire"]
+      },
+      {
+        "guid": "goodwill",
+        "status": "active",
+        "name": "Goodwill / any amount",
+        "description": "One-time support of any amount toward the same OSS maintenance goals.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": ["bank-wire"]
+      }
+    ]
+  }
+}
