@@ -70,17 +70,18 @@ PY
 echo "[2/5] Running Python SDK test suite"
 "${PYTHON_CMD[@]}" -m pytest -q "$PY_SDK_DIR/tests"
 
-echo "[3/5] Running protocol conformance suite"
-"${PYTHON_CMD[@]}" -m pytest -m protocol_conformance \
-  "$ROOT_DIR/tests/" \
-  --ignore="$ROOT_DIR/tests/integration" \
-  --ignore="$ROOT_DIR/tests/e2e" \
-  --ignore="$ROOT_DIR/tests/test_agent_auth_ed25519.py" \
-  --ignore="$ROOT_DIR/tests/test_solana_program_integration.py" \
-  --ignore="$ROOT_DIR/tests/test_zen_fraud_engine.py" \
-  --strict-markers \
-  -v --tb=short \
-  2>&1 | tee /tmp/protocol-results.txt
+if [[ -d "$ROOT_DIR/tests" ]]; then
+  echo "[3/5] Running protocol conformance suite"
+  "${PYTHON_CMD[@]}" -m pytest -m protocol_conformance \
+    "$ROOT_DIR/tests/" \
+    --ignore="$ROOT_DIR/tests/integration" \
+    --ignore="$ROOT_DIR/tests/e2e" \
+    --ignore="$ROOT_DIR/tests/test_agent_auth_ed25519.py" \
+    --ignore="$ROOT_DIR/tests/test_solana_program_integration.py" \
+    --ignore="$ROOT_DIR/tests/test_zen_fraud_engine.py" \
+    --strict-markers \
+    -v --tb=short \
+    2>&1 | tee /tmp/protocol-results.txt
 
 # Count results from pytest summary (fallback to 0 if missing).
 read -r PASSED FAILED SKIPPED <<<"$("${PYTHON_CMD[@]}" - <<'PY'
@@ -115,9 +116,12 @@ if [ "$FAILED" -gt 0 ]; then
   exit 1
 fi
 
-if [ "${STRICT_MODE:-0}" = "1" ] && [ "$SKIPPED" -gt 0 ]; then
-  echo "STRICT_MODE: $SKIPPED tests were skipped - treating as failure"
-  exit 1
+  if [ "${STRICT_MODE:-0}" = "1" ] && [ "$SKIPPED" -gt 0 ]; then
+    echo "STRICT_MODE: $SKIPPED tests were skipped - treating as failure"
+    exit 1
+  fi
+else
+  echo "[3/5] Skipping protocol conformance suite (legacy tests directory absent; coverage runs in the SDK suite)"
 fi
 
 echo "[3b/5] (skipped — a2a/ucp/compliance subpackages consolidated into sardis.*)"
