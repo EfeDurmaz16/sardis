@@ -102,7 +102,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@8789b3e21e6c11b2697f5eb56eddae542f746c10 # v1
+        uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
         with:
           version: v1.7.0
           cache: false
@@ -131,7 +131,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@8789b3e21e6c11b2697f5eb56eddae542f746c10 # v1
+        uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
         with:
           version: v1.7.0
           cache: false
@@ -239,3 +239,43 @@ jobs:
 
       - name: Build landing page
         run: pnpm --filter @sardis/app-landing typecheck && pnpm --filter @sardis/app-landing build
+
+  test:
+    name: test
+    if: ${{ always() }}
+    needs:
+      - python-lint-test
+      - contracts-gas
+      - contracts-strict
+      - typescript-sdk
+      - build-landing
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require core test jobs to pass
+        run: |
+          if [[ "${{ needs.python-lint-test.result }}" != "success" ||
+                "${{ needs.contracts-gas.result }}" != "success" ||
+                "${{ needs.contracts-strict.result }}" != "success" ||
+                "${{ needs.typescript-sdk.result }}" != "success" ||
+                "${{ needs.build-landing.result }}" != "success" ]]; then
+            echo "A required test job did not pass."
+            exit 1
+          fi
+
+  lint:
+    name: lint
+    if: ${{ always() }}
+    needs:
+      - oss-surface
+      - python-lint-test
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require lint jobs to pass
+        run: |
+          if [[ "${{ needs.oss-surface.result }}" != "success" ||
+                "${{ needs.python-lint-test.result }}" != "success" ]]; then
+            echo "A required lint job did not pass."
+            exit 1
+          fi
