@@ -51,10 +51,15 @@ echo "[release-readiness] Running Python SDK + protocol checks"
 echo "[release-readiness] Running OSS surface check"
 python3 "$ROOT_DIR/scripts/oss_surface_check.py"
 
-echo "[release-readiness] Running OpenAPI route snapshot check"
-(
-  cd "$ROOT_DIR"
-  uv run python apps/api/scripts/generate_openapi.py --check
-)
+OPENAPI_GENERATOR="$ROOT_DIR/packages/sardis-api/scripts/generate_openapi.py"
+if [[ -f "$OPENAPI_GENERATOR" ]]; then
+  echo "[release-readiness] Running OpenAPI route snapshot check"
+  (
+    cd "$ROOT_DIR"
+    uv run python packages/sardis-api/scripts/generate_openapi.py --check
+  )
+else
+  echo "[release-readiness] Skipping OpenAPI route snapshot check (private API package absent from public repo)"
+fi
 
 echo "[release-readiness] Completed"
