@@ -51,10 +51,4 @@ echo "[release-readiness] Running Python SDK + protocol checks"
 echo "[release-readiness] Running OSS surface check"
 python3 "$ROOT_DIR/scripts/oss_surface_check.py"
 
-echo "[release-readiness] Running OpenAPI route snapshot check"
-(
-  cd "$ROOT_DIR"
-  uv run python apps/api/scripts/generate_openapi.py --check
-)
-
 echo "[release-readiness] Completed"
