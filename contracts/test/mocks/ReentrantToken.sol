@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 /// @title ReentrantToken
 /// @notice Mock ERC20 that calls back into the caller during transfer/transferFrom.
-/// @dev Used to test reentrancy resistance in RefundProtocol and SardisVerifyingPaymaster.
+/// @dev Used to test reentrancy resistance in RefundProtocol.
 ///      The callback target and calldata are configurable so the same mock can attack
 ///      any external function.
 contract ReentrantToken {
