@@ -240,10 +240,7 @@ export function createSardis(opts: CreateSardisOptions): SardisProvider {
       execute: async (args) => {
         const input = HoldCaptureSchema.parse(args);
         return wrap('hold_capture', input, () =>
-          (client.holds as unknown as { capture: (id: string, body: Record<string, unknown>) => Promise<unknown> }).capture(
-            input.holdId,
-            input.amount ? { amount: input.amount } : {},
-          ),
+          client.holds.capture(input.holdId, input.amount),
         );
       },
     },
@@ -252,9 +249,7 @@ export function createSardis(opts: CreateSardisOptions): SardisProvider {
       parameters: HoldVoidSchema,
       execute: async (args) => {
         const input = HoldVoidSchema.parse(args);
-        return wrap('hold_void', input, () =>
-          (client.holds as unknown as { void: (id: string) => Promise<unknown> }).void(input.holdId),
-        );
+        return wrap('hold_void', input, () => client.holds.void(input.holdId));
       },
     },
     sardis_get_balance: {
@@ -263,12 +258,7 @@ export function createSardis(opts: CreateSardisOptions): SardisProvider {
       execute: async (args) => {
         const input = BalanceSchema.parse(args);
         return wrap('balance', input, () =>
-          (client.wallets as unknown as {
-            getBalance: (id: string, params: Record<string, unknown>) => Promise<unknown>;
-          }).getBalance(walletId, {
-            ...(input.token ? { token: input.token } : {}),
-            ...(input.chain ? { chain: input.chain } : {}),
-          }),
+          client.wallets.getBalance(walletId, input.chain ?? 'base', input.token ?? 'USDC'),
         );
       },
     },
@@ -278,12 +268,11 @@ export function createSardis(opts: CreateSardisOptions): SardisProvider {
       execute: async (args) => {
         const input = PolicyCheckSchema.parse(args);
         return wrap('policy_check', input, () =>
-          (client.policies as unknown as {
-            check: (body: Record<string, unknown>) => Promise<unknown>;
-          }).check({
+          client.policies.check({
+            agent_id: opts.agentId ?? '',
             amount: input.amount,
-            ...(input.merchant ? { merchant: input.merchant } : {}),
-            ...(input.category ? { category: input.category } : {}),
+            ...(input.merchant ? { merchant_id: input.merchant } : {}),
+            ...(input.category ? { merchant_category: input.category } : {}),
           }),
         );
       },
