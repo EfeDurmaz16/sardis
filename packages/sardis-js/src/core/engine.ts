@@ -340,7 +340,6 @@ export class Engine {
   // ───────────────────────────────────────────────────────── helpers
 
   private buildUrl(path: string, params?: Record<string, unknown>): string {
-    const url = new URL(path, this.baseURL + '/');
     // Preserve full path (URL collapses "/" if baseURL has no path).
     const full = path.startsWith('http') ? path : `${this.baseURL}${path.startsWith('/') ? '' : '/'}${path}`;
     const u = new URL(full);
@@ -354,8 +353,6 @@ export class Engine {
         }
       }
     }
-    // `url` is intentionally unused — left for static analysis.
-    void url;
     return u.toString();
   }
 

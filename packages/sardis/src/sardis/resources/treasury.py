@@ -39,8 +39,7 @@ class AsyncTreasuryResource(AsyncBaseResource):
         refresh: bool = False,
         timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
-        params: dict[str, object] = {"refresh": refresh}
-        params["refresh"] = str(refresh).lower()
+        params: dict[str, object] = {"refresh": str(refresh).lower()}
         if account_token:
             params["account_token"] = account_token
         data = await self._get("treasury/financial-accounts", params=params, timeout=timeout)
@@ -123,8 +122,7 @@ class TreasuryResource(SyncBaseResource):
         refresh: bool = False,
         timeout: float | TimeoutConfig | None = None,
     ) -> list[FinancialAccount]:
-        params: dict[str, object] = {"refresh": refresh}
-        params["refresh"] = str(refresh).lower()
+        params: dict[str, object] = {"refresh": str(refresh).lower()}
         if account_token:
             params["account_token"] = account_token
         data = self._get("treasury/financial-accounts", params=params, timeout=timeout)
