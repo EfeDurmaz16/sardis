@@ -120,12 +120,7 @@ export function createSardisTools(opts: CreateSardisToolsOptions): LangChainStru
       invoke: (input) => {
         const parsed = CheckBalanceSchema.parse(input);
         return safe(() =>
-          (client.wallets as unknown as {
-            getBalance: (id: string, params: Record<string, unknown>) => Promise<unknown>;
-          }).getBalance(walletId, {
-            ...(parsed.token ? { token: parsed.token } : {}),
-            ...(parsed.chain ? { chain: parsed.chain } : {}),
-          }),
+          client.wallets.getBalance(walletId, parsed.chain ?? 'base', parsed.token ?? 'USDC'),
         );
       },
     },
@@ -137,12 +132,10 @@ export function createSardisTools(opts: CreateSardisToolsOptions): LangChainStru
       invoke: (input) => {
         const parsed = CheckPolicySchema.parse(input);
         return safe(() =>
-          (client.policies as unknown as {
-            check: (body: Record<string, unknown>) => Promise<unknown>;
-          }).check({
+          client.policies.check({
+            agent_id: opts.agentId ?? '',
             amount: parsed.amount,
-            ...(parsed.token ? { token: parsed.token } : {}),
-            merchant: parsed.to,
+            ...(parsed.to ? { merchant_id: parsed.to } : {}),
           }),
         );
       },
@@ -155,12 +148,7 @@ export function createSardisTools(opts: CreateSardisToolsOptions): LangChainStru
       invoke: (input) => {
         const parsed = SetPolicySchema.parse(input);
         return safe(() =>
-          (client.policies as unknown as {
-            applyFromNaturalLanguage: (body: Record<string, unknown>) => Promise<unknown>;
-          }).applyFromNaturalLanguage({
-            policy: parsed.policy,
-            ...(opts.agentId ? { agent_id: opts.agentId } : {}),
-          }),
+          client.policies.apply(parsed.policy, opts.agentId ?? ''),
         );
       },
     },
@@ -171,9 +159,7 @@ export function createSardisTools(opts: CreateSardisToolsOptions): LangChainStru
       invoke: (input) => {
         const parsed = ListTransactionsSchema.parse(input);
         return safe(() =>
-          (client.transactions as unknown as {
-            list: (params: Record<string, unknown>) => Promise<unknown>;
-          }).list({ wallet_id: walletId, limit: parsed.limit ?? 20 }),
+          client.ledger.listEntries({ wallet_id: walletId, limit: parsed.limit ?? 20 }),
         );
       },
     },
