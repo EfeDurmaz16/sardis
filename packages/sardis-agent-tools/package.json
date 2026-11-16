@@ -68,7 +68,7 @@
   },
   "dependencies": {
     "sardis": "workspace:*",
-    "zod": "^3.24.0"
+    "zod": "^4.6.6"
   },
   "peerDependencies": {
     "@langchain/core": ">=0.3.0",
