@@ -83,18 +83,3 @@ class SardisAPIClient:
         if self._client:
             self._client.close()
             self._client = None
-
-
-def get_client(ctx) -> SardisAPIClient:
-    """Get API client from context."""
-    config = ctx.obj["config"]
-
-    api_key = config.get("api_key")
-    if not api_key:
-        raise click.ClickException("Not authenticated. Run 'sardis login' first.")
-
-    return SardisAPIClient(
-        base_url=config.get("api_base_url", "https://api.sardis.sh"),
-        api_key=api_key,
-    )
-
